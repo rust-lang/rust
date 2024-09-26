@@ -34,12 +34,12 @@ pub use self::allocation::{
     InitChunkIter, alloc_range,
 };
 pub use self::error::{
-    BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled, EvalStaticInitializerRawResult,
-    EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, ExpectedKind,
-    InterpError, InterpErrorInfo, InterpResult, InvalidMetaKind, InvalidProgramInfo,
-    MachineStopType, Misalignment, PointerKind, ReportedErrorInfo, ResourceExhaustionInfo,
-    ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
-    ValidationErrorKind,
+    BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, DiscardInterpError, ErrorHandled,
+    EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
+    EvalToValTreeResult, ExpectedKind, InterpError, InterpErrorInfo, InterpResult, InvalidMetaKind,
+    InvalidProgramInfo, MachineStopType, Misalignment, PointerKind, ReportedErrorInfo,
+    ResourceExhaustionInfo, ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
+    ValidationErrorInfo, ValidationErrorKind,
 };
 pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 pub use self::value::Scalar;

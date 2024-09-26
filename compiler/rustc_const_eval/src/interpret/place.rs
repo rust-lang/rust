@@ -13,9 +13,9 @@ use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 use tracing::{instrument, trace};
 
 use super::{
-    AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance, ImmTy, Immediate, InterpCx, InterpResult,
-    Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer, Projectable, Provenance,
-    Scalar, alloc_range, mir_assign_valid_types,
+    AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance, DiscardInterpError, ImmTy, Immediate,
+    InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer,
+    Projectable, Provenance, Scalar, alloc_range, mir_assign_valid_types,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -490,9 +490,16 @@ where
         // If an access is both OOB and misaligned, we want to see the bounds error.
         // However we have to call `check_misalign` first to make the borrow checker happy.
         let misalign_err = self.check_misalign(mplace.mplace.misaligned, CheckAlignMsg::BasedOn);
-        let a = self.get_ptr_alloc_mut(mplace.ptr(), size)?;
-        misalign_err?;
-        Ok(a)
+        match self.get_ptr_alloc_mut(mplace.ptr(), size) {
+            Ok(a) => {
+                misalign_err?;
+                Ok(a)
+            }
+            Err(e) => {
+                misalign_err.discard_interp_err();
+                Err(e)
+            }
+        }
     }
 
     /// Turn a local in the current frame into a place.

@@ -1,4 +1,5 @@
 use rustc_middle::bug;
+use rustc_middle::mir::interpret::DiscardInterpError;
 use rustc_middle::ty::layout::{
     HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
 };
@@ -75,7 +76,8 @@ fn check_validity_requirement_strict<'tcx>(
             /*recursive*/ false,
             /*reset_provenance_and_padding*/ false,
         )
-        .is_ok())
+        .discard_interp_err()
+        .is_some())
 }
 
 /// Implements the 'lax' (default) version of the [`check_validity_requirement`] checks; see that

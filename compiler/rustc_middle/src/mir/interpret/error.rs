@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::backtrace::Backtrace;
 use std::borrow::Cow;
-use std::fmt;
+use std::{fmt, mem};
 
 use either::Either;
 use rustc_ast_ir::Mutability;
@@ -104,13 +104,57 @@ rustc_data_structures::static_assert_size!(InterpErrorInfo<'_>, 8);
 /// These should always be constructed by calling `.into()` on
 /// an `InterpError`. In `rustc_mir::interpret`, we have `throw_err_*`
 /// macros for this.
+///
+/// Interpreter errors must *not* be silently discarded (that will lead to a panic). Instead,
+/// explicitly call `discard_interp_err` if this is really the right thing to do. Note that if
+/// this happens during const-eval or in Miri, it could lead to a UB error being lost!
 #[derive(Debug)]
 pub struct InterpErrorInfo<'tcx>(Box<InterpErrorInfoInner<'tcx>>);
+
+/// Calling `.ok()` on an `InterpResult` leads to a panic because of the guard.
+/// To still let people opt-in to discarding interpreter errors, we have this extension trait.
+pub trait DiscardInterpError {
+    type Output;
+
+    fn discard_interp_err(self) -> Option<Self::Output>;
+}
+
+impl<'tcx, T> DiscardInterpError for InterpResult<'tcx, T> {
+    type Output = T;
+
+    fn discard_interp_err(self) -> Option<Self::Output> {
+        match self {
+            Ok(v) => Some(v),
+            Err(e) => {
+                // Disarm the guard.
+                mem::forget(e.0.guard);
+                None
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Guard;
+
+impl Drop for Guard {
+    fn drop(&mut self) {
+        // We silence the guard if we are already panicking, to avoid double-panics.
+        if !std::thread::panicking() {
+            panic!(
+                "an interpreter error got improperly discarded; use `discard_interp_err()` instead of `ok()` if this is intentional"
+            );
+        }
+    }
+}
 
 #[derive(Debug)]
 struct InterpErrorInfoInner<'tcx> {
     kind: InterpError<'tcx>,
     backtrace: InterpErrorBacktrace,
+    /// This makes us panic on drop. This is used to catch
+    /// accidentally discarding an interpreter error.
+    guard: Guard,
 }
 
 #[derive(Debug)]
@@ -151,13 +195,23 @@ impl InterpErrorBacktrace {
 
 impl<'tcx> InterpErrorInfo<'tcx> {
     pub fn into_parts(self) -> (InterpError<'tcx>, InterpErrorBacktrace) {
-        let InterpErrorInfo(box InterpErrorInfoInner { kind, backtrace }) = self;
+        let InterpErrorInfo(box InterpErrorInfoInner { kind, backtrace, guard }) = self;
+        mem::forget(guard); // The error got explicitly discarded right here.
         (kind, backtrace)
     }
 
     pub fn into_kind(self) -> InterpError<'tcx> {
-        let InterpErrorInfo(box InterpErrorInfoInner { kind, .. }) = self;
+        let InterpErrorInfo(box InterpErrorInfoInner { kind, guard, .. }) = self;
+        mem::forget(guard); // The error got explicitly discarded right here.
         kind
+    }
+
+    pub fn discard_interp_err(self) {
+        mem::forget(self.0.guard); // The error got explicitly discarded right here.
+    }
+
+    pub fn from_parts(kind: InterpError<'tcx>, backtrace: InterpErrorBacktrace) -> Self {
+        Self(Box::new(InterpErrorInfoInner { kind, backtrace, guard: Guard }))
     }
 
     #[inline]
@@ -191,6 +245,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
         InterpErrorInfo(Box::new(InterpErrorInfoInner {
             kind,
             backtrace: InterpErrorBacktrace::new(),
+            guard: Guard,
         }))
     }
 }

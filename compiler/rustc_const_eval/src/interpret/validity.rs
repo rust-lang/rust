@@ -17,8 +17,8 @@ use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::ValidationErrorKind::{self, *};
 use rustc_middle::mir::interpret::{
-    ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
-    UnsupportedOpInfo, ValidationErrorInfo, alloc_range,
+    ExpectedKind, InterpError, InterpErrorInfo, InvalidMetaKind, Misalignment, PointerKind,
+    Provenance, UnsupportedOpInfo, ValidationErrorInfo, alloc_range,
 };
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -95,16 +95,19 @@ macro_rules! try_validation {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            Err(e) => match e.kind() {
-                $(
-                    $($p)|+ =>
-                       throw_validation_failure!(
-                            $where,
-                            $kind
-                        )
-                ),+,
-                #[allow(unreachable_patterns)]
-                _ => Err::<!, _>(e)?,
+            Err(e) => {
+                let (kind, backtrace) = e.into_parts();
+                match kind {
+                    $(
+                        $($p)|+ => {
+                            throw_validation_failure!(
+                                $where,
+                                $kind
+                            )
+                        }
+                    ),+,
+                    _ => Err::<!, _>(InterpErrorInfo::from_parts(kind, backtrace))?,
+                }
             }
         }
     }};
@@ -510,7 +513,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
                 ptr_kind,
                 // FIXME this says "null pointer" when null but we need translate
-                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(*i))
+                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(i))
             },
             Ub(PointerOutOfBounds { .. }) => DanglingPtrOutOfBounds {
                 ptr_kind
@@ -1231,7 +1234,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     Err(err) => {
                         // For some errors we might be able to provide extra information.
                         // (This custom logic does not fit the `try_validation!` macro.)
-                        match err.kind() {
+                        let (kind, backtrace) = err.into_parts();
+                        match kind {
                             Ub(InvalidUninitBytes(Some((_alloc_id, access)))) | Unsup(ReadPointerAsInt(Some((_alloc_id, access)))) => {
                                 // Some byte was uninitialized, determine which
                                 // element that byte belongs to so we can
@@ -1242,7 +1246,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                                 .unwrap();
                                 self.path.push(PathElem::ArrayElem(i));
 
-                                if matches!(err.kind(), Ub(InvalidUninitBytes(_))) {
+                                if matches!(kind, Ub(InvalidUninitBytes(_))) {
                                     throw_validation_failure!(self.path, Uninit { expected })
                                 } else {
                                     throw_validation_failure!(self.path, PointerAsInt { expected })
@@ -1250,7 +1254,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                             }
 
                             // Propagate upwards (that will also check for unexpected errors).
-                            _ => return Err(err),
+                            _ => return Err(InterpErrorInfo::from_parts(kind, backtrace)),
                         }
                     }
                 }
@@ -1282,7 +1286,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     // It's not great to catch errors here, since we can't give a very good path,
                     // but it's better than ICEing.
                     Ub(InvalidVTableTrait { vtable_dyn_type, expected_dyn_type }) => {
-                        InvalidMetaWrongTrait { vtable_dyn_type, expected_dyn_type: *expected_dyn_type }
+                        InvalidMetaWrongTrait { vtable_dyn_type, expected_dyn_type }
                     },
                 );
             }

@@ -247,7 +247,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // This does NaN adjustments.
                             let val = this.binary_op(mir_op, &left, &right).map_err(|err| {
                                 match err.kind() {
-                                    InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ShiftOverflow { shift_amount, .. }) => {
+                                    &InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ShiftOverflow { shift_amount, .. }) => {
+                                        err.discard_interp_err();
                                         // This resets the interpreter backtrace, but it's not worth avoiding that.
                                         let shift_amount = match shift_amount {
                                             Either::Left(v) => v.to_string(),
