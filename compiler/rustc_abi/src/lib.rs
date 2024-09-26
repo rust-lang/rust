@@ -624,7 +624,7 @@ impl AddAssign for Size {
 #[cfg(feature = "nightly")]
 impl Step for Size {
     #[inline]
-    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
         u64::steps_between(&start.bytes(), &end.bytes())
     }
 
