@@ -46,13 +46,12 @@ struct NotInfo {
 pub(crate) struct MatchArm {
     pub(crate) source_info: SourceInfo,
     pub(crate) sub_branches: Vec<MatchArmSubBranch>,
-    pub(crate) arm_block: BasicBlock,
 }
 
 #[derive(Debug)]
 pub(crate) struct MatchArmSubBranch {
     pub(crate) source_info: SourceInfo,
-    pub(crate) start_block: Option<BasicBlock>,
+    pub(crate) block: BasicBlock,
 }
 
 #[derive(Default)]
@@ -193,24 +192,24 @@ impl CoverageInfoBuilder {
 
         let branch_arms = arms
             .iter()
-            .flat_map(|MatchArm { source_info, sub_branches, arm_block }| {
-                let arm_taken_marker =
-                    self.markers.inject_block_marker(cfg, *source_info, *arm_block);
-                let branch_arms = sub_branches
+            .flat_map(|MatchArm { source_info, sub_branches }| {
+                sub_branches
                     .iter()
-                    .filter_map(|sub_branch| {
-                        let Some(block) = sub_branch.start_block else { return None };
-                        let marker =
-                            self.markers.inject_block_marker(cfg, sub_branch.source_info, block);
-                        Some(BranchArm {
-                            span: sub_branch.source_info.span,
-                            pre_guard_marker: marker,
-                            arm_taken_marker,
-                        })
-                    })
-                    .collect::<Vec<_>>();
+                    .map(|sub_branch| {
+                        let block = sub_branch.block;
 
-                branch_arms
+                        let pre_guard_marker =
+                            self.markers.inject_block_marker(cfg, sub_branch.source_info, block);
+                        let arm_taken_marker =
+                            self.markers.inject_block_marker(cfg, *source_info, block);
+
+                        BranchArm {
+                            span: sub_branch.source_info.span,
+                            pre_guard_marker,
+                            arm_taken_marker,
+                        }
+                    })
+                    .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
 

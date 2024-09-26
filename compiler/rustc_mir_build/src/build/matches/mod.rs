@@ -458,7 +458,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .iter()
                         .map(|b| coverageinfo::MatchArmSubBranch {
                             source_info: this.source_info(b.span),
-                            start_block: b.start_block,
+                            block: b.success_block,
                         })
                         .collect();
 
@@ -475,7 +475,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         coverage_match_arms.push(coverageinfo::MatchArm {
                             source_info: this.source_info(arm.pattern.span),
                             sub_branches,
-                            arm_block,
                         })
                     }
 
@@ -1397,8 +1396,6 @@ pub(crate) struct ArmHasGuard(pub(crate) bool);
 #[derive(Debug)]
 struct MatchTreeSubBranch<'tcx> {
     span: Span,
-    /// The first block in this sub branch.
-    start_block: Option<BasicBlock>,
     /// The block that is branched to if the corresponding subpattern matches.
     success_block: BasicBlock,
     /// The block to branch to if this arm had a guard and the guard fails.
@@ -1449,7 +1446,6 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
         debug_assert!(candidate.match_pairs.is_empty());
         MatchTreeSubBranch {
             span: candidate.extra_data.span,
-            start_block: candidate.false_edge_start_block,
             success_block: candidate.pre_binding_block.unwrap(),
             otherwise_block: candidate.otherwise_block.unwrap(),
             bindings: parent_data
