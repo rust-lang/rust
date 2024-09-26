@@ -92,7 +92,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let exception = exception.cast::<Exception>();
     // Just access the canary field, avoid accessing the entire `Exception` as
     // it can be a foreign Rust exception.
-    let canary = ptr::addr_of!((*exception).canary).read();
+    let canary = (&raw const (*exception).canary).read();
     if !ptr::eq(canary, &CANARY) {
         // A foreign Rust exception, treat it slightly differently from other
         // foreign exceptions, because call into `_Unwind_DeleteException` will

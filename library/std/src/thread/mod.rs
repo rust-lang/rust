@@ -165,7 +165,6 @@ use crate::marker::PhantomData;
 use crate::mem::{self, ManuallyDrop, forget};
 use crate::num::NonZero;
 use crate::pin::Pin;
-use crate::ptr::addr_of_mut;
 use crate::sync::Arc;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::sync::Parker;
@@ -1386,9 +1385,9 @@ impl Thread {
         let inner = unsafe {
             let mut arc = Arc::<Inner>::new_uninit();
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
-            addr_of_mut!((*ptr).name).write(name);
-            addr_of_mut!((*ptr).id).write(ThreadId::new());
-            Parker::new_in_place(addr_of_mut!((*ptr).parker));
+            (&raw mut (*ptr).name).write(name);
+            (&raw mut (*ptr).id).write(ThreadId::new());
+            Parker::new_in_place(&raw mut (*ptr).parker);
             Pin::new_unchecked(arc.assume_init())
         };
 

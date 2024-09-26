@@ -74,7 +74,7 @@ pub fn setsockopt<T>(
             sock.as_raw(),
             level,
             option_name,
-            core::ptr::addr_of!(option_value) as *const _,
+            (&raw const option_value) as *const _,
             mem::size_of::<T>() as c::socklen_t,
         ))?;
         Ok(())
@@ -89,7 +89,7 @@ pub fn getsockopt<T: Copy>(sock: &Socket, level: c_int, option_name: c_int) -> i
             sock.as_raw(),
             level,
             option_name,
-            core::ptr::addr_of_mut!(option_value) as *mut _,
+            (&raw mut option_value) as *mut _,
             &mut option_len,
         ))?;
         Ok(option_value)
@@ -103,7 +103,7 @@ where
     unsafe {
         let mut storage: c::sockaddr_storage = mem::zeroed();
         let mut len = mem::size_of_val(&storage) as c::socklen_t;
-        cvt(f(core::ptr::addr_of_mut!(storage) as *mut _, &mut len))?;
+        cvt(f((&raw mut storage) as *mut _, &mut len))?;
         sockaddr_to_addr(&storage, len as usize)
     }
 }
@@ -452,7 +452,7 @@ impl TcpListener {
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as c::socklen_t;
-        let sock = self.inner.accept(core::ptr::addr_of_mut!(storage) as *mut _, &mut len)?;
+        let sock = self.inner.accept((&raw mut storage) as *mut _, &mut len)?;
         let addr = sockaddr_to_addr(&storage, len as usize)?;
         Ok((TcpStream { inner: sock }, addr))
     }
