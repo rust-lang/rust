@@ -171,7 +171,7 @@ impl NewPermission {
 ///     F2b: No `SharedReadWrite` or `Unique` will ever be added on top of our `SharedReadOnly`.
 /// F3: If an access happens with an `&` outside `UnsafeCell`,
 ///     it requires the `SharedReadOnly` to still be in the stack.
-
+///
 /// Core relation on `Permission` to define which accesses are allowed
 impl Permission {
     /// This defines for a given permission, whether it permits the given kind of access.

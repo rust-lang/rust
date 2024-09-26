@@ -401,19 +401,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// list about file descriptors in the interest list that have some
     /// events available. Up to `maxevents` are returned by `epoll_wait()`.
     /// The `maxevents` argument must be greater than zero.
-
+    ///
     /// The `timeout` argument specifies the number of milliseconds that
     /// `epoll_wait()` will block. Time is measured against the
     /// CLOCK_MONOTONIC clock. If the timeout is zero, the function will not block,
     /// while if the timeout is -1, the function will block
     /// until at least one event has been retrieved (or an error
     /// occurred).
-
+    ///
     /// A call to `epoll_wait()` will block until either:
     /// • a file descriptor delivers an event;
     /// • the call is interrupted by a signal handler; or
     /// • the timeout expires.
-
+    ///
     /// Note that the timeout interval will be rounded up to the system
     /// clock granularity, and kernel scheduling delays mean that the
     /// blocking interval may overrun by a small amount. Specifying a

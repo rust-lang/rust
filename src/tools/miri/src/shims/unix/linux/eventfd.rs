@@ -110,7 +110,7 @@ impl FileDescription for Event {
     /// write either blocks until a read is performed on the
     /// file descriptor, or fails with the error EAGAIN if the
     /// file descriptor has been made nonblocking.
-
+    ///
     /// A write fails with the error EINVAL if the size of the
     /// supplied buffer is less than 8 bytes, or if an attempt is
     /// made to write the value 0xffffffffffffffff.
