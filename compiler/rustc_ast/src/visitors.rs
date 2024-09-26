@@ -32,12 +32,6 @@ macro_rules! define_if_mut {
     };
 }
 
-macro_rules! if_mut_item {
-    ($($a: item)? $(, $b: item)?) => {
-        if_mut!{{$($a)?} else {$($b)?}}
-    };
-}
-
 #[rustfmt::skip] // Rustfmt indents this code indefinitely
 macro_rules! lifetime_helpers {
     () => {
@@ -54,12 +48,12 @@ macro_rules! lifetime_helpers {
 
 macro_rules! derive_copy_clone {
     ($i: item) => {
-        if_mut_item! {
+        if_mut! {{
             $i
-        ,
+        } else {
             #[derive(Copy, Clone)]
             $i
-        }
+        }}
     };
 }
 
@@ -190,7 +184,8 @@ macro_rules! make_visit {
         $flat_map: ident, $walk_flat_map: ident
     ) => {
         make_visit!{$ty $(,$($arg)? $(_ $ignored_arg)? : $arg_ty)*; $visit, $walk}
-        if_mut_item!{
+        if_mut!{{
+
             // Do not ignore $ignored_arg as $walk_flat_map will have to forward it to $visit
             fn $flat_map(
                 &mut self,
@@ -199,7 +194,7 @@ macro_rules! make_visit {
             ) -> SmallVec<[$ty; 1]> {
                 $walk_flat_map(self, arg $(,$($arg)? $($ignored_arg)?)*)
             }
-        }
+        }}
     };
 }
 
@@ -219,7 +214,7 @@ macro_rules! make_ast_visitor {
                 $walk_flat_map: ident,
                 $visit: ident
             ) => {
-                if_mut_item!{
+                if_mut!{{
                     pub fn $walk_flat_map(
                         vis: &mut impl $trait$(<$lt>)?,
                         mut arg: $ty
@@ -228,7 +223,7 @@ macro_rules! make_ast_visitor {
                         vis.$visit(&mut arg $$(, $arg)*);
                         smallvec![arg]
                     }
-                }
+                }}
             }
         }
 
@@ -304,16 +299,16 @@ macro_rules! make_ast_visitor {
             // field access version will continue working and it would be easy to
             // forget to add handling for it.
 
-            if_mut_item!{
+            if_mut!{{
                 /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
                 /// used otherwise. Token visitor would be entirely separate from the regular visitor if
                 /// the marker didn't have to visit AST fragments in nonterminal tokens.
                 const VISIT_TOKENS: bool = false;
-            ,
+            } else {
                 /// The result type of the `visit_*` methods. Can be either `()`,
                 /// or `ControlFlow<T>`.
                 type Result: VisitorResult = ();
-            }
+            }}
 
             mutability_dependent!{$($mut)?}
 
