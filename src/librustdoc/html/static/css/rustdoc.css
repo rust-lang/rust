@@ -1687,7 +1687,6 @@ instead, we check that it's not a "finger" cursor.
 	padding-right: 3px;
 	background-color: var(--target-background-color);
 	border-right: 3px solid var(--target-border-color);
-	animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
 }
 
 .code-header a.tooltip {
@@ -1712,12 +1711,18 @@ a.tooltip:hover::after {
 	content: "\00a0";
 }
 
-/* This animation is layered onto the mistake-proofing delay for dismissing
-	a hovered tooltip, to ensure it feels responsive even with the delay.
-	*/
-.fade-out {
-	opacity: 0;
-	transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+@media not (prefers-reduced-motion) {
+	:target {
+		animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
+	}
+
+	/* This animation is layered onto the mistake-proofing delay for dismissing
+		a hovered tooltip, to ensure it feels responsive even with the delay.
+		*/
+	.fade-out {
+		opacity: 0;
+		transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+	}
 }
 
 .popover.tooltip .content {
