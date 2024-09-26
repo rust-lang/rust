@@ -753,6 +753,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS_INFO,
     crate::unnecessary_struct_initialization::UNNECESSARY_STRUCT_INITIALIZATION_INFO,
     crate::unnecessary_wraps::UNNECESSARY_WRAPS_INFO,
+    crate::unneeded_struct_pattern::UNNEEDED_STRUCT_PATTERN_INFO,
     crate::unnested_or_patterns::UNNESTED_OR_PATTERNS_INFO,
     crate::unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME_INFO,
     crate::unused_async::UNUSED_ASYNC_INFO,
