@@ -17,6 +17,7 @@ use std::{cmp, env, fmt, fs, io};
 #[rustfmt::skip]
 const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
+    "MHz", "GHz", "THz",
     "AccessKit",
     "CoreFoundation", "CoreGraphics", "CoreText",
     "DevOps",

@@ -54,6 +54,7 @@ fn test_units() {
 
 /// This tests allowed identifiers.
 /// KiB MiB GiB TiB PiB EiB
+/// MHz GHz THz
 /// AccessKit
 /// CoreFoundation CoreGraphics CoreText
 /// Direct2D Direct3D DirectWrite DirectX
