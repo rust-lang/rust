@@ -33,7 +33,6 @@
     clippy::too_many_arguments,
     clippy::type_complexity,
     clippy::single_element_loop,
-    clippy::needless_return,
     clippy::bool_to_int_with_if,
     clippy::box_default,
     clippy::needless_question_mark,

@@ -23,8 +23,8 @@ pub fn is_dyn_sym(name: &str) -> bool {
 
 #[cfg(windows)]
 fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
-    // We are on Windows so we can simply lte the host do this.
-    return Ok(path::absolute(path));
+    // We are on Windows so we can simply let the host do this.
+    Ok(path::absolute(path))
 }
 
 #[cfg(unix)]

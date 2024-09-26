@@ -71,7 +71,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // and not execute any Miri shim. Somewhat unintuitively doing so is done
                 // by returning `NotSupported`, which triggers the `lookup_exported_symbol`
                 // fallback case in `emulate_foreign_item`.
-                return Ok(EmulateItemResult::NotSupported);
+                Ok(EmulateItemResult::NotSupported)
             }
             AllocatorKind::Default => {
                 default(this)?;

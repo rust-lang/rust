@@ -748,7 +748,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             ),
         );
-        return Ok(());
+        Ok(())
     }
 
     /// Wake up some thread (if there is any) sleeping on the conditional

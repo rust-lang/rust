@@ -596,7 +596,7 @@ fn ready_list_next(
             return Some(epoll_event_instance);
         }
     }
-    return None;
+    None
 }
 
 /// This helper function checks whether an epoll notification should be triggered for a specific
@@ -623,9 +623,10 @@ fn check_and_update_one_event_interest<'tcx>(
         let event_instance = EpollEventInstance::new(flags, epoll_event_interest.data);
         // Triggers the notification by inserting it to the ready list.
         ready_list.insert(epoll_key, event_instance);
-        return Ok(true);
+        Ok(true)
+    } else {
+        Ok(false)
     }
-    return Ok(false);
 }
 
 /// Callback function after epoll_wait unblocks
