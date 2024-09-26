@@ -2049,13 +2049,6 @@ pub mod mut_visit {
     }
 
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_attrs<T: MutVisitor>(vis: &mut T, attrs: &mut AttrVec) {
-        for attr in attrs.iter_mut() {
-            vis.visit_attribute(attr);
-        }
-    }
-
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
     fn visit_delim_args<T: MutVisitor>(vis: &mut T, args: &mut DelimArgs) {
         let DelimArgs { dspan, delim: _, tokens } = args;
         visit_tts(vis, tokens);
@@ -2095,7 +2088,7 @@ pub mod mut_visit {
                 visit_delim_span(vis, dspan);
             }
             AttrTokenTree::AttrsTarget(AttrsTarget { attrs, tokens }) => {
-                visit_attrs(vis, attrs);
+                visit_thin_vec(attrs, |attr| vis.visit_attribute(attr));
                 visit_lazy_tts_opt_mut(vis, Some(tokens));
             }
         }
@@ -2274,7 +2267,7 @@ pub mod mut_visit {
             StmtKind::Empty => smallvec![StmtKind::Empty],
             StmtKind::MacCall(mut mac) => {
                 let MacCallStmt { mac: mac_, style: _, attrs, tokens } = mac.deref_mut();
-                visit_attrs(vis, attrs);
+                visit_thin_vec(attrs, |attr| vis.visit_attribute(attr));
                 vis.visit_mac_call(mac_);
                 visit_lazy_tts(vis, tokens);
                 smallvec![StmtKind::MacCall(mac)]
