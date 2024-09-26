@@ -792,6 +792,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.gen_random(ptr, len)?;
                 this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
             }
+            "arc4random_buf" => {
+                // This function is non-standard but exists with the same signature and
+                // same behavior (eg never fails) on FreeBSD and Solaris/Illumos.
+                if !matches!(&*this.tcx.sess.target.os, "freebsd" | "illumos" | "solaris") {
+                    throw_unsup_format!(
+                        "`arc4random_buf` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                let [ptr, len] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let len = this.read_target_usize(len)?;
+                this.gen_random(ptr, len)?;
+            }
             "_Unwind_RaiseException" => {
                 // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
                 // It was originally specified as part of the Itanium C++ ABI:
