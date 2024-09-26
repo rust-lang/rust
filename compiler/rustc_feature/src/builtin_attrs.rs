@@ -2,11 +2,11 @@
 
 use std::sync::LazyLock;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::{sym, Symbol};
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_span::symbol::{Symbol, sym};
 
 use crate::{Features, Stability};
 
@@ -551,10 +551,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, experimental!(register_tool),
     ),
 
-    gated!(
-        cmse_nonsecure_entry, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, experimental!(cmse_nonsecure_entry)
-    ),
     // RFC 2632
     gated!(
         const_trait, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No, const_trait_impl,
@@ -793,6 +789,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_lint_query_instability, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
+    // Used by the `rustc::untracked_query_information` lint to warn methods which
+    // might not be stable during incremental compilation.
+    rustc_attr!(
+        rustc_lint_untracked_query_information, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+    ),
     // Used by the `rustc::diagnostic_outside_of_impl` lints to assist in changes to diagnostic
     // APIs. Any function with this attribute will be checked by that lint.
     rustc_attr!(
@@ -857,8 +859,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes,
-        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
-        niche optimizations in libcore and libstd and will never be stable",
+        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \
+        guaranteed niche optimizations in libcore and libstd and will never be stable\n\
+        (note that the compiler does not even check whether the type indeed is being non-null-optimized; \
+        it is your responsibility to ensure that the attribute is only used on types that are optimized)",
     ),
 
     // ==========================================================================
@@ -1180,3 +1184,11 @@ pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>>
         }
         map
     });
+
+pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool {
+    match sym {
+        sym::on_unimplemented => true,
+        sym::do_not_recommend => features.do_not_recommend,
+        _ => false,
+    }
+}

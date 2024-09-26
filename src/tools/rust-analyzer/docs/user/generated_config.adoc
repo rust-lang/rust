@@ -261,6 +261,13 @@ Aliased as `"checkOnSave.targets"`.
 Whether `--workspace` should be passed to `cargo check`.
 If false, `-p <package>` will be passed instead.
 --
+[[rust-analyzer.completion.addSemicolonToUnit]]rust-analyzer.completion.addSemicolonToUnit (default: `true`)::
++
+--
+Whether to automatically add a semicolon when completing unit-returning functions.
+
+In `match` arms it completes a comma instead.
+--
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
 --
@@ -282,6 +289,11 @@ Whether to add parenthesis and argument snippets when completing function.
 +
 --
 Whether to show full function/method signatures in completion docs.
+--
+[[rust-analyzer.completion.hideDeprecated]]rust-analyzer.completion.hideDeprecated (default: `false`)::
++
+--
+Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.
 --
 [[rust-analyzer.completion.limit]]rust-analyzer.completion.limit (default: `null`)::
 +

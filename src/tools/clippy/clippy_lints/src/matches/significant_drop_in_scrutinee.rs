@@ -8,7 +8,7 @@ use clippy_utils::{get_attr, is_lint_allowed};
 use itertools::Itertools;
 use rustc_ast::Mutability;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{GenericArgKind, Region, RegionKind, Ty, TyCtxt, TypeVisitable, TypeVisitor};

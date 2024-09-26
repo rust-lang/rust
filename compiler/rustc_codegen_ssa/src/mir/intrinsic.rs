@@ -1,16 +1,16 @@
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{sym, Span};
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_span::{Span, sym};
 use rustc_target::abi::WrappingRange;
+use rustc_target::abi::call::{FnAbi, PassMode};
 
+use super::FunctionCx;
 use super::operand::OperandRef;
 use super::place::PlaceRef;
-use super::FunctionCx;
 use crate::errors::InvalidMonomorphization;
 use crate::traits::*;
-use crate::{errors, meth, size_of_val, MemFlags};
+use crate::{MemFlags, errors, meth, size_of_val};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -126,7 +126,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
                     _ => bug!(),
                 };
-                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable, callee_ty);
                 match name {
                     // Size is always <= isize::MAX.
                     sym::vtable_size => {

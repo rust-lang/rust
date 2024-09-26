@@ -1,5 +1,5 @@
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexSlice;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -17,9 +17,9 @@ use crate::ssa::SsaLocals;
 /// where each of the locals is only assigned once.
 ///
 /// We want to replace all those locals by `_a`, either copied or moved.
-pub struct CopyProp;
+pub(super) struct CopyProp;
 
-impl<'tcx> MirPass<'tcx> for CopyProp {
+impl<'tcx> crate::MirPass<'tcx> for CopyProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 1
     }
@@ -27,37 +27,34 @@ impl<'tcx> MirPass<'tcx> for CopyProp {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
-        propagate_ssa(tcx, body);
-    }
-}
 
-fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let ssa = SsaLocals::new(tcx, body, param_env);
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        let ssa = SsaLocals::new(tcx, body, param_env);
 
-    let fully_moved = fully_moved_locals(&ssa, body);
-    debug!(?fully_moved);
+        let fully_moved = fully_moved_locals(&ssa, body);
+        debug!(?fully_moved);
 
-    let mut storage_to_remove = BitSet::new_empty(fully_moved.domain_size());
-    for (local, &head) in ssa.copy_classes().iter_enumerated() {
-        if local != head {
-            storage_to_remove.insert(head);
+        let mut storage_to_remove = BitSet::new_empty(fully_moved.domain_size());
+        for (local, &head) in ssa.copy_classes().iter_enumerated() {
+            if local != head {
+                storage_to_remove.insert(head);
+            }
         }
-    }
 
-    let any_replacement = ssa.copy_classes().iter_enumerated().any(|(l, &h)| l != h);
+        let any_replacement = ssa.copy_classes().iter_enumerated().any(|(l, &h)| l != h);
 
-    Replacer {
-        tcx,
-        copy_classes: ssa.copy_classes(),
-        fully_moved,
-        borrowed_locals: ssa.borrowed_locals(),
-        storage_to_remove,
-    }
-    .visit_body_preserves_cfg(body);
+        Replacer {
+            tcx,
+            copy_classes: ssa.copy_classes(),
+            fully_moved,
+            borrowed_locals: ssa.borrowed_locals(),
+            storage_to_remove,
+        }
+        .visit_body_preserves_cfg(body);
 
-    if any_replacement {
-        crate::simplify::remove_unused_definitions(body);
+        if any_replacement {
+            crate::simplify::remove_unused_definitions(body);
+        }
     }
 }
 
@@ -140,7 +137,8 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
         if let Operand::Move(place) = *operand
-            // A move out of a projection of a copy is equivalent to a copy of the original projection.
+            // A move out of a projection of a copy is equivalent to a copy of the original
+            // projection.
             && !place.is_indirect_first_projection()
             && !self.fully_moved.contains(place.local)
         {

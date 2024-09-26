@@ -3,7 +3,7 @@ use std::fmt;
 use rustc_ast::Mutability;
 use rustc_macros::HashStable;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar, CTFE_ALLOC_SALT};
+use crate::mir::interpret::{AllocId, Allocation, CTFE_ALLOC_SALT, Pointer, Scalar, alloc_range};
 use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 
 #[derive(Clone, Copy, PartialEq, HashStable)]

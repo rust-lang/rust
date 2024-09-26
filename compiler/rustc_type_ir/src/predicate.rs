@@ -196,6 +196,17 @@ impl fmt::Display for ImplPolarity {
     }
 }
 
+impl ImplPolarity {
+    /// The polarity marker in front of the impl trait ref if applicable.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Positive => "",
+            Self::Negative => "!",
+            Self::Reservation => "",
+        }
+    }
+}
+
 /// Polarity for a trait predicate. May either be negative or positive.
 /// Distinguished from [`ImplPolarity`] since we never compute goals with
 /// "reservation" level.
@@ -481,29 +492,35 @@ impl<I: Interner> AliasTerm<I> {
 
     pub fn to_term(self, interner: I) -> I::Term {
         match self.kind(interner) {
-            AliasTermKind::ProjectionTy => Ty::new_alias(
-                interner,
-                ty::AliasTyKind::Projection,
-                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
-            )
-            .into(),
-            AliasTermKind::InherentTy => Ty::new_alias(
-                interner,
-                ty::AliasTyKind::Inherent,
-                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
-            )
-            .into(),
-            AliasTermKind::OpaqueTy => Ty::new_alias(
-                interner,
-                ty::AliasTyKind::Opaque,
-                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
-            )
-            .into(),
-            AliasTermKind::WeakTy => Ty::new_alias(
-                interner,
-                ty::AliasTyKind::Weak,
-                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
-            )
+            AliasTermKind::ProjectionTy => {
+                Ty::new_alias(interner, ty::AliasTyKind::Projection, ty::AliasTy {
+                    def_id: self.def_id,
+                    args: self.args,
+                    _use_alias_ty_new_instead: (),
+                })
+                .into()
+            }
+            AliasTermKind::InherentTy => {
+                Ty::new_alias(interner, ty::AliasTyKind::Inherent, ty::AliasTy {
+                    def_id: self.def_id,
+                    args: self.args,
+                    _use_alias_ty_new_instead: (),
+                })
+                .into()
+            }
+            AliasTermKind::OpaqueTy => {
+                Ty::new_alias(interner, ty::AliasTyKind::Opaque, ty::AliasTy {
+                    def_id: self.def_id,
+                    args: self.args,
+                    _use_alias_ty_new_instead: (),
+                })
+                .into()
+            }
+            AliasTermKind::WeakTy => Ty::new_alias(interner, ty::AliasTyKind::Weak, ty::AliasTy {
+                def_id: self.def_id,
+                args: self.args,
+                _use_alias_ty_new_instead: (),
+            })
             .into(),
             AliasTermKind::UnevaluatedConst | AliasTermKind::ProjectionConst => {
                 I::Const::new_unevaluated(

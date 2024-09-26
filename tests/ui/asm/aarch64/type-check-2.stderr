@@ -1,8 +1,8 @@
 error: arguments for inline assembly must be copyable
   --> $DIR/type-check-2.rs:20:31
    |
-LL |         asm!("{:v}", in(vreg) SimdNonCopy(0.0, 0.0, 0.0, 0.0));
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         asm!("{:v}", in(vreg) SimdNonCopy([0.0, 0.0, 0.0, 0.0]));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `SimdNonCopy` does not implement the Copy trait
 

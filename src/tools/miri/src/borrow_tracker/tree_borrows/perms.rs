@@ -1,9 +1,9 @@
 use std::cmp::{Ordering, PartialOrd};
 use std::fmt;
 
+use crate::AccessKind;
 use crate::borrow_tracker::tree_borrows::diagnostics::TransitionError;
 use crate::borrow_tracker::tree_borrows::tree::AccessRelatedness;
-use crate::AccessKind;
 
 /// The activation states of a pointer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -47,7 +47,7 @@ enum PermissionPriv {
     /// rejects: all child accesses (UB).
     Disabled,
 }
-use PermissionPriv::*;
+use self::PermissionPriv::*;
 
 impl PartialOrd for PermissionPriv {
     /// PermissionPriv is ordered by the reflexive transitive closure of
@@ -345,18 +345,14 @@ pub mod diagnostics {
     use super::*;
     impl fmt::Display for PermissionPriv {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(
-                f,
-                "{}",
-                match self {
-                    ReservedFrz { conflicted: false } => "Reserved",
-                    ReservedFrz { conflicted: true } => "Reserved (conflicted)",
-                    ReservedIM => "Reserved (interior mutable)",
-                    Active => "Active",
-                    Frozen => "Frozen",
-                    Disabled => "Disabled",
-                }
-            )
+            write!(f, "{}", match self {
+                ReservedFrz { conflicted: false } => "Reserved",
+                ReservedFrz { conflicted: true } => "Reserved (conflicted)",
+                ReservedIM => "Reserved (interior mutable)",
+                Active => "Active",
+                Frozen => "Frozen",
+                Disabled => "Disabled",
+            })
         }
     }
 
@@ -551,7 +547,7 @@ impl Permission {
 #[cfg(test)]
 mod propagation_optimization_checks {
     pub use super::*;
-    use crate::borrow_tracker::tree_borrows::exhaustive::{precondition, Exhaustive};
+    use crate::borrow_tracker::tree_borrows::exhaustive::{Exhaustive, precondition};
 
     impl Exhaustive for PermissionPriv {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {

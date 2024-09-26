@@ -2,13 +2,14 @@ use std::ops::Not;
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::{convert_param_list_to_arg_list, suggest_name},
+    utils::convert_param_list_to_arg_list,
 };
 use either::Either;
 use hir::{db::HirDatabase, HasVisibility};
 use ide_db::{
     assists::{AssistId, GroupLabel},
     path_transform::PathTransform,
+    syntax_helpers::suggest_name,
     FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
@@ -281,8 +282,11 @@ fn generate_impl(
                 ai.assoc_items()
                     .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
                     .for_each(|item| {
-                        let assoc =
-                            process_assoc_item(item, qualified_path_type.clone(), field_name);
+                        let assoc = process_assoc_item(
+                            item.clone_for_update(),
+                            qualified_path_type.clone(),
+                            field_name,
+                        );
                         if let Some(assoc) = assoc {
                             delegate_assoc_items.add_item(assoc);
                         }
@@ -583,7 +587,7 @@ fn resolve_name_conflicts(
 
             for old_strukt_param in old_strukt_params.generic_params() {
                 // Get old name from `strukt`
-                let mut name = SmolStr::from(match &old_strukt_param {
+                let name = SmolStr::from(match &old_strukt_param {
                     ast::GenericParam::ConstParam(c) => c.name()?.to_string(),
                     ast::GenericParam::LifetimeParam(l) => {
                         l.lifetime()?.lifetime_ident_token()?.to_string()
@@ -592,8 +596,19 @@ fn resolve_name_conflicts(
                 });
 
                 // The new name cannot be conflicted with generics in trait, and the renamed names.
-                name = suggest_name::for_unique_generic_name(&name, old_impl_params);
-                name = suggest_name::for_unique_generic_name(&name, &params);
+                let param_list_to_names = |param_list: &GenericParamList| {
+                    param_list.generic_params().flat_map(|param| match param {
+                        ast::GenericParam::TypeParam(t) => t.name().map(|name| name.to_string()),
+                        p => Some(p.to_string()),
+                    })
+                };
+                let existing_names = param_list_to_names(old_impl_params)
+                    .chain(param_list_to_names(&params))
+                    .collect_vec();
+                let mut name_generator = suggest_name::NameGenerator::new_with_names(
+                    existing_names.iter().map(|s| s.as_str()),
+                );
+                let name = name_generator.suggest_name(&name);
                 match old_strukt_param {
                     ast::GenericParam::ConstParam(c) => {
                         if let Some(const_ty) = c.ty() {
@@ -1212,9 +1227,9 @@ struct S<T> {
     b : B<T>,
 }
 
-impl<T0> Trait<T0> for S<T0> {
-    fn f(&self, a: T0) -> T0 {
-        <B<T0> as Trait<T0>>::f(&self.b, a)
+impl<T1> Trait<T1> for S<T1> {
+    fn f(&self, a: T1) -> T1 {
+        <B<T1> as Trait<T1>>::f(&self.b, a)
     }
 }
 "#,
@@ -1526,12 +1541,12 @@ where
     b : B<T, T1>,
 }
 
-impl<T, T2, T10> Trait<T> for S<T2, T10>
+impl<T, T2, T3> Trait<T> for S<T2, T3>
 where
-    T10: AnotherTrait
+    T3: AnotherTrait
 {
     fn f(&self, a: T) -> T {
-        <B<T2, T10> as Trait<T>>::f(&self.b, a)
+        <B<T2, T3> as Trait<T>>::f(&self.b, a)
     }
 }"#,
         );
@@ -1588,12 +1603,12 @@ where
     b : B<T>,
 }
 
-impl<T, T0> Trait<T> for S<T0>
+impl<T, T2> Trait<T> for S<T2>
 where
-    T0: AnotherTrait
+    T2: AnotherTrait
 {
     fn f(&self, a: T) -> T {
-        <B<T0> as Trait<T>>::f(&self.b, a)
+        <B<T2> as Trait<T>>::f(&self.b, a)
     }
 }"#,
         );
@@ -1784,5 +1799,41 @@ impl T for B {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn assoc_items_attributes_mutably_cloned() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+pub struct A;
+pub trait C<D> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D;
+}
+
+pub struct B<T: C<A>> {
+    has_dr$0ain: T,
+}
+"#,
+            r#"
+pub struct A;
+pub trait C<D> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D;
+}
+
+pub struct B<T: C<A>> {
+    has_drain: T,
+}
+
+impl<D, T: C<A>> C<D> for B<T> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D {
+        <T as C<D>>::a_funk(&self.has_drain)
+    }
+}
+"#,
+        )
     }
 }

@@ -2007,4 +2007,34 @@ fn main() {
 "#,
         )
     }
+
+    #[test]
+    fn asm() {
+        check(
+            r#"
+//- minicore: asm
+#[inline]
+pub unsafe fn bootstrap() -> ! {
+    builtin#asm(
+        "blabla",
+        "mrs {tmp}, CONTROL",
+           // ^^^ read
+        "blabla",
+        "bics {tmp}, {spsel}",
+            // ^^^ read
+        "blabla",
+        "msr CONTROL, {tmp}",
+                    // ^^^ read
+        "blabla",
+        tmp$0 = inout(reg) 0,
+     // ^^^
+        aaa = in(reg) 2,
+        aaa = in(reg) msp,
+        aaa = in(reg) rv,
+        options(noreturn, nomem, nostack),
+    );
+}
+"#,
+        )
+    }
 }

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::macros::{find_assert_args, root_macro_call_first_node, PanicExpn};
+use clippy_utils::macros::{PanicExpn, find_assert_args, root_macro_call_first_node};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_debug_impl, is_copy, is_type_diagnostic_item};
 use clippy_utils::usage::local_used_after_expr;

@@ -1,7 +1,7 @@
 use crate::abi::Endian;
-use crate::spec::{base, SanitizerSet, StackProbeType, Target};
+use crate::spec::{SanitizerSet, StackProbeType, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
     base.endian = Endian::Big;
     // z10 is the oldest CPU supported by LLVM
@@ -10,7 +10,7 @@ pub fn target() -> Target {
     // ABI. Pass the -vector feature string to LLVM to respect this assumption. On LLVM < 16, we
     // also strip v128 from the data_layout below to match the older LLVM's expectation.
     base.features = "-vector".into();
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.min_global_align = Some(16);
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers =

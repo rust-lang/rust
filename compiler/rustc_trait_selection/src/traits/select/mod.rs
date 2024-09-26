@@ -12,25 +12,25 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
-use rustc_infer::infer::relate::TypeRelation;
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::{dep_kinds, DepNodeIndex};
+use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
 use rustc_middle::mir::interpret::ErrorHandled;
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
-use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
+use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
     Upcast,
 };
-use rustc_span::symbol::sym;
 use rustc_span::Symbol;
+use rustc_span::symbol::sym;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -39,9 +39,9 @@ use super::coherence::{self, Conflict};
 use super::project::ProjectionTermObligation;
 use super::util::closure_trait_ref_and_return_type;
 use super::{
-    const_evaluatable, project, util, wf, ImplDerivedCause, Normalized, Obligation,
-    ObligationCause, ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitQueryMode,
+    ImplDerivedCause, Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow,
+    PolyTraitObligation, PredicateObligation, Selection, SelectionError, SelectionResult,
+    TraitQueryMode, const_evaluatable, project, util, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::{InferCtxt, InferCtxtExt, InferOk, TypeFreshener};
@@ -991,7 +991,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     };
 
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        // Only really excercised by generic_const_exprs
+                        // Only really exercised by generic_const_exprs
                         DefineOpaqueTypes::Yes,
                         ct_ty,
                         ty,
@@ -1334,16 +1334,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if self.can_use_global_caches(param_env) {
-            if !trait_pred.has_infer() {
-                debug!(?trait_pred, ?result, "insert_evaluation_cache global");
-                // This may overwrite the cache with the same value
-                // FIXME: Due to #50507 this overwrites the different values
-                // This should be changed to use HashMapExt::insert_same
-                // when that is fixed
-                self.tcx().evaluation_cache.insert((param_env, trait_pred), dep_node, result);
-                return;
-            }
+        if self.can_use_global_caches(param_env) && !trait_pred.has_infer() {
+            debug!(?trait_pred, ?result, "insert_evaluation_cache global");
+            // This may overwrite the cache with the same value
+            // FIXME: Due to #50507 this overwrites the different values
+            // This should be changed to use HashMapExt::insert_same
+            // when that is fixed
+            self.tcx().evaluation_cache.insert((param_env, trait_pred), dep_node, result);
+            return;
         }
 
         debug!(?trait_pred, ?result, "insert_evaluation_cache");
@@ -1584,13 +1582,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             if let Err(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
-            } else if !pred.has_infer() {
-                if !candidate.has_infer() {
-                    debug!(?pred, ?candidate, "insert_candidate_cache global");
-                    // This may overwrite the cache with the same value.
-                    tcx.selection_cache.insert((param_env, pred), dep_node, candidate);
-                    return;
-                }
+            } else if !pred.has_infer() && !candidate.has_infer() {
+                debug!(?pred, ?candidate, "insert_candidate_cache global");
+                // This may overwrite the cache with the same value.
+                tcx.selection_cache.insert((param_env, pred), dep_node, candidate);
+                return;
             }
         }
 
@@ -1980,10 +1976,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 // impls have to be always applicable, meaning that the only allowed
                 // region constraints may be constraints also present on the default impl.
                 let tcx = self.tcx();
-                if other.evaluation.must_apply_modulo_regions() {
-                    if tcx.specializes((other_def, victim_def)) {
-                        return DropVictim::Yes;
-                    }
+                if other.evaluation.must_apply_modulo_regions()
+                    && tcx.specializes((other_def, victim_def))
+                {
+                    return DropVictim::Yes;
                 }
 
                 match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
@@ -2453,11 +2449,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 } else {
                     // If this is an ill-formed auto/built-in trait, then synthesize
                     // new error args for the missing generics.
-                    let err_args = ty::GenericArgs::extend_with_error(
-                        tcx,
-                        trait_def_id,
-                        &[normalized_ty.into()],
-                    );
+                    let err_args = ty::GenericArgs::extend_with_error(tcx, trait_def_id, &[
+                        normalized_ty.into(),
+                    ]);
                     ty::TraitRef::new_from_args(tcx, trait_def_id, err_args)
                 };
 
@@ -3127,7 +3121,7 @@ impl<'o, 'tcx> fmt::Debug for TraitObligationStack<'o, 'tcx> {
     }
 }
 
-pub enum ProjectionMatchesProjection {
+pub(crate) enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,
     No,

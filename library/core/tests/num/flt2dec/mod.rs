@@ -1,6 +1,6 @@
 use core::num::flt2dec::{
-    decode, round_up, to_exact_exp_str, to_exact_fixed_str, to_shortest_exp_str, to_shortest_str,
-    DecodableFloat, Decoded, FullDecoded, Sign, MAX_SIG_DIGITS,
+    DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, Sign, decode, round_up, to_exact_exp_str,
+    to_exact_fixed_str, to_shortest_exp_str, to_shortest_str,
 };
 use core::num::fmt::{Formatted, Part};
 use std::mem::MaybeUninit;

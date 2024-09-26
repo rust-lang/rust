@@ -403,34 +403,40 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
         // HACK(jubilee): "indirect branch tracking" works by attaching prologues to functions.
-        // And it is a module-level attribute, so the alternative is pulling naked functions into new LLVM modules.
-        // Otherwise LLVM's "naked" functions come with endbr prefixes per https://github.com/rust-lang/rust/issues/98768
+        // And it is a module-level attribute, so the alternative is pulling naked functions into
+        // new LLVM modules. Otherwise LLVM's "naked" functions come with endbr prefixes per
+        // https://github.com/rust-lang/rust/issues/98768
         to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
         if llvm_util::get_version() < (19, 0, 0) {
             // Prior to LLVM 19, branch-target-enforcement was disabled by setting the attribute to
             // the string "false". Now it is disabled by absence of the attribute.
             to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
         }
-    } else if llvm_util::get_version() >= (19, 0, 0) {
-        // For non-naked functions, set branch protection attributes on aarch64.
-        if let Some(BranchProtection { bti, pac_ret }) =
-            cx.sess().opts.unstable_opts.branch_protection
-        {
-            assert!(cx.sess().target.arch == "aarch64");
-            if bti {
-                to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
-            }
-            if let Some(PacRet { leaf, key }) = pac_ret {
-                to_add.push(llvm::CreateAttrStringValue(
-                    cx.llcx,
-                    "sign-return-address",
-                    if leaf { "all" } else { "non-leaf" },
-                ));
-                to_add.push(llvm::CreateAttrStringValue(
-                    cx.llcx,
-                    "sign-return-address-key",
-                    if key == PAuthKey::A { "a_key" } else { "b_key" },
-                ));
+    } else {
+        // Do not set sanitizer attributes for naked functions.
+        to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
+
+        if llvm_util::get_version() >= (19, 0, 0) {
+            // For non-naked functions, set branch protection attributes on aarch64.
+            if let Some(BranchProtection { bti, pac_ret }) =
+                cx.sess().opts.unstable_opts.branch_protection
+            {
+                assert!(cx.sess().target.arch == "aarch64");
+                if bti {
+                    to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
+                }
+                if let Some(PacRet { leaf, key }) = pac_ret {
+                    to_add.push(llvm::CreateAttrStringValue(
+                        cx.llcx,
+                        "sign-return-address",
+                        if leaf { "all" } else { "non-leaf" },
+                    ));
+                    to_add.push(llvm::CreateAttrStringValue(
+                        cx.llcx,
+                        "sign-return-address-key",
+                        if key == PAuthKey::A { "a_key" } else { "b_key" },
+                    ));
+                }
             }
         }
     }
@@ -449,7 +455,8 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
             flags |= AllocKindFlags::Zeroed;
         }
         to_add.push(llvm::CreateAllocKindAttr(cx.llcx, flags));
-        // apply to return place instead of function (unlike all other attributes applied in this function)
+        // apply to return place instead of function (unlike all other attributes applied in this
+        // function)
         let no_alias = AttributeKind::NoAlias.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
     }
@@ -476,16 +483,12 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
-        to_add.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"));
-    }
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
     }
     if let Some(backchain) = backchain_attr(cx) {
         to_add.push(backchain);
     }
-    to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
     to_add.extend(patchable_function_entry_attrs(cx, codegen_fn_attrs.patchable_function_entry));
 
     // Always annotate functions with the target-cpu they are compiled for.

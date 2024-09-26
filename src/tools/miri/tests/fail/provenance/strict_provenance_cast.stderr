@@ -1,12 +1,12 @@
 error: unsupported operation: integer-to-pointer casts and `ptr::with_exposed_provenance` are not supported with `-Zmiri-strict-provenance`
-  --> $DIR/strict_provenance_cast.rs:LL:CC
+  --> tests/fail/provenance/strict_provenance_cast.rs:LL:CC
    |
 LL |     let _ptr = std::ptr::with_exposed_provenance::<i32>(addr);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ integer-to-pointer casts and `ptr::with_exposed_provenance` are not supported with `-Zmiri-strict-provenance`
    |
    = help: use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/strict_provenance_cast.rs:LL:CC
+   = note: inside `main` at tests/fail/provenance/strict_provenance_cast.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

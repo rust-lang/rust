@@ -389,7 +389,7 @@ m! { foo# bar }
 
 m! { Foo,# Bar }
 "#,
-        expect![[r##"
+        expect![[r#"
 macro_rules! m {
     ($($i:ident),*) => ($(mod $i {} )*);
     ($($i:ident)#*) => ($(fn $i() {} )*);
@@ -404,27 +404,29 @@ fn bar() {}
 
 struct Foo;
 struct Bar;
-"##]],
+"#]],
     );
 }
 
 #[test]
 fn test_match_group_pattern_with_multiple_defs() {
+    // FIXME: The pretty printer breaks by leaving whitespace here, +syntaxctxt is used to avoid that
     check(
         r#"
 macro_rules! m {
     ($($i:ident),*) => ( impl Bar { $(fn $i() {})* } );
 }
+// +syntaxctxt
 m! { foo, bar }
 "#,
         expect![[r#"
 macro_rules! m {
     ($($i:ident),*) => ( impl Bar { $(fn $i() {})* } );
 }
-impl Bar {
-    fn foo() {}
-    fn bar() {}
-}
+impl#\1# Bar#\1# {#\1#
+    fn#\1# foo#\0#(#\1#)#\1# {#\1#}#\1#
+    fn#\1# bar#\0#(#\1#)#\1# {#\1#}#\1#
+}#\1#
 "#]],
     );
 }
@@ -480,12 +482,12 @@ macro_rules! m {
 }
 m!{#abc}
 "#,
-        expect![[r##"
+        expect![[r#"
 macro_rules! m {
     ($($i:ident)* #abc) => ( fn baz() { $($i ();)* } );
 }
 fn baz() {}
-"##]],
+"#]],
     )
 }
 
@@ -1189,13 +1191,13 @@ macro_rules! m {
 m! { cfg(target_os = "windows") }
 m! { hello::world }
 "#,
-        expect![[r##"
+        expect![[r#"
 macro_rules! m {
     ($m:meta) => ( #[$m] fn bar() {} )
 }
 #[cfg(target_os = "windows")] fn bar() {}
 #[hello::world] fn bar() {}
-"##]],
+"#]],
     );
 }
 
@@ -1213,7 +1215,7 @@ m! {
     */
 }
 "#,
-        expect![[r##"
+        expect![[r#"
 macro_rules! m {
     ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
@@ -1221,7 +1223,7 @@ macro_rules! m {
 #[doc = r"
         MultiLines Doc
     "] fn bar() {}
-"##]],
+"#]],
     );
 }
 
@@ -1234,12 +1236,12 @@ macro_rules! m {
 }
 m! { #[doc = concat!("The `", "bla", "` lang item.")] }
 "#,
-        expect![[r##"
+        expect![[r#"
 macro_rules! m {
     (#[$m:meta]) => ( #[$m] fn bar() {} )
 }
 #[doc = concat!("The `", "bla", "` lang item.")] fn bar() {}
-"##]],
+"#]],
     );
 }
 
@@ -1257,7 +1259,7 @@ m! {
     */
 }
 "#,
-        expect![[r##"
+        expect![[r#"
 macro_rules! m {
     ($(#[$ m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
@@ -1265,7 +1267,7 @@ macro_rules! m {
 #[doc = r"
         莊生曉夢迷蝴蝶，望帝春心託杜鵑。
     "] fn bar() {}
-"##]],
+"#]],
     );
 }
 
@@ -1342,10 +1344,10 @@ fn test_tt_composite2() {
 macro_rules! m { ($($tt:tt)*) => { abs!(=> $($tt)*); } }
 m! {#}
 "#,
-        expect![[r##"
+        expect![[r#"
 macro_rules! m { ($($tt:tt)*) => { abs!(=> $($tt)*); } }
 abs!( = > #);
-"##]],
+"#]],
     );
 }
 

@@ -1,8 +1,8 @@
 use crate::manual_let_else::MANUAL_LET_ELSE;
 use crate::question_mark_used::QUESTION_MARK_USED;
+use clippy_config::Conf;
 use clippy_config::msrvs::Msrv;
 use clippy_config::types::MatchLintBehaviour;
-use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
@@ -12,8 +12,8 @@ use clippy_utils::{
     span_contains_comment,
 };
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::def::Res;
 use rustc_hir::{
     BindingMode, Block, Body, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath, Stmt,
     StmtKind,

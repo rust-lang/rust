@@ -132,5 +132,13 @@ help: `'b` and `'a` must be the same: replace one with the other
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 8 previous errors
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:20
+   |
+LL | fn extend_to_static<'a>(ptr: *const dyn Trait<'a>) {
+   |                     -- lifetime `'a` defined here
+LL |     require_static(ptr as _)
+   |                    ^^^^^^^^ cast requires that `'a` must outlive `'static`
+
+error: aborting due to 9 previous errors
 

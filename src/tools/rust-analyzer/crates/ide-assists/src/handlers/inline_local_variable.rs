@@ -333,7 +333,8 @@ fn foo() {
         check_assist(
             inline_local_variable,
             r"
-fn bar(a: usize): usize { a }
+//- minicore: sized
+fn bar(a: usize) -> usize { a }
 fn foo() {
     let a$0 = bar(1) as u64;
     a + 1;
@@ -347,7 +348,7 @@ fn foo() {
     bar(a);
 }",
             r"
-fn bar(a: usize): usize { a }
+fn bar(a: usize) -> usize { a }
 fn foo() {
     (bar(1) as u64) + 1;
     if (bar(1) as u64) > 10 {

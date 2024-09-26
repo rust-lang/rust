@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItem, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
+use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
@@ -12,8 +12,8 @@ use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, info};
 use {rustc_attr as attr, rustc_hir as hir};
 
@@ -878,7 +878,7 @@ impl<'tcx> OnUnimplementedFormatString {
             }
         }
         // we cannot return errors from processing the format string as hard error here
-        // as the diagnostic namespace gurantees that malformed input cannot cause an error
+        // as the diagnostic namespace guarantees that malformed input cannot cause an error
         //
         // if we encounter any error while processing we nevertheless want to show it as warning
         // so that users are aware that something is not correct
@@ -986,10 +986,10 @@ impl<'tcx> OnUnimplementedFormatString {
             })
             .collect();
         // we cannot return errors from processing the format string as hard error here
-        // as the diagnostic namespace gurantees that malformed input cannot cause an error
+        // as the diagnostic namespace guarantees that malformed input cannot cause an error
         //
         // if we encounter any error while processing the format string
-        // we don't want to show the potentially half assembled formated string,
+        // we don't want to show the potentially half assembled formatted string,
         // therefore we fall back to just showing the input string in this case
         //
         // The actual parser errors are emitted earlier

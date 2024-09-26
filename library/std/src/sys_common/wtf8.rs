@@ -18,7 +18,7 @@
 #[cfg(test)]
 mod tests;
 
-use core::char::{encode_utf16_raw, encode_utf8_raw};
+use core::char::{encode_utf8_raw, encode_utf16_raw};
 use core::clone::CloneToUninit;
 use core::str::next_code_point;
 
@@ -26,7 +26,6 @@ use crate::borrow::Cow;
 use crate::collections::TryReserveError;
 use crate::hash::{Hash, Hasher};
 use crate::iter::FusedIterator;
-use crate::ptr::addr_of_mut;
 use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::AsInner;
@@ -1055,6 +1054,6 @@ unsafe impl CloneToUninit for Wtf8 {
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: we're just a wrapper around [u8]
-        unsafe { self.bytes.clone_to_uninit(addr_of_mut!((*dst).bytes)) }
+        unsafe { self.bytes.clone_to_uninit(&raw mut (*dst).bytes) }
     }
 }

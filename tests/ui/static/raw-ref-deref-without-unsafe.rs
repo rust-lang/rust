@@ -1,5 +1,3 @@
-#![feature(const_mut_refs)]
-
 use std::ptr;
 
 // This code should remain unsafe because of the two unsafe operations here,

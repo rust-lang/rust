@@ -35,40 +35,39 @@ use crate::util;
 ///
 /// The storage instructions are required to avoid stack space
 /// blowup.
-pub struct AddMovesForPackedDrops;
+pub(super) struct AddMovesForPackedDrops;
 
-impl<'tcx> MirPass<'tcx> for AddMovesForPackedDrops {
+impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", body.source, body.span);
-        add_moves_for_packed_drops(tcx, body);
-    }
-}
 
-pub fn add_moves_for_packed_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let patch = add_moves_for_packed_drops_patch(tcx, body);
-    patch.apply(body);
-}
+        let def_id = body.source.def_id();
+        let mut patch = MirPatch::new(body);
+        let param_env = tcx.param_env(def_id);
 
-fn add_moves_for_packed_drops_patch<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> MirPatch<'tcx> {
-    let def_id = body.source.def_id();
-    let mut patch = MirPatch::new(body);
-    let param_env = tcx.param_env(def_id);
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
+            let loc = Location { block: bb, statement_index: data.statements.len() };
+            let terminator = data.terminator();
 
-    for (bb, data) in body.basic_blocks.iter_enumerated() {
-        let loc = Location { block: bb, statement_index: data.statements.len() };
-        let terminator = data.terminator();
-
-        match terminator.kind {
-            TerminatorKind::Drop { place, .. }
-                if util::is_disaligned(tcx, body, param_env, place) =>
-            {
-                add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);
+            match terminator.kind {
+                TerminatorKind::Drop { place, .. }
+                    if util::is_disaligned(tcx, body, param_env, place) =>
+                {
+                    add_move_for_packed_drop(
+                        tcx,
+                        body,
+                        &mut patch,
+                        terminator,
+                        loc,
+                        data.is_cleanup,
+                    );
+                }
+                _ => {}
             }
-            _ => {}
         }
-    }
 
-    patch
+        patch.apply(body);
+    }
 }
 
 fn add_move_for_packed_drop<'tcx>(
@@ -86,7 +85,7 @@ fn add_move_for_packed_drop<'tcx>(
 
     let source_info = terminator.source_info;
     let ty = place.ty(body, tcx).ty;
-    let temp = patch.new_temp(ty, terminator.source_info.span);
+    let temp = patch.new_temp(ty, source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {
         statements: vec![Statement { source_info, kind: StatementKind::StorageDead(temp) }],
@@ -96,13 +95,10 @@ fn add_move_for_packed_drop<'tcx>(
 
     patch.add_statement(loc, StatementKind::StorageLive(temp));
     patch.add_assign(loc, Place::from(temp), Rvalue::Use(Operand::Move(*place)));
-    patch.patch_terminator(
-        loc.block,
-        TerminatorKind::Drop {
-            place: Place::from(temp),
-            target: storage_dead_block,
-            unwind,
-            replace,
-        },
-    );
+    patch.patch_terminator(loc.block, TerminatorKind::Drop {
+        place: Place::from(temp),
+        target: storage_dead_block,
+        unwind,
+        replace,
+    });
 }

@@ -1,7 +1,7 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armeb-unknown-linux-gnueabi".into(),
         metadata: crate::spec::TargetMetadata {

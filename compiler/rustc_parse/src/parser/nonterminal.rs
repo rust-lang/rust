@@ -1,13 +1,13 @@
+use rustc_ast::HasTokens;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Nonterminal::*;
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
-use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{Ident, kw};
 
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
@@ -88,7 +88,7 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Pat(pat_kind) => token.can_begin_pattern(pat_kind),
             NonterminalKind::Lifetime => match &token.kind {
-                token::Lifetime(_) | token::NtLifetime(..) => true,
+                token::Lifetime(..) | token::NtLifetime(..) => true,
                 _ => false,
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
@@ -171,9 +171,9 @@ impl<'a> Parser<'a> {
             NonterminalKind::Lifetime => {
                 // We want to keep `'keyword` parsing, just like `keyword` is still
                 // an ident for nonterminal purposes.
-                return if let Some(ident) = self.token.lifetime() {
+                return if let Some((ident, is_raw)) = self.token.lifetime() {
                     self.bump();
-                    Ok(ParseNtResult::Lifetime(ident))
+                    Ok(ParseNtResult::Lifetime(ident, is_raw))
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,

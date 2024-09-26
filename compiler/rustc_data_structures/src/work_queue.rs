@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
-use rustc_index::bit_set::BitSet;
 use rustc_index::Idx;
+use rustc_index::bit_set::BitSet;
 
 /// A work queue is a handy data structure for tracking work left to
 /// do. (For example, basic blocks left to process.) It is basically a

@@ -1,5 +1,5 @@
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/promoted-const-drop.rs:6:12
+  --> $DIR/promoted-const-drop.rs:5:12
    |
 LL | impl const Drop for A {
    |            ^^^^
@@ -8,7 +8,7 @@ LL | impl const Drop for A {
    = note: adding a non-const method body in the future would be a breaking change
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted-const-drop.rs:14:26
+  --> $DIR/promoted-const-drop.rs:13:26
    |
 LL |     let _: &'static A = &A();
    |            ----------    ^^^ creates a temporary value which is freed while still in use
@@ -19,7 +19,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted-const-drop.rs:15:28
+  --> $DIR/promoted-const-drop.rs:14:28
    |
 LL |     let _: &'static [A] = &[C];
    |            ------------    ^^^ creates a temporary value which is freed while still in use

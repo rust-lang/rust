@@ -31,20 +31,20 @@ use rustc_middle::ty::{
     UserType, UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_span::{DUMMY_SP, Span};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
+use rustc_trait_selection::traits::PredicateObligation;
 use rustc_trait_selection::traits::query::type_op::custom::{
-    scrape_region_constraints, CustomTypeOp,
+    CustomTypeOp, scrape_region_constraints,
 };
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-use rustc_trait_selection::traits::PredicateObligation;
 use tracing::{debug, instrument, trace};
 
 use crate::borrow_set::BorrowSet;
@@ -53,13 +53,13 @@ use crate::diagnostics::UniverseInfo;
 use crate::facts::AllFacts;
 use crate::location::LocationTable;
 use crate::member_constraints::MemberConstraintSet;
-use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
 use crate::region_infer::TypeTest;
+use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{path_utils, BorrowckInferCtxt};
+use crate::{BorrowckInferCtxt, path_utils};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -116,7 +116,7 @@ mod relate_tys;
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `elements` -- MIR region map
-pub(crate) fn type_check<'mir, 'tcx>(
+pub(crate) fn type_check<'a, 'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
@@ -125,7 +125,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<DenseLocationMap>,
     upvars: &[&ty::CapturedPlace<'tcx>],
@@ -1944,11 +1944,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref = ty::TraitRef::new(
-                    tcx,
-                    tcx.require_lang_item(LangItem::Sized, Some(span)),
-                    [ty],
-                );
+                let trait_ref =
+                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, Some(span)), [
+                        ty,
+                    ]);
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1961,11 +1960,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);
 
-                let trait_ref = ty::TraitRef::new(
-                    tcx,
-                    tcx.require_lang_item(LangItem::Sized, Some(span)),
-                    [*ty],
-                );
+                let trait_ref =
+                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, Some(span)), [
+                        *ty,
+                    ]);
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1977,49 +1975,111 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Cast(cast_kind, op, ty) => {
                 self.check_operand(op, location);
 
-                match cast_kind {
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                match *cast_kind {
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, coercion_source) => {
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
+                        let src_sig = op.ty(body, tcx).fn_sig(tcx);
+
+                        // HACK: This shouldn't be necessary... We can remove this when we actually
+                        // get binders with where clauses, then elaborate implied bounds into that
+                        // binder, and implement a higher-ranked subtyping algorithm that actually
+                        // respects these implied bounds.
+                        //
+                        // This protects against the case where we are casting from a higher-ranked
+                        // fn item to a non-higher-ranked fn pointer, where the cast throws away
+                        // implied bounds that would've needed to be checked at the call site. This
+                        // only works when we're casting to a non-higher-ranked fn ptr, since
+                        // placeholders in the target signature could have untracked implied
+                        // bounds, resulting in incorrect errors.
+                        //
+                        // We check that this signature is WF before subtyping the signature with
+                        // the target fn sig.
+                        if src_sig.has_bound_regions()
+                            && let ty::FnPtr(target_fn_tys, target_hdr) = *ty.kind()
+                            && let target_sig = target_fn_tys.with(target_hdr)
+                            && let Some(target_sig) = target_sig.no_bound_vars()
+                        {
+                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
+                                span,
+                                BoundRegionConversionTime::HigherRankedType,
+                                src_sig,
+                            );
+                            let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
+                            self.prove_predicate(
+                                ty::ClauseKind::WellFormed(src_ty.into()),
+                                location.to_locations(),
+                                ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            );
+
+                            let src_ty = self.normalize(src_ty, location);
+                            if let Err(terr) = self.sub_types(
+                                src_ty,
+                                *ty,
+                                location.to_locations(),
+                                ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ) {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "equating {:?} with {:?} yields {:?}",
+                                    target_sig,
+                                    src_sig,
+                                    terr
+                                );
+                            };
+                        }
+
+                        let src_ty = Ty::new_fn_ptr(tcx, src_sig);
+                        // HACK: We want to assert that the signature of the source fn is
+                        // well-formed, because we don't enforce that via the WF of FnDef
+                        // types normally. This should be removed when we improve the tracking
+                        // of implied bounds of fn signatures.
+                        self.prove_predicate(
+                            ty::ClauseKind::WellFormed(src_ty.into()),
+                            location.to_locations(),
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                        );
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
                         // function definition. When we extract the
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
-                        let fn_sig = self.normalize(fn_sig, location);
-
-                        let ty_fn_ptr_from = Ty::new_fn_ptr(tcx, fn_sig);
-
+                        let src_ty = self.normalize(src_ty, location);
                         if let Err(terr) = self.sub_types(
-                            ty_fn_ptr_from,
+                            src_ty,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
                                 rvalue,
                                 "equating {:?} with {:?} yields {:?}",
-                                ty_fn_ptr_from,
+                                src_ty,
                                 ty,
                                 terr
                             );
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(safety)) => {
+                    CastKind::PointerCoercion(
+                        PointerCoercion::ClosureFnPointer(safety),
+                        coercion_source,
+                    ) => {
                         let sig = match op.ty(body, tcx).kind() {
                             ty::Closure(_, args) => args.as_closure().sig(),
                             _ => bug!(),
                         };
                         let ty_fn_ptr_from =
-                            Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, *safety));
+                            Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, safety));
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2032,7 +2092,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
+                    CastKind::PointerCoercion(
+                        PointerCoercion::UnsafeFnPointer,
+                        coercion_source,
+                    ) => {
                         let fn_sig = op.ty(body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
@@ -2044,11 +2107,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2061,7 +2125,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::Unsize) => {
+                    CastKind::PointerCoercion(PointerCoercion::Unsize, coercion_source) => {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef::new(
                             tcx,
@@ -2069,22 +2133,21 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             [op.ty(body, tcx), ty],
                         );
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
+                        let unsize_to = tcx.fold_regions(ty, |r, _| {
+                            if let ty::ReVar(_) = r.kind() { tcx.lifetimes.re_erased } else { r }
+                        });
                         self.prove_trait_ref(
                             trait_ref,
                             location.to_locations(),
                             ConstraintCategory::Cast {
-                                unsize_to: Some(tcx.fold_regions(ty, |r, _| {
-                                    if let ty::ReVar(_) = r.kind() {
-                                        tcx.lifetimes.re_erased
-                                    } else {
-                                        r
-                                    }
-                                })),
+                                is_implicit_coercion,
+                                unsize_to: Some(unsize_to),
                             },
                         );
                     }
 
-                    CastKind::DynStar => {
+                    CastKind::PointerCoercion(PointerCoercion::DynStar, coercion_source) => {
                         // get the constraints from the target type (`dyn* Clone`)
                         //
                         // apply them to prove that the source type `Foo` implements `Clone` etc
@@ -2095,12 +2158,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let self_ty = op.ty(body, tcx);
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         self.prove_predicates(
                             existential_predicates
                                 .iter()
                                 .map(|predicate| predicate.with_self_ty(tcx, self_ty)),
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         );
 
                         let outlives_predicate = tcx.mk_predicate(Binder::dummy(
@@ -2111,11 +2175,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self.prove_predicate(
                             outlives_predicate,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         );
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
+                    CastKind::PointerCoercion(
+                        PointerCoercion::MutToConstPointer,
+                        coercion_source,
+                    ) => {
                         let ty::RawPtr(ty_from, hir::Mutability::Mut) = op.ty(body, tcx).kind()
                         else {
                             span_mirbug!(self, rvalue, "unexpected base type for cast {:?}", ty,);
@@ -2125,11 +2192,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             span_mirbug!(self, rvalue, "unexpected target type for cast {:?}", ty,);
                             return;
                         };
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
                             *ty_from,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2142,7 +2210,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer, coercion_source) => {
                         let ty_from = op.ty(body, tcx);
 
                         let opt_ty_elem_mut = match ty_from.kind() {
@@ -2187,11 +2255,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             return;
                         }
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
                             *ty_elem,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2372,7 +2441,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         src_obj,
                                         dst_obj,
                                         location.to_locations(),
-                                        ConstraintCategory::Cast { unsize_to: None },
+                                        ConstraintCategory::Cast {
+                                            is_implicit_coercion: false,
+                                            unsize_to: None,
+                                        },
                                     )
                                     .unwrap();
                                 }

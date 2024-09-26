@@ -1,9 +1,9 @@
 use crate::spec::{
-    add_link_args, cvs, Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy, RelocModel,
-    TargetOptions, TlsModel,
+    Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel,
+    add_link_args, cvs,
 };
 
-pub fn options() -> TargetOptions {
+pub(crate) fn options() -> TargetOptions {
     macro_rules! args {
         ($prefix:literal) => {
             &[

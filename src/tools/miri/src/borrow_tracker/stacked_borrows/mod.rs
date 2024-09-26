@@ -12,19 +12,19 @@ use std::mem;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::{self, layout::HasParamEnv, Ty};
+use rustc_middle::ty::{self, Ty, layout::HasParamEnv};
 use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
-    stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
     GlobalStateInner, ProtectorKind,
+    stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
 };
 use crate::concurrency::data_race::{NaReadType, NaWriteType};
 use crate::*;
 
-use diagnostics::{RetagCause, RetagInfo};
-pub use item::{Item, Permission};
-pub use stack::Stack;
+use self::diagnostics::{RetagCause, RetagInfo};
+pub use self::item::{Item, Permission};
+pub use self::stack::Stack;
 
 pub type AllocState = Stacks;
 
@@ -913,11 +913,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 new_perm: NewPermission,
             ) -> InterpResult<'tcx> {
                 let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
-                let val = self.ecx.sb_retag_reference(
-                    &val,
-                    new_perm,
-                    RetagInfo { cause: self.retag_cause, in_field: self.in_field },
-                )?;
+                let val = self.ecx.sb_retag_reference(&val, new_perm, RetagInfo {
+                    cause: self.retag_cause,
+                    in_field: self.in_field,
+                })?;
                 self.ecx.write_immediate(*val, place)?;
                 Ok(())
             }
@@ -1003,11 +1002,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        this.sb_retag_place(
-            place,
-            new_perm,
-            RetagInfo { cause: RetagCause::InPlaceFnPassing, in_field: false },
-        )
+        this.sb_retag_place(place, new_perm, RetagInfo {
+            cause: RetagCause::InPlaceFnPassing,
+            in_field: false,
+        })
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.

@@ -1,6 +1,6 @@
-use crate::spec::{base, SanitizerSet, Target};
+use crate::spec::{SanitizerSet, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.cpu = "x86-64".into();
     base.features = "+cx16,+sse3,+sahf".into();

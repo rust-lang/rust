@@ -1,5 +1,5 @@
 use crate::common::{Config, Sanitizer};
-use crate::header::{llvm_has_libzstd, IgnoreDecision};
+use crate::header::{IgnoreDecision, llvm_has_libzstd};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -133,6 +133,11 @@ pub(super) fn handle_needs(
             name: "needs-relocation-model-pic",
             condition: config.target_cfg().relocation_model == "pic",
             ignore_reason: "ignored on targets without PIC relocation model",
+        },
+        Need {
+            name: "needs-deterministic-layouts",
+            condition: !config.rust_randomized_layout,
+            ignore_reason: "ignored when randomizing layouts",
         },
         Need {
             name: "needs-wasmtime",

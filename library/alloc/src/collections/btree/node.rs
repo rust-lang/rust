@@ -72,8 +72,8 @@ impl<K, V> LeafNode<K, V> {
         // be both slightly faster and easier to track in Valgrind.
         unsafe {
             // parent_idx, keys, and vals are all MaybeUninit
-            ptr::addr_of_mut!((*this).parent).write(None);
-            ptr::addr_of_mut!((*this).len).write(0);
+            (&raw mut (*this).parent).write(None);
+            (&raw mut (*this).len).write(0);
         }
     }
 
@@ -114,7 +114,7 @@ impl<K, V> InternalNode<K, V> {
         unsafe {
             let mut node = Box::<Self, _>::new_uninit_in(alloc);
             // We only need to initialize the data; the edges are MaybeUninit.
-            LeafNode::init(ptr::addr_of_mut!((*node.as_mut_ptr()).data));
+            LeafNode::init(&raw mut (*node.as_mut_ptr()).data);
             node.assume_init()
         }
     }
@@ -525,8 +525,8 @@ impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
         // to avoid aliasing with outstanding references to other elements,
         // in particular, those returned to the caller in earlier iterations.
         let leaf = Self::as_leaf_ptr(&mut self);
-        let keys = unsafe { ptr::addr_of!((*leaf).keys) };
-        let vals = unsafe { ptr::addr_of_mut!((*leaf).vals) };
+        let keys = unsafe { &raw const (*leaf).keys };
+        let vals = unsafe { &raw mut (*leaf).vals };
         // We must coerce to unsized array pointers because of Rust issue #74679.
         let keys: *const [_] = keys;
         let vals: *mut [_] = vals;

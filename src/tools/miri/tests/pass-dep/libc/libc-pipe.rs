@@ -1,4 +1,4 @@
-//@ignore-target-windows: No libc pipe on Windows
+//@ignore-target: windows # No libc pipe on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 use std::thread;
@@ -72,6 +72,8 @@ fn test_pipe_threaded() {
     thread2.join().unwrap();
 }
 
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#[allow(static_mut_refs)]
 fn test_race() {
     static mut VAL: u8 = 0;
     let mut fds = [-1, -1];

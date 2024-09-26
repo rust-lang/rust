@@ -15,9 +15,9 @@ use rustc_session::Session;
 ///
 /// Thus after this pass, all the successors of a block are later than it in the
 /// `IndexVec`, unless that successor is a back-edge (such as from a loop).
-pub struct ReorderBasicBlocks;
+pub(super) struct ReorderBasicBlocks;
 
-impl<'tcx> MirPass<'tcx> for ReorderBasicBlocks {
+impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
     fn is_enabled(&self, _session: &Session) -> bool {
         false
     }
@@ -43,9 +43,9 @@ impl<'tcx> MirPass<'tcx> for ReorderBasicBlocks {
 /// assigned or referenced will have a smaller number.
 ///
 /// (Does not reorder arguments nor the [`RETURN_PLACE`].)
-pub struct ReorderLocals;
+pub(super) struct ReorderLocals;
 
-impl<'tcx> MirPass<'tcx> for ReorderLocals {
+impl<'tcx> crate::MirPass<'tcx> for ReorderLocals {
     fn is_enabled(&self, _session: &Session) -> bool {
         false
     }
@@ -63,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for ReorderLocals {
             finder.visit_basic_block_data(bb, bbd);
         }
 
-        // track everything in case there are some locals that we never saw,
+        // Track everything in case there are some locals that we never saw,
         // such as in non-block things like debug info or in non-uses.
         for local in body.local_decls.indices() {
             finder.track(local);
@@ -87,7 +87,7 @@ impl<'tcx> MirPass<'tcx> for ReorderLocals {
 
 fn permute<I: rustc_index::Idx + Ord, T>(data: &mut IndexVec<I, T>, map: &IndexSlice<I, I>) {
     // FIXME: It would be nice to have a less-awkward way to apply permutations,
-    // but I don't know one that exists.  `sort_by_cached_key` has logic for it
+    // but I don't know one that exists. `sort_by_cached_key` has logic for it
     // internally, but not in a way that we're allowed to use here.
     let mut enumerated: Vec<_> = std::mem::take(data).into_iter_enumerated().collect();
     enumerated.sort_by_key(|p| map[p.0]);
@@ -135,8 +135,8 @@ impl<'tcx> Visitor<'tcx> for LocalFinder {
 }
 
 struct LocalUpdater<'tcx> {
-    pub map: IndexVec<Local, Local>,
-    pub tcx: TyCtxt<'tcx>,
+    map: IndexVec<Local, Local>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {

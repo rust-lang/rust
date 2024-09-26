@@ -917,7 +917,7 @@ fn test(a: A<i32>) {
             278..279 'A': extern "rust-call" A<i32>(*mut i32) -> A<i32>
             278..292 'A(0 as *mut _)': A<i32>
             278..307 'A(0 as...B(a)))': &'? i32
-            280..281 '0': i32
+            280..281 '0': usize
             280..291 '0 as *mut _': *mut i32
             297..306 '&&B(B(a))': &'? &'? B<B<A<i32>>>
             298..306 '&B(B(a))': &'? B<B<A<i32>>>
@@ -3572,6 +3572,7 @@ fn f<T>(t: Ark<T>) {
 fn ref_to_array_to_ptr_cast() {
     check_types(
         r#"
+//- minicore: sized
 fn default<T>() -> T { loop {} }
 fn foo() {
     let arr = [default()];

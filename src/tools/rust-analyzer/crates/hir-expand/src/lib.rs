@@ -21,6 +21,7 @@ pub mod span_map;
 
 mod cfg_process;
 mod fixup;
+mod prettify_macro_expansion_;
 
 use attrs::collect_attrs;
 use rustc_hash::FxHashMap;
@@ -51,7 +52,11 @@ use crate::{
     span_map::{ExpansionSpanMap, SpanMap},
 };
 
-pub use crate::files::{AstId, ErasedAstId, FileRange, InFile, InMacroFile, InRealFile};
+pub use crate::{
+    cfg_process::check_cfg_attr_value,
+    files::{AstId, ErasedAstId, FileRange, InFile, InMacroFile, InRealFile},
+    prettify_macro_expansion_::prettify_macro_expansion,
+};
 
 pub use mbe::{DeclarativeMacro, ValueResult};
 pub use span::{HirFileId, MacroCallId, MacroFileId};

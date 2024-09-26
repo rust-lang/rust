@@ -43,14 +43,6 @@ pub use core::slice::ArrayWindows;
 pub use core::slice::EscapeAscii;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
-#[stable(feature = "from_ref", since = "1.28.0")]
-pub use core::slice::{from_mut, from_ref};
-#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-pub use core::slice::{from_mut_ptr_range, from_ptr_range};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::slice::{from_raw_parts, from_raw_parts_mut};
-#[unstable(feature = "slice_range", issue = "76393")]
-pub use core::slice::{range, try_range};
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use core::slice::{ChunkBy, ChunkByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -69,6 +61,14 @@ pub use core::slice::{RSplit, RSplitMut};
 pub use core::slice::{RSplitN, RSplitNMut, SplitN, SplitNMut};
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use core::slice::{SplitInclusive, SplitInclusiveMut};
+#[stable(feature = "from_ref", since = "1.28.0")]
+pub use core::slice::{from_mut, from_ref};
+#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
+pub use core::slice::{from_mut_ptr_range, from_ptr_range};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::slice::{from_raw_parts, from_raw_parts_mut};
+#[unstable(feature = "slice_range", issue = "76393")]
+pub use core::slice::{range, try_range};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
@@ -96,6 +96,7 @@ pub(crate) mod hack {
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
+    #[allow(missing_docs)]
     pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {
         unsafe {
             let len = b.len();
@@ -105,6 +106,7 @@ pub(crate) mod hack {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[allow(missing_docs)]
     #[inline]
     pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
         T::to_vec(s, alloc)
@@ -494,6 +496,7 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "slice_into_vec")]
     pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)

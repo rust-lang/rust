@@ -105,15 +105,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ansi_term"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "anstream"
 version = "0.6.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -199,7 +190,7 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01667f6f40216b9a0b2945e05fed5f1ad0ab6470e69cb9378001e37b1c0668e4"
 dependencies = [
- "object 0.36.3",
+ "object 0.36.4",
 ]
 
 [[package]]
@@ -533,7 +524,7 @@ checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
 
 [[package]]
 name = "clippy"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "anstream",
  "cargo_metadata 0.18.1",
@@ -556,13 +547,13 @@ dependencies = [
  "termize",
  "tokio",
  "toml 0.7.8",
- "ui_test 0.25.0",
+ "ui_test",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_config"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "itertools",
  "serde",
@@ -585,7 +576,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -609,7 +600,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -714,7 +705,7 @@ dependencies = [
  "miow",
  "miropt-test-tools",
  "regex",
- "rustfix 0.8.1",
+ "rustfix",
  "serde",
  "serde_json",
  "tracing",
@@ -911,7 +902,7 @@ dependencies = [
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "itertools",
  "quote",
@@ -2186,9 +2177,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.5.0"
+version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
+checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
 name = "memmap2"
@@ -2278,7 +2269,7 @@ dependencies = [
  "rustc_version",
  "smallvec",
  "tempfile",
- "ui_test 0.21.2",
+ "ui_test",
  "windows-sys 0.52.0",
 ]
 
@@ -2453,9 +2444,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.36.3"
+version = "0.36.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27b64972346851a39438c60b341ebc01bba47464ae329e55cf343eb93964efd9"
+checksum = "084f1a5821ac4c651660a94a7153d27ac9d8a53736203f58b31945ded098070a"
 dependencies = [
  "crc32fast",
  "flate2",
@@ -2463,7 +2454,7 @@ dependencies = [
  "indexmap",
  "memchr",
  "ruzstd 0.7.0",
- "wasmparser 0.215.0",
+ "wasmparser",
 ]
 
 [[package]]
@@ -2809,16 +2800,6 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "prettydiff"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ff1fec61082821f8236cf6c0c14e8172b62ce8a72a0eedc30d3b247bb68dc11"
-dependencies = [
- "ansi_term",
- "pad",
-]
-
-[[package]]
-name = "prettydiff"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abec3fb083c10660b3854367697da94c674e9e82aa7511014dc958beeb7215e9"
@@ -3129,11 +3110,11 @@ dependencies = [
  "build_helper",
  "gimli 0.31.0",
  "libc",
- "object 0.36.3",
+ "object 0.36.4",
  "regex",
  "serde_json",
  "similar",
- "wasmparser 0.216.0",
+ "wasmparser",
 ]
 
 [[package]]
@@ -3408,7 +3389,7 @@ dependencies = [
  "itertools",
  "libc",
  "measureme",
- "object 0.36.3",
+ "object 0.36.4",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3447,7 +3428,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.36.3",
+ "object 0.36.4",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -3569,6 +3550,7 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_hir_typeck",
  "rustc_incremental",
+ "rustc_index",
  "rustc_infer",
  "rustc_interface",
  "rustc_lint",
@@ -4166,6 +4148,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fluent_macro",
+ "rustc_index",
  "rustc_lexer",
  "rustc_macros",
  "rustc_session",
@@ -4431,7 +4414,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.6.0",
- "object 0.36.3",
+ "object 0.36.4",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_feature",
@@ -4625,18 +4608,6 @@ dependencies = [
 
 [[package]]
 name = "rustfix"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecd2853d9e26988467753bd9912c3a126f642d05d229a4b53f5752ee36c56481"
-dependencies = [
- "anyhow",
- "log",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "rustfix"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81864b097046da5df3758fdc6e4822bbb70afa06317e8ca45ea1b51cb8c5e5a4"
@@ -4659,7 +4630,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.7.1"
+version = "1.8.0"
 dependencies = [
  "annotate-snippets 0.9.2",
  "anyhow",
@@ -5516,36 +5487,9 @@ checksum = "ed646292ffc8188ef8ea4d1e0e0150fb15a5c2e12ad9b8fc191ae7a8a7f3c4b9"
 
 [[package]]
 name = "ui_test"
-version = "0.21.2"
+version = "0.26.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aaf4bf7c184b8dfc7a4d3b90df789b1eb992ee42811cd115f32a7a1eb781058d"
-dependencies = [
- "annotate-snippets 0.9.2",
- "anyhow",
- "bstr",
- "cargo-platform",
- "cargo_metadata 0.15.4",
- "color-eyre",
- "colored",
- "comma",
- "crossbeam-channel",
- "indicatif",
- "lazy_static",
- "levenshtein",
- "prettydiff 0.6.4",
- "regex",
- "rustc_version",
- "rustfix 0.6.1",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "ui_test"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7e4f339f62edc873975c47115f9e71c5454ddaa37c1142b42fc0b2672c8dacb"
+checksum = "32ee4c40e5a5f9fa6864ff976473e5d6a6e9884b6ce68b40690d9f87e1994c83"
 dependencies = [
  "annotate-snippets 0.11.4",
  "anyhow",
@@ -5557,12 +5501,11 @@ dependencies = [
  "comma",
  "crossbeam-channel",
  "indicatif",
- "lazy_static",
  "levenshtein",
- "prettydiff 0.7.0",
+ "prettydiff",
  "regex",
  "rustc_version",
- "rustfix 0.8.1",
+ "rustfix",
  "serde",
  "serde_json",
  "spanned",
@@ -5849,7 +5792,7 @@ dependencies = [
  "lexopt",
  "tempfile",
  "wasi-preview1-component-adapter-provider",
- "wasmparser 0.216.0",
+ "wasmparser",
  "wat",
  "wit-component",
  "wit-parser",
@@ -5869,7 +5812,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04c23aebea22c8a75833ae08ed31ccc020835b12a41999e58c31464271b94a88"
 dependencies = [
  "leb128",
- "wasmparser 0.216.0",
+ "wasmparser",
 ]
 
 [[package]]
@@ -5885,16 +5828,7 @@ dependencies = [
  "serde_json",
  "spdx",
  "wasm-encoder",
- "wasmparser 0.216.0",
-]
-
-[[package]]
-name = "wasmparser"
-version = "0.215.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53fbde0881f24199b81cf49b6ff8f9c145ac8eb1b7fc439adb5c099734f7d90e"
-dependencies = [
- "bitflags 2.6.0",
+ "wasmparser",
 ]
 
 [[package]]
@@ -6228,7 +6162,7 @@ dependencies = [
  "serde_json",
  "wasm-encoder",
  "wasm-metadata",
- "wasmparser 0.216.0",
+ "wasmparser",
  "wit-parser",
 ]
 
@@ -6247,7 +6181,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "unicode-xid",
- "wasmparser 0.216.0",
+ "wasmparser",
 ]
 
 [[package]]

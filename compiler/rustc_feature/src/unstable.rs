@@ -1,10 +1,10 @@
 //! List of the unstable feature gates.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 
-use super::{to_nonzero, Feature};
+use super::{Feature, to_nonzero};
 
 pub struct UnstableFeature {
     pub feature: Feature,
@@ -193,8 +193,6 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
-    /// Gating for a new desugaring of const arguments of usages of const parameters
-    (internal, const_arg_path, "1.81.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Outputs useful `assert!` messages
@@ -206,9 +204,9 @@ declare_features! (
     /// Changes `impl Trait` to capture all lifetimes in scope.
     (unstable, lifetime_capture_rules_2024, "1.76.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
-    (unstable, link_cfg, "1.14.0", None),
+    (internal, link_cfg, "1.14.0", None),
     /// Allows using `?Trait` trait bounds in more contexts.
-    (internal, more_maybe_bounds, "CURRENT_RUSTC_VERSION", None),
+    (internal, more_maybe_bounds, "1.82.0", None),
     /// Allows the `multiple_supertrait_upcastable` lint.
     (unstable, multiple_supertrait_upcastable, "1.69.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
@@ -229,6 +227,8 @@ declare_features! (
     (internal, staged_api, "1.0.0", None),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
+    /// Helps with formatting for `group_imports = "StdExternalCrate"`.
+    (unstable, unqualified_local_imports, "CURRENT_RUSTC_VERSION", None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (unstable, with_negative_coherence, "1.60.0", None),
@@ -302,7 +302,7 @@ declare_features! (
     // FIXME: Document these and merge with the list below.
 
     // Unstable `#[target_feature]` directives.
-    (unstable, aarch64_unstable_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (unstable, aarch64_unstable_target_feature, "1.82.0", Some(44839)),
     (unstable, aarch64_ver_target_feature, "1.27.0", Some(44839)),
     (unstable, arm_target_feature, "1.27.0", Some(44839)),
     (unstable, avx512_target_feature, "1.27.0", Some(44839)),
@@ -317,7 +317,7 @@ declare_features! (
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
     (unstable, rtm_target_feature, "1.35.0", Some(44839)),
-    (unstable, s390x_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (unstable, s390x_target_feature, "1.82.0", Some(44839)),
     (unstable, sse4a_target_feature, "1.27.0", Some(44839)),
     (unstable, tbm_target_feature, "1.27.0", Some(44839)),
     (unstable, wasm_target_feature, "1.30.0", Some(44839)),
@@ -349,8 +349,10 @@ declare_features! (
     (unstable, adt_const_params, "1.56.0", Some(95174)),
     /// Allows defining an `#[alloc_error_handler]`.
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
-    /// Allows trait methods with arbitrary self types.
+    /// Allows inherent and trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
+    /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
+    (unstable, arbitrary_self_types_pointers, "CURRENT_RUSTC_VERSION", Some(44874)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Allows using `label` operands in inline assembly.
@@ -395,22 +397,16 @@ declare_features! (
     (unstable, closure_lifetime_binder, "1.64.0", Some(97362)),
     /// Allows `#[track_caller]` on closures and coroutines.
     (unstable, closure_track_caller, "1.57.0", Some(87417)),
-    /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
+    /// Allows `extern "C-cmse-nonsecure-entry" fn()`.
     (unstable, cmse_nonsecure_entry, "1.48.0", Some(75835)),
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
-    /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
-    (unstable, const_extern_fn, "1.40.0", Some(64926)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
-    /// Allows using `&mut` in constant functions.
-    (unstable, const_mut_refs, "1.41.0", Some(57349)),
     /// Be more precise when looking for live drops in a const context.
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
-    /// Allows references to types with interior mutability within constants
-    (unstable, const_refs_to_cell, "1.51.0", Some(80384)),
     /// Allows creating pointers and references to `static` items in constants.
     (unstable, const_refs_to_static, "1.78.0", Some(119618)),
     /// Allows `impl const Trait for T` syntax.
@@ -472,7 +468,7 @@ declare_features! (
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
     /// Controlling the behavior of fmt::Debug
-    (unstable, fmt_debug, "CURRENT_RUSTC_VERSION", Some(129709)),
+    (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
@@ -495,6 +491,8 @@ declare_features! (
     (unstable, half_open_range_patterns_in_slices, "1.66.0", Some(67264)),
     /// Allows `if let` guard in match arms.
     (unstable, if_let_guard, "1.47.0", Some(51114)),
+    /// Rescoping temporaries in `if let` to align with Rust 2024.
+    (unstable, if_let_rescope, "CURRENT_RUSTC_VERSION", Some(124085)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
@@ -562,6 +560,8 @@ declare_features! (
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
+    /// Experimental features that make `Pin` more ergonomic.
+    (incomplete, pin_ergonomics, "CURRENT_RUSTC_VERSION", Some(130494)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
@@ -580,11 +580,11 @@ declare_features! (
     /// be used to describe E or vise-versa.
     (unstable, result_ffi_guarantees, "1.80.0", Some(110503)),
     /// Allows bounding the return type of AFIT/RPITIT.
-    (incomplete, return_type_notation, "1.70.0", Some(109417)),
+    (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
-    (unstable, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
+    (unstable, sha512_sm_x86, "1.82.0", Some(126624)),
     /// Shortern the tail expression lifetime
     (unstable, shorter_tail_lifetimes, "1.79.0", Some(123739)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
@@ -623,7 +623,7 @@ declare_features! (
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
-    (incomplete, unsized_const_params, "CURRENT_RUSTC_VERSION", Some(95174)),
+    (incomplete, unsized_const_params, "1.82.0", Some(95174)),
     /// Allows unsized fn parameters.
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.

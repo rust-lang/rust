@@ -1,5 +1,5 @@
 error: Undefined Behavior: constructing invalid value: encountered 0x02, but expected a boolean
-  --> $DIR/typed-swap-invalid-scalar.rs:LL:CC
+  --> tests/fail/intrinsics/typed-swap-invalid-scalar.rs:LL:CC
    |
 LL |         typed_swap(a, b);
    |         ^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0x02, but expected a boolean
@@ -7,9 +7,9 @@ LL |         typed_swap(a, b);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `invalid_scalar` at $DIR/typed-swap-invalid-scalar.rs:LL:CC
+   = note: inside `invalid_scalar` at tests/fail/intrinsics/typed-swap-invalid-scalar.rs:LL:CC
 note: inside `main`
-  --> $DIR/typed-swap-invalid-scalar.rs:LL:CC
+  --> tests/fail/intrinsics/typed-swap-invalid-scalar.rs:LL:CC
    |
 LL |     invalid_scalar();
    |     ^^^^^^^^^^^^^^^^

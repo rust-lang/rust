@@ -947,7 +947,7 @@ fn test_raw_entry() {
 
 mod test_extract_if {
     use super::*;
-    use crate::panic::{catch_unwind, AssertUnwindSafe};
+    use crate::panic::{AssertUnwindSafe, catch_unwind};
     use crate::sync::atomic::{AtomicUsize, Ordering};
 
     trait EqSorted: Iterator {

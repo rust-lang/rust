@@ -134,9 +134,6 @@ const_eval_incompatible_return_types =
 const_eval_incompatible_types =
     calling a function with argument of type {$callee_ty} passing data of type {$caller_ty}
 
-const_eval_interior_mutability_borrow =
-    cannot borrow here, since the borrowed element may contain interior mutability
-
 const_eval_interior_mutable_data_refer =
     {const_eval_const_context}s cannot refer to interior mutable data
     .label = this borrow of an interior mutable value may end up in the final value
@@ -201,7 +198,7 @@ const_eval_invalid_vtable_pointer =
     using {$pointer} as vtable pointer but it does not point to a vtable
 
 const_eval_invalid_vtable_trait =
-    using vtable for trait `{$vtable_trait}` but trait `{$expected_trait}` was expected
+    using vtable for `{$vtable_dyn_type}` but `{$expected_dyn_type}` was expected
 
 const_eval_lazy_lock =
     consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
@@ -229,9 +226,6 @@ const_eval_memory_exhausted =
 
 const_eval_modified_global =
     modifying a static's initial value from another static's initializer
-
-const_eval_mut_deref =
-    mutation through a reference is not allowed in {const_eval_const_context}s
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
@@ -363,10 +357,6 @@ const_eval_too_generic =
 const_eval_too_many_caller_args =
     calling a function with more arguments than it expected
 
-const_eval_transient_mut_borrow = mutable references are not allowed in {const_eval_const_context}s
-
-const_eval_transient_mut_raw = raw mutable pointers are not allowed in {const_eval_const_context}s
-
 const_eval_try_block_from_output_non_const =
     `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s
 const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {const_eval_const_context}s
@@ -469,7 +459,7 @@ const_eval_validation_invalid_fn_ptr = {$front_matter}: encountered {$value}, bu
 const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
-const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$ref_trait}`, but encountered `{$vtable_trait}`
+const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_null_box = {$front_matter}: encountered a null box

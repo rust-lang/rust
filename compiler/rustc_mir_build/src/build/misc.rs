@@ -45,16 +45,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Place<'tcx> {
         let usize_ty = self.tcx.types.usize;
         let temp = self.temp(usize_ty, source_info.span);
-        self.cfg.push_assign_constant(
-            block,
-            source_info,
-            temp,
-            ConstOperand {
-                span: source_info.span,
-                user_ty: None,
-                const_: Const::from_usize(self.tcx, value),
-            },
-        );
+        self.cfg.push_assign_constant(block, source_info, temp, ConstOperand {
+            span: source_info.span,
+            user_ty: None,
+            const_: Const::from_usize(self.tcx, value),
+        });
         temp
     }
 

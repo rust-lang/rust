@@ -1,0 +1,71 @@
+//@ run-rustfix
+
+#![deny(if_let_rescope)]
+#![feature(if_let_rescope)]
+#![allow(irrefutable_let_patterns)]
+
+fn droppy() -> Droppy {
+    Droppy
+}
+struct Droppy;
+impl Drop for Droppy {
+    fn drop(&mut self) {
+        println!("dropped");
+    }
+}
+impl Droppy {
+    fn get(&self) -> Option<u8> {
+        None
+    }
+}
+
+fn main() {
+    if let Some(_value) = droppy().get() {
+        // Should not lint
+    }
+
+    match droppy().get() { Some(_value) => {
+        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN: this changes meaning in Rust 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        // do something
+    } _ => {
+        //~^ HELP: the value is now dropped here in Edition 2024
+        // do something else
+    }}
+
+    match droppy().get() { Some(_value) => {
+        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN: this changes meaning in Rust 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        // do something
+    } _ => { match droppy().get() { Some(_value) => {
+        //~^ HELP: the value is now dropped here in Edition 2024
+        // do something else
+    } _ => {}}}}
+    //~^ HELP: the value is now dropped here in Edition 2024
+
+    if droppy().get().is_some() {
+        // Should not lint
+    } else { match droppy().get() { Some(_value) => {
+        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN: this changes meaning in Rust 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+    } _ => if droppy().get().is_none() {
+        //~^ HELP: the value is now dropped here in Edition 2024
+    }}}
+
+    if let Some(1) = { match Droppy.get() { Some(_value) => { Some(1) } _ => { None }} } {
+        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN: this changes meaning in Rust 2024
+        //~| HELP: the value is now dropped here in Edition 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+    }
+
+    if let () = { match Droppy.get() { Some(_value) => {} _ => {}} } {
+        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN: this changes meaning in Rust 2024
+        //~| HELP: the value is now dropped here in Edition 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+    }
+}

@@ -1,4 +1,5 @@
-//@only-target-linux
+// Only works on Unix targets
+//@ignore-target: windows wasm
 //@only-on-host
 
 fn main() {
@@ -26,7 +27,7 @@ fn test_pointer() {
 fn test_simple() {
     #[repr(C)]
     struct Simple {
-        field: i32
+        field: i32,
     }
 
     extern "C" {
@@ -41,7 +42,7 @@ fn test_simple() {
 // Test function that dereferences nested struct pointers and accesses fields.
 fn test_nested() {
     use std::ptr::NonNull;
-    
+
     #[derive(Debug, PartialEq, Eq)]
     #[repr(C)]
     struct Nested {
@@ -62,7 +63,6 @@ fn test_nested() {
 
 // Test function that dereferences static struct pointers and accesses fields.
 fn test_static() {
-
     #[repr(C)]
     struct Static {
         value: i32,
@@ -72,11 +72,8 @@ fn test_static() {
     extern "C" {
         fn access_static(n_ptr: *const Static) -> i32;
     }
-    
-    static STATIC: Static = Static {
-        value: 9001,
-        recurse: &STATIC,
-    };
+
+    static STATIC: Static = Static { value: 9001, recurse: &STATIC };
 
     assert_eq!(unsafe { access_static(&STATIC) }, 9001);
 }

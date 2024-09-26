@@ -1,5 +1,5 @@
 use crate::os::xous::ffi::{blocking_scalar, do_yield};
-use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
+use crate::os::xous::services::{TicktimerScalar, ticktimer_server};
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::atomic::{AtomicBool, AtomicUsize};
 

@@ -1,6 +1,5 @@
 use rustc_middle::mir::{self, NonDivergingIntrinsic};
 use rustc_middle::span_bug;
-use rustc_session::config::OptLevel;
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
@@ -8,7 +7,7 @@ use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "debug", skip(self, bx))]
-    pub fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
+    pub(crate) fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
         self.set_debug_loc(bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
@@ -68,10 +67,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_coverage(bx, kind, statement.source_info.scope);
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
-                if !matches!(bx.tcx().sess.opts.optimize, OptLevel::No | OptLevel::Less) {
-                    let op_val = self.codegen_operand(bx, op);
-                    bx.assume(op_val.immediate());
-                }
+                let op_val = self.codegen_operand(bx, op);
+                bx.assume(op_val.immediate());
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },

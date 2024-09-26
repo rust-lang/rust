@@ -22,8 +22,8 @@ use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::{cmp, env, fmt, mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,10 +253,10 @@ impl Command {
         attribute: usize,
         value: T,
     ) {
-        self.proc_thread_attributes.insert(
-            attribute,
-            ProcThreadAttributeValue { size: mem::size_of::<T>(), data: Box::new(value) },
-        );
+        self.proc_thread_attributes.insert(attribute, ProcThreadAttributeValue {
+            size: mem::size_of::<T>(),
+            data: Box::new(value),
+        });
     }
 
     pub fn spawn(
@@ -272,11 +272,24 @@ impl Command {
             None
         };
         let program = resolve_exe(&self.program, || env::var_os("PATH"), child_paths)?;
-        // Case insensitive "ends_with" of UTF-16 encoded ".bat" or ".cmd"
-        let is_batch_file = matches!(
-            program.len().checked_sub(5).and_then(|i| program.get(i..)),
-            Some([46, 98 | 66, 97 | 65, 116 | 84, 0] | [46, 99 | 67, 109 | 77, 100 | 68, 0])
-        );
+        let has_bat_extension = |program: &[u16]| {
+            matches!(
+                // Case insensitive "ends_with" of UTF-16 encoded ".bat" or ".cmd"
+                program.len().checked_sub(4).and_then(|i| program.get(i..)),
+                Some([46, 98 | 66, 97 | 65, 116 | 84] | [46, 99 | 67, 109 | 77, 100 | 68])
+            )
+        };
+        let is_batch_file = if path::is_verbatim(&program) {
+            has_bat_extension(&program[..program.len() - 1])
+        } else {
+            super::fill_utf16_buf(
+                |buffer, size| unsafe {
+                    // resolve the path so we can test the final file name.
+                    c::GetFullPathNameW(program.as_ptr(), size, buffer, ptr::null_mut())
+                },
+                |program| has_bat_extension(program),
+            )?
+        };
         let (program, mut cmd_str) = if is_batch_file {
             (
                 command_prompt()?,
@@ -355,10 +368,10 @@ impl Command {
                 StartupInfo: si,
                 lpAttributeList: proc_thread_attribute_list.0.as_mut_ptr() as _,
             };
-            si_ptr = core::ptr::addr_of_mut!(si_ex) as _;
+            si_ptr = (&raw mut si_ex) as _;
         } else {
             si.cb = mem::size_of::<c::STARTUPINFOW>() as u32;
-            si_ptr = core::ptr::addr_of_mut!(si) as _;
+            si_ptr = (&raw mut si) as _;
         }
 
         unsafe {
@@ -940,7 +953,7 @@ fn make_proc_thread_attribute_list(
     // It's theoretically possible for the attribute count to exceed a u32 value.
     // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
     for (&attribute, value) in attributes.iter().take(attribute_count as usize) {
-        let value_ptr = core::ptr::addr_of!(*value.data) as _;
+        let value_ptr = (&raw const *value.data) as _;
         cvt(unsafe {
             c::UpdateProcThreadAttribute(
                 proc_thread_attribute_list.0.as_mut_ptr() as _,

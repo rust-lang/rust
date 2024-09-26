@@ -8,9 +8,9 @@
 use hir::{
     db::{DefDatabase as _, HirDatabase as _},
     mir::{MirSpan, TerminatorKind},
-    ChalkTyInterner, DefWithBody, Semantics,
+    ChalkTyInterner, DefWithBody,
 };
-use ide_db::{FileRange, RootDatabase};
+use ide_db::{famous_defs::FamousDefs, FileRange};
 
 use span::EditionedFileId;
 use syntax::{
@@ -22,16 +22,16 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
-    def: &ast::Fn,
+    node: &ast::Fn,
 ) -> Option<()> {
     if !config.implicit_drop_hints {
         return None;
     }
 
-    let def = sema.to_def(def)?;
+    let def = sema.to_def(node)?;
     let def: DefWithBody = def.into();
 
     let (hir, source_map) = sema.db.body_with_source_map(def.into());
@@ -121,6 +121,7 @@ pub(super) fn hints(
                 kind: InlayKind::Drop,
                 label,
                 text_edit: None,
+                resolve_parent: Some(node.syntax().text_range()),
             })
         }
     }

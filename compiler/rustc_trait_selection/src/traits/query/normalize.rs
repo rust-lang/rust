@@ -13,8 +13,8 @@ use rustc_span::DUMMY_SP;
 use tracing::{debug, info, instrument};
 
 use super::NoSolution;
-use crate::error_reporting::traits::OverflowCause;
 use crate::error_reporting::InferCtxtErrorExt;
+use crate::error_reporting::traits::OverflowCause;
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
@@ -25,7 +25,7 @@ use crate::traits::{
 };
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
-impl<'cx, 'tcx> At<'cx, 'tcx> {
+impl<'a, 'tcx> At<'a, 'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer
@@ -160,9 +160,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
     }
 }
 
-struct QueryNormalizer<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'tcx>,
-    cause: &'cx ObligationCause<'tcx>,
+struct QueryNormalizer<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
+    cause: &'a ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
@@ -170,7 +170,7 @@ struct QueryNormalizer<'cx, 'tcx> {
     universes: Vec<Option<ty::UniverseIndex>>,
 }
 
-impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> {
+impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
     type Error = NoSolution;
 
     fn cx(&self) -> TyCtxt<'tcx> {

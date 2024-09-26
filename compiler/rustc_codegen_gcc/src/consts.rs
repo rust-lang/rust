@@ -1,11 +1,13 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute, Visibility};
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
-use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, StaticMethods};
+use rustc_codegen_ssa::traits::{
+    BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
+};
 use rustc_hir::def::DefKind;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    self, read_target_uint, ConstAllocation, ErrorHandled, Scalar as InterpScalar,
+    self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint,
 };
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance};
@@ -37,7 +39,7 @@ fn set_global_alignment<'gcc, 'tcx>(
     gv.set_alignment(align.bytes() as i32);
 }
 
-impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn static_addr_of(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
         // TODO(antoyo): implement a proper rvalue comparison in libgccjit instead of doing the
         // following:

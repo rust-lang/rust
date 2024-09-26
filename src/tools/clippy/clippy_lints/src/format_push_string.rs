@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::higher;
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{higher, match_def_path, paths};
 use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatPushString {
         let arg = match expr.kind {
             ExprKind::MethodCall(_, _, [arg], _) => {
                 if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-                    && match_def_path(cx, fn_def_id, &paths::PUSH_STR)
+                    && cx.tcx.is_diagnostic_item(sym::string_push_str, fn_def_id)
                 {
                     arg
                 } else {

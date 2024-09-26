@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, Diag, MultiSpan, StashKey};
+use rustc_errors::{Applicability, Diag, MultiSpan, StashKey, pluralize, struct_span_code_err};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -21,21 +21,21 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath};
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_middle::bug;
-use rustc_middle::ty::fast_reject::{simplify_type, DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::print::{
-    with_crate_prefix, with_forced_trimmed_paths, PrintTraitRefExt as _,
+    PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths,
 };
 use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{
-    edit_distance, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span, Symbol, DUMMY_SP,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span, Symbol, edit_distance,
 };
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    supertraits, FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
+    FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, supertraits,
 };
 use tracing::{debug, info, instrument};
 
@@ -62,14 +62,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // It might seem that we can use `predicate_must_hold_modulo_regions`,
                 // but since a Dummy binder is used to fill in the FnOnce trait's arguments,
                 // type resolution always gives a "maybe" here.
-                if self.autoderef(span, ty).any(|(ty, _)| {
+                if self.autoderef(span, ty).silence_errors().any(|(ty, _)| {
                     info!("check deref {:?} error", ty);
                     matches!(ty.kind(), ty::Error(_) | ty::Infer(_))
                 }) {
                     return false;
                 }
 
-                self.autoderef(span, ty).any(|(ty, _)| {
+                self.autoderef(span, ty).silence_errors().any(|(ty, _)| {
                     info!("check deref {:?} impl FnOnce", ty);
                     self.probe(|_| {
                         let trait_ref =
@@ -90,7 +90,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn is_slice_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        self.autoderef(span, ty).any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
+        self.autoderef(span, ty)
+            .silence_errors()
+            .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
     }
 
     fn impl_into_iterator_should_be_iterator(
@@ -672,13 +674,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut ty_str_reported = ty_str.clone();
         if let ty::Adt(_, generics) = rcvr_ty.kind() {
             if generics.len() > 0 {
-                let mut autoderef = self.autoderef(span, rcvr_ty);
+                let mut autoderef = self.autoderef(span, rcvr_ty).silence_errors();
                 let candidate_found = autoderef.any(|(ty, _)| {
                     if let ty::Adt(adt_def, _) = ty.kind() {
                         self.tcx
                             .inherent_impls(adt_def.did())
                             .into_iter()
-                            .flatten()
                             .any(|def_id| self.associated_value(*def_id, item_name).is_some())
                     } else {
                         false
@@ -1252,11 +1253,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && suggested_bounds.contains(parent)
                         {
                             // We don't suggest `PartialEq` when we already suggest `Eq`.
-                        } else if !suggested_bounds.contains(pred) {
-                            if collect_type_param_suggestions(self_ty, *pred, &p) {
-                                suggested = true;
-                                suggested_bounds.insert(pred);
-                            }
+                        } else if !suggested_bounds.contains(pred)
+                            && collect_type_param_suggestions(self_ty, *pred, &p)
+                        {
+                            suggested = true;
+                            suggested_bounds.insert(pred);
                         }
                         (
                             match parent_pred {
@@ -1267,14 +1268,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         if !suggested
                                             && !suggested_bounds.contains(pred)
                                             && !suggested_bounds.contains(parent_pred)
-                                        {
-                                            if collect_type_param_suggestions(
+                                            && collect_type_param_suggestions(
                                                 self_ty,
                                                 *parent_pred,
                                                 &p,
-                                            ) {
-                                                suggested_bounds.insert(pred);
-                                            }
+                                            )
+                                        {
+                                            suggested_bounds.insert(pred);
                                         }
                                         format!("`{p}`\nwhich is required by `{parent_p}`")
                                     }
@@ -1317,7 +1317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let actual_prefix = rcvr_ty.prefix_string(self.tcx);
                 info!("unimplemented_traits.len() == {}", unimplemented_traits.len());
                 let mut long_ty_file = None;
-                let (primary_message, label) = if unimplemented_traits.len() == 1
+                let (primary_message, label, notes) = if unimplemented_traits.len() == 1
                     && unimplemented_traits_only
                 {
                     unimplemented_traits
@@ -1327,16 +1327,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if trait_ref.self_ty().references_error() || rcvr_ty.references_error()
                             {
                                 // Avoid crashing.
-                                return (None, None);
+                                return (None, None, Vec::new());
                             }
-                            let OnUnimplementedNote { message, label, .. } = self
+                            let OnUnimplementedNote { message, label, notes, .. } = self
                                 .err_ctxt()
                                 .on_unimplemented_note(trait_ref, &obligation, &mut long_ty_file);
-                            (message, label)
+                            (message, label, notes)
                         })
                         .unwrap()
                 } else {
-                    (None, None)
+                    (None, None, Vec::new())
                 };
                 let primary_message = primary_message.unwrap_or_else(|| {
                     format!(
@@ -1363,6 +1363,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "the following trait bounds were not satisfied:\n{bound_list}"
                     ));
                 }
+                for note in notes {
+                    err.note(note);
+                }
+
                 suggested_derive = self.suggest_derive(&mut err, unsatisfied_predicates);
 
                 unsatisfied_bounds = true;
@@ -1433,7 +1437,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .tcx
                         .inherent_impls(adt.did())
                         .into_iter()
-                        .flatten()
                         .copied()
                         .filter(|def_id| {
                             if let Some(assoc) = self.associated_value(*def_id, item_name) {
@@ -1716,20 +1719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if item_name.name == sym::as_str && rcvr_ty.peel_refs().is_str() {
-            let msg = "remove this method call";
-            let mut fallback_span = true;
-            if let SelfSource::MethodCall(expr) = source {
-                let call_expr = self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id));
-                if let Some(span) = call_expr.span.trim_start(expr.span) {
-                    err.span_suggestion(span, msg, "", Applicability::MachineApplicable);
-                    fallback_span = false;
-                }
-            }
-            if fallback_span {
-                err.span_label(span, msg);
-            }
-        } else if let Some(similar_candidate) = similar_candidate {
+        if let Some(similar_candidate) = similar_candidate {
             // Don't emit a suggestion if we found an actual method
             // that had unsatisfied trait bounds
             if unsatisfied_predicates.is_empty()
@@ -1908,7 +1898,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_args: Option<Vec<Ty<'tcx>>>,
     ) -> Option<Symbol> {
         if let ty::Adt(adt, adt_args) = rcvr_ty.kind() {
-            for inherent_impl_did in self.tcx.inherent_impls(adt.did()).into_iter().flatten() {
+            for inherent_impl_did in self.tcx.inherent_impls(adt.did()).into_iter() {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
@@ -2122,9 +2112,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty::Adt(adt_def, _) = rcvr_ty.kind() else {
             return;
         };
-        // FIXME(oli-obk): try out bubbling this error up one level and cancelling the other error in that case.
-        let Ok(impls) = self.tcx.inherent_impls(adt_def.did()) else { return };
-        let mut items = impls
+        let mut items = self
+            .tcx
+            .inherent_impls(adt_def.did())
             .iter()
             .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
             // Only assoc fn with no receivers and only if
@@ -2234,9 +2224,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let impl_ty = self.tcx.type_of(*impl_did).instantiate_identity();
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
+                .silence_errors()
                 .find(|(rcvr_ty, _)| {
-                    DeepRejectCtxt::new(self.tcx, TreatParams::ForLookup)
-                        .types_may_unify(*rcvr_ty, impl_ty)
+                    DeepRejectCtxt::relate_rigid_infer(self.tcx).types_may_unify(*rcvr_ty, impl_ty)
                 })
                 .map_or(impl_ty, |(ty, _)| ty)
                 .peel_refs();
@@ -2350,17 +2340,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
     ) -> bool {
         let tcx = self.tcx;
-        let field_receiver = self.autoderef(span, rcvr_ty).find_map(|(ty, _)| match ty.kind() {
-            ty::Adt(def, args) if !def.is_enum() => {
-                let variant = &def.non_enum_variant();
-                tcx.find_field_index(item_name, variant).map(|index| {
-                    let field = &variant.fields[index];
-                    let field_ty = field.ty(tcx, args);
-                    (field, field_ty)
-                })
-            }
-            _ => None,
-        });
+        let field_receiver =
+            self.autoderef(span, rcvr_ty).silence_errors().find_map(|(ty, _)| match ty.kind() {
+                ty::Adt(def, args) if !def.is_enum() => {
+                    let variant = &def.non_enum_variant();
+                    tcx.find_field_index(item_name, variant).map(|index| {
+                        let field = &variant.fields[index];
+                        let field_ty = field.ty(tcx, args);
+                        (field, field_ty)
+                    })
+                }
+                _ => None,
+            });
         if let Some((field, field_ty)) = field_receiver {
             let scope = tcx.parent_module_from_def_id(self.body_id);
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
@@ -2498,11 +2489,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .into_iter()
             .any(|info| self.associated_value(info.def_id, item_name).is_some());
         let found_assoc = |ty: Ty<'tcx>| {
-            simplify_type(tcx, ty, TreatParams::AsCandidateKey)
+            simplify_type(tcx, ty, TreatParams::InstantiateWithInfer)
                 .and_then(|simp| {
                     tcx.incoherent_impls(simp)
                         .into_iter()
-                        .flatten()
                         .find_map(|&id| self.associated_value(id, item_name))
                 })
                 .is_some()
@@ -2673,9 +2663,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if let SelfSource::MethodCall(expr) = source {
             let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
-            for (fields, args) in
-                self.get_field_candidates_considering_privacy(span, actual, mod_id, expr.hir_id)
-            {
+            for (fields, args) in self.get_field_candidates_considering_privacy_for_diag(
+                span,
+                actual,
+                mod_id,
+                expr.hir_id,
+            ) {
                 let call_expr = self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id));
 
                 let lang_items = self.tcx.lang_items();
@@ -2691,7 +2684,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut candidate_fields: Vec<_> = fields
                     .into_iter()
                     .filter_map(|candidate_field| {
-                        self.check_for_nested_field_satisfying(
+                        self.check_for_nested_field_satisfying_condition_for_diag(
                             span,
                             &|_, field_ty| {
                                 self.lookup_probe_for_diagnostic(
@@ -3193,7 +3186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let SelfSource::QPath(ty) = self_source else {
             return;
         };
-        for (deref_ty, _) in self.autoderef(DUMMY_SP, rcvr_ty).skip(1) {
+        for (deref_ty, _) in self.autoderef(DUMMY_SP, rcvr_ty).silence_errors().skip(1) {
             if let Ok(pick) = self.probe_for_name(
                 Mode::Path,
                 item_name,
@@ -3963,7 +3956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // cases where a positive bound implies a negative impl.
                 (candidates, Vec::new())
             } else if let Some(simp_rcvr_ty) =
-                simplify_type(self.tcx, rcvr_ty, TreatParams::ForLookup)
+                simplify_type(self.tcx, rcvr_ty, TreatParams::AsRigid)
             {
                 let mut potential_candidates = Vec::new();
                 let mut explicitly_negative = Vec::new();
@@ -3981,7 +3974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .any(|header| {
                             let imp = header.trait_ref.instantiate_identity();
                             let imp_simp =
-                                simplify_type(self.tcx, imp.self_ty(), TreatParams::ForLookup);
+                                simplify_type(self.tcx, imp.self_ty(), TreatParams::AsRigid);
                             imp_simp.is_some_and(|s| s == simp_rcvr_ty)
                         })
                     {
@@ -4219,7 +4212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return is_local(rcvr_ty);
         }
 
-        self.autoderef(span, rcvr_ty).any(|(ty, _)| is_local(ty))
+        self.autoderef(span, rcvr_ty).silence_errors().any(|(ty, _)| is_local(ty))
     }
 }
 

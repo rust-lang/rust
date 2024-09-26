@@ -1,9 +1,9 @@
 use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Ident, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
@@ -115,13 +115,10 @@ fn cs_clone_simple(
                 // type parameters.
             } else if !field.ty.kind.is_anon_adt() {
                 // let _: AssertParamIsClone<FieldTy>;
-                super::assert_ty_bounds(
-                    cx,
-                    &mut stmts,
-                    field.ty.clone(),
-                    field.span,
-                    &[sym::clone, sym::AssertParamIsClone],
-                );
+                super::assert_ty_bounds(cx, &mut stmts, field.ty.clone(), field.span, &[
+                    sym::clone,
+                    sym::AssertParamIsClone,
+                ]);
             }
         }
     };
@@ -130,13 +127,10 @@ fn cs_clone_simple(
         // Just a single assertion for unions, that the union impls `Copy`.
         // let _: AssertParamIsCopy<Self>;
         let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
-        super::assert_ty_bounds(
-            cx,
-            &mut stmts,
-            self_ty,
-            trait_span,
-            &[sym::clone, sym::AssertParamIsCopy],
-        );
+        super::assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, &[
+            sym::clone,
+            sym::AssertParamIsCopy,
+        ]);
     } else {
         match *substr.fields {
             StaticStruct(vdata, ..) => {

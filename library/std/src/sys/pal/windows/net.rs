@@ -9,7 +9,7 @@ use crate::os::windows::io::{
 };
 use crate::sync::OnceLock;
 use crate::sys::c;
-use crate::sys_common::{net, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner, net};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, sys};
 
@@ -27,12 +27,12 @@ pub mod netc {
     use crate::sys::c::{self, ADDRESS_FAMILY, ADDRINFOA, SOCKADDR, SOCKET};
     // re-exports from Windows API bindings.
     pub use crate::sys::c::{
-        bind, connect, freeaddrinfo, getpeername, getsockname, getsockopt, listen, setsockopt,
-        ADDRESS_FAMILY as sa_family_t, ADDRINFOA as addrinfo, IPPROTO_IP, IPPROTO_IPV6,
-        IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_LOOP, IPV6_V6ONLY,
-        IP_ADD_MEMBERSHIP, IP_DROP_MEMBERSHIP, IP_MULTICAST_LOOP, IP_MULTICAST_TTL, IP_TTL,
-        SOCKADDR as sockaddr, SOCKADDR_STORAGE as sockaddr_storage, SOCK_DGRAM, SOCK_STREAM,
-        SOL_SOCKET, SO_BROADCAST, SO_RCVTIMEO, SO_SNDTIMEO,
+        ADDRESS_FAMILY as sa_family_t, ADDRINFOA as addrinfo, IP_ADD_MEMBERSHIP,
+        IP_DROP_MEMBERSHIP, IP_MULTICAST_LOOP, IP_MULTICAST_TTL, IP_TTL, IPPROTO_IP, IPPROTO_IPV6,
+        IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_LOOP, IPV6_V6ONLY, SO_BROADCAST,
+        SO_RCVTIMEO, SO_SNDTIMEO, SOCK_DGRAM, SOCK_STREAM, SOCKADDR as sockaddr,
+        SOCKADDR_STORAGE as sockaddr_storage, SOL_SOCKET, bind, connect, freeaddrinfo, getpeername,
+        getsockname, getsockopt, listen, setsockopt,
     };
 
     #[allow(non_camel_case_types)]
@@ -390,7 +390,7 @@ impl Socket {
                 buf.as_mut_ptr() as *mut _,
                 length,
                 flags,
-                core::ptr::addr_of_mut!(storage) as *mut _,
+                (&raw mut storage) as *mut _,
                 &mut addrlen,
             )
         };

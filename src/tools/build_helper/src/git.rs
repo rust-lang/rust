@@ -1,9 +1,10 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 pub struct GitConfig<'a> {
     pub git_repository: &'a str,
     pub nightly_branch: &'a str,
+    pub git_merge_commit_email: &'a str,
 }
 
 /// Runs a command and returns the output
@@ -95,7 +96,11 @@ pub fn updated_master_branch(
     Err("Cannot find any suitable upstream master branch".to_owned())
 }
 
-pub fn get_git_merge_base(
+/// Finds the nearest merge commit by comparing the local `HEAD` with the upstream branch's state.
+/// To work correctly, the upstream remote must be properly configured using `git remote add <name> <url>`.
+/// In most cases `get_closest_merge_commit` is the function you are looking for as it doesn't require remote
+/// to be configured.
+fn git_upstream_merge_base(
     config: &GitConfig<'_>,
     git_dir: Option<&Path>,
 ) -> Result<String, String> {
@@ -107,6 +112,38 @@ pub fn get_git_merge_base(
     Ok(output_result(git.arg("merge-base").arg(&updated_master).arg("HEAD"))?.trim().to_owned())
 }
 
+/// Searches for the nearest merge commit in the repository that also exists upstream.
+///
+/// If it fails to find the upstream remote, it then looks for the most recent commit made
+/// by the merge bot by matching the author's email address with the merge bot's email.
+pub fn get_closest_merge_commit(
+    git_dir: Option<&Path>,
+    config: &GitConfig<'_>,
+    target_paths: &[PathBuf],
+) -> Result<String, String> {
+    let mut git = Command::new("git");
+
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+
+    let merge_base = git_upstream_merge_base(config, git_dir).unwrap_or_else(|_| "HEAD".into());
+
+    git.args([
+        "rev-list",
+        &format!("--author={}", config.git_merge_commit_email),
+        "-n1",
+        "--first-parent",
+        &merge_base,
+    ]);
+
+    if !target_paths.is_empty() {
+        git.arg("--").args(target_paths);
+    }
+
+    Ok(output_result(&mut git)?.trim().to_owned())
+}
+
 /// Returns the files that have been modified in the current branch compared to the master branch.
 /// The `extensions` parameter can be used to filter the files by their extension.
 /// Does not include removed files.
@@ -116,7 +153,7 @@ pub fn get_git_modified_files(
     git_dir: Option<&Path>,
     extensions: &[&str],
 ) -> Result<Option<Vec<String>>, String> {
-    let merge_base = get_git_merge_base(config, git_dir)?;
+    let merge_base = get_closest_merge_commit(git_dir, config, &[])?;
 
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
@@ -158,4 +195,68 @@ pub fn get_git_untracked_files(
         .map(|s| s.trim().to_owned())
         .collect();
     Ok(Some(files))
+}
+
+/// Print a warning if the branch returned from `updated_master_branch` is old
+///
+/// For certain configurations of git repository, this remote will not be
+/// updated when running `git pull`.
+///
+/// This can result in formatting thousands of files instead of a dozen,
+/// so we should warn the user something is wrong.
+pub fn warn_old_master_branch(config: &GitConfig<'_>, git_dir: &Path) {
+    if crate::ci::CiEnv::is_ci() {
+        // this warning is useless in CI,
+        // and CI probably won't have the right branches anyway.
+        return;
+    }
+    // this will be overwritten by the actual name, if possible
+    let mut updated_master = "the upstream master branch".to_string();
+    match warn_old_master_branch_(config, git_dir, &mut updated_master) {
+        Ok(branch_is_old) => {
+            if !branch_is_old {
+                return;
+            }
+            // otherwise fall through and print the rest of the warning
+        }
+        Err(err) => {
+            eprintln!("warning: unable to check if {updated_master} is old due to error: {err}")
+        }
+    }
+    eprintln!(
+        "warning: {updated_master} is used to determine if files have been modified\n\
+         warning: if it is not updated, this may cause files to be needlessly reformatted"
+    );
+}
+
+pub fn warn_old_master_branch_(
+    config: &GitConfig<'_>,
+    git_dir: &Path,
+    updated_master: &mut String,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    use std::time::Duration;
+    *updated_master = updated_master_branch(config, Some(git_dir))?;
+    let branch_path = git_dir.join(".git/refs/remotes").join(&updated_master);
+    const WARN_AFTER: Duration = Duration::from_secs(60 * 60 * 24 * 10);
+    let meta = match std::fs::metadata(&branch_path) {
+        Ok(meta) => meta,
+        Err(err) => {
+            let gcd = git_common_dir(&git_dir)?;
+            if branch_path.starts_with(&gcd) {
+                return Err(Box::new(err));
+            }
+            std::fs::metadata(Path::new(&gcd).join("refs/remotes").join(&updated_master))?
+        }
+    };
+    if meta.modified()?.elapsed()? > WARN_AFTER {
+        eprintln!("warning: {updated_master} has not been updated in 10 days");
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+fn git_common_dir(dir: &Path) -> Result<String, String> {
+    output_result(Command::new("git").arg("-C").arg(dir).arg("rev-parse").arg("--git-common-dir"))
+        .map(|x| x.trim().to_string())
 }

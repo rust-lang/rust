@@ -1,5 +1,5 @@
 use std::env;
-use std::fs::{remove_file, File};
+use std::fs::{File, remove_file};
 use std::io::Write;
 use std::path::Path;
 
@@ -32,7 +32,7 @@ fn download_ci_llvm() {
     assert!(!parse_llvm("llvm.download-ci-llvm = false"));
     assert_eq!(parse_llvm(""), if_unchanged);
     assert_eq!(parse_llvm("rust.channel = \"dev\""), if_unchanged);
-    assert!(!parse_llvm("rust.channel = \"stable\""));
+    assert!(parse_llvm("rust.channel = \"stable\""));
     assert_eq!(parse_llvm("build.build = \"x86_64-unknown-linux-gnu\""), if_unchanged);
     assert_eq!(
         parse_llvm(
@@ -316,4 +316,13 @@ fn order_of_clippy_rules() {
     ];
 
     assert_eq!(expected, actual);
+}
+
+#[test]
+fn verbose_tests_default_value() {
+    let config = Config::parse(Flags::parse(&["build".into(), "compiler".into()]));
+    assert_eq!(config.verbose_tests, false);
+
+    let config = Config::parse(Flags::parse(&["build".into(), "compiler".into(), "-v".into()]));
+    assert_eq!(config.verbose_tests, true);
 }

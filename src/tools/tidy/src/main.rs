@@ -9,7 +9,7 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread::{self, scope, ScopedJoinHandle};
+use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
 use tidy::*;
@@ -108,6 +108,7 @@ fn main() {
         check!(mir_opt_tests, &tests_path, bless);
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
+        check!(rustdoc_templates, &librustdoc_path);
         check!(known_bug, &crashes_path);
         check!(unknown_revision, &tests_path);
 

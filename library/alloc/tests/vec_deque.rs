@@ -1,11 +1,14 @@
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use core::num::NonZero;
 use std::assert_matches::assert_matches;
-use std::collections::vec_deque::Drain;
 use std::collections::TryReserveErrorKind::*;
 use std::collections::VecDeque;
+use std::collections::vec_deque::Drain;
 use std::fmt::Debug;
 use std::ops::Bound::*;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use Taggy::*;
 use Taggypar::*;

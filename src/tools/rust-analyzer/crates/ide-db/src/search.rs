@@ -8,17 +8,18 @@ use std::mem;
 use std::{cell::LazyCell, cmp::Reverse};
 
 use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
+use either::Either;
 use hir::{
     sym, Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer,
-    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, ItemContainer, ModuleSource,
-    PathResolution, Semantics, Visibility,
+    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
+    ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::EditionedFileId;
 use syntax::{
-    ast::{self, HasName},
+    ast::{self, HasName, Rename},
     match_ast, AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize,
     ToSmolStr,
 };
@@ -318,6 +319,23 @@ impl Definition {
             };
         }
 
+        if let Definition::InlineAsmOperand(op) = self {
+            let def = match op.parent(db) {
+                DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
+                DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
+                DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                // FIXME: implement
+                DefWithBody::InTypeConst(_) => return SearchScope::empty(),
+            };
+            return match def {
+                Some(def) => SearchScope::file_range(
+                    def.as_ref().original_file_range_with_macro_call_body(db),
+                ),
+                None => SearchScope::single_file(file_id),
+            };
+        }
+
         if let Definition::SelfType(impl_) = self {
             return match impl_.source(db).map(|src| src.syntax().cloned()) {
                 Some(def) => SearchScope::file_range(
@@ -387,6 +405,7 @@ impl Definition {
     pub fn usages<'a>(self, sema: &'a Semantics<'_, RootDatabase>) -> FindUsages<'a> {
         FindUsages {
             def: self,
+            rename: None,
             assoc_item_container: self.as_assoc_item(sema.db).map(|a| a.container(sema.db)),
             sema,
             scope: None,
@@ -399,6 +418,7 @@ impl Definition {
 #[derive(Clone)]
 pub struct FindUsages<'a> {
     def: Definition,
+    rename: Option<&'a Rename>,
     sema: &'a Semantics<'a, RootDatabase>,
     scope: Option<&'a SearchScope>,
     /// The container of our definition should it be an assoc item
@@ -426,6 +446,14 @@ impl<'a> FindUsages<'a> {
     pub fn set_scope(mut self, scope: Option<&'a SearchScope>) -> Self {
         assert!(self.scope.is_none());
         self.scope = scope;
+        self
+    }
+
+    // FIXME: This is just a temporary fix for not handling import aliases like
+    // `use Foo as Bar`. We need to support them in a proper way.
+    // See issue #14079
+    pub fn with_rename(mut self, rename: Option<&'a Rename>) -> Self {
+        self.rename = rename;
         self
     }
 
@@ -866,9 +894,16 @@ impl<'a> FindUsages<'a> {
             }
         };
 
-        let name = match self.def {
+        let name = match (self.rename, self.def) {
+            (Some(rename), _) => {
+                if rename.underscore_token().is_some() {
+                    None
+                } else {
+                    rename.name().map(|n| n.to_smolstr())
+                }
+            }
             // special case crate modules as these do not have a proper name
-            Definition::Module(module) if module.is_crate_root() => {
+            (_, Definition::Module(module)) if module.is_crate_root() => {
                 // FIXME: This assumes the crate name is always equal to its display name when it
                 // really isn't
                 // we should instead look at the dependency edge name and recursively search our way
@@ -908,7 +943,6 @@ impl<'a> FindUsages<'a> {
         let finder = &Finder::new(name);
         let include_self_kw_refs =
             self.include_self_kw_refs.as_ref().map(|ty| (ty, Finder::new("Self")));
-
         for (text, file_id, search_range) in Self::scope_files(sema.db, &search_scope) {
             self.sema.db.unwind_if_cancelled();
             let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
@@ -917,7 +951,7 @@ impl<'a> FindUsages<'a> {
             for offset in Self::match_indices(&text, finder, search_range) {
                 tree.token_at_offset(offset).for_each(|token| {
                     let Some(str_token) = ast::String::cast(token.clone()) else { return };
-                    if let Some((range, nameres)) =
+                    if let Some((range, Some(nameres))) =
                         sema.check_for_format_args_template(token, offset)
                     {
                         if self.found_format_args_ref(file_id, range, str_token, nameres, sink) {}
@@ -1087,19 +1121,19 @@ impl<'a> FindUsages<'a> {
         file_id: EditionedFileId,
         range: TextRange,
         token: ast::String,
-        res: Option<PathResolution>,
+        res: Either<PathResolution, InlineAsmOperand>,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
-        match res.map(Definition::from) {
-            Some(def) if def == self.def => {
-                let reference = FileReference {
-                    range,
-                    name: FileReferenceNode::FormatStringEntry(token, range),
-                    category: ReferenceCategory::READ,
-                };
-                sink(file_id, reference)
-            }
-            _ => false,
+        let def = res.either(Definition::from, Definition::from);
+        if def == self.def {
+            let reference = FileReference {
+                range,
+                name: FileReferenceNode::FormatStringEntry(token, range),
+                category: ReferenceCategory::READ,
+            };
+            sink(file_id, reference)
+        } else {
+            false
         }
     }
 

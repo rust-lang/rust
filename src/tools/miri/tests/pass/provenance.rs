@@ -12,6 +12,7 @@ fn main() {
     bytewise_custom_memcpy();
     bytewise_custom_memcpy_chunked();
     int_load_strip_provenance();
+    maybe_uninit_preserves_partial_provenance();
 }
 
 /// Some basic smoke tests for provenance.
@@ -144,4 +145,25 @@ fn int_load_strip_provenance() {
     let ptrs = [&42];
     let ints: [usize; 1] = unsafe { mem::transmute(ptrs) };
     assert_eq!(ptrs[0] as *const _ as usize, ints[0]);
+}
+
+fn maybe_uninit_preserves_partial_provenance() {
+    // This is the same test as ptr_copy_loses_partial_provenance.rs, but using MaybeUninit and thus
+    // properly preserving partial provenance.
+    unsafe {
+        let mut bytes = [1u8; 16];
+        let bytes = bytes.as_mut_ptr();
+
+        // Put a pointer in the middle.
+        bytes.add(4).cast::<&i32>().write_unaligned(&42);
+        // Copy the entire thing as two pointers but not perfectly
+        // overlapping with the pointer we have in there.
+        let copy = bytes.cast::<[mem::MaybeUninit<*const ()>; 2]>().read_unaligned();
+        let copy_bytes = copy.as_ptr().cast::<u8>();
+        // Now go to the middle of the copy and get the pointer back out.
+        let ptr = copy_bytes.add(4).cast::<*const i32>().read_unaligned();
+        // And deref this to ensure we get the right value.
+        let val = *ptr;
+        assert_eq!(val, 42);
+    }
 }

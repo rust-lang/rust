@@ -115,30 +115,58 @@ fn test_from_utf8_lossy() {
 }
 
 #[test]
+fn test_fromutf8error_into_lossy() {
+    fn func(input: &[u8]) -> String {
+        String::from_utf8(input.to_owned()).unwrap_or_else(|e| e.into_utf8_lossy())
+    }
+
+    let xs = b"hello";
+    let ys = "hello".to_owned();
+    assert_eq!(func(xs), ys);
+
+    let xs = "ศไทย中华Việt Nam".as_bytes();
+    let ys = "ศไทย中华Việt Nam".to_owned();
+    assert_eq!(func(xs), ys);
+
+    let xs = b"Hello\xC2 There\xFF Goodbye";
+    assert_eq!(func(xs), "Hello\u{FFFD} There\u{FFFD} Goodbye".to_owned());
+
+    let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
+    assert_eq!(func(xs), "Hello\u{FFFD}\u{FFFD} There\u{FFFD} Goodbye".to_owned());
+
+    let xs = b"\xF5foo\xF5\x80bar";
+    assert_eq!(func(xs), "\u{FFFD}foo\u{FFFD}\u{FFFD}bar".to_owned());
+
+    let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
+    assert_eq!(func(xs), "\u{FFFD}foo\u{FFFD}bar\u{FFFD}baz".to_owned());
+
+    let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
+    assert_eq!(func(xs), "\u{FFFD}foo\u{FFFD}bar\u{FFFD}\u{FFFD}baz".to_owned());
+
+    let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
+    assert_eq!(func(xs), "\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}foo\u{10000}bar".to_owned());
+
+    // surrogates
+    let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
+    assert_eq!(func(xs), "\u{FFFD}\u{FFFD}\u{FFFD}foo\u{FFFD}\u{FFFD}\u{FFFD}bar".to_owned());
+}
+
+#[test]
 fn test_from_utf16() {
     let pairs = [
-        (
-            String::from("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
-            vec![
-                0xd800, 0xdf45, 0xd800, 0xdf3f, 0xd800, 0xdf3b, 0xd800, 0xdf46, 0xd800, 0xdf39,
-                0xd800, 0xdf3b, 0xd800, 0xdf30, 0x000a,
-            ],
-        ),
-        (
-            String::from("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
-            vec![
-                0xd801, 0xdc12, 0xd801, 0xdc49, 0xd801, 0xdc2e, 0xd801, 0xdc40, 0xd801, 0xdc32,
-                0xd801, 0xdc4b, 0x0020, 0xd801, 0xdc0f, 0xd801, 0xdc32, 0xd801, 0xdc4d, 0x000a,
-            ],
-        ),
-        (
-            String::from("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
-            vec![
-                0xd800, 0xdf00, 0xd800, 0xdf16, 0xd800, 0xdf0b, 0xd800, 0xdf04, 0xd800, 0xdf11,
-                0xd800, 0xdf09, 0x00b7, 0xd800, 0xdf0c, 0xd800, 0xdf04, 0xd800, 0xdf15, 0xd800,
-                0xdf04, 0xd800, 0xdf0b, 0xd800, 0xdf09, 0xd800, 0xdf11, 0x000a,
-            ],
-        ),
+        (String::from("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"), vec![
+            0xd800, 0xdf45, 0xd800, 0xdf3f, 0xd800, 0xdf3b, 0xd800, 0xdf46, 0xd800, 0xdf39, 0xd800,
+            0xdf3b, 0xd800, 0xdf30, 0x000a,
+        ]),
+        (String::from("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"), vec![
+            0xd801, 0xdc12, 0xd801, 0xdc49, 0xd801, 0xdc2e, 0xd801, 0xdc40, 0xd801, 0xdc32, 0xd801,
+            0xdc4b, 0x0020, 0xd801, 0xdc0f, 0xd801, 0xdc32, 0xd801, 0xdc4d, 0x000a,
+        ]),
+        (String::from("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"), vec![
+            0xd800, 0xdf00, 0xd800, 0xdf16, 0xd800, 0xdf0b, 0xd800, 0xdf04, 0xd800, 0xdf11, 0xd800,
+            0xdf09, 0x00b7, 0xd800, 0xdf0c, 0xd800, 0xdf04, 0xd800, 0xdf15, 0xd800, 0xdf04, 0xd800,
+            0xdf0b, 0xd800, 0xdf09, 0xd800, 0xdf11, 0x000a,
+        ]),
         (
             String::from("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
             vec![

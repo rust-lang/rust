@@ -5,12 +5,12 @@ use std::sync::LazyLock as Lazy;
 
 use rustc_ast::tokenstream::TokenTree;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
-use rustc_span::symbol::{kw, sym, Symbol};
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Symbol, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, warn};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -18,10 +18,10 @@ use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::synthesize_blanket_impls;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline,
     AssocItemConstraint, AssocItemConstraintKind, Crate, ExternalCrate, Generic, GenericArg,
     GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment, Primitive,
-    PrimitiveType, Term, Type,
+    PrimitiveType, Term, Type, clean_doc_module, clean_middle_const, clean_middle_region,
+    clean_middle_ty, inline,
 };
 use crate::core::DocContext;
 use crate::html::format::visibility_to_src_with_space;
@@ -36,7 +36,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     // understood by rustdoc.
     let mut module = clean_doc_module(&module, cx);
 
-    match *module.kind {
+    match module.kind {
         ItemKind::ModuleItem(ref module) => {
             for it in &module.items {
                 // `compiler_builtins` should be masked too, but we can't apply
@@ -60,7 +60,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
     {
-        let ItemKind::ModuleItem(ref mut m) = *module.kind else { unreachable!() };
+        let ItemKind::ModuleItem(ref mut m) = &mut module.inner.kind else { unreachable!() };
         m.items.extend(primitives.iter().map(|&(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
@@ -281,7 +281,7 @@ pub(crate) fn build_deref_target_impls(
     let tcx = cx.tcx;
 
     for item in items {
-        let target = match *item.kind {
+        let target = match item.kind {
             ItemKind::AssocTypeItem(ref t, _) => &t.type_,
             _ => continue,
         };

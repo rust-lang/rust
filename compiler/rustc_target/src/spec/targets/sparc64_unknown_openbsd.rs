@@ -1,7 +1,7 @@
 use crate::abi::Endian;
-use crate::spec::{base, Cc, LinkerFlavor, Lld, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();
     base.endian = Endian::Big;
     base.cpu = "v9".into();

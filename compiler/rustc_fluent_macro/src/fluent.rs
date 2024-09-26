@@ -11,7 +11,7 @@ use fluent_syntax::parser::ParserError;
 use proc_macro::{Diagnostic, Level, Span};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Ident, LitStr};
+use syn::{Ident, LitStr, parse_macro_input};
 use unic_langid::langid;
 
 /// Helper function for returning an absolute path for macro-invocation relative file paths.
@@ -138,25 +138,8 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 // with a lowercase as rustc errors do.
                 err.replace_range(0..1, &err.chars().next().unwrap().to_lowercase().to_string());
 
-                let line_starts: Vec<usize> = std::iter::once(0)
-                    .chain(
-                        this.source()
-                            .char_indices()
-                            .filter_map(|(i, c)| Some(i + 1).filter(|_| c == '\n')),
-                    )
-                    .collect();
-                let line_start = line_starts
-                    .iter()
-                    .enumerate()
-                    .map(|(line, idx)| (line + 1, idx))
-                    .filter(|(_, idx)| **idx <= pos.start)
-                    .last()
-                    .unwrap()
-                    .0;
-
                 let message = annotate_snippets::Level::Error.title(&err).snippet(
                     Snippet::source(this.source())
-                        .line_start(line_start)
                         .origin(&relative_ftl_path)
                         .fold(true)
                         .annotation(annotate_snippets::Level::Error.span(pos.start..pos.end - 1)),

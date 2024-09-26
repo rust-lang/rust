@@ -1972,16 +1972,6 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
     };
 }
 
-// Use this when the generated code should differ between signed and unsigned types.
-macro_rules! sign_dependent_expr {
-    (signed ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
-        $signed_case
-    };
-    (unsigned ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
-        $unsigned_case
-    };
-}
-
 nonzero_integer! {
     Self = NonZeroU8,
     Primitive = unsigned u8,

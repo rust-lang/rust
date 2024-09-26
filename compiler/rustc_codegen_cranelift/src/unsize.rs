@@ -24,17 +24,32 @@ pub(crate) fn unsized_info<'tcx>(
     let (source, target) =
         fx.tcx.struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
-        (&ty::Array(_, len), &ty::Slice(_)) => fx
-            .bcx
-            .ins()
-            .iconst(fx.pointer_type, len.eval_target_usize(fx.tcx, ParamEnv::reveal_all()) as i64),
+        (&ty::Array(_, len), &ty::Slice(_)) => fx.bcx.ins().iconst(
+            fx.pointer_type,
+            len.try_to_target_usize(fx.tcx).expect("expected monomorphic const in codegen") as i64,
+        ),
         (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
             if src_dyn_kind == target_dyn_kind =>
         {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
-                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
+                // Codegen takes advantage of the additional assumption, where if the
+                // principal trait def id of what's being casted doesn't change,
+                // then we don't need to adjust the vtable at all. This
+                // corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
+                // requires that `A = B`; we don't allow *upcasting* objects
+                // between the same trait with different args. If we, for
+                // some reason, were to relax the `Unsize` trait, it could become
+                // unsound, so let's assert here that the trait refs are *equal*.
+                //
+                // We can use `assert_eq` because the binders should have been anonymized,
+                // and because higher-ranked equality now requires the binders are equal.
+                debug_assert_eq!(
+                    data_a.principal(),
+                    data_b.principal(),
+                    "NOP unsize vtable changed principal trait ref: {data_a} -> {data_b}"
+                );
                 return old_info;
             }
 

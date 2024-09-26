@@ -9,8 +9,6 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 
-use super::MirPass;
-
 /// Pass to convert `if` conditions on integrals into switches on the integral.
 /// For an example, it turns something like
 ///
@@ -25,9 +23,9 @@ use super::MirPass;
 /// ```ignore (MIR)
 /// switchInt(_4) -> [43i32: bb3, otherwise: bb2];
 /// ```
-pub struct SimplifyComparisonIntegral;
+pub(super) struct SimplifyComparisonIntegral;
 
-impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
+impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
@@ -75,12 +73,13 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                 _ => unreachable!(),
             }
 
-            // delete comparison statement if it the value being switched on was moved, which means it can not be user later on
+            // delete comparison statement if it the value being switched on was moved, which means
+            // it can not be user later on
             if opt.can_remove_bin_op_stmt {
                 bb.statements[opt.bin_op_stmt_idx].make_nop();
             } else {
-                // if the integer being compared to a const integral is being moved into the comparison,
-                // e.g `_2 = Eq(move _3, const 'x');`
+                // if the integer being compared to a const integral is being moved into the
+                // comparison, e.g `_2 = Eq(move _3, const 'x');`
                 // we want to avoid making a double move later on in the switchInt on _3.
                 // So to avoid `switchInt(move _3) -> ['x': bb2, otherwise: bb1];`,
                 // we convert the move in the comparison statement to a copy.
@@ -104,20 +103,20 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
 
             // remove StorageDead (if it exists) being used in the assign of the comparison
             for (stmt_idx, stmt) in bb.statements.iter().enumerate() {
-                if !matches!(stmt.kind, StatementKind::StorageDead(local) if local == opt.to_switch_on.local)
-                {
+                if !matches!(
+                    stmt.kind,
+                    StatementKind::StorageDead(local) if local == opt.to_switch_on.local
+                ) {
                     continue;
                 }
                 storage_deads_to_remove.push((stmt_idx, opt.bb_idx));
-                // if we have StorageDeads to remove then make sure to insert them at the top of each target
+                // if we have StorageDeads to remove then make sure to insert them at the top of
+                // each target
                 for bb_idx in new_targets.all_targets() {
-                    storage_deads_to_insert.push((
-                        *bb_idx,
-                        Statement {
-                            source_info: terminator.source_info,
-                            kind: StatementKind::StorageDead(opt.to_switch_on.local),
-                        },
-                    ));
+                    storage_deads_to_insert.push((*bb_idx, Statement {
+                        source_info: terminator.source_info,
+                        kind: StatementKind::StorageDead(opt.to_switch_on.local),
+                    }));
                 }
             }
 
@@ -209,7 +208,8 @@ fn find_branch_value_info<'tcx>(
         (Constant(branch_value), Copy(to_switch_on) | Move(to_switch_on))
         | (Copy(to_switch_on) | Move(to_switch_on), Constant(branch_value)) => {
             let branch_value_ty = branch_value.const_.ty();
-            // we only want to apply this optimization if we are matching on integrals (and chars), as it is not possible to switch on floats
+            // we only want to apply this optimization if we are matching on integrals (and chars),
+            // as it is not possible to switch on floats
             if !branch_value_ty.is_integral() && !branch_value_ty.is_char() {
                 return None;
             };
@@ -224,7 +224,8 @@ fn find_branch_value_info<'tcx>(
 struct OptimizationInfo<'tcx> {
     /// Basic block to apply the optimization
     bb_idx: BasicBlock,
-    /// Statement index of Eq/Ne assignment that can be removed. None if the assignment can not be removed - i.e the statement is used later on
+    /// Statement index of Eq/Ne assignment that can be removed. None if the assignment can not be
+    /// removed - i.e the statement is used later on
     bin_op_stmt_idx: usize,
     /// Can remove Eq/Ne assignment
     can_remove_bin_op_stmt: bool,

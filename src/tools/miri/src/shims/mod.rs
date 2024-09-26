@@ -2,7 +2,7 @@
 
 mod alloc;
 mod backtrace;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 mod native_lib;
 mod unix;
 mod wasi;
@@ -17,7 +17,7 @@ pub mod panic;
 pub mod time;
 pub mod tls;
 
-pub use unix::{DirTable, EpollInterestTable, FdTable};
+pub use self::unix::{DirTable, EpollInterestTable, FdTable};
 
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.
 pub enum EmulateItemResult {

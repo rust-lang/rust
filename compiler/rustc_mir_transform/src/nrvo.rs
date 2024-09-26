@@ -8,8 +8,6 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, trace};
 
-use crate::MirPass;
-
 /// This pass looks for MIR that always copies the same local into the return place and eliminates
 /// the copy by renaming all uses of that local to `_0`.
 ///
@@ -32,9 +30,9 @@ use crate::MirPass;
 ///
 /// [#47954]: https://github.com/rust-lang/rust/pull/47954
 /// [#71003]: https://github.com/rust-lang/rust/pull/71003
-pub struct RenameReturnPlace;
+pub(super) struct RenameReturnPlace;
 
-impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
+impl<'tcx> crate::MirPass<'tcx> for RenameReturnPlace {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         // unsound: #111005
         sess.mir_opt_level() > 0 && sess.opts.unstable_opts.unsound_mir_opts

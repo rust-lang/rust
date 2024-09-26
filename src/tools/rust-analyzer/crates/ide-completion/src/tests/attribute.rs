@@ -26,6 +26,7 @@ struct Foo;
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -75,6 +76,7 @@ fn with_existing_attr() {
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
+            at expect(…)
             at forbid(…)
             at warn(…)
             kw crate::
@@ -97,6 +99,7 @@ fn attr_on_source_file() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at feature(…)
             at forbid(…)
             at must_use
@@ -127,6 +130,7 @@ fn attr_on_module() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at macro_use
             at must_use
@@ -149,6 +153,7 @@ fn attr_on_module() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_implicit_prelude
@@ -174,6 +179,7 @@ fn attr_on_macro_rules() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at macro_export
             at macro_use
@@ -199,6 +205,7 @@ fn attr_on_macro_def() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -222,6 +229,7 @@ fn attr_on_extern_crate() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at macro_use
             at must_use
@@ -246,6 +254,7 @@ fn attr_on_use() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -269,6 +278,7 @@ fn attr_on_type_alias() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -299,6 +309,7 @@ struct Foo;
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -326,6 +337,7 @@ fn attr_on_enum() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -351,6 +363,7 @@ fn attr_on_const() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -374,6 +387,7 @@ fn attr_on_static() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at export_name = "…"
             at forbid(…)
             at global_allocator
@@ -402,6 +416,7 @@ fn attr_on_trait() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at must_use
@@ -427,6 +442,7 @@ fn attr_on_impl() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -446,6 +462,7 @@ fn attr_on_impl() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at must_use
             at no_mangle
@@ -469,6 +486,7 @@ fn attr_on_extern_block() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at link
             at must_use
@@ -489,6 +507,7 @@ fn attr_on_extern_block() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at forbid(…)
             at link
             at must_use
@@ -509,6 +528,7 @@ fn attr_on_variant() {
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
+            at expect(…)
             at forbid(…)
             at non_exhaustive
             at warn(…)
@@ -532,6 +552,7 @@ fn attr_on_fn() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at export_name = "…"
             at forbid(…)
             at ignore = "…"
@@ -572,6 +593,7 @@ fn attr_in_source_file_end() {
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
+            at expect(…)
             at export_name = "…"
             at forbid(…)
             at global_allocator

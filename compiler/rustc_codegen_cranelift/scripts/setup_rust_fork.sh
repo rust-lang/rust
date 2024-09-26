@@ -25,6 +25,9 @@ git -c user.name=Dummy -c user.email=dummy@example.com -c commit.gpgSign=false \
 cat > config.toml <<EOF
 change-id = 999999
 
+[llvm]
+download-ci-llvm = true
+
 [build]
 rustc = "$(pwd)/../dist/bin/rustc-clif"
 cargo = "$(rustup which cargo)"

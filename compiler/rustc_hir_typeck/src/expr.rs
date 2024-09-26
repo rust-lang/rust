@@ -7,7 +7,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, StashKey, Subdiagnostic,
+    Applicability, Diag, ErrorGuaranteed, StashKey, Subdiagnostic, pluralize, struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -17,26 +17,28 @@ use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
+use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
+use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
+use crate::TupleArgumentsFlag::DontTupleArguments;
 use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
     AddressOfTemporaryTaken, FieldMultiplySpecifiedInInitializer,
@@ -44,11 +46,9 @@ use crate::errors::{
     ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
     YieldExprOutsideOfCoroutine,
 };
-use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::TupleArgumentsFlag::DontTupleArguments;
 use crate::{
-    cast, fatally_break_rust, report_unexpected_variant_res, type_error_struct, BreakableCtxt,
-    CoroutineTypes, Diverges, FnCtxt, Needs,
+    BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, Needs, cast, fatally_break_rust,
+    report_unexpected_variant_res, type_error_struct,
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -72,10 +72,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let adj_ty = self.next_ty_var(expr.span);
-            self.apply_adjustments(
-                expr,
-                vec![Adjustment { kind: Adjust::NeverToAny, target: adj_ty }],
-            );
+            self.apply_adjustments(expr, vec![Adjustment {
+                kind: Adjust::NeverToAny,
+                target: adj_ty,
+            }]);
             ty = adj_ty;
         }
 
@@ -447,7 +447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this time with enough precision to check that the value
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
-                let region = self.next_region_var(infer::AddrOfRegion(expr.span));
+                let region = self.next_region_var(infer::BorrowRegion(expr.span));
                 Ty::new_ref(self.tcx, region, ty, mutbl)
             }
         }
@@ -774,7 +774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.ret_coercion_span.set(Some(expr.span));
             }
             let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-            if let Some((_, fn_decl, _)) = self.get_fn_decl(expr.hir_id) {
+            if let Some((_, fn_decl)) = self.get_fn_decl(expr.hir_id) {
                 coercion.coerce_forced_unit(
                     self,
                     &cause,
@@ -1491,8 +1491,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count = self.lower_array_length(count);
-        if let Some(count) = count.try_eval_target_usize(tcx, self.param_env) {
+        let count_span = count.span();
+        let count = self.try_structurally_resolve_const(count_span, self.lower_array_length(count));
+
+        if let Some(count) = count.try_to_target_usize(tcx) {
             self.suggest_array_len(expr, count);
         }
 
@@ -1520,19 +1522,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        self.check_repeat_element_needs_copy_bound(element, count, element_ty);
+        // If the length is 0, we don't create any elements, so we don't copy any.
+        // If the length is 1, we don't copy that one element, we move it. Only check
+        // for `Copy` if the length is larger, or unevaluated.
+        // FIXME(min_const_generic_exprs): We could perhaps defer this check so that
+        // we don't require `<?0t as Tr>::CONST` doesn't unnecessarily require `Copy`.
+        if count.try_to_target_usize(tcx).is_none_or(|x| x > 1) {
+            self.enforce_repeat_element_needs_copy_bound(element, element_ty);
+        }
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
-
         self.register_wf_obligation(ty.into(), expr.span, ObligationCauseCode::WellFormed(None));
-
         ty
     }
 
-    fn check_repeat_element_needs_copy_bound(
+    /// Requires that `element_ty` is `Copy` (unless it's a const expression itself).
+    fn enforce_repeat_element_needs_copy_bound(
         &self,
         element: &hir::Expr<'_>,
-        count: ty::Const<'tcx>,
         element_ty: Ty<'tcx>,
     ) {
         let tcx = self.tcx;
@@ -1565,27 +1572,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => traits::IsConstable::No,
         };
 
-        // If the length is 0, we don't create any elements, so we don't copy any. If the length is 1, we
-        // don't copy that one element, we move it. Only check for Copy if the length is larger.
-        if count.try_eval_target_usize(tcx, self.param_env).is_none_or(|len| len > 1) {
-            let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-            let code = traits::ObligationCauseCode::RepeatElementCopy {
-                is_constable,
-                elt_type: element_ty,
-                elt_span: element.span,
-                elt_stmt_span: self
-                    .tcx
-                    .hir()
-                    .parent_iter(element.hir_id)
-                    .find_map(|(_, node)| match node {
-                        hir::Node::Item(it) => Some(it.span),
-                        hir::Node::Stmt(stmt) => Some(stmt.span),
-                        _ => None,
-                    })
-                    .expect("array repeat expressions must be inside an item or statement"),
-            };
-            self.require_type_meets(element_ty, element.span, code, lang_item);
-        }
+        let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
+        let code = traits::ObligationCauseCode::RepeatElementCopy {
+            is_constable,
+            elt_type: element_ty,
+            elt_span: element.span,
+            elt_stmt_span: self
+                .tcx
+                .hir()
+                .parent_iter(element.hir_id)
+                .find_map(|(_, node)| match node {
+                    hir::Node::Item(it) => Some(it.span),
+                    hir::Node::Stmt(stmt) => Some(stmt.span),
+                    _ => None,
+                })
+                .expect("array repeat expressions must be inside an item or statement"),
+        };
+        self.require_type_meets(element_ty, element.span, code, lang_item);
     }
 
     fn check_expr_tuple(
@@ -1673,15 +1676,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let expected_inputs =
-            self.expected_inputs_for_expected_output(span, expected, adt_ty, &[adt_ty]);
-        let adt_ty_hint = if let Some(expected_inputs) = expected_inputs {
-            expected_inputs.get(0).cloned().unwrap_or(adt_ty)
-        } else {
-            adt_ty
-        };
-        // re-link the regions that EIfEO can erase.
-        self.demand_eqtype(span, adt_ty_hint, adt_ty);
+        let adt_ty = self.resolve_vars_with_obligations(adt_ty);
+        let adt_ty_hint = expected.only_has_type(self).and_then(|expected| {
+            self.fudge_inference_if_ok(|| {
+                let ocx = ObligationCtxt::new(self);
+                ocx.sup(&self.misc(span), self.param_env, expected, adt_ty)?;
+                if !ocx.select_where_possible().is_empty() {
+                    return Err(TypeError::Mismatch);
+                }
+                Ok(self.resolve_vars_if_possible(adt_ty))
+            })
+            .ok()
+        });
+        if let Some(adt_ty_hint) = adt_ty_hint {
+            // re-link the variables that the fudging above can create.
+            self.demand_eqtype(span, adt_ty_hint, adt_ty);
+        }
 
         let ty::Adt(adt, args) = adt_ty.kind() else {
             span_bug!(span, "non-ADT passed to check_expr_struct_fields");
@@ -1773,16 +1783,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Make sure the programmer specified correct number of fields.
-        if adt_kind == AdtKind::Union {
-            if hir_fields.len() != 1 {
-                struct_span_code_err!(
-                    self.dcx(),
-                    span,
-                    E0784,
-                    "union expressions should have exactly one field",
-                )
-                .emit();
-            }
+        if adt_kind == AdtKind::Union && hir_fields.len() != 1 {
+            struct_span_code_err!(
+                self.dcx(),
+                span,
+                E0784,
+                "union expressions should have exactly one field",
+            )
+            .emit();
         }
 
         // If check_expr_struct_fields hit an error, do not attempt to populate
@@ -2118,7 +2126,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .inherent_impls(def_id)
                 .into_iter()
-                .flatten()
                 .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
                 // Only assoc fn with no receivers.
                 .filter(|item| {
@@ -2795,9 +2802,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
     ) {
         err.span_label(field.span, "unknown field");
-        if let (Some(len), Ok(user_index)) =
-            (len.try_eval_target_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
-        {
+        if let (Some(len), Ok(user_index)) = (
+            self.try_structurally_resolve_const(base.span, len).try_to_target_usize(self.tcx),
+            field.as_str().parse::<u64>(),
+        ) {
             let help = "instead of using tuple indexing, use array indexing";
             let applicability = if len < user_index {
                 Applicability::MachineApplicable
@@ -2859,13 +2867,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (expr_t, "")
         };
         for (found_fields, args) in
-            self.get_field_candidates_considering_privacy(span, ty, mod_id, id)
+            self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, id)
         {
             let field_names = found_fields.iter().map(|field| field.name).collect::<Vec<_>>();
             let mut candidate_fields: Vec<_> = found_fields
                 .into_iter()
                 .filter_map(|candidate_field| {
-                    self.check_for_nested_field_satisfying(
+                    self.check_for_nested_field_satisfying_condition_for_diag(
                         span,
                         &|candidate_field, _| candidate_field.ident(self.tcx()) == field,
                         candidate_field,
@@ -2897,21 +2905,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     candidate_fields.iter().map(|path| format!("{unwrap}{path}")),
                     Applicability::MaybeIncorrect,
                 );
-            } else {
-                if let Some(field_name) = find_best_match_for_name(&field_names, field.name, None) {
-                    err.span_suggestion_verbose(
-                        field.span,
-                        "a field with a similar name exists",
-                        format!("{unwrap}{}", field_name),
-                        Applicability::MaybeIncorrect,
-                    );
-                } else if !field_names.is_empty() {
-                    let is = if field_names.len() == 1 { " is" } else { "s are" };
-                    err.note(format!(
-                        "available field{is}: {}",
-                        self.name_series_display(field_names),
-                    ));
-                }
+            } else if let Some(field_name) =
+                find_best_match_for_name(&field_names, field.name, None)
+            {
+                err.span_suggestion_verbose(
+                    field.span,
+                    "a field with a similar name exists",
+                    format!("{unwrap}{}", field_name),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if !field_names.is_empty() {
+                let is = if field_names.len() == 1 { " is" } else { "s are" };
+                err.note(
+                    format!("available field{is}: {}", self.name_series_display(field_names),),
+                );
             }
         }
         err
@@ -2929,7 +2936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .with_span_label(field.span, "private field")
     }
 
-    pub(crate) fn get_field_candidates_considering_privacy(
+    pub(crate) fn get_field_candidates_considering_privacy_for_diag(
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
@@ -2938,7 +2945,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Vec<(Vec<&'tcx ty::FieldDef>, GenericArgsRef<'tcx>)> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
-        self.autoderef(span, base_ty)
+        let mut autoderef = self.autoderef(span, base_ty).silence_errors();
+        let deref_chain: Vec<_> = autoderef.by_ref().collect();
+
+        // Don't probe if we hit the recursion limit, since it may result in
+        // quadratic blowup if we then try to further deref the results of this
+        // function. This is a best-effort method, after all.
+        if autoderef.reached_recursion_limit() {
+            return vec![];
+        }
+
+        deref_chain
+            .into_iter()
             .filter_map(move |(base_t, _)| {
                 match base_t.kind() {
                     ty::Adt(base_def, args) if !base_def.is_enum() => {
@@ -2971,7 +2989,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// This method is called after we have encountered a missing field error to recursively
     /// search for the field
-    pub(crate) fn check_for_nested_field_satisfying(
+    pub(crate) fn check_for_nested_field_satisfying_condition_for_diag(
         &self,
         span: Span,
         matches: &impl Fn(&ty::FieldDef, Ty<'tcx>) -> bool,
@@ -2996,20 +3014,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if matches(candidate_field, field_ty) {
                 return Some(field_path);
             } else {
-                for (nested_fields, subst) in
-                    self.get_field_candidates_considering_privacy(span, field_ty, mod_id, hir_id)
+                for (nested_fields, subst) in self
+                    .get_field_candidates_considering_privacy_for_diag(
+                        span, field_ty, mod_id, hir_id,
+                    )
                 {
                     // recursively search fields of `candidate_field` if it's a ty::Adt
                     for field in nested_fields {
-                        if let Some(field_path) = self.check_for_nested_field_satisfying(
-                            span,
-                            matches,
-                            field,
-                            subst,
-                            field_path.clone(),
-                            mod_id,
-                            hir_id,
-                        ) {
+                        if let Some(field_path) = self
+                            .check_for_nested_field_satisfying_condition_for_diag(
+                                span,
+                                matches,
+                                field,
+                                subst,
+                                field_path.clone(),
+                                mod_id,
+                                hir_id,
+                            )
+                        {
                             return Some(field_path);
                         }
                     }

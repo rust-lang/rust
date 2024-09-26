@@ -1,6 +1,6 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, RelroLevel, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, RelroLevel, TargetOptions, cvs};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "redox".into(),
         env: "relibc".into(),

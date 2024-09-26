@@ -2,7 +2,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::borrow_tracker::tree_borrows::exhaustive::{precondition, Exhaustive};
+use crate::borrow_tracker::tree_borrows::exhaustive::{Exhaustive, precondition};
 use std::fmt;
 
 impl Exhaustive for LocationState {

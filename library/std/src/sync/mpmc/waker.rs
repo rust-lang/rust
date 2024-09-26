@@ -3,8 +3,8 @@
 use super::context::Context;
 use super::select::{Operation, Selected};
 use crate::ptr;
-use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::Mutex;
+use crate::sync::atomic::{AtomicBool, Ordering};
 
 /// Represents a thread blocked on a specific channel operation.
 pub(crate) struct Entry {

@@ -10,9 +10,9 @@
 //! was since renamed to `wasm32-wasip1` after the preview2 target was
 //! introduced.
 
-use crate::spec::{base, crt_objects, Cc, LinkSelfContainedDefault, LinkerFlavor, Target};
+use crate::spec::{Cc, LinkSelfContainedDefault, LinkerFlavor, Target, base, crt_objects};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();

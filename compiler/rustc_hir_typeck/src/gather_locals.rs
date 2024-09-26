@@ -3,8 +3,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, PatKind};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{Ty, UserType};
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 use tracing::debug;
 
 use crate::FnCtxt;
@@ -158,14 +158,12 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         ),
                     );
                 }
-            } else {
-                if !self.fcx.tcx.features().unsized_locals {
-                    self.fcx.require_type_is_sized(
-                        var_ty,
-                        p.span,
-                        ObligationCauseCode::VariableType(p.hir_id),
-                    );
-                }
+            } else if !self.fcx.tcx.features().unsized_locals {
+                self.fcx.require_type_is_sized(
+                    var_ty,
+                    p.span,
+                    ObligationCauseCode::VariableType(p.hir_id),
+                );
             }
 
             debug!(

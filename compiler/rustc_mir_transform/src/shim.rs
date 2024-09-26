@@ -14,8 +14,8 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
+use rustc_span::{DUMMY_SP, Span};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_target::spec::abi::Abi;
 use tracing::{debug, instrument};
 
@@ -26,7 +26,7 @@ use crate::{
 
 mod async_destructor_ctor;
 
-pub fn provide(providers: &mut Providers) {
+pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
@@ -331,7 +331,7 @@ fn new_body<'tcx>(
     body
 }
 
-pub struct DropShimElaborator<'a, 'tcx> {
+pub(super) struct DropShimElaborator<'a, 'tcx> {
     pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,
@@ -404,8 +404,7 @@ fn build_thread_local_shim<'tcx>(
     let span = tcx.def_span(def_id);
     let source_info = SourceInfo::outermost(span);
 
-    let mut blocks = IndexVec::with_capacity(1);
-    blocks.push(BasicBlockData {
+    let blocks = IndexVec::from_raw(vec![BasicBlockData {
         statements: vec![Statement {
             source_info,
             kind: StatementKind::Assign(Box::new((
@@ -415,7 +414,7 @@ fn build_thread_local_shim<'tcx>(
         }],
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
         is_cleanup: false,
-    });
+    }]);
 
     new_body(
         MirSource::from_instance(instance),
@@ -913,7 +912,7 @@ fn build_call_shim<'tcx>(
     body
 }
 
-pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
+pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
     let param_env = tcx.param_env_reveal_all_normalized(ctor_id);
@@ -1003,7 +1002,8 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     let locals = local_decls_for_sig(&sig, span);
 
     let source_info = SourceInfo::outermost(span);
-    // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful provenance.
+    // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful
+    // provenance.
     let rvalue = Rvalue::Cast(
         CastKind::FnPtrToPtr,
         Operand::Move(Place::from(Local::new(1))),
@@ -1070,19 +1070,26 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
     let locals = local_decls_for_sig(&sig, span);
 
     let mut fields = vec![];
+
+    // Move all of the closure args.
     for idx in 1..sig.inputs().len() {
         fields.push(Operand::Move(Local::from_usize(idx + 1).into()));
     }
+
     for (idx, ty) in args.as_coroutine_closure().upvar_tys().iter().enumerate() {
         if receiver_by_ref {
             // The only situation where it's possible is when we capture immuatable references,
             // since those don't need to be reborrowed with the closure's env lifetime. Since
             // references are always `Copy`, just emit a copy.
-            assert_matches!(
-                ty.kind(),
-                ty::Ref(_, _, hir::Mutability::Not),
-                "field should be captured by immutable ref if we have an `Fn` instance"
-            );
+            if !matches!(ty.kind(), ty::Ref(_, _, hir::Mutability::Not)) {
+                // This copy is only sound if it's a `&T`. This may be
+                // reachable e.g. when eagerly computing the `Fn` instance
+                // of an async closure that doesn't borrowck.
+                tcx.dcx().delayed_bug(format!(
+                    "field should be captured by immutable ref if we have \
+                    an `Fn` instance, but it was: {ty}"
+                ));
+            }
             fields.push(Operand::Copy(tcx.mk_place_field(
                 self_local,
                 FieldIdx::from_usize(idx),

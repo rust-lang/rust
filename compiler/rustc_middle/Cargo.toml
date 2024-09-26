@@ -40,5 +40,6 @@ tracing = "0.1"
 
 [features]
 # tidy-alphabetical-start
+rustc_randomized_layouts = []
 rustc_use_parallel_compiler = ["dep:rustc-rayon-core"]
 # tidy-alphabetical-end

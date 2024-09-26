@@ -2,7 +2,6 @@
 
 // ignore-tidy-linelength
 #![feature(intrinsics, staged_api)]
-#![feature(const_mut_refs)]
 use std::mem;
 
 extern "rust-intrinsic" {

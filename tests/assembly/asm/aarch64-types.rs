@@ -4,6 +4,7 @@
 //@ [aarch64] needs-llvm-components: aarch64
 //@ [arm64ec] compile-flags: --target arm64ec-pc-windows-msvc
 //@ [arm64ec] needs-llvm-components: aarch64
+//@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch, f16, f128)]
 #![crate_type = "rlib"]
@@ -30,36 +31,39 @@ trait Sized {}
 #[lang = "copy"]
 trait Copy {}
 
+// Do we really need to use no_core for this?!?
+impl<T: Copy, const N: usize> Copy for [T; N] {}
+
 type ptr = *mut u8;
 
 #[repr(simd)]
-pub struct i8x8(i8, i8, i8, i8, i8, i8, i8, i8);
+pub struct i8x8([i8; 8]);
 #[repr(simd)]
-pub struct i16x4(i16, i16, i16, i16);
+pub struct i16x4([i16; 4]);
 #[repr(simd)]
-pub struct i32x2(i32, i32);
+pub struct i32x2([i32; 2]);
 #[repr(simd)]
-pub struct i64x1(i64);
+pub struct i64x1([i64; 1]);
 #[repr(simd)]
-pub struct f16x4(f16, f16, f16, f16);
+pub struct f16x4([f16; 4]);
 #[repr(simd)]
-pub struct f32x2(f32, f32);
+pub struct f32x2([f32; 2]);
 #[repr(simd)]
-pub struct f64x1(f64);
+pub struct f64x1([f64; 1]);
 #[repr(simd)]
-pub struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8);
+pub struct i8x16([i8; 16]);
 #[repr(simd)]
-pub struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+pub struct i16x8([i16; 8]);
 #[repr(simd)]
-pub struct i32x4(i32, i32, i32, i32);
+pub struct i32x4([i32; 4]);
 #[repr(simd)]
-pub struct i64x2(i64, i64);
+pub struct i64x2([i64; 2]);
 #[repr(simd)]
-pub struct f16x8(f16, f16, f16, f16, f16, f16, f16, f16);
+pub struct f16x8([f16; 8]);
 #[repr(simd)]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct f32x4([f32; 4]);
 #[repr(simd)]
-pub struct f64x2(f64, f64);
+pub struct f64x2([f64; 2]);
 
 impl Copy for i8 {}
 impl Copy for i16 {}
@@ -132,12 +136,6 @@ macro_rules! check {
         // LLVM issue: <https://github.com/llvm/llvm-project/issues/94434>
         #[no_mangle]
         pub unsafe fn $func(inp: &$ty, out: &mut $ty) {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let x = *inp;
             let y;
             asm!(
@@ -155,12 +153,6 @@ macro_rules! check_reg {
         // FIXME(f16_f128): See FIXME in `check!`
         #[no_mangle]
         pub unsafe fn $func(inp: &$ty, out: &mut $ty) {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let x = *inp;
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);

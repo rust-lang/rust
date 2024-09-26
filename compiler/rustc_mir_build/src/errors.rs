@@ -7,8 +7,8 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 
 use crate::fluent_generated as fluent;
 
@@ -598,6 +598,8 @@ pub(crate) struct UnreachablePattern<'tcx> {
     #[note(mir_build_unreachable_covered_by_many)]
     pub(crate) covered_by_many: Option<MultiSpan>,
     pub(crate) covered_by_many_n_more_count: usize,
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub(crate) suggest_remove: Option<Span>,
 }
 
 #[derive(Diagnostic)]

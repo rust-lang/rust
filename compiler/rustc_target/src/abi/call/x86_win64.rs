@@ -4,7 +4,7 @@ use crate::spec::HasTargetSpec;
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
-pub fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
     let fixup = |a: &mut ArgAbi<'_, Ty>| {
         match a.layout.abi {
             Abi::Uninhabited | Abi::Aggregate { sized: false } => {}

@@ -1,14 +1,13 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
 // This target is for OpenHarmony on ARMv7 Linux with thumb-mode, but no NEON or
 // hardfloat.
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     // Most of these settings are copied from the armv7_unknown_linux_musleabi
     // target.
     Target {
-        // LLVM 15 doesn't support OpenHarmony yet, use a linux target instead.
-        llvm_target: "armv7-unknown-linux-gnueabi".into(),
+        llvm_target: "armv7-unknown-linux-ohos".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("Armv7-A OpenHarmony".into()),
             tier: Some(2),

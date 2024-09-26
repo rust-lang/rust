@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::ffi::c_char;
 use crate::iter::FusedIterator;
 use crate::marker::PhantomData;
-use crate::ptr::{addr_of, NonNull};
+use crate::ptr::NonNull;
 use crate::slice::memchr;
 use crate::{fmt, intrinsics, ops, slice, str};
 
@@ -623,7 +623,7 @@ impl CStr {
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
-        unsafe { &*(addr_of!(self.inner) as *const [u8]) }
+        unsafe { &*((&raw const self.inner) as *const [u8]) }
     }
 
     /// Iterates over the bytes in this C string.

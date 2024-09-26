@@ -11,7 +11,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, Upcast,
 };
 use rustc_span::Span;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use super::{NormalizeExt, ObligationCause, PredicateObligation, SelectionContext};
@@ -169,7 +169,7 @@ impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
 /// Instantiate all bound parameters of the impl subject with the given args,
 /// returning the resulting subject and all obligations that arise.
 /// The obligations are closed under normalization.
-pub fn impl_subject_and_oblig<'a, 'tcx>(
+pub(crate) fn impl_subject_and_oblig<'a, 'tcx>(
     selcx: &SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
@@ -209,7 +209,7 @@ pub fn upcast_choices<'tcx>(
     supertraits(tcx, source_trait_ref).filter(|r| r.def_id() == target_trait_def_id).collect()
 }
 
-pub fn closure_trait_ref_and_return_type<'tcx>(
+pub(crate) fn closure_trait_ref_and_return_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -223,22 +223,18 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
         TupleArgumentsFlag::Yes => Ty::new_tup(tcx, sig.skip_binder().inputs()),
     };
     let trait_ref = if tcx.has_host_param(fn_trait_def_id) {
-        ty::TraitRef::new(
-            tcx,
-            fn_trait_def_id,
-            [
-                ty::GenericArg::from(self_ty),
-                ty::GenericArg::from(arguments_tuple),
-                ty::GenericArg::from(fn_host_effect),
-            ],
-        )
+        ty::TraitRef::new(tcx, fn_trait_def_id, [
+            ty::GenericArg::from(self_ty),
+            ty::GenericArg::from(arguments_tuple),
+            ty::GenericArg::from(fn_host_effect),
+        ])
     } else {
         ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple])
     };
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
-pub fn coroutine_trait_ref_and_outputs<'tcx>(
+pub(crate) fn coroutine_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -249,7 +245,7 @@ pub fn coroutine_trait_ref_and_outputs<'tcx>(
     (trait_ref, sig.yield_ty, sig.return_ty)
 }
 
-pub fn future_trait_ref_and_outputs<'tcx>(
+pub(crate) fn future_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -260,7 +256,7 @@ pub fn future_trait_ref_and_outputs<'tcx>(
     (trait_ref, sig.return_ty)
 }
 
-pub fn iterator_trait_ref_and_outputs<'tcx>(
+pub(crate) fn iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -271,7 +267,7 @@ pub fn iterator_trait_ref_and_outputs<'tcx>(
     (trait_ref, sig.yield_ty)
 }
 
-pub fn async_iterator_trait_ref_and_outputs<'tcx>(
+pub(crate) fn async_iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     async_iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -287,7 +283,7 @@ pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
         && tcx.defaultness(assoc_item.container_id(tcx)).is_final()
 }
 
-pub enum TupleArgumentsFlag {
+pub(crate) enum TupleArgumentsFlag {
     Yes,
     No,
 }
@@ -332,8 +328,8 @@ pub fn with_replaced_escaping_bound_vars<
     }
 }
 
-pub struct BoundVarReplacer<'me, 'tcx> {
-    infcx: &'me InferCtxt<'tcx>,
+pub struct BoundVarReplacer<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
     // These three maps track the bound variable that were replaced by placeholders. It might be
     // nice to remove these since we already have the `kind` in the placeholder; we really just need
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
@@ -345,15 +341,15 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     current_index: ty::DebruijnIndex,
     // The `UniverseIndex` of the binding levels above us. These are optional, since we are lazy:
     // we don't actually create a universe until we see a bound var we have to replace.
-    universe_indices: &'me mut Vec<Option<ty::UniverseIndex>>,
+    universe_indices: &'a mut Vec<Option<ty::UniverseIndex>>,
 }
 
-impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
+impl<'a, 'tcx> BoundVarReplacer<'a, 'tcx> {
     /// Returns `Some` if we *were* able to replace bound vars. If there are any bound vars that
     /// use a binding level above `universe_indices.len()`, we fail.
     pub fn replace_bound_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
-        infcx: &'me InferCtxt<'tcx>,
-        universe_indices: &'me mut Vec<Option<ty::UniverseIndex>>,
+        infcx: &'a InferCtxt<'tcx>,
+        universe_indices: &'a mut Vec<Option<ty::UniverseIndex>>,
         value: T,
     ) -> (
         T,
@@ -479,22 +475,22 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
 }
 
 /// The inverse of [`BoundVarReplacer`]: replaces placeholders with the bound vars from which they came.
-pub struct PlaceholderReplacer<'me, 'tcx> {
-    infcx: &'me InferCtxt<'tcx>,
+pub struct PlaceholderReplacer<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
     mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
-    universe_indices: &'me [Option<ty::UniverseIndex>],
+    universe_indices: &'a [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
 
-impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
+impl<'a, 'tcx> PlaceholderReplacer<'a, 'tcx> {
     pub fn replace_placeholders<T: TypeFoldable<TyCtxt<'tcx>>>(
-        infcx: &'me InferCtxt<'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
         mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
-        universe_indices: &'me [Option<ty::UniverseIndex>],
+        universe_indices: &'a [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {
         let mut replacer = PlaceholderReplacer {

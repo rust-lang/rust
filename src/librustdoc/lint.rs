@@ -2,8 +2,8 @@ use std::sync::LazyLock as Lazy;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::LintStore;
-use rustc_lint_defs::{declare_tool_lint, Lint, LintId};
-use rustc_session::{lint, Session};
+use rustc_lint_defs::{Lint, LintId, declare_tool_lint};
+use rustc_session::{Session, lint};
 
 /// This function is used to setup the lint initialization. By default, in rustdoc, everything
 /// is "allowed". Depending if we run in test mode or not, we want some of them to be at their

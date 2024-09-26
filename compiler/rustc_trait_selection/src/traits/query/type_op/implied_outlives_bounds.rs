@@ -5,14 +5,14 @@ use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFolder, TypeVisitableExt};
-use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::DUMMY_SP;
-use rustc_type_ir::outlives::{push_outlives_components, Component};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_type_ir::outlives::{Component, push_outlives_components};
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use crate::traits::query::NoSolution;
-use crate::traits::{wf, ObligationCtxt};
+use crate::traits::{ObligationCtxt, wf};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ImpliedOutlivesBounds<'tcx> {

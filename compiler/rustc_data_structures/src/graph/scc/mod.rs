@@ -477,7 +477,7 @@ where
         // will know when we hit the state where previous_node == node.
         loop {
             // Back at the beginning, we can return. Note that we return the root state.
-            // This is becuse for components being explored, we would otherwise get a
+            // This is because for components being explored, we would otherwise get a
             // `node_state[n] = InCycleWith{ parent: n }` and that's wrong.
             if previous_node == node {
                 return root_state;

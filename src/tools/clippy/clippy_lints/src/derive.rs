@@ -3,7 +3,7 @@ use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
+use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn, walk_item};
 use rustc_hir::{
     self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, Safety, UnsafeSource,
 };
@@ -15,7 +15,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -386,7 +386,6 @@ fn check_unsafe_derive_deserialize<'tcx>(
             .tcx
             .inherent_impls(def.did())
             .into_iter()
-            .flatten()
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
     {

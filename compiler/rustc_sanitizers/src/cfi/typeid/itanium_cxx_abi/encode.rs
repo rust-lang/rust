@@ -7,7 +7,7 @@
 
 use std::fmt::Write as _;
 
-use rustc_data_structures::base_n::{ToBaseN, ALPHANUMERIC_ONLY, CASE_INSENSITIVE};
+use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::bug;
@@ -22,15 +22,15 @@ use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 use tracing::instrument;
 
-use crate::cfi::typeid::itanium_cxx_abi::transform::{TransformTy, TransformTyOptions};
 use crate::cfi::typeid::TypeIdOptions;
+use crate::cfi::typeid::itanium_cxx_abi::transform::{TransformTy, TransformTyOptions};
 
 /// Options for encode_ty.
-pub type EncodeTyOptions = TypeIdOptions;
+pub(crate) type EncodeTyOptions = TypeIdOptions;
 
 /// Substitution dictionary key.
 #[derive(Eq, Hash, PartialEq)]
-pub enum DictKey<'tcx> {
+pub(crate) enum DictKey<'tcx> {
     Ty(Ty<'tcx>, TyQ),
     Region(Region<'tcx>),
     Const(Const<'tcx>),
@@ -39,7 +39,7 @@ pub enum DictKey<'tcx> {
 
 /// Type and extended type qualifiers.
 #[derive(Eq, Hash, PartialEq)]
-pub enum TyQ {
+pub(crate) enum TyQ {
     None,
     Const,
     Mut,
@@ -145,7 +145,7 @@ fn encode_const<'tcx>(
                     let _ = write!(s, "{val}");
                 }
                 ty::Bool => {
-                    let val = c.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
+                    let val = c.try_to_bool().expect("expected monomorphic const in cfi");
                     let _ = write!(s, "{val}");
                 }
                 _ => {
@@ -207,14 +207,12 @@ fn encode_fnsig<'tcx>(
         if fn_sig.c_variadic {
             s.push('z');
         }
+    } else if fn_sig.c_variadic {
+        s.push('z');
     } else {
-        if fn_sig.c_variadic {
-            s.push('z');
-        } else {
-            // Empty parameter lists, whether declared as () or conventionally as (void), are
-            // encoded with a void parameter specifier "v".
-            s.push('v')
-        }
+        // Empty parameter lists, whether declared as () or conventionally as (void), are
+        // encoded with a void parameter specifier "v".
+        s.push('v')
     }
 
     // Close the "F..E" pair
@@ -413,7 +411,7 @@ pub fn encode_ty<'tcx>(
 
         ty::Array(ty0, len) => {
             // A<array-length><element-type>
-            let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
+            let len = len.try_to_target_usize(tcx).expect("expected monomorphic const in cfi");
             let mut s = String::from("A");
             let _ = write!(s, "{len}");
             s.push_str(&encode_ty(tcx, *ty0, dict, options));

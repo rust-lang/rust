@@ -16,14 +16,14 @@ pub(crate) use markdown::test as test_markdown;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::CRATE_HIR_ID;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
-use rustc_session::config::{self, CrateType, ErrorOutputType};
+use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
 use rustc_session::lint;
+use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
-use rustc_span::FileName;
 use rustc_target::spec::{Target, TargetTriple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
@@ -88,7 +88,11 @@ fn get_doctest_dir() -> io::Result<TempDir> {
     TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
-pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn run(
+    dcx: DiagCtxtHandle<'_>,
+    input: Input,
+    options: RustdocOptions,
+) -> Result<(), ErrorGuaranteed> {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // See core::create_config for what's going on here.
@@ -135,11 +139,11 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
         opts: sessopts,
         crate_cfg: cfgs,
         crate_check_cfg: options.check_cfgs.clone(),
-        input: options.input.clone(),
+        input: input.clone(),
         output_file: None,
         output_dir: None,
         file_loader: None,
-        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
+        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         lint_caps,
         psess_created: None,
         hash_untracked_state: None,

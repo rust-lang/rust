@@ -5,18 +5,18 @@ use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::graph::{self};
 use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
 use rustc_hir as hir;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
+use rustc_hir::intravisit::Visitor;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
-use crate::{errors, FnCtxt, TypeckRootCtxt};
+use crate::{FnCtxt, TypeckRootCtxt, errors};
 
 #[derive(Copy, Clone)]
 pub(crate) enum DivergingFallbackBehavior {
@@ -603,12 +603,12 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
         root_ctxt.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
     let mut res = UnordMap::default();
 
-    struct UnsafeInferVarsVisitor<'a, 'tcx, 'r> {
+    struct UnsafeInferVarsVisitor<'a, 'tcx> {
         root_ctxt: &'a TypeckRootCtxt<'tcx>,
-        res: &'r mut UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
+        res: &'a mut UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
     }
 
-    impl Visitor<'_> for UnsafeInferVarsVisitor<'_, '_, '_> {
+    impl Visitor<'_> for UnsafeInferVarsVisitor<'_, '_> {
         fn visit_expr(&mut self, ex: &'_ hir::Expr<'_>) {
             let typeck_results = self.root_ctxt.typeck_results.borrow();
 

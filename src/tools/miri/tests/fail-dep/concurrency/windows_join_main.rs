@@ -1,4 +1,4 @@
-//@only-target-windows: Uses win32 api functions
+//@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 //@error-in-other-file: deadlock
@@ -8,7 +8,7 @@
 use std::thread;
 
 use windows_sys::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
-use windows_sys::Win32::System::Threading::{WaitForSingleObject, INFINITE};
+use windows_sys::Win32::System::Threading::{INFINITE, WaitForSingleObject};
 
 // XXX HACK: This is how miri represents the handle for thread 0.
 // This value can be "legitimately" obtained by using `GetCurrentThread` with `DuplicateHandle`

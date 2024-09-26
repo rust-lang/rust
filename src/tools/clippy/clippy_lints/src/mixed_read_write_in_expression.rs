@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, LetStmt, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -134,6 +135,11 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     }
 
     fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
+        if let Some(macro_call) = root_macro_call_first_node(self.cx, e) {
+            if self.cx.tcx.item_name(macro_call.def_id).as_str() == "todo" {
+                return;
+            }
+        }
         span_lint(self.cx, DIVERGING_SUB_EXPRESSION, e.span, "sub-expression diverges");
     }
 }

@@ -45,39 +45,6 @@ fn load_cargo_with_overrides(
     to_crate_graph(project_workspace)
 }
 
-fn load_cargo_with_fake_sysroot(
-    file_map: &mut FxHashMap<AbsPathBuf, FileId>,
-    file: &str,
-) -> (CrateGraph, ProcMacroPaths) {
-    let meta: Metadata = get_test_json_file(file);
-    let manifest_path =
-        ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
-    let cargo_workspace = CargoWorkspace::new(meta, manifest_path);
-    let project_workspace = ProjectWorkspace {
-        kind: ProjectWorkspaceKind::Cargo {
-            cargo: cargo_workspace,
-            build_scripts: WorkspaceBuildScripts::default(),
-            rustc: Err(None),
-            cargo_config_extra_env: Default::default(),
-            error: None,
-        },
-        sysroot: get_fake_sysroot(),
-        rustc_cfg: Vec::new(),
-        cfg_overrides: Default::default(),
-        toolchain: None,
-        target_layout: Err("target_data_layout not loaded".into()),
-    };
-    project_workspace.to_crate_graph(
-        &mut {
-            |path| {
-                let len = file_map.len();
-                Some(*file_map.entry(path.to_path_buf()).or_insert(FileId::from_raw(len as u32)))
-            }
-        },
-        &Default::default(),
-    )
-}
-
 fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
@@ -251,34 +218,6 @@ fn rust_project_is_proc_macro_has_proc_macro_dep() {
     // Assert that the project crate with `is_proc_macro` has a dependency
     // on the proc_macro sysroot crate.
     crate_data.dependencies.iter().find(|&dep| dep.name.deref() == "proc_macro").unwrap();
-}
-
-#[test]
-fn crate_graph_dedup_identical() {
-    let (mut crate_graph, proc_macros) =
-        load_cargo_with_fake_sysroot(&mut Default::default(), "regex-metadata.json");
-    crate_graph.sort_deps();
-
-    let (d_crate_graph, mut d_proc_macros) = (crate_graph.clone(), proc_macros.clone());
-
-    crate_graph.extend(d_crate_graph.clone(), &mut d_proc_macros, |(_, a), (_, b)| a == b);
-    assert!(crate_graph.iter().eq(d_crate_graph.iter()));
-    assert_eq!(proc_macros, d_proc_macros);
-}
-
-#[test]
-fn crate_graph_dedup() {
-    let path_map = &mut Default::default();
-    let (mut crate_graph, _proc_macros) =
-        load_cargo_with_fake_sysroot(path_map, "ripgrep-metadata.json");
-    assert_eq!(crate_graph.iter().count(), 81);
-    crate_graph.sort_deps();
-    let (regex_crate_graph, mut regex_proc_macros) =
-        load_cargo_with_fake_sysroot(path_map, "regex-metadata.json");
-    assert_eq!(regex_crate_graph.iter().count(), 60);
-
-    crate_graph.extend(regex_crate_graph, &mut regex_proc_macros, |(_, a), (_, b)| a == b);
-    assert_eq!(crate_graph.iter().count(), 118);
 }
 
 #[test]

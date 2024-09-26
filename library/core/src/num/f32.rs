@@ -415,6 +415,7 @@ impl f32 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f32::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "f32_epsilon")]
     pub const EPSILON: f32 = 1.19209290e-07_f32;
 
     /// Smallest finite `f32` value.
@@ -652,45 +653,18 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
-        // A previous implementation tried to only use bitmask-based checks,
-        // using f32::to_bits to transmute the float to its bit repr and match on that.
-        // If we only cared about being "technically" correct, that's an entirely legit
-        // implementation.
-        //
-        // Unfortunately, there is hardware out there that does not correctly implement the IEEE
-        // float semantics Rust relies on: x87 uses a too-large mantissa and exponent, and some
-        // hardware flushes subnormals to zero. These are platforms bugs, and Rust will misbehave on
-        // such hardware, but we can at least try to make things seem as sane as possible by being
-        // careful here.
-        //
-        // FIXME(jubilee): Using x87 operations is never necessary in order to function
-        // on x86 processors for Rust-to-Rust calls, so this issue should not happen.
-        // Code generation should be adjusted to use non-C calling conventions, avoiding this.
-        if self.is_infinite() {
-            // A value may compare unequal to infinity, despite having a "full" exponent mask.
-            FpCategory::Infinite
-        } else if self.is_nan() {
-            // And it may not be NaN, as it can simply be an "overextended" finite value.
-            FpCategory::Nan
-        } else {
-            // However, std can't simply compare to zero to check for zero, either,
-            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
-            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
-            // Most of std's targets don't use those, but they are used for thumbv7neon.
-            // So, this does use bitpattern matching for the rest. On x87, due to the incorrect
-            // float codegen on this hardware, this doesn't actually return a right answer for NaN
-            // because it cannot correctly discern between a floating point NaN, and some normal
-            // floating point numbers truncated from an x87 FPU -- but we took care of NaN above, so
-            // we are fine.
-            // FIXME(jubilee): This probably could at least answer things correctly for Infinity,
-            // like the f64 version does, but I need to run more checks on how things go on x86.
-            // I fear losing mantissa data that would have answered that differently.
-            let b = self.to_bits();
-            match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
-                (0, 0) => FpCategory::Zero,
-                (_, 0) => FpCategory::Subnormal,
-                _ => FpCategory::Normal,
-            }
+        // We used to have complicated logic here that avoids the simple bit-based tests to work
+        // around buggy codegen for x87 targets (see
+        // https://github.com/rust-lang/rust/issues/114479). However, some LLVM versions later, none
+        // of our tests is able to find any difference between the complicated and the naive
+        // version, so now we are back to the naive version.
+        let b = self.to_bits();
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
         }
     }
 
@@ -1115,7 +1089,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_bits(self) -> u32 {
         // SAFETY: `u32` is a plain old datatype so we can always transmute to it.
@@ -1159,7 +1133,7 @@ impl f32 {
     /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_bits(v: u32) -> Self {
@@ -1183,7 +1157,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_be_bytes(self) -> [u8; 4] {
         self.to_bits().to_be_bytes()
@@ -1204,7 +1178,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_le_bytes(self) -> [u8; 4] {
         self.to_bits().to_le_bytes()
@@ -1238,7 +1212,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 4] {
         self.to_bits().to_ne_bytes()
@@ -1256,7 +1230,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_be_bytes(bytes: [u8; 4]) -> Self {
@@ -1275,7 +1249,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_le_bytes(bytes: [u8; 4]) -> Self {
@@ -1305,7 +1279,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_ne_bytes(bytes: [u8; 4]) -> Self {

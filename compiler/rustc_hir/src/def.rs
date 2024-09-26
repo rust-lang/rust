@@ -6,10 +6,10 @@ use rustc_ast::NodeId;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::kw;
-use rustc_span::Symbol;
 
 use crate::definitions::DefPathData;
 use crate::hir;
@@ -287,7 +287,10 @@ impl DefKind {
 
     #[inline]
     pub fn is_fn_like(self) -> bool {
-        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure)
+        matches!(
+            self,
+            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::SyntheticCoroutineBody
+        )
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.

@@ -6,8 +6,8 @@ use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_session::config::FmtDebug;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Span, Symbol, sym};
 
 use super::LoweringContext;
 
@@ -363,16 +363,13 @@ fn make_format_spec<'hir>(
         debug_hex,
     } = &placeholder.format_options;
     let fill = ctx.expr_char(sp, fill.unwrap_or(' '));
-    let align = ctx.expr_lang_item_type_relative(
-        sp,
-        hir::LangItem::FormatAlignment,
-        match alignment {
+    let align =
+        ctx.expr_lang_item_type_relative(sp, hir::LangItem::FormatAlignment, match alignment {
             Some(FormatAlignment::Left) => sym::Left,
             Some(FormatAlignment::Right) => sym::Right,
             Some(FormatAlignment::Center) => sym::Center,
             None => sym::Unknown,
-        },
-    );
+        });
     // This needs to match `Flag` in library/core/src/fmt/rt.rs.
     let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
         | ((sign == Some(FormatSign::Minus)) as u32) << 1

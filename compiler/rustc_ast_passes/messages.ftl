@@ -40,14 +40,14 @@ ast_passes_body_in_extern = incorrect `{$kind}` inside `extern` block
 
 ast_passes_bound_in_context = bounds on `type`s in {$ctx} have no effect
 
-ast_passes_const_and_async = functions cannot be both `const` and `async`
-    .const = `const` because of this
-    .async = `async` because of this
-    .label = {""}
-
 ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadic
     .const = `const` because of this
     .variadic = C-variadic because of this
+
+ast_passes_const_and_coroutine = functions cannot be both `const` and `{$coroutine_kind}`
+    .const = `const` because of this
+    .coroutine = `{$coroutine_kind}` because of this
+    .label = {""}
 
 ast_passes_const_bound_trait_object = const trait bounds are not allowed in trait object types
 

@@ -788,15 +788,15 @@ impl Command {
             let mut iov = [IoSlice::new(b"")];
             let mut msg: libc::msghdr = mem::zeroed();
 
-            msg.msg_iov = core::ptr::addr_of_mut!(iov) as *mut _;
+            msg.msg_iov = (&raw mut iov) as *mut _;
             msg.msg_iovlen = 1;
 
             // only attach cmsg if we successfully acquired the pidfd
             if pidfd >= 0 {
                 msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
-                msg.msg_control = core::ptr::addr_of_mut!(cmsg.buf) as *mut _;
+                msg.msg_control = (&raw mut cmsg.buf) as *mut _;
 
-                let hdr = CMSG_FIRSTHDR(core::ptr::addr_of_mut!(msg) as *mut _);
+                let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
                 (*hdr).cmsg_level = SOL_SOCKET;
                 (*hdr).cmsg_type = SCM_RIGHTS;
                 (*hdr).cmsg_len = CMSG_LEN(SCM_MSG_LEN as _) as _;
@@ -838,17 +838,17 @@ impl Command {
 
             let mut msg: libc::msghdr = mem::zeroed();
 
-            msg.msg_iov = core::ptr::addr_of_mut!(iov) as *mut _;
+            msg.msg_iov = (&raw mut iov) as *mut _;
             msg.msg_iovlen = 1;
             msg.msg_controllen = mem::size_of::<Cmsg>() as _;
-            msg.msg_control = core::ptr::addr_of_mut!(cmsg) as *mut _;
+            msg.msg_control = (&raw mut cmsg) as *mut _;
 
             match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
                 Err(_) => return -1,
                 Ok(_) => {}
             }
 
-            let hdr = CMSG_FIRSTHDR(core::ptr::addr_of_mut!(msg) as *mut _);
+            let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
             if hdr.is_null()
                 || (*hdr).cmsg_level != SOL_SOCKET
                 || (*hdr).cmsg_type != SCM_RIGHTS
@@ -1089,13 +1089,13 @@ fn signal_string(signal: i32) -> &'static str {
         libc::SIGURG => " (SIGURG)",
         #[cfg(not(target_os = "l4re"))]
         libc::SIGXCPU => " (SIGXCPU)",
-        #[cfg(not(target_os = "l4re"))]
+        #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
         libc::SIGXFSZ => " (SIGXFSZ)",
-        #[cfg(not(target_os = "l4re"))]
+        #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
         libc::SIGVTALRM => " (SIGVTALRM)",
         #[cfg(not(target_os = "l4re"))]
         libc::SIGPROF => " (SIGPROF)",
-        #[cfg(not(target_os = "l4re"))]
+        #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
         libc::SIGWINCH => " (SIGWINCH)",
         #[cfg(not(any(target_os = "haiku", target_os = "l4re")))]
         libc::SIGIO => " (SIGIO)",
@@ -1190,8 +1190,8 @@ impl ExitStatusError {
 mod linux_child_ext {
 
     use crate::os::linux::process as os;
-    use crate::sys::pal::unix::linux::pidfd as imp;
     use crate::sys::pal::unix::ErrorKind;
+    use crate::sys::pal::unix::linux::pidfd as imp;
     use crate::sys_common::FromInner;
     use crate::{io, mem};
 

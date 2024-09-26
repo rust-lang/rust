@@ -3023,8 +3023,16 @@ macro_rules! int_impl {
         pub const fn div_floor(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
-            if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
-                d - 1
+
+            // If the remainder is non-zero, we need to subtract one if the
+            // signs of self and rhs differ, as this means we rounded upwards
+            // instead of downwards. We do this branchlessly by creating a mask
+            // which is all-ones iff the signs differ, and 0 otherwise. Then by
+            // adding this mask (which corresponds to the signed value -1), we
+            // get our correction.
+            let correction = (self ^ rhs) >> (Self::BITS - 1);
+            if r != 0 {
+                d + correction
             } else {
                 d
             }
@@ -3059,8 +3067,12 @@ macro_rules! int_impl {
         pub const fn div_ceil(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
-            if (r > 0 && rhs > 0) || (r < 0 && rhs < 0) {
-                d + 1
+
+            // When remainder is non-zero we have a.div_ceil(b) == 1 + a.div_floor(b),
+            // so we can re-use the algorithm from div_floor, just adding 1.
+            let correction = 1 + ((self ^ rhs) >> (Self::BITS - 1));
+            if r != 0 {
+                d + correction
             } else {
                 d
             }

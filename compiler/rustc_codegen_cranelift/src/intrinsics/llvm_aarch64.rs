@@ -91,6 +91,44 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        _ if intrinsic.starts_with("llvm.aarch64.neon.fmax.v") => {
+            intrinsic_args!(fx, args => (x, y); intrinsic);
+
+            simd_pair_for_each_lane(
+                fx,
+                x,
+                y,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| fx.bcx.ins().fmax(x_lane, y_lane),
+            );
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.fmin.v") => {
+            intrinsic_args!(fx, args => (x, y); intrinsic);
+
+            simd_pair_for_each_lane(
+                fx,
+                x,
+                y,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| fx.bcx.ins().fmin(x_lane, y_lane),
+            );
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.faddv.f32.v") => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| fx.bcx.ins().fadd(a, b));
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.frintn.v") => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            simd_for_each_lane(fx, v, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                fx.bcx.ins().nearest(lane)
+            });
+        }
+
         _ if intrinsic.starts_with("llvm.aarch64.neon.smaxv.i") => {
             intrinsic_args!(fx, args => (v); intrinsic);
 

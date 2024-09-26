@@ -12,11 +12,11 @@ use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
-use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
+use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use crate::build::ExprCategory;
 use crate::errors::*;
@@ -218,6 +218,13 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 warnings: self.warnings,
                 suggest_unsafe_block: self.suggest_unsafe_block,
             };
+            // params in THIR may be unsafe, e.g. a union pattern.
+            for param in &inner_thir.params {
+                if let Some(param_pat) = param.pat.as_deref() {
+                    inner_visitor.visit_pat(param_pat);
+                }
+            }
+            // Visit the body.
             inner_visitor.visit_expr(&inner_thir[expr]);
             // Unsafe blocks can be used in the inner body, make sure to take it into account
             self.safety_context = inner_visitor.safety_context;
@@ -315,14 +322,15 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::DerefPattern { .. }
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
-                | PatKind::Array { .. } => {
+                | PatKind::Array { .. }
+                // Never constitutes a witness of uninhabitedness.
+                | PatKind::Never => {
                     self.requires_unsafe(pat.span, AccessToUnionField);
                     return; // we can return here since this already requires unsafe
                 }
-                // wildcard/never don't take anything
+                // wildcard doesn't read anything.
                 PatKind::Wild |
-                PatKind::Never |
-                // these just wrap other patterns
+                // these just wrap other patterns, which we recurse on below.
                 PatKind::Or { .. } |
                 PatKind::InlineConstant { .. } |
                 PatKind::AscribeUserType { .. } |
@@ -491,10 +499,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             .copied()
                             .filter(|feature| missing.contains(feature))
                             .collect();
-                        self.requires_unsafe(
-                            expr.span,
-                            CallToFunctionWith { function: func_did, missing, build_enabled },
-                        );
+                        self.requires_unsafe(expr.span, CallToFunctionWith {
+                            function: func_did,
+                            missing,
+                            build_enabled,
+                        });
                     }
                 }
             }
@@ -1032,16 +1041,21 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         warnings: &mut warnings,
         suggest_unsafe_block: true,
     };
+    // params in THIR may be unsafe, e.g. a union pattern.
+    for param in &thir.params {
+        if let Some(param_pat) = param.pat.as_deref() {
+            visitor.visit_pat(param_pat);
+        }
+    }
+    // Visit the body.
     visitor.visit_expr(&thir[expr]);
 
     warnings.sort_by_key(|w| w.block_span);
     for UnusedUnsafeWarning { hir_id, block_span, enclosing_unsafe } in warnings {
         let block_span = tcx.sess.source_map().guess_head_span(block_span);
-        tcx.emit_node_span_lint(
-            UNUSED_UNSAFE,
-            hir_id,
-            block_span,
-            UnusedUnsafe { span: block_span, enclosing: enclosing_unsafe },
-        );
+        tcx.emit_node_span_lint(UNUSED_UNSAFE, hir_id, block_span, UnusedUnsafe {
+            span: block_span,
+            enclosing: enclosing_unsafe,
+        });
     }
 }

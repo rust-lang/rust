@@ -232,7 +232,7 @@ extern "rust-intrinsic" {
     ///
     /// `T` must be a vector.
     ///
-    /// `U` must be a **const** array or vector of `u32`s. This means it must either refer to a named
+    /// `U` must be a **const** vector of `u32`s. This means it must either refer to a named
     /// const or be given as an inline const expression (`const { ... }`).
     ///
     /// `V` must be a vector with the same element type as `T` and the same length as `U`.

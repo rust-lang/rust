@@ -30,7 +30,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
@@ -45,17 +45,17 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::{Limit, MetadataKind, Session};
-use rustc_span::def_id::{DefPathHash, StableCrateId, CRATE_DEF_ID};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
+use rustc_type_ir::TyKind::*;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::solve::SolverMode;
-use rustc_type_ir::TyKind::*;
-use rustc_type_ir::{search_graph, CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
+use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo, search_graph};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -179,6 +179,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             SolverMode::Normal => f(&mut *self.new_solver_evaluation_cache.lock()),
             SolverMode::Coherence => f(&mut *self.new_solver_coherence_evaluation_cache.lock()),
         }
+    }
+
+    fn evaluation_is_concurrent(&self) -> bool {
+        self.sess.threads() > 1
     }
 
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
@@ -426,7 +430,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 let simp = ty::fast_reject::simplify_type(
                     tcx,
                     self_ty,
-                    ty::fast_reject::TreatParams::ForLookup,
+                    ty::fast_reject::TreatParams::AsRigid,
                 )
                 .unwrap();
                 consider_impls_for_simplified_type(simp);
@@ -1011,10 +1015,10 @@ impl<'tcx> CommonLifetimes<'tcx> {
             .map(|i| {
                 (0..NUM_PREINTERNED_RE_LATE_BOUNDS_V)
                     .map(|v| {
-                        mk(ty::ReBound(
-                            ty::DebruijnIndex::from(i),
-                            ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BrAnon },
-                        ))
+                        mk(ty::ReBound(ty::DebruijnIndex::from(i), ty::BoundRegion {
+                            var: ty::BoundVar::from(v),
+                            kind: ty::BrAnon,
+                        }))
                     })
                     .collect()
             })
@@ -1475,7 +1479,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// provides a `TyCtxt`.
     ///
     /// By only providing the `TyCtxt` inside of the closure we enforce that the type
-    /// context and any interned alue (types, args, etc.) can only be used while `ty::tls`
+    /// context and any interned value (types, args, etc.) can only be used while `ty::tls`
     /// has a valid reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
@@ -2003,7 +2007,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ));
             }
         }
-        return None;
+        None
     }
 
     /// Checks if the bound region is in Impl Item.
@@ -2602,33 +2606,31 @@ impl<'tcx> TyCtxt<'tcx> {
     /// With `cfg(debug_assertions)`, assert that args are compatible with their generics,
     /// and print out the args if not.
     pub fn debug_assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
-        if cfg!(debug_assertions) {
-            if !self.check_args_compatible(def_id, args) {
-                if let DefKind::AssocTy = self.def_kind(def_id)
-                    && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
-                {
-                    bug!(
-                        "args not compatible with generics for {}: args={:#?}, generics={:#?}",
-                        self.def_path_str(def_id),
-                        args,
-                        // Make `[Self, GAT_ARGS...]` (this could be simplified)
-                        self.mk_args_from_iter(
-                            [self.types.self_param.into()].into_iter().chain(
-                                self.generics_of(def_id)
-                                    .own_args(ty::GenericArgs::identity_for_item(self, def_id))
-                                    .iter()
-                                    .copied()
-                            )
+        if cfg!(debug_assertions) && !self.check_args_compatible(def_id, args) {
+            if let DefKind::AssocTy = self.def_kind(def_id)
+                && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
+            {
+                bug!(
+                    "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                    self.def_path_str(def_id),
+                    args,
+                    // Make `[Self, GAT_ARGS...]` (this could be simplified)
+                    self.mk_args_from_iter(
+                        [self.types.self_param.into()].into_iter().chain(
+                            self.generics_of(def_id)
+                                .own_args(ty::GenericArgs::identity_for_item(self, def_id))
+                                .iter()
+                                .copied()
                         )
-                    );
-                } else {
-                    bug!(
-                        "args not compatible with generics for {}: args={:#?}, generics={:#?}",
-                        self.def_path_str(def_id),
-                        args,
-                        ty::GenericArgs::identity_for_item(self, def_id)
-                    );
-                }
+                    )
+                );
+            } else {
+                bug!(
+                    "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                    self.def_path_str(def_id),
+                    args,
+                    ty::GenericArgs::identity_for_item(self, def_id)
+                );
             }
         }
     }
@@ -3050,15 +3052,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
 
                     let generics = self.generics_of(new_parent);
-                    return ty::Region::new_early_param(
-                        self,
-                        ty::EarlyParamRegion {
-                            index: generics
-                                .param_def_id_to_index(self, ebv.to_def_id())
-                                .expect("early-bound var should be present in fn generics"),
-                            name: self.item_name(ebv.to_def_id()),
-                        },
-                    );
+                    return ty::Region::new_early_param(self, ty::EarlyParamRegion {
+                        index: generics
+                            .param_def_id_to_index(self, ebv.to_def_id())
+                            .expect("early-bound var should be present in fn generics"),
+                        name: self.item_name(ebv.to_def_id()),
+                    });
                 }
                 Some(resolve_bound_vars::ResolvedArg::LateBound(_, _, lbv)) => {
                     let new_parent = self.local_parent(lbv);
@@ -3169,7 +3168,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
     }
 
-    pub fn needs_coroutine_by_move_body_def_id(self, def_id: LocalDefId) -> bool {
+    pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {
         if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
             self.coroutine_kind(def_id)
             && let ty::Coroutine(_, args) = self.type_of(def_id).instantiate_identity().kind()
@@ -3183,8 +3182,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Impl { of_trait: true })
-            && self.impl_trait_header(def_id).is_some_and(|header| header.do_not_recommend)
+        self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
 }
 

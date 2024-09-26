@@ -38,7 +38,7 @@
 //!   not contain any indirection through a pointer or any indexing projections.
 //!
 //! * `p` and `q` must have the **same type**. If we replace a local with a subtype or supertype,
-//!   we may end up with a differnet vtable for that local. See the `subtyping-impacts-selection`
+//!   we may end up with a different vtable for that local. See the `subtyping-impacts-selection`
 //!   tests for an example where that causes issues.
 //!
 //! * We need to make sure that the goal of "merging the memory" is actually structurally possible
@@ -137,20 +137,18 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    dump_mir, traversal, Body, HasLocalDecls, InlineAsmOperand, Local, LocalKind, Location,
-    Operand, PassWhere, Place, Rvalue, Statement, StatementKind, TerminatorKind,
+    Body, HasLocalDecls, InlineAsmOperand, Local, LocalKind, Location, Operand, PassWhere, Place,
+    Rvalue, Statement, StatementKind, TerminatorKind, dump_mir, traversal,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::MaybeLiveLocals;
-use rustc_mir_dataflow::points::{save_as_intervals, DenseLocationMap, PointIndex};
 use rustc_mir_dataflow::Analysis;
+use rustc_mir_dataflow::impls::MaybeLiveLocals;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex, save_as_intervals};
 use tracing::{debug, trace};
 
-use crate::MirPass;
+pub(super) struct DestinationPropagation;
 
-pub struct DestinationPropagation;
-
-impl<'tcx> MirPass<'tcx> for DestinationPropagation {
+impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         // For now, only run at MIR opt level 3. Two things need to be changed before this can be
         // turned on by default:
@@ -165,7 +163,8 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
-        let mut allocations = Allocations::default();
+        let mut candidates = Candidates::default();
+        let mut write_info = WriteInfo::default();
         trace!(func = ?tcx.def_path_str(def_id));
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
@@ -193,12 +192,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
         loop {
             // PERF: Can we do something smarter than recalculating the candidates and liveness
             // results?
-            let mut candidates = find_candidates(
-                body,
-                &borrowed,
-                &mut allocations.candidates,
-                &mut allocations.candidates_reverse,
-            );
+            candidates.reset_and_find(body, &borrowed);
             trace!(?candidates);
             dest_prop_mir_dump(tcx, body, &points, &live, round_count);
 
@@ -206,7 +200,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 &mut candidates,
                 &points,
                 &live,
-                &mut allocations.write_info,
+                &mut write_info,
                 body,
             );
 
@@ -248,27 +242,15 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             }
             round_count += 1;
 
-            apply_merges(body, tcx, &merges, &merged_locals);
+            apply_merges(body, tcx, merges, merged_locals);
         }
 
         trace!(round_count);
     }
 }
 
-/// Container for the various allocations that we need.
-///
-/// We store these here and hand out `&mut` access to them, instead of dropping and recreating them
-/// frequently. Everything with a `&'alloc` lifetime points into here.
-#[derive(Default)]
-struct Allocations {
-    candidates: FxIndexMap<Local, Vec<Local>>,
-    candidates_reverse: FxIndexMap<Local, Vec<Local>>,
-    write_info: WriteInfo,
-    // PERF: Do this for `MaybeLiveLocals` allocations too.
-}
-
-#[derive(Debug)]
-struct Candidates<'alloc> {
+#[derive(Debug, Default)]
+struct Candidates {
     /// The set of candidates we are considering in this optimization.
     ///
     /// We will always merge the key into at most one of its values.
@@ -283,11 +265,12 @@ struct Candidates<'alloc> {
     ///
     /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
     /// remove that assignment.
-    c: &'alloc mut FxIndexMap<Local, Vec<Local>>,
+    c: FxIndexMap<Local, Vec<Local>>,
+
     /// A reverse index of the `c` set; if the `c` set contains `a => Place { local: b, proj }`,
     /// then this contains `b => a`.
     // PERF: Possibly these should be `SmallVec`s?
-    reverse: &'alloc mut FxIndexMap<Local, Vec<Local>>,
+    reverse: FxIndexMap<Local, Vec<Local>>,
 }
 
 //////////////////////////////////////////////////////////
@@ -298,20 +281,20 @@ struct Candidates<'alloc> {
 fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    merges: &FxIndexMap<Local, Local>,
-    merged_locals: &BitSet<Local>,
+    merges: FxIndexMap<Local, Local>,
+    merged_locals: BitSet<Local>,
 ) {
     let mut merger = Merger { tcx, merges, merged_locals };
     merger.visit_body_preserves_cfg(body);
 }
 
-struct Merger<'a, 'tcx> {
+struct Merger<'tcx> {
     tcx: TyCtxt<'tcx>,
-    merges: &'a FxIndexMap<Local, Local>,
-    merged_locals: &'a BitSet<Local>,
+    merges: FxIndexMap<Local, Local>,
+    merged_locals: BitSet<Local>,
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
+impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -360,19 +343,40 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
 //
 // This section enforces bullet point 2
 
-struct FilterInformation<'a, 'body, 'alloc, 'tcx> {
-    body: &'body Body<'tcx>,
+struct FilterInformation<'a, 'tcx> {
+    body: &'a Body<'tcx>,
     points: &'a DenseLocationMap,
     live: &'a SparseIntervalMatrix<Local, PointIndex>,
-    candidates: &'a mut Candidates<'alloc>,
-    write_info: &'alloc mut WriteInfo,
+    candidates: &'a mut Candidates,
+    write_info: &'a mut WriteInfo,
     at: Location,
 }
 
 // We first implement some utility functions which we will expose removing candidates according to
 // different needs. Throughout the liveness filtering, the `candidates` are only ever accessed
 // through these methods, and not directly.
-impl<'alloc> Candidates<'alloc> {
+impl Candidates {
+    /// Collects the candidates for merging.
+    ///
+    /// This is responsible for enforcing the first and third bullet point.
+    fn reset_and_find<'tcx>(&mut self, body: &Body<'tcx>, borrowed: &BitSet<Local>) {
+        self.c.clear();
+        self.reverse.clear();
+        let mut visitor = FindAssignments { body, candidates: &mut self.c, borrowed };
+        visitor.visit_body(body);
+        // Deduplicate candidates.
+        for (_, cands) in self.c.iter_mut() {
+            cands.sort();
+            cands.dedup();
+        }
+        // Generate the reverse map.
+        for (src, cands) in self.c.iter() {
+            for dest in cands.iter().copied() {
+                self.reverse.entry(dest).or_default().push(*src);
+            }
+        }
+    }
+
     /// Just `Vec::retain`, but the condition is inverted and we add debugging output
     fn vec_filter_candidates(
         src: Local,
@@ -447,7 +451,7 @@ enum CandidateFilter {
     Remove,
 }
 
-impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
+impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
     /// Filters the set of candidates to remove those that conflict.
     ///
     /// The steps we take are exactly those that are outlined at the top of the file. For each
@@ -465,12 +469,12 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
     /// before the statement/terminator will correctly report locals that are read in the
     /// statement/terminator to be live. We are additionally conservative by treating all written to
     /// locals as also being read from.
-    fn filter_liveness<'b>(
-        candidates: &mut Candidates<'alloc>,
+    fn filter_liveness(
+        candidates: &mut Candidates,
         points: &DenseLocationMap,
         live: &SparseIntervalMatrix<Local, PointIndex>,
-        write_info_alloc: &'alloc mut WriteInfo,
-        body: &'b Body<'tcx>,
+        write_info: &mut WriteInfo,
+        body: &Body<'tcx>,
     ) {
         let mut this = FilterInformation {
             body,
@@ -479,7 +483,7 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
             candidates,
             // We don't actually store anything at this scope, we just keep things here to be able
             // to reuse the allocation.
-            write_info: write_info_alloc,
+            write_info,
             // Doesn't matter what we put here, will be overwritten before being used
             at: Location::START,
         };
@@ -736,40 +740,13 @@ fn places_to_candidate_pair<'tcx>(
     Some((a, b))
 }
 
-/// Collects the candidates for merging
-///
-/// This is responsible for enforcing the first and third bullet point.
-fn find_candidates<'alloc, 'tcx>(
-    body: &Body<'tcx>,
-    borrowed: &BitSet<Local>,
-    candidates: &'alloc mut FxIndexMap<Local, Vec<Local>>,
-    candidates_reverse: &'alloc mut FxIndexMap<Local, Vec<Local>>,
-) -> Candidates<'alloc> {
-    candidates.clear();
-    candidates_reverse.clear();
-    let mut visitor = FindAssignments { body, candidates, borrowed };
-    visitor.visit_body(body);
-    // Deduplicate candidates
-    for (_, cands) in candidates.iter_mut() {
-        cands.sort();
-        cands.dedup();
-    }
-    // Generate the reverse map
-    for (src, cands) in candidates.iter() {
-        for dest in cands.iter().copied() {
-            candidates_reverse.entry(dest).or_default().push(*src);
-        }
-    }
-    Candidates { c: candidates, reverse: candidates_reverse }
-}
-
-struct FindAssignments<'a, 'alloc, 'tcx> {
+struct FindAssignments<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    candidates: &'alloc mut FxIndexMap<Local, Vec<Local>>,
+    candidates: &'a mut FxIndexMap<Local, Vec<Local>>,
     borrowed: &'a BitSet<Local>,
 }
 
-impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
+impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         if let StatementKind::Assign(box (
             lhs,
@@ -821,9 +798,9 @@ fn is_local_required(local: Local, body: &Body<'_>) -> bool {
 /////////////////////////////////////////////////////////
 // MIR Dump
 
-fn dest_prop_mir_dump<'body, 'tcx>(
+fn dest_prop_mir_dump<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &'body Body<'tcx>,
+    body: &Body<'tcx>,
     points: &DenseLocationMap,
     live: &SparseIntervalMatrix<Local, PointIndex>,
     round: usize,

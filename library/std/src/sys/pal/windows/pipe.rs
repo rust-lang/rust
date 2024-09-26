@@ -2,12 +2,13 @@ use crate::ffi::OsStr;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::os::windows::prelude::*;
 use crate::path::Path;
+use crate::random::{DefaultRandomSource, Random};
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::Relaxed;
+use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::pal::windows::api::{self, WinError};
-use crate::sys::{c, hashmap_random_keys};
 use crate::sys_common::{FromInner, IntoInner};
 use crate::{mem, ptr};
 
@@ -79,7 +80,7 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
             name = format!(
                 r"\\.\pipe\__rust_anonymous_pipe1__.{}.{}",
                 c::GetCurrentProcessId(),
-                random_number()
+                random_number(),
             );
             let wide_name = OsStr::new(&name).encode_wide().chain(Some(0)).collect::<Vec<_>>();
             let mut flags = c::FILE_FLAG_FIRST_PIPE_INSTANCE | c::FILE_FLAG_OVERLAPPED;
@@ -214,7 +215,7 @@ fn random_number() -> usize {
             return N.fetch_add(1, Relaxed);
         }
 
-        N.store(hashmap_random_keys().0 as usize, Relaxed);
+        N.store(usize::random(&mut DefaultRandomSource), Relaxed);
     }
 }
 
@@ -374,7 +375,7 @@ impl AnonPipe {
         let mut overlapped: c::OVERLAPPED = unsafe { crate::mem::zeroed() };
         // `hEvent` is unused by `ReadFileEx` and `WriteFileEx`.
         // Therefore the documentation suggests using it to smuggle a pointer to the callback.
-        overlapped.hEvent = core::ptr::addr_of_mut!(async_result) as *mut _;
+        overlapped.hEvent = (&raw mut async_result) as *mut _;
 
         // Asynchronous read of the pipe.
         // If successful, `callback` will be called once it completes.

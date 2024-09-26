@@ -1,6 +1,5 @@
 #![allow(missing_docs, nonstandard_style)]
 
-pub use self::rand::hashmap_random_keys;
 use crate::io::ErrorKind;
 
 #[cfg(not(target_os = "espidf"))]
@@ -26,7 +25,6 @@ pub use self::l4re::net;
 pub mod os;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
@@ -79,6 +77,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "l4re",
             target_os = "horizon",
             target_os = "vita",
+            target_os = "rtems",
             // The poll on Darwin doesn't set POLLNVAL for closed fds.
             target_vendor = "apple",
         )))]
@@ -223,6 +222,7 @@ static ON_BROKEN_PIPE_FLAG_USED: crate::sync::atomic::AtomicBool =
     target_os = "horizon",
     target_os = "vxworks",
     target_os = "vita",
+    target_os = "nuttx",
 )))]
 pub(crate) fn on_broken_pipe_flag_used() -> bool {
     ON_BROKEN_PIPE_FLAG_USED.load(crate::sync::atomic::Ordering::Relaxed)
@@ -280,6 +280,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ETIMEDOUT => TimedOut,
         libc::ETXTBSY => ExecutableFileBusy,
         libc::EXDEV => CrossesDevices,
+        libc::EINPROGRESS => InProgress,
 
         libc::EACCES | libc::EPERM => PermissionDenied,
 
@@ -425,7 +426,7 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
+#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))]
 mod unsupported {
     use crate::io;
 

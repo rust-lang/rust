@@ -1,5 +1,5 @@
 error: `foo` is not yet stable as a const fn
-  --> $DIR/min_const_fn_libstd_stability.rs:16:25
+  --> $DIR/min_const_fn_libstd_stability.rs:17:25
    |
 LL | const fn bar() -> u32 { foo() }
    |                         ^^^^^
@@ -7,18 +7,18 @@ LL | const fn bar() -> u32 { foo() }
    = help: const-stable functions can only call other const-stable functions
 
 error: `foo2` is not yet stable as a const fn
-  --> $DIR/min_const_fn_libstd_stability.rs:24:26
+  --> $DIR/min_const_fn_libstd_stability.rs:25:26
    |
 LL | const fn bar2() -> u32 { foo2() }
    |                          ^^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
 
-error: const-stable function cannot use `#[feature(const_refs_to_cell)]`
-  --> $DIR/min_const_fn_libstd_stability.rs:31:5
+error: const-stable function cannot use `#[feature(const_async_blocks)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:31:13
    |
-LL |     x.get();
-   |     ^
+LL |     let x = async { 13 };
+   |             ^^^^^^^^^^^^
    |
 help: if the function is not (yet) meant to be stable, make this function unstably const
    |
@@ -27,20 +27,12 @@ LL | const fn bar3() -> u32 {
    |
 help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (but requires team approval)
    |
-LL + #[rustc_allow_const_fn_unstable(const_refs_to_cell)]
+LL + #[rustc_allow_const_fn_unstable(const_async_blocks)]
 LL | const fn bar3() -> u32 {
    |
 
-error[E0015]: cannot call non-const fn `Cell::<u32>::get` in constant functions
-  --> $DIR/min_const_fn_libstd_stability.rs:31:7
-   |
-LL |     x.get();
-   |       ^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-
 error: `foo` is not yet stable as a const fn
-  --> $DIR/min_const_fn_libstd_stability.rs:34:5
+  --> $DIR/min_const_fn_libstd_stability.rs:33:5
    |
 LL |     foo()
    |     ^^^^^
@@ -48,13 +40,12 @@ LL |     foo()
    = help: const-stable functions can only call other const-stable functions
 
 error: `foo2_gated` is not yet stable as a const fn
-  --> $DIR/min_const_fn_libstd_stability.rs:45:32
+  --> $DIR/min_const_fn_libstd_stability.rs:44:32
    |
 LL | const fn bar2_gated() -> u32 { foo2_gated() }
    |                                ^^^^^^^^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0015`.

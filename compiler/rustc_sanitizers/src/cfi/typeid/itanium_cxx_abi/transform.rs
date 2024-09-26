@@ -19,20 +19,20 @@ use rustc_span::sym;
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
-use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;
 use crate::cfi::typeid::TypeIdOptions;
+use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;
 
 /// Options for transform_ty.
-pub type TransformTyOptions = TypeIdOptions;
+pub(crate) type TransformTyOptions = TypeIdOptions;
 
-pub struct TransformTy<'tcx> {
+pub(crate) struct TransformTy<'tcx> {
     tcx: TyCtxt<'tcx>,
     options: TransformTyOptions,
     parents: Vec<Ty<'tcx>>,
 }
 
 impl<'tcx> TransformTy<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, options: TransformTyOptions) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, options: TransformTyOptions) -> Self {
         TransformTy { tcx, options, parents: Vec::new() }
     }
 }
@@ -146,7 +146,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                         !is_zst
                     });
                     if let Some(field) = field {
-                        let ty0 = self.tcx.erase_regions(field.ty(self.tcx, args));
+                        let ty0 = self.tcx.normalize_erasing_regions(
+                            ty::ParamEnv::reveal_all(),
+                            field.ty(self.tcx, args),
+                        );
                         // Generalize any repr(transparent) user-defined type that is either a
                         // pointer or reference, and either references itself or any other type that
                         // contains or references itself, to avoid a reference cycle.
@@ -262,7 +265,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
 /// mangling.
 ///
 /// typeid_for_instance is called at two locations, initially when declaring/defining functions and
-/// methods, and later during code generation at call sites, after type erasure might have ocurred.
+/// methods, and later during code generation at call sites, after type erasure might have occurred.
 ///
 /// In the first call (i.e., when declaring/defining functions and methods), it encodes type ids for
 /// an FnAbi or Instance, and these type ids are attached to functions and methods. (These type ids
@@ -270,7 +273,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
 /// these type ids.)
 ///
 /// In the second call (i.e., during code generation at call sites), it encodes a type id for an
-/// FnAbi or Instance, after type erasure might have occured, and this type id is used for testing
+/// FnAbi or Instance, after type erasure might have occurred, and this type id is used for testing
 /// if a function is member of the group derived from this type id. Therefore, in the first call to
 /// typeid_for_fnabi (when type ids are attached to functions and methods), it can only include at
 /// most as much information that would be available in the second call (i.e., during code
@@ -365,7 +368,7 @@ pub fn transform_instance<'tcx>(
         // of the trait that defines the method.
         if let Some((trait_ref, method_id, ancestor)) = implemented_method(tcx, instance) {
             // Trait methods will have a Self polymorphic parameter, where the concreteized
-            // implementatation will not. We need to walk back to the more general trait method
+            // implementation will not. We need to walk back to the more general trait method
             let trait_ref = tcx.instantiate_and_normalize_erasing_regions(
                 instance.args,
                 ty::ParamEnv::reveal_all(),

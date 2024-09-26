@@ -8,9 +8,9 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
-use rustc_span::source_map::Spanned;
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
+use rustc_span::source_map::Spanned;
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use tracing::{debug, instrument};
 
 /// The value of an inserted drop flag.
@@ -155,11 +155,11 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
 }
 
 #[derive(Debug)]
-struct DropCtxt<'l, 'b, 'tcx, D>
+struct DropCtxt<'a, 'b, 'tcx, D>
 where
     D: DropElaborator<'b, 'tcx>,
 {
-    elaborator: &'l mut D,
+    elaborator: &'a mut D,
 
     source_info: SourceInfo,
 
@@ -192,7 +192,7 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     DropCtxt { elaborator, source_info, place, path, succ, unwind }.elaborate_drop(bb)
 }
 
-impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
+impl<'a, 'b, 'tcx, D> DropCtxt<'a, 'b, 'tcx, D>
 where
     D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
@@ -233,15 +233,12 @@ where
                     .patch_terminator(bb, TerminatorKind::Goto { target: self.succ });
             }
             DropStyle::Static => {
-                self.elaborator.patch().patch_terminator(
-                    bb,
-                    TerminatorKind::Drop {
-                        place: self.place,
-                        target: self.succ,
-                        unwind: self.unwind.into_action(),
-                        replace: false,
-                    },
-                );
+                self.elaborator.patch().patch_terminator(bb, TerminatorKind::Drop {
+                    place: self.place,
+                    target: self.succ,
+                    unwind: self.unwind.into_action(),
+                    replace: false,
+                });
             }
             DropStyle::Conditional => {
                 let drop_bb = self.complete_drop(self.succ, self.unwind);
@@ -732,15 +729,12 @@ where
         };
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
-        self.elaborator.patch().patch_terminator(
-            drop_block,
-            TerminatorKind::Drop {
-                place: tcx.mk_place_deref(ptr),
-                target: loop_block,
-                unwind: unwind.into_action(),
-                replace: false,
-            },
-        );
+        self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
+            place: tcx.mk_place_deref(ptr),
+            target: loop_block,
+            unwind: unwind.into_action(),
+            replace: false,
+        });
 
         loop_block
     }

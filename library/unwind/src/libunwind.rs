@@ -33,10 +33,10 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(all(target_arch = "x86_64", target_os = "windows"))]
 pub const unwinder_private_data_size: usize = 6;
 
-#[cfg(all(target_arch = "arm", not(all(target_vendor = "apple", not(target_os = "watchos")))))]
+#[cfg(all(target_arch = "arm", not(target_vendor = "apple")))]
 pub const unwinder_private_data_size: usize = 20;
 
-#[cfg(all(target_arch = "arm", all(target_vendor = "apple", not(target_os = "watchos"))))]
+#[cfg(all(target_arch = "arm", target_vendor = "apple"))]
 pub const unwinder_private_data_size: usize = 5;
 
 #[cfg(all(target_arch = "aarch64", target_pointer_width = "64", not(target_os = "windows")))]
@@ -123,8 +123,11 @@ extern "C" {
 }
 
 cfg_if::cfg_if! {
-if #[cfg(any(all(target_vendor = "apple", not(target_os = "watchos")), target_os = "netbsd", not(target_arch = "arm")))] {
+if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "arm")))] {
     // Not ARM EHABI
+    //
+    // 32-bit ARM on iOS/tvOS/watchOS use either DWARF/Compact unwinding or
+    // "setjmp-longjmp" / SjLj unwinding.
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
     pub enum _Unwind_Action {
@@ -219,14 +222,14 @@ if #[cfg(any(all(target_vendor = "apple", not(target_os = "watchos")), target_os
     pub unsafe fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word {
         let mut val: _Unwind_Word = core::ptr::null();
         _Unwind_VRS_Get(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                        core::ptr::addr_of_mut!(val) as *mut c_void);
+                        (&raw mut val) as *mut c_void);
         val
     }
 
     pub unsafe fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word) {
         let mut value = value;
         _Unwind_VRS_Set(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                        core::ptr::addr_of_mut!(value) as *mut c_void);
+                        (&raw mut value) as *mut c_void);
     }
 
     pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context)
@@ -259,8 +262,8 @@ if #[cfg(any(all(target_vendor = "apple", not(target_os = "watchos")), target_os
 
 cfg_if::cfg_if! {
 if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm"))] {
-    // 32-bit ARM Apple (except for watchOS) uses SjLj and does not provide
-    // _Unwind_Backtrace()
+    // 32-bit ARM Apple (except for watchOS armv7k specifically) uses SjLj and
+    // does not provide _Unwind_Backtrace()
     extern "C-unwind" {
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }

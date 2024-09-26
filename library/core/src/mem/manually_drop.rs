@@ -47,7 +47,7 @@ use crate::ptr;
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-#[cfg_attr(not(bootstrap), rustc_pub_transparent)]
+#[rustc_pub_transparent]
 pub struct ManuallyDrop<T: ?Sized> {
     value: T,
 }

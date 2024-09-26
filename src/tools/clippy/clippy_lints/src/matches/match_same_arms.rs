@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_lint_allowed, path_to_local, search_same, SpanlessEq, SpanlessHash};
+use clippy_utils::{SpanlessEq, SpanlessHash, is_lint_allowed, path_to_local, search_same};
 use core::cmp::Ordering;
 use core::{iter, slice};
 use rustc_arena::DroplessArena;

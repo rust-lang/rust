@@ -1,19 +1,99 @@
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
+
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use tracing::trace;
 
 use crate::lint::lint_body;
-use crate::{validate, MirPass};
+use crate::validate;
 
-/// Just like `MirPass`, except it cannot mutate `Body`.
-pub trait MirLint<'tcx> {
+thread_local! {
+    static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
+        RefCell::new(FxHashMap::default())
+    };
+}
+
+/// Converts a MIR pass name into a snake case form to match the profiling naming style.
+fn to_profiler_name(type_name: &'static str) -> &'static str {
+    PASS_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
+        Entry::Occupied(e) => *e.get(),
+        Entry::Vacant(e) => {
+            let snake_case: String = type_name
+                .chars()
+                .flat_map(|c| {
+                    if c.is_ascii_uppercase() {
+                        vec!['_', c.to_ascii_lowercase()]
+                    } else if c == '-' {
+                        vec!['_']
+                    } else {
+                        vec![c]
+                    }
+                })
+                .collect();
+            let result = &*String::leak(format!("mir_pass{}", snake_case));
+            e.insert(result);
+            result
+        }
+    })
+}
+
+// const wrapper for `if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }`
+const fn c_name(name: &'static str) -> &'static str {
+    // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
+    // and inline into call site
+    let bytes = name.as_bytes();
+    let mut i = bytes.len();
+    while i > 0 && bytes[i - 1] != b':' {
+        i = i - 1;
+    }
+    let (_, bytes) = bytes.split_at(i);
+    match std::str::from_utf8(bytes) {
+        Ok(name) => name,
+        Err(_) => name,
+    }
+}
+
+/// A streamlined trait that you can implement to create a pass; the
+/// pass will be named after the type, and it will consist of a main
+/// loop that goes over each available MIR and applies `run_pass`.
+pub(super) trait MirPass<'tcx> {
     fn name(&self) -> &'static str {
-        // FIXME Simplify the implementation once more `str` methods get const-stable.
+        // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
+        // See copypaste in `MirLint`
+        const {
+            let name = std::any::type_name::<Self>();
+            c_name(name)
+        }
+    }
+
+    fn profiler_name(&self) -> &'static str {
+        to_profiler_name(self.name())
+    }
+
+    /// Returns `true` if this pass is enabled with the current combination of compiler flags.
+    fn is_enabled(&self, _sess: &Session) -> bool {
+        true
+    }
+
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
+
+    fn is_mir_dump_enabled(&self) -> bool {
+        true
+    }
+}
+
+/// Just like `MirPass`, except it cannot mutate `Body`, and MIR dumping is
+/// disabled (via the `Lint` adapter).
+pub(super) trait MirLint<'tcx> {
+    fn name(&self) -> &'static str {
+        // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
         // See copypaste in `MirPass`
         const {
             let name = std::any::type_name::<Self>();
-            rustc_middle::util::common::c_name(name)
+            c_name(name)
         }
     }
 
@@ -26,7 +106,7 @@ pub trait MirLint<'tcx> {
 
 /// An adapter for `MirLint`s that implements `MirPass`.
 #[derive(Debug, Clone)]
-pub struct Lint<T>(pub T);
+pub(super) struct Lint<T>(pub T);
 
 impl<'tcx, T> MirPass<'tcx> for Lint<T>
 where
@@ -49,7 +129,7 @@ where
     }
 }
 
-pub struct WithMinOptLevel<T>(pub u32, pub T);
+pub(super) struct WithMinOptLevel<T>(pub u32, pub T);
 
 impl<'tcx, T> MirPass<'tcx> for WithMinOptLevel<T>
 where
@@ -70,7 +150,7 @@ where
 
 /// Run the sequence of passes without validating the MIR after each pass. The MIR is still
 /// validated at the end.
-pub fn run_passes_no_validate<'tcx>(
+pub(super) fn run_passes_no_validate<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],
@@ -80,7 +160,7 @@ pub fn run_passes_no_validate<'tcx>(
 }
 
 /// The optional `phase_change` is applied after executing all the passes, if present
-pub fn run_passes<'tcx>(
+pub(super) fn run_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],
@@ -89,7 +169,7 @@ pub fn run_passes<'tcx>(
     run_passes_inner(tcx, body, passes, phase_change, true);
 }
 
-pub fn should_run_pass<'tcx, P>(tcx: TyCtxt<'tcx>, pass: &P) -> bool
+pub(super) fn should_run_pass<'tcx, P>(tcx: TyCtxt<'tcx>, pass: &P) -> bool
 where
     P: MirPass<'tcx> + ?Sized,
 {
@@ -185,16 +265,11 @@ fn run_passes_inner<'tcx>(
     }
 }
 
-pub fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
+pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
     validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
 }
 
-pub fn dump_mir_for_pass<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    pass_name: &str,
-    is_after: bool,
-) {
+fn dump_mir_for_pass<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, pass_name: &str, is_after: bool) {
     mir::dump_mir(
         tcx,
         true,
@@ -205,7 +280,7 @@ pub fn dump_mir_for_pass<'tcx>(
     );
 }
 
-pub fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     assert_eq!(body.pass_count, 0);
     mir::dump_mir(tcx, true, body.phase.name(), &"after", body, |_, _| Ok(()))
 }

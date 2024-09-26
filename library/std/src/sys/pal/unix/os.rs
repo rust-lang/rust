@@ -31,7 +31,7 @@ cfg_if::cfg_if! {
 }
 
 extern "C" {
-    #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks")))]
+    #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
     #[cfg_attr(
         any(
             target_os = "linux",
@@ -48,6 +48,7 @@ extern "C" {
             target_os = "openbsd",
             target_os = "android",
             target_os = "redox",
+            target_os = "nuttx",
             target_env = "newlib"
         ),
         link_name = "__errno"
@@ -61,13 +62,14 @@ extern "C" {
 }
 
 /// Returns the platform-specific value of errno
-#[cfg(not(any(target_os = "dragonfly", target_os = "vxworks")))]
+#[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
 pub fn errno() -> i32 {
     unsafe { (*errno_location()) as i32 }
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(all(not(target_os = "dragonfly"), not(target_os = "vxworks")))] // needed for readdir and syscall!
+// needed for readdir and syscall!
+#[cfg(all(not(target_os = "dragonfly"), not(target_os = "vxworks"), not(target_os = "rtems")))]
 #[allow(dead_code)] // but not all target cfgs actually end up using it
 pub fn set_errno(e: i32) {
     unsafe { *errno_location() = e as c_int }
@@ -76,6 +78,16 @@ pub fn set_errno(e: i32) {
 #[cfg(target_os = "vxworks")]
 pub fn errno() -> i32 {
     unsafe { libc::errnoGet() }
+}
+
+#[cfg(target_os = "rtems")]
+pub fn errno() -> i32 {
+    extern "C" {
+        #[thread_local]
+        static _tls_errno: c_int;
+    }
+
+    unsafe { _tls_errno as i32 }
 }
 
 #[cfg(target_os = "dragonfly")]
@@ -388,6 +400,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     target_os = "linux",
     target_os = "hurd",
     target_os = "android",
+    target_os = "nuttx",
     target_os = "emscripten"
 ))]
 pub fn current_exe() -> io::Result<PathBuf> {
@@ -472,7 +485,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(target_os = "redox")]
+#[cfg(any(target_os = "redox", target_os = "rtems"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
@@ -599,7 +612,7 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     extern "C" {
         static mut environ: *const *const c_char;
     }
-    ptr::addr_of_mut!(environ)
+    &raw mut environ
 }
 
 static ENV_LOCK: RwLock<()> = RwLock::new(());
@@ -706,6 +719,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
+        target_os = "nuttx",
         all(target_vendor = "apple", not(target_os = "macos")),
     ))]
     unsafe fn fallback() -> Option<OsString> {
@@ -719,6 +733,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
+        target_os = "nuttx",
         all(target_vendor = "apple", not(target_os = "macos")),
     )))]
     unsafe fn fallback() -> Option<OsString> {

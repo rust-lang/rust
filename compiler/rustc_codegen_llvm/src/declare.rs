@@ -12,7 +12,7 @@
 //! * When in doubt, define.
 
 use itertools::Itertools;
-use rustc_codegen_ssa::traits::TypeMembershipMethods;
+use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};

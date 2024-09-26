@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     // In QNX, libc does not provide a compatible ABI between versions.
     // To distinguish between QNX versions, we needed a stable conditional compilation switch,
     // which is why we needed to implement different targets in the compiler.
@@ -27,10 +27,9 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a".into(),
             max_atomic_width: Some(128),
-            pre_link_args: TargetOptions::link_args(
-                LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-                &["-Vgcc_ntoaarch64le_cxx"],
-            ),
+            pre_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
+                "-Vgcc_ntoaarch64le_cxx",
+            ]),
             env: "nto70".into(),
             ..base::nto_qnx::opts()
         },

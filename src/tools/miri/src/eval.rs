@@ -13,9 +13,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
-    self,
+    self, Ty, TyCtxt,
     layout::{LayoutCx, LayoutOf},
-    Ty, TyCtxt,
 };
 use rustc_target::spec::abi::Abi;
 
@@ -277,7 +276,7 @@ pub fn create_ecx<'tcx>(
     config: &MiriConfig,
 ) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
     let param_env = ty::ParamEnv::reveal_all();
-    let layout_cx = LayoutCx { tcx, param_env };
+    let layout_cx = LayoutCx::new(tcx, param_env);
     let mut ecx =
         InterpCx::new(tcx, rustc_span::DUMMY_SP, param_env, MiriMachine::new(config, layout_cx));
 
@@ -458,14 +457,7 @@ pub fn eval_entry<'tcx>(
         panic::resume_unwind(panic_payload)
     });
     // `Ok` can never happen.
-    #[cfg(not(bootstrap))]
     let Err(res) = res;
-    #[cfg(bootstrap)]
-    let res = match res {
-        Err(res) => res,
-        // `Ok` can never happen
-        Ok(never) => match never {},
-    };
 
     // Machine cleanup. Only do this if all threads have terminated; threads that are still running
     // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).

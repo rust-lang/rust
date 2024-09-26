@@ -10,13 +10,13 @@ use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, Into
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, Symbol, DUMMY_SP};
-use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
+use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_target::abi::{Align, Size, VariantIdx, WrappingRange, call};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
-use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
+use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {
@@ -91,9 +91,9 @@ pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 /// `Ok(Err(ty))` indicates the constant was fine, but the valtree couldn't be constructed
-/// because the value containts something of type `ty` that is not valtree-compatible.
+/// because the value contains something of type `ty` that is not valtree-compatible.
 /// The caller can then show an appropriate error; the query does not have the
-/// necssary context to give good user-facing errors for this case.
+/// necessary context to give good user-facing errors for this case.
 pub type EvalToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>;
 
 #[cfg(target_pointer_width = "64")]
@@ -231,7 +231,7 @@ pub enum CheckInAllocMsg {
 pub enum CheckAlignMsg {
     /// The accessed pointer did not have proper alignment.
     AccessedPtr,
-    /// The access ocurred with a place that was based on a misaligned pointer.
+    /// The access occurred with a place that was based on a misaligned pointer.
     BasedOn,
 }
 
@@ -365,8 +365,10 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidVTablePointer(Pointer<AllocId>),
     /// Using a vtable for the wrong trait.
     InvalidVTableTrait {
-        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-        vtable_trait: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        /// The vtable that was actually referenced by the wide pointer metadata.
+        vtable_dyn_type: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        /// The vtable that was expected at the point in MIR that it was accessed.
+        expected_dyn_type: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     },
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
@@ -479,8 +481,10 @@ pub enum ValidationErrorKind<'tcx> {
         value: String,
     },
     InvalidMetaWrongTrait {
-        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-        vtable_trait: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        /// The vtable that was actually referenced by the wide pointer metadata.
+        vtable_dyn_type: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        /// The vtable that was expected at the point in MIR that it was accessed.
+        expected_dyn_type: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     },
     InvalidMetaSliceTooLarge {
         ptr_kind: PointerKind,

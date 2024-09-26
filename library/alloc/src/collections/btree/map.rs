@@ -13,7 +13,7 @@ use super::borrow::DormantMutRef;
 use super::dedup_sorted_iter::DedupSortedIter;
 use super::navigate::{LazyLeafRange, LeafRange};
 use super::node::ForceResult::*;
-use super::node::{self, marker, Handle, NodeRef, Root};
+use super::node::{self, Handle, NodeRef, Root, marker};
 use super::search::SearchBound;
 use super::search::SearchResult::*;
 use super::set_val::SetValZST;
@@ -22,9 +22,9 @@ use crate::vec::Vec;
 
 mod entry;
 
+use Entry::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use entry::{Entry, OccupiedEntry, OccupiedError, VacantEntry};
-use Entry::*;
 
 /// Minimum number of elements in a node that is not a root.
 /// We might temporarily have fewer elements during methods.
@@ -916,6 +916,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "btreemap_contains_key")]
     pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
     where
         K: Borrow<Q> + Ord,
@@ -981,6 +982,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push", "put", "set")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "btreemap_insert")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,
@@ -2016,7 +2018,7 @@ impl<K, V> Default for Range<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
 impl<K, V> Default for RangeMut<'_, K, V> {
     /// Creates an empty `btree_map::RangeMut`.
     ///
@@ -2064,7 +2066,7 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
-#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
 impl<K, V> Default for ValuesMut<'_, K, V> {
     /// Creates an empty `btree_map::ValuesMut`.
     ///
@@ -3302,7 +3304,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
         Some(kv)
     }
 
-    /// Removes the precending element from the `BTreeMap`.
+    /// Removes the preceding element from the `BTreeMap`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).
@@ -3408,7 +3410,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
         self.inner.remove_next()
     }
 
-    /// Removes the precending element from the `BTreeMap`.
+    /// Removes the preceding element from the `BTreeMap`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).

@@ -1,19 +1,19 @@
 use core::ops::ControlFlow;
 
-use rustc_errors::{Applicability, StashKey};
+use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::HirId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Article, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
-use super::{bad_placeholder, ItemCtxt};
+use super::{ItemCtxt, bad_placeholder};
 use crate::errors::TypeofReservedKeywordUsed;
 use crate::hir_ty_lowering::HirTyLowerer;
 
@@ -670,7 +670,7 @@ fn infer_placeholder_type<'tcx>(
 
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
-                if let Ok(suggestions) = &mut err.suggestions {
+                if let Suggestions::Enabled(suggestions) = &mut err.suggestions {
                     suggestions.clear();
                 }
 

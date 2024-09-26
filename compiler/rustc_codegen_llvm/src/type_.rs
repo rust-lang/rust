@@ -13,7 +13,7 @@ use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::context::CodegenCx;
 pub(crate) use crate::llvm::Type;
-use crate::llvm::{Bool, False, True};
+use crate::llvm::{Bool, False, Metadata, True};
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use crate::{common, llvm};
@@ -141,7 +141,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 }
 
-impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> BaseTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_i8(&self) -> &'ll Type {
         unsafe { llvm::LLVMInt8TypeInContext(self.llcx) }
     }
@@ -245,7 +245,7 @@ impl Type {
     }
 }
 
-impl<'ll, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> &'ll Type {
         layout.llvm_type(self)
     }
@@ -280,46 +280,34 @@ impl<'ll, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn add_type_metadata(&self, function: &'ll Value, typeid: String) {
         let typeid_metadata = self.typeid_metadata(typeid).unwrap();
-        let v = [self.const_usize(0), typeid_metadata];
         unsafe {
+            let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
             llvm::LLVMRustGlobalAddMetadata(
                 function,
                 llvm::MD_type as c_uint,
-                llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
-                    self.llcx,
-                    v.as_ptr(),
-                    v.len() as c_uint,
-                )),
+                llvm::LLVMMDNodeInContext2(self.llcx, v.as_ptr(), v.len()),
             )
         }
     }
 
     fn set_type_metadata(&self, function: &'ll Value, typeid: String) {
         let typeid_metadata = self.typeid_metadata(typeid).unwrap();
-        let v = [self.const_usize(0), typeid_metadata];
         unsafe {
+            let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
             llvm::LLVMGlobalSetMetadata(
                 function,
                 llvm::MD_type as c_uint,
-                llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
-                    self.llcx,
-                    v.as_ptr(),
-                    v.len() as c_uint,
-                )),
+                llvm::LLVMMDNodeInContext2(self.llcx, v.as_ptr(), v.len()),
             )
         }
     }
 
-    fn typeid_metadata(&self, typeid: String) -> Option<&'ll Value> {
+    fn typeid_metadata(&self, typeid: String) -> Option<&'ll Metadata> {
         Some(unsafe {
-            llvm::LLVMMDStringInContext(
-                self.llcx,
-                typeid.as_ptr() as *const c_char,
-                typeid.len() as c_uint,
-            )
+            llvm::LLVMMDStringInContext2(self.llcx, typeid.as_ptr() as *const c_char, typeid.len())
         })
     }
 

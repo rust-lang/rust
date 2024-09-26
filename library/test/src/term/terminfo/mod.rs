@@ -3,15 +3,14 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{self, BufReader};
 use std::path::Path;
-use std::{env, error, fmt};
+use std::{env, error, fmt, io};
 
-use parm::{expand, Param, Variables};
+use parm::{Param, Variables, expand};
 use parser::compiled::{msys_terminfo, parse};
 use searcher::get_dbpath_for_term;
 
-use super::{color, Terminal};
+use super::{Terminal, color};
 
 /// A parsed terminfo database entry.
 #[allow(unused)]
@@ -102,8 +101,7 @@ impl TermInfo {
     }
     // Keep the metadata small
     fn _from_path(path: &Path) -> Result<TermInfo, Error> {
-        let file = File::open(path).map_err(Error::IoError)?;
-        let mut reader = BufReader::new(file);
+        let mut reader = File::open_buffered(path).map_err(Error::IoError)?;
         parse(&mut reader, false).map_err(Error::MalformedTerminfo)
     }
 }

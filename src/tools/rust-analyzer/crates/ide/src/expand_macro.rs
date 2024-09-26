@@ -1,9 +1,10 @@
+use hir::db::ExpandDatabase;
 use hir::{InFile, MacroFileIdExt, Semantics};
+use ide_db::base_db::CrateId;
 use ide_db::{
-    helpers::pick_best_token, syntax_helpers::insert_whitespace_into_node::insert_ws_into, FileId,
-    RootDatabase,
+    helpers::pick_best_token, syntax_helpers::prettify_macro_expansion, FileId, RootDatabase,
 };
-use span::Edition;
+use span::{Edition, SpanMap, SyntaxContextId, TextRange, TextSize};
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
 
 use crate::FilePosition;
@@ -27,6 +28,7 @@ pub struct ExpandedMacro {
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
     let file = sema.parse_guess_edition(position.file_id);
+    let krate = sema.file_to_module_def(position.file_id)?.krate().into();
 
     let tok = pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
         SyntaxKind::IDENT => 1,
@@ -61,8 +63,17 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             .take_while(|it| it != &token)
             .filter(|it| it.kind() == T![,])
             .count();
-        let expansion =
-            format(db, SyntaxKind::MACRO_ITEMS, position.file_id, expansions.get(idx).cloned()?);
+        let expansion = expansions.get(idx)?.clone();
+        let expansion_file_id = sema.hir_file_for(&expansion).macro_file()?;
+        let expansion_span_map = db.expansion_span_map(expansion_file_id);
+        let expansion = format(
+            db,
+            SyntaxKind::MACRO_ITEMS,
+            position.file_id,
+            expansion,
+            &expansion_span_map,
+            krate,
+        );
         Some(ExpandedMacro { name, expansion })
     });
 
@@ -71,6 +82,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     }
 
     let mut anc = tok.parent_ancestors();
+    let mut span_map = SpanMap::empty();
     let (name, expanded, kind) = loop {
         let node = anc.next()?;
 
@@ -85,7 +97,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
                                 .unwrap_or(Edition::CURRENT),
                         )
                         .to_string(),
-                    expand_macro_recur(&sema, &item)?,
+                    expand_macro_recur(&sema, &item, &mut span_map, TextSize::new(0))?,
                     SyntaxKind::MACRO_ITEMS,
                 );
             }
@@ -95,14 +107,23 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             name.push('!');
             let syntax_kind =
                 mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS);
-            break (name, expand_macro_recur(&sema, &ast::Item::MacroCall(mac))?, syntax_kind);
+            break (
+                name,
+                expand_macro_recur(
+                    &sema,
+                    &ast::Item::MacroCall(mac),
+                    &mut span_map,
+                    TextSize::new(0),
+                )?,
+                syntax_kind,
+            );
         }
     };
 
     // FIXME:
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
-    let expansion = format(db, kind, position.file_id, expanded);
+    let expansion = format(db, kind, position.file_id, expanded, &span_map, krate);
 
     Some(ExpandedMacro { name, expansion })
 }
@@ -110,6 +131,8 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 fn expand_macro_recur(
     sema: &Semantics<'_, RootDatabase>,
     macro_call: &ast::Item,
+    result_span_map: &mut SpanMap<SyntaxContextId>,
+    offset_in_original_node: TextSize,
 ) -> Option<SyntaxNode> {
     let expanded = match macro_call {
         item @ ast::Item::MacroCall(macro_call) => sema
@@ -118,29 +141,60 @@ fn expand_macro_recur(
             .clone_for_update(),
         item => sema.expand_attr_macro(item)?.clone_for_update(),
     };
-    expand(sema, expanded)
+    let file_id =
+        sema.hir_file_for(&expanded).macro_file().expect("expansion must produce a macro file");
+    let expansion_span_map = sema.db.expansion_span_map(file_id);
+    result_span_map.merge(
+        TextRange::at(offset_in_original_node, macro_call.syntax().text_range().len()),
+        expanded.text_range().len(),
+        &expansion_span_map,
+    );
+    Some(expand(sema, expanded, result_span_map, u32::from(offset_in_original_node) as i32))
 }
 
-fn expand(sema: &Semantics<'_, RootDatabase>, expanded: SyntaxNode) -> Option<SyntaxNode> {
+fn expand(
+    sema: &Semantics<'_, RootDatabase>,
+    expanded: SyntaxNode,
+    result_span_map: &mut SpanMap<SyntaxContextId>,
+    mut offset_in_original_node: i32,
+) -> SyntaxNode {
     let children = expanded.descendants().filter_map(ast::Item::cast);
     let mut replacements = Vec::new();
 
     for child in children {
-        if let Some(new_node) = expand_macro_recur(sema, &child) {
+        if let Some(new_node) = expand_macro_recur(
+            sema,
+            &child,
+            result_span_map,
+            TextSize::new(
+                (offset_in_original_node + (u32::from(child.syntax().text_range().start()) as i32))
+                    as u32,
+            ),
+        ) {
+            offset_in_original_node = offset_in_original_node
+                + (u32::from(new_node.text_range().len()) as i32)
+                - (u32::from(child.syntax().text_range().len()) as i32);
             // check if the whole original syntax is replaced
             if expanded == *child.syntax() {
-                return Some(new_node);
+                return new_node;
             }
             replacements.push((child, new_node));
         }
     }
 
     replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
-    Some(expanded)
+    expanded
 }
 
-fn format(db: &RootDatabase, kind: SyntaxKind, file_id: FileId, expanded: SyntaxNode) -> String {
-    let expansion = insert_ws_into(expanded).to_string();
+fn format(
+    db: &RootDatabase,
+    kind: SyntaxKind,
+    file_id: FileId,
+    expanded: SyntaxNode,
+    span_map: &SpanMap<SyntaxContextId>,
+    krate: CrateId,
+) -> String {
+    let expansion = prettify_macro_expansion(db, expanded, span_map, krate).to_string();
 
     _format(db, kind, file_id, &expansion).unwrap_or(expansion)
 }
@@ -498,7 +552,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >$crate::clone::Clone for Foo< >where {
+                impl < >core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}
@@ -524,7 +578,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >$crate::marker::Copy for Foo< >where{}"#]],
+                impl < >core::marker::Copy for Foo< >where{}"#]],
         );
     }
 
@@ -539,7 +593,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >$crate::marker::Copy for Foo< >where{}"#]],
+                impl < >core::marker::Copy for Foo< >where{}"#]],
         );
         check(
             r#"
@@ -550,7 +604,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >$crate::clone::Clone for Foo< >where {
+                impl < >core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}
@@ -561,6 +615,46 @@ struct Foo {}
                     }
 
                     }"#]],
+        );
+    }
+
+    #[test]
+    fn dollar_crate() {
+        check(
+            r#"
+//- /a.rs crate:a
+pub struct Foo;
+#[macro_export]
+macro_rules! m {
+    ( $i:ident ) => { $crate::Foo; $crate::Foo; $i::Foo; };
+}
+//- /b.rs crate:b deps:a
+pub struct Foo;
+#[macro_export]
+macro_rules! m {
+    () => { a::m!($crate); $crate::Foo; $crate::Foo; };
+}
+//- /c.rs crate:c deps:b,a
+pub struct Foo;
+#[macro_export]
+macro_rules! m {
+    () => { b::m!(); $crate::Foo; $crate::Foo; };
+}
+fn bar() {
+    m$0!();
+}
+"#,
+            expect![[r#"
+m!
+a::Foo;
+a::Foo;
+b::Foo;
+;
+b::Foo;
+b::Foo;
+;
+crate::Foo;
+crate::Foo;"#]],
         );
     }
 }

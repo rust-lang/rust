@@ -4,7 +4,7 @@ pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::layout::{self, dfa, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited};
+use crate::layout::{self, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited, dfa};
 use crate::maybe_transmutable::query_context::QueryContext;
 use crate::{Answer, Condition, Map, Reason};
 
@@ -43,7 +43,7 @@ mod rustc {
         pub fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
             let Self { src, dst, assume, context } = self;
 
-            let layout_cx = LayoutCx { tcx: context, param_env: ParamEnv::reveal_all() };
+            let layout_cx = LayoutCx::new(context, ParamEnv::reveal_all());
 
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
             // representations.
@@ -242,7 +242,7 @@ where
                 //   }
                 // ...if `refs_answer` was computed lazily. The below early
                 // returns can be deleted without impacting the correctness of
-                // the algoritm; only its performance.
+                // the algorithm; only its performance.
                 debug!(?bytes_answer);
                 match bytes_answer {
                     Answer::No(_) if !self.assume.validity => return bytes_answer,
@@ -366,13 +366,13 @@ where
     }
 }
 
-pub enum Quantifier {
+enum Quantifier {
     ThereExists,
     ForAll,
 }
 
 impl Quantifier {
-    pub fn apply<R, I>(&self, iter: I) -> Answer<R>
+    fn apply<R, I>(&self, iter: I) -> Answer<R>
     where
         R: layout::Ref,
         I: IntoIterator<Item = Answer<R>>,

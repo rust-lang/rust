@@ -12,9 +12,9 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
+use rustc_ast::AttrStyle;
 use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy};
 use rustc_ast::token::CommentKind;
-use rustc_ast::AttrStyle;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
@@ -24,7 +24,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{Ident, kw};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 

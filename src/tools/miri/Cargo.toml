@@ -37,8 +37,6 @@ features = ['unprefixed_malloc_on_supported_platforms']
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-
-[target.'cfg(target_os = "linux")'.dependencies]
 libffi = "3.2.0"
 libloading = "0.8"
 
@@ -51,7 +49,7 @@ windows-sys = { version = "0.52", features = [
 
 [dev-dependencies]
 colored = "2"
-ui_test = "0.21.1"
+ui_test = "0.26.5"
 rustc_version = "0.4"
 regex = "1.5.5"
 tempfile = "3"

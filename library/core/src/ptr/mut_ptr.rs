@@ -33,22 +33,7 @@ impl<T: ?Sized> *mut T {
     #[rustc_diagnostic_item = "ptr_is_null"]
     #[inline]
     pub const fn is_null(self) -> bool {
-        #[inline]
-        fn runtime_impl(ptr: *mut u8) -> bool {
-            ptr.addr() == 0
-        }
-
-        #[inline]
-        const fn const_impl(ptr: *mut u8) -> bool {
-            // Compare via a cast to a thin pointer, so fat pointers are only
-            // considering their "data" part for null-ness.
-            match (ptr).guaranteed_eq(null_mut()) {
-                None => false,
-                Some(res) => res,
-            }
-        }
-
-        const_eval_select((self as *mut u8,), const_impl, runtime_impl)
+        self.cast_const().is_null()
     }
 
     /// Casts to a pointer of another type.
@@ -276,7 +261,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
     #[inline]
     pub const unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         // SAFETY: the caller must guarantee that `self` is valid for a
@@ -310,7 +295,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
     #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
@@ -349,7 +334,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_ref<'a>(self) -> Option<&'a MaybeUninit<T>>
     where
         T: Sized,
@@ -595,7 +580,7 @@ impl<T: ?Sized> *mut T {
     /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
     #[inline]
     pub const unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         // SAFETY: the caller must guarantee that `self` is be valid for
@@ -631,7 +616,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     // FIXME: mention it in the docs for `as_mut` and `as_uninit_mut` once stabilized.
     #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_mut_unchecked<'a>(self) -> &'a mut T {
@@ -654,7 +639,7 @@ impl<T: ?Sized> *mut T {
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_mut<'a>(self) -> Option<&'a mut MaybeUninit<T>>
     where
         T: Sized,
@@ -1284,7 +1269,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1304,7 +1289,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1324,7 +1309,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1344,7 +1329,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1584,7 +1569,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```
     /// #![feature(const_pointer_is_aligned)]
-    /// #![feature(const_mut_refs)]
+    /// # #![cfg_attr(bootstrap, feature(const_mut_refs))]
     ///
     /// // On some platforms, the alignment of primitives is less than their size.
     /// #[repr(align(4))]
@@ -1710,7 +1695,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     /// #![feature(pointer_is_aligned_to)]
     /// #![feature(const_pointer_is_aligned)]
-    /// #![feature(const_mut_refs)]
+    /// # #![cfg_attr(bootstrap, feature(const_mut_refs))]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
@@ -2031,7 +2016,7 @@ impl<T> *mut [T] {
     /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
         if self.is_null() {
             None
@@ -2083,7 +2068,7 @@ impl<T> *mut [T] {
     /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice_mut<'a>(self) -> Option<&'a mut [MaybeUninit<T>]> {
         if self.is_null() {
             None

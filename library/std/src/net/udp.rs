@@ -4,7 +4,7 @@ mod tests;
 use crate::fmt;
 use crate::io::{self, ErrorKind};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-use crate::sys_common::{net as net_imp, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner, net as net_imp};
 use crate::time::Duration;
 
 /// A UDP socket.

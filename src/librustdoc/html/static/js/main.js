@@ -1,6 +1,6 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, searchState, updateLocalStorage */
-/* global onEach, onEachLazy, removeClass, getVar */
+/* global onEachLazy, removeClass, getVar */
 
 "use strict";
 
@@ -19,17 +19,25 @@ function resourcePath(basename, extension) {
 
 function hideMain() {
     addClass(document.getElementById(MAIN_ID), "hidden");
+    const toggle = document.getElementById("toggle-all-docs");
+    if (toggle) {
+        toggle.setAttribute("disabled", "disabled");
+    }
 }
 
 function showMain() {
-    removeClass(document.getElementById(MAIN_ID), "hidden");
-}
-
-function blurHandler(event, parentElem, hideCallback) {
-    if (!parentElem.contains(document.activeElement) &&
-        !parentElem.contains(event.relatedTarget)
-    ) {
-        hideCallback();
+    const main = document.getElementById(MAIN_ID);
+    removeClass(main, "hidden");
+    const mainHeading = main.querySelector(".main-heading");
+    if (mainHeading && searchState.rustdocToolbar) {
+        if (searchState.rustdocToolbar.parentElement) {
+            searchState.rustdocToolbar.parentElement.removeChild(searchState.rustdocToolbar);
+        }
+        mainHeading.appendChild(searchState.rustdocToolbar);
+    }
+    const toggle = document.getElementById("toggle-all-docs");
+    if (toggle) {
+        toggle.removeAttribute("disabled");
     }
 }
 
@@ -167,6 +175,14 @@ function switchDisplayedElement(elemToDisplay) {
     el.appendChild(elemToDisplay);
     hideMain();
     removeClass(el, "hidden");
+
+    const mainHeading = elemToDisplay.querySelector(".main-heading");
+    if (mainHeading && searchState.rustdocToolbar) {
+        if (searchState.rustdocToolbar.parentElement) {
+            searchState.rustdocToolbar.parentElement.removeChild(searchState.rustdocToolbar);
+        }
+        mainHeading.appendChild(searchState.rustdocToolbar);
+    }
 }
 
 function browserSupportsHistoryApi() {
@@ -194,33 +210,36 @@ function preLoadCss(cssUrl) {
         document.head.append(script);
     }
 
-    getSettingsButton().onclick = event => {
-        if (event.ctrlKey || event.altKey || event.metaKey) {
-            return;
-        }
-        window.hideAllModals(false);
-        addClass(getSettingsButton(), "rotate");
-        event.preventDefault();
-        // Sending request for the CSS and the JS files at the same time so it will
-        // hopefully be loaded when the JS will generate the settings content.
-        loadScript(getVar("static-root-path") + getVar("settings-js"));
-        // Pre-load all theme CSS files, so that switching feels seamless.
-        //
-        // When loading settings.html as a standalone page, the equivalent HTML is
-        // generated in context.rs.
-        setTimeout(() => {
-            const themes = getVar("themes").split(",");
-            for (const theme of themes) {
-                // if there are no themes, do nothing
-                // "".split(",") == [""]
-                if (theme !== "") {
-                    preLoadCss(getVar("root-path") + theme + ".css");
-                }
+    if (getSettingsButton()) {
+        getSettingsButton().onclick = event => {
+            if (event.ctrlKey || event.altKey || event.metaKey) {
+                return;
             }
-        }, 0);
-    };
+            window.hideAllModals(false);
+            addClass(getSettingsButton(), "rotate");
+            event.preventDefault();
+            // Sending request for the CSS and the JS files at the same time so it will
+            // hopefully be loaded when the JS will generate the settings content.
+            loadScript(getVar("static-root-path") + getVar("settings-js"));
+            // Pre-load all theme CSS files, so that switching feels seamless.
+            //
+            // When loading settings.html as a standalone page, the equivalent HTML is
+            // generated in context.rs.
+            setTimeout(() => {
+                const themes = getVar("themes").split(",");
+                for (const theme of themes) {
+                    // if there are no themes, do nothing
+                    // "".split(",") == [""]
+                    if (theme !== "") {
+                        preLoadCss(getVar("root-path") + theme + ".css");
+                    }
+                }
+            }, 0);
+        };
+    }
 
     window.searchState = {
+        rustdocToolbar: document.querySelector("rustdoc-toolbar"),
         loadingText: "Loading search results...",
         input: document.getElementsByClassName("search-input")[0],
         outputElement: () => {
@@ -499,7 +518,7 @@ function preLoadCss(cssUrl) {
         if (!window.SIDEBAR_ITEMS) {
             return;
         }
-        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
+        const sidebar = document.getElementById("rustdoc-modnav");
 
         /**
          * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
@@ -885,7 +904,7 @@ function preLoadCss(cssUrl) {
         if (!window.ALL_CRATES) {
             return;
         }
-        const sidebarElems = document.getElementsByClassName("sidebar-elems")[0];
+        const sidebarElems = document.getElementById("rustdoc-modnav");
         if (!sidebarElems) {
             return;
         }
@@ -919,8 +938,7 @@ function preLoadCss(cssUrl) {
                 e.open = true;
             }
         });
-        innerToggle.title = "collapse all docs";
-        innerToggle.children[0].innerText = "\u2212"; // "\u2212" is "−" minus sign
+        innerToggle.children[0].innerText = "Summary";
     }
 
     function collapseAllDocs() {
@@ -934,8 +952,7 @@ function preLoadCss(cssUrl) {
                 e.open = false;
             }
         });
-        innerToggle.title = "expand all docs";
-        innerToggle.children[0].innerText = "+";
+        innerToggle.children[0].innerText = "Show all";
     }
 
     function toggleAllDocs() {
@@ -986,7 +1003,13 @@ function preLoadCss(cssUrl) {
     }());
 
     window.rustdoc_add_line_numbers_to_examples = () => {
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
+        if (document.querySelector(".rustdoc.src")) {
+            // We are in the source code page, nothing to be done here!
+            return;
+        }
+        onEachLazy(document.querySelectorAll(
+            ":not(.scraped-example) > .example-wrap > pre:not(.example-line-numbers)",
+        ), x => {
             const parent = x.parentNode;
             const line_numbers = parent.querySelectorAll(".example-line-numbers");
             if (line_numbers.length > 0) {
@@ -1005,12 +1028,8 @@ function preLoadCss(cssUrl) {
     };
 
     window.rustdoc_remove_line_numbers_from_examples = () => {
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
-            const parent = x.parentNode;
-            const line_numbers = parent.querySelectorAll(".example-line-numbers");
-            for (const node of line_numbers) {
-                parent.removeChild(node);
-            }
+        onEachLazy(document.querySelectorAll(".example-wrap > .example-line-numbers"), x => {
+            x.parentNode.removeChild(x);
         });
     };
 
@@ -1328,7 +1347,13 @@ function preLoadCss(cssUrl) {
     }
 
     function helpBlurHandler(event) {
-        blurHandler(event, getHelpButton(), window.hidePopoverMenus);
+        if (!getHelpButton().contains(document.activeElement) &&
+            !getHelpButton().contains(event.relatedTarget) &&
+            !getSettingsButton().contains(document.activeElement) &&
+            !getSettingsButton().contains(event.relatedTarget)
+        ) {
+            window.hidePopoverMenus();
+        }
     }
 
     function buildHelpMenu() {
@@ -1431,9 +1456,13 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
      * Hide all the popover menus.
      */
     window.hidePopoverMenus = () => {
-        onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
+        onEachLazy(document.querySelectorAll("rustdoc-toolbar .popover"), elem => {
             elem.style.display = "none";
         });
+        const button = getHelpButton();
+        if (button) {
+            removeClass(button, "help-open");
+        }
     };
 
     /**
@@ -1458,7 +1487,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     function showHelp() {
         // Prevent `blur` events from being dispatched as a result of closing
         // other modals.
-        getHelpButton().querySelector("a").focus();
+        const button = getHelpButton();
+        addClass(button, "help-open");
+        button.querySelector("a").focus();
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
             window.hideAllModals();
@@ -1466,28 +1497,15 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         }
     }
 
+    const helpLink = document.querySelector(`#${HELP_BUTTON_ID} > a`);
     if (isHelpPage) {
-        showHelp();
-        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
-            // Already on the help page, make help button a no-op.
-            const target = event.target;
-            if (target.tagName !== "A" ||
-                target.parentElement.id !== HELP_BUTTON_ID ||
-                event.ctrlKey ||
-                event.altKey ||
-                event.metaKey) {
-                return;
-            }
-            event.preventDefault();
-        });
-    } else {
-        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
+        buildHelpMenu();
+    } else if (helpLink) {
+        helpLink.addEventListener("click", event => {
             // By default, have help button open docs in a popover.
             // If user clicks with a moderator, though, use default browser behavior,
             // probably opening in a new window or tab.
-            const target = event.target;
-            if (target.tagName !== "A" ||
-                target.parentElement.id !== HELP_BUTTON_ID ||
+            if (!helpLink.contains(helpLink) ||
                 event.ctrlKey ||
                 event.altKey ||
                 event.metaKey) {
@@ -1810,14 +1828,11 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         return;
     }
     but.onclick = () => {
-        const parent = but.parentElement;
         const path = [];
-
-        onEach(parent.childNodes, child => {
-            if (child.tagName === "A") {
-                path.push(child.textContent);
-            }
+        onEachLazy(document.querySelectorAll(".rustdoc-breadcrumbs a"), a => {
+            path.push(a.textContent);
         });
+        path.push(document.querySelector("title").textContent.split(" ")[0]);
 
         copyContentToClipboard(path.join("::"));
         copyButtonAnimation(but);
@@ -1857,6 +1872,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
 
         const parent = document.createElement("div");
         parent.className = "button-holder";
+
         const runButton = elem.querySelector(".test-arrow");
         if (runButton !== null) {
             // If there is a run button, we move it into the same div.
@@ -1871,6 +1887,12 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             copyButtonAnimation(copyButton);
         });
         parent.appendChild(copyButton);
+
+        if (!elem.parentElement.classList.contains("scraped-example")) {
+            return;
+        }
+        const scrapedWrapped = elem.parentElement;
+        window.updateScrapedExample(scrapedWrapped, parent);
     }
 
     function showHideCodeExampleButtons(event) {

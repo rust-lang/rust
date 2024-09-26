@@ -6,7 +6,7 @@ use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey, RegionVidKey};
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey};
 use tracing::debug;
 
-use crate::infer::{region_constraints, type_variable, InferCtxtInner};
+use crate::infer::{InferCtxtInner, region_constraints, type_variable};
 use crate::traits;
 
 pub struct Snapshot<'tcx> {

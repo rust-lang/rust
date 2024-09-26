@@ -12,8 +12,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use rustc_arena::TypedArena;
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::StrippedCfgItem;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
@@ -30,16 +30,16 @@ use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_query_system::query::{try_get_cached, QueryCache, QueryMode, QueryState};
+use rustc_query_system::query::{QueryCache, QueryMode, QueryState, try_get_cached};
+use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
 use rustc_session::lint::LintExpectationId;
-use rustc_session::Limits;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
@@ -59,9 +59,9 @@ use crate::mir::interpret::{
     EvalToValTreeResult, GlobalId, LitToConstError, LitToConstInput,
 };
 use crate::mir::mono::CodegenUnit;
-use crate::query::erase::{erase, restore, Erase};
+use crate::query::erase::{Erase, erase, restore};
 use crate::query::plumbing::{
-    query_ensure, query_ensure_error_guaranteed, query_get_at, CyclePlaceholder, DynamicQuery,
+    CyclePlaceholder, DynamicQuery, query_ensure, query_ensure_error_guaranteed, query_get_at,
 };
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
@@ -70,12 +70,12 @@ use crate::traits::query::{
     MethodAutoderefStepsResult, NoSolution, NormalizationResult, OutlivesBound,
 };
 use crate::traits::{
-    specialization_graph, CodegenObligationError, EvaluationResult, ImplSource,
-    ObjectSafetyViolation, ObligationCause, OverflowError, WellFormedLoc,
+    CodegenObligationError, EvaluationResult, ImplSource, ObjectSafetyViolation, ObligationCause,
+    OverflowError, WellFormedLoc, specialization_graph,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
-use crate::ty::print::{describe_as_module, PrintTraitRefExt};
+use crate::ty::print::{PrintTraitRefExt, describe_as_module};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, ParamEnvAnd, Ty, TyCtxt, TyCtxtFeed,
@@ -327,7 +327,7 @@ rustc_queries! {
         }
     }
 
-    /// Returns the list of bounds that are required to be satsified
+    /// Returns the list of bounds that are required to be satisfied
     /// by a implementation or definition. For associated types, these
     /// must be satisfied for an implementation to be well-formed,
     /// and for opaque types, these are required to be satisfied by
@@ -881,13 +881,13 @@ rustc_queries! {
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    query inherent_impls(key: DefId) -> Result<&'tcx [DefId], ErrorGuaranteed> {
+    query inherent_impls(key: DefId) -> &'tcx [DefId] {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
-    query incoherent_impls(key: SimplifiedType) -> Result<&'tcx [DefId], ErrorGuaranteed> {
+    query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
     }
 
@@ -1017,8 +1017,14 @@ rustc_queries! {
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls(k: ()) -> Result<&'tcx CrateInherentImpls, ErrorGuaranteed> {
+    query crate_inherent_impls(k: ()) -> (&'tcx CrateInherentImpls, Result<(), ErrorGuaranteed>) {
         desc { "finding all inherent impls defined in crate" }
+    }
+
+    /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
+    /// Not meant to be used directly outside of coherence.
+    query crate_inherent_impls_validity_check(_: ()) -> Result<(), ErrorGuaranteed> {
+        desc { "check for inherent impls that should not be defined in crate" }
         ensure_forwards_result_if_red
     }
 
@@ -1715,7 +1721,7 @@ rustc_queries! {
     ///
     /// Do not call this directly, but instead use the `incoherent_impls` query.
     /// This query is only used to get the data necessary for that query.
-    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> Result<&'tcx [DefId], ErrorGuaranteed> {
+    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> &'tcx [DefId] {
         desc { |tcx| "collecting all impls for a type in a crate" }
         separate_provide_extern
     }

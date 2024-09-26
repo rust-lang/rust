@@ -4,10 +4,9 @@ error[E0597]: `x` does not live long enough
 LL |     let x = 22_u32;
    |         - binding `x` declared here
 LL |     let y: &u32 = (&x) as &'static u32;
-   |                   ^^^^----------------
+   |                   ^^^^    ------------ type annotation requires that `x` is borrowed for `'static`
    |                   |
    |                   borrowed value does not live long enough
-   |                   type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
 

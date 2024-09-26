@@ -1,4 +1,4 @@
-//@only-target-windows: Uses win32 api functions
+//@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 
@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use windows_sys::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
-use windows_sys::Win32::System::Threading::{WaitForSingleObject, INFINITE};
+use windows_sys::Win32::System::Threading::{INFINITE, WaitForSingleObject};
 
 fn main() {
     static FLAG: AtomicBool = AtomicBool::new(false);

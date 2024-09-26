@@ -43,9 +43,9 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::error::Error;
+use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
-use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
@@ -62,9 +62,9 @@ use crate::alloc::Allocator;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, from_utf8_unchecked_mut, Chars, Utf8Error};
+use crate::str::{self, Chars, Utf8Error, from_utf8_unchecked_mut};
 #[cfg(not(no_global_oom_handling))]
-use crate::str::{from_boxed_utf8_unchecked, FromStr};
+use crate::str::{FromStr, from_boxed_utf8_unchecked};
 use crate::vec::Vec;
 
 /// A UTF-8–encoded, growable string.
@@ -440,6 +440,7 @@ impl String {
     /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_string_new", since = "1.39.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_new")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> String {
@@ -508,6 +509,7 @@ impl String {
     // NB see the slice::hack module in slice.rs for more information
     #[inline]
     #[cfg(test)]
+    #[allow(missing_docs)]
     pub fn from_str(_: &str) -> String {
         panic!("not available with cfg(test)");
     }
@@ -570,6 +572,7 @@ impl String {
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_from_utf8")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec }),
@@ -657,6 +660,56 @@ impl String {
         }
 
         Cow::Owned(res)
+    }
+
+    /// Converts a [`Vec<u8>`] to a `String`, substituting invalid UTF-8
+    /// sequences with replacement characters.
+    ///
+    /// See [`from_utf8_lossy`] for more details.
+    ///
+    /// [`from_utf8_lossy`]: String::from_utf8_lossy
+    ///
+    /// Note that this function does not guarantee reuse of the original `Vec`
+    /// allocation.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_from_utf8_lossy_owned)]
+    /// // some bytes, in a vector
+    /// let sparkle_heart = vec![240, 159, 146, 150];
+    ///
+    /// let sparkle_heart = String::from_utf8_lossy_owned(sparkle_heart);
+    ///
+    /// assert_eq!(String::from("💖"), sparkle_heart);
+    /// ```
+    ///
+    /// Incorrect bytes:
+    ///
+    /// ```
+    /// #![feature(string_from_utf8_lossy_owned)]
+    /// // some invalid bytes
+    /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
+    /// let output = String::from_utf8_lossy_owned(input);
+    ///
+    /// assert_eq!(String::from("Hello �World"), output);
+    /// ```
+    #[must_use]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
+    pub fn from_utf8_lossy_owned(v: Vec<u8>) -> String {
+        if let Cow::Owned(string) = String::from_utf8_lossy(&v) {
+            string
+        } else {
+            // SAFETY: `String::from_utf8_lossy`'s contract ensures that if
+            // it returns a `Cow::Borrowed`, it is a valid UTF-8 string.
+            // Otherwise, it returns a new allocation of an owned `String`, with
+            // replacement characters for invalid sequences, which is returned
+            // above.
+            unsafe { String::from_utf8_unchecked(v) }
+        }
     }
 
     /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
@@ -1022,6 +1075,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_as_str")]
     pub fn as_str(&self) -> &str {
         self
     }
@@ -1041,6 +1095,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_as_mut_str")]
     pub fn as_mut_str(&mut self) -> &mut str {
         self
     }
@@ -1060,6 +1115,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("append", "push")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_push_str")]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }
@@ -1694,6 +1750,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "insert_str", since = "1.16.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_insert_str")]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         assert!(self.is_char_boundary(idx));
 
@@ -2007,6 +2064,54 @@ impl FromUtf8Error {
     #[stable(feature = "from_utf8_error_as_bytes", since = "1.26.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..]
+    }
+
+    /// Converts the bytes into a `String` lossily, substituting invalid UTF-8
+    /// sequences with replacement characters.
+    ///
+    /// See [`String::from_utf8_lossy`] for more details on replacement of
+    /// invalid sequences, and [`String::from_utf8_lossy_owned`] for the
+    /// `String` function which corresponds to this function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_from_utf8_lossy_owned)]
+    /// // some invalid bytes
+    /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
+    /// let output = String::from_utf8(input).unwrap_or_else(|e| e.into_utf8_lossy());
+    ///
+    /// assert_eq!(String::from("Hello �World"), output);
+    /// ```
+    #[must_use]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
+    pub fn into_utf8_lossy(self) -> String {
+        const REPLACEMENT: &str = "\u{FFFD}";
+
+        let mut res = {
+            let mut v = Vec::with_capacity(self.bytes.len());
+
+            // `Utf8Error::valid_up_to` returns the maximum index of validated
+            // UTF-8 bytes. Copy the valid bytes into the output buffer.
+            v.extend_from_slice(&self.bytes[..self.error.valid_up_to()]);
+
+            // SAFETY: This is safe because the only bytes present in the buffer
+            // were validated as UTF-8 by the call to `String::from_utf8` which
+            // produced this `FromUtf8Error`.
+            unsafe { String::from_utf8_unchecked(v) }
+        };
+
+        let iter = self.bytes[self.error.valid_up_to()..].utf8_chunks();
+
+        for chunk in iter {
+            res.push_str(chunk.valid());
+            if !chunk.invalid().is_empty() {
+                res.push_str(REPLACEMENT);
+            }
+        }
+
+        res
     }
 
     /// Returns the bytes that were attempted to convert to a `String`.

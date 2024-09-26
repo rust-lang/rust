@@ -10,7 +10,7 @@
 //! without encountering any runtime bounds checks.
 
 use crate::cmp;
-use crate::io::{self, BorrowedBuf, Read};
+use crate::io::{self, BorrowedBuf, ErrorKind, Read};
 use crate::mem::MaybeUninit;
 
 pub struct Buffer {
@@ -34,6 +34,16 @@ impl Buffer {
     pub fn with_capacity(capacity: usize) -> Self {
         let buf = Box::new_uninit_slice(capacity);
         Self { buf, pos: 0, filled: 0, initialized: 0 }
+    }
+
+    #[inline]
+    pub fn try_with_capacity(capacity: usize) -> io::Result<Self> {
+        match Box::try_new_uninit_slice(capacity) {
+            Ok(buf) => Ok(Self { buf, pos: 0, filled: 0, initialized: 0 }),
+            Err(_) => {
+                Err(io::const_io_error!(ErrorKind::OutOfMemory, "failed to allocate read buffer"))
+            }
+        }
     }
 
     #[inline]
@@ -98,7 +108,7 @@ impl Buffer {
     }
 
     /// Read more bytes into the buffer without discarding any of its contents
-    pub fn read_more(&mut self, mut reader: impl Read) -> io::Result<()> {
+    pub fn read_more(&mut self, mut reader: impl Read) -> io::Result<usize> {
         let mut buf = BorrowedBuf::from(&mut self.buf[self.pos..]);
         let old_init = self.initialized - self.pos;
         unsafe {
@@ -107,7 +117,7 @@ impl Buffer {
         reader.read_buf(buf.unfilled())?;
         self.filled += buf.len();
         self.initialized += buf.init_len() - old_init;
-        Ok(())
+        Ok(buf.len())
     }
 
     /// Remove bytes that have already been read from the buffer.

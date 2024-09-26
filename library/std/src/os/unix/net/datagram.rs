@@ -12,9 +12,9 @@
 ))]
 use libc::MSG_NOSIGNAL;
 
+use super::{SocketAddr, sockaddr_un};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
-use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
-use super::{sockaddr_un, SocketAddr};
+use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use crate::io::{IoSlice, IoSliceMut};
 use crate::net::Shutdown;
@@ -100,7 +100,7 @@ impl UnixDatagram {
             let socket = UnixDatagram::unbound()?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
-            cvt(libc::bind(socket.as_raw_fd(), core::ptr::addr_of!(addr) as *const _, len as _))?;
+            cvt(libc::bind(socket.as_raw_fd(), (&raw const addr) as *const _, len as _))?;
 
             Ok(socket)
         }
@@ -133,7 +133,7 @@ impl UnixDatagram {
             let socket = UnixDatagram::unbound()?;
             cvt(libc::bind(
                 socket.as_raw_fd(),
-                core::ptr::addr_of!(socket_addr.addr) as *const _,
+                (&raw const socket_addr.addr) as *const _,
                 socket_addr.len as _,
             ))?;
             Ok(socket)
@@ -215,7 +215,7 @@ impl UnixDatagram {
         unsafe {
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
-            cvt(libc::connect(self.as_raw_fd(), core::ptr::addr_of!(addr) as *const _, len))?;
+            cvt(libc::connect(self.as_raw_fd(), (&raw const addr) as *const _, len))?;
         }
         Ok(())
     }
@@ -247,7 +247,7 @@ impl UnixDatagram {
         unsafe {
             cvt(libc::connect(
                 self.as_raw_fd(),
-                core::ptr::addr_of!(socket_addr.addr) as *const _,
+                (&raw const socket_addr.addr) as *const _,
                 socket_addr.len,
             ))?;
         }
@@ -514,7 +514,7 @@ impl UnixDatagram {
                 buf.as_ptr() as *const _,
                 buf.len(),
                 MSG_NOSIGNAL,
-                core::ptr::addr_of!(addr) as *const _,
+                (&raw const addr) as *const _,
                 len,
             ))?;
             Ok(count as usize)
@@ -549,7 +549,7 @@ impl UnixDatagram {
                 buf.as_ptr() as *const _,
                 buf.len(),
                 MSG_NOSIGNAL,
-                core::ptr::addr_of!(socket_addr.addr) as *const _,
+                (&raw const socket_addr.addr) as *const _,
                 socket_addr.len,
             ))?;
             Ok(count as usize)

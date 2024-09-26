@@ -1,10 +1,10 @@
-use super::utils::extract_clippy_lint;
 use super::BLANKET_CLIPPY_RESTRICTION_LINTS;
+use super::utils::extract_clippy_lint;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use rustc_ast::NestedMetaItem;
 use rustc_lint::{LateContext, Level, LintContext};
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, DUMMY_SP};
+use rustc_span::{DUMMY_SP, sym};
 
 pub(super) fn check(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem]) {
     for lint in items {

@@ -1,8 +1,8 @@
 use super::super::{
-    try_process, ArrayChunks, ByRefSized, Chain, Cloned, Copied, Cycle, Enumerate, Filter,
-    FilterMap, FlatMap, Flatten, Fuse, Inspect, Intersperse, IntersperseWith, Map, MapWhile,
-    MapWindows, Peekable, Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile,
-    TrustedRandomAccessNoCoerce, Zip,
+    ArrayChunks, ByRefSized, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, FlatMap,
+    Flatten, Fuse, Inspect, Intersperse, IntersperseWith, Map, MapWhile, MapWindows, Peekable,
+    Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile, TrustedRandomAccessNoCoerce,
+    Zip, try_process,
 };
 use crate::array;
 use crate::cmp::{self, Ordering};
@@ -876,6 +876,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_do_not_const_check]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_filter")]
     fn filter<P>(self, predicate: P) -> Filter<Self, P>
     where
         Self: Sized,
@@ -3412,6 +3413,7 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "iter_copied", since = "1.36.0")]
     #[rustc_do_not_const_check]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_copied")]
     fn copied<'a, T: 'a>(self) -> Copied<Self>
     where
         Self: Sized + Iterator<Item = &'a T>,
@@ -3460,6 +3462,7 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_do_not_const_check]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_cloned")]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
     where
         Self: Sized + Iterator<Item = &'a T>,
@@ -3953,7 +3956,7 @@ pub trait Iterator {
     /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     /// ```
     #[inline]
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted(self) -> bool
     where
@@ -3980,7 +3983,7 @@ pub trait Iterator {
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| false));
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| true));
     /// ```
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted_by<F>(mut self, compare: F) -> bool
     where
@@ -4025,7 +4028,7 @@ pub trait Iterator {
     /// assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     /// ```
     #[inline]
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted_by_key<F, K>(self, f: F) -> bool
     where

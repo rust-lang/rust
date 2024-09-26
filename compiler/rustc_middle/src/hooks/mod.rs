@@ -6,7 +6,7 @@
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::{ExpnHash, ExpnId, DUMMY_SP};
+use rustc_span::{DUMMY_SP, ExpnHash, ExpnId};
 use tracing::instrument;
 
 use crate::mir;

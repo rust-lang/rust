@@ -12,7 +12,7 @@ use std::sync::OnceLock;
 use ignore::DirEntry;
 use regex::Regex;
 
-use crate::iter_header::{iter_header, HeaderLine};
+use crate::iter_header::{HeaderLine, iter_header};
 use crate::walk::{filter_dirs, filter_not_rust, walk};
 
 pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {

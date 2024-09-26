@@ -657,7 +657,7 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
     }
     const typeFilter = parserState.typeFilter;
     parserState.typeFilter = null;
-    if (name === "!") {
+    if (name.trim() === "!") {
         if (typeFilter !== null && typeFilter !== "primitive") {
             throw [
                 "Invalid search type: primitive never type ",
@@ -1795,6 +1795,7 @@ class DocSearch {
                 // Total number of elements (includes generics).
                 totalElems: 0,
                 literalSearch: false,
+                hasReturnArrow: false,
                 error: null,
                 correction: null,
                 proposeCorrectionFrom: null,
@@ -1823,6 +1824,7 @@ class DocSearch {
                         continue;
                     } else if (c === "-" || c === ">") {
                         if (isReturnArrow(parserState)) {
+                            query.hasReturnArrow = true;
                             break;
                         }
                         throw ["Unexpected ", c, " (did you mean ", "->", "?)"];
@@ -1889,9 +1891,7 @@ class DocSearch {
                     // Get returned elements.
                     getItemsBefore(query, parserState, query.returned, "");
                     // Nothing can come afterward!
-                    if (query.returned.length === 0) {
-                        throw ["Expected at least one item after ", "->"];
-                    }
+                    query.hasReturnArrow = true;
                     break;
                 } else {
                     parserState.pos += 1;
@@ -3249,7 +3249,7 @@ class DocSearch {
                 this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint, fps);
             }
 
-            if (parsedQuery.foundElems === 1 && parsedQuery.returned.length === 0) {
+            if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
                 if (parsedQuery.elems.length === 1) {
                     const elem = parsedQuery.elems[0];
                     const length = this.searchIndex.length;
@@ -3597,15 +3597,16 @@ async function showResults(results, go_to_first, filterCrates) {
 
     let crates = "";
     if (rawSearchIndex.size > 1) {
-        crates = " in&nbsp;<div id=\"crate-search-div\"><select id=\"crate-search\">" +
-            "<option value=\"all crates\">all crates</option>";
+        crates = "<div class=\"sub-heading\"> in&nbsp;<div id=\"crate-search-div\">" +
+            "<select id=\"crate-search\"><option value=\"all crates\">all crates</option>";
         for (const c of rawSearchIndex.keys()) {
             crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
         }
-        crates += "</select></div>";
+        crates += "</select></div></div>";
     }
 
-    let output = `<h1 class="search-results-title">Results${crates}</h1>`;
+    let output = `<div class="main-heading">\
+        <h1 class="search-results-title">Results</h1>${crates}</div>`;
     if (results.query.error !== null) {
         const error = results.query.error;
         error.forEach((value, index) => {
@@ -3662,6 +3663,9 @@ async function showResults(results, go_to_first, filterCrates) {
     resultsElem.appendChild(ret_returned[0]);
 
     search.innerHTML = output;
+    if (searchState.rustdocToolbar) {
+        search.querySelector(".main-heading").appendChild(searchState.rustdocToolbar);
+    }
     const crateSearch = document.getElementById("crate-search");
     if (crateSearch) {
         crateSearch.addEventListener("input", updateCrate);

@@ -1,12 +1,12 @@
 error: unsupported operation: creating allocation with alignment ALIGN exceeding rustc's maximum supported value
-  --> $DIR/unsupported_big_alignment.rs:LL:CC
+  --> tests/fail/alloc/unsupported_big_alignment.rs:LL:CC
    |
 LL |         __rust_alloc(1, 1 << 30);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ creating allocation with alignment ALIGN exceeding rustc's maximum supported value
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/unsupported_big_alignment.rs:LL:CC
+   = note: inside `main` at tests/fail/alloc/unsupported_big_alignment.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

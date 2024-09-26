@@ -1,5 +1,5 @@
    0: main
- at $DIR/backtrace-global-alloc.rs:LL:CC
+ at tests/pass/backtrace/backtrace-global-alloc.rs:LL:CC
    1: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
  at RUSTLIB/core/src/ops/function.rs:LL:CC
    2: std::sys::backtrace::__rust_begin_short_backtrace

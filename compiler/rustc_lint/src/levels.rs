@@ -2,25 +2,25 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
-use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    lint_level, reveal_actual_level, LevelAndSource, LintExpectation, LintLevelSource,
-    ShallowLintLevelMap,
+    LevelAndSource, LintExpectation, LintLevelSource, ShallowLintLevelMap, lint_level,
+    reveal_actual_level,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
+use rustc_session::Session;
 use rustc_session::lint::builtin::{
     self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
     UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
-use rustc_session::Session;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -255,11 +255,9 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
         intravisit::walk_foreign_item(self, it);
     }
 
-    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) {
-        // We will call `add_id` when we walk
-        // the `StmtKind`. The outer statement itself doesn't
-        // define the lint levels.
-        intravisit::walk_stmt(self, e);
+    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
+        self.add_id(s.hir_id);
+        intravisit::walk_stmt(self, s);
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {

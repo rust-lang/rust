@@ -9,7 +9,7 @@
 //! algorithm can be found in "ParseNumberF64 by Simple Decimal Conversion",
 //! available online: <https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html>.
 
-use crate::num::dec2flt::common::{is_8digits, ByteSlice};
+use crate::num::dec2flt::common::{ByteSlice, is_8digits};
 
 #[derive(Clone)]
 pub struct Decimal {

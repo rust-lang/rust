@@ -7,9 +7,9 @@ use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
 use tracing::{debug, trace};
 
-pub struct CheckAlignment;
+pub(super) struct CheckAlignment;
 
-impl<'tcx> MirPass<'tcx> for CheckAlignment {
+impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
     fn is_enabled(&self, sess: &Session) -> bool {
         // FIXME(#112480) MSVC and rustc disagree on minimum stack alignment on x86 Windows
         if sess.target.llvm_target == "i686-pc-windows-msvc" {
@@ -62,14 +62,14 @@ impl<'tcx> MirPass<'tcx> for CheckAlignment {
     }
 }
 
-struct PointerFinder<'tcx, 'a> {
+struct PointerFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a mut LocalDecls<'tcx>,
     param_env: ParamEnv<'tcx>,
     pointers: Vec<(Place<'tcx>, Ty<'tcx>)>,
 }
 
-impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
+impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         // We want to only check reads and writes to Places, so we specifically exclude
         // Borrow and RawBorrow.

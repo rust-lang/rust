@@ -20,24 +20,25 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
+use rustc_hir::BodyOwnerKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::BodyOwnerKind;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt,
+    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty,
+    TyCtxt, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ErrorGuaranteed, Symbol};
 use tracing::{debug, instrument};
 
-use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;
+use crate::renumber::RegionCtxt;
 
 #[derive(Debug)]
 pub(crate) struct UniversalRegions<'tcx> {
@@ -422,8 +423,8 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 }
 
-struct UniversalRegionsBuilder<'cx, 'tcx> {
-    infcx: &'cx BorrowckInferCtxt<'tcx>,
+struct UniversalRegionsBuilder<'infcx, 'tcx> {
+    infcx: &'infcx BorrowckInferCtxt<'tcx>,
     mir_def: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -628,10 +629,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     let ty = tcx
                         .typeck(self.mir_def)
                         .node_type(tcx.local_def_id_to_hir_id(self.mir_def));
-                    let args = InlineConstArgs::new(
-                        tcx,
-                        InlineConstArgsParts { parent_args: identity_args, ty },
-                    )
+                    let args = InlineConstArgs::new(tcx, InlineConstArgsParts {
+                        parent_args: identity_args,
+                        ty,
+                    })
                     .args;
                     let args = self.infcx.replace_free_regions_with_nll_infer_vars(FR, args);
                     DefiningTy::InlineConst(self.mir_def.to_def_id(), args)
@@ -688,7 +689,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
-        match defining_ty {
+
+        let inputs_and_output = match defining_ty {
             DefiningTy::Closure(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let closure_sig = args.as_closure().sig();
@@ -798,6 +800,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let ty = tcx.type_of(self.mir_def).instantiate_identity();
+
                 let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
@@ -807,7 +810,14 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let ty = args.as_inline_const().ty();
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
+        };
+
+        // FIXME(#129952): We probably want a more principled approach here.
+        if let Err(terr) = inputs_and_output.skip_binder().error_reported() {
+            self.infcx.set_tainted_by_errors(terr);
         }
+
+        inputs_and_output
     }
 }
 

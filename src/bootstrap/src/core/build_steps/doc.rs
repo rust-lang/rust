@@ -11,14 +11,14 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::{env, fs, mem};
 
+use crate::Mode;
 use crate::core::build_steps::compile;
-use crate::core::build_steps::tool::{self, prepare_tool_cargo, SourceType, Tool};
+use crate::core::build_steps::tool::{self, SourceType, Tool, prepare_tool_cargo};
 use crate::core::builder::{
-    self, crate_description, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step,
+    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::helpers::{symlink_dir, t, up_to_date};
-use crate::Mode;
 
 macro_rules! submodule_helper {
     ($path:expr, submodule) => {
@@ -63,7 +63,7 @@ macro_rules! book {
                     src: builder.src.join($path),
                     parent: Some(self),
                     languages: $lang.into(),
-                    rustdoc: None,
+                    rustdoc_compiler: None,
                 })
             }
         }
@@ -113,7 +113,7 @@ impl Step for UnstableBook {
             src: builder.md_doc_out(self.target).join("unstable-book"),
             parent: Some(self),
             languages: vec![],
-            rustdoc: None,
+            rustdoc_compiler: None,
         })
     }
 }
@@ -125,7 +125,7 @@ struct RustbookSrc<P: Step> {
     src: PathBuf,
     parent: Option<P>,
     languages: Vec<&'static str>,
-    rustdoc: Option<PathBuf>,
+    rustdoc_compiler: Option<Compiler>,
 }
 
 impl<P: Step> Step for RustbookSrc<P> {
@@ -157,7 +157,9 @@ impl<P: Step> Step for RustbookSrc<P> {
             let _ = fs::remove_dir_all(&out);
 
             let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-            if let Some(mut rustdoc) = self.rustdoc {
+
+            if let Some(compiler) = self.rustdoc_compiler {
+                let mut rustdoc = builder.rustdoc(compiler);
                 rustdoc.pop();
                 let old_path = env::var_os("PATH").unwrap_or_default();
                 let new_path =
@@ -165,6 +167,7 @@ impl<P: Step> Step for RustbookSrc<P> {
                         .expect("could not add rustdoc to PATH");
 
                 rustbook_cmd.env("PATH", new_path);
+                builder.add_rustc_lib_path(compiler, &mut rustbook_cmd);
             }
 
             rustbook_cmd.arg("build").arg(&src).arg("-d").arg(&out).run(builder);
@@ -240,7 +243,7 @@ impl Step for TheBook {
             src: absolute_path.clone(),
             parent: Some(self),
             languages: vec![],
-            rustdoc: None,
+            rustdoc_compiler: None,
         });
 
         // building older edition redirects
@@ -253,7 +256,7 @@ impl Step for TheBook {
                 // treat the other editions as not having a parent.
                 parent: Option::<Self>::None,
                 languages: vec![],
-                rustdoc: None,
+                rustdoc_compiler: None,
             });
         }
 
@@ -826,7 +829,7 @@ impl Step for Rustc {
         // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
         // cargo.rustdocflag("--generate-link-to-definition");
 
-        compile::rustc_cargo(builder, &mut cargo, target, &compiler);
+        compile::rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
         cargo.arg("-Zskip-rustdoc-fingerprint");
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -1013,6 +1016,14 @@ macro_rules! tool_doc {
     }
 }
 
+// NOTE: make sure to register these in `Builder::get_step_description`.
+tool_doc!(
+    BuildHelper,
+    "src/tools/build_helper",
+    rustc_tool = false,
+    is_library = true,
+    crates = ["build_helper"]
+);
 tool_doc!(Rustdoc, "src/tools/rustdoc", crates = ["rustdoc", "rustdoc-json-types"]);
 tool_doc!(Rustfmt, "src/tools/rustfmt", crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]);
 tool_doc!(Clippy, "src/tools/clippy", crates = ["clippy_config", "clippy_utils"]);
@@ -1049,6 +1060,13 @@ tool_doc!(
     rustc_tool = false,
     is_library = true,
     crates = ["run_make_support"]
+);
+tool_doc!(
+    Compiletest,
+    "src/tools/compiletest",
+    rustc_tool = false,
+    is_library = true,
+    crates = ["compiletest"]
 );
 
 #[derive(Ord, PartialOrd, Debug, Clone, Hash, PartialEq, Eq)]
@@ -1186,6 +1204,9 @@ impl Step for RustcBook {
         cmd.arg("--rustc");
         cmd.arg(&rustc);
         cmd.arg("--rustc-target").arg(self.target.rustc_target_arg());
+        if let Some(target_linker) = builder.linker(self.target) {
+            cmd.arg("--rustc-linker").arg(target_linker);
+        }
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
@@ -1218,7 +1239,7 @@ impl Step for RustcBook {
             src: out_base,
             parent: Some(self),
             languages: vec![],
-            rustdoc: None,
+            rustdoc_compiler: None,
         });
     }
 }
@@ -1252,16 +1273,15 @@ impl Step for Reference {
         // This is needed for generating links to the standard library using
         // the mdbook-spec plugin.
         builder.ensure(compile::Std::new(self.compiler, builder.config.build));
-        let rustdoc = builder.rustdoc(self.compiler);
 
         // Run rustbook/mdbook to generate the HTML pages.
         builder.ensure(RustbookSrc {
             target: self.target,
             name: "reference".to_owned(),
             src: builder.src.join("src/doc/reference"),
+            rustdoc_compiler: Some(self.compiler),
             parent: Some(self),
             languages: vec![],
-            rustdoc: Some(rustdoc),
         });
     }
 }

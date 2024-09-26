@@ -4,14 +4,14 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Region, Ty};
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{Symbol, kw};
 use rustc_trait_selection::traits::auto_trait::{self, RegionTarget};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::clean::{
-    self, clean_generic_param_def, clean_middle_ty, clean_predicate,
-    clean_trait_ref_with_constraints, clean_ty_generics, simplify, Lifetime,
+    self, Lifetime, clean_generic_param_def, clean_middle_ty, clean_predicate,
+    clean_trait_ref_with_constraints, clean_ty_generics, simplify,
 };
 use crate::core::DocContext;
 
@@ -115,17 +115,19 @@ fn synthesize_auto_trait_impl<'tcx>(
 
     Some(clean::Item {
         name: None,
-        attrs: Default::default(),
+        inner: Box::new(clean::ItemInner {
+            attrs: Default::default(),
+            kind: clean::ImplItem(Box::new(clean::Impl {
+                safety: hir::Safety::Safe,
+                generics,
+                trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
+                for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
+                items: Vec::new(),
+                polarity,
+                kind: clean::ImplKind::Auto,
+            })),
+        }),
         item_id: clean::ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
-        kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
-            safety: hir::Safety::Safe,
-            generics,
-            trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
-            for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
-            items: Vec::new(),
-            polarity,
-            kind: clean::ImplKind::Auto,
-        }))),
         cfg: None,
         inline_stmt_id: None,
     })

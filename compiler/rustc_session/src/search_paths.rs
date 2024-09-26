@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_target::spec::TargetTriple;
 
-use crate::filesearch::make_target_lib_path;
 use crate::EarlyDiagCtxt;
+use crate::filesearch::make_target_lib_path;
 
 #[derive(Clone, Debug)]
 pub struct SearchPath {
@@ -96,7 +96,7 @@ impl SearchPath {
         Self::new(PathKind::All, make_target_lib_path(sysroot, triple))
     }
 
-    fn new(kind: PathKind, dir: PathBuf) -> Self {
+    pub fn new(kind: PathKind, dir: PathBuf) -> Self {
         // Get the files within the directory.
         let files = match std::fs::read_dir(&dir) {
             Ok(files) => files

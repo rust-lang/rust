@@ -4,7 +4,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
+use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};

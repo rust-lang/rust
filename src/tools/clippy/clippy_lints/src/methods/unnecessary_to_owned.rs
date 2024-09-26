@@ -2,12 +2,11 @@ use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, match_def_path, paths, peel_middle_ty_refs,
-    return_ty,
+    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, peel_middle_ty_refs, return_ty,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -20,7 +19,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
     self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,
 };
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
@@ -250,7 +249,7 @@ fn check_string_from_utf8<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, 
     if let Some((call, arg)) = skip_addr_of_ancestors(cx, expr)
         && !arg.span.from_expansion()
         && let ExprKind::Call(callee, _) = call.kind
-        && fn_def_id(cx, call).is_some_and(|did| match_def_path(cx, did, &paths::STRING_FROM_UTF8))
+        && fn_def_id(cx, call).is_some_and(|did| cx.tcx.is_diagnostic_item(sym::string_from_utf8, did))
         && let Some(unwrap_call) = get_parent_expr(cx, call)
         && let ExprKind::MethodCall(unwrap_method_name, ..) = unwrap_call.kind
         && matches!(unwrap_method_name.ident.name, sym::unwrap | sym::expect)
@@ -717,7 +716,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
 // check that:
 // 1. This is a method with only one argument that doesn't come from a trait.
 // 2. That it has `Borrow` in its generic predicates.
-// 3. `Self` is a std "map type" (ie `HashSet`, `HashMap`, BTreeSet`, `BTreeMap`).
+// 3. `Self` is a std "map type" (ie `HashSet`, `HashMap`, `BTreeSet`, `BTreeMap`).
 fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let ExprKind::MethodCall(_, caller, &[arg], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)

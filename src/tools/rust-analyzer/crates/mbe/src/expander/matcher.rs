@@ -69,7 +69,7 @@ use tt::{iter::TtIter, DelimSpan};
 use crate::{
     expander::{Binding, Bindings, ExpandResult, Fragment},
     expect_fragment,
-    parser::{MetaVarKind, Op, RepeatKind, Separator},
+    parser::{ExprKind, MetaVarKind, Op, RepeatKind, Separator},
     ExpandError, ExpandErrorKind, MetaTemplate, ValueResult,
 };
 
@@ -584,7 +584,11 @@ fn match_loop_inner<'t>(
                 error_items.push(item);
             }
             OpDelimited::Op(
-                Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Len { .. },
+                Op::Ignore { .. }
+                | Op::Index { .. }
+                | Op::Count { .. }
+                | Op::Len { .. }
+                | Op::Concat { .. },
             ) => {
                 stdx::never!("metavariable expression in lhs found");
             }
@@ -769,23 +773,28 @@ fn match_meta_var(
                     it.map(|it| tt::TokenTree::subtree_or_wrap(it, delim_span)).map(Fragment::Path)
                 });
         }
-        MetaVarKind::Expr => {
-            // `expr` should not match underscores, let expressions, or inline const. The latter
-            // two are for [backwards compatibility][0].
+        MetaVarKind::Expr(expr) => {
+            // `expr_2021` should not match underscores, let expressions, or inline const.
+            // The latter two are for [backwards compatibility][0].
+            // And `expr` also should not contain let expressions but may contain the other two
+            // since `Edition2024`.
             // HACK: Macro expansion should not be done using "rollback and try another alternative".
             // rustc [explicitly checks the next token][1].
             // [0]: https://github.com/rust-lang/rust/issues/86730
             // [1]: https://github.com/rust-lang/rust/blob/f0c4da499/compiler/rustc_expand/src/mbe/macro_parser.rs#L576
             match input.peek_n(0) {
-                Some(tt::TokenTree::Leaf(tt::Leaf::Ident(it)))
-                    if it.sym == sym::underscore
-                        || it.sym == sym::let_
-                        || it.sym == sym::const_ =>
-                {
-                    return ExpandResult::only_err(ExpandError::new(
-                        it.span,
-                        ExpandErrorKind::NoMatchingRule,
-                    ))
+                Some(tt::TokenTree::Leaf(tt::Leaf::Ident(it))) => {
+                    let is_err = if it.is_raw.no() && matches!(expr, ExprKind::Expr2021) {
+                        it.sym == sym::underscore || it.sym == sym::let_ || it.sym == sym::const_
+                    } else {
+                        it.sym == sym::let_
+                    };
+                    if is_err {
+                        return ExpandResult::only_err(ExpandError::new(
+                            it.span,
+                            ExpandErrorKind::NoMatchingRule,
+                        ));
+                    }
                 }
                 _ => {}
             };
@@ -874,7 +883,11 @@ fn collect_vars(collector_fun: &mut impl FnMut(Symbol), pattern: &MetaTemplate) 
             Op::Subtree { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Repeat { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Literal(_) | Op::Ident(_) | Op::Punct(_) => {}
-            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Len { .. } => {
+            Op::Ignore { .. }
+            | Op::Index { .. }
+            | Op::Count { .. }
+            | Op::Len { .. }
+            | Op::Concat { .. } => {
                 stdx::never!("metavariable expression in lhs found");
             }
         }

@@ -4,8 +4,8 @@ use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::local_used_after_expr;
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
 use rustc_hir::Expr;
+use rustc_hir::def::Res;
 use rustc_lint::LateContext;
 use rustc_span::sym;
 

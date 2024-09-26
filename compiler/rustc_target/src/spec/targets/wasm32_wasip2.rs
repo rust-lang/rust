@@ -1,6 +1,6 @@
 //! The `wasm32-wasip2` target is the next evolution of the
 //! wasm32-wasi target. While the wasi specification is still under
-//! active development, the {review 2 iteration is considered an "island
+//! active development, the preview 2 iteration is considered an "island
 //! of stability" that should allow users to rely on it indefinitely.
 //!
 //! The `wasi` target is a proposal to define a standardized set of WebAssembly
@@ -16,9 +16,9 @@
 //! You can see more about wasi at <https://wasi.dev> and the component model at
 //! <https://github.com/WebAssembly/component-model>.
 
-use crate::spec::{base, crt_objects, LinkSelfContainedDefault, RelocModel, Target};
+use crate::spec::{LinkSelfContainedDefault, RelocModel, Target, base, crt_objects};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();
@@ -53,7 +53,7 @@ pub fn target() -> Target {
     options.entry_name = "__main_void".into();
 
     // Default to PIC unlike base wasm. This makes precompiled objects such as
-    // the standard library more suitable to be used with shared libaries a la
+    // the standard library more suitable to be used with shared libraries a la
     // emscripten's dynamic linking convention.
     options.relocation_model = RelocModel::Pic;
 

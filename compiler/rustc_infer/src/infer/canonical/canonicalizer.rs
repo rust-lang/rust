@@ -15,10 +15,10 @@ use rustc_middle::ty::{
 use smallvec::SmallVec;
 use tracing::debug;
 
+use crate::infer::InferCtxt;
 use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
-use crate::infer::InferCtxt;
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,
@@ -51,7 +51,7 @@ impl<'tcx> InferCtxt<'tcx> {
             query_state,
             |tcx, param_env, query_state| {
                 // FIXME(#118965): We don't canonicalize the static lifetimes that appear in the
-                // `param_env` beacause they are treated differently by trait selection.
+                // `param_env` because they are treated differently by trait selection.
                 Canonicalizer::canonicalize(
                     param_env,
                     None,

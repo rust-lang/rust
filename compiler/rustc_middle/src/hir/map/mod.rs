@@ -1,16 +1,16 @@
-use rustc_ast::visit::{walk_list, VisitorResult};
+use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{par_for_each_in, try_par_for_each_in, DynSend, DynSync};
+use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::spec::abi::Abi;
 use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
@@ -71,7 +71,7 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
         debug_assert_ne!(parent_id, self.current_id);
 
         self.current_id = parent_id;
-        return Some(parent_id);
+        Some(parent_id)
     }
 }
 
@@ -103,7 +103,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
         self.current_id = HirId::make_owner(parent_id.def_id);
 
         let node = self.map.tcx.hir_owner_node(self.current_id.owner);
-        return Some((self.current_id.owner, node));
+        Some((self.current_id.owner, node))
     }
 }
 
@@ -598,7 +598,10 @@ impl<'hir> Map<'hir> {
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent_item(self, hir_id: HirId) -> OwnerId {
-        if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
+        if hir_id.local_id != ItemLocalId::ZERO {
+            // If this is a child of a HIR owner, return the owner.
+            hir_id.owner
+        } else if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
             def_id
         } else {
             CRATE_OWNER_ID
@@ -1233,14 +1236,14 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         body_owners,
         ..
     } = collector;
-    return ModuleItems {
+    ModuleItems {
         submodules: submodules.into_boxed_slice(),
         free_items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
         impl_items: impl_items.into_boxed_slice(),
         foreign_items: foreign_items.into_boxed_slice(),
         body_owners: body_owners.into_boxed_slice(),
-    };
+    }
 }
 
 pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
@@ -1262,14 +1265,14 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         ..
     } = collector;
 
-    return ModuleItems {
+    ModuleItems {
         submodules: submodules.into_boxed_slice(),
         free_items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
         impl_items: impl_items.into_boxed_slice(),
         foreign_items: foreign_items.into_boxed_slice(),
         body_owners: body_owners.into_boxed_slice(),
-    };
+    }
 }
 
 struct ItemCollector<'tcx> {

@@ -166,11 +166,6 @@ pub mod c_str;
 
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
-#[stable(feature = "core_ffi_c", since = "1.64.0")]
-pub use core::ffi::{
-    c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
-    c_ulong, c_ulonglong, c_ushort,
-};
 #[unstable(
     feature = "c_variadic",
     reason = "the `c_variadic` feature has not been properly tested on \
@@ -178,6 +173,11 @@ pub use core::ffi::{
     issue = "44930"
 )]
 pub use core::ffi::{VaList, VaListImpl};
+#[stable(feature = "core_ffi_c", since = "1.64.0")]
+pub use core::ffi::{
+    c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
+    c_ulong, c_ulonglong, c_ushort,
+};
 
 #[doc(no_inline)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]

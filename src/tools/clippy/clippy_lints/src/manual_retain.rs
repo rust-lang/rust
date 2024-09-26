@@ -1,24 +1,24 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
+use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{get_type_diagnostic_name, is_type_lang_item};
-use clippy_utils::{match_def_path, paths, SpanlessEq};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::ExprKind::Assign;
+use rustc_hir::def_id::DefId;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 
-const ACCEPTABLE_METHODS: [&[&str]; 5] = [
-    &paths::BINARYHEAP_ITER,
-    &paths::HASHSET_ITER,
-    &paths::BTREESET_ITER,
-    &paths::SLICE_INTO,
-    &paths::VEC_DEQUE_ITER,
+const ACCEPTABLE_METHODS: [Symbol; 5] = [
+    sym::binaryheap_iter,
+    sym::hashset_iter,
+    sym::btreeset_iter,
+    sym::slice_iter,
+    sym::vecdeque_iter,
 ];
 
 declare_clippy_lint! {
@@ -84,7 +84,7 @@ fn check_into_iter(
 ) {
     if let hir::ExprKind::MethodCall(_, into_iter_expr, [_], _) = &target_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
-        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && cx.tcx.is_diagnostic_item(sym::iter_filter, filter_def_id)
         && let hir::ExprKind::MethodCall(_, struct_expr, [], _) = &into_iter_expr.kind
         && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
         && Some(into_iter_def_id) == cx.tcx.lang_items().into_iter_fn()
@@ -127,14 +127,14 @@ fn check_iter(
 ) {
     if let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
         && let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
-        && (match_def_path(cx, copied_def_id, &paths::CORE_ITER_COPIED)
-            || match_def_path(cx, copied_def_id, &paths::CORE_ITER_CLONED))
+        && (cx.tcx.is_diagnostic_item(sym::iter_copied, copied_def_id)
+            || cx.tcx.is_diagnostic_item(sym::iter_cloned, copied_def_id))
         && let hir::ExprKind::MethodCall(_, iter_expr, [_], _) = &filter_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
-        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && cx.tcx.is_diagnostic_item(sym::iter_filter, filter_def_id)
         && let hir::ExprKind::MethodCall(_, struct_expr, [], _) = &iter_expr.kind
         && let Some(iter_expr_def_id) = cx.typeck_results().type_dependent_def_id(iter_expr.hir_id)
-        && match_acceptable_def_path(cx, iter_expr_def_id)
+        && match_acceptable_sym(cx, iter_expr_def_id)
         && match_acceptable_type(cx, left_expr, msrv)
         && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
@@ -189,10 +189,10 @@ fn check_to_owned(
         && cx.tcx.is_diagnostic_item(sym::to_owned_method, to_owned_def_id)
         && let hir::ExprKind::MethodCall(_, chars_expr, [_], _) = &filter_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
-        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && cx.tcx.is_diagnostic_item(sym::iter_filter, filter_def_id)
         && let hir::ExprKind::MethodCall(_, str_expr, [], _) = &chars_expr.kind
         && let Some(chars_expr_def_id) = cx.typeck_results().type_dependent_def_id(chars_expr.hir_id)
-        && match_def_path(cx, chars_expr_def_id, &paths::STR_CHARS)
+        && cx.tcx.is_diagnostic_item(sym::str_chars, chars_expr_def_id)
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
         && is_type_lang_item(cx, ty, hir::LangItem::String)
         && SpanlessEq::new(cx).eq_expr(left_expr, str_expr)
@@ -247,10 +247,10 @@ fn make_sugg(
     }
 }
 
-fn match_acceptable_def_path(cx: &LateContext<'_>, collect_def_id: DefId) -> bool {
+fn match_acceptable_sym(cx: &LateContext<'_>, collect_def_id: DefId) -> bool {
     ACCEPTABLE_METHODS
         .iter()
-        .any(|&method| match_def_path(cx, collect_def_id, method))
+        .any(|&method| cx.tcx.is_diagnostic_item(method, collect_def_id))
 }
 
 fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: &Msrv) -> bool {

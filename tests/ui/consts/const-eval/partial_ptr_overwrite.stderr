@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/partial_ptr_overwrite.rs:8:9
+  --> $DIR/partial_ptr_overwrite.rs:7:9
    |
 LL |         *(ptr as *mut u8) = 123;
    |         ^^^^^^^^^^^^^^^^^^^^^^^ unable to overwrite parts of a pointer in memory at ALLOC0

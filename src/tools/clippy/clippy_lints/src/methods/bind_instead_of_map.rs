@@ -1,4 +1,4 @@
-use super::{contains_return, BIND_INSTEAD_OF_MAP};
+use super::{BIND_INSTEAD_OF_MAP, contains_return};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, snippet_with_context};

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::{iter, ptr};
 
 use libc::{c_char, c_longlong, c_uint};
-use rustc_codegen_ssa::debuginfo::type_names::{cpp_like_debuginfo, VTableNameKind};
+use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
-use rustc_span::{hygiene, FileName, FileNameDisplayPreference, SourceFile, DUMMY_SP};
+use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, hygiene};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::DebuginfoKind;
@@ -26,15 +26,15 @@ use smallvec::smallvec;
 use tracing::{debug, instrument};
 
 use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
+use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{
-    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
+    DIB, create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit,
 };
-use super::CodegenUnitDebugContext;
 use crate::common::CodegenCx;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
-use crate::debuginfo::utils::{fat_pointer_kind, FatPtrKind};
+use crate::debuginfo::utils::{FatPtrKind, fat_pointer_kind};
 use crate::llvm::debuginfo::{
     DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
     DebugNameTableKind,
@@ -125,7 +125,9 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
 
     let (size, align) = cx.size_and_align_of(array_type);
 
-    let upper_bound = len.eval_target_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong;
+    let upper_bound = len
+        .try_to_target_usize(cx.tcx)
+        .expect("expected monomorphic const in codegen") as c_longlong;
 
     let subrange =
         unsafe { Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)) };
@@ -216,8 +218,9 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     //        need to make sure that we don't break existing debuginfo consumers
                     //        by doing that (at least not without a warning period).
                     let layout_type = if ptr_type.is_box() {
-                        // The assertion at the start of this function ensures we have a ZST allocator.
-                        // We'll make debuginfo "skip" all ZST allocators, not just the default allocator.
+                        // The assertion at the start of this function ensures we have a ZST
+                        // allocator. We'll make debuginfo "skip" all ZST allocators, not just the
+                        // default allocator.
                         Ty::new_mut_ptr(cx.tcx, pointee_type)
                     } else {
                         ptr_type
@@ -280,8 +283,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
-    // It's possible to create a self-referential
-    // type in Rust by using 'impl trait':
+    // It's possible to create a self-referential type in Rust by using 'impl trait':
     //
     // fn foo() -> impl Copy { foo }
     //
@@ -456,7 +458,7 @@ pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) ->
             if def.is_box()
                 && args.get(1).map_or(true, |arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
         {
-            build_pointer_or_reference_di_node(cx, t, t.boxed_ty(), unique_type_id)
+            build_pointer_or_reference_di_node(cx, t, t.expect_boxed_ty(), unique_type_id)
         }
         ty::FnDef(..) | ty::FnPtr(..) => build_subroutine_type_di_node(cx, unique_type_id),
         ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
@@ -573,14 +575,14 @@ pub(crate) fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFi
                     {
                         // If the compiler's working directory (which also is the DW_AT_comp_dir of
                         // the compilation unit) is a prefix of the path we are about to emit, then
-                        // only emit the part relative to the working directory.
-                        // Because of path remapping we sometimes see strange things here: `abs_path`
-                        // might actually look like a relative path
-                        // (e.g. `<crate-name-and-version>/src/lib.rs`), so if we emit it without
-                        // taking the working directory into account, downstream tooling will
-                        // interpret it as `<working-directory>/<crate-name-and-version>/src/lib.rs`,
-                        // which makes no sense. Usually in such cases the working directory will also
-                        // be remapped to `<crate-name-and-version>` or some other prefix of the path
+                        // only emit the part relative to the working directory. Because of path
+                        // remapping we sometimes see strange things here: `abs_path` might
+                        // actually look like a relative path (e.g.
+                        // `<crate-name-and-version>/src/lib.rs`), so if we emit it without taking
+                        // the working directory into account, downstream tooling will interpret it
+                        // as `<working-directory>/<crate-name-and-version>/src/lib.rs`, which
+                        // makes no sense. Usually in such cases the working directory will also be
+                        // remapped to `<crate-name-and-version>` or some other prefix of the path
                         // we are remapping, so we end up with
                         // `<crate-name-and-version>/<crate-name-and-version>/src/lib.rs`.
                         // By moving the working directory portion into the `directory` part of the
@@ -873,8 +875,8 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
-    use rustc_session::config::RemapPathScopeComponents;
     use rustc_session::RemapFileNameExt;
+    use rustc_session::config::RemapPathScopeComponents;
     let mut name_in_debuginfo = tcx
         .sess
         .local_crate_source_file()
@@ -1545,20 +1547,16 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
 
     unsafe {
-        let typeid = llvm::LLVMMDStringInContext(
+        let typeid = llvm::LLVMMDStringInContext2(
             cx.llcx,
             trait_ref_typeid.as_ptr() as *const c_char,
-            trait_ref_typeid.as_bytes().len() as c_uint,
+            trait_ref_typeid.as_bytes().len(),
         );
-        let v = [cx.const_usize(0), typeid];
+        let v = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
         llvm::LLVMRustGlobalAddMetadata(
             vtable,
             llvm::MD_type as c_uint,
-            llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
-                cx.llcx,
-                v.as_ptr(),
-                v.len() as c_uint,
-            )),
+            llvm::LLVMMDNodeInContext2(cx.llcx, v.as_ptr(), v.len()),
         );
         let vcall_visibility = llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64));
         let vcall_visibility_metadata = llvm::LLVMMDNodeInContext2(cx.llcx, &vcall_visibility, 1);

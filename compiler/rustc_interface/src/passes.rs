@@ -13,10 +13,10 @@ use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, Lrc, OnceLock,
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{StableCrateId, StableCrateIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
-use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
+use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
@@ -32,8 +32,8 @@ use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
+use rustc_span::symbol::{Symbol, sym};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 use tracing::{info, instrument};
@@ -435,7 +435,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             escape_dep_filename(&file.prefer_local().to_string())
         };
 
-        // The entries will be used to declare dependencies beween files in a
+        // The entries will be used to declare dependencies between files in a
         // Makefile-like output, so the iteration order does not matter.
         #[allow(rustc::potential_query_instability)]
         let extra_tracked_files =
@@ -519,7 +519,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                 write_deps_to_file(&mut file)?;
             }
             OutFileName::Real(ref path) => {
-                let mut file = BufWriter::new(fs::File::create(path)?);
+                let mut file = fs::File::create_buffered(path)?;
                 write_deps_to_file(&mut file)?;
             }
         }
@@ -788,7 +788,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     rustc_hir_analysis::check_crate(tcx);
     sess.time("MIR_coroutine_by_move_body", || {
         tcx.hir().par_body_owners(|def_id| {
-            if tcx.needs_coroutine_by_move_body_def_id(def_id) {
+            if tcx.needs_coroutine_by_move_body_def_id(def_id.to_def_id()) {
                 tcx.ensure_with_value().coroutine_by_move_body_def_id(def_id);
             }
         });
@@ -980,19 +980,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 std::ops::ControlFlow::Continue::<std::convert::Infallible>(())
             });
 
-            sess.code_stats.record_vtable_size(
-                tr,
-                &name,
-                VTableSizeInfo {
-                    trait_name: name.clone(),
-                    entries: entries_ignoring_upcasting + entries_for_upcasting,
-                    entries_ignoring_upcasting,
-                    entries_for_upcasting,
-                    upcasting_cost_percent: entries_for_upcasting as f64
-                        / entries_ignoring_upcasting as f64
-                        * 100.,
-                },
-            )
+            sess.code_stats.record_vtable_size(tr, &name, VTableSizeInfo {
+                trait_name: name.clone(),
+                entries: entries_ignoring_upcasting + entries_for_upcasting,
+                entries_ignoring_upcasting,
+                entries_for_upcasting,
+                upcasting_cost_percent: entries_for_upcasting as f64
+                    / entries_ignoring_upcasting as f64
+                    * 100.,
+            })
         }
     }
 

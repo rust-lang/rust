@@ -1,4 +1,4 @@
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 //@error-in-other-file: deadlock
 
 use std::cell::UnsafeCell;

@@ -1,7 +1,7 @@
 // Local js definitions:
 /* global getSettingValue, updateLocalStorage, updateTheme */
-/* global addClass, removeClass, onEach, onEachLazy, blurHandler */
-/* global MAIN_ID, getVar, getSettingsButton */
+/* global addClass, removeClass, onEach, onEachLazy */
+/* global MAIN_ID, getVar, getSettingsButton, getHelpButton */
 
 "use strict";
 
@@ -34,6 +34,20 @@
                     addClass(document.documentElement, "hide-sidebar");
                 } else {
                     removeClass(document.documentElement, "hide-sidebar");
+                }
+                break;
+            case "hide-toc":
+                if (value === true) {
+                    addClass(document.documentElement, "hide-toc");
+                } else {
+                    removeClass(document.documentElement, "hide-toc");
+                }
+                break;
+            case "hide-modnav":
+                if (value === true) {
+                    addClass(document.documentElement, "hide-modnav");
+                } else {
+                    removeClass(document.documentElement, "hide-modnav");
                 }
                 break;
         }
@@ -102,6 +116,11 @@
         let output = "";
 
         for (const setting of settings) {
+            if (setting === "hr") {
+                output += "<hr>";
+                continue;
+            }
+
             const js_data_name = setting["js_name"];
             const setting_name = setting["name"];
 
@@ -199,6 +218,16 @@
                 "default": false,
             },
             {
+                "name": "Hide table of contents",
+                "js_name": "hide-toc",
+                "default": false,
+            },
+            {
+                "name": "Hide module navigation",
+                "js_name": "hide-modnav",
+                "default": false,
+            },
+            {
                 "name": "Disable keyboard shortcuts",
                 "js_name": "disable-shortcuts",
                 "default": false,
@@ -238,15 +267,16 @@
     }
 
     function settingsBlurHandler(event) {
-        blurHandler(event, getSettingsButton(), window.hidePopoverMenus);
+        if (!getHelpButton().contains(document.activeElement) &&
+            !getHelpButton().contains(event.relatedTarget) &&
+            !getSettingsButton().contains(document.activeElement) &&
+            !getSettingsButton().contains(event.relatedTarget)
+        ) {
+            window.hidePopoverMenus();
+        }
     }
 
-    if (isSettingsPage) {
-        // We replace the existing "onclick" callback to do nothing if clicked.
-        getSettingsButton().onclick = event => {
-            event.preventDefault();
-        };
-    } else {
+    if (!isSettingsPage) {
         // We replace the existing "onclick" callback.
         const settingsButton = getSettingsButton();
         const settingsMenu = document.getElementById("settings");

@@ -99,15 +99,12 @@ pub fn get_metadata(
             }
             // otherwise it's an out-of-tree dependency
             let package_id = Package { name: package.name, version: package.version.to_string() };
-            output.insert(
-                package_id,
-                PackageMetadata {
-                    license: package.license.unwrap_or_else(|| String::from("Unspecified")),
-                    authors: package.authors,
-                    notices: BTreeMap::new(),
-                    is_in_libstd: None,
-                },
-            );
+            output.insert(package_id, PackageMetadata {
+                license: package.license.unwrap_or_else(|| String::from("Unspecified")),
+                authors: package.authors,
+                notices: BTreeMap::new(),
+                is_in_libstd: None,
+            });
         }
     }
 

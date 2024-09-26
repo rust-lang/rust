@@ -18,6 +18,7 @@
 #![doc(test(attr(deny(warnings))))]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![feature(file_buffered)]
 #![feature(internal_output_capture)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
@@ -28,17 +29,17 @@
 
 pub use cli::TestOpts;
 
-pub use self::bench::{black_box, Bencher};
+pub use self::ColorConfig::*;
+pub use self::bench::{Bencher, black_box};
 pub use self::console::run_tests_console;
 pub use self::options::{ColorConfig, Options, OutputFormat, RunIgnored, ShouldPanic};
 pub use self::types::TestName::*;
 pub use self::types::*;
-pub use self::ColorConfig::*;
 
 // Module to be used by rustc to compile tests in libtest
 pub mod test {
     pub use crate::bench::Bencher;
-    pub use crate::cli::{parse_opts, TestOpts};
+    pub use crate::cli::{TestOpts, parse_opts};
     pub use crate::helpers::metrics::{Metric, MetricMap};
     pub use crate::options::{Options, RunIgnored, RunStrategy, ShouldPanic};
     pub use crate::test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
@@ -53,9 +54,9 @@ pub mod test {
 use std::collections::VecDeque;
 use std::io::prelude::Write;
 use std::mem::ManuallyDrop;
-use std::panic::{self, catch_unwind, AssertUnwindSafe, PanicHookInfo};
+use std::panic::{self, AssertUnwindSafe, PanicHookInfo, catch_unwind};
 use std::process::{self, Command, Termination};
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{env, io, thread};

@@ -1,27 +1,27 @@
 use std::ops::ControlFlow;
 
 use rustc_errors::{
-    struct_span_code_err, Applicability, Diag, MultiSpan, StashKey, E0283, E0284, E0790,
+    Applicability, Diag, E0283, E0284, E0790, MultiSpan, StashKey, struct_span_code_err,
 };
 use rustc_hir as hir;
+use rustc_hir::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor as _;
-use rustc_hir::LangItem;
 use rustc_infer::infer::{BoundRegionConversionTime, InferCtxt};
 use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _};
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
-use crate::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
-use crate::error_reporting::traits::{to_pretty_impl_header, FindExprBySpan};
 use crate::error_reporting::TypeErrCtxt;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
+use crate::error_reporting::traits::{FindExprBySpan, to_pretty_impl_header};
 use crate::traits::ObligationCtxt;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
 #[derive(Debug)]
 pub enum CandidateSource {

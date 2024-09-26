@@ -5,6 +5,7 @@
 #![feature(map_many_mut)]
 #![feature(option_get_or_insert_default)]
 #![feature(rustc_attrs)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod errors;

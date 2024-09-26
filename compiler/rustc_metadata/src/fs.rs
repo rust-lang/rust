@@ -12,7 +12,7 @@ use crate::errors::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
     FailedCreateTempdir, FailedWriteError,
 };
-use crate::{encode_metadata, EncodedMetadata};
+use crate::{EncodedMetadata, encode_metadata};
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";
@@ -128,8 +128,7 @@ pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
 }
 
 pub fn copy_to_stdout(from: &Path) -> io::Result<()> {
-    let file = fs::File::open(from)?;
-    let mut reader = io::BufReader::new(file);
+    let mut reader = fs::File::open_buffered(from)?;
     let mut stdout = io::stdout();
     io::copy(&mut reader, &mut stdout)?;
     Ok(())

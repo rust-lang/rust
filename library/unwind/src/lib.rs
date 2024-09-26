@@ -22,6 +22,8 @@ cfg_if::cfg_if! {
         target_os = "l4re",
         target_os = "none",
         target_os = "espidf",
+        target_os = "rtems",
+        target_os = "nuttx",
     ))] {
         // These "unix" family members do not have unwinder.
     } else if #[cfg(any(

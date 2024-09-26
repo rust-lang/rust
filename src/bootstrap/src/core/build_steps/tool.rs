@@ -1,15 +1,17 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
+use build_helper::git::get_closest_merge_commit;
+
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
-use crate::utils::exec::{command, BootstrapCommand};
-use crate::utils::helpers::{add_dylib_path, exe, get_closest_merge_base_commit, git, t};
-use crate::{gha, Compiler, Kind, Mode};
+use crate::utils::exec::{BootstrapCommand, command};
+use crate::utils::helpers::{add_dylib_path, exe, git, t};
+use crate::{Compiler, Kind, Mode, gha};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -576,10 +578,9 @@ impl Step for Rustdoc {
             && target_compiler.stage > 0
             && builder.rust_info().is_managed_git_subrepository()
         {
-            let commit = get_closest_merge_base_commit(
+            let commit = get_closest_merge_commit(
                 Some(&builder.config.src),
                 &builder.config.git_config(),
-                &builder.config.stage0_metadata.config.git_merge_commit_email,
                 &[],
             )
             .unwrap();
@@ -693,14 +694,7 @@ impl Step for Cargo {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(
-            builder.config.extended
-                && builder.config.tools.as_ref().map_or(
-                    true,
-                    // If `tools` is set, search list for this tool.
-                    |tools| tools.iter().any(|tool| tool == "cargo"),
-                ),
-        )
+        run.path("src/tools/cargo").default_condition(builder.tool_enabled("cargo"))
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -772,14 +766,7 @@ impl Step for RustAnalyzer {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/rust-analyzer").default_condition(
-            builder.config.extended
-                && builder
-                    .config
-                    .tools
-                    .as_ref()
-                    .map_or(true, |tools| tools.iter().any(|tool| tool == "rust-analyzer")),
-        )
+        run.path("src/tools/rust-analyzer").default_condition(builder.tool_enabled("rust-analyzer"))
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -821,12 +808,8 @@ impl Step for RustAnalyzerProcMacroSrv {
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
             .default_condition(
-                builder.config.extended
-                    && builder.config.tools.as_ref().map_or(true, |tools| {
-                        tools.iter().any(|tool| {
-                            tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv"
-                        })
-                    }),
+                builder.tool_enabled("rust-analyzer")
+                    || builder.tool_enabled("rust-analyzer-proc-macro-srv"),
             )
     }
 
@@ -874,16 +857,8 @@ impl Step for LlvmBitcodeLinker {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/llvm-bitcode-linker").default_condition(
-            builder.config.extended
-                && builder
-                    .config
-                    .tools
-                    .as_ref()
-                    .map_or(builder.build.unstable_features(), |tools| {
-                        tools.iter().any(|tool| tool == "llvm-bitcode-linker")
-                    }),
-        )
+        run.path("src/tools/llvm-bitcode-linker")
+            .default_condition(builder.tool_enabled("llvm-bitcode-linker"))
     }
 
     fn make_run(run: RunConfig<'_>) {

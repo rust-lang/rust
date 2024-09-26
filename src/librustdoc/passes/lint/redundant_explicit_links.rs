@@ -5,15 +5,15 @@ use pulldown_cmark::{
 };
 use rustc_ast::NodeId;
 use rustc_errors::SuggestionStyle;
-use rustc_hir::def::{DefKind, DocLinkResMap, Namespace, Res};
 use rustc_hir::HirId;
+use rustc_hir::def::{DefKind, DocLinkResMap, Namespace, Res};
 use rustc_lint_defs::Applicability;
 use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, source_span_for_markdown_range};
-use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
+use rustc_span::def_id::DefId;
 
-use crate::clean::utils::{find_nearest_parent_module, inherits_doc_hidden};
 use crate::clean::Item;
+use crate::clean::utils::{find_nearest_parent_module, inherits_doc_hidden};
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 
@@ -24,12 +24,7 @@ struct LinkData {
     display_link: String,
 }
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
-    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {
-        // If non-local, no need to check anything.
-        return;
-    };
-
+pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId) {
     let hunks = prepare_to_doc_link_resolution(&item.attrs.doc_strings);
     for (item_id, doc) in hunks {
         if let Some(item_id) = item_id.or(item.def_id())

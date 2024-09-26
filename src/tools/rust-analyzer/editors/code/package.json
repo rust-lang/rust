@@ -1030,6 +1030,16 @@
             {
                 "title": "completion",
                 "properties": {
+                    "rust-analyzer.completion.addSemicolonToUnit": {
+                        "markdownDescription": "Whether to automatically add a semicolon when completing unit-returning functions.\n\nIn `match` arms it completes a comma instead.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
                     "rust-analyzer.completion.autoimport.enable": {
                         "markdownDescription": "Toggles the additional completions that automatically add imports when completed.\nNote that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
                         "default": true,
@@ -1072,6 +1082,16 @@
                 "properties": {
                     "rust-analyzer.completion.fullFunctionSignatures.enable": {
                         "markdownDescription": "Whether to show full function/method signatures in completion docs.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.hideDeprecated": {
+                        "markdownDescription": "Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.",
                         "default": false,
                         "type": "boolean"
                     }

@@ -1,12 +1,12 @@
 use std::iter;
 
+use GenericArgsInfo::*;
 use rustc_errors::codes::*;
-use rustc_errors::{pluralize, Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan};
+use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_span::def_id::DefId;
 use tracing::debug;
-use GenericArgsInfo::*;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
 pub(crate) struct WrongNumberOfGenericArgs<'a, 'tcx> {
@@ -827,20 +827,18 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             if num_generic_args_supplied_to_trait + num_assoc_fn_excess_args
                 == num_trait_generics_except_self
+                && let Some(span) = self.gen_args.span_ext()
+                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
             {
-                if let Some(span) = self.gen_args.span_ext()
-                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
-                {
-                    let sugg = vec![
-                        (
-                            self.path_segment.ident.span,
-                            format!("{}::{}", snippet, self.path_segment.ident),
-                        ),
-                        (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned()),
-                    ];
+                let sugg = vec![
+                    (
+                        self.path_segment.ident.span,
+                        format!("{}::{}", snippet, self.path_segment.ident),
+                    ),
+                    (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned()),
+                ];
 
-                    err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
-                }
+                err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
             }
         }
     }
@@ -1050,7 +1048,18 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 },
             );
 
-            err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
+            if span.is_empty() {
+                // HACK: Avoid ICE when types with the same name with `derive`s are in the same scope:
+                //     struct NotSM;
+                //     #[derive(PartialEq, Eq)]
+                //     struct NotSM<T>(T);
+                // With the above code, the suggestion would be to remove the generics of the first
+                // `NotSM`, which doesn't *have* generics, so we would suggest to remove no code with
+                // no code, which would trigger an `assert!` later. Ideally, we would do something a
+                // bit more principled. See closed PR #109082.
+            } else {
+                err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
+            }
         } else if redundant_lifetime_args && redundant_type_or_const_args {
             remove_lifetime_args(err);
             remove_type_or_const_args(err);

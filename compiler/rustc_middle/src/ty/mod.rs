@@ -26,51 +26,55 @@ pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
-pub use rustc_ast_ir::{try_visit, Movability, Mutability};
+pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
+use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
 use rustc_macros::{
-    extension, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
-    TypeVisitable,
+    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+    extension,
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
-pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::ConstKind::{
     Bound as BoundCt, Error as ErrorCt, Expr as ExprCt, Infer as InferCt, Param as ParamCt,
     Placeholder as PlaceholderCt, Unevaluated, Value,
 };
+pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
 pub use vtable::*;
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
+pub use self::AssocItemContainer::*;
+pub use self::BorrowKind::*;
+pub use self::IntVarValue::*;
 pub use self::closure::{
-    analyze_coroutine_closure_captures, is_ancestor_or_same_capture, place_to_string_for_capture,
-    BorrowKind, CaptureInfo, CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap,
-    MinCaptureList, RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath,
-    CAPTURE_STRUCT_LOCAL,
+    BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
+    MinCaptureInformationMap, MinCaptureList, RootVariableMinCaptureList, UpvarCapture, UpvarId,
+    UpvarPath, analyze_coroutine_closure_captures, is_ancestor_or_same_capture,
+    place_to_string_for_capture,
 };
 pub use self::consts::{
     Const, ConstInt, ConstKind, Expr, ExprKind, FeedConstTy, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
-    tls, CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift,
-    TyCtxt, TyCtxtFeed,
+    CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
+    TyCtxtFeed, tls,
 };
 pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
@@ -103,9 +107,6 @@ pub use self::typeck_results::{
     TypeckResults, UserType, UserTypeAnnotationIndex,
 };
 pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-pub use self::AssocItemContainer::*;
-pub use self::BorrowKind::*;
-pub use self::IntVarValue::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -262,7 +263,6 @@ pub struct ImplTraitHeader<'tcx> {
     pub trait_ref: ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>,
     pub polarity: ImplPolarity,
     pub safety: hir::Safety,
-    pub do_not_recommend: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
@@ -1570,8 +1570,15 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 
+        // box is special, on the one hand the compiler assumes an ordered layout, with the pointer
+        // always at offset zero. On the other hand we want scalar abi optimizations.
+        let is_box = self.is_lang_item(did.to_def_id(), LangItem::OwnedBox);
+
         // This is here instead of layout because the choice must make it into metadata.
-        if !self.consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did))) {
+        if is_box
+            || !self
+                .consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did)))
+        {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
@@ -1789,6 +1796,37 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Get an attribute from the diagnostic attribute namespace
+    ///
+    /// This function requests an attribute with the following structure:
+    ///
+    /// `#[diagnostic::$attr]`
+    ///
+    /// This function performs feature checking, so if an attribute is returned
+    /// it can be used by the consumer
+    pub fn get_diagnostic_attr(
+        self,
+        did: impl Into<DefId>,
+        attr: Symbol,
+    ) -> Option<&'tcx ast::Attribute> {
+        let did: DefId = did.into();
+        if did.as_local().is_some() {
+            // it's a crate local item, we need to check feature flags
+            if rustc_feature::is_stable_diagnostic_attribute(attr, self.features()) {
+                self.get_attrs_by_path(did, &[sym::diagnostic, sym::do_not_recommend]).next()
+            } else {
+                None
+            }
+        } else {
+            // we filter out unstable diagnostic attributes before
+            // encoding attributes
+            debug_assert!(rustc_feature::encode_cross_crate(attr));
+            self.item_attrs(did)
+                .iter()
+                .find(|a| matches!(a.path().as_ref(), [sym::diagnostic, a] if *a == attr))
+        }
+    }
+
     pub fn get_attrs_by_path<'attr>(
         self,
         did: DefId,
@@ -1819,7 +1857,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_attrs(did, attr).next().is_some()
     }
 
-    /// Determines whether an item is annotated with a multi-segement attribute
+    /// Determines whether an item is annotated with a multi-segment attribute
     pub fn has_attrs_with_path(self, did: impl Into<DefId>, attrs: &[Symbol]) -> bool {
         self.get_attrs_by_path(did.into(), attrs).next().is_some()
     }

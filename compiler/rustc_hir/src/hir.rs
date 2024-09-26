@@ -17,18 +17,18 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 use tracing::debug;
 
+use crate::LangItem;
 use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::FnKind;
-use crate::LangItem;
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
@@ -167,6 +167,19 @@ impl Lifetime {
         } else {
             (LifetimeSuggestionPosition::Normal, self.ident.span)
         }
+    }
+
+    pub fn suggestion(&self, new_lifetime: &str) -> (Span, String) {
+        debug_assert!(new_lifetime.starts_with('\''));
+        let (pos, span) = self.suggestion_position();
+        let code = match pos {
+            LifetimeSuggestionPosition::Normal => format!("{new_lifetime}"),
+            LifetimeSuggestionPosition::Ampersand => format!("{new_lifetime} "),
+            LifetimeSuggestionPosition::ElidedPath => format!("<{new_lifetime}>"),
+            LifetimeSuggestionPosition::ElidedPathArgument => format!("{new_lifetime}, "),
+            LifetimeSuggestionPosition::ObjectDefault => format!("+ {new_lifetime}"),
+        };
+        (span, code)
     }
 }
 
@@ -1365,7 +1378,8 @@ pub struct LetStmt<'hir> {
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
-    /// desugaring. Otherwise will be `Normal`.
+    /// desugaring, or `AssignDesugar` if it is the result of a complex
+    /// assignment desugaring. Otherwise will be `Normal`.
     pub source: LocalSource,
 }
 
@@ -1654,10 +1668,17 @@ pub enum ArrayLen<'hir> {
 }
 
 impl ArrayLen<'_> {
-    pub fn hir_id(&self) -> HirId {
+    pub fn span(self) -> Span {
         match self {
-            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(ConstArg { hir_id, .. }) => {
-                *hir_id
+            ArrayLen::Infer(arg) => arg.span,
+            ArrayLen::Body(body) => body.span(),
+        }
+    }
+
+    pub fn hir_id(self) -> HirId {
+        match self {
+            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(&ConstArg { hir_id, .. }) => {
+                hir_id
             }
         }
     }
@@ -1713,7 +1734,7 @@ impl Expr<'_> {
             ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
             ExprKind::Lit(_) => ExprPrecedence::Lit,
-            ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
+            ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
             ExprKind::If(..) => ExprPrecedence::If,
             ExprKind::Let(..) => ExprPrecedence::Let,
@@ -1731,11 +1752,12 @@ impl Expr<'_> {
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
             ExprKind::Become(..) => ExprPrecedence::Become,
-            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
-            ExprKind::OffsetOf(..) => ExprPrecedence::OffsetOf,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Type(..) | ExprKind::InlineAsm(..) | ExprKind::OffsetOf(..) => {
+                ExprPrecedence::Mac
+            }
             ExprKind::Err(_) => ExprPrecedence::Err,
         }
     }
@@ -2574,10 +2596,10 @@ impl<'hir> Ty<'hir> {
             fn visit_ty(&mut self, t: &'v Ty<'v>) {
                 if matches!(
                     &t.kind,
-                    TyKind::Path(QPath::Resolved(
-                        _,
-                        Path { res: crate::def::Res::SelfTyAlias { .. }, .. },
-                    ))
+                    TyKind::Path(QPath::Resolved(_, Path {
+                        res: crate::def::Res::SelfTyAlias { .. },
+                        ..
+                    },))
                 ) {
                     self.0.push(t.span);
                     return;
@@ -2905,15 +2927,17 @@ impl<'hir> InlineAsmOperand<'hir> {
     }
 
     pub fn is_clobber(&self) -> bool {
-        matches!(
-            self,
-            InlineAsmOperand::Out { reg: InlineAsmRegOrRegClass::Reg(_), late: _, expr: None }
-        )
+        matches!(self, InlineAsmOperand::Out {
+            reg: InlineAsmRegOrRegClass::Reg(_),
+            late: _,
+            expr: None
+        })
     }
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct InlineAsm<'hir> {
+    pub asm_macro: ast::AsmMacro,
     pub template: &'hir [InlineAsmTemplatePiece],
     pub template_strs: &'hir [(Symbol, Option<Symbol>, Span)],
     pub operands: &'hir [(InlineAsmOperand<'hir>, Span)],

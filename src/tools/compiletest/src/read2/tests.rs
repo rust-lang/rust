@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::read2::{ProcOutput, FILTERED_PATHS_PLACEHOLDER_LEN, MAX_OUT_LEN};
+use crate::read2::{FILTERED_PATHS_PLACEHOLDER_LEN, MAX_OUT_LEN, ProcOutput};
 
 #[test]
 fn test_abbreviate_short_string() {

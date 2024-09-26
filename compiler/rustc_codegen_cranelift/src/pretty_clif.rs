@@ -59,8 +59,8 @@ use std::fmt;
 use std::io::Write;
 
 use cranelift_codegen::entity::SecondaryMap;
-use cranelift_codegen::ir::entities::AnyEntity;
 use cranelift_codegen::ir::Fact;
+use cranelift_codegen::ir::entities::AnyEntity;
 use cranelift_codegen::write::{FuncWriter, PlainWriter};
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;

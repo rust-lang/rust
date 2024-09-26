@@ -5,8 +5,8 @@ use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty};
 use tracing::trace;
 
-use super::namespace::item_namespace;
 use super::CodegenUnitDebugContext;
+use super::namespace::item_namespace;
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIArray, DIBuilder, DIDescriptor, DIScope};

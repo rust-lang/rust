@@ -18,7 +18,7 @@ use std::path::Path;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{token, AttrItem, Attribute, MetaItem};
+use rustc_ast::{AttrItem, Attribute, MetaItem, token};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, FatalError, PResult};
@@ -29,7 +29,7 @@ pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 
 #[macro_use]
 pub mod parser;
-use parser::{make_unclosed_delims_error, Parser};
+use parser::{Parser, make_unclosed_delims_error};
 pub mod lexer;
 pub mod validate_attr;
 

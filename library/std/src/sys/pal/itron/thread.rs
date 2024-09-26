@@ -1,7 +1,7 @@
 //! Thread implementation backed by μITRON tasks. Assumes `acre_tsk` and
 //! `exd_tsk` are available.
 
-use super::error::{expect_success, expect_success_aborting, ItronError};
+use super::error::{ItronError, expect_success, expect_success_aborting};
 use super::time::dur2reltims;
 use super::{abi, task};
 use crate::cell::UnsafeCell;

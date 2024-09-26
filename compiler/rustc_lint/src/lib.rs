@@ -30,6 +30,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(extract_if)]
@@ -55,6 +56,7 @@ mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
 pub mod hidden_unicode_codepoints;
+mod if_let_rescope;
 mod impl_trait_overcaptures;
 mod internal;
 mod invalid_from_utf8;
@@ -79,10 +81,12 @@ mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
 mod shadowed_into_iter;
+mod static_mut_refs;
 mod tail_expr_drop_order;
 mod traits;
 mod types;
 mod unit_bindings;
+mod unqualified_local_imports;
 mod unused;
 
 use async_closures::AsyncClosureUsage;
@@ -93,6 +97,7 @@ use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
+use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
 use invalid_from_utf8::*;
@@ -117,10 +122,12 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
 pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
+use static_mut_refs::*;
 use tail_expr_drop_order::TailExprDropOrder;
 use traits::*;
 use types::*;
 use unit_bindings::*;
+use unqualified_local_imports::*;
 use unused::*;
 
 #[rustfmt::skip]
@@ -128,7 +135,7 @@ pub use builtin::{MissingDoc, SoftLints};
 pub use context::{
     CheckLintNameResult, EarlyContext, FindLintError, LateContext, LintContext, LintStore,
 };
-pub use early::{check_ast_node, EarlyCheckNode};
+pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
@@ -242,6 +249,9 @@ late_lint_methods!(
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             TailExprDropOrder: TailExprDropOrder,
+            IfLetRescope: IfLetRescope::default(),
+            StaticMutRefs: StaticMutRefs,
+            UnqualifiedLocalImports: UnqualifiedLocalImports,
         ]
     ]
 );
@@ -575,6 +585,15 @@ fn register_builtins(store: &mut LintStore) {
          <https://github.com/rust-lang/rust/issues/107457> for more information",
     );
     store.register_removed("writes_through_immutable_pointer", "converted into hard error");
+    store.register_removed(
+        "const_eval_mutable_ptr_in_final_value",
+        "partially allowed now, otherwise turned into a hard error",
+    );
+    store.register_removed(
+        "where_clauses_object_safety",
+        "converted into hard error, see PR #125380 \
+         <https://github.com/rust-lang/rust/pull/125380> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
@@ -602,23 +621,19 @@ fn register_internals(store: &mut LintStore) {
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs
     // and translation is completed
-    store.register_group(
-        false,
-        "rustc::internal",
-        None,
-        vec![
-            LintId::of(DEFAULT_HASH_TYPES),
-            LintId::of(POTENTIAL_QUERY_INSTABILITY),
-            LintId::of(USAGE_OF_TY_TYKIND),
-            LintId::of(PASS_BY_VALUE),
-            LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
-            LintId::of(USAGE_OF_QUALIFIED_TY),
-            LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
-            LintId::of(EXISTING_DOC_KEYWORD),
-            LintId::of(BAD_OPT_ACCESS),
-            LintId::of(SPAN_USE_EQ_CTXT),
-        ],
-    );
+    store.register_group(false, "rustc::internal", None, vec![
+        LintId::of(DEFAULT_HASH_TYPES),
+        LintId::of(POTENTIAL_QUERY_INSTABILITY),
+        LintId::of(UNTRACKED_QUERY_INFORMATION),
+        LintId::of(USAGE_OF_TY_TYKIND),
+        LintId::of(PASS_BY_VALUE),
+        LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
+        LintId::of(USAGE_OF_QUALIFIED_TY),
+        LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
+        LintId::of(EXISTING_DOC_KEYWORD),
+        LintId::of(BAD_OPT_ACCESS),
+        LintId::of(SPAN_USE_EQ_CTXT),
+    ]);
 }
 
 #[cfg(test)]

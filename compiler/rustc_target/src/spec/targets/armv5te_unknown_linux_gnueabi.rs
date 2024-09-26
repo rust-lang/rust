@@ -1,6 +1,6 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv5te-unknown-linux-gnueabi".into(),
         metadata: crate::spec::TargetMetadata {

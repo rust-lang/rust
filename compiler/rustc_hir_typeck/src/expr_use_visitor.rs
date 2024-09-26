@@ -6,9 +6,9 @@ use std::cell::{Ref, RefCell};
 use std::ops::Deref;
 use std::slice::from_ref;
 
+use hir::Expr;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
-use hir::Expr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
@@ -20,11 +20,11 @@ use rustc_middle::hir::place::ProjectionKind;
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
-    self, adjustment, AdtKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _,
+    self, AdtKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, trace};
 use ty::BorrowKind::ImmBorrow;
@@ -151,7 +151,8 @@ pub trait TypeInformationCtxt<'tcx> {
 }
 
 impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
-    type TypeckResults<'a> = Ref<'a, ty::TypeckResults<'tcx>>
+    type TypeckResults<'a>
+        = Ref<'a, ty::TypeckResults<'tcx>>
     where
         Self: 'a;
 
@@ -195,7 +196,8 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
 }
 
 impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
-    type TypeckResults<'a> = &'tcx ty::TypeckResults<'tcx>
+    type TypeckResults<'a>
+        = &'tcx ty::TypeckResults<'tcx>
     where
         Self: 'a;
 
@@ -757,9 +759,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
-                adjustment::Adjust::NeverToAny
-                | adjustment::Adjust::Pointer(_)
-                | adjustment::Adjust::DynStar => {
+                adjustment::Adjust::NeverToAny | adjustment::Adjust::Pointer(_) => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
                     self.consume_or_copy(&place_with_id, place_with_id.hir_id);
@@ -779,6 +779,16 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
                 adjustment::Adjust::Borrow(ref autoref) => {
                     self.walk_autoref(expr, &place_with_id, autoref);
+                }
+
+                adjustment::Adjust::ReborrowPin(_, mutbl) => {
+                    // Reborrowing a Pin is like a combinations of a deref and a borrow, so we do
+                    // both.
+                    let bk = match mutbl {
+                        ty::Mutability::Not => ty::BorrowKind::ImmBorrow,
+                        ty::Mutability::Mut => ty::BorrowKind::MutBorrow,
+                    };
+                    self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
                 }
             }
             place_with_id = self.cat_expr_adjusted(expr, place_with_id, adjustment)?;
@@ -1284,7 +1294,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
             | adjustment::Adjust::Borrow(_)
-            | adjustment::Adjust::DynStar => {
+            | adjustment::Adjust::ReborrowPin(..) => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, target))
             }

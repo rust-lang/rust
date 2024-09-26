@@ -279,8 +279,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ github.ref == 'refs/heads/master' }}
-    # FIXME add the bench job back to the dependency list once rust-lang/rust#125493 gets merged
-    needs: [rustfmt, test, dist]
+    needs: [rustfmt, test, bench, dist]
 
     permissions:
       contents: write # for creating the dev tag and release

@@ -103,6 +103,9 @@ fn smoke_dtor() {
 
 #[test]
 fn circular() {
+    // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+    #![allow(static_mut_refs)]
+
     struct S1(&'static LocalKey<UnsafeCell<Option<S1>>>, &'static LocalKey<UnsafeCell<Option<S2>>>);
     struct S2(&'static LocalKey<UnsafeCell<Option<S1>>>, &'static LocalKey<UnsafeCell<Option<S2>>>);
     thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));

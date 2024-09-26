@@ -16,7 +16,7 @@ pub enum Unhab {}
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-pub struct i64x4(i64, i64, i64, i64);
+pub struct i64x4([i64; 4]);
 
 #[derive(Copy, Clone)]
 pub union UnionI64x4 {

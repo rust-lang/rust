@@ -5,11 +5,11 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_macros::HashStable;
+use rustc_session::Session;
 use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
 use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId};
-use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::{symbol, DesugaringKind, Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, DesugaringKind, Span, Symbol, symbol};
 use tracing::instrument;
 
 use crate::ty::TyCtxt;

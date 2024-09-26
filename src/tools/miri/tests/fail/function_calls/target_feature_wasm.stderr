@@ -1,11 +1,11 @@
 error: abnormal termination: calling a function that requires unavailable target features: simd128
-  --> $DIR/target_feature_wasm.rs:LL:CC
+  --> tests/fail/function_calls/target_feature_wasm.rs:LL:CC
    |
 LL |     simd128_fn();
    |     ^^^^^^^^^^^^ calling a function that requires unavailable target features: simd128
    |
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/target_feature_wasm.rs:LL:CC
+   = note: inside `main` at tests/fail/function_calls/target_feature_wasm.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

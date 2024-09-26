@@ -4,7 +4,7 @@ mod analysis;
 #[cfg(test)]
 mod tests;
 
-use std::iter;
+use std::{iter, ops::ControlFlow};
 
 use hir::{
     HasAttrs, Local, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo,
@@ -15,7 +15,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, Edition, SmolStr,
+    match_ast, AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -26,7 +26,7 @@ use crate::{
     CompletionConfig,
 };
 
-const COMPLETION_MARKER: &str = "intellijRulezz";
+const COMPLETION_MARKER: &str = "raCompletionMarker";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum PatternRefutability {
@@ -264,6 +264,7 @@ pub(crate) struct PatternContext {
     pub(crate) refutability: PatternRefutability,
     pub(crate) param_ctx: Option<ParamContext>,
     pub(crate) has_type_ascription: bool,
+    pub(crate) should_suggest_name: bool,
     pub(crate) parent_pat: Option<ast::Pat>,
     pub(crate) ref_token: Option<SyntaxToken>,
     pub(crate) mut_token: Option<SyntaxToken>,
@@ -456,6 +457,16 @@ pub(crate) struct CompletionContext<'a> {
     ///
     /// Here depth will be 2
     pub(crate) depth_from_crate_root: usize,
+
+    /// Whether and how to complete semicolon for unit-returning functions.
+    pub(crate) complete_semicolon: CompleteSemicolon,
+}
+
+#[derive(Debug)]
+pub(crate) enum CompleteSemicolon {
+    DoNotComplete,
+    CompleteSemi,
+    CompleteComma,
 }
 
 impl CompletionContext<'_> {
@@ -734,6 +745,53 @@ impl<'a> CompletionContext<'a> {
 
         let depth_from_crate_root = iter::successors(module.parent(db), |m| m.parent(db)).count();
 
+        let complete_semicolon = if config.add_semicolon_to_unit {
+            let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
+                match_ast! {
+                    match ancestor {
+                        ast::BlockExpr(_) => ControlFlow::Break(false),
+                        ast::ClosureExpr(_) => ControlFlow::Break(true),
+                        _ => ControlFlow::Continue(())
+                    }
+                }
+            });
+
+            if inside_closure_ret == ControlFlow::Break(true) {
+                CompleteSemicolon::DoNotComplete
+            } else {
+                let next_non_trivia_token =
+                    std::iter::successors(token.next_token(), |it| it.next_token())
+                        .find(|it| !it.kind().is_trivia());
+                let in_match_arm = token.parent_ancestors().try_for_each(|ancestor| {
+                    if ast::MatchArm::can_cast(ancestor.kind()) {
+                        ControlFlow::Break(true)
+                    } else if matches!(
+                        ancestor.kind(),
+                        SyntaxKind::EXPR_STMT | SyntaxKind::BLOCK_EXPR
+                    ) {
+                        ControlFlow::Break(false)
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                });
+                // FIXME: This will assume expr macros are not inside match, we need to somehow go to the "parent" of the root node.
+                let in_match_arm = match in_match_arm {
+                    ControlFlow::Continue(()) => false,
+                    ControlFlow::Break(it) => it,
+                };
+                let complete_token = if in_match_arm { T![,] } else { T![;] };
+                if next_non_trivia_token.map(|it| it.kind()) == Some(complete_token) {
+                    CompleteSemicolon::DoNotComplete
+                } else if in_match_arm {
+                    CompleteSemicolon::CompleteComma
+                } else {
+                    CompleteSemicolon::CompleteSemi
+                }
+            }
+        } else {
+            CompleteSemicolon::DoNotComplete
+        };
+
         let ctx = CompletionContext {
             sema,
             scope,
@@ -751,6 +809,7 @@ impl<'a> CompletionContext<'a> {
             qualifier_ctx,
             locals,
             depth_from_crate_root,
+            complete_semicolon,
         };
         Some((ctx, analysis))
     }

@@ -240,13 +240,16 @@ fn imm_to_carg<'tcx>(v: ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'t
         ty::RawPtr(_, mutability) => {
             // Arbitrary mutable pointer accesses are not currently supported in Miri.
             if mutability.is_mut() {
-                throw_unsup_format!("unsupported mutable pointer type for native call: {}", v.layout.ty);
+                throw_unsup_format!(
+                    "unsupported mutable pointer type for native call: {}",
+                    v.layout.ty
+                );
             } else {
                 let s = v.to_scalar().to_pointer(cx)?.addr();
                 // This relies on the `expose_provenance` in `addr_from_alloc_id`.
                 CArg::RawPtr(std::ptr::with_exposed_provenance_mut(s.bytes_usize()))
             }
-        },
+        }
         _ => throw_unsup_format!("unsupported argument type for native call: {}", v.layout.ty),
     })
 }

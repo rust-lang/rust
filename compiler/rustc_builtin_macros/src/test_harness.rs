@@ -6,21 +6,21 @@ use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{walk_item, Visitor};
-use rustc_ast::{attr, ModKind};
+use rustc_ast::visit::{Visitor, walk_item};
+use rustc_ast::{ModKind, attr};
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_session::Session;
+use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
-use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::PanicStrategy;
-use smallvec::{smallvec, SmallVec};
-use thin_vec::{thin_vec, ThinVec};
+use smallvec::{SmallVec, smallvec};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
 use crate::errors;
@@ -326,6 +326,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let main_attr = ecx.attr_word(sym::rustc_main, sp);
     // #[coverage(off)]
     let coverage_attr = ecx.attr_nested_word(sym::coverage, sym::off, sp);
+    // #[doc(hidden)]
+    let doc_hidden_attr = ecx.attr_nested_word(sym::doc, sym::hidden, sp);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
@@ -355,7 +357,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let main = P(ast::Item {
         ident: main_id,
-        attrs: thin_vec![main_attr, coverage_attr],
+        attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },

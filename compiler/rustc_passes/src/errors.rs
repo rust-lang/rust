@@ -10,7 +10,7 @@ use rustc_errors::{
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use crate::check_attr::ProcMacroKind;
 use crate::fluent_generated as fluent;
@@ -1012,12 +1012,12 @@ pub(crate) struct FeatureStableTwice {
 
 #[derive(Diagnostic)]
 #[diag(passes_feature_previously_declared, code = E0711)]
-pub(crate) struct FeaturePreviouslyDeclared<'a, 'b> {
+pub(crate) struct FeaturePreviouslyDeclared<'a> {
     #[primary_span]
     pub span: Span,
     pub feature: Symbol,
     pub declared: &'a str,
-    pub prev_declared: &'b str,
+    pub prev_declared: &'a str,
 }
 
 pub(crate) struct BreakNonLoop<'a> {
@@ -1222,6 +1222,13 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_naked_asm_outside_naked_fn)]
+pub(crate) struct NakedAsmOutsideNakedFn {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_attr_only_in_functions)]
 pub(crate) struct AttrOnlyInFunctions {
     #[primary_span]
@@ -1330,15 +1337,11 @@ pub(crate) struct DuplicateLangItem {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for DuplicateLangItem {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            match self.duplicate {
-                Duplicate::Plain => fluent::passes_duplicate_lang_item,
-                Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
-                Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
-            },
-        );
+        let mut diag = Diag::new(dcx, level, match self.duplicate {
+            Duplicate::Plain => fluent::passes_duplicate_lang_item,
+            Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
+            Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
+        });
         diag.code(E0152);
         diag.arg("lang_item_name", self.lang_item_name);
         diag.arg("crate_name", self.crate_name);

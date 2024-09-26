@@ -1,6 +1,6 @@
-use crate::spec::{base, StackProbeType, Target, TargetOptions};
+use crate::spec::{StackProbeType, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-hermit".into(),
         metadata: crate::spec::TargetMetadata {

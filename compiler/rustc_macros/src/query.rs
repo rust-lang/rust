@@ -4,8 +4,8 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    braced, parenthesized, parse_macro_input, parse_quote, token, AttrStyle, Attribute, Block,
-    Error, Expr, Ident, Pat, ReturnType, Token, Type,
+    AttrStyle, Attribute, Block, Error, Expr, Ident, Pat, ReturnType, Token, Type, braced,
+    parenthesized, parse_macro_input, parse_quote, token,
 };
 
 mod kw {

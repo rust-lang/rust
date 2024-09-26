@@ -1,14 +1,14 @@
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::{
-    relate_args_invariantly, relate_args_with_variances, Relate, RelateResult, TypeRelation,
+    Relate, RelateResult, TypeRelation, relate_args_invariantly, relate_args_with_variances,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVar};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use super::combine::CombineFields;
-use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
 use crate::infer::BoundRegionConversionTime::HigherRankedType;
+use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 
 /// Enforce that `a` is equal to or a subtype of `b`.

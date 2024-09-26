@@ -110,7 +110,7 @@
 use crate::cell::OnceCell;
 use crate::hint::spin_loop;
 use crate::mem;
-use crate::ptr::{self, null_mut, without_provenance_mut, NonNull};
+use crate::ptr::{self, NonNull, null_mut, without_provenance_mut};
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed, Release};
 use crate::sync::atomic::{AtomicBool, AtomicPtr};
 use crate::thread::{self, Thread};

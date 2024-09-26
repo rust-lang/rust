@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
-use std::sync::{mpsc, Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock, mpsc};
 
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_jit::{JITBuilder, JITModule};
@@ -359,15 +359,11 @@ fn codegen_shim<'tcx>(
     let instance_ptr = Box::into_raw(Box::new(inst));
 
     let jit_fn = module
-        .declare_function(
-            "__clif_jit_fn",
-            Linkage::Import,
-            &Signature {
-                call_conv: module.target_config().default_call_conv,
-                params: vec![AbiParam::new(pointer_type), AbiParam::new(pointer_type)],
-                returns: vec![AbiParam::new(pointer_type)],
-            },
-        )
+        .declare_function("__clif_jit_fn", Linkage::Import, &Signature {
+            call_conv: module.target_config().default_call_conv,
+            params: vec![AbiParam::new(pointer_type), AbiParam::new(pointer_type)],
+            returns: vec![AbiParam::new(pointer_type)],
+        })
         .unwrap();
 
     let context = cached_context;

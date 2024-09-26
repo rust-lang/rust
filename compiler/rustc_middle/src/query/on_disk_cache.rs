@@ -6,7 +6,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{Decodable, Encodable};
@@ -328,18 +328,15 @@ impl<'sess> OnDiskCache<'sess> {
 
             // Encode the file footer.
             let footer_pos = encoder.position() as u64;
-            encoder.encode_tagged(
-                TAG_FILE_FOOTER,
-                &Footer {
-                    file_index_to_stable_id,
-                    query_result_index,
-                    side_effects_index,
-                    interpret_alloc_index,
-                    syntax_contexts,
-                    expn_data,
-                    foreign_expn_data,
-                },
-            );
+            encoder.encode_tagged(TAG_FILE_FOOTER, &Footer {
+                file_index_to_stable_id,
+                query_result_index,
+                side_effects_index,
+                interpret_alloc_index,
+                syntax_contexts,
+                expn_data,
+                foreign_expn_data,
+            });
 
             // Encode the position of the footer as the last 8 bytes of the
             // file so we know where to look for it.

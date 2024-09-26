@@ -16,21 +16,21 @@ use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
 use super::QueryConfig;
+use crate::HandleCycleError;
 use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 #[cfg(parallel_compiler)]
 use crate::query::job::QueryLatch;
-use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
+use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, report_cycle};
 use crate::query::{
     QueryContext, QueryMap, QuerySideEffects, QueryStackFrame, SerializedDepNodeIndex,
 };
-use crate::HandleCycleError;
 
 pub struct QueryState<K> {
     active: Sharded<FxHashMap<K, QueryResult>>,

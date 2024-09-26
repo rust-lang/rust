@@ -20,7 +20,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 
 use crate::ast::{AttrStyle, StmtKind};
 use crate::ast_traits::{HasAttrs, HasTokens};
@@ -482,11 +482,11 @@ impl TokenStream {
             token::NtIdent(ident, is_raw) => {
                 TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
             }
-            token::NtLifetime(ident) => TokenTree::Delimited(
+            token::NtLifetime(ident, is_raw) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 DelimSpacing::new(Spacing::JointHidden, spacing),
                 Delimiter::Invisible,
-                TokenStream::token_alone(token::Lifetime(ident.name), ident.span),
+                TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span),
             ),
             token::Interpolated(ref nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),

@@ -1,7 +1,5 @@
 use rand::RngCore;
 
-#[cfg(target_os = "macos")]
-use crate::ffi::{c_char, c_int};
 use crate::fs::{self, File, FileTimes, OpenOptions};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
@@ -13,12 +11,10 @@ use crate::os::unix::fs::symlink as symlink_file;
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as junction_point;
 #[cfg(windows)]
-use crate::os::windows::fs::{junction_point, symlink_dir, symlink_file, OpenOptionsExt};
+use crate::os::windows::fs::{OpenOptionsExt, junction_point, symlink_dir, symlink_file};
 use crate::path::Path;
 use crate::sync::Arc;
-#[cfg(target_os = "macos")]
-use crate::sys::weak::weak;
-use crate::sys_common::io::test::{tmpdir, TempDir};
+use crate::sys_common::io::test::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
 use crate::{env, str, thread};
 
@@ -78,17 +74,6 @@ pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
         Err(ref err) if err.raw_os_error() == Some(1314) => false,
         Ok(_) | Err(_) => true,
     }
-}
-
-#[cfg(target_os = "macos")]
-fn able_to_not_follow_symlinks_while_hard_linking() -> bool {
-    weak!(fn linkat(c_int, *const c_char, c_int, *const c_char, c_int) -> c_int);
-    linkat.get().is_some()
-}
-
-#[cfg(not(target_os = "macos"))]
-fn able_to_not_follow_symlinks_while_hard_linking() -> bool {
-    return true;
 }
 
 #[test]
@@ -1456,9 +1441,6 @@ fn symlink_hard_link() {
     if !got_symlink_permission(&tmpdir) {
         return;
     };
-    if !able_to_not_follow_symlinks_while_hard_linking() {
-        return;
-    }
 
     // Create "file", a file.
     check!(fs::File::create(tmpdir.join("file")));
@@ -1750,7 +1732,7 @@ fn windows_unix_socket_exists() {
         let bytes = core::slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len());
         addr.sun_path[..bytes.len()].copy_from_slice(bytes);
         let len = mem::size_of_val(&addr) as i32;
-        let result = c::bind(socket, ptr::addr_of!(addr).cast::<c::SOCKADDR>(), len);
+        let result = c::bind(socket, (&raw const addr).cast::<c::SOCKADDR>(), len);
         c::closesocket(socket);
         assert_eq!(result, 0);
     }

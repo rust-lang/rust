@@ -18,14 +18,14 @@ pub use rustc_middle::traits::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
 
+pub use self::ImplSource::*;
+pub use self::SelectionError::*;
 pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine};
 pub(crate) use self::project::UndoLog;
 pub use self::project::{
     MismatchedProjectionTypes, Normalized, NormalizedTerm, ProjectionCache, ProjectionCacheEntry,
     ProjectionCacheKey, ProjectionCacheStorage,
 };
-pub use self::ImplSource::*;
-pub use self::SelectionError::*;
 use crate::infer::InferCtxt;
 
 /// An `Obligation` represents some trait reference (e.g., `i32: Eq`) for

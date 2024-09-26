@@ -1,15 +1,15 @@
 use std::borrow::Cow;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::MaybeStorageDead;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_mir_dataflow::Analysis;
 use tracing::{debug, instrument};
 
 use crate::ssa::{SsaLocals, StorageLiveLocals};
@@ -70,9 +70,9 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 ///
 /// For immutable borrows, we do not need to preserve such uniqueness property,
 /// so we perform all the possible instantiations without removing the `_1 = &_2` statement.
-pub struct ReferencePropagation;
+pub(super) struct ReferencePropagation;
 
-impl<'tcx> MirPass<'tcx> for ReferencePropagation {
+impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }
@@ -253,11 +253,8 @@ fn compute_replacement<'tcx>(
 
     debug!(?targets);
 
-    let mut finder = ReplacementFinder {
-        targets: &mut targets,
-        can_perform_opt,
-        allowed_replacements: FxHashSet::default(),
-    };
+    let mut finder =
+        ReplacementFinder { targets, can_perform_opt, allowed_replacements: FxHashSet::default() };
     let reachable_blocks = traversal::reachable_as_bitset(body);
     for (bb, bbdata) in body.basic_blocks.iter_enumerated() {
         // Only visit reachable blocks as we rely on dataflow.
@@ -269,19 +266,19 @@ fn compute_replacement<'tcx>(
     let allowed_replacements = finder.allowed_replacements;
     return Replacer {
         tcx,
-        targets,
+        targets: finder.targets,
         storage_to_remove,
         allowed_replacements,
         any_replacement: false,
     };
 
-    struct ReplacementFinder<'a, 'tcx, F> {
-        targets: &'a mut IndexVec<Local, Value<'tcx>>,
+    struct ReplacementFinder<'tcx, F> {
+        targets: IndexVec<Local, Value<'tcx>>,
         can_perform_opt: F,
         allowed_replacements: FxHashSet<(Local, Location)>,
     }
 
-    impl<'tcx, F> Visitor<'tcx> for ReplacementFinder<'_, 'tcx, F>
+    impl<'tcx, F> Visitor<'tcx> for ReplacementFinder<'tcx, F>
     where
         F: FnMut(Place<'tcx>, Location) -> bool,
     {
@@ -345,7 +342,7 @@ fn fully_replacable_locals(ssa: &SsaLocals) -> BitSet<Local> {
     replacable
 }
 
-/// Utility to help performing subtitution of `*pattern` by `target`.
+/// Utility to help performing substitution of `*pattern` by `target`.
 struct Replacer<'tcx> {
     tcx: TyCtxt<'tcx>,
     targets: IndexVec<Local, Value<'tcx>>,

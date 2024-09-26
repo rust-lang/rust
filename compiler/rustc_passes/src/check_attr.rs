@@ -8,16 +8,16 @@ use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
 use rustc_ast::{
-    ast, AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem,
+    AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem, ast,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
-use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, self, FnSig, ForeignItem, HirId, Item, ItemKind, MethodKind, Safety, Target,
-    TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
+    self as hir, self, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem, HirId, Item, ItemKind,
+    MethodKind, Safety, Target, TraitItem,
 };
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
@@ -32,8 +32,8 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -125,7 +125,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::inline, ..] => self.check_inline(hir_id, attr, span, target),
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
                 [sym::optimize, ..] => self.check_optimize(hir_id, attr, target),
-                [sym::no_sanitize, ..] => self.check_no_sanitize(hir_id, attr, span, target),
+                [sym::no_sanitize, ..] => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
                 [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target),
                 [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
                 [sym::target_feature, ..] => {
@@ -166,10 +168,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
                 }
                 [sym::rustc_lint_query_instability, ..] => {
-                    self.check_rustc_lint_query_instability(hir_id, attr, span, target)
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
+                [sym::rustc_lint_untracked_query_information, ..] => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
                 [sym::rustc_lint_diagnostics, ..] => {
-                    self.check_rustc_lint_diagnostics(hir_id, attr, span, target)
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
                 [sym::rustc_lint_opt_ty, ..] => self.check_rustc_lint_opt_ty(attr, span, target),
                 [sym::rustc_lint_opt_deny_field_access, ..] => {
@@ -183,9 +188,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 | [sym::rustc_must_implement_one_of, ..]
                 | [sym::rustc_deny_explicit_impl, ..]
                 | [sym::const_trait, ..] => self.check_must_be_applied_to_trait(attr, span, target),
-                [sym::cmse_nonsecure_entry, ..] => {
-                    self.check_cmse_nonsecure_entry(hir_id, attr, span, target)
-                }
                 [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                 [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                 [sym::must_use, ..] => self.check_must_use(hir_id, attr, target),
@@ -342,12 +344,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn inline_attr_str_error_without_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::IgnoredAttr { sym },
-        );
+        self.tcx
+            .emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::IgnoredAttr { sym });
     }
 
     /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl.
@@ -452,11 +450,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks that `#[no_sanitize(..)]` is applied to a function or method.
-    fn check_no_sanitize(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
-        self.check_applied_to_fn_or_method(hir_id, attr, span, target)
-    }
-
     fn check_generic_attr(
         &self,
         hir_id: HirId,
@@ -553,27 +546,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "naked")
             }
-            _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span,
-                    defn_span: span,
-                    on_crate: hir_id == CRATE_HIR_ID,
-                });
-            }
-        }
-    }
-
-    /// Checks if `#[cmse_nonsecure_entry]` is applied to a function definition.
-    fn check_cmse_nonsecure_entry(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) {
-        match target {
-            Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {}
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
                     attr_span: attr.span,
@@ -1420,12 +1392,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions and some crates used
                 // this, so only emit a warning.
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::Cold { span, on_crate: hir_id == CRATE_HIR_ID },
-                );
+                self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Cold {
+                    span,
+                    on_crate: hir_id == CRATE_HIR_ID,
+                });
             }
         }
     }
@@ -1440,12 +1410,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::Link { span: (target != Target::ForeignMod).then_some(span) },
-        );
+        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Link {
+            span: (target != Target::ForeignMod).then_some(span),
+        });
     }
 
     /// Checks if `#[link_name]` is applied to an item other than a foreign function or static.
@@ -1635,30 +1602,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks that the `#[rustc_lint_query_instability]` attribute is only applied to a function
-    /// or method.
-    fn check_rustc_lint_query_instability(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) {
-        self.check_applied_to_fn_or_method(hir_id, attr, span, target)
-    }
-
-    /// Checks that the `#[rustc_lint_diagnostics]` attribute is only applied to a function or
-    /// method.
-    fn check_rustc_lint_diagnostics(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) {
-        self.check_applied_to_fn_or_method(hir_id, attr, span, target)
-    }
-
     /// Checks that the `#[rustc_lint_opt_ty]` attribute is only applied to a struct.
     fn check_rustc_lint_opt_ty(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
@@ -1803,6 +1746,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match hint.name_or_empty() {
                 sym::Rust => {
                     is_explicit_rust = true;
+                    match target {
+                        Target::Struct | Target::Union | Target::Enum => continue,
+                        _ => {
+                            self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
+                                hint_span: hint.span(),
+                                span,
+                            });
+                        }
+                    }
                 }
                 sym::C => {
                     is_c = true;
@@ -1929,10 +1881,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             || (int_reprs == 1
                 && is_c
                 && item.is_some_and(|item| {
-                    if let ItemLike::Item(item) = item {
-                        return is_c_like_enum(item);
-                    }
-                    return false;
+                    if let ItemLike::Item(item) = item { is_c_like_enum(item) } else { false }
                 }))
         {
             self.tcx.emit_node_span_lint(
@@ -2196,17 +2145,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     attr.span,
                     errors::MacroExport::TooManyItems,
                 );
-            } else {
-                if meta_item_list[0].name_or_empty() != sym::local_inner_macros {
-                    self.tcx.emit_node_span_lint(
-                        INVALID_MACRO_EXPORT_ARGUMENTS,
-                        hir_id,
-                        meta_item_list[0].span(),
-                        errors::MacroExport::UnknownItem {
-                            name: meta_item_list[0].name_or_empty(),
-                        },
-                    );
-                }
+            } else if meta_item_list[0].name_or_empty() != sym::local_inner_macros {
+                self.tcx.emit_node_span_lint(
+                    INVALID_MACRO_EXPORT_ARGUMENTS,
+                    hir_id,
+                    meta_item_list[0].span(),
+                    errors::MacroExport::UnknownItem { name: meta_item_list[0].name_or_empty() },
+                );
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
@@ -2256,12 +2201,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
 
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::Unused { attr_span: attr.span, note },
-        );
+        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Unused {
+            attr_span: attr.span,
+            note,
+        });
     }
 
     /// A best effort attempt to create an error for a mismatching proc macro signature.

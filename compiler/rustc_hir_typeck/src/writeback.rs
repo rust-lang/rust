@@ -7,16 +7,16 @@ use std::mem;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperFoldable};
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::solve;
 use tracing::{debug, instrument};
@@ -803,7 +803,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // We must deeply normalize in the new solver, since later lints
         // expect that types that show up in the typeck are fully
         // normalized.
-        let value = if self.should_normalize {
+        let mut value = if self.should_normalize {
             let body_id = tcx.hir().body_owner_def_id(self.body.id());
             let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
@@ -818,12 +818,27 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
             value
         };
 
+        // Bail if there are any non-region infer.
         if value.has_non_region_infer() {
             let guar = self.report_error(value);
-            new_err(tcx, guar)
-        } else {
-            tcx.fold_regions(value, |_, _| tcx.lifetimes.re_erased)
+            value = new_err(tcx, guar);
         }
+
+        // Erase the regions from the ty, since it's not really meaningful what
+        // these region values are; there's not a trivial correspondence between
+        // regions in the HIR and MIR, so when we turn the body into MIR, there's
+        // no reason to keep regions around. They will be repopulated during MIR
+        // borrowck, and specifically region constraints will be populated during
+        // MIR typeck which is run on the new body.
+        value = tcx.fold_regions(value, |_, _| tcx.lifetimes.re_erased);
+
+        // Normalize consts in writeback, because GCE doesn't normalize eagerly.
+        if tcx.features().generic_const_exprs {
+            value =
+                value.fold_with(&mut EagerlyNormalizeConsts { tcx, param_env: self.fcx.param_env });
+        }
+
+        value
     }
 }
 
@@ -856,5 +871,19 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
         let predicate = predicate.super_fold_with(self);
         self.should_normalize = prev;
         predicate
+    }
+}
+
+struct EagerlyNormalizeConsts<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+}
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerlyNormalizeConsts<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        self.tcx.try_normalize_erasing_regions(self.param_env, ct).unwrap_or(ct)
     }
 }

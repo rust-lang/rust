@@ -66,7 +66,6 @@ mod check;
 mod compare_impl_item;
 pub mod dropck;
 mod entry;
-mod errs;
 pub mod intrinsic;
 pub mod intrinsicck;
 mod region;
@@ -76,7 +75,7 @@ use std::num::NonZero;
 
 pub use check::check_abi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::{pluralize, struct_span_code_err, Diag, ErrorGuaranteed};
+use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
@@ -89,13 +88,13 @@ use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
@@ -186,17 +185,15 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
 
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
         && alloc.inner().provenance().ptrs().len() != 0
-    {
-        if attrs
+        && attrs
             .link_section
             .map(|link_section| !link_section.as_str().starts_with(".init_array"))
             .unwrap()
-        {
-            let msg = "statics with a custom `#[link_section]` must be a \
+    {
+        let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
                         extra levels of indirection such as references";
-            tcx.dcx().span_err(tcx.def_span(id), msg);
-        }
+        tcx.dcx().span_err(tcx.def_span(id), msg);
     }
 }
 

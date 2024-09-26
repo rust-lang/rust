@@ -1,7 +1,7 @@
+use crate::sync::OnceLock;
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
 use crate::sync::mpsc::channel;
-use crate::sync::OnceLock;
 use crate::{panic, thread};
 
 fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {

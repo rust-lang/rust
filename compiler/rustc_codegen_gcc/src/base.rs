@@ -6,7 +6,7 @@ use std::time::Instant;
 use gccjit::{CType, FunctionType, GlobalKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
-use rustc_codegen_ssa::traits::DebugInfoMethods;
+use rustc_codegen_ssa::traits::DebugInfoCodegenMethods;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_middle::dep_graph;
 use rustc_middle::mir::mono::Linkage;
@@ -19,7 +19,7 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{gcc_util, new_context, GccContext, LockedTargetInfo, SyncContext};
+use crate::{GccContext, LockedTargetInfo, SyncContext, gcc_util, new_context};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(linkage: Visibility) -> gccjit::Visibility {

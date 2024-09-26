@@ -7,10 +7,10 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_middle::dep_graph::{DepGraph, DepsType, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
-use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::Decodable;
-use rustc_session::config::IncrementalStateAssertion;
+use rustc_serialize::opaque::MemDecoder;
 use rustc_session::Session;
+use rustc_session::config::IncrementalStateAssertion;
 use rustc_span::ErrorGuaranteed;
 use tracing::{debug, warn};
 

@@ -12,9 +12,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{Abi, Variants};
 use tracing::trace;
 
-use crate::MirPass;
-
-pub struct UnreachableEnumBranching;
+pub(super) struct UnreachableEnumBranching;
 
 fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
     if let TerminatorKind::SwitchInt { discr: Operand::Move(p), .. } = terminator {
@@ -74,7 +72,7 @@ fn variant_discriminants<'tcx>(
     }
 }
 
-impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
+impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
@@ -158,9 +156,9 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
                 };
                 true
             }
-            // If and only if there is a variant that does not have a branch set,
-            // change the current of otherwise as the variant branch and set otherwise to unreachable.
-            // It transforms following code
+            // If and only if there is a variant that does not have a branch set, change the
+            // current of otherwise as the variant branch and set otherwise to unreachable. It
+            // transforms following code
             // ```rust
             // match c {
             //     Ordering::Less => 1,

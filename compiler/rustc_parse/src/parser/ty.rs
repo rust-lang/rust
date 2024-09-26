@@ -1,15 +1,15 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, FnRetTy, GenericBound,
-    GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability, PolyTraitRef,
-    PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind, DUMMY_NODE_ID,
+    self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
+    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
+    PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::errors::{
@@ -607,9 +607,6 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
         if let ast::Const::Yes(span) = constness {
-            // If we ever start to allow `const fn()`, then update
-            // feature gating for `#![feature(const_extern_fn)]` to
-            // cover it.
             self.dcx().emit_err(FnPointerCannotBeConst { span: whole_span, qualifier: span });
         }
         if let Some(ast::CoroutineKind::Async { span, .. }) = coroutine_kind {
@@ -1285,8 +1282,9 @@ impl<'a> Parser<'a> {
 
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some(ident) = self.token.lifetime() {
-            if ident.without_first_quote().is_reserved()
+        if let Some((ident, is_raw)) = self.token.lifetime() {
+            if matches!(is_raw, IdentIsRaw::No)
+                && ident.without_first_quote().is_reserved()
                 && ![kw::UnderscoreLifetime, kw::StaticLifetime].contains(&ident.name)
             {
                 self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });

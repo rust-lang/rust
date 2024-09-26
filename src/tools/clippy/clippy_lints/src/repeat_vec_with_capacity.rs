@@ -3,12 +3,12 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::source::snippet;
-use clippy_utils::{expr_or_init, fn_def_id, match_def_path, paths};
+use clippy_utils::{expr_or_init, fn_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -67,7 +67,7 @@ fn emit_lint(cx: &LateContext<'_>, span: Span, kind: &str, note: &'static str, s
 fn check_vec_macro(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if matching_root_macro_call(cx, expr.span, sym::vec_macro).is_some()
         && let Some(VecArgs::Repeat(repeat_expr, len_expr)) = VecArgs::hir(cx, expr)
-        && fn_def_id(cx, repeat_expr).is_some_and(|did| match_def_path(cx, did, &paths::VEC_WITH_CAPACITY))
+        && fn_def_id(cx, repeat_expr).is_some_and(|did| cx.tcx.is_diagnostic_item(sym::vec_with_capacity, did))
         && !len_expr.span.from_expansion()
         && let Some(Constant::Int(2..)) = ConstEvalCtxt::new(cx).eval(expr_or_init(cx, len_expr))
     {
@@ -91,7 +91,7 @@ fn check_repeat_fn(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if !expr.span.from_expansion()
         && fn_def_id(cx, expr).is_some_and(|did| cx.tcx.is_diagnostic_item(sym::iter_repeat, did))
         && let ExprKind::Call(_, [repeat_expr]) = expr.kind
-        && fn_def_id(cx, repeat_expr).is_some_and(|did| match_def_path(cx, did, &paths::VEC_WITH_CAPACITY))
+        && fn_def_id(cx, repeat_expr).is_some_and(|did| cx.tcx.is_diagnostic_item(sym::vec_with_capacity, did))
         && !repeat_expr.span.from_expansion()
     {
         emit_lint(

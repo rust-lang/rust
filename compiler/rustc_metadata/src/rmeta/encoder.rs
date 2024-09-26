@@ -7,10 +7,11 @@ use std::path::{Path, PathBuf};
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
+use rustc_data_structures::sync::{Lrc, join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_feature::Features;
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, LocalDefIdSet, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -23,7 +24,7 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::{AssocItemContainer, SymbolName};
 use rustc_middle::util::common::to_readable_str;
 use rustc_middle::{bug, span_bug};
-use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::symbol::sym;
@@ -797,9 +798,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-struct AnalyzeAttrState {
+struct AnalyzeAttrState<'a> {
     is_exported: bool,
     is_doc_hidden: bool,
+    features: &'a Features,
 }
 
 /// Returns whether an attribute needs to be recorded in metadata, that is, if it's usable and
@@ -812,7 +814,7 @@ struct AnalyzeAttrState {
 /// visibility: this is a piece of data that can be computed once per defid, and not once per
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
-fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
+fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState<'_>) -> bool {
     let mut should_encode = false;
     if !rustc_feature::encode_cross_crate(attr.name_or_empty()) {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
@@ -837,6 +839,9 @@ fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
                 }
             }
         }
+    } else if attr.path().starts_with(&[sym::diagnostic]) && attr.path().len() == 2 {
+        should_encode =
+            rustc_feature::is_stable_diagnostic_attribute(attr.path()[1], state.features);
     } else {
         should_encode = true;
     }
@@ -1343,6 +1348,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut state = AnalyzeAttrState {
             is_exported: tcx.effective_visibilities(()).is_exported(def_id),
             is_doc_hidden: false,
+            features: &tcx.features(),
         };
         let attr_iter = tcx
             .hir()
@@ -1443,9 +1449,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record_array!(self.tables.explicit_super_predicates_of[def_id] <-
+                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder());
-                record_array!(self.tables.explicit_implied_predicates_of[def_id] <-
+                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
 
                 let module_children = self.tcx.module_children_local(local_id);
@@ -1454,9 +1460,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record_array!(self.tables.explicit_super_predicates_of[def_id] <-
+                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder());
-                record_array!(self.tables.explicit_implied_predicates_of[def_id] <-
+                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
@@ -1482,9 +1488,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if def_kind == DefKind::Closure
                 && tcx.type_of(def_id).skip_binder().is_coroutine_closure()
             {
+                let coroutine_for_closure = self.tcx.coroutine_for_closure(def_id);
                 self.tables
                     .coroutine_for_closure
-                    .set_some(def_id.index, self.tcx.coroutine_for_closure(def_id).into());
+                    .set_some(def_id.index, coroutine_for_closure.into());
+
+                // If this async closure has a by-move body, record it too.
+                if tcx.needs_coroutine_by_move_body_def_id(coroutine_for_closure) {
+                    self.tables.coroutine_by_move_body_def_id.set_some(
+                        coroutine_for_closure.index,
+                        self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure).into(),
+                    );
+                }
             }
             if let DefKind::Static { .. } = def_kind {
                 if !self.tcx.is_foreign_item(def_id) {
@@ -1525,7 +1540,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
 
-        for (def_id, impls) in &tcx.crate_inherent_impls(()).unwrap().inherent_impls {
+        for (def_id, impls) in &tcx.crate_inherent_impls(()).0.inherent_impls {
             record_defaulted_array!(self.tables.inherent_impls[def_id.to_def_id()] <- impls.iter().map(|def_id| {
                 assert!(def_id.is_local());
                 def_id.index
@@ -2033,7 +2048,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let simplified_self_ty = fast_reject::simplify_type(
                     self.tcx,
                     trait_ref.self_ty(),
-                    TreatParams::AsCandidateKey,
+                    TreatParams::InstantiateWithInfer,
                 );
                 trait_impls
                     .entry(trait_ref.def_id)
@@ -2074,7 +2089,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let all_impls: Vec<_> = tcx
             .crate_inherent_impls(())
-            .unwrap()
+            .0
             .incoherent_impls
             .iter()
             .map(|(&simp, impls)| IncoherentImpls {

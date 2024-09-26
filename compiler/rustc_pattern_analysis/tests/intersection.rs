@@ -1,9 +1,9 @@
 //! Test the computation of arm intersections.
 
 use common::*;
+use rustc_pattern_analysis::MatchArm;
 use rustc_pattern_analysis::pat::DeconstructedPat;
 use rustc_pattern_analysis::usefulness::PlaceValidity;
-use rustc_pattern_analysis::MatchArm;
 
 #[macro_use]
 mod common;

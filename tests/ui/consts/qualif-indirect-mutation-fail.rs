@@ -1,5 +1,4 @@
 //@ compile-flags: --crate-type=lib
-#![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_swap)]
 

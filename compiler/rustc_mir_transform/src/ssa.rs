@@ -16,7 +16,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
 use tracing::{debug, instrument, trace};
 
-pub struct SsaLocals {
+pub(super) struct SsaLocals {
     /// Assignments to each local. This defines whether the local is SSA.
     assignments: IndexVec<Local, Set1<DefLocation>>,
     /// We visit the body in reverse postorder, to ensure each local is assigned before it is used.
@@ -32,14 +32,18 @@ pub struct SsaLocals {
     borrowed_locals: BitSet<Local>,
 }
 
-pub enum AssignedValue<'a, 'tcx> {
+pub(super) enum AssignedValue<'a, 'tcx> {
     Arg,
     Rvalue(&'a mut Rvalue<'tcx>),
     Terminator,
 }
 
 impl SsaLocals {
-    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ParamEnv<'tcx>) -> SsaLocals {
+    pub(super) fn new<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
@@ -101,25 +105,25 @@ impl SsaLocals {
         ssa
     }
 
-    pub fn num_locals(&self) -> usize {
+    pub(super) fn num_locals(&self) -> usize {
         self.assignments.len()
     }
 
-    pub fn locals(&self) -> impl Iterator<Item = Local> {
+    pub(super) fn locals(&self) -> impl Iterator<Item = Local> {
         self.assignments.indices()
     }
 
-    pub fn is_ssa(&self, local: Local) -> bool {
+    pub(super) fn is_ssa(&self, local: Local) -> bool {
         matches!(self.assignments[local], Set1::One(_))
     }
 
     /// Return the number of uses if a local that are not "Deref".
-    pub fn num_direct_uses(&self, local: Local) -> u32 {
+    pub(super) fn num_direct_uses(&self, local: Local) -> u32 {
         self.direct_uses[local]
     }
 
     #[inline]
-    pub fn assignment_dominates(
+    pub(super) fn assignment_dominates(
         &self,
         dominators: &Dominators<BasicBlock>,
         local: Local,
@@ -131,7 +135,7 @@ impl SsaLocals {
         }
     }
 
-    pub fn assignments<'a, 'tcx>(
+    pub(super) fn assignments<'a, 'tcx>(
         &'a self,
         body: &'a Body<'tcx>,
     ) -> impl Iterator<Item = (Local, &'a Rvalue<'tcx>, Location)> + 'a {
@@ -148,18 +152,17 @@ impl SsaLocals {
         })
     }
 
-    pub fn for_each_assignment_mut<'tcx>(
+    pub(super) fn for_each_assignment_mut<'tcx>(
         &self,
         basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         mut f: impl FnMut(Local, AssignedValue<'_, 'tcx>, Location),
     ) {
         for &local in &self.assignment_order {
             match self.assignments[local] {
-                Set1::One(DefLocation::Argument) => f(
-                    local,
-                    AssignedValue::Arg,
-                    Location { block: START_BLOCK, statement_index: 0 },
-                ),
+                Set1::One(DefLocation::Argument) => f(local, AssignedValue::Arg, Location {
+                    block: START_BLOCK,
+                    statement_index: 0,
+                }),
                 Set1::One(DefLocation::Assignment(loc)) => {
                     let bb = &mut basic_blocks[loc.block];
                     // `loc` must point to a direct assignment to `local`.
@@ -194,17 +197,17 @@ impl SsaLocals {
     ///   _d => _a // transitively through _c
     ///
     /// Exception: we do not see through the return place, as it cannot be instantiated.
-    pub fn copy_classes(&self) -> &IndexSlice<Local, Local> {
+    pub(super) fn copy_classes(&self) -> &IndexSlice<Local, Local> {
         &self.copy_classes
     }
 
     /// Set of SSA locals that are immutably borrowed.
-    pub fn borrowed_locals(&self) -> &BitSet<Local> {
+    pub(super) fn borrowed_locals(&self) -> &BitSet<Local> {
         &self.borrowed_locals
     }
 
     /// Make a property uniform on a copy equivalence class by removing elements.
-    pub fn meet_copy_equivalence(&self, property: &mut BitSet<Local>) {
+    pub(super) fn meet_copy_equivalence(&self, property: &mut BitSet<Local>) {
         // Consolidate to have a local iff all its copies are.
         //
         // `copy_classes` defines equivalence classes between locals. The `local`s that recursively
@@ -231,7 +234,7 @@ impl SsaLocals {
     }
 }
 
-struct SsaVisitor<'tcx, 'a> {
+struct SsaVisitor<'a, 'tcx> {
     body: &'a Body<'tcx>,
     dominators: &'a Dominators<BasicBlock>,
     assignments: IndexVec<Local, Set1<DefLocation>>,
@@ -257,7 +260,7 @@ impl SsaVisitor<'_, '_> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for SsaVisitor<'tcx, '_> {
+impl<'tcx> Visitor<'tcx> for SsaVisitor<'_, 'tcx> {
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, loc: Location) {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)

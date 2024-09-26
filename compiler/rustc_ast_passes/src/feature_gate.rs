@@ -1,12 +1,12 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{attr, token, NodeId, PatKind};
-use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
-use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
+use rustc_ast::{NodeId, PatKind, attr, token};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
 use rustc_session::Session;
+use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 
@@ -75,21 +75,8 @@ struct PostExpansionVisitor<'a> {
 
 impl<'a> PostExpansionVisitor<'a> {
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn check_abi(&self, abi: ast::StrLit, constness: ast::Const) {
+    fn check_abi(&self, abi: ast::StrLit) {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
-
-        if let ast::Const::Yes(_) = constness {
-            match symbol_unescaped {
-                // Stable
-                sym::Rust | sym::C => {}
-                abi => gate!(
-                    &self,
-                    const_extern_fn,
-                    span,
-                    format!("`{}` as a `const fn` ABI is unstable", abi)
-                ),
-            }
-        }
 
         match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
             Ok(()) => (),
@@ -110,9 +97,9 @@ impl<'a> PostExpansionVisitor<'a> {
         }
     }
 
-    fn check_extern(&self, ext: ast::Extern, constness: ast::Const) {
+    fn check_extern(&self, ext: ast::Extern) {
         if let ast::Extern::Explicit(abi, _) = ext {
-            self.check_abi(abi, constness);
+            self.check_abi(abi);
         }
     }
 
@@ -239,7 +226,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match &i.kind {
             ast::ItemKind::ForeignMod(foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
-                    self.check_abi(abi, ast::Const::No);
+                    self.check_abi(abi);
                 }
             }
 
@@ -341,7 +328,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match &ty.kind {
             ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
-                self.check_extern(bare_fn_ty.ext, ast::Const::No);
+                self.check_extern(bare_fn_ty.ext);
                 self.check_late_bound_lifetime_defs(&bare_fn_ty.generic_params);
             }
             ast::TyKind::Never => {
@@ -446,7 +433,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
-            self.check_extern(header.ext, header.constness);
+            self.check_extern(header.ext);
         }
 
         if let FnKind::Closure(ast::ClosureBinder::For { generic_params, .. }, ..) = fn_kind {
@@ -496,6 +483,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     maybe_stage_features(sess, features, krate);
     check_incompatible_features(sess, features);
+    check_new_solver_banned_features(sess, features);
+
     let mut visitor = PostExpansionVisitor { sess, features };
 
     let spans = sess.psess.gated_spans.spans.borrow();
@@ -673,5 +662,24 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
                 });
             }
         }
+    }
+}
+
+fn check_new_solver_banned_features(sess: &Session, features: &Features) {
+    if !sess.opts.unstable_opts.next_solver.is_some_and(|n| n.globally) {
+        return;
+    }
+
+    // Ban GCE with the new solver, because it does not implement GCE correctly.
+    if let Some(&(_, gce_span, _)) = features
+        .declared_lang_features
+        .iter()
+        .find(|&&(feat, _, _)| feat == sym::generic_const_exprs)
+    {
+        sess.dcx().emit_err(errors::IncompatibleFeatures {
+            spans: vec![gce_span],
+            f1: Symbol::intern("-Znext-solver=globally"),
+            f2: sym::generic_const_exprs,
+        });
     }
 }

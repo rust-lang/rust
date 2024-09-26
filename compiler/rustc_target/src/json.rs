@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 pub use serde_json::Value as Json;
-use serde_json::{json, Map, Number};
+use serde_json::{Map, Number, json};
 
 use crate::spec::TargetMetadata;
 
@@ -103,6 +103,7 @@ impl ToJson for crate::abi::call::Conv {
             Self::PreserveAll => "PreserveAll",
             Self::ArmAapcs => "ArmAapcs",
             Self::CCmseNonSecureCall => "CCmseNonSecureCall",
+            Self::CCmseNonSecureEntry => "CCmseNonSecureEntry",
             Self::Msp430Intr => "Msp430Intr",
             Self::PtxKernel => "PtxKernel",
             Self::X86Fastcall => "X86Fastcall",

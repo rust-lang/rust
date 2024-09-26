@@ -1,23 +1,23 @@
 note: tracking was triggered
-  --> $DIR/alloc-access-tracking.rs:LL:CC
+  --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         let ptr = miri_alloc(123, 1);
    |                   ^^^^^^^^^^^^^^^^^^ created Miri bare-metal heap allocation of 123 bytes (alignment ALIGN bytes) with id $ALLOC
    |
    = note: BACKTRACE:
-   = note: inside `start` at $DIR/alloc-access-tracking.rs:LL:CC
+   = note: inside `start` at tests/pass/alloc-access-tracking.rs:LL:CC
 
 note: tracking was triggered
-  --> $DIR/alloc-access-tracking.rs:LL:CC
+  --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         *ptr = 42; // Crucially, only a write is printed here, no read!
    |         ^^^^^^^^^ write access to allocation with id $ALLOC
    |
    = note: BACKTRACE:
-   = note: inside `start` at $DIR/alloc-access-tracking.rs:LL:CC
+   = note: inside `start` at tests/pass/alloc-access-tracking.rs:LL:CC
 
 note: tracking was triggered
-  --> $DIR/alloc-access-tracking.rs:LL:CC
+  --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         assert_eq!(*ptr, 42);
    |         ^^^^^^^^^^^^^^^^^^^^ read access to allocation with id $ALLOC
@@ -27,11 +27,11 @@ LL |         assert_eq!(*ptr, 42);
    = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: tracking was triggered
-  --> $DIR/alloc-access-tracking.rs:LL:CC
+  --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         miri_dealloc(ptr, 123, 1);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ freed allocation with id $ALLOC
    |
    = note: BACKTRACE:
-   = note: inside `start` at $DIR/alloc-access-tracking.rs:LL:CC
+   = note: inside `start` at tests/pass/alloc-access-tracking.rs:LL:CC
 

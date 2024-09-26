@@ -107,7 +107,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(offset_of_nested))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(const_align_of_val)]
@@ -120,20 +119,20 @@
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
 #![feature(const_cell_into_inner)]
+#![feature(const_char_encode_utf16)]
+#![feature(const_char_encode_utf8)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
-#![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
 #![feature(const_fmt_arguments_new)]
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_index_range_slice_index)]
-#![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
 #![feature(const_likely)]
-#![feature(const_maybe_uninit_as_mut_ptr)]
+#![feature(const_make_ascii)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
@@ -151,8 +150,8 @@
 #![feature(const_size_of_val_raw)]
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_from_ref)]
-#![feature(const_slice_index)]
 #![feature(const_slice_split_at_mut)]
+#![feature(const_str_as_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_strict_overflow_ops)]
 #![feature(const_swap)]
@@ -166,11 +165,14 @@
 #![feature(coverage_attribute)]
 #![feature(do_not_recommend)]
 #![feature(duration_consts_float)]
+#![feature(f128_const)]
+#![feature(f16_const)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
 #![feature(is_val_statically_known)]
 #![feature(isqrt)]
+#![feature(lazy_get)]
 #![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
@@ -192,9 +194,8 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(asm_const))]
-#![cfg_attr(bootstrap, feature(const_fn_floating_point_arithmetic))]
-#![cfg_attr(bootstrap, feature(min_exhaustive_patterns))]
+#![cfg_attr(bootstrap, feature(const_mut_refs))]
+#![cfg_attr(bootstrap, feature(const_refs_to_cell))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -205,9 +206,7 @@
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_ub_checks)]
 #![feature(const_for)]
-#![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
-#![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -396,6 +395,8 @@ pub mod panicking;
 #[unstable(feature = "core_pattern_types", issue = "123646")]
 pub mod pat;
 pub mod pin;
+#[unstable(feature = "random", issue = "130703")]
+pub mod random;
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub mod range;
 pub mod result;

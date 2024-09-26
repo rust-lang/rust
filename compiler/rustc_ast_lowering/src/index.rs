@@ -6,7 +6,7 @@ use rustc_hir::*;
 use rustc_index::IndexVec;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
@@ -78,26 +78,24 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         // Make sure that the DepNode of some node coincides with the HirId
         // owner of that node.
-        if cfg!(debug_assertions) {
-            if hir_id.owner != self.owner {
-                span_bug!(
-                    span,
-                    "inconsistent HirId at `{:?}` for `{:?}`: \
+        if cfg!(debug_assertions) && hir_id.owner != self.owner {
+            span_bug!(
+                span,
+                "inconsistent HirId at `{:?}` for `{:?}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
-                    self.tcx.sess.source_map().span_to_diagnostic_string(span),
-                    node,
-                    self.tcx
-                        .definitions_untracked()
-                        .def_path(self.owner.def_id)
-                        .to_string_no_crate_verbose(),
-                    self.owner,
-                    self.tcx
-                        .definitions_untracked()
-                        .def_path(hir_id.owner.def_id)
-                        .to_string_no_crate_verbose(),
-                    hir_id.owner,
-                )
-            }
+                self.tcx.sess.source_map().span_to_diagnostic_string(span),
+                node,
+                self.tcx
+                    .definitions_untracked()
+                    .def_path(self.owner.def_id)
+                    .to_string_no_crate_verbose(),
+                self.owner,
+                self.tcx
+                    .definitions_untracked()
+                    .def_path(hir_id.owner.def_id)
+                    .to_string_no_crate_verbose(),
+                hir_id.owner,
+            )
         }
 
         self.nodes[hir_id.local_id] = ParentedNode { parent: self.parent_node, node };

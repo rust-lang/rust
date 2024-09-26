@@ -4,9 +4,9 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub struct RemoveZsts;
+pub(super) struct RemoveZsts;
 
-impl<'tcx> MirPass<'tcx> for RemoveZsts {
+impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

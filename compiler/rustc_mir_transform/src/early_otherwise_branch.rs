@@ -90,9 +90,9 @@ use super::simplify::simplify_cfg;
 ///     |      ...      |
 ///     =================
 /// ```
-pub struct EarlyOtherwiseBranch;
+pub(super) struct EarlyOtherwiseBranch;
 
-impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
+impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }
@@ -261,8 +261,8 @@ fn evaluate_candidate<'tcx>(
         // };
         // ```
         //
-        // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant of an
-        // invalid value, which is UB.
+        // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant
+        // of an invalid value, which is UB.
         // In order to fix this, **we would either need to show that the discriminant computation of
         // `place` is computed in all branches**.
         // FIXME(#95162) For the moment, we adopt a conservative approach and
@@ -310,42 +310,28 @@ fn verify_candidate_branch<'tcx>(
 ) -> bool {
     // In order for the optimization to be correct, the branch must...
     // ...have exactly one statement
-    let [statement] = branch.statements.as_slice() else {
-        return false;
-    };
-    // ...assign the discriminant of `place` in that statement
-    let StatementKind::Assign(boxed) = &statement.kind else { return false };
-    let (discr_place, Rvalue::Discriminant(from_place)) = &**boxed else { return false };
-    if *from_place != place {
-        return false;
+    if let [statement] = branch.statements.as_slice()
+        // ...assign the discriminant of `place` in that statement
+        && let StatementKind::Assign(boxed) = &statement.kind
+        && let (discr_place, Rvalue::Discriminant(from_place)) = &**boxed
+        && *from_place == place
+        // ...make that assignment to a local
+        && discr_place.projection.is_empty()
+        // ...terminate on a `SwitchInt` that invalidates that local
+        && let TerminatorKind::SwitchInt { discr: switch_op, targets, .. } =
+            &branch.terminator().kind
+        && *switch_op == Operand::Move(*discr_place)
+        // ...fall through to `destination` if the switch misses
+        && destination == targets.otherwise()
+        // ...have a branch for value `value`
+        && let mut iter = targets.iter()
+        && let Some((target_value, _)) = iter.next()
+        && target_value == value
+        // ...and have no more branches
+        && iter.next().is_none()
+    {
+        true
+    } else {
+        false
     }
-    // ...make that assignment to a local
-    if discr_place.projection.len() != 0 {
-        return false;
-    }
-    // ...terminate on a `SwitchInt` that invalidates that local
-    let TerminatorKind::SwitchInt { discr: switch_op, targets, .. } = &branch.terminator().kind
-    else {
-        return false;
-    };
-    if *switch_op != Operand::Move(*discr_place) {
-        return false;
-    }
-    // ...fall through to `destination` if the switch misses
-    if destination != targets.otherwise() {
-        return false;
-    }
-    // ...have a branch for value `value`
-    let mut iter = targets.iter();
-    let Some((target_value, _)) = iter.next() else {
-        return false;
-    };
-    if target_value != value {
-        return false;
-    }
-    // ...and have no more branches
-    if let Some(_) = iter.next() {
-        return false;
-    }
-    true
 }

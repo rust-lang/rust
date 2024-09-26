@@ -1,20 +1,21 @@
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
-use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
-use std::{env, iter, mem, str};
+use std::{env, io, iter, mem, str};
 
 use cc::windows_registry;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::{find_native_static_library, try_find_native_static_library};
+use rustc_metadata::{
+    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
+};
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
+use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_span::symbol::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
@@ -28,7 +29,7 @@ use crate::errors;
 /// and prevent inspection of linker output in case of errors, which we occasionally do.
 /// This should be acceptable because other messages from rustc are in English anyway,
 /// and may also be desirable to improve searchability of the linker diagnostics.
-pub fn disable_localization(linker: &mut Command) {
+pub(crate) fn disable_localization(linker: &mut Command) {
     // No harm in setting both env vars simultaneously.
     // Unix-style linkers.
     linker.env("LC_ALL", "C");
@@ -39,7 +40,7 @@ pub fn disable_localization(linker: &mut Command) {
 /// The third parameter is for env vars, used on windows to set up the
 /// path for MSVC to find its DLLs, and gcc to find its bundled
 /// toolchain
-pub fn get_linker<'a>(
+pub(crate) fn get_linker<'a>(
     sess: &'a Session,
     linker: &Path,
     flavor: LinkerFlavor,
@@ -213,28 +214,36 @@ fn link_or_cc_args<L: Linker + ?Sized>(
 macro_rules! generate_arg_methods {
     ($($ty:ty)*) => { $(
         impl $ty {
-            pub fn verbatim_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
+            #[allow(unused)]
+            pub(crate) fn verbatim_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
                 verbatim_args(self, args)
             }
-            pub fn verbatim_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
+            #[allow(unused)]
+            pub(crate) fn verbatim_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
                 verbatim_args(self, iter::once(arg))
             }
-            pub fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>) -> &mut Self {
+            #[allow(unused)]
+            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>) -> &mut Self {
                 link_args(self, args)
             }
-            pub fn link_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
+            #[allow(unused)]
+            pub(crate) fn link_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
                 link_args(self, iter::once(arg))
             }
-            pub fn cc_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
+            #[allow(unused)]
+            pub(crate) fn cc_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
                 cc_args(self, args)
             }
-            pub fn cc_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
+            #[allow(unused)]
+            pub(crate) fn cc_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
                 cc_args(self, iter::once(arg))
             }
-            pub fn link_or_cc_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
+            #[allow(unused)]
+            pub(crate) fn link_or_cc_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
                 link_or_cc_args(self, args)
             }
-            pub fn link_or_cc_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
+            #[allow(unused)]
+            pub(crate) fn link_or_cc_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
                 link_or_cc_args(self, iter::once(arg))
             }
         }
@@ -261,7 +270,7 @@ generate_arg_methods! {
 /// represents the meaning of each option being passed down. This trait is then
 /// used to dispatch on whether a GNU-like linker (generally `ld.exe`) or an
 /// MSVC linker (e.g., `link.exe`) is being used.
-pub trait Linker {
+pub(crate) trait Linker {
     fn cmd(&mut self) -> &mut Command;
     fn is_cc(&self) -> bool {
         false
@@ -312,12 +321,12 @@ pub trait Linker {
 }
 
 impl dyn Linker + '_ {
-    pub fn take_cmd(&mut self) -> Command {
+    pub(crate) fn take_cmd(&mut self) -> Command {
         mem::replace(self.cmd(), Command::new(""))
     }
 }
 
-pub struct GccLinker<'a> {
+struct GccLinker<'a> {
     cmd: Command,
     sess: &'a Session,
     target_cpu: &'a str,
@@ -744,7 +753,7 @@ impl<'a> Linker for GccLinker<'a> {
         if self.sess.target.is_like_osx {
             // Write a plain, newline-separated list of symbols
             let res: io::Result<()> = try {
-                let mut f = BufWriter::new(File::create(&path)?);
+                let mut f = File::create_buffered(&path)?;
                 for sym in symbols {
                     debug!("  _{sym}");
                     writeln!(f, "_{sym}")?;
@@ -755,7 +764,7 @@ impl<'a> Linker for GccLinker<'a> {
             }
         } else if is_windows {
             let res: io::Result<()> = try {
-                let mut f = BufWriter::new(File::create(&path)?);
+                let mut f = File::create_buffered(&path)?;
 
                 // .def file similar to MSVC one but without LIBRARY section
                 // because LD doesn't like when it's empty
@@ -771,7 +780,7 @@ impl<'a> Linker for GccLinker<'a> {
         } else {
             // Write an LD version script
             let res: io::Result<()> = try {
-                let mut f = BufWriter::new(File::create(&path)?);
+                let mut f = File::create_buffered(&path)?;
                 writeln!(f, "{{")?;
                 if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
@@ -791,14 +800,12 @@ impl<'a> Linker for GccLinker<'a> {
             self.link_arg("-exported_symbols_list").link_arg(path);
         } else if self.sess.target.is_like_solaris {
             self.link_arg("-M").link_arg(path);
+        } else if is_windows {
+            self.link_arg(path);
         } else {
-            if is_windows {
-                self.link_arg(path);
-            } else {
-                let mut arg = OsString::from("--version-script=");
-                arg.push(path);
-                self.link_arg(arg).link_arg("--no-undefined-version");
-            }
+            let mut arg = OsString::from("--version-script=");
+            arg.push(path);
+            self.link_arg(arg).link_arg("--no-undefined-version");
         }
     }
 
@@ -849,7 +856,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 }
 
-pub struct MsvcLinker<'a> {
+struct MsvcLinker<'a> {
     cmd: Command,
     sess: &'a Session,
 }
@@ -878,7 +885,13 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, _as_needed: bool) {
-        self.link_arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
+        // On MSVC-like targets rustc supports import libraries using alternative naming
+        // scheme (`libfoo.a`) unsupported by linker, search for such libraries manually.
+        if let Some(path) = try_find_native_dynamic_library(self.sess, name, verbatim) {
+            self.link_arg(path);
+        } else {
+            self.link_arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
+        }
     }
 
     fn link_dylib_by_path(&mut self, path: &Path, _as_needed: bool) {
@@ -1045,7 +1058,7 @@ impl<'a> Linker for MsvcLinker<'a> {
 
         let path = tmpdir.join("lib.def");
         let res: io::Result<()> = try {
-            let mut f = BufWriter::new(File::create(&path)?);
+            let mut f = File::create_buffered(&path)?;
 
             // Start off with the standard module name header and then go
             // straight to exports.
@@ -1097,7 +1110,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 }
 
-pub struct EmLinker<'a> {
+struct EmLinker<'a> {
     cmd: Command,
     sess: &'a Session,
 }
@@ -1214,7 +1227,7 @@ impl<'a> Linker for EmLinker<'a> {
     }
 }
 
-pub struct WasmLd<'a> {
+struct WasmLd<'a> {
     cmd: Command,
     sess: &'a Session,
 }
@@ -1398,7 +1411,7 @@ impl<'a> WasmLd<'a> {
 }
 
 /// Linker shepherd script for L4Re (Fiasco)
-pub struct L4Bender<'a> {
+struct L4Bender<'a> {
     cmd: Command,
     sess: &'a Session,
     hinted_static: bool,
@@ -1484,7 +1497,6 @@ impl<'a> Linker for L4Bender<'a> {
     fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[String]) {
         // ToDo, not implemented, copy from GCC
         self.sess.dcx().emit_warn(errors::L4BenderExportingSymbolsUnimplemented);
-        return;
     }
 
     fn subsystem(&mut self, subsystem: &str) {
@@ -1505,7 +1517,7 @@ impl<'a> Linker for L4Bender<'a> {
 }
 
 impl<'a> L4Bender<'a> {
-    pub fn new(cmd: Command, sess: &'a Session) -> L4Bender<'a> {
+    fn new(cmd: Command, sess: &'a Session) -> L4Bender<'a> {
         L4Bender { cmd, sess, hinted_static: false }
     }
 
@@ -1518,14 +1530,14 @@ impl<'a> L4Bender<'a> {
 }
 
 /// Linker for AIX.
-pub struct AixLinker<'a> {
+struct AixLinker<'a> {
     cmd: Command,
     sess: &'a Session,
     hinted_static: Option<bool>,
 }
 
 impl<'a> AixLinker<'a> {
-    pub fn new(cmd: Command, sess: &'a Session) -> AixLinker<'a> {
+    fn new(cmd: Command, sess: &'a Session) -> AixLinker<'a> {
         AixLinker { cmd, sess, hinted_static: None }
     }
 
@@ -1635,7 +1647,7 @@ impl<'a> Linker for AixLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         let path = tmpdir.join("list.exp");
         let res: io::Result<()> = try {
-            let mut f = BufWriter::new(File::create(&path)?);
+            let mut f = File::create_buffered(&path)?;
             // FIXME: use llvm-nm to generate export list.
             for symbol in symbols {
                 debug!("  _{symbol}");
@@ -1753,7 +1765,7 @@ pub(crate) fn linked_symbols(
 
 /// Much simplified and explicit CLI for the NVPTX linker. The linker operates
 /// with bitcode and uses LLVM backend to generate a PTX assembly.
-pub struct PtxLinker<'a> {
+struct PtxLinker<'a> {
     cmd: Command,
     sess: &'a Session,
 }
@@ -1819,7 +1831,7 @@ impl<'a> Linker for PtxLinker<'a> {
 }
 
 /// The `self-contained` LLVM bitcode linker
-pub struct LlbcLinker<'a> {
+struct LlbcLinker<'a> {
     cmd: Command,
     sess: &'a Session,
 }
@@ -1890,7 +1902,7 @@ impl<'a> Linker for LlbcLinker<'a> {
     fn linker_plugin_lto(&mut self) {}
 }
 
-pub struct BpfLinker<'a> {
+struct BpfLinker<'a> {
     cmd: Command,
     sess: &'a Session,
 }
@@ -1948,7 +1960,7 @@ impl<'a> Linker for BpfLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         let path = tmpdir.join("symbols");
         let res: io::Result<()> = try {
-            let mut f = BufWriter::new(File::create(&path)?);
+            let mut f = File::create_buffered(&path)?;
             for sym in symbols {
                 writeln!(f, "{sym}")?;
             }

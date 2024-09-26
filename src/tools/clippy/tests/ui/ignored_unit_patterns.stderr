@@ -26,31 +26,31 @@ LL |     let _ = foo().map_err(|_| todo!());
    |                            ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> tests/ui/ignored_unit_patterns.rs:27:16
+  --> tests/ui/ignored_unit_patterns.rs:25:12
    |
-LL |             Ok(_) => {},
-   |                ^ help: use `()` instead of `_`: `()`
+LL |         Ok(_) => {},
+   |            ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> tests/ui/ignored_unit_patterns.rs:29:17
+  --> tests/ui/ignored_unit_patterns.rs:27:13
    |
-LL |             Err(_) => {},
-   |                 ^ help: use `()` instead of `_`: `()`
+LL |         Err(_) => {},
+   |             ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> tests/ui/ignored_unit_patterns.rs:41:9
+  --> tests/ui/ignored_unit_patterns.rs:38:9
    |
 LL |     let _ = foo().unwrap();
    |         ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> tests/ui/ignored_unit_patterns.rs:50:13
+  --> tests/ui/ignored_unit_patterns.rs:47:13
    |
 LL |         (1, _) => unimplemented!(),
    |             ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> tests/ui/ignored_unit_patterns.rs:57:13
+  --> tests/ui/ignored_unit_patterns.rs:54:13
    |
 LL |     for (x, _) in v {
    |             ^ help: use `()` instead of `_`: `()`

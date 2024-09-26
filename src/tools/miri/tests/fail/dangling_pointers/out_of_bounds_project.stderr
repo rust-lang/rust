@@ -1,5 +1,5 @@
 error: Undefined Behavior: out-of-bounds pointer arithmetic: expected a pointer to 8 bytes of memory, but got ALLOC which is only 4 bytes from the end of the allocation
-  --> $DIR/out_of_bounds_project.rs:LL:CC
+  --> tests/fail/dangling_pointers/out_of_bounds_project.rs:LL:CC
    |
 LL |         let _field = addr_of!((*ptr).2);
    |                      ^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: expected a pointer to 8 bytes of memory, but got ALLOC which is only 4 bytes from the end of the allocation
@@ -7,7 +7,7 @@ LL |         let _field = addr_of!((*ptr).2);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/out_of_bounds_project.rs:LL:CC
+  --> tests/fail/dangling_pointers/out_of_bounds_project.rs:LL:CC
    |
 LL |     let v = 0u32;
    |         ^

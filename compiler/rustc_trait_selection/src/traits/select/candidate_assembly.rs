@@ -8,12 +8,12 @@
 
 use std::ops::ControlFlow;
 
-use hir::def_id::DefId;
 use hir::LangItem;
+use hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation, SelectionError};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument, trace};
@@ -248,11 +248,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
+        let drcx = DeepRejectCtxt::relate_rigid_rigid(self.tcx());
+        let obligation_args = stack.obligation.predicate.skip_binder().trait_ref.args;
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in bounds {
+            let bound_trait_ref = bound.map_bound(|t| t.trait_ref);
+            if !drcx.args_may_unify(obligation_args, bound_trait_ref.skip_binder().args) {
+                continue;
+            }
             // FIXME(oli-obk): it is suspicious that we are dropping the constness and
             // polarity here.
-            let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;
+            let wc = self.where_clause_may_apply(stack, bound_trait_ref)?;
             if wc.may_apply() {
                 candidates.vec.push(ParamCandidate(bound));
             }
@@ -420,13 +426,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     } else if kind == ty::ClosureKind::FnOnce {
                         candidates.vec.push(ClosureCandidate { is_const });
                     }
+                } else if kind == ty::ClosureKind::FnOnce {
+                    candidates.vec.push(ClosureCandidate { is_const });
                 } else {
-                    if kind == ty::ClosureKind::FnOnce {
-                        candidates.vec.push(ClosureCandidate { is_const });
-                    } else {
-                        // This stays ambiguous until kind+upvars are determined.
-                        candidates.ambiguous = true;
-                    }
+                    // This stays ambiguous until kind+upvars are determined.
+                    candidates.ambiguous = true;
                 }
             }
             ty::Infer(ty::TyVar(_)) => {
@@ -507,10 +511,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // then there's nothing else to check.
         if let Some(closure_kind) = self_ty.to_opt_closure_kind()
             && let Some(goal_kind) = target_kind_ty.to_opt_closure_kind()
+            && closure_kind.extends(goal_kind)
         {
-            if closure_kind.extends(goal_kind) {
-                candidates.vec.push(AsyncFnKindHelperCandidate);
-            }
+            candidates.vec.push(AsyncFnKindHelperCandidate);
         }
     }
 
@@ -581,7 +584,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let drcx = DeepRejectCtxt::new(self.tcx(), TreatParams::ForLookup);
+        let drcx = DeepRejectCtxt::relate_rigid_infer(self.tcx());
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),

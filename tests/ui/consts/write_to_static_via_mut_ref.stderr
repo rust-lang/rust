@@ -1,11 +1,11 @@
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/write_to_static_via_mut_ref.rs:3:26
+  --> $DIR/write_to_static_via_mut_ref.rs:1:26
    |
 LL | static OH_NO: &mut i32 = &mut 42;
    |                          ^^^^^^^
 
 error[E0594]: cannot assign to `*OH_NO`, as `OH_NO` is an immutable static item
-  --> $DIR/write_to_static_via_mut_ref.rs:6:5
+  --> $DIR/write_to_static_via_mut_ref.rs:4:5
    |
 LL |     *OH_NO = 43;
    |     ^^^^^^^^^^^ cannot assign

@@ -1,6 +1,6 @@
-use crate::spec::{base, Target};
+use crate::spec::{Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;

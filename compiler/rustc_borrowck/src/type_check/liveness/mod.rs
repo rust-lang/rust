@@ -7,10 +7,10 @@ use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::span_bug;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt};
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::ResultsCursor;
 use tracing::debug;
 
 use super::TypeChecker;
@@ -30,11 +30,11 @@ mod trace;
 ///
 /// N.B., this computation requires normalization; therefore, it must be
 /// performed before
-pub(super) fn generate<'mir, 'tcx>(
+pub(super) fn generate<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &Rc<DenseLocationMap>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
     debug!("liveness::generate");
@@ -148,12 +148,12 @@ fn record_regular_live_regions<'tcx>(
 }
 
 /// Visitor looking for regions that should be live within rvalues or calls.
-struct LiveVariablesVisitor<'cx, 'tcx> {
+struct LiveVariablesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    liveness_constraints: &'cx mut LivenessValues,
+    liveness_constraints: &'a mut LivenessValues,
 }
 
-impl<'cx, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'cx, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'a, 'tcx> {
     /// We sometimes have `args` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_args(&mut self, args: &GenericArgsRef<'tcx>, location: Location) {
@@ -188,7 +188,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> LiveVariablesVisitor<'cx, 'tcx> {
+impl<'a, 'tcx> LiveVariablesVisitor<'a, 'tcx> {
     /// Some variable is "regular live" at `location` -- i.e., it may be used later. This means that
     /// all regions appearing in the type of `value` must be live at `location`.
     fn record_regions_live_at<T>(&mut self, value: T, location: Location)

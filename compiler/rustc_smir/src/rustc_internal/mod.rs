@@ -13,12 +13,12 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
+use rustc_span::def_id::{CrateNum, DefId};
 use scoped_tls::scoped_thread_local;
+use stable_mir::Error;
 use stable_mir::abi::Layout;
 use stable_mir::ty::IndexedVal;
-use stable_mir::Error;
 
 use crate::rustc_smir::context::TablesWrapper;
 use crate::rustc_smir::{Stable, Tables};
@@ -397,7 +397,7 @@ macro_rules! run_driver {
     }};
 }
 
-/// Simmilar to rustc's `FxIndexMap`, `IndexMap` with extra
+/// Similar to rustc's `FxIndexMap`, `IndexMap` with extra
 /// safety features added.
 pub struct IndexMap<K, V> {
     index_map: fx::FxIndexMap<K, V>,

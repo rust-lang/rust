@@ -15,7 +15,7 @@ macro_rules! define_symbols {
     (@WITH_NAME: $($alias:ident = $value:literal,)* @PLAIN: $($name:ident,)*) => {
         // Ideally we would be emitting `const` here, but then we no longer have stable addresses
         // which is what we are relying on for equality! In the future if consts can refer to
-        // statics we should swap these for `const`s and have the the string literal being pointed
+        // statics we should swap these for `const`s and have the string literal being pointed
         // to be statics to refer to such that their address is stable.
         $(
             pub static $name: Symbol = Symbol { repr: TaggedArcPtr::non_arc(&stringify!($name)) };
@@ -94,6 +94,7 @@ define_symbols! {
     avr_dash_interrupt = "avr-interrupt",
     avr_dash_non_dash_blocking_dash_interrupt = "avr-non-blocking-interrupt",
     C_dash_cmse_dash_nonsecure_dash_call = "C-cmse-nonsecure-call",
+    C_dash_cmse_dash_nonsecure_dash_entry = "C-cmse-nonsecure-entry",
     C_dash_unwind = "C-unwind",
     cdecl_dash_unwind = "cdecl-unwind",
     fastcall_dash_unwind = "fastcall-unwind",
@@ -242,6 +243,7 @@ define_symbols! {
     future_output,
     Future,
     ge,
+    generic_associated_type_extended,
     get_context,
     global_allocator,
     global_asm,

@@ -8,8 +8,8 @@ mod conversions;
 mod import_finder;
 
 use std::cell::RefCell;
-use std::fs::{create_dir_all, File};
-use std::io::{stdout, BufWriter, Write};
+use std::fs::{File, create_dir_all};
+use std::io::{BufWriter, Write, stdout};
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -24,14 +24,14 @@ use rustdoc_json_types as types;
 use rustdoc_json_types::FxHashMap;
 use tracing::{debug, trace};
 
-use crate::clean::types::{ExternalCrate, ExternalLocation};
 use crate::clean::ItemKind;
+use crate::clean::types::{ExternalCrate, ExternalLocation};
 use crate::config::RenderOptions;
 use crate::docfs::PathError;
 use crate::error::Error;
-use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
-use crate::json::conversions::{id_from_item, id_from_item_default, IntoWithTcx};
+use crate::formats::cache::Cache;
+use crate::json::conversions::{IntoWithTcx, id_from_item, id_from_item_default};
 use crate::{clean, try_err};
 
 #[derive(Clone)]
@@ -85,7 +85,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                         // document primitive items in an arbitrary crate by using
                         // `rustc_doc_primitive`.
                         let mut is_primitive_impl = false;
-                        if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind
+                        if let clean::types::ItemKind::ImplItem(ref impl_) = item.kind
                             && impl_.trait_.is_none()
                             && let clean::types::Type::Primitive(_) = impl_.for_
                         {
@@ -164,7 +164,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         // Flatten items that recursively store other items. We include orphaned items from
         // stripped modules and etc that are otherwise reachable.
-        if let ItemKind::StrippedItem(inner) = &*item.kind {
+        if let ItemKind::StrippedItem(inner) = &item.kind {
             inner.inner_items().for_each(|i| self.item(i.clone()).unwrap());
         }
 
@@ -197,7 +197,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
                 types::ItemEnum::Function(_)
                 | types::ItemEnum::Module(_)
-                | types::ItemEnum::Import(_)
+                | types::ItemEnum::Use(_)
                 | types::ItemEnum::AssocConst { .. }
                 | types::ItemEnum::AssocType { .. } => true,
                 types::ItemEnum::ExternCrate { .. }
@@ -208,7 +208,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::TypeAlias(_)
                 | types::ItemEnum::Constant { .. }
                 | types::ItemEnum::Static(_)
-                | types::ItemEnum::ForeignType
+                | types::ItemEnum::ExternType
                 | types::ItemEnum::Macro(_)
                 | types::ItemEnum::ProcMacro(_) => false,
             };
@@ -253,14 +253,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .iter()
                 .chain(&self.cache.external_paths)
                 .map(|(&k, &(ref path, kind))| {
-                    (
-                        id_from_item_default(k.into(), self.tcx),
-                        types::ItemSummary {
-                            crate_id: k.krate.as_u32(),
-                            path: path.iter().map(|s| s.to_string()).collect(),
-                            kind: kind.into_tcx(self.tcx),
-                        },
-                    )
+                    (id_from_item_default(k.into(), self.tcx), types::ItemSummary {
+                        crate_id: k.krate.as_u32(),
+                        path: path.iter().map(|s| s.to_string()).collect(),
+                        kind: kind.into_tcx(self.tcx),
+                    })
                 })
                 .collect(),
             external_crates: self
@@ -269,16 +266,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .iter()
                 .map(|(crate_num, external_location)| {
                     let e = ExternalCrate { crate_num: *crate_num };
-                    (
-                        crate_num.as_u32(),
-                        types::ExternalCrate {
-                            name: e.name(self.tcx).to_string(),
-                            html_root_url: match external_location {
-                                ExternalLocation::Remote(s) => Some(s.clone()),
-                                _ => None,
-                            },
+                    (crate_num.as_u32(), types::ExternalCrate {
+                        name: e.name(self.tcx).to_string(),
+                        html_root_url: match external_location {
+                            ExternalLocation::Remote(s) => Some(s.clone()),
+                            _ => None,
                         },
-                    )
+                    })
                 })
                 .collect(),
             format_version: types::FORMAT_VERSION,
@@ -292,7 +286,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
             self.serialize_and_write(
                 output_crate,
-                BufWriter::new(try_err!(File::create(&p), p)),
+                try_err!(File::create_buffered(&p), p),
                 &p.display().to_string(),
             )
         } else {

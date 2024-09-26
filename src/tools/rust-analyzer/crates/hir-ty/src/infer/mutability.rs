@@ -3,7 +3,9 @@
 
 use chalk_ir::{cast::Cast, Mutability};
 use hir_def::{
-    hir::{Array, BinaryOp, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp},
+    hir::{
+        Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp,
+    },
     lang_item::LangItem,
 };
 use hir_expand::name::Name;
@@ -39,7 +41,25 @@ impl InferenceContext<'_> {
     fn infer_mut_expr_without_adjust(&mut self, tgt_expr: ExprId, mutability: Mutability) {
         match &self.body[tgt_expr] {
             Expr::Missing => (),
-            Expr::InlineAsm(e) => self.infer_mut_expr_without_adjust(e.e, Mutability::Not),
+            Expr::InlineAsm(e) => {
+                e.operands.iter().for_each(|(_, op)| match op {
+                    AsmOperand::In { expr, .. }
+                    | AsmOperand::Out { expr: Some(expr), .. }
+                    | AsmOperand::InOut { expr, .. } => {
+                        self.infer_mut_expr_without_adjust(*expr, Mutability::Not)
+                    }
+                    AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        self.infer_mut_expr_without_adjust(*in_expr, Mutability::Not);
+                        if let Some(out_expr) = out_expr {
+                            self.infer_mut_expr_without_adjust(*out_expr, Mutability::Not);
+                        }
+                    }
+                    AsmOperand::Out { expr: None, .. }
+                    | AsmOperand::Label(_)
+                    | AsmOperand::Sym(_)
+                    | AsmOperand::Const(_) => (),
+                });
+            }
             Expr::OffsetOf(_) => (),
             &Expr::If { condition, then_branch, else_branch } => {
                 self.infer_mut_expr(condition, Mutability::Not);
@@ -129,7 +149,7 @@ impl InferenceContext<'_> {
                                     target,
                                 }) = base_adjustments
                                 {
-                                    // For assignee exprs `IndexMut` obiligations are already applied
+                                    // For assignee exprs `IndexMut` obligations are already applied
                                     if !is_assignee_expr {
                                         if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
                                             base_ty = Some(ty.clone());

@@ -69,7 +69,7 @@ use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, EditionedFileId, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
-use syntax::{ast, SmolStr};
+use syntax::{ast, AstNode, SmolStr, SyntaxNode};
 use triomphe::Arc;
 use tt::TextRange;
 
@@ -291,7 +291,7 @@ impl ModuleOrigin {
 
     /// Returns a node which defines this module.
     /// That is, a file or a `mod foo {}` with items.
-    fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
+    pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         match self {
             &ModuleOrigin::File { definition, .. } | &ModuleOrigin::CrateRoot { definition } => {
                 let sf = db.parse(definition).tree();
@@ -726,6 +726,16 @@ pub enum ModuleSource {
     SourceFile(ast::SourceFile),
     Module(ast::Module),
     BlockExpr(ast::BlockExpr),
+}
+
+impl ModuleSource {
+    pub fn node(&self) -> SyntaxNode {
+        match self {
+            ModuleSource::SourceFile(it) => it.syntax().clone(),
+            ModuleSource::Module(it) => it.syntax().clone(),
+            ModuleSource::BlockExpr(it) => it.syntax().clone(),
+        }
+    }
 }
 
 /// See `sub_namespace_match()`.

@@ -34,10 +34,10 @@ use test::ColorConfig;
 use tracing::*;
 use walkdir::WalkDir;
 
-use self::header::{make_test_description, EarlyProps};
+use self::header::{EarlyProps, make_test_description};
 use crate::common::{
-    expected_output_path, output_base_dir, output_relative_path, Config, Debugger, Mode, PassMode,
-    TestPaths, UI_EXTENSIONS,
+    Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
+    output_base_dir, output_relative_path,
 };
 use crate::header::HeadersCache;
 use crate::util::logv;
@@ -47,6 +47,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
+        .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
@@ -99,6 +100,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+        .optflag(
+            "",
+            "rust-randomized-layout",
+            "set this when rustc/stdlib were compiled with randomized layouts",
+        )
         .optflag("", "optimize-tests", "run tests with optimizations enabled")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
@@ -158,7 +164,13 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt("", "edition", "default Rust edition", "EDITION")
         .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
-        .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH");
+        .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
+        .reqopt(
+            "",
+            "git-merge-commit-email",
+            "email address used for finding merge commits",
+            "EMAIL",
+        );
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -249,6 +261,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
+        cargo_path: matches.opt_str("cargo-path").map(PathBuf::from),
         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         coverage_dump_path: matches.opt_str("coverage-dump-path").map(PathBuf::from),
         python: matches.opt_str("python").unwrap(),
@@ -286,6 +299,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         host_rustcflags: matches.opt_strs("host-rustcflags"),
         target_rustcflags: matches.opt_strs("target-rustcflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
+        rust_randomized_layout: matches.opt_present("rust-randomized-layout"),
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
@@ -340,6 +354,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         git_repository: matches.opt_str("git-repository").unwrap(),
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
+        git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_support: matches.opt_present("profiler-support"),
     }
@@ -351,6 +366,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
+    logv(c, format!("cargo_path: {:?}", config.cargo_path));
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
     logv(c, format!("src_base: {:?}", config.src_base.display()));
     logv(c, format!("build_base: {:?}", config.build_base.display()));
@@ -634,6 +650,12 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
     }
 
+    // Re-run coverage tests if the `coverage-dump` tool was modified,
+    // because its output format might have changed.
+    if let Some(coverage_dump_path) = &config.coverage_dump_path {
+        stamp.add_path(coverage_dump_path)
+    }
+
     stamp.add_dir(&rust_src_dir.join("src/tools/run-make-support"));
 
     // Compiletest itself.
@@ -802,8 +824,12 @@ fn make_test(
                 &config, cache, test_name, &test_path, src_file, revision, poisoned,
             );
             // Ignore tests that already run and are up to date with respect to inputs.
-            if !config.force_rerun {
-                desc.ignore |= is_up_to_date(&config, testpaths, &early_props, revision, inputs);
+            if !config.force_rerun
+                && is_up_to_date(&config, testpaths, &early_props, revision, inputs)
+            {
+                desc.ignore = true;
+                // Keep this in sync with the "up-to-date" message detected by bootstrap.
+                desc.ignore_message = Some("up-to-date");
             }
             test::TestDescAndFn {
                 desc,

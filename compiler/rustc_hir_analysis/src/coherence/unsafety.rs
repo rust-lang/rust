@@ -4,11 +4,11 @@
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir::Safety;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::ImplPolarity::*;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{ImplTraitHeader, TraitDef, TyCtxt};
-use rustc_span::def_id::LocalDefId;
 use rustc_span::ErrorGuaranteed;
+use rustc_span::def_id::LocalDefId;
 
 pub(super) fn check_item(
     tcx: TyCtxt<'_>,

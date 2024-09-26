@@ -165,8 +165,7 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for AllocId {
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for CtfeProvenance {
     fn encode(&self, e: &mut E) {
-        self.alloc_id().encode(e);
-        self.immutable().encode(e);
+        self.into_parts().encode(e);
     }
 }
 
@@ -295,10 +294,8 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for AllocId {
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for CtfeProvenance {
     fn decode(decoder: &mut D) -> Self {
-        let alloc_id: AllocId = Decodable::decode(decoder);
-        let prov = CtfeProvenance::from(alloc_id);
-        let immutable: bool = Decodable::decode(decoder);
-        if immutable { prov.as_immutable() } else { prov }
+        let parts = Decodable::decode(decoder);
+        CtfeProvenance::from_parts(parts)
     }
 }
 

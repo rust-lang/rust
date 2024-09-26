@@ -6,9 +6,9 @@ use rustc_lint::LateContext;
 use rustc_span::sym;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_enum_variant_ctor;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{match_def_path, paths};
 
 use super::SEEK_FROM_CURRENT;
 
@@ -36,8 +36,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
 fn arg_is_seek_from_current<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     if let ExprKind::Call(f, args) = expr.kind
         && let ExprKind::Path(ref path) = f.kind
-        && let Some(def_id) = cx.qpath_res(path, f.hir_id).opt_def_id()
-        && match_def_path(cx, def_id, &paths::STD_IO_SEEK_FROM_CURRENT)
+        && let Some(ctor_call_id) = cx.qpath_res(path, f.hir_id).opt_def_id()
+        && is_enum_variant_ctor(cx, sym::SeekFrom, sym!(Current), ctor_call_id)
     {
         // check if argument of `SeekFrom::Current` is `0`
         if args.len() == 1

@@ -53,7 +53,7 @@ fn main() {
 use dep::io::stdin;
 
 fn main() {
-    stdin()$0
+    stdin();$0
 }
 "#,
     );
@@ -274,7 +274,7 @@ fn trait_function_fuzzy_completion() {
 use dep::test_mod::TestTrait;
 
 fn main() {
-    dep::test_mod::TestStruct::weird_function()$0
+    dep::test_mod::TestStruct::weird_function();$0
 }
 "#,
     );
@@ -368,7 +368,7 @@ use dep::test_mod::TestTrait;
 
 fn main() {
     let test_struct = dep::test_mod::TestStruct {};
-    test_struct.random_method()$0
+    test_struct.random_method();$0
 }
 "#,
     );
@@ -419,7 +419,7 @@ impl foo::TestTrait for fundamental::Box<TestStruct> {
 
 fn main() {
     let t = fundamental::Box(TestStruct);
-    t.some_method()$0
+    t.some_method();$0
 }
 "#,
     );
@@ -466,7 +466,7 @@ impl foo::TestTrait for &TestStruct {
 
 fn main() {
     let t = &TestStruct;
-    t.some_method()$0
+    t.some_method();$0
 }
 "#,
     );
@@ -507,7 +507,7 @@ fn completion<T: Wrapper>(whatever: T) {
 use foo::{NotInScope, Wrapper};
 
 fn completion<T: Wrapper>(whatever: T) {
-    whatever.inner().not_in_scope()$0
+    whatever.inner().not_in_scope();$0
 }
 "#,
     );
@@ -579,7 +579,7 @@ fn main() {
 use dep::test_mod::TestTrait;
 
 fn main() {
-    dep::test_mod::TestAlias::random_method()$0
+    dep::test_mod::TestAlias::random_method();$0
 }
 "#,
     );
@@ -702,7 +702,7 @@ fn main() {
 use dep::test_mod::TestTrait;
 
 fn main() {
-    dep::test_mod::TestStruct::another_function()$0
+    dep::test_mod::TestStruct::another_function();$0
 }
 "#,
     );

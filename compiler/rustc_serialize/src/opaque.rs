@@ -159,7 +159,7 @@ impl FileEncoder {
         // We produce a post-mono error if N > BUF_SIZE.
         let buf = unsafe { self.buffer_empty().first_chunk_mut::<N>().unwrap_unchecked() };
         let written = visitor(buf);
-        // We have to ensure that an errant visitor cannot cause self.buffered to exeed BUF_SIZE.
+        // We have to ensure that an errant visitor cannot cause self.buffered to exceed BUF_SIZE.
         if written > N {
             Self::panic_invalid_write::<N>(written);
         }

@@ -25,7 +25,6 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Scalar.h"
 
 #define LLVM_VERSION_GE(major, minor)                                          \
@@ -33,6 +32,12 @@
    LLVM_VERSION_MAJOR == (major) && LLVM_VERSION_MINOR >= (minor))
 
 #define LLVM_VERSION_LT(major, minor) (!LLVM_VERSION_GE((major), (minor)))
+
+#if LLVM_VERSION_GE(20, 0)
+#include "llvm/Transforms/Utils/Instrumentation.h"
+#else
+#include "llvm/Transforms/Instrumentation.h"
+#endif
 
 #include "llvm/IR/LegacyPassManager.h"
 

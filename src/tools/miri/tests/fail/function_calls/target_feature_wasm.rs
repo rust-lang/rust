@@ -1,4 +1,4 @@
-//@only-target-wasm: tests WASM-specific behavior
+//@only-target: wasm # tests WASM-specific behavior
 //@compile-flags: -C target-feature=-simd128
 
 fn main() {

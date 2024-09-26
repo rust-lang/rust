@@ -18,8 +18,8 @@ use rustc_middle::mir::{
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, GenericArgKind, TraitRef, Ty, TyCtxt};
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
 use std::borrow::Cow;
 
@@ -123,7 +123,7 @@ fn check_rvalue<'tcx>(
             | CastKind::FloatToFloat
             | CastKind::FnPtrToPtr
             | CastKind::PtrToPtr
-            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer),
+            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _),
             operand,
             _,
         ) => check_operand(tcx, operand, span, body, msrv),
@@ -131,12 +131,12 @@ fn check_rvalue<'tcx>(
             CastKind::PointerCoercion(
                 PointerCoercion::UnsafeFnPointer
                 | PointerCoercion::ClosureFnPointer(_)
-                | PointerCoercion::ReifyFnPointer,
+                | PointerCoercion::ReifyFnPointer, _
             ),
             _,
             _,
         ) => Err((span, "function pointer casts are not allowed in const fn".into())),
-        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), op, cast_ty) => {
+        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize, _), op, cast_ty) => {
             let Some(pointee_ty) = cast_ty.builtin_deref(true) else {
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
@@ -154,7 +154,7 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
-        Rvalue::Cast(CastKind::DynStar, _, _) => {
+        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::DynStar, _), _, _) => {
             // FIXME(dyn-star)
             unimplemented!()
         },

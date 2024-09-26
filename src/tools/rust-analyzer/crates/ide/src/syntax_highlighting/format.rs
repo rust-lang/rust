@@ -19,20 +19,20 @@ pub(super) fn highlight_format_string(
     expanded_string: &ast::String,
     range: TextRange,
 ) {
-    if !is_format_string(expanded_string) {
+    if is_format_string(expanded_string) {
+        // FIXME: Replace this with the HIR info we have now.
+        lex_format_specifiers(string, &mut |piece_range, kind| {
+            if let Some(highlight) = highlight_format_specifier(kind) {
+                stack.add(HlRange {
+                    range: piece_range + range.start(),
+                    highlight: highlight.into(),
+                    binding_hash: None,
+                });
+            }
+        });
+
         return;
     }
-
-    // FIXME: Replace this with the HIR info we have now.
-    lex_format_specifiers(string, &mut |piece_range, kind| {
-        if let Some(highlight) = highlight_format_specifier(kind) {
-            stack.add(HlRange {
-                range: piece_range + range.start(),
-                highlight: highlight.into(),
-                binding_hash: None,
-            });
-        }
-    });
 
     if let Some(parts) = sema.as_format_args_parts(string) {
         parts.into_iter().for_each(|(range, res)| {

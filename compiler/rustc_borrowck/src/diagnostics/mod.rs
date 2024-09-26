@@ -15,22 +15,22 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::util::{call_kind, CallDesugaringKind};
+use rustc_middle::util::{CallDesugaringKind, call_kind};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    type_known_to_meet_bound_modulo_regions, FulfillmentErrorCode,
+    FulfillmentErrorCode, type_known_to_meet_bound_modulo_regions,
 };
 use tracing::debug;
 
-use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
+use super::borrow_set::BorrowData;
 use crate::fluent_generated as fluent;
 use crate::session_diagnostics::{
     CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
@@ -68,7 +68,7 @@ pub(super) struct DescribePlaceOpt {
 
 pub(super) struct IncludingTupleField(pub(super) bool);
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// Adds a suggestion when a closure is invoked twice with a moved variable or when a closure
     /// is moved after being invoked.
     ///
@@ -177,10 +177,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     /// End-user visible description of `place` if one can be found.
     /// If the place is a temporary for instance, `None` will be returned.
     pub(super) fn describe_place(&self, place_ref: PlaceRef<'tcx>) -> Option<String> {
-        self.describe_place_with_options(
-            place_ref,
-            DescribePlaceOpt { including_downcast: false, including_tuple_field: true },
-        )
+        self.describe_place_with_options(place_ref, DescribePlaceOpt {
+            including_downcast: false,
+            including_tuple_field: true,
+        })
     }
 
     /// End-user visible description of `place` if one can be found. If the place is a temporary
@@ -345,9 +345,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         variant_index: Option<VariantIdx>,
         including_tuple_field: IncludingTupleField,
     ) -> Option<String> {
-        if ty.is_box() {
+        if let Some(boxed_ty) = ty.boxed_ty() {
             // If the type is a box, the field is described from the boxed type
-            self.describe_field_from_ty(ty.boxed_ty(), field, variant_index, including_tuple_field)
+            self.describe_field_from_ty(boxed_ty, field, variant_index, including_tuple_field)
         } else {
             match *ty.kind() {
                 ty::Adt(def, _) => {
@@ -772,7 +772,7 @@ struct CapturedMessageOpt {
     maybe_reinitialized_locations_is_empty: bool,
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// Finds the spans associated to a move or copy of move_place at location.
     pub(super) fn move_spans(
         &self,

@@ -11,7 +11,7 @@ resolve_added_macro_use =
 resolve_ancestor_only =
     visibilities can only be restricted to ancestor modules
 
-resolve_anonymous_livetime_non_gat_report_error =
+resolve_anonymous_lifetime_non_gat_report_error =
     in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
     .label = this lifetime must come from the implemented type
 

@@ -3,22 +3,19 @@
 mod atomic;
 mod simd;
 
-use std::iter;
-
 use rand::Rng;
 use rustc_apfloat::{Float, Round};
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{
     mir,
     ty::{self, FloatTy},
 };
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use rustc_target::abi::Size;
 
 use crate::*;
-use atomic::EvalContextExt as _;
-use helpers::{check_arg_count, ToHost, ToSoft};
-use simd::EvalContextExt as _;
+use self::atomic::EvalContextExt as _;
+use self::helpers::{ToHost, ToSoft, check_arg_count};
+use self::simd::EvalContextExt as _;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -119,19 +116,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.copy_op(dest, &place)?;
             }
 
-            "write_bytes" | "volatile_set_memory" => {
+            "volatile_set_memory" => {
                 let [ptr, val_byte, count] = check_arg_count(args)?;
-                let ty = ptr.layout.ty.builtin_deref(true).unwrap();
-                let ty_layout = this.layout_of(ty)?;
-                let val_byte = this.read_scalar(val_byte)?.to_u8()?;
-                let ptr = this.read_pointer(ptr)?;
-                let count = this.read_target_usize(count)?;
-                // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
-                // but no actual allocation can be big enough for the difference to be noticeable.
-                let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
-                    err_ub_format!("overflow computing total size of `{intrinsic_name}`")
-                })?;
-                this.write_bytes_ptr(ptr, iter::repeat(val_byte).take(byte_count.bytes_usize()))?;
+                this.write_bytes_intrinsic(ptr, val_byte, count, "volatile_set_memory")?;
             }
 
             // Memory model / provenance manipulation
@@ -152,8 +139,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // ```
             // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
             "is_val_statically_known" => {
-                let [arg] = check_arg_count(args)?;
-                this.validate_operand(arg, /*recursive*/ false)?;
+                let [_arg] = check_arg_count(args)?;
+                // FIXME: should we check for validity here? It's tricky because we do not have a
+                // place. Codegen does not seem to set any attributes like `noundef` for intrinsic
+                // calls, so we don't *have* to do anything.
                 let branch: bool = this.machine.rng.get_mut().gen();
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
             }

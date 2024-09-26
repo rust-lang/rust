@@ -1,21 +1,21 @@
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{env, iter, thread};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync;
-use rustc_metadata::{load_symbol_from_dylib, DylibError};
+use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
 use rustc_parse::validate_attr;
-use rustc_session::config::{host_triple, Cfg, OutFileName, OutputFilenames, OutputTypes};
+use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_triple};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
-use rustc_session::output::{categorize_crate_type, CRATE_TYPES};
-use rustc_session::{filesearch, EarlyDiagCtxt, Session};
+use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
+use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
@@ -143,7 +143,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     use rustc_data_structures::{defer, jobserver};
     use rustc_middle::ty::tls;
     use rustc_query_impl::QueryCtxt;
-    use rustc_query_system::query::{break_query_cycles, QueryContext};
+    use rustc_query_system::query::{QueryContext, break_query_cycles};
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 

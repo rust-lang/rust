@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::interpret::{
-    alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer,
-    Provenance,
+    AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer, Provenance, alloc_range,
+    read_target_uint,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -208,12 +208,10 @@ fn dump_path<'tcx>(
 
     let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
         String::new()
+    } else if pass_num {
+        format!(".{:03}-{:03}", body.phase.phase_index(), body.pass_count)
     } else {
-        if pass_num {
-            format!(".{:03}-{:03}", body.phase.phase_index(), body.pass_count)
-        } else {
-            ".-------".to_string()
-        }
+        ".-------".to_string()
     };
 
     let crate_name = tcx.crate_name(source.def_id().krate);
@@ -279,9 +277,9 @@ pub fn create_dump_file<'tcx>(
             )
         })?;
     }
-    Ok(io::BufWriter::new(fs::File::create(&file_path).map_err(|e| {
+    Ok(fs::File::create_buffered(&file_path).map_err(|e| {
         io::Error::new(e.kind(), format!("IO error creating MIR dump file: {file_path:?}; {e}"))
-    })?))
+    })?)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -612,7 +610,9 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     let def_id = body.source.def_id();
     let kind = tcx.def_kind(def_id);
     let is_function = match kind {
-        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
+        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) | DefKind::SyntheticCoroutineBody => {
+            true
+        }
         _ => tcx.is_closure_like(def_id),
     };
     match (kind, body.source.promoted) {
@@ -1536,11 +1536,8 @@ pub fn write_allocations<'tcx>(
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
             Some(GlobalAlloc::Function { instance, .. }) => write!(w, " (fn: {instance})")?,
-            Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
-                write!(w, " (vtable: impl {trait_ref} for {ty})")?
-            }
-            Some(GlobalAlloc::VTable(ty, None)) => {
-                write!(w, " (vtable: impl <auto trait> for {ty})")?
+            Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
+                write!(w, " (vtable: impl {dyn_ty} for {ty})")?
             }
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 match tcx.eval_static_initializer(did) {

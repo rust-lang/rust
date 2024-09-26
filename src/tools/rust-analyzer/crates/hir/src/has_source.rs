@@ -14,8 +14,8 @@ use tt::TextRange;
 
 use crate::{
     db::HirDatabase, Adt, Callee, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
-    Label, LifetimeParam, LocalSource, Macro, Module, Param, SelfParam, Static, Struct, Trait,
-    TraitAlias, TypeAlias, TypeOrConstParam, Union, Variant,
+    InlineAsmOperand, Label, LifetimeParam, LocalSource, Macro, Module, Param, SelfParam, Static,
+    Struct, Trait, TraitAlias, TypeAlias, TypeOrConstParam, Union, Variant,
 };
 
 pub trait HasSource {
@@ -290,5 +290,28 @@ impl HasSource for ExternCrateDecl {
 
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         Some(self.id.lookup(db.upcast()).source(db.upcast()))
+    }
+}
+
+impl HasSource for InlineAsmOperand {
+    type Ast = ast::AsmOperandNamed;
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        let (_body, source_map) = db.body_with_source_map(self.owner);
+        if let Ok(src) = source_map.expr_syntax(self.expr) {
+            let root = src.file_syntax(db.upcast());
+            return src
+                .map(|ast| match ast.to_node(&root) {
+                    ast::Expr::AsmExpr(asm) => asm
+                        .asm_pieces()
+                        .filter_map(|it| match it {
+                            ast::AsmPiece::AsmOperandNamed(it) => Some(it),
+                            _ => None,
+                        })
+                        .nth(self.index),
+                    _ => None,
+                })
+                .transpose();
+        }
+        None
     }
 }

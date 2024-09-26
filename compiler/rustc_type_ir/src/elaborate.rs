@@ -4,7 +4,7 @@ use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
-use crate::outlives::{push_outlives_components, Component};
+use crate::outlives::{Component, push_outlives_components};
 use crate::{self as ty, Interner, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
@@ -237,7 +237,7 @@ pub fn supertrait_def_ids<I: Interner>(
     cx: I,
     trait_def_id: I::DefId,
 ) -> impl Iterator<Item = I::DefId> {
-    let mut set: HashSet<I::DefId> = HashSet::default();
+    let mut set = HashSet::default();
     let mut stack = vec![trait_def_id];
 
     set.insert(trait_def_id);

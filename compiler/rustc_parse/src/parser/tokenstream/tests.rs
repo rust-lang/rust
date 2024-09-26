@@ -1,6 +1,6 @@
 use rustc_ast::token::{self, IdentIsRaw};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_span::{create_default_session_globals_then, BytePos, Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol, create_default_session_globals_then};
 
 use crate::parser::tests::string_to_stream;
 

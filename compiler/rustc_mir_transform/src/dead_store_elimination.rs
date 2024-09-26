@@ -16,11 +16,11 @@ use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_mir_dataflow::impls::{
-    borrowed_locals, LivenessTransferFunction, MaybeTransitiveLiveLocals,
+    LivenessTransferFunction, MaybeTransitiveLiveLocals, borrowed_locals,
 };
-use rustc_mir_dataflow::Analysis;
 
 use crate::util::is_within_packed;
 
@@ -28,11 +28,11 @@ use crate::util::is_within_packed;
 ///
 /// The `borrowed` set must be a `BitSet` of all the locals that are ever borrowed in this body. It
 /// can be generated via the [`borrowed_locals`] function.
-pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let borrowed_locals = borrowed_locals(body);
 
     // If the user requests complete debuginfo, mark the locals that appear in it as live, so
-    // we don't remove assignements to them.
+    // we don't remove assignments to them.
     let mut always_live = debuginfo_locals(body);
     always_live.union(&borrowed_locals);
 
@@ -127,12 +127,12 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     }
 }
 
-pub enum DeadStoreElimination {
+pub(super) enum DeadStoreElimination {
     Initial,
     Final,
 }
 
-impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
+impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
     fn name(&self) -> &'static str {
         match self {
             DeadStoreElimination::Initial => "DeadStoreElimination-initial",

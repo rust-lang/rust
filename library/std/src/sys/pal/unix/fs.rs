@@ -31,10 +31,6 @@ use libc::fstatat64;
     all(target_os = "linux", target_env = "musl"),
 ))]
 use libc::readdir as readdir64;
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::readdir64;
-#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
-use libc::readdir64_r;
 #[cfg(not(any(
     target_os = "android",
     target_os = "linux",
@@ -50,6 +46,10 @@ use libc::readdir64_r;
     target_os = "hurd",
 )))]
 use libc::readdir_r as readdir64_r;
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
+use libc::readdir64;
+#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
+use libc::readdir64_r;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
@@ -478,6 +478,8 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "rtems",
+        target_os = "nuttx",
     )))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -490,12 +492,17 @@ impl FileAttr {
         SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtime_nsec as i64)
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "vxworks",
+        target_os = "espidf",
+        target_os = "vita",
+        target_os = "rtems",
+    ))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtime as i64, 0)
     }
 
-    #[cfg(any(target_os = "horizon", target_os = "hurd"))]
+    #[cfg(any(target_os = "horizon", target_os = "hurd", target_os = "nuttx"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtim.tv_sec as i64, self.stat.st_mtim.tv_nsec as i64)
     }
@@ -506,6 +513,8 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "rtems",
+        target_os = "nuttx",
     )))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -518,12 +527,17 @@ impl FileAttr {
         SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64)
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "vxworks",
+        target_os = "espidf",
+        target_os = "vita",
+        target_os = "rtems"
+    ))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_atime as i64, 0)
     }
 
-    #[cfg(any(target_os = "horizon", target_os = "hurd"))]
+    #[cfg(any(target_os = "horizon", target_os = "hurd", target_os = "nuttx"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_atim.tv_sec as i64, self.stat.st_atim.tv_nsec as i64)
     }
@@ -726,7 +740,7 @@ impl Iterator for ReadDir {
                 //
                 // Like for uninitialized contents, converting entry_ptr to `&dirent64`
                 // would not be legal. However, unique to dirent64 is that we don't even
-                // get to use `addr_of!((*entry_ptr).d_name)` because that operation
+                // get to use `&raw const (*entry_ptr).d_name` because that operation
                 // requires the full extent of *entry_ptr to be in bounds of the same
                 // allocation, which is not necessarily the case here.
                 //
@@ -740,7 +754,7 @@ impl Iterator for ReadDir {
                         } else {
                             #[allow(deref_nullptr)]
                             {
-                                ptr::addr_of!((*ptr::null::<dirent64>()).$field)
+                                &raw const (*ptr::null::<dirent64>()).$field
                             }
                         }
                     }};
@@ -853,6 +867,8 @@ impl Drop for Dir {
             target_os = "fuchsia",
             target_os = "horizon",
             target_os = "vxworks",
+            target_os = "rtems",
+            target_os = "nuttx",
         )))]
         {
             let fd = unsafe { libc::dirfd(self.0) };
@@ -970,6 +986,7 @@ impl DirEntry {
         target_os = "aix",
         target_os = "nto",
         target_os = "hurd",
+        target_os = "rtems",
         target_vendor = "apple",
     ))]
     pub fn ino(&self) -> u64 {
@@ -984,6 +1001,13 @@ impl DirEntry {
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_fileno as u64
+    }
+
+    #[cfg(target_os = "nuttx")]
+    pub fn ino(&self) -> u64 {
+        // Leave this 0 for now, as NuttX does not provide an inode number
+        // in its directory entries.
+        0
     }
 
     #[cfg(any(
@@ -1313,7 +1337,8 @@ impl File {
             target_os = "redox",
             target_os = "espidf",
             target_os = "horizon",
-            target_os = "vxworks"
+            target_os = "vxworks",
+            target_os = "nuttx",
         )))]
         let to_timespec = |time: Option<SystemTime>| match time {
             Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
@@ -1328,7 +1353,7 @@ impl File {
             None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };
         cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "vxworks"))] {
+            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "vxworks", target_os = "nuttx"))] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
@@ -1360,7 +1385,7 @@ impl File {
                 }
                 cvt(unsafe { libc::fsetattrlist(
                     self.as_raw_fd(),
-                    core::ptr::addr_of!(attrlist).cast::<libc::c_void>().cast_mut(),
+                    (&raw const attrlist).cast::<libc::c_void>().cast_mut(),
                     buf.as_ptr().cast::<libc::c_void>().cast_mut(),
                     num_times * mem::size_of::<libc::timespec>(),
                     0
@@ -1717,7 +1742,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     run_path_with_cstr(original, &|original| {
         run_path_with_cstr(link, &|link| {
             cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nto"))] {
+                if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita", target_env = "nto70"))] {
                     // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
                     // it implementation-defined whether `link` follows symlinks, so rely on the
                     // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
@@ -1852,7 +1877,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let max_len = u64::MAX;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
-    use super::kernel_copy::{copy_regular_files, CopyResult};
+    use super::kernel_copy::{CopyResult, copy_regular_files};
 
     match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
         CopyResult::Ended(bytes) => Ok(bytes),
@@ -1919,7 +1944,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         libc::copyfile_state_get(
             state.0,
             libc::COPYFILE_STATE_COPIED as u32,
-            core::ptr::addr_of_mut!(bytes_copied) as *mut libc::c_void,
+            (&raw mut bytes_copied) as *mut libc::c_void,
         )
     })?;
     Ok(bytes_copied as u64)
@@ -1994,7 +2019,7 @@ mod remove_dir_impl {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{fdopendir, openat64 as openat, unlinkat};
 
-    use super::{lstat, Dir, DirEntry, InnerReadDir, ReadDir};
+    use super::{Dir, DirEntry, InnerReadDir, ReadDir, lstat};
     use crate::ffi::CStr;
     use crate::io;
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};

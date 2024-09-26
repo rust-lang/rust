@@ -207,7 +207,7 @@ borrowck_simd_intrinsic_arg_const =
         *[other] {$arg}th
     } argument of `{$intrinsic}` is required to be a `const` item
 
-borrowck_suggest_create_freash_reborrow =
+borrowck_suggest_create_fresh_reborrow =
     consider reborrowing the `Pin` instead of moving it
 
 borrowck_suggest_iterate_over_slice =

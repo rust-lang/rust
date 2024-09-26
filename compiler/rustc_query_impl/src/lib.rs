@@ -16,19 +16,19 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKind, DepKindStruct, DepNodeIndex};
-use rustc_middle::query::erase::{erase, restore, Erase};
+use rustc_middle::query::erase::{Erase, erase, restore};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
 use rustc_middle::query::{
-    queries, AsLocalKey, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine,
-    QueryStates,
+    AsLocalKey, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
+    queries,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    get_query_incr, get_query_non_incr, CycleError, HashResult, QueryCache, QueryConfig, QueryMap,
-    QueryMode, QueryState,
+    CycleError, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode, QueryState,
+    get_query_incr, get_query_non_incr,
 };
 use rustc_query_system::{HandleCycleError, Value};
 use rustc_span::{ErrorGuaranteed, Span};
@@ -38,7 +38,7 @@ use crate::profiling_support::QueryKeyStringCache;
 
 #[macro_use]
 mod plumbing;
-pub use crate::plumbing::{query_key_hash_verify_all, QueryCtxt};
+pub use crate::plumbing::{QueryCtxt, query_key_hash_verify_all};
 
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;

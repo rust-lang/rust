@@ -1,8 +1,8 @@
 //! Deeply normalize types using the old trait solver.
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferOk;
+use rustc_infer::infer::at::At;
 use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligation, TraitEngine,
 };
@@ -14,11 +14,11 @@ use rustc_middle::ty::{
 use tracing::{debug, instrument};
 
 use super::{
-    project, with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer,
-    SelectionContext,
+    BoundVarReplacer, PlaceholderReplacer, SelectionContext, project,
+    with_replaced_escaping_bound_vars,
 };
-use crate::error_reporting::traits::OverflowCause;
 use crate::error_reporting::InferCtxtErrorExt;
+use crate::error_reporting::traits::OverflowCause;
 use crate::solve::NextSolverError;
 
 #[extension(pub trait NormalizeExt<'tcx>)]

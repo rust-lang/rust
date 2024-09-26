@@ -13,17 +13,17 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
+use rustc_span::symbol::{Ident, sym};
 use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use tracing::{debug, instrument, trace};
 
-use super::method::probe::ProbeScope;
 use super::method::MethodCallee;
+use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::errors;
 
@@ -58,7 +58,7 @@ pub(crate) fn check_legal_trait_for_method_call(
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(LocalDefId, ty::FnSig<'tcx>),
-    /// E.g., enum variant constructors.
+    /// Call overloading when callee implements one of the Fn* traits.
     Overloaded(MethodCallee<'tcx>),
 }
 
@@ -156,16 +156,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     closure_sig,
                 );
                 let adjustments = self.adjust_steps(autoderef);
-                self.record_deferred_call_resolution(
-                    def_id,
-                    DeferredCallResolution {
-                        call_expr,
-                        callee_expr,
-                        closure_ty: adjusted_ty,
-                        adjustments,
-                        fn_sig: closure_sig,
-                    },
-                );
+                self.record_deferred_call_resolution(def_id, DeferredCallResolution {
+                    call_expr,
+                    callee_expr,
+                    closure_ty: adjusted_ty,
+                    adjustments,
+                    fn_sig: closure_sig,
+                });
                 return Some(CallStep::DeferredClosure(def_id, closure_sig));
             }
 
@@ -202,16 +199,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coroutine_closure_sig.abi,
                 );
                 let adjustments = self.adjust_steps(autoderef);
-                self.record_deferred_call_resolution(
-                    def_id,
-                    DeferredCallResolution {
-                        call_expr,
-                        callee_expr,
-                        closure_ty: adjusted_ty,
-                        adjustments,
-                        fn_sig: call_sig,
-                    },
-                );
+                self.record_deferred_call_resolution(def_id, DeferredCallResolution {
+                    call_expr,
+                    callee_expr,
+                    closure_ty: adjusted_ty,
+                    adjustments,
+                    fn_sig: call_sig,
+                });
                 return Some(CallStep::DeferredClosure(def_id, call_sig));
             }
 
@@ -503,18 +497,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig = self.instantiate_binder_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig);
         let fn_sig = self.normalize(call_expr.span, fn_sig);
 
-        // Call the generic checker.
-        let expected_arg_tys = self.expected_inputs_for_expected_output(
-            call_expr.span,
-            expected,
-            fn_sig.output(),
-            fn_sig.inputs(),
-        );
         self.check_argument_types(
             call_expr.span,
             call_expr,
             fn_sig.inputs(),
-            expected_arg_tys,
+            fn_sig.output(),
+            expected,
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::DontTupleArguments,
@@ -560,11 +548,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx,
                             self.misc(span),
                             self.param_env,
-                            ty::TraitRef::new(
-                                self.tcx,
-                                fn_once_def_id,
-                                [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],
-                            ),
+                            ty::TraitRef::new(self.tcx, fn_once_def_id, [
+                                arg_ty.into(),
+                                fn_sig.inputs()[0].into(),
+                                const_param,
+                            ]),
                         ));
 
                         self.register_predicate(traits::Obligation::new(
@@ -866,19 +854,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // don't know the full details yet (`Fn` vs `FnMut` etc), but we
         // do know the types expected for each argument and the return
         // type.
-
-        let expected_arg_tys = self.expected_inputs_for_expected_output(
-            call_expr.span,
-            expected,
-            fn_sig.output(),
-            fn_sig.inputs(),
-        );
-
         self.check_argument_types(
             call_expr.span,
             call_expr,
             fn_sig.inputs(),
-            expected_arg_tys,
+            fn_sig.output(),
+            expected,
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::TupleArguments,

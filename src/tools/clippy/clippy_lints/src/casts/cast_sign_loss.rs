@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::visitors::{for_each_expr_without_closures, Descend};
+use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{method_chain_args, sext};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;

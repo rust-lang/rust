@@ -399,7 +399,7 @@ extern "C" {
     fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
 }
 
-fn my_cmp(x: &[u8], y: &[u8]) -> i32 {
+fn my_cmp(x: &[u8; 3], y: &[u8; 3]) -> i32 {
     memcmp(x as *const u8, y as *const u8, x.len())
 }
 
@@ -779,6 +779,7 @@ fn main() {
 fn posix_getenv() {
     check_pass(
         r#"
+//- minicore: sized
 //- /main.rs env:foo=bar
 
 type c_char = u8;
@@ -849,7 +850,7 @@ fn main() {
 fn regression_14966() {
     check_pass(
         r#"
-//- minicore: fn, copy, coerce_unsized
+//- minicore: fn, copy, coerce_unsized, dispatch_from_dyn
 trait A<T> {
     fn a(&self) {}
 }

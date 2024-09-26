@@ -18,8 +18,8 @@ use crate::ty::{
     TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef,
 };
 use crate::{
-    mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
-    Symbol, TraitDecls,
+    Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
+    Symbol, TraitDecls, mir,
 };
 
 /// This trait defines the interface between stable_mir and the Rust compiler.

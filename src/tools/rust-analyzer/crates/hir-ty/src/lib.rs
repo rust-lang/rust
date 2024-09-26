@@ -42,6 +42,7 @@ pub mod lang_items;
 pub mod layout;
 pub mod method_resolution;
 pub mod mir;
+pub mod object_safety;
 pub mod primitive;
 pub mod traits;
 
@@ -82,6 +83,7 @@ pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
+    cast::CastError,
     closure::{CaptureKind, CapturedItem},
     could_coerce, could_unify, could_unify_deeply, Adjust, Adjustment, AutoBorrow, BindingMode,
     InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast,
@@ -377,6 +379,7 @@ pub enum FnAbi {
     AvrNonBlockingInterrupt,
     C,
     CCmseNonsecureCall,
+    CCmseNonsecureEntry,
     CDecl,
     CDeclUnwind,
     CUnwind,
@@ -434,6 +437,7 @@ impl FnAbi {
             s if *s == sym::avr_dash_interrupt => FnAbi::AvrInterrupt,
             s if *s == sym::avr_dash_non_dash_blocking_dash_interrupt => FnAbi::AvrNonBlockingInterrupt,
             s if *s == sym::C_dash_cmse_dash_nonsecure_dash_call => FnAbi::CCmseNonsecureCall,
+            s if *s == sym::C_dash_cmse_dash_nonsecure_dash_entry => FnAbi::CCmseNonsecureEntry,
             s if *s == sym::C_dash_unwind => FnAbi::CUnwind,
             s if *s == sym::C => FnAbi::C,
             s if *s == sym::cdecl_dash_unwind => FnAbi::CDeclUnwind,
@@ -477,6 +481,7 @@ impl FnAbi {
             FnAbi::AvrNonBlockingInterrupt => "avr-non-blocking-interrupt",
             FnAbi::C => "C",
             FnAbi::CCmseNonsecureCall => "C-cmse-nonsecure-call",
+            FnAbi::CCmseNonsecureEntry => "C-cmse-nonsecure-entry",
             FnAbi::CDecl => "C-decl",
             FnAbi::CDeclUnwind => "cdecl-unwind",
             FnAbi::CUnwind => "C-unwind",

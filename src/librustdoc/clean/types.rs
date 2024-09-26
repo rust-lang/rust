@@ -12,7 +12,7 @@ use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableS
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
@@ -22,12 +22,12 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
-    add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments, DocFragment,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
 };
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{FileName, Loc, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use thin_vec::ThinVec;
@@ -320,14 +320,28 @@ pub(crate) struct Item {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
     pub(crate) name: Option<Symbol>,
-    pub(crate) attrs: Box<Attributes>,
+    pub(crate) inner: Box<ItemInner>,
+    pub(crate) item_id: ItemId,
+    /// This is the `LocalDefId` of the `use` statement if the item was inlined.
+    /// The crate metadata doesn't hold this information, so the `use` statement
+    /// always belongs to the current crate.
+    pub(crate) inline_stmt_id: Option<LocalDefId>,
+    pub(crate) cfg: Option<Arc<Cfg>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct ItemInner {
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
-    pub(crate) kind: Box<ItemKind>,
-    pub(crate) item_id: ItemId,
-    /// This is the `DefId` of the `use` statement if the item was inlined.
-    pub(crate) inline_stmt_id: Option<DefId>,
-    pub(crate) cfg: Option<Arc<Cfg>>,
+    pub(crate) kind: ItemKind,
+    pub(crate) attrs: Attributes,
+}
+
+impl std::ops::Deref for Item {
+    type Target = ItemInner;
+    fn deref(&self) -> &ItemInner {
+        &*self.inner
+    }
 }
 
 /// NOTE: this does NOT unconditionally print every item, to avoid thousands of lines of logs.
@@ -370,7 +384,45 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 impl Item {
     pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<Stability> {
-        self.def_id().and_then(|did| tcx.lookup_stability(did))
+        let (mut def_id, mut stability) = if let Some(inlined) = self.inline_stmt_id {
+            let inlined_def_id = inlined.to_def_id();
+            if let Some(stability) = tcx.lookup_stability(inlined_def_id) {
+                (inlined_def_id, stability)
+            } else {
+                // For re-exports into crates without `staged_api`, reuse the original stability.
+                // This is necessary, because we always want to mark unstable items.
+                let def_id = self.def_id()?;
+                return tcx.lookup_stability(def_id);
+            }
+        } else {
+            let def_id = self.def_id()?;
+            let stability = tcx.lookup_stability(def_id)?;
+            (def_id, stability)
+        };
+
+        let StabilityLevel::Stable { mut since, allowed_through_unstable_modules: false } =
+            stability.level
+        else {
+            return Some(stability);
+        };
+
+        // If any of the item's ancestors was stabilized later or is still unstable,
+        // then report the ancestor's stability instead.
+        while let Some(parent_def_id) = tcx.opt_parent(def_id) {
+            if let Some(parent_stability) = tcx.lookup_stability(parent_def_id) {
+                match parent_stability.level {
+                    StabilityLevel::Unstable { .. } => return Some(parent_stability),
+                    StabilityLevel::Stable { since: parent_since, .. } => {
+                        if parent_since > since {
+                            stability = parent_stability;
+                            since = parent_since;
+                        }
+                    }
+                }
+            }
+            def_id = parent_def_id;
+        }
+        Some(stability)
     }
 
     pub(crate) fn const_stability(&self, tcx: TyCtxt<'_>) -> Option<ConstStability> {
@@ -389,9 +441,9 @@ impl Item {
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
-        let kind = match &*self.kind {
-            ItemKind::StrippedItem(k) => k,
-            _ => &*self.kind,
+        let kind = match &self.kind {
+            ItemKind::StrippedItem(k) => &*k,
+            _ => &self.kind,
         };
         match kind {
             ItemKind::ModuleItem(Module { span, .. }) => Some(*span),
@@ -436,7 +488,7 @@ impl Item {
             def_id,
             name,
             kind,
-            Box::new(Attributes::from_ast(ast_attrs)),
+            Attributes::from_ast(ast_attrs),
             ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
@@ -445,16 +497,15 @@ impl Item {
         def_id: DefId,
         name: Option<Symbol>,
         kind: ItemKind,
-        attrs: Box<Attributes>,
+        attrs: Attributes,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
         trace!("name={name:?}, def_id={def_id:?} cfg={cfg:?}");
 
         Item {
             item_id: def_id.into(),
-            kind: Box::new(kind),
+            inner: Box::new(ItemInner { kind, attrs }),
             name,
-            attrs,
             cfg,
             inline_stmt_id: None,
         }
@@ -512,9 +563,6 @@ impl Item {
     pub(crate) fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
     }
-    pub(crate) fn is_trait(&self) -> bool {
-        self.type_() == ItemType::Trait
-    }
     pub(crate) fn is_struct(&self) -> bool {
         self.type_() == ItemType::Struct
     }
@@ -525,25 +573,22 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(&*self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
+        matches!(self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
     }
     pub(crate) fn is_ty_associated_type(&self) -> bool {
-        matches!(&*self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
+        matches!(self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(&*self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
+        matches!(self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
     }
     pub(crate) fn is_ty_associated_const(&self) -> bool {
-        matches!(&*self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
+        matches!(self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
     }
     pub(crate) fn is_ty_method(&self) -> bool {
         self.type_() == ItemType::TyMethod
-    }
-    pub(crate) fn is_type_alias(&self) -> bool {
-        self.type_() == ItemType::TypeAlias
     }
     pub(crate) fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive
@@ -561,14 +606,14 @@ impl Item {
         self.type_() == ItemType::Keyword
     }
     pub(crate) fn is_stripped(&self) -> bool {
-        match *self.kind {
+        match self.kind {
             StrippedItem(..) => true,
             ImportItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
-        match *self.kind {
+        match self.kind {
             StructItem(ref struct_) => Some(struct_.has_stripped_entries()),
             UnionItem(ref union_) => Some(union_.has_stripped_entries()),
             EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
@@ -611,7 +656,7 @@ impl Item {
     }
 
     pub(crate) fn is_default(&self) -> bool {
-        match *self.kind {
+        match self.kind {
             ItemKind::MethodItem(_, Some(defaultness)) => {
                 defaultness.has_value() && !defaultness.is_final()
             }
@@ -639,7 +684,7 @@ impl Item {
             };
             hir::FnHeader { safety: sig.safety(), abi: sig.abi(), constness, asyncness }
         }
-        let header = match *self.kind {
+        let header = match self.kind {
             ItemKind::ForeignFunctionItem(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
@@ -678,7 +723,7 @@ impl Item {
             ItemId::DefId(def_id) => def_id,
         };
 
-        match *self.kind {
+        match self.kind {
             // Primitives and Keywords are written in the source code as private modules.
             // The modules need to be private so that nobody actually uses them, but the
             // keywords and primitives that they are documenting are public.
@@ -708,7 +753,7 @@ impl Item {
             _ => {}
         }
         let def_id = match self.inline_stmt_id {
-            Some(inlined) => inlined,
+            Some(inlined) => inlined.to_def_id(),
             None => def_id,
         };
         Some(tcx.visibility(def_id))
@@ -1057,10 +1102,14 @@ impl AttributesExt for [ast::Attribute] {
 }
 
 impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a
-        where Self: 'a;
-    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a
-        where Self: 'a;
+    type AttributeIterator<'a>
+        = impl Iterator<Item = ast::NestedMetaItem> + 'a
+    where
+        Self: 'a;
+    type Attributes<'a>
+        = impl Iterator<Item = &'a ast::Attribute> + 'a
+    where
+        Self: 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         AttributesExt::iter(self)
@@ -1802,8 +1851,8 @@ impl PrimitiveType {
     }
 
     pub(crate) fn simplified_types() -> &'static SimplifiedTypes {
-        use ty::{FloatTy, IntTy, UintTy};
         use PrimitiveType::*;
+        use ty::{FloatTy, IntTy, UintTy};
         static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
 
         let single = |x| iter::once(x).collect();
@@ -1852,7 +1901,7 @@ impl PrimitiveType {
             .get(self)
             .into_iter()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
             .copied()
     }
 
@@ -1860,7 +1909,7 @@ impl PrimitiveType {
         Self::simplified_types()
             .values()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
             .copied()
     }
 
@@ -2565,13 +2614,13 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Crate, 64); // frequently moved by-value
+    static_assert_size!(Crate, 56); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
-    static_assert_size!(Item, 56);
+    static_assert_size!(Item, 48);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 32);

@@ -1,12 +1,12 @@
 use itertools::Itertools as _;
-use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_span::def_id::DefIdSet;
 use rustc_span::Symbol;
+use rustc_span::def_id::DefIdSet;
 use tracing::debug;
 
 use crate::common::CodegenCx;
@@ -183,8 +183,8 @@ impl GlobalFileTable {
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        use rustc_session::config::RemapPathScopeComponents;
         use rustc_session::RemapFileNameExt;
+        use rustc_session::config::RemapPathScopeComponents;
         let working_dir: &str = &tcx
             .sess
             .opts
@@ -422,7 +422,7 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
             (instance.def_id(), body)
         });
 
-    // Functions whose coverage statments were found inlined into other functions.
+    // Functions whose coverage statements were found inlined into other functions.
     let mut used_via_inlining = FxHashSet::default();
     // Functions that were instrumented, but had all of their coverage statements
     // removed by later MIR transforms (e.g. UnreachablePropagation).

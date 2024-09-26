@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt::Debug;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::Path;
 
 use polonius_engine::{AllFacts as PoloniusFacts, Atom};
@@ -10,8 +10,8 @@ use rustc_middle::mir::Local;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MovePathIndex;
 
-use crate::location::{LocationIndex, LocationTable};
 use crate::BorrowIndex;
+use crate::location::{LocationIndex, LocationTable};
 
 #[derive(Copy, Clone, Debug)]
 pub struct RustcFacts;
@@ -127,7 +127,7 @@ impl<'w> FactWriter<'w> {
         T: FactRow,
     {
         let file = &self.dir.join(file_name);
-        let mut file = BufWriter::new(File::create(file)?);
+        let mut file = File::create_buffered(file)?;
         for row in rows {
             row.write(&mut file, self.location_table)?;
         }

@@ -18,14 +18,14 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
-use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use rustc_span::hygiene::ExpnId;
+use rustc_span::symbol::{Symbol, kw};
 
 use super::{Decodable, DecodeContext, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
-use crate::rmeta::table::IsDefault;
 use crate::rmeta::AttrFlags;
+use crate::rmeta::table::IsDefault;
 use crate::{foreign_modules, native_libs};
 
 trait ProcessQueryValue<'tcx, T> {
@@ -71,8 +71,8 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     for Option<DecodeIterator<'a, 'tcx, T>>
 {
     #[inline(always)]
-    fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> &'tcx [T] {
-        if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { &[] }
+    fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx [T] {
+        if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { err() }
     }
 }
 
@@ -84,12 +84,12 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
     fn process_decoded(
         self,
         tcx: TyCtxt<'tcx>,
-        _err: impl Fn() -> !,
+        err: impl Fn() -> !,
     ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
         ty::EarlyBinder::bind(if let Some(iter) = self {
             tcx.arena.alloc_from_iter(iter)
         } else {
-            &[]
+            err()
         })
     }
 }
@@ -247,8 +247,8 @@ provide! { tcx, def_id, other, cdata,
     explicit_predicates_of => { table }
     generics_of => { table }
     inferred_outlives_of => { table_defaulted_array }
-    explicit_super_predicates_of => { table }
-    explicit_implied_predicates_of => { table }
+    explicit_super_predicates_of => { table_defaulted_array }
+    explicit_implied_predicates_of => { table_defaulted_array }
     type_of => { table }
     type_alias_is_lazy => { table_direct }
     variances_of => { table }
@@ -290,6 +290,7 @@ provide! { tcx, def_id, other, cdata,
     fn_arg_names => { table }
     coroutine_kind => { table_direct }
     coroutine_for_closure => { table }
+    coroutine_by_move_body_def_id => { table }
     eval_static_initializer => {
         Ok(cdata
             .root
@@ -300,7 +301,20 @@ provide! { tcx, def_id, other, cdata,
             .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
     }
     trait_def => { table }
-    deduced_param_attrs => { table }
+    deduced_param_attrs => {
+        // FIXME: `deduced_param_attrs` has some sketchy encoding settings,
+        // where we don't encode unless we're optimizing, doing codegen,
+        // and not incremental (see `encoder.rs`). I don't think this is right!
+        cdata
+            .root
+            .tables
+            .deduced_param_attrs
+            .get(cdata, def_id.index)
+            .map(|lazy| {
+                &*tcx.arena.alloc_from_iter(lazy.decode((cdata, tcx)))
+            })
+            .unwrap_or_default()
+    }
     is_type_alias_impl_trait => {
         debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
         cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
@@ -333,7 +347,7 @@ provide! { tcx, def_id, other, cdata,
         tcx.arena.alloc_from_iter(cdata.get_associated_item_or_field_def_ids(def_id.index))
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
-    inherent_impls => { Ok(cdata.get_inherent_implementations_for_type(tcx, def_id.index)) }
+    inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
@@ -379,7 +393,7 @@ provide! { tcx, def_id, other, cdata,
     traits => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
     trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
-    crate_incoherent_impls => { Ok(cdata.get_incoherent_impls(tcx, other)) }
+    crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 
     dep_kind => { cdata.dep_kind }
     module_children => {

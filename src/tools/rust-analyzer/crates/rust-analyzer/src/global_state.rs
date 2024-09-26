@@ -540,7 +540,7 @@ impl GlobalState {
     }
 
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
-        if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
+        if let Some((method, start)) = self.req_queue.incoming.complete(&response.id) {
             if let Some(err) = &response.error {
                 if err.message.starts_with("server panicked") {
                     self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
@@ -629,6 +629,10 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
         file_id_to_url(&self.vfs_read(), id)
+    }
+
+    pub(crate) fn vfs_path_to_file_id(&self, vfs_path: &VfsPath) -> anyhow::Result<FileId> {
+        vfs_path_to_file_id(&self.vfs_read(), vfs_path)
     }
 
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancellable<LineIndex> {
@@ -723,5 +727,11 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
 pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<FileId> {
     let path = from_proto::vfs_path(url)?;
     let res = vfs.file_id(&path).ok_or_else(|| anyhow::format_err!("file not found: {path}"))?;
+    Ok(res)
+}
+
+pub(crate) fn vfs_path_to_file_id(vfs: &vfs::Vfs, vfs_path: &VfsPath) -> anyhow::Result<FileId> {
+    let res =
+        vfs.file_id(vfs_path).ok_or_else(|| anyhow::format_err!("file not found: {vfs_path}"))?;
     Ok(res)
 }

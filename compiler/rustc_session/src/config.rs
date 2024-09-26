@@ -20,10 +20,10 @@ use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
 use rustc_feature::UnstableFeatures;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
+use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
-    sym, FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm, Symbol,
+    FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm, Symbol, sym,
 };
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, SplitDebuginfo, Target, TargetTriple,
@@ -34,7 +34,7 @@ use crate::errors::FileWriteFail;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use crate::{filesearch, lint, EarlyDiagCtxt, HashStableContext, Session};
+use crate::{EarlyDiagCtxt, HashStableContext, Session, filesearch, lint};
 
 mod cfg;
 pub mod sigpipe;
@@ -251,7 +251,7 @@ pub struct LinkSelfContained {
     pub explicitly_set: Option<bool>,
 
     /// The components that are enabled on the CLI, using the `+component` syntax or one of the
-    /// `true` shorcuts.
+    /// `true` shortcuts.
     enabled_components: LinkSelfContainedComponents,
 
     /// The components that are disabled on the CLI, using the `-component` syntax or one of the
@@ -313,13 +313,13 @@ impl LinkSelfContained {
     }
 
     /// Returns whether the self-contained linker component was enabled on the CLI, using the
-    /// `-C link-self-contained=+linker` syntax, or one of the `true` shorcuts.
+    /// `-C link-self-contained=+linker` syntax, or one of the `true` shortcuts.
     pub fn is_linker_enabled(&self) -> bool {
         self.enabled_components.contains(LinkSelfContainedComponents::LINKER)
     }
 
     /// Returns whether the self-contained linker component was disabled on the CLI, using the
-    /// `-C link-self-contained=-linker` syntax, or one of the `false` shorcuts.
+    /// `-C link-self-contained=-linker` syntax, or one of the `false` shortcuts.
     pub fn is_linker_disabled(&self) -> bool {
         self.disabled_components.contains(LinkSelfContainedComponents::LINKER)
     }
@@ -360,7 +360,7 @@ impl LinkerFeaturesCli {
         // Duplicate flags are reduced as we go, the last occurrence wins:
         // `+feature,-feature,+feature` only enables the feature, and does not record it as both
         // enabled and disabled on the CLI.
-        // We also only expose `+/-lld` at the moment, as it's currenty the only implemented linker
+        // We also only expose `+/-lld` at the moment, as it's currently the only implemented linker
         // feature and toggling `LinkerFeatures::CC` would be a noop.
         match feature {
             "+lld" => {
@@ -1102,7 +1102,7 @@ bitflags::bitflags! {
         const MACRO = 1 << 0;
         /// Apply remappings to printed compiler diagnostics
         const DIAGNOSTICS = 1 << 1;
-        /// Apply remappings to debug informations
+        /// Apply remappings to debug information
         const DEBUGINFO = 1 << 3;
 
         /// An alias for `macro` and `debuginfo`. This ensures all paths in compiled
@@ -1376,7 +1376,7 @@ enum OptionStability {
 
 pub struct RustcOptGroup {
     pub apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
-    name: &'static str,
+    pub name: &'static str,
     stability: OptionStability,
 }
 
@@ -3004,8 +3004,8 @@ pub(crate) mod dep_tracking {
     use rustc_data_structures::stable_hasher::Hash64;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
-    use rustc_span::edition::Edition;
     use rustc_span::RealFileName;
+    use rustc_span::edition::Edition;
     use rustc_target::spec::{
         CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,

@@ -11,8 +11,8 @@ use clippy_utils::{
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{self, Symbol, sym};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
@@ -78,7 +78,6 @@ pub(super) fn check<'tcx>(
             cx.tcx
                 .inherent_impls(adt_def.did())
                 .into_iter()
-                .flatten()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
                 .find_map(|assoc| {
                     if assoc.fn_has_self_parameter

@@ -6,7 +6,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
 use rustc_middle::bug;
@@ -17,8 +17,8 @@ use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Ty, TyCtxt,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, sym};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Span};
 use tracing::{debug, instrument, warn};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -1296,6 +1296,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
             && self.tecx.tcx.trait_of_item(def_id).is_some()
             && !has_impl_trait(def_id)
+            // FIXME(fn_delegation): In delegation item argument spans are equal to last path
+            // segment. This leads to ICE's when emitting `multipart_suggestion`.
+            && tcx.hir().opt_delegation_sig_id(expr.hir_id.owner.def_id).is_none()
         {
             let successor =
                 method_args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));

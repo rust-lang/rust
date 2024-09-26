@@ -178,7 +178,7 @@ impl Parker {
     }
 
     fn ptr(&self) -> *const c_void {
-        core::ptr::addr_of!(self.state).cast::<c_void>()
+        (&raw const self.state).cast::<c_void>()
     }
 }
 
@@ -190,7 +190,7 @@ mod keyed_events {
     use core::sync::atomic::Ordering::{Acquire, Relaxed};
     use core::time::Duration;
 
-    use super::{Parker, EMPTY, NOTIFIED};
+    use super::{EMPTY, NOTIFIED, Parker};
     use crate::sys::c;
 
     pub unsafe fn park(parker: Pin<&Parker>) {

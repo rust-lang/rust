@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![feature(decl_macro)]
+#![feature(file_buffered)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
@@ -14,7 +15,7 @@ mod queries;
 pub mod util;
 
 pub use callbacks::setup_callbacks;
-pub use interface::{run_compiler, Config};
+pub use interface::{Config, run_compiler};
 pub use passes::DEFAULT_QUERY_PROVIDERS;
 pub use queries::{Linker, Queries};
 

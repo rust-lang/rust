@@ -1,24 +1,22 @@
 use std::assert_matches::assert_matches;
 
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 use rustc_target::abi::*;
 
 /// Enforce some basic invariants on layouts.
-pub(super) fn sanity_check_layout<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
-    layout: &TyAndLayout<'tcx>,
-) {
+pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
+    let tcx = cx.tcx();
+
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
-    if layout.ty.is_privately_uninhabited(cx.tcx, cx.param_env) {
+    if layout.ty.is_privately_uninhabited(tcx, cx.param_env) {
         assert!(layout.abi.is_uninhabited());
     }
 
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
         bug!("size is not a multiple of align, in the following layout:\n{layout:#?}");
     }
-    if layout.size.bytes() >= cx.tcx.data_layout.obj_size_bound() {
+    if layout.size.bytes() >= tcx.data_layout.obj_size_bound() {
         bug!("size is too large, in the following layout:\n{layout:#?}");
     }
 
@@ -29,7 +27,7 @@ pub(super) fn sanity_check_layout<'tcx>(
 
     /// Yields non-ZST fields of the type
     fn non_zst_fields<'tcx, 'a>(
-        cx: &'a LayoutCx<'tcx, TyCtxt<'tcx>>,
+        cx: &'a LayoutCx<'tcx>,
         layout: &'a TyAndLayout<'tcx>,
     ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> + 'a {
         (0..layout.layout.fields().count()).filter_map(|i| {
@@ -43,10 +41,7 @@ pub(super) fn sanity_check_layout<'tcx>(
         })
     }
 
-    fn skip_newtypes<'tcx>(
-        cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
-        layout: &TyAndLayout<'tcx>,
-    ) -> TyAndLayout<'tcx> {
+    fn skip_newtypes<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) -> TyAndLayout<'tcx> {
         if matches!(layout.layout.variants(), Variants::Multiple { .. }) {
             // Definitely not a newtype of anything.
             return *layout;
@@ -69,7 +64,7 @@ pub(super) fn sanity_check_layout<'tcx>(
         *layout
     }
 
-    fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: &TyAndLayout<'tcx>) {
+    fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
         // Verify the ABI mandated alignment and size.
         let align = layout.abi.inherent_align(cx).map(|align| align.abi);
         let size = layout.abi.inherent_size(cx);

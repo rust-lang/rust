@@ -17,7 +17,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, align_of_val_raw, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, align_of_val_raw};
 use core::ops::{CoerceUnsized, Deref, DerefPure, DispatchFromDyn, Receiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::{Pin, PinCoerceUnsized};
@@ -450,54 +450,7 @@ impl<T> Arc<T> {
     where
         F: FnOnce(&Weak<T>) -> T,
     {
-        // Construct the inner in the "uninitialized" state with a single
-        // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(Box::new(ArcInner {
-            strong: atomic::AtomicUsize::new(0),
-            weak: atomic::AtomicUsize::new(1),
-            data: mem::MaybeUninit::<T>::uninit(),
-        }))
-        .into();
-        let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
-
-        let weak = Weak { ptr: init_ptr, alloc: Global };
-
-        // It's important we don't give up ownership of the weak pointer, or
-        // else the memory might be freed by the time `data_fn` returns. If
-        // we really wanted to pass ownership, we could create an additional
-        // weak pointer for ourselves, but this would result in additional
-        // updates to the weak reference count which might not be necessary
-        // otherwise.
-        let data = data_fn(&weak);
-
-        // Now we can properly initialize the inner value and turn our weak
-        // reference into a strong reference.
-        let strong = unsafe {
-            let inner = init_ptr.as_ptr();
-            ptr::write(ptr::addr_of_mut!((*inner).data), data);
-
-            // The above write to the data field must be visible to any threads which
-            // observe a non-zero strong count. Therefore we need at least "Release" ordering
-            // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
-            //
-            // "Acquire" ordering is not required. When considering the possible behaviours
-            // of `data_fn` we only need to look at what it could do with a reference to a
-            // non-upgradeable `Weak`:
-            // - It can *clone* the `Weak`, increasing the weak reference count.
-            // - It can drop those clones, decreasing the weak reference count (but never to zero).
-            //
-            // These side effects do not impact us in any way, and no other side effects are
-            // possible with safe code alone.
-            let prev_value = (*inner).strong.fetch_add(1, Release);
-            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-
-            Arc::from_inner(init_ptr)
-        };
-
-        // Strong references should collectively own a shared weak reference,
-        // so don't run the destructor for our old weak reference.
-        mem::forget(weak);
-        strong
+        Self::new_cyclic_in(data_fn, Global)
     }
 
     /// Constructs a new `Arc` with uninitialized contents.
@@ -520,7 +473,7 @@ impl<T> Arc<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
@@ -779,6 +732,98 @@ impl<T, A: Allocator> Arc<T, A> {
                 alloc,
             )
         }
+    }
+
+    /// Constructs a new `Arc<T, A>` in the given allocator while giving you a `Weak<T, A>` to the allocation,
+    /// to allow you to construct a `T` which holds a weak pointer to itself.
+    ///
+    /// Generally, a structure circularly referencing itself, either directly or
+    /// indirectly, should not hold a strong reference to itself to prevent a memory leak.
+    /// Using this function, you get access to the weak pointer during the
+    /// initialization of `T`, before the `Arc<T, A>` is created, such that you can
+    /// clone and store it inside the `T`.
+    ///
+    /// `new_cyclic_in` first allocates the managed allocation for the `Arc<T, A>`,
+    /// then calls your closure, giving it a `Weak<T, A>` to this allocation,
+    /// and only afterwards completes the construction of the `Arc<T, A>` by placing
+    /// the `T` returned from your closure into the allocation.
+    ///
+    /// Since the new `Arc<T, A>` is not fully-constructed until `Arc<T, A>::new_cyclic_in`
+    /// returns, calling [`upgrade`] on the weak reference inside your closure will
+    /// fail and result in a `None` value.
+    ///
+    /// # Panics
+    ///
+    /// If `data_fn` panics, the panic is propagated to the caller, and the
+    /// temporary [`Weak<T>`] is dropped normally.
+    ///
+    /// # Example
+    ///
+    /// See [`new_cyclic`]
+    ///
+    /// [`new_cyclic`]: Arc::new_cyclic
+    /// [`upgrade`]: Weak::upgrade
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn new_cyclic_in<F>(data_fn: F, alloc: A) -> Arc<T, A>
+    where
+        F: FnOnce(&Weak<T, A>) -> T,
+    {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
+        let (uninit_raw_ptr, alloc) = Box::into_raw_with_allocator(Box::new_in(
+            ArcInner {
+                strong: atomic::AtomicUsize::new(0),
+                weak: atomic::AtomicUsize::new(1),
+                data: mem::MaybeUninit::<T>::uninit(),
+            },
+            alloc,
+        ));
+        let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
+        let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
+
+        let weak = Weak { ptr: init_ptr, alloc: alloc };
+
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
+        let data = data_fn(&weak);
+
+        // Now we can properly initialize the inner value and turn our weak
+        // reference into a strong reference.
+        let strong = unsafe {
+            let inner = init_ptr.as_ptr();
+            ptr::write(&raw mut (*inner).data, data);
+
+            // The above write to the data field must be visible to any threads which
+            // observe a non-zero strong count. Therefore we need at least "Release" ordering
+            // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
+            //
+            // "Acquire" ordering is not required. When considering the possible behaviours
+            // of `data_fn` we only need to look at what it could do with a reference to a
+            // non-upgradeable `Weak`:
+            // - It can *clone* the `Weak`, increasing the weak reference count.
+            // - It can drop those clones, decreasing the weak reference count (but never to zero).
+            //
+            // These side effects do not impact us in any way, and no other side effects are
+            // possible with safe code alone.
+            let prev_value = (*inner).strong.fetch_add(1, Release);
+            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+
+            // Strong references should collectively own a shared weak reference,
+            // so don't run the destructor for our old weak reference.
+            // Calling into_raw_with_allocator has the double effect of giving us back the allocator,
+            // and forgetting the weak reference.
+            let alloc = weak.into_raw_with_allocator().1;
+
+            Arc::from_inner_in(init_ptr, alloc)
+        };
+
+        strong
     }
 
     /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator. If `T` does not implement `Unpin`,
@@ -1115,7 +1160,7 @@ impl<T> Arc<[T]> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe { Arc::from_ptr(Arc::allocate_for_slice(len)) }
@@ -1262,7 +1307,7 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<T, A> {
@@ -1303,7 +1348,7 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<[T], A> {
@@ -1538,7 +1583,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
         // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { ptr::addr_of_mut!((*ptr).data) }
+        unsafe { &raw mut (*ptr).data }
     }
 
     /// Constructs an `Arc<T, A>` from a raw pointer.
@@ -1910,8 +1955,8 @@ impl<T: ?Sized> Arc<T> {
         debug_assert_eq!(unsafe { Layout::for_value_raw(inner) }, layout);
 
         unsafe {
-            ptr::addr_of_mut!((*inner).strong).write(atomic::AtomicUsize::new(1));
-            ptr::addr_of_mut!((*inner).weak).write(atomic::AtomicUsize::new(1));
+            (&raw mut (*inner).strong).write(atomic::AtomicUsize::new(1));
+            (&raw mut (*inner).weak).write(atomic::AtomicUsize::new(1));
         }
 
         inner
@@ -1941,8 +1986,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 
             // Copy value as bytes
             ptr::copy_nonoverlapping(
-                core::ptr::addr_of!(*src) as *const u8,
-                ptr::addr_of_mut!((*ptr).data) as *mut u8,
+                (&raw const *src) as *const u8,
+                (&raw mut (*ptr).data) as *mut u8,
                 value_size,
             );
 
@@ -1977,7 +2022,7 @@ impl<T> Arc<[T]> {
         unsafe {
             let ptr = Self::allocate_for_slice(v.len());
 
-            ptr::copy_nonoverlapping(v.as_ptr(), ptr::addr_of_mut!((*ptr).data) as *mut T, v.len());
+            ptr::copy_nonoverlapping(v.as_ptr(), (&raw mut (*ptr).data) as *mut T, v.len());
 
             Self::from_ptr(ptr)
         }
@@ -2016,7 +2061,7 @@ impl<T> Arc<[T]> {
             let layout = Layout::for_value_raw(ptr);
 
             // Pointer to first element
-            let elems = ptr::addr_of_mut!((*ptr).data) as *mut T;
+            let elems = (&raw mut (*ptr).data) as *mut T;
 
             let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
 
@@ -2760,7 +2805,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             // SAFETY: if is_dangling returns false, then the pointer is dereferenceable.
             // The payload may be dropped at this point, and we have to maintain provenance,
             // so use raw pointer manipulation.
-            unsafe { ptr::addr_of_mut!((*ptr).data) }
+            unsafe { &raw mut (*ptr).data }
         }
     }
 
@@ -3383,7 +3428,7 @@ impl<T: ?Sized + fmt::Debug, A: Allocator> fmt::Debug for Arc<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> fmt::Pointer for Arc<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&core::ptr::addr_of!(**self), f)
+        fmt::Pointer::fmt(&(&raw const **self), f)
     }
 }
 
@@ -3633,7 +3678,7 @@ impl<T, A: Allocator + Clone> From<Vec<T, A>> for Arc<[T], A> {
             let (vec_ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
 
             let rc_ptr = Self::allocate_for_slice_in(len, &alloc);
-            ptr::copy_nonoverlapping(vec_ptr, ptr::addr_of_mut!((*rc_ptr).data) as *mut T, len);
+            ptr::copy_nonoverlapping(vec_ptr, (&raw mut (*rc_ptr).data) as *mut T, len);
 
             // Create a `Vec<T, &A>` with length 0, to deallocate the buffer
             // without dropping its contents or the allocator

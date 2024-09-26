@@ -13,11 +13,11 @@
 
 use rustc_ast::Mutability;
 use rustc_middle::{mir, ty};
-use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::check_arg_count;
+use self::helpers::check_arg_count;
 
 /// Holds all of the relevant data for when unwinding hits a `try` frame.
 #[derive(Debug)]
@@ -248,13 +248,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Call the lang item associated with this message.
                 let fn_item = this.tcx.require_lang_item(msg.panic_function(), None);
                 let instance = ty::Instance::mono(this.tcx.tcx, fn_item);
-                this.call_function(
-                    instance,
-                    Abi::Rust,
-                    &[],
-                    None,
-                    StackPopCleanup::Goto { ret: None, unwind },
-                )?;
+                this.call_function(instance, Abi::Rust, &[], None, StackPopCleanup::Goto {
+                    ret: None,
+                    unwind,
+                })?;
             }
         }
         Ok(())

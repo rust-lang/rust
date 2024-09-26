@@ -18,9 +18,9 @@ use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
 
+use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{
     BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode,
 };
@@ -104,11 +104,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         variable_source_info: SourceInfo,
         declare_let_bindings: DeclareLetBindings,
     ) -> BlockAnd<()> {
-        self.then_else_break_inner(
-            block,
-            expr_id,
-            ThenElseArgs { temp_scope_override, variable_source_info, declare_let_bindings },
-        )
+        self.then_else_break_inner(block, expr_id, ThenElseArgs {
+            temp_scope_override,
+            variable_source_info,
+            declare_let_bindings,
+        })
     }
 
     fn then_else_break_inner(
@@ -134,24 +134,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let local_scope = this.local_scope();
                 let (lhs_success_block, failure_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
-                        this.then_else_break_inner(
-                            block,
-                            lhs,
-                            ThenElseArgs {
-                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                                ..args
-                            },
-                        )
-                    });
-                let rhs_success_block = this
-                    .then_else_break_inner(
-                        failure_block,
-                        rhs,
-                        ThenElseArgs {
+                        this.then_else_break_inner(block, lhs, ThenElseArgs {
                             declare_let_bindings: DeclareLetBindings::LetNotPermitted,
                             ..args
-                        },
-                    )
+                        })
+                    });
+                let rhs_success_block = this
+                    .then_else_break_inner(failure_block, rhs, ThenElseArgs {
+                        declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                        ..args
+                    })
                     .into_block();
 
                 // Make the LHS and RHS success arms converge to a common block.
@@ -178,14 +170,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         if this.tcx.sess.instrument_coverage() {
                             this.cfg.push_coverage_span_marker(block, this.source_info(expr_span));
                         }
-                        this.then_else_break_inner(
-                            block,
-                            arg,
-                            ThenElseArgs {
-                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                                ..args
-                            },
-                        )
+                        this.then_else_break_inner(block, arg, ThenElseArgs {
+                            declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                            ..args
+                        })
                     });
                 this.break_for_else(success_block, args.variable_source_info);
                 failure_block.unit()
@@ -638,30 +626,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let ty_source_info = self.source_info(annotation.span);
 
                 let base = self.canonical_user_type_annotations.push(annotation.clone());
-                self.cfg.push(
-                    block,
-                    Statement {
-                        source_info: ty_source_info,
-                        kind: StatementKind::AscribeUserType(
-                            Box::new((place, UserTypeProjection { base, projs: Vec::new() })),
-                            // We always use invariant as the variance here. This is because the
-                            // variance field from the ascription refers to the variance to use
-                            // when applying the type to the value being matched, but this
-                            // ascription applies rather to the type of the binding. e.g., in this
-                            // example:
-                            //
-                            // ```
-                            // let x: T = <expr>
-                            // ```
-                            //
-                            // We are creating an ascription that defines the type of `x` to be
-                            // exactly `T` (i.e., with invariance). The variance field, in
-                            // contrast, is intended to be used to relate `T` to the type of
-                            // `<expr>`.
-                            ty::Invariant,
-                        ),
-                    },
-                );
+                self.cfg.push(block, Statement {
+                    source_info: ty_source_info,
+                    kind: StatementKind::AscribeUserType(
+                        Box::new((place, UserTypeProjection { base, projs: Vec::new() })),
+                        // We always use invariant as the variance here. This is because the
+                        // variance field from the ascription refers to the variance to use
+                        // when applying the type to the value being matched, but this
+                        // ascription applies rather to the type of the binding. e.g., in this
+                        // example:
+                        //
+                        // ```
+                        // let x: T = <expr>
+                        // ```
+                        //
+                        // We are creating an ascription that defines the type of `x` to be
+                        // exactly `T` (i.e., with invariance). The variance field, in
+                        // contrast, is intended to be used to relate `T` to the type of
+                        // `<expr>`.
+                        ty::Invariant,
+                    ),
+                });
 
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
@@ -2559,19 +2544,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let source_info = self.source_info(ascription.annotation.span);
 
             let base = self.canonical_user_type_annotations.push(ascription.annotation);
-            self.cfg.push(
-                block,
-                Statement {
-                    source_info,
-                    kind: StatementKind::AscribeUserType(
-                        Box::new((
-                            ascription.source,
-                            UserTypeProjection { base, projs: Vec::new() },
-                        )),
-                        ascription.variance,
-                    ),
-                },
-            );
+            self.cfg.push(block, Statement {
+                source_info,
+                kind: StatementKind::AscribeUserType(
+                    Box::new((ascription.source, UserTypeProjection { base, projs: Vec::new() })),
+                    ascription.variance,
+                ),
+            });
         }
     }
 

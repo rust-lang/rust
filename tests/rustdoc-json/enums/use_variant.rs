@@ -5,8 +5,8 @@ pub enum AlwaysNone {
 }
 //@ is "$.index[*][?(@.name == 'AlwaysNone')].inner.enum.variants[*]" $None
 
-//@ set use_None = "$.index[*][?(@.inner.import)].id"
-//@ is "$.index[*][?(@.inner.import)].inner.import.id" $None
+//@ set use_None = "$.index[*][?(@.inner.use)].id"
+//@ is "$.index[*][?(@.inner.use)].inner.use.id" $None
 pub use AlwaysNone::None;
 
 //@ ismany "$.index[*][?(@.name == 'use_variant')].inner.module.items[*]" $AlwaysNone $use_None

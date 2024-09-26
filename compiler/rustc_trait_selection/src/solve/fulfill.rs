@@ -15,9 +15,9 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
 use tracing::instrument;
 
+use super::Certainty;
 use super::delegate::SolverDelegate;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use super::Certainty;
 use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
 
 /// A trait engine using the new trait solver.
@@ -302,7 +302,7 @@ fn fulfillment_error_for_stalled<'tcx>(
             Ok((_, Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }))) => (
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
                 // Don't look into overflows because we treat overflows weirdly anyways.
-                // In `instantiate_response_discarding_overflow` we set `has_changed = false`,
+                // We discard the inference constraints from overflowing goals, so
                 // recomputing the goal again during `find_best_leaf_obligation` may apply
                 // inference guidance that makes other goals go from ambig -> pass, for example.
                 //
@@ -347,10 +347,10 @@ fn find_best_leaf_obligation<'tcx>(
 ) -> PredicateObligation<'tcx> {
     let obligation = infcx.resolve_vars_if_possible(obligation.clone());
     infcx
-        .visit_proof_tree(
-            obligation.clone().into(),
-            &mut BestObligation { obligation: obligation.clone(), consider_ambiguities },
-        )
+        .visit_proof_tree(obligation.clone().into(), &mut BestObligation {
+            obligation: obligation.clone(),
+            consider_ambiguities,
+        })
         .break_value()
         .unwrap_or(obligation)
 }
