@@ -54,27 +54,29 @@ benches! {
     }
 
     fn case04_while_loop(bytes: &[u8]) {
-        // Constant chosen to enable `pmovmskb` instruction on x86-64
-        const N: usize = 32;
+        // Process chunks of 32 bytes at a time in the fast path to enable
+        // auto-vectorization and use of `pmovmskb`. Two 128-bit vector registers
+        // can be OR'd together and then the resulting vector can be tested for
+        // non-ASCII bytes.
+        const CHUNK_SIZE: usize = 32;
 
         let mut i = 0;
 
-        while i + N <= bytes.len() {
-            let chunk_end = i + N;
+        while i + CHUNK_SIZE <= bytes.len() {
+            let chunk_end = i + CHUNK_SIZE;
 
             // Get LLVM to produce a `pmovmskb` instruction on x86-64 which
             // creates a mask from the most significant bit of each byte.
             // ASCII bytes are less than 128 (0x80), so their most significant
-            // bit is unset. Thus, detecting non-ASCII bytes can be done in one
-            // instruction.
+            // bit is unset.
             let mut count = 0;
             while i < chunk_end {
-                count += (bytes[i] <= 127) as u8;
+                count += bytes[i].is_ascii() as u8;
                 i += 1;
             }
 
             // All bytes should be <= 127 so count is equal to chunk size.
-            if count != N as u8 {
+            if count != CHUNK_SIZE as u8 {
                 return false;
             }
         }
@@ -82,7 +84,7 @@ benches! {
         // Process the remaining `bytes.len() % N` bytes.
         let mut is_ascii = true;
         while i < bytes.len() {
-            is_ascii &= bytes[i] <= 127;
+            is_ascii &= bytes[i].is_ascii();
             i += 1;
         }
 
