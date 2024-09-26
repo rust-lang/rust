@@ -10,10 +10,10 @@
 
 // But should fire on non-binary crates.
 
-//@[cdylib_] ignore-musl (dylibs are not supported)
-//@[dylib_] ignore-musl (dylibs are not supported)
-//@[dylib_] ignore-wasm (dylib is not supported)
-//@[proc_macro_] ignore-wasm (dylib is not supported)
+//@[cdylib_] needs-dynamic-linking
+//@[dylib_] needs-dynamic-linking
+//@[proc_macro_] force-host
+//@[proc_macro_] no-prefer-dynamic
 
 //@[cdylib_] compile-flags: --crate-type=cdylib
 //@[dylib_] compile-flags: --crate-type=dylib
