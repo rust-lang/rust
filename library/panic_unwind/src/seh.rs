@@ -50,7 +50,6 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::ffi::{c_int, c_uint, c_void};
 use core::mem::{self, ManuallyDrop};
-use core::ptr::{addr_of, addr_of_mut};
 
 // NOTE(nbdd0121): The `canary` field is part of stable ABI.
 #[repr(C)]
@@ -131,8 +130,6 @@ mod imp {
 
 #[cfg(not(target_arch = "x86"))]
 mod imp {
-    use core::ptr::addr_of;
-
     // On 64-bit systems, SEH represents pointers as 32-bit offsets from `__ImageBase`.
     #[repr(transparent)]
     #[derive(Copy, Clone)]
@@ -157,7 +154,7 @@ mod imp {
             // going to be cross-lang LTOed anyway. However, using expose is shorter and
             // requires less unsafe.
             let addr: usize = ptr.expose_provenance();
-            let image_base = addr_of!(__ImageBase).addr();
+            let image_base = (&raw const __ImageBase).addr();
             let offset: usize = addr - image_base;
             Self(offset as u32)
         }
@@ -250,7 +247,7 @@ extern "C" {
 // This is fine since the MSVC runtime uses string comparison on the type name
 // to match TypeDescriptors rather than pointer equality.
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
-    pVFTable: addr_of!(TYPE_INFO_VTABLE) as *const _,
+    pVFTable: (&raw const TYPE_INFO_VTABLE) as *const _,
     spare: core::ptr::null_mut(),
     name: TYPE_NAME,
 };
@@ -304,8 +301,8 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // dropped when unwinding. Instead it will be dropped by exception_cleanup
     // which is invoked by the C++ runtime.
     let mut exception =
-        ManuallyDrop::new(Exception { canary: addr_of!(TYPE_DESCRIPTOR), data: Some(data) });
-    let throw_ptr = addr_of_mut!(exception) as *mut _;
+        ManuallyDrop::new(Exception { canary: (&raw const TYPE_DESCRIPTOR), data: Some(data) });
+    let throw_ptr = (&raw mut exception) as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
     // pointers between these structure are just that, pointers. On 64-bit MSVC,
@@ -328,23 +325,23 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
     atomic_store_seqcst(
-        addr_of_mut!(THROW_INFO.pmfnUnwind).cast(),
+        (&raw mut THROW_INFO.pmfnUnwind).cast(),
         ptr_t::new(exception_cleanup as *mut u8).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(THROW_INFO.pCatchableTypeArray).cast(),
-        ptr_t::new(addr_of_mut!(CATCHABLE_TYPE_ARRAY).cast()).raw(),
+        (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
+        ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
-        ptr_t::new(addr_of_mut!(CATCHABLE_TYPE).cast()).raw(),
+        (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
+        ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE.pType).cast(),
-        ptr_t::new(addr_of_mut!(TYPE_DESCRIPTOR).cast()).raw(),
+        (&raw mut CATCHABLE_TYPE.pType).cast(),
+        ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE.copyFunction).cast(),
+        (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
         ptr_t::new(exception_copy as *mut u8).raw(),
     );
 
@@ -352,7 +349,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
         fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
     }
 
-    _CxxThrowException(throw_ptr, addr_of_mut!(THROW_INFO) as *mut _);
+    _CxxThrowException(throw_ptr, (&raw mut THROW_INFO) as *mut _);
 }
 
 pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
@@ -362,8 +359,8 @@ pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
         super::__rust_foreign_exception();
     }
     let exception = payload as *mut Exception;
-    let canary = addr_of!((*exception).canary).read();
-    if !core::ptr::eq(canary, addr_of!(TYPE_DESCRIPTOR)) {
+    let canary = (&raw const (*exception).canary).read();
+    if !core::ptr::eq(canary, &raw const TYPE_DESCRIPTOR) {
         // A foreign Rust exception.
         super::__rust_foreign_exception();
     }

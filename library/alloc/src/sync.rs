@@ -797,7 +797,7 @@ impl<T, A: Allocator> Arc<T, A> {
         // reference into a strong reference.
         let strong = unsafe {
             let inner = init_ptr.as_ptr();
-            ptr::write(ptr::addr_of_mut!((*inner).data), data);
+            ptr::write(&raw mut (*inner).data, data);
 
             // The above write to the data field must be visible to any threads which
             // observe a non-zero strong count. Therefore we need at least "Release" ordering
@@ -1583,7 +1583,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
         // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { ptr::addr_of_mut!((*ptr).data) }
+        unsafe { &raw mut (*ptr).data }
     }
 
     /// Constructs an `Arc<T, A>` from a raw pointer.
@@ -1955,8 +1955,8 @@ impl<T: ?Sized> Arc<T> {
         debug_assert_eq!(unsafe { Layout::for_value_raw(inner) }, layout);
 
         unsafe {
-            ptr::addr_of_mut!((*inner).strong).write(atomic::AtomicUsize::new(1));
-            ptr::addr_of_mut!((*inner).weak).write(atomic::AtomicUsize::new(1));
+            (&raw mut (*inner).strong).write(atomic::AtomicUsize::new(1));
+            (&raw mut (*inner).weak).write(atomic::AtomicUsize::new(1));
         }
 
         inner
@@ -1986,8 +1986,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 
             // Copy value as bytes
             ptr::copy_nonoverlapping(
-                core::ptr::addr_of!(*src) as *const u8,
-                ptr::addr_of_mut!((*ptr).data) as *mut u8,
+                (&raw const *src) as *const u8,
+                (&raw mut (*ptr).data) as *mut u8,
                 value_size,
             );
 
@@ -2022,7 +2022,7 @@ impl<T> Arc<[T]> {
         unsafe {
             let ptr = Self::allocate_for_slice(v.len());
 
-            ptr::copy_nonoverlapping(v.as_ptr(), ptr::addr_of_mut!((*ptr).data) as *mut T, v.len());
+            ptr::copy_nonoverlapping(v.as_ptr(), (&raw mut (*ptr).data) as *mut T, v.len());
 
             Self::from_ptr(ptr)
         }
@@ -2061,7 +2061,7 @@ impl<T> Arc<[T]> {
             let layout = Layout::for_value_raw(ptr);
 
             // Pointer to first element
-            let elems = ptr::addr_of_mut!((*ptr).data) as *mut T;
+            let elems = (&raw mut (*ptr).data) as *mut T;
 
             let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
 
@@ -2805,7 +2805,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             // SAFETY: if is_dangling returns false, then the pointer is dereferenceable.
             // The payload may be dropped at this point, and we have to maintain provenance,
             // so use raw pointer manipulation.
-            unsafe { ptr::addr_of_mut!((*ptr).data) }
+            unsafe { &raw mut (*ptr).data }
         }
     }
 
@@ -3428,7 +3428,7 @@ impl<T: ?Sized + fmt::Debug, A: Allocator> fmt::Debug for Arc<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> fmt::Pointer for Arc<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&core::ptr::addr_of!(**self), f)
+        fmt::Pointer::fmt(&(&raw const **self), f)
     }
 }
 
@@ -3678,7 +3678,7 @@ impl<T, A: Allocator + Clone> From<Vec<T, A>> for Arc<[T], A> {
             let (vec_ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
 
             let rc_ptr = Self::allocate_for_slice_in(len, &alloc);
-            ptr::copy_nonoverlapping(vec_ptr, ptr::addr_of_mut!((*rc_ptr).data) as *mut T, len);
+            ptr::copy_nonoverlapping(vec_ptr, (&raw mut (*rc_ptr).data) as *mut T, len);
 
             // Create a `Vec<T, &A>` with length 0, to deallocate the buffer
             // without dropping its contents or the allocator

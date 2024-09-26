@@ -199,7 +199,7 @@ use core::ops::{
     DerefPure, DispatchFromDyn, Receiver,
 };
 use core::pin::{Pin, PinCoerceUnsized};
-use core::ptr::{self, NonNull, Unique, addr_of_mut};
+use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll};
 use core::{borrow, fmt, slice};
 
@@ -1277,7 +1277,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[inline]
     pub fn into_raw(b: Self) -> *mut T {
         // Make sure Miri realizes that we transition from a noalias pointer to a raw pointer here.
-        unsafe { addr_of_mut!(*&mut *Self::into_raw_with_allocator(b).0) }
+        unsafe { &raw mut *&mut *Self::into_raw_with_allocator(b).0 }
     }
 
     /// Consumes the `Box`, returning a wrapped `NonNull` pointer.
@@ -1396,7 +1396,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         // want *no* aliasing requirements here!
         // In case `A` *is* `Global`, this does not quite have the right behavior; `into_raw`
         // works around that.
-        let ptr = addr_of_mut!(**b);
+        let ptr = &raw mut **b;
         let alloc = unsafe { ptr::read(&b.1) };
         (ptr, alloc)
     }
@@ -1506,7 +1506,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub fn as_mut_ptr(b: &mut Self) -> *mut T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
         // any references.
-        ptr::addr_of_mut!(**b)
+        &raw mut **b
     }
 
     /// Returns a raw pointer to the `Box`'s contents.
@@ -1554,7 +1554,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub fn as_ptr(b: &Self) -> *const T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
         // any references.
-        ptr::addr_of!(**b)
+        &raw const **b
     }
 
     /// Returns a reference to the underlying allocator.
