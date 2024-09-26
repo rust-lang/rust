@@ -12,13 +12,13 @@
     <link rel="stylesheet" {#+ #}
           href="{{static_root_path|safe}}{{files.normalize_css}}"> {# #}
     <link rel="stylesheet" {#+ #}
-          href="{{static_root_path|safe}}{{files.rustdoc_css}}"> {# #}
+          href="{{static_root_path|safe}}{{files.rustdoc_css}}">
     {% if !layout.default_settings.is_empty() %}
     <script id="default-settings" {#+ #}
       {%~ for (k, v) in layout.default_settings ~%}
         data-{{k}}="{{v}}"
       {% endfor %}
-    ></script> {# #}
+    ></script>
     {% endif %}
     <meta name="rustdoc-vars" {#+ #}
          data-root-path="{{page.root_path|safe}}" {#+ #}
@@ -31,36 +31,36 @@
          data-search-js="{{files.search_js}}" {#+ #}
          data-settings-js="{{files.settings_js}}" {#+ #}
     > {# #}
-    <script src="{{static_root_path|safe}}{{files.storage_js}}"></script> {# #}
+    <script src="{{static_root_path|safe}}{{files.storage_js}}"></script>
     {% if page.css_class.contains("crate") %}
-    <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {# #}
+    <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script>
     {% else if page.css_class == "src" %}
     <script defer src="{{static_root_path|safe}}{{files.src_script_js}}"></script> {# #}
-    <script defer src="{{page.root_path|safe}}src-files{{page.resource_suffix}}.js"></script> {# #}
+    <script defer src="{{page.root_path|safe}}src-files{{page.resource_suffix}}.js"></script>
     {% else if !page.css_class.contains("mod") %}
-    <script defer src="sidebar-items{{page.resource_suffix}}.js"></script> {# #}
+    <script defer src="sidebar-items{{page.resource_suffix}}.js"></script>
     {% else if !page.css_class.contains("sys") %}
-    <script defer src="../sidebar-items{{page.resource_suffix}}.js"></script> {# #}
+    <script defer src="../sidebar-items{{page.resource_suffix}}.js"></script>
     {% endif %}
-    <script defer src="{{static_root_path|safe}}{{files.main_js}}"></script> {# #}
+    <script defer src="{{static_root_path|safe}}{{files.main_js}}"></script>
     {% if layout.scrape_examples_extension %}
-    <script defer src="{{static_root_path|safe}}{{files.scrape_examples_js}}"></script> {# #}
+    <script defer src="{{static_root_path|safe}}{{files.scrape_examples_js}}"></script>
     {% endif %}
     <noscript> {# #}
         <link rel="stylesheet" {#+ #}
            href="{{static_root_path|safe}}{{files.noscript_css}}"> {# #}
-    </noscript> {# #}
+    </noscript>
     {% if layout.css_file_extension.is_some() %}
         <link rel="stylesheet" {#+ #}
-            href="{{page.root_path|safe}}theme{{page.resource_suffix}}.css"> {# #}
+            href="{{page.root_path|safe}}theme{{page.resource_suffix}}.css">
     {% endif %}
     {% if !layout.favicon.is_empty() %}
-        <link rel="icon" href="{{layout.favicon}}"> {# #}
+        <link rel="icon" href="{{layout.favicon}}">
     {% else %}
         <link rel="alternate icon" type="image/png" {#+ #}
             href="{{static_root_path|safe}}{{files.rust_favicon_png_32}}"> {# #}
         <link rel="icon" type="image/svg+xml" {#+ #}
-            href="{{static_root_path|safe}}{{files.rust_favicon_svg}}"> {# #}
+            href="{{static_root_path|safe}}{{files.rust_favicon_svg}}">
     {% endif %}
     {{ layout.external_html.in_header|safe }}
 </head> {# #}
@@ -69,60 +69,60 @@
     <div class="warning"> {# #}
         This old browser is unsupported and will most likely display funky things. {# #}
     </div> {# #}
-    <![endif]--> {# #}
+    <![endif]-->
     {{ layout.external_html.before_content|safe }}
     {% if page.css_class != "src" %}
     <nav class="mobile-topbar"> {# #}
-        <button class="sidebar-menu-toggle" title="show sidebar"></button> {# #}
+        <button class="sidebar-menu-toggle" title="show sidebar"></button>
         {% if !layout.logo.is_empty() || page.rust_logo %}
-        <a class="logo-container" href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html"> {# #}
+        <a class="logo-container" href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">
         {% if page.rust_logo %}
-            <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt=""> {# #}
+            <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="">
         {% else if !layout.logo.is_empty() %}
-            <img src="{{layout.logo}}" alt=""> {# #}
+            <img src="{{layout.logo}}" alt="">
         {% endif %}
-        </a> {# #}
+        </a>
         {% endif %}
     </nav>
     {% endif %}
-    <nav class="sidebar"> {# #}
+    <nav class="sidebar">
         {% if page.css_class != "src" %}
         <div class="sidebar-crate">
             {% if !layout.logo.is_empty() || page.rust_logo %}
-            <a class="logo-container" href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html"> {# #}
+            <a class="logo-container" href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">
                 {% if page.rust_logo %}
-                    <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {# #}
+                    <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo">
                 {% else if !layout.logo.is_empty() %}
-                    <img src="{{layout.logo}}" alt="logo"> {# #}
+                    <img src="{{layout.logo}}" alt="logo">
                 {% endif %}
-            </a> {# #}
+            </a>
             {% endif %}
             <h2> {# #}
-                <a href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">{{display_krate|wrapped|safe}}</a> {# #}
+                <a href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">{{display_krate|wrapped|safe}}</a>
                 {% if !display_krate_version_number.is_empty() %}
                     <span class="version">{{+ display_krate_version_number}}</span>
                 {% endif %}
             </h2> {# #}
-        </div> {# #}
+        </div>
         {% if !display_krate_version_extra.is_empty() %}
-        <div class="version">{{+ display_krate_version_extra}}</div> {# #}
+        <div class="version">{{+ display_krate_version_extra}}</div>
         {% endif %}
         {% else %}
         <div class="src-sidebar-title"> {# #}
             <h2>Files</h2> {# #}
-        </div> {# #}
+        </div>
         {% endif %}
         {{ sidebar|safe }}
     </nav> {# #}
     <div class="sidebar-resizer"></div> {# #}
-    <main> {# #}
+    <main>
         {% if page.css_class != "src" %}<div class="width-limiter">{% endif %}
             {# defined in storage.js to avoid duplicating complex UI across every page #}
             {# and because the search form only works if JS is enabled anyway #}
             <rustdoc-search></rustdoc-search> {# #}
-            <section id="main-content" class="content">{{ content|safe }}</section> {# #}
+            <section id="main-content" class="content">{{ content|safe }}</section>
         {% if page.css_class != "src" %}</div>{% endif %}
-    </main> {# #}
+    </main>
     {{ layout.external_html.after_content|safe }}
 </body> {# #}
 </html> {# #}
