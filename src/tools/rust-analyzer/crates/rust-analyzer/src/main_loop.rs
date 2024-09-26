@@ -22,7 +22,9 @@ use crate::{
     diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
     flycheck::{self, FlycheckMessage},
-    global_state::{file_id_to_url, url_to_file_id, FetchWorkspaceRequest, GlobalState},
+    global_state::{
+        file_id_to_url, url_to_file_id, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
+    },
     hack_recover_crate_name,
     handlers::dispatch::{NotificationDispatcher, RequestDispatcher},
     lsp::{
@@ -695,9 +697,9 @@ impl GlobalState {
                 let (state, msg) = match progress {
                     ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
                     ProjectWorkspaceProgress::Report(msg) => (Progress::Report, Some(msg)),
-                    ProjectWorkspaceProgress::End(workspaces, force_reload_crate_graph) => {
-                        self.fetch_workspaces_queue
-                            .op_completed(Some((workspaces, force_reload_crate_graph)));
+                    ProjectWorkspaceProgress::End(workspaces, force_crate_graph_reload) => {
+                        let resp = FetchWorkspaceResponse { workspaces, force_crate_graph_reload };
+                        self.fetch_workspaces_queue.op_completed(resp);
                         if let Err(e) = self.fetch_workspace_error() {
                             error!("FetchWorkspaceError: {e}");
                         }
