@@ -185,7 +185,6 @@ macro_rules! make_visit {
     ) => {
         make_visit!{$ty $(,$($arg)? $(_ $ignored_arg)? : $arg_ty)*; $visit, $walk}
         if_mut!{{
-
             // Do not ignore $ignored_arg as $walk_flat_map will have to forward it to $visit
             fn $flat_map(
                 &mut self,
@@ -225,32 +224,6 @@ macro_rules! make_ast_visitor {
                     }
                 }}
             }
-        }
-
-        macro_rules! mutability_dependent {
-            () => {
-                make_visit!{Stmt; visit_stmt, walk_stmt}
-            };
-            (mut) => {
-                make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
-                make_visit!{MetaItem; visit_meta_item, walk_meta_item}
-
-                fn visit_id(&mut self, _id: ref_t!(NodeId)) -> result!() {
-                    // Do nothing.
-                }
-
-                fn visit_span(&mut self, _sp: ref_t!(Span)) -> result!() {
-                    // Do nothing.
-                }
-
-                fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
-                    walk_flat_map_stmt(self, s)
-                }
-
-                fn filter_map_expr(&mut self, e: P!(Expr)) -> Option<P!(Expr)> {
-                    noop_filter_map_expr(self, e)
-                }
-            };
         }
 
         /// Each method of the traits `Visitor` and `MutVisitor` is a hook to be potentially
@@ -310,7 +283,28 @@ macro_rules! make_ast_visitor {
                 type Result: VisitorResult = ();
             }}
 
-            mutability_dependent!{$($mut)?}
+            if_mut!{{
+                make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
+                make_visit!{MetaItem; visit_meta_item, walk_meta_item}
+
+                fn visit_id(&mut self, _id: ref_t!(NodeId)) -> result!() {
+                    // Do nothing.
+                }
+
+                fn visit_span(&mut self, _sp: ref_t!(Span)) -> result!() {
+                    // Do nothing.
+                }
+
+                fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
+                    walk_flat_map_stmt(self, s)
+                }
+
+                fn filter_map_expr(&mut self, e: P!(Expr)) -> Option<P!(Expr)> {
+                    noop_filter_map_expr(self, e)
+                }
+            } else {
+                make_visit!{Stmt; visit_stmt, walk_stmt}
+            }}
 
             make_visit!{Crate; visit_crate, walk_crate}
             make_visit!{AnonConst; visit_anon_const, walk_anon_const}
