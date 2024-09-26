@@ -399,6 +399,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Path, _ id: NodeId; visit_path, walk_path}
             make_visit!{MacroDef, _ id: NodeId; visit_macro_def, walk_macro_def}
             make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
+            make_visit!{AttrArgs; visit_attr_args, walk_attr_args}
             // FIXME: Remove P!
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Expr); visit_expr, walk_expr}
@@ -1237,7 +1238,7 @@ macro_rules! make_ast_visitor {
                     } = &$($mut)? **normal;
                     try_v!(vis.visit_safety(unsafety));
                     try_v!(vis.visit_path(path, DUMMY_NODE_ID));
-                    try_v!(walk_attr_args(vis, args));
+                    try_v!(vis.visit_attr_args(args));
                     visit_lazy_tts!(vis, tokens);
                     visit_lazy_tts!(vis, attr_tokens);
                 }
@@ -1268,7 +1269,6 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
-        // TODO: Maybe add visit_attr_args
         pub fn walk_attr_args<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             args: ref_t!(AttrArgs)
@@ -2212,7 +2212,7 @@ pub mod mut_visit {
             token::NtMeta(item) => {
                 let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
                 vis.visit_path(path, DUMMY_NODE_ID);
-                walk_attr_args(vis, args);
+                vis.visit_attr_args(args);
                 visit_lazy_tts(vis, tokens);
             }
             token::NtPath(path) => vis.visit_path(path, DUMMY_NODE_ID),
