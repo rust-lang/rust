@@ -1084,7 +1084,7 @@ extern "rust-intrinsic" {
     /// it does not require an `unsafe` block.
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
-    #[rustc_const_unstable(feature = "const_intrinsic_forget", issue = "none")]
+    #[rustc_const_stable(feature = "const_intrinsic_forget", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn forget<T: ?Sized>(_: T);
