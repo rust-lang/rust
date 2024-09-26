@@ -107,4 +107,4 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
 
 // Rust's exception class identifier.  This is used by personality routines to
 // determine whether the exception was thrown by their own runtime.
-const RUST_EXCEPTION_CLASS: uw::_Unwind_Exception_Class = u64::from_be_bytes(*b"MOZ\0RUST");
+const RUST_EXCEPTION_CLASS: uw::_Unwind_Exception_Class = u64::from_ne_bytes(*b"MOZ\0RUST");
