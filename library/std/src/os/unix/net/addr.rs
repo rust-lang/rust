@@ -15,7 +15,9 @@ mod libc {
     pub type socklen_t = u32;
     pub struct sockaddr;
     #[derive(Clone)]
-    pub struct sockaddr_un;
+    pub struct sockaddr_un {
+        pub sun_path: [u8; 1],
+    }
 }
 
 const SUN_PATH_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_path);
