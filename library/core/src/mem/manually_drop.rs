@@ -1,22 +1,21 @@
 use crate::ops::{Deref, DerefMut, DerefPure};
 use crate::ptr;
 
-/// A wrapper to inhibit the compiler from automatically calling `T`’s destructor.
-/// This wrapper is 0-cost.
+/// A wrapper to inhibit the compiler from automatically calling `T`’s
+/// destructor. This wrapper is 0-cost.
 ///
 /// `ManuallyDrop<T>` is guaranteed to have the same layout and bit validity as
-/// `T`, and is subject to the same layout optimizations as `T`. As a consequence,
-/// it has *no effect* on the assumptions that the compiler makes about its
-/// contents. For example, initializing a `ManuallyDrop<&mut T>` with [`mem::zeroed`]
-/// is undefined behavior. If you need to handle uninitialized data, use
-/// [`MaybeUninit<T>`] instead.
+/// `T`, and is subject to the same layout optimizations as `T`. As a
+/// consequence, it has *no effect* on the assumptions that the compiler makes
+/// about its contents. For example, initializing a `ManuallyDrop<&mut T>` with
+/// [`mem::zeroed`] is undefined behavior. If you need to handle uninitialized
+/// data, use [`MaybeUninit<T>`] instead.
 ///
-/// Note that accessing the value inside a `ManuallyDrop<T>` is safe.
-/// This means that a `ManuallyDrop<T>` whose content has been dropped must not
-/// be exposed through a public safe API.
-/// Correspondingly, `ManuallyDrop::drop` is unsafe.
+/// Note that accessing the value inside a `ManuallyDrop<T>` is safe. This means
+/// that a `ManuallyDrop<T>` whose content has been dropped must not be exposed
+/// through a public safe API. Correspondingly, `ManuallyDrop::drop` is unsafe.
 ///
-/// # `ManuallyDrop` and drop order.
+/// # `ManuallyDrop` and drop order
 ///
 /// Rust has a well-defined [drop order] of values. To make sure that fields or
 /// locals are dropped in a specific order, reorder the declarations such that
@@ -40,9 +39,116 @@ use crate::ptr;
 /// }
 /// ```
 ///
+/// # Interaction with `Box`
+///
+/// Currently, if you have a `ManuallyDrop<T>`, where the type `T` is a `Box` or
+/// contains a `Box` inside, then dropping the `T` followed by moving the
+/// `ManuallyDrop<T>` is [considered to be undefined
+/// behavior](https://github.com/rust-lang/unsafe-code-guidelines/issues/245).
+/// That is, the following code causes undefined behavior:
+///
+/// ```no_run
+/// use std::mem::ManuallyDrop;
+///
+/// let mut x = ManuallyDrop::new(Box::new(42));
+/// unsafe {
+///     ManuallyDrop::drop(&mut x);
+/// }
+/// let y = x; // Undefined behavior!
+/// ```
+///
+/// This is [likely to change in the
+/// future](https://rust-lang.github.io/rfcs/3336-maybe-dangling.html). In the
+/// meantime, consider using [`MaybeUninit`] instead.
+///
+/// # Safety hazards when storing `ManuallyDrop` in a struct or an enum.
+///
+/// Special care is needed when all of the conditions below are met:
+/// * A struct or enum contains a `ManuallyDrop`.
+/// * The `ManuallyDrop` is not inside a `union`.
+/// * The struct or enum is part of public API, or is stored in a struct or an
+///   enum that is part of public API.
+/// * There is code that drops the contents of the `ManuallyDrop` field, and
+///   this code is outside the struct or enum's `Drop` implementation.
+///
+/// In particular, the following hazards may occur:
+///
+/// #### Storing generic types
+///
+/// If the `ManuallyDrop` contains a client-supplied generic type, the client
+/// might provide a `Box` as that type. This would cause undefined behavior when
+/// the struct or enum is later moved, as mentioned in the previous section. For
+/// example, the following code causes undefined behavior:
+///
+/// ```no_run
+/// use std::mem::ManuallyDrop;
+///
+/// pub struct BadOption<T> {
+///     // Invariant: Has been dropped iff `is_some` is false.
+///     value: ManuallyDrop<T>,
+///     is_some: bool,
+/// }
+/// impl<T> BadOption<T> {
+///     pub fn new(value: T) -> Self {
+///         Self { value: ManuallyDrop::new(value), is_some: true }
+///     }
+///     pub fn change_to_none(&mut self) {
+///         if self.is_some {
+///             self.is_some = false;
+///             unsafe {
+///                 // SAFETY: `value` hasn't been dropped yet, as per the invariant
+///                 // (This is actually unsound!)
+///                 ManuallyDrop::drop(&mut self.value);
+///             }
+///         }
+///     }
+/// }
+///
+/// // In another crate:
+///
+/// let mut option = BadOption::new(Box::new(42));
+/// option.change_to_none();
+/// let option2 = option; // Undefined behavior!
+/// ```
+///
+/// #### Deriving traits
+///
+/// Deriving `Debug`, `Clone`, `PartialEq`, `PartialOrd`, `Ord`, or `Hash` on
+/// the struct or enum could be unsound, since the derived implementations of
+/// these traits would access the `ManuallyDrop` field. For example, the
+/// following code causes undefined behavior:
+///
+/// ```no_run
+/// use std::mem::ManuallyDrop;
+///
+/// // This derive is unsound in combination with the `ManuallyDrop::drop` call.
+/// #[derive(Debug)]
+/// pub struct Foo {
+///     value: ManuallyDrop<String>,
+/// }
+/// impl Foo {
+///     pub fn new() -> Self {
+///         let mut temp = Self {
+///             value: ManuallyDrop::new(String::from("Unsafe rust is hard."))
+///         };
+///         unsafe {
+///             // SAFETY: `value` hasn't been dropped yet.
+///             ManuallyDrop::drop(&mut temp.value);
+///         }
+///         temp
+///     }
+/// }
+///
+/// // In another crate:
+///
+/// let foo = Foo::new();
+/// println!("{:?}", foo); // Undefined behavior!
+/// ```
+///
 /// [drop order]: https://doc.rust-lang.org/reference/destructors.html
 /// [`mem::zeroed`]: crate::mem::zeroed
 /// [`MaybeUninit<T>`]: crate::mem::MaybeUninit
+/// [`MaybeUninit`]: crate::mem::MaybeUninit
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
