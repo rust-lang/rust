@@ -44,13 +44,6 @@ macro_rules! if_mut_ty {
     };
 }
 
-macro_rules! if_mut_expr {
-    ($($a: expr)?, $($b: expr)?) => {
-        if_mut!({$($a)?} else {$($b)?})
-    };
-}
-
-
 #[rustfmt::skip] // Rustfmt indents this code indefinitely
 macro_rules! lifetime_helpers {
     () => {
@@ -78,11 +71,11 @@ macro_rules! derive_copy_clone {
 
 macro_rules! visit_list {
     ($visitor: expr, $visit: ident, $flat_map: ident, $list: expr $(; $($arg: expr),*)?) => {
-        if_mut_expr!(
+        if_mut!({
             $list.flat_map_in_place(|x| $visitor.$flat_map(x $(, $($arg),*)?))
-        ,
+        } else {
             visit_list!($visitor, $visit, $list $(; $($arg),*)?)
-        )
+        })
     };
     ($visitor: expr, $visit: ident, $list: expr $(; $($arg: expr),*)?) => {
         for elem in $list {
@@ -108,31 +101,37 @@ macro_rules! P {
 
 macro_rules! deref_P {
     ($p: expr) => {
-        if_mut_expr!($p.deref_mut(), $p)
+        if_mut!({
+            $p.deref_mut()
+        } else {
+            $p
+        })
     };
 }
 
 macro_rules! visit_span {
     ($vis: ident, $span: ident) => {
-        if_mut_expr!(
-            $vis.visit_span($span),
+        if_mut!({
+            $vis.visit_span($span)
+        } else {
             // assign to _ to prevent unused_variable warnings
             {
                 let _ = (&$vis, &$span);
             }
-        )
+        })
     };
 }
 
 macro_rules! visit_id {
     ($vis: ident, $id: ident) => {
-        if_mut_expr!(
-            $vis.visit_id($id),
+        if_mut!({
+            $vis.visit_id($id)
+        } else {
             // assign to _ to prevent unused_variable warnings
             {
                 let _ = (&$vis, &$id);
             }
-        )
+        })
     };
 }
 
@@ -140,13 +139,14 @@ macro_rules! mut_only_visit {
     ($name: ident) => {
         macro_rules! $name {
             ($vis: expr, $arg: expr) => {
-                if_mut_expr!(
-                    $name($vis, $arg),
+                if_mut!({
+                    $name($vis, $arg)
+                } else {
                     // assign to _ to prevent unused_variable warnings
                     {
                         let _ = (&$vis, &$arg);
                     }
-                );
+                });
             };
         }
     };
@@ -157,13 +157,13 @@ mut_only_visit! {visit_delim_args}
 
 macro_rules! return_result {
     ($V: ty) => {
-        if_mut_expr!({}, { <$V>::Result::output() })
+        if_mut!({ () } else { <$V>::Result::output() })
     };
 }
 
 macro_rules! try_v {
     ($visit: expr) => {
-        if_mut_expr!($visit, try_visit!($visit))
+        if_mut!({ $visit } else { try_visit!($visit) })
     };
 }
 
@@ -475,7 +475,7 @@ macro_rules! make_ast_visitor {
         ) -> result!(V) {
             // FIXME: visit the template exhaustively.
             let FormatArgs { span, template: _, arguments } = fmt;
-            let arg_iter = if_mut_expr!(arguments.all_args_mut(), arguments.all_args());
+            let arg_iter = if_mut!({ arguments.all_args_mut() } else { arguments.all_args() });
             for FormatArgument { kind, expr } in arg_iter {
                 match kind {
                     FormatArgumentKind::Named(ident) | FormatArgumentKind::Captured(ident) => {
@@ -1415,7 +1415,7 @@ macro_rules! make_ast_visitor {
                 }
                 ExprKind::OffsetOf(container, fields) => {
                     try_v!(vis.visit_ty(container));
-                    visit_list!(vis, visit_ident, if_mut_expr!(fields.iter_mut(), fields.iter()));
+                    visit_list!(vis, visit_ident, if_mut!({ fields.iter_mut() } else { fields.iter() }));
                 }
                 ExprKind::MacCall(mac) => {
                     try_v!(vis.visit_mac_call(mac))
