@@ -2635,7 +2635,7 @@ extern "rust-intrinsic" {
     /// This intrinsic can *only* be called where the pointer is a local without
     /// projections (`write_via_move(ptr, x)`, not `write_via_move(*ptr, x)`) so
     /// that it trivially obeys runtime-MIR rules about derefs in operands.
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_nounwind]
     pub fn write_via_move<T>(ptr: *mut T, value: T);
 
@@ -3472,13 +3472,13 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+#[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_write_bytes"]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+        #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_nounwind]
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
