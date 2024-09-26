@@ -1689,12 +1689,6 @@ instead, we check that it's not a "finger" cursor.
 	border-right: 3px solid var(--target-border-color);
 }
 
-@media not (prefers-reduced-motion) {
-	:target {
-		animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
-	}
-}
-
 .code-header a.tooltip {
 	color: inherit;
 	margin-right: 15px;
@@ -1718,6 +1712,10 @@ a.tooltip:hover::after {
 }
 
 @media not (prefers-reduced-motion) {
+	:target {
+		animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
+	}
+
 	/* This animation is layered onto the mistake-proofing delay for dismissing
 		a hovered tooltip, to ensure it feels responsive even with the delay.
 		*/
