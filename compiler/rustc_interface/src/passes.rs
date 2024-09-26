@@ -980,7 +980,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
     sess.time("MIR_effect_checking", || {
         tcx.par_hir_body_owners(|def_id| {
-            tcx.ensure_ok().has_ffi_unwind_calls(def_id);
+            tcx.ensure_ok().mir_flags(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
