@@ -153,9 +153,6 @@ impl CoverageInfoBuilder {
         true_block: BasicBlock,
         false_block: BasicBlock,
     ) {
-        // Bail out if branch coverage is not enabled.
-        let Some(branch_info) = self.branch_info.as_mut() else { return };
-
         // Separate path for handling branches when MC/DC is enabled.
         if let Some(mcdc_info) = self.mcdc_info.as_mut() {
             let inject_block_marker =
@@ -168,6 +165,9 @@ impl CoverageInfoBuilder {
                 inject_block_marker,
             );
         } else {
+            // Bail out if branch coverage is not enabled.
+            let Some(branch_info) = self.branch_info.as_mut() else { return };
+
             let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
             let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
 
