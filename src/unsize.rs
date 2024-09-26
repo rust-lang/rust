@@ -34,7 +34,22 @@ pub(crate) fn unsized_info<'tcx>(
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
-                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
+                // Codegen takes advantage of the additional assumption, where if the
+                // principal trait def id of what's being casted doesn't change,
+                // then we don't need to adjust the vtable at all. This
+                // corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
+                // requires that `A = B`; we don't allow *upcasting* objects
+                // between the same trait with different args. If we, for
+                // some reason, were to relax the `Unsize` trait, it could become
+                // unsound, so let's assert here that the trait refs are *equal*.
+                //
+                // We can use `assert_eq` because the binders should have been anonymized,
+                // and because higher-ranked equality now requires the binders are equal.
+                debug_assert_eq!(
+                    data_a.principal(),
+                    data_b.principal(),
+                    "NOP unsize vtable changed principal trait ref: {data_a} -> {data_b}"
+                );
                 return old_info;
             }
 
