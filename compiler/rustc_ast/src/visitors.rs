@@ -15,70 +15,41 @@ use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
 
-macro_rules! mutability_helpers {
+macro_rules! define_if_mut {
     () => {
-        macro_rules! if_mut_ty {
-            ($a: ty, $b: ty) => {
-                $b
+        macro_rules! if_mut {
+            ({$$($if: tt)*} $$(else {$$($else: tt)*})?) => {
+                $$($$($else)*)?
             };
-            ($a: ty) => {};
-            (, $b: ty) => {
-                $b
-            };
-        }
-
-        macro_rules! if_mut_item {
-            (, $b: item) => {
-                $b
-            };
-            ($a: item, $b: item) => {
-                $b
-            };
-            ($a: item) => {};
-        }
-
-        macro_rules! if_mut_expr {
-            (, $b: expr) => {
-                $b
-            };
-            ($a: expr, $b: expr) => {
-                $b
-            };
-            ($a: expr) => {};
         }
     };
     (mut) => {
-        macro_rules! if_mut_ty {
-            ($a: ty, $b: ty) => {
-                $a
-            };
-            ($a: ty) => {
-                $a
-            };
-            (, $b: ty) => {};
-        }
-
-        macro_rules! if_mut_item {
-            (, $b: item) => {};
-            ($a: item, $b: item) => {
-                $a
-            };
-            ($a: item) => {
-                $a
-            };
-        }
-
-        macro_rules! if_mut_expr {
-            (, $b: expr) => {};
-            ($a: expr, $b: expr) => {
-                $a
-            };
-            ($a: expr) => {
-                $a
+        macro_rules! if_mut {
+            ({$$($if: tt)*} $$(else {$$($else: tt)*})?) => {
+                $$($if)*
             };
         }
     };
 }
+
+macro_rules! if_mut_item {
+    ($($a: item)? $(, $b: item)?) => {
+        if_mut!{{$($a)?} else {$($b)?}}
+    };
+}
+
+macro_rules! if_mut_ty {
+    ($($a: ty)?, $($b: ty)?) => {
+        if_mut!({$($a)?} else {$($b)?})
+    };
+}
+
+macro_rules! if_mut_expr {
+    ($($a: expr)?, $($b: expr)?) => {
+        if_mut!({$($a)?} else {$($b)?})
+    };
+}
+
 
 #[rustfmt::skip] // Rustfmt indents this code indefinitely
 macro_rules! lifetime_helpers {
@@ -240,8 +211,7 @@ macro_rules! make_visit {
 
 macro_rules! make_ast_visitor {
     ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
-
-        mutability_helpers!($($mut)?);
+        define_if_mut!($($mut)?);
         lifetime_helpers!($($lt)?);
 
         macro_rules! ref_t {
