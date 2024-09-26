@@ -250,7 +250,6 @@ macro_rules! make_ast_visitor {
             ($t: ty) => { & $($lt)? $($mut)? $t };
         }
 
-
         macro_rules! make_walk_flat_map {
             (
                 $ty: ty
