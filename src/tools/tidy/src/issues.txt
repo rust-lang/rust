@@ -795,7 +795,6 @@ ui/consts/issue-68684.rs
 ui/consts/issue-69191-ice-on-uninhabited-enum-field.rs
 ui/consts/issue-69310-array-size-lit-wrong-ty.rs
 ui/consts/issue-69312.rs
-ui/consts/issue-69488.rs
 ui/consts/issue-69532.rs
 ui/consts/issue-6991.rs
 ui/consts/issue-70773-mir-typeck-lt-norm.rs
