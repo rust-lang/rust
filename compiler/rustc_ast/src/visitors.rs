@@ -38,12 +38,6 @@ macro_rules! if_mut_item {
     };
 }
 
-macro_rules! if_mut_ty {
-    ($($a: ty)?, $($b: ty)?) => {
-        if_mut!({$($a)?} else {$($b)?})
-    };
-}
-
 #[rustfmt::skip] // Rustfmt indents this code indefinitely
 macro_rules! lifetime_helpers {
     () => {
@@ -89,13 +83,13 @@ macro_rules! result {
         result!(Self)
     };
     ($V: ty) => {
-        if_mut_ty!((), <$V>::Result)
+        if_mut!({ () } else { <$V>::Result })
     };
 }
 
 macro_rules! P {
     ($t: ty) => {
-        if_mut_ty!(P<$t>, $t)
+        if_mut!({ P<$t> } else { $t })
     };
 }
 
