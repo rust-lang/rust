@@ -221,7 +221,7 @@ struct DefCollector<'a> {
     deps: FxHashMap<Name, Dependency>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, UseId)>>,
     unresolved_imports: Vec<ImportDirective>,
-    indeterminate_imports: Vec<ImportDirective>,
+    indeterminate_imports: Vec<(ImportDirective, PerNs)>,
     unresolved_macros: Vec<MacroDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
@@ -414,16 +414,6 @@ impl DefCollector<'_> {
         let _p = tracing::info_span!("DefCollector::collect").entered();
 
         self.resolution_loop();
-
-        // Resolve all indeterminate resolved imports again
-        // As some of the macros will expand newly import shadowing partial resolved imports
-        // FIXME: We maybe could skip this, if we handle the indeterminate imports in `resolve_imports`
-        // correctly
-        let partial_resolved = self.indeterminate_imports.drain(..).map(|directive| {
-            ImportDirective { status: PartialResolvedImport::Unresolved, ..directive }
-        });
-        self.unresolved_imports.extend(partial_resolved);
-        self.resolve_imports();
 
         let unresolved_imports = mem::take(&mut self.unresolved_imports);
         // show unresolved imports in completion, etc
@@ -749,9 +739,9 @@ impl DefCollector<'_> {
             .filter_map(|mut directive| {
                 directive.status = self.resolve_import(directive.module_id, &directive.import);
                 match directive.status {
-                    PartialResolvedImport::Indeterminate(_) => {
+                    PartialResolvedImport::Indeterminate(resolved) => {
                         self.record_resolved_import(&directive);
-                        self.indeterminate_imports.push(directive);
+                        self.indeterminate_imports.push((directive, resolved));
                         res = ReachedFixedPoint::No;
                         None
                     }
@@ -764,6 +754,33 @@ impl DefCollector<'_> {
                 }
             })
             .collect();
+
+        // Resolve all indeterminate resolved imports again
+        // As some of the macros will expand newly import shadowing partial resolved imports
+        // FIXME: We maybe could skip this, if we handle the indeterminate imports in `resolve_imports`
+        // correctly
+        let mut indeterminate_imports = std::mem::take(&mut self.indeterminate_imports);
+        indeterminate_imports.retain_mut(|(directive, partially_resolved)| {
+            let partially_resolved = partially_resolved.availability();
+            directive.status = self.resolve_import(directive.module_id, &directive.import);
+            match directive.status {
+                PartialResolvedImport::Indeterminate(import)
+                    if partially_resolved != import.availability() =>
+                {
+                    self.record_resolved_import(directive);
+                    res = ReachedFixedPoint::No;
+                    false
+                }
+                PartialResolvedImport::Resolved(_) => {
+                    self.record_resolved_import(directive);
+                    res = ReachedFixedPoint::No;
+                    false
+                }
+                _ => true,
+            }
+        });
+        self.indeterminate_imports = indeterminate_imports;
+
         res
     }
 

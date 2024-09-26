@@ -33,6 +33,7 @@
 //!     from: sized
 //!     future: pin
 //!     coroutine: pin
+//!     dispatch_from_dyn: unsize, pin
 //!     hash:
 //!     include:
 //!     index: sized
@@ -64,6 +65,7 @@
 //!     todo: panic
 //!     unimplemented: panic
 //!     column:
+//!     addr_of:
 
 #![rustc_coherence_is_core]
 
@@ -169,7 +171,7 @@ pub mod default {
     macro_rules! impl_default {
         ($v:literal; $($t:ty)*) => {
             $(
-                impl const Default for $t {
+                impl Default for $t {
                     fn default() -> Self {
                         $v
                     }
@@ -420,6 +422,17 @@ pub mod ptr {
     }
     // endregion:coerce_unsized
     // endregion:non_null
+
+    // region:addr_of
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro addr_of($place:expr) {
+        &raw const $place
+    }
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro addr_of_mut($place:expr) {
+        &raw mut $place
+    }
+    // endregion:addr_of
 }
 
 pub mod ops {
@@ -673,7 +686,7 @@ pub mod ops {
     // endregion:fn
     // region:try
     mod try_ {
-        use super::super::convert::Infallible;
+        use crate::convert::Infallible;
 
         pub enum ControlFlow<B, C = ()> {
             #[lang = "Continue"]
@@ -743,7 +756,7 @@ pub mod ops {
         // endregion:option
         // region:result
         // region:from
-        use super::super::convert::From;
+        use crate::convert::From;
 
         impl<T, E> Try for Result<T, E> {
             type Output = T;
@@ -764,7 +777,7 @@ pub mod ops {
         impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {
             fn from_residual(residual: Result<Infallible, E>) -> Self {
                 match residual {
-                    Err(e) => Err(From::from(e)),
+                    Err(e) => Err(F::from(e)),
                     Ok(_) => loop {},
                 }
             }
@@ -822,6 +835,24 @@ pub mod ops {
     }
     pub use self::coroutine::{Coroutine, CoroutineState};
     // endregion:coroutine
+
+    // region:dispatch_from_dyn
+    mod dispatch_from_dyn {
+        use crate::marker::Unsize;
+
+        #[lang = "dispatch_from_dyn"]
+        pub trait DispatchFromDyn<T> {}
+
+        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+
+        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
+
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
+    }
+    pub use self::dispatch_from_dyn::DispatchFromDyn;
+    // endregion:dispatch_from_dyn
 }
 
 // region:eq
@@ -1183,6 +1214,12 @@ pub mod pin {
         }
     }
     // endregion:deref
+    // region:dispatch_from_dyn
+    impl<Ptr, U> crate::ops::DispatchFromDyn<Pin<U>> for Pin<Ptr> where
+        Ptr: crate::ops::DispatchFromDyn<U>
+    {
+    }
+    // endregion:dispatch_from_dyn
 }
 // endregion:pin
 
@@ -1309,7 +1346,10 @@ pub mod iter {
                     self
                 }
                 // region:iterators
-                fn take(self, n: usize) -> crate::iter::Take<Self> {
+                fn take(self, n: usize) -> crate::iter::Take<Self>
+                where
+                    Self: Sized,
+                {
                     loop {}
                 }
                 fn filter_map<B, F>(self, _f: F) -> crate::iter::FilterMap<Self, F>
@@ -1435,6 +1475,19 @@ mod panicking {
 }
 // endregion:panic
 
+// region:asm
+mod arch {
+    #[rustc_builtin_macro]
+    pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+    #[rustc_builtin_macro]
+    pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+}
+// endregion:asm
+
 #[macro_use]
 mod macros {
     // region:panic
@@ -1446,16 +1499,6 @@ mod macros {
         };
     }
     // endregion:panic
-
-    // region:asm
-    #[macro_export]
-    #[rustc_builtin_macro]
-    macro_rules! asm {
-        ($($arg:tt)*) => {
-            /* compiler built-in */
-        };
-    }
-    // endregion:asm
 
     // region:assert
     #[macro_export]

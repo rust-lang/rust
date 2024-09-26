@@ -3,11 +3,15 @@
 
 use std::fmt;
 
+use rustc_hash::FxHashMap;
 use salsa::Durability;
 use triomphe::Arc;
 use vfs::FileId;
 
-use crate::{CrateGraph, SourceDatabaseFileInputExt, SourceRoot, SourceRootDatabase, SourceRootId};
+use crate::{
+    CrateGraph, CrateId, CrateWorkspaceData, SourceDatabaseFileInputExt, SourceRoot,
+    SourceRootDatabase, SourceRootId,
+};
 
 /// Encapsulate a bunch of raw `.set` calls on the database.
 #[derive(Default)]
@@ -15,6 +19,7 @@ pub struct FileChange {
     pub roots: Option<Vec<SourceRoot>>,
     pub files_changed: Vec<(FileId, Option<String>)>,
     pub crate_graph: Option<CrateGraph>,
+    pub ws_data: Option<FxHashMap<CrateId, Arc<CrateWorkspaceData>>>,
 }
 
 impl fmt::Debug for FileChange {
@@ -50,6 +55,10 @@ impl FileChange {
         self.crate_graph = Some(graph);
     }
 
+    pub fn set_ws_data(&mut self, data: FxHashMap<CrateId, Arc<CrateWorkspaceData>>) {
+        self.ws_data = Some(data);
+    }
+
     pub fn apply(self, db: &mut dyn SourceRootDatabase) {
         let _p = tracing::info_span!("FileChange::apply").entered();
         if let Some(roots) = self.roots {
@@ -73,6 +82,9 @@ impl FileChange {
         }
         if let Some(crate_graph) = self.crate_graph {
             db.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH);
+        }
+        if let Some(data) = self.ws_data {
+            db.set_crate_workspace_data_with_durability(Arc::new(data), Durability::HIGH);
         }
     }
 }

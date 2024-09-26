@@ -391,8 +391,33 @@ Expr =
 OffsetOfExpr =
   Attr* 'builtin' '#' 'offset_of' '(' Type ',' fields:(NameRef ('.' NameRef)* ) ')'
 
+// asm := "asm!(" format_string *("," format_string) *("," operand) [","] ")"
+// global_asm := "global_asm!(" format_string *("," format_string) *("," operand) [","] ")"
+// format_string := STRING_LITERAL / RAW_STRING_LITERAL
 AsmExpr =
-  Attr* 'builtin' '#' 'asm' '(' Expr ')'
+  Attr* 'builtin' '#' 'asm' '(' template:(Expr (',' Expr)*) (AsmPiece (',' AsmPiece)*)? ','? ')'
+
+// operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"
+AsmOperandExpr = in_expr:Expr ('=>' out_expr:Expr)?
+// dir_spec := "in" / "out" / "lateout" / "inout" / "inlateout"
+AsmDirSpec = 'in' | 'out' | 'lateout' | 'inout' | 'inlateout'
+// reg_spec := <register class> / "\"" <explicit register> "\""
+AsmRegSpec = '@string' | NameRef
+// reg_operand := [ident "="] dir_spec "(" reg_spec ")" operand_expr
+AsmRegOperand = AsmDirSpec '(' AsmRegSpec ')' AsmOperandExpr
+// clobber_abi := "clobber_abi(" <abi> *("," <abi>) [","] ")"
+AsmClobberAbi = 'clobber_abi' '(' ('@string' (',' '@string')* ','?) ')'
+// option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "nostack" / "att_syntax" / "raw"
+AsmOption = 'pure' | 'nomem' | 'readonly' | 'preserves_flags' | 'noreturn' | 'nostack' | 'att_syntax' | 'raw' | 'may_unwind'
+// options := "options(" option *("," option) [","] ")"
+AsmOptions = 'options' '(' AsmOption *(',' AsmOption) ','? ')'
+AsmLabel = 'label' BlockExpr
+AsmSym = 'sym' Path
+AsmConst = 'const' Expr
+// operand := reg_operand / clobber_abi / options
+AsmOperand = AsmRegOperand | AsmLabel | AsmSym | AsmConst
+AsmOperandNamed = (Name '=')? AsmOperand
+AsmPiece = AsmOperandNamed | AsmClobberAbi | AsmOptions
 
 FormatArgsExpr =
   Attr* 'builtin' '#' 'format_args' '('

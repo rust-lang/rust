@@ -2,11 +2,11 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::def_path_res;
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::Item;
+use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::FloatTy;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 

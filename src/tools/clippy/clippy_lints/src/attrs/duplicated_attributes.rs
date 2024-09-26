@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::{Attribute, MetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::LateContext;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::collections::hash_map::Entry;
 
 fn emit_if_duplicated(
@@ -36,7 +36,7 @@ fn check_duplicated_attr(
     }
     let Some(ident) = attr.ident() else { return };
     let name = ident.name;
-    if name == sym::doc || name == sym::cfg_attr || name == sym::rustc_on_unimplemented {
+    if name == sym::doc || name == sym::cfg_attr || name == sym::rustc_on_unimplemented || name == sym::reason {
         // FIXME: Would be nice to handle `cfg_attr` as well. Only problem is to check that cfg
         // conditions are the same.
         // `#[rustc_on_unimplemented]` contains duplicated subattributes, that's expected.

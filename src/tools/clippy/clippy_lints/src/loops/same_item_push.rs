@@ -6,11 +6,11 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
 use rustc_span::SyntaxContext;
+use rustc_span::symbol::sym;
 
 /// Detects for loop pushing the same item into a Vec
 pub(super) fn check<'tcx>(

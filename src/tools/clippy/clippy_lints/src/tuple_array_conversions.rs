@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{is_from_proc_macro, path_to_local};

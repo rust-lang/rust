@@ -1,0 +1,73 @@
+error: unused import: `std::any::Any`
+  --> tests/ui/unused_trait_names.rs:245:9
+   |
+LL |     use std::any::Any;
+   |         ^^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:12:19
+   |
+LL |     use std::any::Any;
+   |                   ^^^ help: use: `Any as _`
+   |
+   = note: `-D clippy::unused-trait-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_trait_names)]`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:31:26
+   |
+LL |     use std::any::{self, Any, TypeId};
+   |                          ^^^ help: use: `Any as _`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:43:19
+   |
+LL |     use std::any::Any as MyAny;
+   |                   ^^^^^^^^^^^^ help: use: `Any as _`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:49:20
+   |
+LL |     use std::any::{Any as MyAny, TypeId as MyTypeId};
+   |                    ^^^^^^^^^^^^ help: use: `Any as _`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:72:23
+   |
+LL |         use std::any::Any;
+   |                       ^^^ help: use: `Any as _`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:113:19
+   |
+LL |     use std::any::Any;
+   |                   ^^^ help: use: `Any as _`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:132:19
+   |
+LL |     use std::any::Any;
+   |                   ^^^ help: use: `Any as _`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:191:34
+   |
+LL |     use simple_trait::{MyStruct, MyTrait};
+   |                                  ^^^^^^^ help: use: `MyTrait as _`
+
+error: importing trait that is only used anonymously
+  --> tests/ui/unused_trait_names.rs:198:27
+   |
+LL |             use std::any::Any;
+   |                           ^^^ help: use: `Any as _`
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
+

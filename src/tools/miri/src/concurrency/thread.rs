@@ -849,7 +849,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // https://github.com/rust-lang/miri/issues/1763). In this case,
         // just do nothing, which effectively just returns to the
         // scheduler.
-        return Ok(());
+        Ok(())
     }
 
     #[inline]

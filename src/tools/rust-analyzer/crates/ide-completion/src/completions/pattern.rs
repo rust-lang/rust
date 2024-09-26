@@ -1,6 +1,7 @@
 //! Completes constants and paths in unqualified patterns.
 
 use hir::{db::DefDatabase, AssocItem, ScopeDef};
+use ide_db::syntax_helpers::suggest_name;
 use syntax::ast::Pat;
 
 use crate::{
@@ -43,6 +44,19 @@ pub(crate) fn complete_pattern(
 
     if pattern_ctx.record_pat.is_some() {
         return;
+    }
+
+    // Suggest name only in let-stmt and fn param
+    if pattern_ctx.should_suggest_name {
+        let mut name_generator = suggest_name::NameGenerator::new();
+        if let Some(suggested) = ctx
+            .expected_type
+            .as_ref()
+            .map(|ty| ty.strip_references())
+            .and_then(|ty| name_generator.for_type(&ty, ctx.db, ctx.edition))
+        {
+            acc.suggest_name(ctx, &suggested);
+        }
     }
 
     let refutable = pattern_ctx.refutability == PatternRefutability::Refutable;

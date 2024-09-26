@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    can_move_expr_to_closure, eager_or_lazy, higher, is_else_clause, is_in_const_context, is_res_lang_ctor,
-    peel_blocks, peel_hir_expr_while, CaptureKind,
+    CaptureKind, can_move_expr_to_closure, eager_or_lazy, higher, is_else_clause, is_in_const_context,
+    is_res_lang_ctor, peel_blocks, peel_hir_expr_while,
 };
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::def::Res;
 use rustc_hir::{Arm, BindingMode, Expr, ExprKind, MatchSource, Mutability, Pat, PatKind, Path, QPath, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;

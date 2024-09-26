@@ -72,6 +72,7 @@ pub type Variants = hir_def::layout::Variants<RustcFieldIdx, RustcEnumVariantIdx
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum LayoutError {
+    EmptyUnion,
     HasErrorConst,
     HasErrorType,
     HasPlaceholder,
@@ -80,6 +81,7 @@ pub enum LayoutError {
     RecursiveTypeWithoutIndirection,
     SizeOverflow,
     TargetLayoutNotAvailable,
+    UnexpectedUnsized,
     Unknown,
     UserReprTooSmall,
 }
@@ -88,6 +90,7 @@ impl std::error::Error for LayoutError {}
 impl fmt::Display for LayoutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            LayoutError::EmptyUnion => write!(f, "type is an union with no fields"),
             LayoutError::HasErrorConst => write!(f, "type contains an unevaluatable const"),
             LayoutError::HasErrorType => write!(f, "type contains an error"),
             LayoutError::HasPlaceholder => write!(f, "type contains placeholders"),
@@ -98,6 +101,9 @@ impl fmt::Display for LayoutError {
             }
             LayoutError::SizeOverflow => write!(f, "size overflow"),
             LayoutError::TargetLayoutNotAvailable => write!(f, "target layout not available"),
+            LayoutError::UnexpectedUnsized => {
+                write!(f, "an unsized type was found where a sized type was expected")
+            }
             LayoutError::Unknown => write!(f, "unknown"),
             LayoutError::UserReprTooSmall => {
                 write!(f, "the `#[repr]` hint is too small to hold the discriminants of the enum")
@@ -109,9 +115,8 @@ impl fmt::Display for LayoutError {
 impl<F> From<LayoutCalculatorError<F>> for LayoutError {
     fn from(err: LayoutCalculatorError<F>) -> Self {
         match err {
-            LayoutCalculatorError::UnexpectedUnsized(_) | LayoutCalculatorError::EmptyUnion => {
-                LayoutError::Unknown
-            }
+            LayoutCalculatorError::EmptyUnion => LayoutError::EmptyUnion,
+            LayoutCalculatorError::UnexpectedUnsized(_) => LayoutError::UnexpectedUnsized,
             LayoutCalculatorError::SizeOverflow => LayoutError::SizeOverflow,
         }
     }

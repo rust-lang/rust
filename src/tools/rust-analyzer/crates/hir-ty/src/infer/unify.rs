@@ -9,6 +9,7 @@ use chalk_ir::{
 use chalk_solve::infer::ParameterEnaVariableExt;
 use either::Either;
 use ena::unify::UnifyKey;
+use hir_def::{lang_item::LangItem, AdtId};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::FxHashMap;
@@ -21,7 +22,7 @@ use crate::{
     to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
     DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment,
     InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar,
-    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    Solution, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, VariableKind,
     WhereClause,
 };
 
@@ -265,14 +266,16 @@ impl<'a> InferenceTable<'a> {
             }
             let v = InferenceVar::from(i as u32);
             let root = self.var_unification_table.inference_var_root(v);
-            if let Some(data) = self.type_variable_table.get_mut(root.index() as usize) {
-                *data |= TypeVariableFlags::DIVERGING;
-            }
+            self.modify_type_variable_flag(root, |f| {
+                *f |= TypeVariableFlags::DIVERGING;
+            });
         }
     }
 
     pub(super) fn set_diverging(&mut self, iv: InferenceVar, diverging: bool) {
-        self.type_variable_table[iv.index() as usize].set(TypeVariableFlags::DIVERGING, diverging);
+        self.modify_type_variable_flag(iv, |f| {
+            f.set(TypeVariableFlags::DIVERGING, diverging);
+        });
     }
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
@@ -369,6 +372,18 @@ impl<'a> InferenceTable<'a> {
         var
     }
 
+    fn modify_type_variable_flag<F>(&mut self, var: InferenceVar, cb: F)
+    where
+        F: FnOnce(&mut TypeVariableFlags),
+    {
+        let idx = var.index() as usize;
+        if self.type_variable_table.len() <= idx {
+            self.extend_type_variable_table(idx);
+        }
+        if let Some(f) = self.type_variable_table.get_mut(idx) {
+            cb(f);
+        }
+    }
     fn extend_type_variable_table(&mut self, to_index: usize) {
         let count = to_index - self.type_variable_table.len() + 1;
         self.type_variable_table.extend(iter::repeat(TypeVariableFlags::default()).take(count));
@@ -897,6 +912,37 @@ impl<'a> InferenceTable<'a> {
             },
             _ => c,
         }
+    }
+
+    /// Check if given type is `Sized` or not
+    pub(crate) fn is_sized(&mut self, ty: &Ty) -> bool {
+        // Early return for some obvious types
+        if matches!(ty.kind(Interner), TyKind::Scalar(..) | TyKind::Ref(..) | TyKind::Raw(..)) {
+            return true;
+        }
+        if let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
+            let struct_data = self.db.struct_data(id);
+            if let Some((last_field, _)) = struct_data.variant_data.fields().iter().last() {
+                let last_field_ty =
+                    self.db.field_types(id.into())[last_field].clone().substitute(Interner, subst);
+                // Structs can have DST as its last field and such cases are not handled
+                // as unsized by the chalk, so we do this manually
+                return self.is_sized(&last_field_ty);
+            }
+        }
+        let Some(sized) = self
+            .db
+            .lang_item(self.trait_env.krate, LangItem::Sized)
+            .and_then(|sized| sized.as_trait())
+        else {
+            return false;
+        };
+        let sized_pred = WhereClause::Implemented(TraitRef {
+            trait_id: to_chalk_trait_id(sized),
+            substitution: Substitution::from1(Interner, ty.clone()),
+        });
+        let goal = GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(sized_pred)).intern(Interner);
+        matches!(self.try_obligation(goal), Some(Solution::Unique(_)))
     }
 }
 

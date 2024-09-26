@@ -30,7 +30,9 @@ pub(crate) fn stdio_transport() -> (Sender<Message>, Receiver<Message>, IoThread
                 let is_exit = matches!(&msg, Message::Notification(n) if n.is_exit());
 
                 debug!("sending message {:#?}", msg);
-                reader_sender.send(msg).expect("receiver was dropped, failed to send a message");
+                if let Err(e) = reader_sender.send(msg) {
+                    return Err(io::Error::new(io::ErrorKind::Other, e));
+                }
 
                 if is_exit {
                     break;
@@ -60,15 +62,11 @@ impl IoThreads {
     pub fn join(self) -> io::Result<()> {
         match self.reader.join() {
             Ok(r) => r?,
-            Err(err) => {
-                println!("reader panicked!");
-                std::panic::panic_any(err)
-            }
+            Err(err) => std::panic::panic_any(err),
         }
         match self.writer.join() {
             Ok(r) => r,
             Err(err) => {
-                println!("writer panicked!");
                 std::panic::panic_any(err);
             }
         }

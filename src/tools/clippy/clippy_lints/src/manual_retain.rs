@@ -1,17 +1,17 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
+use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{get_type_diagnostic_name, is_type_lang_item};
-use clippy_utils::SpanlessEq;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::ExprKind::Assign;
+use rustc_hir::def_id::DefId;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 
 const ACCEPTABLE_METHODS: [Symbol; 5] = [
     sym::binaryheap_iter,

@@ -402,7 +402,7 @@ pub enum ErrorKind {
 
     /// The operation was partially successful and needs to be checked
     /// later on due to not blocking.
-    #[unstable(feature = "io_error_inprogress", issue = "none")]
+    #[unstable(feature = "io_error_inprogress", issue = "130840")]
     InProgress,
 
     // "Unusual" error kinds which do not correspond simply to (sets

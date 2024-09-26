@@ -5,6 +5,7 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]

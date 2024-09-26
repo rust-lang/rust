@@ -43,7 +43,7 @@ use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
     data::adt::VariantData,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
-    hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
+    hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, Pat},
     item_tree::{AttrOwner, FieldParent, ItemTreeFieldId, ItemTreeNode},
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
@@ -66,7 +66,7 @@ use hir_ty::{
     diagnostics::BodyValidationDiagnostic,
     error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
-    method_resolution::{self},
+    method_resolution,
     mir::{interpret_mir, MutBorrowKind},
     primitive::UintTy,
     traits::FnTrait,
@@ -80,7 +80,7 @@ use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::{Edition, EditionedFileId, FileId, MacroCallId, SyntaxContextId};
-use stdx::{impl_from, never};
+use stdx::{format_to, impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasGenericParams, HasName},
     format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, ToSmolStr, T,
@@ -137,6 +137,7 @@ pub use {
         hygiene::{marks_rev, SyntaxContextExt},
         inert_attr_macro::AttributeTemplate,
         name::Name,
+        prettify_macro_expansion,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
         tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt,
     },
@@ -145,7 +146,8 @@ pub use {
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
-        FnAbi, PointerCast, Safety,
+        object_safety::{MethodViolationCode, ObjectSafetyViolation},
+        CastError, FnAbi, PointerCast, Safety,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
@@ -1882,9 +1884,10 @@ impl DefWithBody {
             );
         }
 
-        for expr in hir_ty::diagnostics::missing_unsafe(db, self.into()) {
+        let (unafe_exprs, only_lint) = hir_ty::diagnostics::missing_unsafe(db, self.into());
+        for expr in unafe_exprs {
             match source_map.expr_syntax(expr) {
-                Ok(expr) => acc.push(MissingUnsafe { expr }.into()),
+                Ok(expr) => acc.push(MissingUnsafe { expr, only_lint }.into()),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and elsewhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.
@@ -2206,6 +2209,35 @@ impl Function {
         db.function_data(self.id).is_async()
     }
 
+    pub fn returns_impl_future(self, db: &dyn HirDatabase) -> bool {
+        if self.is_async(db) {
+            return true;
+        }
+
+        let Some(impl_traits) = self.ret_type(db).as_impl_traits(db) else { return false };
+        let Some(future_trait_id) =
+            db.lang_item(self.ty(db).env.krate, LangItem::Future).and_then(|t| t.as_trait())
+        else {
+            return false;
+        };
+        let Some(sized_trait_id) =
+            db.lang_item(self.ty(db).env.krate, LangItem::Sized).and_then(|t| t.as_trait())
+        else {
+            return false;
+        };
+
+        let mut has_impl_future = false;
+        impl_traits
+            .filter(|t| {
+                let fut = t.id == future_trait_id;
+                has_impl_future |= fut;
+                !fut && t.id != sized_trait_id
+            })
+            // all traits but the future trait must be auto traits
+            .all(|t| t.is_auto(db))
+            && has_impl_future
+    }
+
     /// Does this function have `#[test]` attribute?
     pub fn is_test(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).attrs.is_test()
@@ -2522,6 +2554,17 @@ impl Const {
         Type::from_value_def(db, self.id)
     }
 
+    /// Evaluate the constant and return the result as a string.
+    ///
+    /// This function is intended for IDE assistance, different from [`Const::render_eval`].
+    pub fn eval(self, db: &dyn HirDatabase, edition: Edition) -> Result<String, ConstEvalError> {
+        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
+        Ok(format!("{}", c.display(db, edition)))
+    }
+
+    /// Evaluate the constant and return the result as a string, with more detailed information.
+    ///
+    /// This function is intended for user-facing display.
     pub fn render_eval(
         self,
         db: &dyn HirDatabase,
@@ -2536,10 +2579,16 @@ impl Const {
                         let value = u128::from_le_bytes(mir::pad16(b, false));
                         let value_signed =
                             i128::from_le_bytes(mir::pad16(b, matches!(s, Scalar::Int(_))));
-                        if value >= 10 {
-                            return Ok(format!("{value_signed} ({value:#X})"));
+                        let mut result = if let Scalar::Int(_) = s {
+                            value_signed.to_string()
                         } else {
-                            return Ok(format!("{value_signed}"));
+                            value.to_string()
+                        };
+                        if value >= 10 {
+                            format_to!(result, " ({value:#X})");
+                            return Ok(result);
+                        } else {
+                            return Ok(result);
                         }
                     }
                 }
@@ -2639,6 +2688,10 @@ impl Trait {
             .filter(|(_, ty)| !matches!(ty, TypeOrConstParamData::TypeParamData(ty) if ty.provenance != TypeParamProvenance::TypeParamList))
             .filter(|(_, ty)| !count_required_only || !ty.has_default())
             .count()
+    }
+
+    pub fn object_safety(&self, db: &dyn HirDatabase) -> Option<ObjectSafetyViolation> {
+        hir_ty::object_safety::object_safety(db, self.id)
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {
@@ -5208,6 +5261,26 @@ impl Type {
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         db.layout_of_ty(self.ty.clone(), self.env.clone())
             .map(|layout| Layout(layout, db.target_data_layout(self.env.krate).unwrap()))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+pub struct InlineAsmOperand {
+    owner: DefWithBodyId,
+    expr: ExprId,
+    index: usize,
+}
+
+impl InlineAsmOperand {
+    pub fn parent(self, _db: &dyn HirDatabase) -> DefWithBody {
+        self.owner.into()
+    }
+
+    pub fn name(&self, db: &dyn HirDatabase) -> Option<Name> {
+        match &db.body(self.owner)[self.expr] {
+            hir_def::hir::Expr::InlineAsm(e) => e.operands.get(self.index)?.0.clone(),
+            _ => None,
+        }
     }
 }
 

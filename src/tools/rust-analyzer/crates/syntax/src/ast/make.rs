@@ -1162,7 +1162,7 @@ pub mod tokens {
 
     pub(super) static SOURCE_FILE: LazyLock<Parse<SourceFile>> = LazyLock::new(|| {
         SourceFile::parse(
-            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let _ @ [] })\n;\n\nimpl A for B where: {}", Edition::CURRENT,
+            "use crate::foo; const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, async { let _ @ [] })\n;\n\nimpl A for B where: {}", Edition::CURRENT,
         )
     });
 
@@ -1185,6 +1185,17 @@ pub mod tokens {
             .descendants_with_tokens()
             .filter_map(|it| it.into_token())
             .find(|it| it.kind() == WHITESPACE && it.text() == " ")
+            .unwrap()
+    }
+
+    pub fn crate_kw() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .clone_for_update()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == CRATE_KW)
             .unwrap()
     }
 

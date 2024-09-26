@@ -617,6 +617,16 @@ impl Completions {
         }
         self.add_opt(render_struct_pat(RenderContext::new(ctx), pattern_ctx, strukt, local_name));
     }
+
+    pub(crate) fn suggest_name(&mut self, ctx: &CompletionContext<'_>, name: &str) {
+        let item = CompletionItem::new(
+            CompletionItemKind::Binding,
+            ctx.source_range(),
+            SmolStr::from(name),
+            ctx.edition,
+        );
+        item.add_to(self, ctx.db);
+    }
 }
 
 /// Calls the callback for each variant of the provided enum with the path to the variant.

@@ -5,8 +5,7 @@ pub(crate) fn target() -> Target {
     base.max_atomic_width = Some(128);
 
     Target {
-        // LLVM 15 doesn't support OpenHarmony yet, use a linux target instead.
-        llvm_target: "aarch64-unknown-linux-musl".into(),
+        llvm_target: "aarch64-unknown-linux-ohos".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("ARM64 OpenHarmony".into()),
             tier: Some(2),

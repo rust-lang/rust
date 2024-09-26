@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{Block, Expr, ExprKind, Stmt, StmtKind};
-use rustc_ast::visit::{walk_expr, Visitor};
+use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;

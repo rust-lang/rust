@@ -1,4 +1,4 @@
-//@ignore-64bit
+//@ignore-bitwidth: 64
 
 #[warn(clippy::wrong_transmute)]
 fn main() {

@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_lint::LateContext;
 use std::collections::VecDeque;
 
-use super::{method_call, COLLAPSIBLE_STR_REPLACE};
+use super::{COLLAPSIBLE_STR_REPLACE, method_call};
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,

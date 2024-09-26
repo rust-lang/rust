@@ -1,6 +1,5 @@
 //@compile-flags: -Clink-arg=-nostartfiles
-//@ignore-target-apple
-//@ignore-target-windows
+//@ignore-target: apple windows
 
 #![feature(lang_items, start, libc)]
 #![no_std]

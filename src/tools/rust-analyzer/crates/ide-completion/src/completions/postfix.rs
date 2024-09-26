@@ -294,6 +294,18 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
 
     let mut new_element_opt = initial_element.clone();
 
+    while let Some(parent_deref_element) =
+        resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
+    {
+        if parent_deref_element.op_kind() != Some(ast::UnaryOp::Deref) {
+            break;
+        }
+
+        resulting_element = ast::Expr::from(parent_deref_element);
+
+        new_element_opt = make::expr_prefix(syntax::T![*], new_element_opt);
+    }
+
     if let Some(first_ref_expr) = resulting_element.syntax().parent().and_then(ast::RefExpr::cast) {
         if let Some(expr) = first_ref_expr.expr() {
             resulting_element = expr;
@@ -302,9 +314,10 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
         while let Some(parent_ref_element) =
             resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
         {
+            let exclusive = parent_ref_element.mut_token().is_some();
             resulting_element = ast::Expr::from(parent_ref_element);
 
-            new_element_opt = make::expr_ref(new_element_opt, false);
+            new_element_opt = make::expr_ref(new_element_opt, exclusive);
         }
     } else {
         // If we do not find any ref expressions, restore
@@ -853,6 +866,44 @@ fn test() {
 }
 "#,
             expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn mut_ref_consuming() {
+        check_edit(
+            "call",
+            r#"
+fn main() {
+    let mut x = &mut 2;
+    &mut x.$0;
+}
+"#,
+            r#"
+fn main() {
+    let mut x = &mut 2;
+    ${1}(&mut x);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn deref_consuming() {
+        check_edit(
+            "call",
+            r#"
+fn main() {
+    let mut x = &mut 2;
+    &mut *x.$0;
+}
+"#,
+            r#"
+fn main() {
+    let mut x = &mut 2;
+    ${1}(&mut *x);
+}
+"#,
         );
     }
 }

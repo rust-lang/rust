@@ -1,5 +1,5 @@
-use clippy_config::msrvs::Msrv;
 use clippy_config::Conf;
+use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_in_test;
 use rustc_attr::{StabilityLevel, StableSince};
@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::{impl_lint_pass, RustcVersion};
+use rustc_session::{RustcVersion, impl_lint_pass};
 use rustc_span::def_id::DefId;
 use rustc_span::{ExpnKind, Span};
 

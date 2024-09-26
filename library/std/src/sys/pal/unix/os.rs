@@ -48,6 +48,7 @@ extern "C" {
             target_os = "openbsd",
             target_os = "android",
             target_os = "redox",
+            target_os = "nuttx",
             target_env = "newlib"
         ),
         link_name = "__errno"
@@ -399,6 +400,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     target_os = "linux",
     target_os = "hurd",
     target_os = "android",
+    target_os = "nuttx",
     target_os = "emscripten"
 ))]
 pub fn current_exe() -> io::Result<PathBuf> {
@@ -717,6 +719,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
+        target_os = "nuttx",
         all(target_vendor = "apple", not(target_os = "macos")),
     ))]
     unsafe fn fallback() -> Option<OsString> {
@@ -730,6 +733,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
+        target_os = "nuttx",
         all(target_vendor = "apple", not(target_os = "macos")),
     )))]
     unsafe fn fallback() -> Option<OsString> {

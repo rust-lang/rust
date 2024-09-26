@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;

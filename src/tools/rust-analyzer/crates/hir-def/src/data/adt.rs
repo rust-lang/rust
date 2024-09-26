@@ -14,6 +14,7 @@ use triomphe::Arc;
 use crate::{
     builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
+    hir::Expr,
     item_tree::{
         AttrOwner, Field, FieldParent, FieldsShape, ItemTree, ModItem, RawVisibilityId, TreeId,
     },
@@ -316,6 +317,27 @@ impl EnumData {
             Some(ReprOptions { int: Some(builtin), .. }) => builtin,
             _ => IntegerType::Pointer(true),
         }
+    }
+
+    // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
+    pub fn is_payload_free(&self, db: &dyn DefDatabase) -> bool {
+        self.variants.iter().all(|(v, _)| {
+            // The condition check order is slightly modified from rustc
+            // to improve performance by early returning with relatively fast checks
+            let variant = &db.enum_variant_data(*v).variant_data;
+            if !variant.fields().is_empty() {
+                return false;
+            }
+            // The outer if condition is whether this variant has const ctor or not
+            if !matches!(variant.kind(), StructKind::Unit) {
+                let body = db.body((*v).into());
+                // A variant with explicit discriminant
+                if body.exprs[body.body_expr] != Expr::Missing {
+                    return false;
+                }
+            }
+            true
+        })
     }
 }
 

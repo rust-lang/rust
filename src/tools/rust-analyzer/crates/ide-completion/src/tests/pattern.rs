@@ -198,6 +198,7 @@ fn foo(a$0: Tuple) {
             st Unit
             bn Record {…} Record { field$1 }$0
             bn Tuple(…)   Tuple($1)$0
+            bn tuple
             kw mut
             kw ref
         "#]],
@@ -848,5 +849,77 @@ fn foo() {
     let ref $0
 }
 "#,
+    );
+}
+
+#[test]
+fn suggest_name_for_pattern() {
+    check_edit(
+        "s1",
+        r#"
+struct S1;
+
+fn foo() {
+    let $0 = S1;
+}
+"#,
+        r#"
+struct S1;
+
+fn foo() {
+    let s1 = S1;
+}
+"#,
+    );
+
+    check_edit(
+        "s1",
+        r#"
+struct S1;
+
+fn foo(s$0: S1) {
+}
+"#,
+        r#"
+struct S1;
+
+fn foo(s1: S1) {
+}
+"#,
+    );
+
+    // Tests for &adt
+    check_edit(
+        "s1",
+        r#"
+struct S1;
+
+fn foo() {
+    let $0 = &S1;
+}
+"#,
+        r#"
+struct S1;
+
+fn foo() {
+    let s1 = &S1;
+}
+"#,
+    );
+
+    // Do not suggest reserved keywords
+    check_empty(
+        r#"
+struct Struct;
+
+fn foo() {
+    let $0 = Struct;
+}
+"#,
+        expect![[r#"
+            st Struct
+            kw mut
+            kw ref
+        "#]],
     );
 }

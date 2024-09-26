@@ -41,7 +41,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.81.0"]
     pub FIELD_SCOPED_VISIBILITY_MODIFIERS,
     restriction,
     "checks for usage of a scoped visibility modifier, like `pub(crate)`, on fields"

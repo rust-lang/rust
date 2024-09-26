@@ -109,7 +109,7 @@ impl fmt::Debug for ProjectWorkspace {
             ProjectWorkspaceKind::Cargo {
                 cargo,
                 error: _,
-                build_scripts: _,
+                build_scripts,
                 rustc,
                 cargo_config_extra_env,
             } => f
@@ -126,6 +126,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
                 .field("cargo_config_extra_env", &cargo_config_extra_env)
+                .field("build_scripts", &build_scripts.error().unwrap_or("ok"))
                 .finish(),
             ProjectWorkspaceKind::Json(project) => {
                 let mut debug_struct = f.debug_struct("Json");
@@ -1456,7 +1457,7 @@ fn sysroot_to_crate_graph(
 
             // Remove all crates except the ones we are interested in to keep the sysroot graph small.
             let removed_mapping = cg.remove_crates_except(&marker_set);
-            let mapping = crate_graph.extend(cg, &mut pm, |(_, a), (_, b)| a == b);
+            let mapping = crate_graph.extend(cg, &mut pm);
 
             // Map the id through the removal mapping first, then through the crate graph extension mapping.
             pub_deps.iter_mut().for_each(|(_, cid, _)| {
@@ -1554,6 +1555,6 @@ fn add_proc_macro_dep(crate_graph: &mut CrateGraph, from: CrateId, to: CrateId, 
 
 fn add_dep_inner(graph: &mut CrateGraph, from: CrateId, dep: Dependency) {
     if let Err(err) = graph.add_dep(from, dep) {
-        tracing::error!("{}", err)
+        tracing::warn!("{}", err)
     }
 }

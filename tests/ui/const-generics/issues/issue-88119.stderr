@@ -1,3 +1,11 @@
+error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
+  --> $DIR/issue-88119.rs:4:39
+   |
+LL | #![feature(const_trait_impl, effects, generic_const_exprs)]
+   |                                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove one of these features
+
 error[E0284]: type annotations needed: cannot normalize `<&T as ConstName>::{constant#0}`
   --> $DIR/issue-88119.rs:19:49
    |
@@ -28,6 +36,6 @@ LL | where
 LL |     [(); name_len::<T>()]:,
    |     --------------------- unsatisfied trait bound introduced here
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0284`.

@@ -17,6 +17,7 @@ use tt::{
     token_to_literal,
 };
 
+pub mod prettify_macro_expansion;
 mod to_parser_input;
 pub use to_parser_input::to_parser_input;
 // FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces

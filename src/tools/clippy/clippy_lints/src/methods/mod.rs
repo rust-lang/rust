@@ -111,6 +111,7 @@ mod uninit_assumed_init;
 mod unit_hash;
 mod unnecessary_fallible_conversions;
 mod unnecessary_filter_map;
+mod unnecessary_first_then_check;
 mod unnecessary_fold;
 mod unnecessary_get_then_check;
 mod unnecessary_iter_cloned;
@@ -131,8 +132,8 @@ mod waker_clone_wake;
 mod wrong_self_convention;
 mod zst_offset;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
@@ -146,7 +147,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -436,6 +437,17 @@ declare_clippy_lint! {
     /// # struct X;
     /// impl X {
     ///     fn as_str(self) -> &'static str {
+    ///         // ..
+    /// # ""
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # struct X;
+    /// impl X {
+    ///     fn as_str(&self) -> &'static str {
     ///         // ..
     /// # ""
     ///     }
@@ -3964,7 +3976,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let _ = 0;
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.81.0"]
     pub UNNECESSARY_MIN_OR_MAX,
     complexity,
     "using 'min()/max()' when there is no need for it"
@@ -4025,7 +4037,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.78.0"]
     pub MANUAL_C_STR_LITERALS,
-    pedantic,
+    complexity,
     r#"creating a `CStr` through functions when `c""` literals can be used"#
 }
 
@@ -4099,7 +4111,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// "foo".is_ascii();
     /// ```
-    #[clippy::version = "1.80.0"]
+    #[clippy::version = "1.81.0"]
     pub NEEDLESS_CHARACTER_ITERATION,
     suspicious,
     "is_ascii() called on a char iterator"
@@ -4124,6 +4136,34 @@ declare_clippy_lint! {
     pub MANUAL_INSPECT,
     complexity,
     "use of `map` returning the original item"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks the usage of `.first().is_some()` or `.first().is_none()` to check if a slice is
+    /// empty.
+    ///
+    /// ### Why is this bad?
+    /// Using `.is_empty()` is shorter and better communicates the intention.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let v = vec![1, 2, 3];
+    /// if v.first().is_none() {
+    ///     // The vector is empty...
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let v = vec![1, 2, 3];
+    /// if v.is_empty() {
+    ///     // The vector is empty...
+    /// }
+    /// ```
+    #[clippy::version = "1.83.0"]
+    pub UNNECESSARY_FIRST_THEN_CHECK,
+    complexity,
+    "calling `.first().is_some()` or `.first().is_none()` instead of `.is_empty()`"
 }
 
 pub struct Methods {
@@ -4283,6 +4323,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_RESULT_MAP_OR_ELSE,
     MANUAL_C_STR_LITERALS,
     UNNECESSARY_GET_THEN_CHECK,
+    UNNECESSARY_FIRST_THEN_CHECK,
     NEEDLESS_CHARACTER_ITERATION,
     MANUAL_INSPECT,
     UNNECESSARY_MIN_OR_MAX,
@@ -5055,6 +5096,9 @@ fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>,
         Some(("get", f_recv, [arg], _, _)) => {
             unnecessary_get_then_check::check(cx, call_span, recv, f_recv, arg, is_some);
         },
+        Some(("first", f_recv, [], _, _)) => {
+            unnecessary_first_then_check::check(cx, call_span, recv, f_recv, is_some);
+        },
         _ => {},
     }
 }
@@ -5130,12 +5174,9 @@ impl ShouldImplTraitCase {
     fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
         self.lint_explicit_lifetime
             || !impl_item.generics.params.iter().any(|p| {
-                matches!(
-                    p.kind,
-                    hir::GenericParamKind::Lifetime {
-                        kind: hir::LifetimeParamKind::Explicit
-                    }
-                )
+                matches!(p.kind, hir::GenericParamKind::Lifetime {
+                    kind: hir::LifetimeParamKind::Explicit
+                })
             })
     }
 }

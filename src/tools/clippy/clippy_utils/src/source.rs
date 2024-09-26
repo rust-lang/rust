@@ -9,10 +9,10 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
 use rustc_lint::{EarlyContext, LateContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::source_map::{original_sp, SourceMap};
+use rustc_span::source_map::{SourceMap, original_sp};
 use rustc_span::{
-    hygiene, BytePos, FileNameDisplayPreference, Pos, SourceFile, SourceFileAndLine, Span, SpanData, SyntaxContext,
-    DUMMY_SP,
+    BytePos, DUMMY_SP, FileNameDisplayPreference, Pos, SourceFile, SourceFileAndLine, Span, SpanData, SyntaxContext,
+    hygiene,
 };
 use std::borrow::Cow;
 use std::fmt;
@@ -666,39 +666,6 @@ pub fn walk_span_to_context(span: Span, outer: SyntaxContext) -> Option<Span> {
     (outer_span.ctxt() == outer).then_some(outer_span)
 }
 
-/// Removes block comments from the given `Vec` of lines.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// without_block_comments(vec!["/*", "foo", "*/"]);
-/// // => vec![]
-///
-/// without_block_comments(vec!["bar", "/*", "foo", "*/"]);
-/// // => vec!["bar"]
-/// ```
-pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
-    let mut without = vec![];
-
-    let mut nest_level = 0;
-
-    for line in lines {
-        if line.contains("/*") {
-            nest_level += 1;
-            continue;
-        } else if line.contains("*/") {
-            nest_level -= 1;
-            continue;
-        }
-
-        if nest_level == 0 {
-            without.push(line);
-        }
-    }
-
-    without
-}
-
 /// Trims the whitespace from the start and the end of the span.
 pub fn trim_span(sm: &SourceMap, span: Span) -> Span {
     let data = span.data();
@@ -758,15 +725,12 @@ pub fn str_literal_to_char_literal(
             &snip[1..(snip.len() - 1)]
         };
 
-        let hint = format!(
-            "'{}'",
-            match ch {
-                "'" => "\\'",
-                r"\" => "\\\\",
-                "\\\"" => "\"", // no need to escape `"` in `'"'`
-                _ => ch,
-            }
-        );
+        let hint = format!("'{}'", match ch {
+            "'" => "\\'",
+            r"\" => "\\\\",
+            "\\\"" => "\"", // no need to escape `"` in `'"'`
+            _ => ch,
+        });
 
         Some(hint)
     } else {
@@ -776,7 +740,7 @@ pub fn str_literal_to_char_literal(
 
 #[cfg(test)]
 mod test {
-    use super::{reindent_multiline, without_block_comments};
+    use super::reindent_multiline;
 
     #[test]
     fn test_reindent_multiline_single_line() {
@@ -843,30 +807,5 @@ mod test {
     } else {
         z
     }".into(), true, Some(8)));
-    }
-
-    #[test]
-    fn test_without_block_comments_lines_without_block_comments() {
-        let result = without_block_comments(vec!["/*", "", "*/"]);
-        println!("result: {result:?}");
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["", "/*", "", "*/", "#[crate_type = \"lib\"]", "/*", "", "*/", ""]);
-        assert_eq!(result, vec!["", "#[crate_type = \"lib\"]", ""]);
-
-        let result = without_block_comments(vec!["/* rust", "", "*/"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* one-line comment */"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* nested", "/* multi-line", "comment", "*/", "test", "*/"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* nested /* inline /* comment */ test */ */"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["foo", "bar", "baz"]);
-        assert_eq!(result, vec!["foo", "bar", "baz"]);
     }
 }

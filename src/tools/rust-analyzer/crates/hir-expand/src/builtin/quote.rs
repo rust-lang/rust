@@ -3,6 +3,7 @@
 
 use intern::{sym, Symbol};
 use span::Span;
+use syntax::ToSmolStr;
 use tt::IdentIsRaw;
 
 use crate::name::Name;
@@ -17,6 +18,7 @@ pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
 // 2. #()* pattern repetition not supported now
 //    * But we can do it manually, see `test_quote_derive_copy_hack`
 #[doc(hidden)]
+#[macro_export]
 macro_rules! quote_impl__ {
     ($span:ident) => {
         Vec::<$crate::tt::TokenTree>::new()
@@ -26,8 +28,8 @@ macro_rules! quote_impl__ {
         {
             let children = $crate::builtin::quote::__quote!($span $($tt)*);
             $crate::tt::Subtree {
-                delimiter: crate::tt::Delimiter {
-                    kind: crate::tt::DelimiterKind::$delim,
+                delimiter: $crate::tt::Delimiter {
+                    kind: $crate::tt::DelimiterKind::$delim,
                     open: $span,
                     close: $span,
                 },
@@ -39,9 +41,9 @@ macro_rules! quote_impl__ {
     ( @PUNCT($span:ident) $first:literal ) => {
         {
             vec![
-                crate::tt::Leaf::Punct(crate::tt::Punct {
+                $crate::tt::Leaf::Punct($crate::tt::Punct {
                     char: $first,
-                    spacing: crate::tt::Spacing::Alone,
+                    spacing: $crate::tt::Spacing::Alone,
                     span: $span,
                 }).into()
             ]
@@ -51,14 +53,14 @@ macro_rules! quote_impl__ {
     ( @PUNCT($span:ident) $first:literal, $sec:literal ) => {
         {
             vec![
-                crate::tt::Leaf::Punct(crate::tt::Punct {
+                $crate::tt::Leaf::Punct($crate::tt::Punct {
                     char: $first,
-                    spacing: crate::tt::Spacing::Joint,
+                    spacing: $crate::tt::Spacing::Joint,
                     span: $span,
                 }).into(),
-                crate::tt::Leaf::Punct(crate::tt::Punct {
+                $crate::tt::Leaf::Punct($crate::tt::Punct {
                     char: $sec,
-                    spacing: crate::tt::Spacing::Alone,
+                    spacing: $crate::tt::Spacing::Alone,
                     span: $span,
                 }).into()
             ]
@@ -97,7 +99,7 @@ macro_rules! quote_impl__ {
     // Ident
     ($span:ident $tt:ident ) => {
         vec![ {
-            crate::tt::Leaf::Ident(crate::tt::Ident {
+            $crate::tt::Leaf::Ident($crate::tt::Ident {
                 sym: intern::Symbol::intern(stringify!($tt)),
                 span: $span,
                 is_raw: tt::IdentIsRaw::No,
@@ -108,6 +110,7 @@ macro_rules! quote_impl__ {
     // Puncts
     // FIXME: Not all puncts are handled
     ($span:ident -> ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '-', '>')};
+    ($span:ident => ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '=', '>')};
     ($span:ident & ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '&')};
     ($span:ident , ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ',')};
     ($span:ident : ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ':')};
@@ -117,6 +120,9 @@ macro_rules! quote_impl__ {
     ($span:ident < ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '<')};
     ($span:ident > ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '>')};
     ($span:ident ! ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '!')};
+    ($span:ident # ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '#')};
+    ($span:ident $ ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '$')};
+    ($span:ident * ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '*')};
 
     ($span:ident $first:tt $($tail:tt)+ ) => {
         {
@@ -128,18 +134,19 @@ macro_rules! quote_impl__ {
         }
     };
 }
-pub(super) use quote_impl__ as __quote;
+pub use quote_impl__ as __quote;
 
 /// FIXME:
 /// It probably should implement in proc-macro
-macro_rules! quote_impl {
+#[macro_export]
+macro_rules! quote {
     ($span:ident=> $($tt:tt)* ) => {
         $crate::builtin::quote::IntoTt::to_subtree($crate::builtin::quote::__quote!($span $($tt)*), $span)
     }
 }
-pub(super) use quote_impl as quote;
+pub(super) use quote;
 
-pub(crate) trait IntoTt {
+pub trait IntoTt {
     fn to_subtree(self, span: Span) -> crate::tt::Subtree;
     fn to_tokens(self) -> Vec<crate::tt::TokenTree>;
 }
@@ -167,7 +174,7 @@ impl IntoTt for crate::tt::Subtree {
     }
 }
 
-pub(crate) trait ToTokenTree {
+pub trait ToTokenTree {
     fn to_token(self, span: Span) -> crate::tt::TokenTree;
 }
 
@@ -211,8 +218,8 @@ impl_to_to_tokentrees! {
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };
     _span: crate::tt::Punct => self { self };
-    span: &str => self { crate::tt::Literal{symbol: Symbol::intern(self), span, kind: tt::LitKind::Str, suffix: None }};
-    span: String => self { crate::tt::Literal{symbol: Symbol::intern(&self), span, kind: tt::LitKind::Str, suffix: None }};
+    span: &str => self { crate::tt::Literal{symbol: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix: None }};
+    span: String => self { crate::tt::Literal{symbol: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix: None }};
     span: Name => self {
         let (is_raw, s) = IdentIsRaw::split_from_symbol(self.as_str());
         crate::tt::Ident{sym: Symbol::intern(s), span, is_raw }

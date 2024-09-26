@@ -81,7 +81,7 @@ pub struct SyntaxContextData {
     /// Invariant: Only [`SyntaxContextId::ROOT`] has a [`None`] outer expansion.
     // FIXME: The None case needs to encode the context crate id. We can encode that as the MSB of
     // MacroCallId is reserved anyways so we can do bit tagging here just fine.
-    // The bigger issue is that that will cause interning to now create completely separate chains
+    // The bigger issue is that this will cause interning to now create completely separate chains
     // per crate. Though that is likely not a problem as `MacroCallId`s are already crate calling dependent.
     pub outer_expn: Option<MacroCallId>,
     pub outer_transparency: Transparency,

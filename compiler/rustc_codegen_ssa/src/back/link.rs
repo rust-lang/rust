@@ -1087,16 +1087,17 @@ fn link_natively(
     let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
+        let stripcmd = "/usr/bin/strip";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-S"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-S"))
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, "strip", out_filename, None)
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, None)
             }
             (Strip::None, _) => {}
         }

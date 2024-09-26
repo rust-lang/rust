@@ -7,10 +7,12 @@ use stdx::{format_to, to_lower_snake_case};
 use syntax::{format_smolstr, AstNode, Edition, SmolStr, ToSmolStr};
 
 use crate::{
-    context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
+    context::{
+        CompleteSemicolon, CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind,
+    },
     item::{
         Builder, CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevanceFn,
-        CompletionRelevanceReturnType,
+        CompletionRelevanceReturnType, CompletionRelevanceTraitInfo,
     },
     render::{
         compute_exact_name_match, compute_ref_match, compute_type_match, match_types, RenderContext,
@@ -88,11 +90,13 @@ fn render(
     let ret_type = func.ret_type(db);
     let assoc_item = func.as_assoc_item(db);
 
-    let trait_ = assoc_item.and_then(|trait_| trait_.container_or_implemented_trait(db));
-    let is_op_method = trait_.map_or(false, |trait_| completion.is_ops_trait(trait_));
-
-    let is_item_from_notable_trait =
-        trait_.map_or(false, |trait_| completion.is_doc_notable_trait(trait_));
+    let trait_info =
+        assoc_item.and_then(|trait_| trait_.container_or_implemented_trait(db)).map(|trait_| {
+            CompletionRelevanceTraitInfo {
+                notable_trait: completion.is_doc_notable_trait(trait_),
+                is_op_method: completion.is_ops_trait(trait_),
+            }
+        });
 
     let (has_dot_receiver, has_call_parens, cap) = match func_kind {
         FuncKind::Function(&PathCompletionCtx {
@@ -129,8 +133,7 @@ fn render(
         },
         exact_name_match: compute_exact_name_match(completion, &call),
         function,
-        is_op_method,
-        is_item_from_notable_trait,
+        trait_: trait_info,
         ..ctx.completion_relevance()
     });
 
@@ -159,7 +162,16 @@ fn render(
         .lookup_by(name.unescaped().display(db).to_smolstr());
 
     if let Some((cap, (self_param, params))) = complete_call_parens {
-        add_call_parens(&mut item, completion, cap, call, escaped_call, self_param, params);
+        add_call_parens(
+            &mut item,
+            completion,
+            cap,
+            call,
+            escaped_call,
+            self_param,
+            params,
+            &ret_type,
+        );
     }
 
     match ctx.import_to_add {
@@ -216,10 +228,11 @@ pub(super) fn add_call_parens<'b>(
     escaped_name: SmolStr,
     self_param: Option<hir::SelfParam>,
     params: Vec<hir::Param>,
+    ret_type: &hir::Type,
 ) -> &'b mut Builder {
     cov_mark::hit!(inserts_parens_for_function_calls);
 
-    let (snippet, label_suffix) = if self_param.is_none() && params.is_empty() {
+    let (mut snippet, label_suffix) = if self_param.is_none() && params.is_empty() {
         (format!("{escaped_name}()$0"), "()")
     } else {
         builder.trigger_call_info();
@@ -264,6 +277,24 @@ pub(super) fn add_call_parens<'b>(
 
         (snippet, "(…)")
     };
+    if ret_type.is_unit() {
+        match ctx.complete_semicolon {
+            CompleteSemicolon::DoNotComplete => {}
+            CompleteSemicolon::CompleteSemi | CompleteSemicolon::CompleteComma => {
+                cov_mark::hit!(complete_semicolon);
+                let ch = if matches!(ctx.complete_semicolon, CompleteSemicolon::CompleteComma) {
+                    ','
+                } else {
+                    ';'
+                };
+                if snippet.ends_with("$0") {
+                    snippet.insert(snippet.len() - "$0".len(), ch);
+                } else {
+                    snippet.push(ch);
+                }
+            }
+        }
+    }
     builder.label(SmolStr::from_iter([&name, label_suffix])).insert_snippet(cap, snippet)
 }
 
@@ -392,7 +423,7 @@ fn main() { no_$0 }
 "#,
             r#"
 fn no_args() {}
-fn main() { no_args()$0 }
+fn main() { no_args();$0 }
 "#,
         );
 
@@ -404,7 +435,7 @@ fn main() { with_$0 }
 "#,
             r#"
 fn with_args(x: i32, y: String) {}
-fn main() { with_args(${1:x}, ${2:y})$0 }
+fn main() { with_args(${1:x}, ${2:y});$0 }
 "#,
         );
 
@@ -413,14 +444,14 @@ fn main() { with_args(${1:x}, ${2:y})$0 }
             r#"
 struct S;
 impl S {
-    fn foo(&self) {}
+    fn foo(&self) -> i32 { 0 }
 }
 fn bar(s: &S) { s.f$0 }
 "#,
             r#"
 struct S;
 impl S {
-    fn foo(&self) {}
+    fn foo(&self) -> i32 { 0 }
 }
 fn bar(s: &S) { s.foo()$0 }
 "#,
@@ -443,7 +474,7 @@ impl S {
     fn foo(&self, x: i32) {}
 }
 fn bar(s: &S) {
-    s.foo(${1:x})$0
+    s.foo(${1:x});$0
 }
 "#,
         );
@@ -462,7 +493,7 @@ impl S {
 struct S {}
 impl S {
     fn foo(&self, x: i32) {
-        self.foo(${1:x})$0
+        self.foo(${1:x});$0
     }
 }
 "#,
@@ -485,7 +516,7 @@ struct S;
 impl S {
     fn foo(&self) {}
 }
-fn main() { S::foo(${1:&self})$0 }
+fn main() { S::foo(${1:&self});$0 }
 "#,
         );
     }
@@ -502,7 +533,7 @@ fn main() { with_$0 }
 "#,
             r#"
 fn with_args(x: i32, y: String) {}
-fn main() { with_args($0) }
+fn main() { with_args($0); }
 "#,
         );
     }
@@ -517,7 +548,7 @@ fn main() { f$0 }
 "#,
             r#"
 fn foo(_foo: i32, ___bar: bool, ho_ge_: String) {}
-fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_})$0 }
+fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_});$0 }
 "#,
         );
     }
@@ -539,7 +570,7 @@ struct Foo {}
 fn ref_arg(x: &Foo) {}
 fn main() {
     let x = Foo {};
-    ref_arg(${1:&x})$0
+    ref_arg(${1:&x});$0
 }
 "#,
         );
@@ -562,7 +593,7 @@ struct Foo {}
 fn ref_arg(x: &mut Foo) {}
 fn main() {
     let x = Foo {};
-    ref_arg(${1:&mut x})$0
+    ref_arg(${1:&mut x});$0
 }
 "#,
         );
@@ -595,7 +626,7 @@ impl Bar {
 fn main() {
     let x = Foo {};
     let y = Bar {};
-    y.apply_foo(${1:&x})$0
+    y.apply_foo(${1:&x});$0
 }
 "#,
         );
@@ -616,7 +647,7 @@ fn main() {
 fn take_mutably(mut x: &i32) {}
 
 fn main() {
-    take_mutably(${1:x})$0
+    take_mutably(${1:x});$0
 }
 "#,
         );
@@ -649,7 +680,7 @@ fn qux(Foo { bar }: Foo) {
 }
 
 fn main() {
-  qux(${1:foo})$0
+  qux(${1:foo});$0
 }
 "#,
         );
@@ -735,6 +766,136 @@ fn g(foo: ()#[baz = "qux"] mut ba$0)
             r#"
 fn f(foo: (), #[baz = "qux"] mut bar: u32) {}
 fn g(foo: (), #[baz = "qux"] mut bar: u32)
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_semicolon_for_unit() {
+        cov_mark::check!(complete_semicolon);
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    foo$0
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    foo();$0
+}
+"#,
+        );
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo$0
+}
+"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo(${1:a});$0
+}
+"#,
+        );
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo$0;
+}
+"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo(${1:a})$0;
+}
+"#,
+        );
+        check_edit_with_config(
+            CompletionConfig { add_semicolon_to_unit: false, ..TEST_CONFIG },
+            r#"foo"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo$0
+}
+"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo(${1:a})$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_comma_for_unit_match_arm() {
+        cov_mark::check!(complete_semicolon);
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match Some(false) {
+        v => fo$0
+    }
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match Some(false) {
+        v => foo(),$0
+    }
+}
+"#,
+        );
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match Some(false) {
+        v => fo$0,
+    }
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match Some(false) {
+        v => foo()$0,
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_semicolon_in_closure_ret() {
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn baz(_: impl FnOnce()) {}
+fn bar() {
+    baz(|| fo$0);
+}
+"#,
+            r#"
+fn foo() {}
+fn baz(_: impl FnOnce()) {}
+fn bar() {
+    baz(|| foo()$0);
+}
 "#,
         );
     }

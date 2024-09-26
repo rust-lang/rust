@@ -273,10 +273,12 @@ impl LsifManager<'_> {
 
 impl flags::Lsif {
     pub fn run(self) -> anyhow::Result<()> {
-        eprintln!("Generating LSIF started...");
         let now = Instant::now();
-        let cargo_config =
-            &CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
+        let cargo_config = &CargoConfig {
+            sysroot: Some(RustLibSource::Discover),
+            all_targets: true,
+            ..Default::default()
+        };
         let no_progress = &|_| ();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
@@ -285,6 +287,7 @@ impl flags::Lsif {
         };
         let path = AbsPathBuf::assert_utf8(env::current_dir()?.join(self.path));
         let root = ProjectManifest::discover_single(&path)?;
+        eprintln!("Generating LSIF for project at {root}");
         let mut workspace = ProjectWorkspace::load(root, cargo_config, no_progress)?;
 
         let build_scripts = workspace.run_build_scripts(cargo_config, no_progress)?;

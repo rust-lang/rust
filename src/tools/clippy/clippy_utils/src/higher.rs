@@ -3,14 +3,14 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::consts::{ConstEvalCtxt, Constant};
-use crate::ty::is_type_diagnostic_item;
 use crate::is_expn_of;
+use crate::ty::is_type_diagnostic_item;
 
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
 use rustc_lint::LateContext;
-use rustc_span::{sym, symbol, Span};
+use rustc_span::{Span, sym, symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Returns `(pat, arg, body, span)`.

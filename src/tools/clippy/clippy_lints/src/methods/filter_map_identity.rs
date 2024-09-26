@@ -3,7 +3,7 @@ use clippy_utils::{is_expr_identity_function, is_expr_untyped_identity_function,
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::FILTER_MAP_IDENTITY;
 

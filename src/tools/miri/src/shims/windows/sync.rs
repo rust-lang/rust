@@ -90,7 +90,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             ),
         );
-        return Ok(());
+        Ok(())
     }
 
     fn InitOnceComplete(

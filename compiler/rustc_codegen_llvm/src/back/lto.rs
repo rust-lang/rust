@@ -808,8 +808,7 @@ struct ThinLTOKeysMap {
 impl ThinLTOKeysMap {
     fn save_to_file(&self, path: &Path) -> io::Result<()> {
         use std::io::Write;
-        let file = File::create(path)?;
-        let mut writer = io::BufWriter::new(file);
+        let mut writer = File::create_buffered(path)?;
         // The entries are loaded back into a hash map in `load_from_file()`, so
         // the order in which we write them to file here does not matter.
         for (module, key) in &self.keys {
@@ -821,8 +820,8 @@ impl ThinLTOKeysMap {
     fn load_from_file(path: &Path) -> io::Result<Self> {
         use std::io::BufRead;
         let mut keys = BTreeMap::default();
-        let file = File::open(path)?;
-        for line in io::BufReader::new(file).lines() {
+        let file = File::open_buffered(path)?;
+        for line in file.lines() {
             let line = line?;
             let mut split = line.split(' ');
             let module = split.next().unwrap();

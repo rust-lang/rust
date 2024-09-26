@@ -28,27 +28,9 @@ impl<'a, 'tcx> VirtualIndex {
 
         let llty = bx.fn_ptr_backend_type(fn_abi);
         let ptr_size = bx.data_layout().pointer_size;
-        let ptr_align = bx.data_layout().pointer_align.abi;
         let vtable_byte_offset = self.0 * ptr_size.bytes();
 
-        if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
-            && bx.cx().sess().lto() == Lto::Fat
-        {
-            let typeid = bx
-                .typeid_metadata(typeid_for_trait_ref(bx.tcx(), expect_dyn_trait_in_self(ty)))
-                .unwrap();
-            let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
-            func
-        } else {
-            let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
-            let ptr = bx.load(llty, gep, ptr_align);
-            // VTable loads are invariant.
-            bx.set_invariant_load(ptr);
-            if nonnull {
-                bx.nonnull_metadata(ptr);
-            }
-            ptr
-        }
+        load_vtable(bx, llvtable, llty, vtable_byte_offset, ty, nonnull)
     }
 
     pub(crate) fn get_optional_fn<Bx: BuilderMethods<'a, 'tcx>>(
@@ -75,31 +57,27 @@ impl<'a, 'tcx> VirtualIndex {
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
+        ty: Ty<'tcx>,
     ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 
         let llty = bx.type_isize();
         let ptr_size = bx.data_layout().pointer_size;
-        let ptr_align = bx.data_layout().pointer_align.abi;
         let vtable_byte_offset = self.0 * ptr_size.bytes();
 
-        let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
-        let ptr = bx.load(llty, gep, ptr_align);
-        // VTable loads are invariant.
-        bx.set_invariant_load(ptr);
-        ptr
+        load_vtable(bx, llvtable, llty, vtable_byte_offset, ty, false)
     }
 }
 
 /// This takes a valid `self` receiver type and extracts the principal trait
-/// ref of the type.
-fn expect_dyn_trait_in_self(ty: Ty<'_>) -> ty::PolyExistentialTraitRef<'_> {
+/// ref of the type. Return `None` if there is no principal trait.
+fn dyn_trait_in_self(ty: Ty<'_>) -> Option<ty::PolyExistentialTraitRef<'_>> {
     for arg in ty.peel_refs().walk() {
         if let GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Dynamic(data, _, _) = ty.kind()
         {
-            return data.principal().expect("expected principal trait object");
+            return data.principal();
         }
     }
 
@@ -137,4 +115,37 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx.create_vtable_debuginfo(ty, trait_ref, vtable);
     cx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
     vtable
+}
+
+/// Call this function whenever you need to load a vtable.
+pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    llvtable: Bx::Value,
+    llty: Bx::Type,
+    vtable_byte_offset: u64,
+    ty: Ty<'tcx>,
+    nonnull: bool,
+) -> Bx::Value {
+    let ptr_align = bx.data_layout().pointer_align.abi;
+
+    if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
+        && bx.cx().sess().lto() == Lto::Fat
+    {
+        if let Some(trait_ref) = dyn_trait_in_self(ty) {
+            let typeid = bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref)).unwrap();
+            let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
+            return func;
+        } else if nonnull {
+            bug!("load nonnull value from a vtable without a principal trait")
+        }
+    }
+
+    let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
+    let ptr = bx.load(llty, gep, ptr_align);
+    // VTable loads are invariant.
+    bx.set_invariant_load(ptr);
+    if nonnull {
+        bx.nonnull_metadata(ptr);
+    }
+    ptr
 }

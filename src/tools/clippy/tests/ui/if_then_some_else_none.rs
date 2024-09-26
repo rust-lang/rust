@@ -131,6 +131,10 @@ fn issue11394(b: bool, v: Result<(), ()>) -> Result<(), ()> {
     Ok(())
 }
 
+fn issue13407(s: &str) -> Option<bool> {
+    if s == "1" { Some(true) } else { None }
+}
+
 const fn issue12103(x: u32) -> Option<u32> {
     // Should not issue an error in `const` context
     if x > 42 { Some(150) } else { None }

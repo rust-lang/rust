@@ -275,6 +275,7 @@ fn infer_std_crash_5() {
             32..320 'for co...     }': ()
             32..320 'for co...     }': ()
             32..320 'for co...     }': ()
+            32..320 'for co...     }': ()
             36..43 'content': {unknown}
             47..60 'doesnt_matter': {unknown}
             61..320 '{     ...     }': ()
@@ -1065,7 +1066,7 @@ fn test() {
 fn bare_dyn_trait_binders_9639() {
     check_no_mismatches(
         r#"
-//- minicore: fn, coerce_unsized
+//- minicore: fn, coerce_unsized, dispatch_from_dyn
 fn infix_parse<T, S>(_state: S, _level_code: &Fn(S)) -> T {
     loop {}
 }
@@ -1241,6 +1242,7 @@ fn test() {
             16..66 'for _ ...     }': &'? mut IntoIterator::IntoIter<()>
             16..66 'for _ ...     }': fn next<IntoIterator::IntoIter<()>>(&'? mut IntoIterator::IntoIter<()>) -> Option<<IntoIterator::IntoIter<()> as Iterator>::Item>
             16..66 'for _ ...     }': Option<IntoIterator::Item<()>>
+            16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
@@ -1907,6 +1909,7 @@ fn dont_unify_on_casts() {
     // #15246
     check_types(
         r#"
+//- minicore: sized
 fn unify(_: [bool; 1]) {}
 fn casted(_: *const bool) {}
 fn default<T>() -> T { loop {} }
@@ -1926,6 +1929,7 @@ fn test() {
 fn rustc_test_issue_52437() {
     check_types(
         r#"
+    //- minicore: sized
     fn main() {
         let x = [(); &(&'static: loop { |x| {}; }) as *const _ as usize]
           //^ [(); _]
@@ -2225,6 +2229,69 @@ async fn f<A, B, C>() -> Bar {}
         expect![[r#"
             64..66 '{}': ()
             64..66 '{}': impl Future<Output = ()>
+        "#]],
+    );
+}
+
+#[test]
+fn issue_18109() {
+    check_infer(
+        r#"
+//- minicore: option
+struct Map<T, U>(T, U);
+
+impl<T, U> Map<T, U> {
+    fn new() -> Self { loop {} }
+    fn get(&self, _: &T) -> Option<&U> { loop {} }
+}
+
+fn test(x: bool) {
+    let map = Map::new();
+    let _ = match x {
+        true => {
+            let Some(val) = map.get(&8) else { return };
+            *val
+        }
+        false => return,
+        _ => 42,
+    };
+}
+"#,
+        expect![[r#"
+            69..80 '{ loop {} }': Map<T, U>
+            71..78 'loop {}': !
+            76..78 '{}': ()
+            93..97 'self': &'? Map<T, U>
+            99..100 '_': &'? T
+            120..131 '{ loop {} }': Option<&'? U>
+            122..129 'loop {}': !
+            127..129 '{}': ()
+            143..144 'x': bool
+            152..354 '{     ...  }; }': ()
+            162..165 'map': Map<i32, i32>
+            168..176 'Map::new': fn new<i32, i32>() -> Map<i32, i32>
+            168..178 'Map::new()': Map<i32, i32>
+            188..189 '_': i32
+            192..351 'match ...     }': i32
+            198..199 'x': bool
+            210..214 'true': bool
+            210..214 'true': bool
+            218..303 '{     ...     }': i32
+            236..245 'Some(val)': Option<&'? i32>
+            241..244 'val': &'? i32
+            248..251 'map': Map<i32, i32>
+            248..259 'map.get(&8)': Option<&'? i32>
+            256..258 '&8': &'? i32
+            257..258 '8': i32
+            265..275 '{ return }': !
+            267..273 'return': !
+            289..293 '*val': i32
+            290..293 'val': &'? i32
+            312..317 'false': bool
+            312..317 'false': bool
+            321..327 'return': !
+            337..338 '_': bool
+            342..344 '42': i32
         "#]],
     );
 }

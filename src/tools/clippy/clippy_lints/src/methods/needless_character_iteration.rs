@@ -4,8 +4,8 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
 
-use super::utils::get_last_chain_binding_hir_id;
 use super::NEEDLESS_CHARACTER_ITERATION;
+use super::utils::get_last_chain_binding_hir_id;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{match_def_path, path_to_local_id, peel_blocks};

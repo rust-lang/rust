@@ -95,7 +95,7 @@
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -1243,8 +1243,7 @@ fn dump_mono_items_stats<'tcx>(
     let ext = format.extension();
     let filename = format!("{crate_name}.mono_items.{ext}");
     let output_path = output_directory.join(&filename);
-    let file = File::create(&output_path)?;
-    let mut file = BufWriter::new(file);
+    let mut file = File::create_buffered(&output_path)?;
 
     // Gather instantiated mono items grouped by def_id
     let mut items_per_def_id: FxIndexMap<_, Vec<_>> = Default::default();

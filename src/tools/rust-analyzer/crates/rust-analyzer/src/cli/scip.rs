@@ -51,7 +51,7 @@ impl flags::Scip {
             // FIXME @alibektas : What happens to errors without logging?
             error!(?error_sink, "Config Error(s)");
         }
-        let cargo_config = config.cargo();
+        let cargo_config = config.cargo(None);
         let (db, vfs, _) = load_workspace_at(
             root.as_path().as_ref(),
             &cargo_config,
@@ -142,7 +142,7 @@ impl flags::Scip {
                 let mut symbol_roles = Default::default();
 
                 if let Some(def) = token.definition {
-                    // if the the range of the def and the range of the token are the same, this must be the definition.
+                    // if the range of the def and the range of the token are the same, this must be the definition.
                     // they also must be in the same file. See https://github.com/rust-lang/rust-analyzer/pull/17988
                     if def.file_id == file_id && def.range == text_range {
                         symbol_roles |= scip_types::SymbolRole::Definition as i32;

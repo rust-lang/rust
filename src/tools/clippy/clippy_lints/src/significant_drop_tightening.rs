@@ -4,13 +4,13 @@ use clippy_utils::{expr_or_init, get_attr, path_to_local, peel_hir_expr_unary};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{self as hir, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, sym};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 

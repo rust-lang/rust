@@ -1,6 +1,6 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
-use crate::visitors::{for_each_expr_without_closures, Descend};
+use crate::visitors::{Descend, for_each_expr_without_closures};
 
 use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
@@ -10,7 +10,7 @@ use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::LateContext;
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
-use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol};
+use rustc_span::{BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol, sym};
 use std::ops::ControlFlow;
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[

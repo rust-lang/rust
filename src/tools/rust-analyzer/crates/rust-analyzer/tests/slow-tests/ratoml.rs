@@ -9,17 +9,12 @@ use lsp_types::{
 use paths::Utf8PathBuf;
 
 use rust_analyzer::config::Config;
-use rust_analyzer::lsp::ext::{InternalTestingFetchConfig, InternalTestingFetchConfigParams};
+use rust_analyzer::lsp::ext::{
+    InternalTestingFetchConfig, InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
+    InternalTestingFetchConfigResponse,
+};
 use serde_json::json;
 use test_utils::skip_slow_tests;
-
-enum QueryType {
-    Local,
-    /// A query whose config key is a part of the global configs, so that
-    /// testing for changes to this config means testing if global changes
-    /// take affect.
-    Workspace,
-}
 
 struct RatomlTest {
     urls: Vec<Url>,
@@ -158,20 +153,24 @@ impl RatomlTest {
         });
     }
 
-    fn query(&self, query: QueryType, source_file_idx: usize) -> bool {
-        let config = match query {
-            QueryType::Local => "local".to_owned(),
-            QueryType::Workspace => "workspace".to_owned(),
-        };
+    fn query(
+        &self,
+        query: InternalTestingFetchConfigOption,
+        source_file_idx: usize,
+        expected: InternalTestingFetchConfigResponse,
+    ) {
         let res = self.server.send_request::<InternalTestingFetchConfig>(
             InternalTestingFetchConfigParams {
                 text_document: Some(TextDocumentIdentifier {
                     uri: self.urls[source_file_idx].clone(),
                 }),
-                config,
+                config: query,
             },
         );
-        res.as_bool().unwrap()
+        assert_eq!(
+            serde_json::from_value::<InternalTestingFetchConfigResponse>(res).unwrap(),
+            expected
+        )
     }
 }
 
@@ -206,7 +205,11 @@ enum Value {
         })),
     );
 
-    assert!(server.query(QueryType::Local, 1));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        1,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
 }
 
 /// Checks if client config can be modified.
@@ -311,7 +314,11 @@ enum Value {
         None,
     );
 
-    assert!(server.query(QueryType::Local, 2));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        2,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
 }
 
 #[test]
@@ -341,12 +348,20 @@ enum Value {
         None,
     );
 
-    assert!(!server.query(QueryType::Local, 1));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        1,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(false),
+    );
     server.create(
         "//- /$$CONFIG_DIR$$/rust-analyzer/rust-analyzer.toml",
         RatomlTest::EMIT_MUST_USE.to_owned(),
     );
-    assert!(server.query(QueryType::Local, 1));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        1,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
 }
 
 #[test]
@@ -378,9 +393,17 @@ assist.emitMustUse = true"#,
         None,
     );
 
-    assert!(server.query(QueryType::Local, 1));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        1,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
     server.edit(2, String::new());
-    assert!(!server.query(QueryType::Local, 1));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        1,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(false),
+    );
 }
 
 #[test]
@@ -412,9 +435,17 @@ assist.emitMustUse = true"#,
         None,
     );
 
-    assert!(server.query(QueryType::Local, 1));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        1,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
     server.delete(2);
-    assert!(!server.query(QueryType::Local, 1));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        1,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(false),
+    );
 }
 
 #[test]
@@ -461,7 +492,11 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
 }
 
 #[test]
@@ -508,9 +543,17 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(!server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(false),
+    );
     server.edit(1, "assist.emitMustUse = true".to_owned());
-    assert!(server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
 }
 
 #[test]
@@ -557,9 +600,17 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
     server.delete(1);
-    assert!(!server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(false),
+    );
 }
 
 #[test]
@@ -606,9 +657,17 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
     server.create("//- /p1/p2/rust-analyzer.toml", RatomlTest::EMIT_MUST_NOT_USE.to_owned());
-    assert!(!server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(false),
+    );
 }
 
 #[test]
@@ -656,9 +715,17 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
     server.delete(1);
-    assert!(!server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(false),
+    );
 }
 
 #[test]
@@ -705,8 +772,16 @@ enum Value {
         None,
     );
 
-    assert!(server.query(QueryType::Local, 3));
-    assert!(server.query(QueryType::Local, 4));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        4,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
 }
 
 #[test]
@@ -744,7 +819,11 @@ fn ratoml_multiple_ratoml_in_single_source_root() {
         None,
     );
 
-    assert!(server.query(QueryType::Local, 3));
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
 }
 
 /// If a root is non-local, so we cannot find what its parent is
@@ -765,7 +844,7 @@ fn ratoml_multiple_ratoml_in_single_source_root() {
 
 // [dependencies]
 // p2 = { path = "../p2" }
-// #,
+// "#,
 //                 r#"
 // //- /p1/src/lib.rs
 // enum Value {
@@ -836,7 +915,7 @@ edition = "2021"
         "#,
             r#"
 //- /p1/rust-analyzer.toml
-rustfmt.rangeFormatting.enable = true
+check.workspace = false
         "#,
             r#"
 //- /p1/src/lib.rs
@@ -848,7 +927,11 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Workspace, 2));
+    server.query(
+        InternalTestingFetchConfigOption::CheckWorkspace,
+        2,
+        InternalTestingFetchConfigResponse::CheckWorkspace(false),
+    )
 }
 
 #[test]
@@ -868,7 +951,7 @@ edition = "2021"
         "#,
             r#"
 //- /p1/rust-analyzer.toml
-rustfmt.rangeFormatting.enable = true
+check.workspace = false
     "#,
             r#"
 //- /p1/src/lib.rs
@@ -880,9 +963,17 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Workspace, 2));
-    server.edit(1, "rustfmt.rangeFormatting.enable = false".to_owned());
-    assert!(!server.query(QueryType::Workspace, 2));
+    server.query(
+        InternalTestingFetchConfigOption::CheckWorkspace,
+        2,
+        InternalTestingFetchConfigResponse::CheckWorkspace(false),
+    );
+    server.edit(1, "check.workspace = true".to_owned());
+    server.query(
+        InternalTestingFetchConfigOption::CheckWorkspace,
+        2,
+        InternalTestingFetchConfigResponse::CheckWorkspace(true),
+    );
 }
 
 #[test]
@@ -902,7 +993,7 @@ edition = "2021"
         "#,
             r#"
 //- /p1/rust-analyzer.toml
-rustfmt.rangeFormatting.enable = true
+check.workspace = false
        "#,
             r#"
 //- /p1/src/lib.rs
@@ -914,7 +1005,15 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Workspace, 2));
+    server.query(
+        InternalTestingFetchConfigOption::CheckWorkspace,
+        2,
+        InternalTestingFetchConfigResponse::CheckWorkspace(false),
+    );
     server.delete(1);
-    assert!(!server.query(QueryType::Workspace, 2));
+    server.query(
+        InternalTestingFetchConfigOption::CheckWorkspace,
+        2,
+        InternalTestingFetchConfigResponse::CheckWorkspace(true),
+    );
 }

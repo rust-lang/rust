@@ -185,8 +185,8 @@ impl<V, T> ProjectionElem<V, T> {
                         never!("Out of bound tuple field");
                         TyKind::Error.intern(Interner)
                     }),
-                _ => {
-                    never!("Only tuple has tuple field");
+                ty => {
+                    never!("Only tuple has tuple field: {:?}", ty);
                     TyKind::Error.intern(Interner)
                 }
             },
@@ -837,7 +837,9 @@ pub enum CastKind {
     PointerFromExposedAddress,
     /// All sorts of pointer-to-pointer casts. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
-    Pointer(PointerCast),
+    PtrToPtr,
+    /// Pointer related casts that are done by coercions.
+    PointerCoercion(PointerCast),
     /// Cast into a dyn* object.
     DynStar,
     IntToInt,

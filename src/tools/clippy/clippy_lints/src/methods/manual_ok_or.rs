@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{indent_of, reindent_multiline, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
 use rustc_errors::Applicability;

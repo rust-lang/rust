@@ -74,6 +74,14 @@ impl<R: Read> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
+    pub(crate) fn try_new_buffer() -> io::Result<Buffer> {
+        Buffer::try_with_capacity(DEFAULT_BUF_SIZE)
+    }
+
+    pub(crate) fn with_buffer(inner: R, buf: Buffer) -> Self {
+        Self { inner, buf }
+    }
+
     /// Creates a new `BufReader<R>` with the specified buffer capacity.
     ///
     /// # Examples

@@ -36,8 +36,9 @@ pub mod generated {
 pub mod syntax_helpers {
     pub mod format_string;
     pub mod format_string_exprs;
-    pub mod insert_whitespace_into_node;
+    pub use hir::prettify_macro_expansion;
     pub mod node_ext;
+    pub mod suggest_name;
 
     pub use parser::LexedStr;
 }
@@ -223,6 +224,7 @@ pub enum SymbolKind {
     Function,
     Method,
     Impl,
+    InlineAsmRegOrRegClass,
     Label,
     LifetimeParam,
     Local,

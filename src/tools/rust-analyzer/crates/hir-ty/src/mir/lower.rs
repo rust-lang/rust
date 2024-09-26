@@ -31,7 +31,7 @@ use crate::{
     display::HirDisplay,
     error_lifetime,
     generics::generics,
-    infer::{CaptureKind, CapturedItem, TypeMismatch},
+    infer::{cast::CastTy, unify::InferenceTable, CaptureKind, CapturedItem, TypeMismatch},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     mapping::ToChalk,
@@ -94,7 +94,8 @@ pub enum MirLowerError {
     UnresolvedField,
     UnsizedTemporary(Ty),
     MissingFunctionDefinition(DefWithBodyId, ExprId),
-    TypeMismatch(Option<TypeMismatch>),
+    TypeMismatch(TypeMismatch),
+    HasErrors,
     /// This should never happen. Type mismatch should catch everything.
     TypeError(&'static str),
     NotSupported(String),
@@ -179,15 +180,13 @@ impl MirLowerError {
                     body.pretty_print_expr(db.upcast(), *owner, *it, edition)
                 )?;
             }
-            MirLowerError::TypeMismatch(e) => match e {
-                Some(e) => writeln!(
-                    f,
-                    "Type mismatch: Expected {}, found {}",
-                    e.expected.display(db, edition),
-                    e.actual.display(db, edition),
-                )?,
-                None => writeln!(f, "Type mismatch: types mismatch with {{unknown}}",)?,
-            },
+            MirLowerError::HasErrors => writeln!(f, "Type inference result contains errors")?,
+            MirLowerError::TypeMismatch(e) => writeln!(
+                f,
+                "Type mismatch: Expected {}, found {}",
+                e.expected.display(db, edition),
+                e.actual.display(db, edition),
+            )?,
             MirLowerError::GenericArgNotProvided(id, subst) => {
                 let parent = id.parent;
                 let param = &db.generic_params(parent)[id.local_id];
@@ -362,7 +361,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         current,
                         place,
                         Rvalue::Cast(
-                            CastKind::Pointer(*cast),
+                            CastKind::PointerCoercion(*cast),
                             Operand::Copy(p),
                             last.target.clone(),
                         ),
@@ -898,14 +897,26 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let Some((it, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
                     return Ok(None);
                 };
-                let source_ty = self.infer[*expr].clone();
-                let target_ty = self.infer[expr_id].clone();
-                self.push_assignment(
-                    current,
-                    place,
-                    Rvalue::Cast(cast_kind(&source_ty, &target_ty)?, it, target_ty),
-                    expr_id.into(),
-                );
+                // Since we don't have THIR, this is the "zipped" version of [rustc's HIR lowering](https://github.com/rust-lang/rust/blob/e71f9529121ca8f687e4b725e3c9adc3f1ebab4d/compiler/rustc_mir_build/src/thir/cx/expr.rs#L165-L178)
+                // and [THIR lowering as RValue](https://github.com/rust-lang/rust/blob/a4601859ae3875732797873612d424976d9e3dd0/compiler/rustc_mir_build/src/build/expr/as_rvalue.rs#L193-L313)
+                let rvalue = if self.infer.coercion_casts.contains(expr) {
+                    Rvalue::Use(it)
+                } else {
+                    let source_ty = self.infer[*expr].clone();
+                    let target_ty = self.infer[expr_id].clone();
+                    let cast_kind = if source_ty.as_reference().is_some() {
+                        CastKind::PointerCoercion(PointerCast::ArrayToPointer)
+                    } else {
+                        let mut table = InferenceTable::new(
+                            self.db,
+                            self.db.trait_environment_for_body(self.owner),
+                        );
+                        cast_kind(&mut table, &source_ty, &target_ty)?
+                    };
+
+                    Rvalue::Cast(cast_kind, it, target_ty)
+                };
+                self.push_assignment(current, place, rvalue, expr_id.into());
                 Ok(Some(current))
             }
             Expr::Ref { expr, rawness: _, mutability } => {
@@ -2005,40 +2016,21 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 }
 
-fn cast_kind(source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
-    Ok(match (source_ty.kind(Interner), target_ty.kind(Interner)) {
-        (TyKind::FnDef(..), TyKind::Function(_)) => CastKind::Pointer(PointerCast::ReifyFnPointer),
-        (TyKind::Scalar(s), TyKind::Scalar(t)) => match (s, t) {
-            (chalk_ir::Scalar::Float(_), chalk_ir::Scalar::Float(_)) => CastKind::FloatToFloat,
-            (chalk_ir::Scalar::Float(_), _) => CastKind::FloatToInt,
-            (_, chalk_ir::Scalar::Float(_)) => CastKind::IntToFloat,
-            (_, _) => CastKind::IntToInt,
-        },
-        (TyKind::Scalar(_), TyKind::Raw(..)) => CastKind::PointerFromExposedAddress,
-        (TyKind::Raw(..), TyKind::Scalar(_)) => CastKind::PointerExposeAddress,
-        (TyKind::Raw(_, a) | TyKind::Ref(_, _, a), TyKind::Raw(_, b) | TyKind::Ref(_, _, b)) => {
-            CastKind::Pointer(if a == b {
-                PointerCast::MutToConstPointer
-            } else if matches!(b.kind(Interner), TyKind::Slice(_))
-                && matches!(a.kind(Interner), TyKind::Array(_, _))
-                || matches!(b.kind(Interner), TyKind::Dyn(_))
-            {
-                PointerCast::Unsize
-            } else if matches!(a.kind(Interner), TyKind::Slice(s) if s == b) {
-                PointerCast::ArrayToPointer
-            } else {
-                // cast between two sized pointer, like *const i32 to *const i8, or two unsized pointer, like
-                // slice to slice, slice to str, ... . These are no-ops (even in the unsized case, no metadata
-                // will be touched) but there is no specific variant
-                // for it in `PointerCast` so we use `MutToConstPointer`
-                PointerCast::MutToConstPointer
-            })
+fn cast_kind(table: &mut InferenceTable<'_>, source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
+    let from = CastTy::from_ty(table, source_ty);
+    let cast = CastTy::from_ty(table, target_ty);
+    Ok(match (from, cast) {
+        (Some(CastTy::Ptr(..) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
+            CastKind::PointerExposeAddress
         }
-        // Enum to int casts
-        (TyKind::Scalar(_), TyKind::Adt(..)) | (TyKind::Adt(..), TyKind::Scalar(_)) => {
-            CastKind::IntToInt
-        }
-        (a, b) => not_supported!("Unknown cast between {a:?} and {b:?}"),
+        (Some(CastTy::Int(_)), Some(CastTy::Ptr(..))) => CastKind::PointerFromExposedAddress,
+        (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => CastKind::IntToInt,
+        (Some(CastTy::FnPtr), Some(CastTy::Ptr(..))) => CastKind::FnPtrToPtr,
+        (Some(CastTy::Float), Some(CastTy::Int(_))) => CastKind::FloatToInt,
+        (Some(CastTy::Int(_)), Some(CastTy::Float)) => CastKind::IntToFloat,
+        (Some(CastTy::Float), Some(CastTy::Float)) => CastKind::FloatToFloat,
+        (Some(CastTy::Ptr(..)), Some(CastTy::Ptr(..))) => CastKind::PtrToPtr,
+        _ => not_supported!("Unknown cast between {source_ty:?} and {target_ty:?}"),
     })
 }
 
@@ -2191,7 +2183,7 @@ pub fn lower_to_mir(
     root_expr: ExprId,
 ) -> Result<MirBody> {
     if infer.has_errors {
-        return Err(MirLowerError::TypeMismatch(None));
+        return Err(MirLowerError::HasErrors);
     }
     let mut ctx = MirLowerCtx::new(db, owner, body, infer);
     // 0 is return local
