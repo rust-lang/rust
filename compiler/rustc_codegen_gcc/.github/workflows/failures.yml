@@ -31,7 +31,7 @@ jobs:
             env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests' GCC_EXEC_PREFIX=/usr/lib/gcc/"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain

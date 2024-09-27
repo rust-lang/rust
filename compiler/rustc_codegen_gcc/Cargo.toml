@@ -22,7 +22,9 @@ master = ["gccjit/master"]
 default = ["master"]
 
 [dependencies]
-gccjit = "2.1"
+gccjit = "2.2"
+#gccjit = { git = "https://github.com/rust-lang/gccjit.rs" }
+
 # Local copy.
 #gccjit = { path = "../gccjit.rs" }
 
