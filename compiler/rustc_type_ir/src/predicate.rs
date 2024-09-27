@@ -668,8 +668,8 @@ impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
     }
 }
 
-/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
-/// proven by actually normalizing `alias`.
+/// Used by the new solver to normalize an alias. This always expects the `term` to
+/// be an unconstrained inference variable which is used as the output.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
