@@ -15,4 +15,4 @@ compiler_builtins = { version = "0.1.0", features = ['rustc-dep-of-std'] }
 [build-dependencies]
 # FIXME: updates past a certain point haven't been able to merge successfully.
 # See rust-lang/rust#130720.
-cc = "=1.0.105"
+cc = "=1.0.100"
