@@ -512,6 +512,11 @@
                         "type": "boolean",
                         "default": false
                     },
+                    "rust-analyzer.debug.buildBeforeRestart": {
+                        "markdownDescription": "Whether to rebuild the project modules before debugging the same test again",
+                        "type": "boolean",
+                        "default": false
+                    },
                     "rust-analyzer.debug.engineSettings": {
                         "type": "object",
                         "default": {},
