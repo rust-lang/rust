@@ -167,7 +167,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn print_pass_timings(&self) {
         unsafe {
             let mut size = 0;
-            let cstr = llvm::LLVMRustPrintPassTimings(std::ptr::addr_of_mut!(size));
+            let cstr = llvm::LLVMRustPrintPassTimings(&raw mut size);
             if cstr.is_null() {
                 println!("failed to get pass timings");
             } else {
@@ -180,7 +180,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn print_statistics(&self) {
         unsafe {
             let mut size = 0;
-            let cstr = llvm::LLVMRustPrintStatistics(std::ptr::addr_of_mut!(size));
+            let cstr = llvm::LLVMRustPrintStatistics(&raw mut size);
             if cstr.is_null() {
                 println!("failed to get pass stats");
             } else {
