@@ -2311,12 +2311,9 @@ impl<'test> TestCx<'test> {
         normalize_path(parent_build_dir, "$BUILD_DIR");
 
         // Real paths into the libstd/libcore
-        let rust_src_dir = &self
-            .config
-            .sysroot_base
-            .join("lib/rustlib/src/rust")
-            .read_link()
-            .expect("lib/rustlib/src/rust in target is a symlink to checkout root");
+        let rust_src_dir = &self.config.sysroot_base.join("lib/rustlib/src/rust");
+        rust_src_dir.try_exists().expect(&*format!("{} should exists", rust_src_dir.display()));
+        let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
         normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
         if json {

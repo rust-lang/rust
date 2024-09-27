@@ -1146,11 +1146,9 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     }
 
     if value.contains(RUST_SRC_BASE) {
-        let src_base = config
-            .sysroot_base
-            .join("lib/rustlib/src/rust")
-            .read_link()
-            .expect("lib/rustlib/src/rust in target is a symlink to checkout root");
+        let src_base = config.sysroot_base.join("lib/rustlib/src/rust");
+        src_base.try_exists().expect(&*format!("{} should exists", src_base.display()));
+        let src_base = src_base.read_link().unwrap_or(src_base);
         value = value.replace(RUST_SRC_BASE, &src_base.to_string_lossy());
     }
 
