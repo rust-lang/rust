@@ -370,6 +370,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let args = {
             let function_address_names = self.function_address_names.borrow();
             let original_function_name = function_address_names.get(&func_ptr);
+            func_ptr = llvm::adjust_function(self.context, &func_name, func_ptr, args);
             llvm::adjust_intrinsic_arguments(
                 self,
                 gcc_func,

@@ -1,11 +1,41 @@
 use std::borrow::Cow;
 
-use gccjit::CType;
+use gccjit::{CType, Context};
 use gccjit::{Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
 use rustc_codegen_ssa::traits::BuilderMethods;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
+
+pub fn adjust_function<'gcc>(
+    context: &'gcc Context<'gcc>,
+    func_name: &str,
+    func_ptr: RValue<'gcc>,
+    args: &[RValue<'gcc>],
+) -> RValue<'gcc> {
+    // FIXME: we should not need this hack: this is required because both _mm_fcmadd_sch
+    // and _mm_mask3_fcmadd_round_sch calls llvm.x86.avx512fp16.mask.vfcmadd.csh and we
+    // seem to need to map this one LLVM intrinsic to 2 different GCC builtins.
+    match func_name {
+        "__builtin_ia32_vfcmaddcsh_mask3_round" => {
+            if format!("{:?}", args[3]).ends_with("255") {
+                return context
+                    .get_target_builtin_function("__builtin_ia32_vfcmaddcsh_mask_round")
+                    .get_address(None);
+            }
+        }
+        "__builtin_ia32_vfmaddcsh_mask3_round" => {
+            if format!("{:?}", args[3]).ends_with("255") {
+                return context
+                    .get_target_builtin_function("__builtin_ia32_vfmaddcsh_mask_round")
+                    .get_address(None);
+            }
+        }
+        _ => (),
+    }
+
+    func_ptr
+}
 
 pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     builder: &Builder<'a, 'gcc, 'tcx>,
@@ -1198,7 +1228,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512fp16.mask.vfcmul.csh" => "__builtin_ia32_vfcmulcsh_mask_round",
         "llvm.x86.avx512fp16.mask.vfmadd.cph.512" => "__builtin_ia32_vfmaddcph512_mask3_round",
         "llvm.x86.avx512fp16.maskz.vfmadd.cph.512" => "__builtin_ia32_vfmaddcph512_maskz_round",
-        "llvm.x86.avx512fp16.mask.vfmadd.csh" => "__builtin_ia32_vfmaddcsh_mask_round",
+        "llvm.x86.avx512fp16.mask.vfmadd.csh" => "__builtin_ia32_vfmaddcsh_mask3_round",
         "llvm.x86.avx512fp16.maskz.vfmadd.csh" => "__builtin_ia32_vfmaddcsh_maskz_round",
         "llvm.x86.avx512fp16.mask.vfcmadd.cph.512" => "__builtin_ia32_vfcmaddcph512_mask3_round",
         "llvm.x86.avx512fp16.maskz.vfcmadd.cph.512" => "__builtin_ia32_vfcmaddcph512_maskz_round",
