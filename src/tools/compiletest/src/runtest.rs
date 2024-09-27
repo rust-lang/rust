@@ -4317,6 +4317,33 @@ impl<'test> TestCx<'test> {
         // eg. /home/user/rust/build
         normalize_path(parent_build_dir, "$BUILD_DIR");
 
+        eprintln!(
+            "normalize_output: self.config.sysroot_base = `{}`",
+            &self.config.sysroot_base.display()
+        );
+        eprintln!(
+            "normalize_output: self.config.sysroot_base.join(lib/rustlib/src/rust) = `{}`",
+            &self.config.sysroot_base.join("lib/rustlib/src/rust").display()
+        );
+        use std::os::windows::fs::FileTypeExt;
+        let stdlib_path = self.config.sysroot_base.join("lib/rustlib/src/rust");
+        let stdlib_meta = match std::fs::symlink_metadata(&stdlib_path) {
+            Ok(m) => m,
+            Err(e) => panic!("failed to read `{}`: {e}", stdlib_path.display()),
+        };
+        eprintln!(
+            "normalize_output: self.config.sysroot_base.join(lib/rustlib/src/rust) metadata = {:#?}",
+            stdlib_meta
+        );
+        eprintln!(
+            "normalize_output: self.config.sysroot_base.join(lib/rustlib/src/rust).is_symlink_file() = {}",
+            stdlib_meta.file_type().is_symlink_file()
+        );
+        eprintln!(
+            "normalize_output: self.config.sysroot_base.join(lib/rustlib/src/rust).is_symlink_dir() = {}",
+            stdlib_meta.file_type().is_symlink_dir()
+        );
+
         // Real paths into the libstd/libcore
         let rust_src_dir = &self
             .config
