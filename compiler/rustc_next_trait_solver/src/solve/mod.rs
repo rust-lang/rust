@@ -111,8 +111,8 @@ where
         }
     }
 
-    fn compute_object_safe_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
-        if self.cx().trait_is_object_safe(trait_def_id) {
+    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
+        if self.cx().trait_is_dyn_compatible(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)

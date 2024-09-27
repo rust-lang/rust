@@ -275,7 +275,7 @@ fn fulfillment_error_for_no_solution<'tcx>(
             FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Clause(_)
-        | ty::PredicateKind::ObjectSafe(_)
+        | ty::PredicateKind::DynCompatible(_)
         | ty::PredicateKind::Ambiguous => {
             FulfillmentErrorCode::Select(SelectionError::Unimplemented)
         }

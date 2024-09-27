@@ -4,7 +4,7 @@ error[E0038]: the trait `NonObjectSafe1` cannot be made into an object
 LL | fn takes_non_object_safe_ref<T>(obj: &dyn NonObjectSafe1) {
    |                                       ^^^^^^^^^^^^^^^^^^ `NonObjectSafe1` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:4:23
    |
 LL | trait NonObjectSafe1: Sized {}
@@ -18,7 +18,7 @@ error[E0038]: the trait `NonObjectSafe2` cannot be made into an object
 LL | fn return_non_object_safe_ref() -> &'static dyn NonObjectSafe2 {
    |                                             ^^^^^^^^^^^^^^^^^^ `NonObjectSafe2` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:7:8
    |
 LL | trait NonObjectSafe2 {
@@ -40,7 +40,7 @@ error[E0038]: the trait `NonObjectSafe3` cannot be made into an object
 LL | fn takes_non_object_safe_box(obj: Box<dyn NonObjectSafe3>) {
    |                                       ^^^^^^^^^^^^^^^^^^ `NonObjectSafe3` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:11:8
    |
 LL | trait NonObjectSafe3 {
@@ -55,7 +55,7 @@ error[E0038]: the trait `NonObjectSafe4` cannot be made into an object
 LL | fn return_non_object_safe_rc() -> std::rc::Rc<dyn NonObjectSafe4> {
    |                                               ^^^^^^^^^^^^^^^^^^ `NonObjectSafe4` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:15:22
    |
 LL | trait NonObjectSafe4 {
@@ -70,7 +70,7 @@ error[E0038]: the trait `NonObjectSafe1` cannot be made into an object
 LL | impl Trait for dyn NonObjectSafe1 {}
    |                ^^^^^^^^^^^^^^^^^^ `NonObjectSafe1` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:4:23
    |
 LL | trait NonObjectSafe1: Sized {}

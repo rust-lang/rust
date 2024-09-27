@@ -4,7 +4,7 @@ error[E0038]: the trait `Bar` cannot be made into an object
 LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
    |                               ^^^^^^^ `Bar` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-safety-sized-2.rs:9:18
    |
 LL | trait Bar
@@ -18,7 +18,7 @@ error[E0038]: the trait `Bar` cannot be made into an object
 LL |     t
    |     ^ `Bar` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-safety-sized-2.rs:9:18
    |
 LL | trait Bar

@@ -120,7 +120,7 @@
 //! #### Unsizing Casts
 //! A subtle way of introducing use edges is by casting to a trait object.
 //! Since the resulting fat-pointer contains a reference to a vtable, we need to
-//! instantiate all object-safe methods of the trait, as we need to store
+//! instantiate all dyn-compatible methods of the trait, as we need to store
 //! pointers to these functions even if they never get called anywhere. This can
 //! be seen as a special case of taking a function reference.
 //!

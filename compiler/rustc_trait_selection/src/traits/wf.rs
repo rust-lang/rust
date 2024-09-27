@@ -838,7 +838,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                             self.cause(ObligationCauseCode::WellFormed(None)),
                             self.recursion_depth,
                             self.param_env,
-                            ty::Binder::dummy(ty::PredicateKind::ObjectSafe(principal)),
+                            ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
                         ));
                     }
                 }

@@ -1602,7 +1602,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     /// `Other`.
     /// This is mainly used to require the arbitrary_self_types feature
     /// in the case of `Other`, to improve error messages in the common cases,
-    /// and to make `Other` non-object-safe.
+    /// and to make `Other` dyn-incompatible.
     ///
     /// Examples:
     ///

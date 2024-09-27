@@ -46,8 +46,8 @@ pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
 
-    /// Trait must be object-safe.
-    ObjectSafe(I::DefId),
+    /// Trait must be dyn-compatible.
+    DynCompatible(I::DefId),
 
     /// `T1 <: T2`
     ///
@@ -128,8 +128,8 @@ impl<I: Interner> fmt::Debug for PredicateKind<I> {
             PredicateKind::Clause(a) => a.fmt(f),
             PredicateKind::Subtype(pair) => pair.fmt(f),
             PredicateKind::Coerce(pair) => pair.fmt(f),
-            PredicateKind::ObjectSafe(trait_def_id) => {
-                write!(f, "ObjectSafe({trait_def_id:?})")
+            PredicateKind::DynCompatible(trait_def_id) => {
+                write!(f, "DynCompatible({trait_def_id:?})")
             }
             PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             PredicateKind::Ambiguous => write!(f, "Ambiguous"),

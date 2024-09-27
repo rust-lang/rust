@@ -1,4 +1,4 @@
-warning: unnecessary associated type bound for not object safe associated type
+warning: unnecessary associated type bound for dyn-incompatible associated type
   --> $DIR/assoc_type_bounds_sized_unnecessary.rs:9:20
    |
 LL | fn foo(_: &dyn Foo<Bar = ()>) {}

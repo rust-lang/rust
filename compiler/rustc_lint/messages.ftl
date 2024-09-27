@@ -514,7 +514,7 @@ lint_mixed_script_confusables =
     .includes_note = the usage includes {$includes}
     .note = please recheck to make sure their usages are indeed what you want
 
-lint_multiple_supertrait_upcastable = `{$ident}` is object-safe and has multiple supertraits
+lint_multiple_supertrait_upcastable = `{$ident}` is dyn-compatible and has multiple supertraits
 
 lint_named_argument_used_positionally = named argument `{$named_arg_name}` is not used by name
     .label_named_arg = this named argument is referred to by position in formatting string
