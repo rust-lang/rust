@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
-use gccjit::{CType, Context};
-use gccjit::{Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
+use gccjit::{CType, Context, Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
 use rustc_codegen_ssa::traits::BuilderMethods;
 
 use crate::builder::Builder;
