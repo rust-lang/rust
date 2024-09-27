@@ -546,9 +546,12 @@ declare_features! (
     (unstable, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554)),
     /// Allows `for<T>` binders in where-clauses
     (incomplete, non_lifetime_binders, "1.69.0", Some(108185)),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not object safe.
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible[^1].
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
+    ///
+    /// [^1]: Formerly known as "object safe".
+    // FIXME(dyn_compat_renaming): Rename feature.
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561)),
     /// Allows using enums in offset_of!
     (unstable, offset_of_enum, "1.75.0", Some(120141)),

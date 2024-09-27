@@ -423,8 +423,8 @@ where
                 ty::PredicateKind::Coerce(predicate) => {
                     self.compute_coerce_goal(Goal { param_env, predicate })
                 }
-                ty::PredicateKind::ObjectSafe(trait_def_id) => {
-                    self.compute_object_safe_goal(trait_def_id)
+                ty::PredicateKind::DynCompatible(trait_def_id) => {
+                    self.compute_dyn_compatible_goal(trait_def_id)
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                     self.compute_well_formed_goal(Goal { param_env, predicate: arg })

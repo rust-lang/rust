@@ -4,7 +4,7 @@ error[E0038]: the trait `NotObjectSafe` cannot be made into an object
 LL | fn car() -> dyn NotObjectSafe {
    |             ^^^^^^^^^^^^^^^^^ `NotObjectSafe` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:3:8
    |
 LL | trait NotObjectSafe {
@@ -29,7 +29,7 @@ error[E0038]: the trait `NotObjectSafe` cannot be made into an object
 LL | fn cat() -> Box<dyn NotObjectSafe> {
    |                 ^^^^^^^^^^^^^^^^^ `NotObjectSafe` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:3:8
    |
 LL | trait NotObjectSafe {
@@ -71,7 +71,7 @@ error[E0038]: the trait `NotObjectSafe` cannot be made into an object
 LL |         return Box::new(A);
    |                ^^^^^^^^^^^ `NotObjectSafe` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:3:8
    |
 LL | trait NotObjectSafe {
@@ -97,7 +97,7 @@ error[E0038]: the trait `NotObjectSafe` cannot be made into an object
 LL |     Box::new(B)
    |     ^^^^^^^^^^^ `NotObjectSafe` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:3:8
    |
 LL | trait NotObjectSafe {

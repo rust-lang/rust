@@ -1,4 +1,4 @@
-warning: unnecessary associated type bound for not object safe associated type
+warning: unnecessary associated type bound for dyn-incompatible associated type
   --> $DIR/pretty.rs:41:35
    |
 LL | fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x }

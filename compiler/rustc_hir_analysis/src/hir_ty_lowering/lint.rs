@@ -77,7 +77,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if self_ty.span.can_be_used_for_suggestions()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
             {
-                // FIXME: Only emit this suggestion if the trait is object safe.
+                // FIXME: Only emit this suggestion if the trait is dyn-compatible.
                 diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
             }
             // Check if the impl trait that we are considering is an impl of a local trait.
@@ -89,7 +89,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
                 if self_ty.span.can_be_used_for_suggestions() {
                     lint.multipart_suggestion_verbose(
-                        "if this is an object-safe trait, use `dyn`",
+                        "if this is a dyn-compatible trait, use `dyn`",
                         sugg,
                         Applicability::MachineApplicable,
                     );
@@ -196,7 +196,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut is_downgradable = true;
 
         // Check if trait object is safe for suggesting dynamic dispatch.
-        let is_object_safe = match self_ty.kind {
+        let is_dyn_compatible = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
                 objects.iter().all(|(o, _)| match o.trait_ref.path.res {
                     Res::Def(DefKind::Trait, id) => {
@@ -204,7 +204,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // For recursive traits, don't downgrade the error. (#119652)
                             is_downgradable = false;
                         }
-                        tcx.is_object_safe(id)
+                        tcx.is_dyn_compatible(id)
                     }
                     _ => false,
                 })
@@ -221,8 +221,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let hir::FnRetTy::Return(ty) = sig.decl.output
             && ty.peel_refs().hir_id == self_ty.hir_id
         {
-            let pre = if !is_object_safe {
-                format!("`{trait_name}` is not object safe, ")
+            let pre = if !is_dyn_compatible {
+                format!("`{trait_name}` is dyn-incompatible, ")
             } else {
                 String::new()
             };
@@ -234,7 +234,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             diag.multipart_suggestion_verbose(msg, impl_sugg, Applicability::MachineApplicable);
 
             // Suggest `Box<dyn Trait>` for return type
-            if is_object_safe {
+            if is_dyn_compatible {
                 // If the return type is `&Trait`, we don't want
                 // the ampersand to be displayed in the `Box<dyn Trait>`
                 // suggestion.
@@ -253,7 +253,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     Applicability::MachineApplicable,
                 );
             } else if is_downgradable {
-                // We'll emit the object safety error already, with a structured suggestion.
+                // We'll emit the dyn-compatibility error already, with a structured suggestion.
                 diag.downgrade_to_delayed_bug();
             }
             return true;
@@ -276,10 +276,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 impl_sugg,
                 Applicability::MachineApplicable,
             );
-            if !is_object_safe {
-                diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
+            if !is_dyn_compatible {
+                diag.note(format!("`{trait_name}` it is dyn-incompatible, so it can't be `dyn`"));
                 if is_downgradable {
-                    // We'll emit the object safety error already, with a structured suggestion.
+                    // We'll emit the dyn-compatibility error already, with a structured suggestion.
                     diag.downgrade_to_delayed_bug();
                 }
             } else {

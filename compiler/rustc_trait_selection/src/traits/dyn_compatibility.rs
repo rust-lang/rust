@@ -28,43 +28,43 @@ use tracing::{debug, instrument};
 
 use super::elaborate;
 use crate::infer::TyCtxtInferExt;
-pub use crate::traits::ObjectSafetyViolation;
+pub use crate::traits::DynCompatibilityViolation;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{MethodViolationCode, Obligation, ObligationCause, util};
 
-/// Returns the object safety violations that affect HIR ty lowering.
+/// Returns the dyn-compatibility violations that affect HIR ty lowering.
 ///
 /// Currently that is `Self` in supertraits. This is needed
-/// because `object_safety_violations` can't be used during
+/// because `dyn_compatibility_violations` can't be used during
 /// type collection.
-#[instrument(level = "debug", skip(tcx))]
-pub fn hir_ty_lowering_object_safety_violations(
+#[instrument(level = "debug", skip(tcx), ret)]
+pub fn hir_ty_lowering_dyn_compatibility_violations(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-) -> Vec<ObjectSafetyViolation> {
+) -> Vec<DynCompatibilityViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
-    let violations = tcx
-        .supertrait_def_ids(trait_def_id)
+    tcx.supertrait_def_ids(trait_def_id)
         .map(|def_id| predicates_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
-        .map(ObjectSafetyViolation::SupertraitSelf)
-        .collect();
-    debug!(?violations);
-    violations
+        .map(DynCompatibilityViolation::SupertraitSelf)
+        .collect()
 }
 
-fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [ObjectSafetyViolation] {
+fn dyn_compatibility_violations(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> &'_ [DynCompatibilityViolation] {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
-    debug!("object_safety_violations: {:?}", trait_def_id);
+    debug!("dyn_compatibility_violations: {:?}", trait_def_id);
 
     tcx.arena.alloc_from_iter(
         tcx.supertrait_def_ids(trait_def_id)
-            .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id)),
+            .flat_map(|def_id| dyn_compatibility_violations_for_trait(tcx, def_id)),
     )
 }
 
-fn is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
-    tcx.object_safety_violations(trait_def_id).is_empty()
+fn is_dyn_compatible(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+    tcx.dyn_compatibility_violations(trait_def_id).is_empty()
 }
 
 /// We say a method is *vtable safe* if it can be invoked on a trait
@@ -82,34 +82,35 @@ pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::A
     virtual_call_violations_for_method(tcx, trait_def_id, method).is_empty()
 }
 
-fn object_safety_violations_for_trait(
+#[instrument(level = "debug", skip(tcx), ret)]
+fn dyn_compatibility_violations_for_trait(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-) -> Vec<ObjectSafetyViolation> {
+) -> Vec<DynCompatibilityViolation> {
     // Check assoc items for violations.
     let mut violations: Vec<_> = tcx
         .associated_items(trait_def_id)
         .in_definition_order()
-        .flat_map(|&item| object_safety_violations_for_assoc_item(tcx, trait_def_id, item))
+        .flat_map(|&item| dyn_compatibility_violations_for_assoc_item(tcx, trait_def_id, item))
         .collect();
 
     // Check the trait itself.
     if trait_has_sized_self(tcx, trait_def_id) {
         // We don't want to include the requirement from `Sized` itself to be `Sized` in the list.
         let spans = get_sized_bounds(tcx, trait_def_id);
-        violations.push(ObjectSafetyViolation::SizedSelf(spans));
+        violations.push(DynCompatibilityViolation::SizedSelf(spans));
     }
     let spans = predicates_reference_self(tcx, trait_def_id, false);
     if !spans.is_empty() {
-        violations.push(ObjectSafetyViolation::SupertraitSelf(spans));
+        violations.push(DynCompatibilityViolation::SupertraitSelf(spans));
     }
     let spans = bounds_reference_self(tcx, trait_def_id);
     if !spans.is_empty() {
-        violations.push(ObjectSafetyViolation::SupertraitSelf(spans));
+        violations.push(DynCompatibilityViolation::SupertraitSelf(spans));
     }
     let spans = super_predicates_have_non_lifetime_binders(tcx, trait_def_id);
     if !spans.is_empty() {
-        violations.push(ObjectSafetyViolation::SupertraitNonLifetimeBinder(spans));
+        violations.push(DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans));
     }
 
     if violations.is_empty() {
@@ -119,11 +120,6 @@ fn object_safety_violations_for_trait(
             }
         }
     }
-
-    debug!(
-        "object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
-        trait_def_id, violations
-    );
 
     violations
 }
@@ -296,13 +292,13 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     })
 }
 
-/// Returns `Some(_)` if this item makes the containing trait not object safe.
+/// Returns `Some(_)` if this item makes the containing trait dyn-incompatible.
 #[instrument(level = "debug", skip(tcx), ret)]
-pub fn object_safety_violations_for_assoc_item(
+pub fn dyn_compatibility_violations_for_assoc_item(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     item: ty::AssocItem,
-) -> Vec<ObjectSafetyViolation> {
+) -> Vec<DynCompatibilityViolation> {
     // Any item that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
     if tcx.generics_require_sized_self(item.def_id) {
@@ -310,10 +306,10 @@ pub fn object_safety_violations_for_assoc_item(
     }
 
     match item.kind {
-        // Associated consts are never object safe, as they can't have `where` bounds yet at all,
+        // Associated consts are never dyn-compatible, as they can't have `where` bounds yet at all,
         // and associated const bounds in trait objects aren't a thing yet either.
         ty::AssocKind::Const => {
-            vec![ObjectSafetyViolation::AssocConst(item.name, item.ident(tcx).span)]
+            vec![DynCompatibilityViolation::AssocConst(item.name, item.ident(tcx).span)]
         }
         ty::AssocKind::Fn => virtual_call_violations_for_method(tcx, trait_def_id, item)
             .into_iter()
@@ -330,16 +326,16 @@ pub fn object_safety_violations_for_assoc_item(
                     _ => item.ident(tcx).span,
                 };
 
-                ObjectSafetyViolation::Method(item.name, v, span)
+                DynCompatibilityViolation::Method(item.name, v, span)
             })
             .collect(),
-        // Associated types can only be object safe if they have `Self: Sized` bounds.
+        // Associated types can only be dyn-compatible if they have `Self: Sized` bounds.
         ty::AssocKind::Type => {
             if !tcx.features().generic_associated_types_extended
                 && !tcx.generics_of(item.def_id).is_own_empty()
                 && !item.is_impl_trait_in_trait()
             {
-                vec![ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span)]
+                vec![DynCompatibilityViolation::GAT(item.name, item.ident(tcx).span)]
             } else {
                 // We will permit associated types if they are explicitly mentioned in the trait object.
                 // We can't check this here, as here we only check if it is guaranteed to not be possible.
@@ -351,8 +347,8 @@ pub fn object_safety_violations_for_assoc_item(
 
 /// Returns `Some(_)` if this method cannot be called on a trait
 /// object; this does not necessarily imply that the enclosing trait
-/// is not object safe, because the method might have a where clause
-/// `Self:Sized`.
+/// is dyn-incompatible, because the method might have a where clause
+/// `Self: Sized`.
 fn virtual_call_violations_for_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
@@ -932,8 +928,8 @@ fn contains_illegal_impl_trait_in_trait<'tcx>(
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
-        object_safety_violations,
-        is_object_safe,
+        dyn_compatibility_violations,
+        is_dyn_compatible,
         generics_require_sized_self,
         ..*providers
     };

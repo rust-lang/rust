@@ -11,8 +11,8 @@ use rustc_middle::ty::{
     self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
-use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
+use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
+use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -99,19 +99,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return Ty::new_error(tcx, reported);
         }
 
-        // Check that there are no gross object safety violations;
+        // Check that there are no gross dyn-compatibility violations;
         // most importantly, that the supertraits don't contain `Self`,
         // to avoid ICEs.
         for item in &regular_traits {
-            let object_safety_violations =
-                hir_ty_lowering_object_safety_violations(tcx, item.trait_ref().def_id());
-            if !object_safety_violations.is_empty() {
-                let reported = report_object_safety_error(
+            let violations =
+                hir_ty_lowering_dyn_compatibility_violations(tcx, item.trait_ref().def_id());
+            if !violations.is_empty() {
+                let reported = report_dyn_incompatibility(
                     tcx,
                     span,
                     Some(hir_id),
                     item.trait_ref().def_id(),
-                    &object_safety_violations,
+                    &violations,
                 )
                 .emit();
                 return Ty::new_error(tcx, reported);
@@ -275,8 +275,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         tcx.item_name(def_id),
                     )
                     .with_note(
-                        rustc_middle::traits::ObjectSafetyViolation::SupertraitSelf(smallvec![])
-                            .error_msg(),
+                        rustc_middle::traits::DynCompatibilityViolation::SupertraitSelf(
+                            smallvec![],
+                        )
+                        .error_msg(),
                     )
                     .emit();
                 }

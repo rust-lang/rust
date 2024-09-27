@@ -4,7 +4,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL | impl<T, U> Dyn for dyn Foo<T, U> + '_ {
    |                    ^^^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
@@ -21,7 +21,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
    |                           ^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
@@ -38,7 +38,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
    |      ^^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
