@@ -352,11 +352,13 @@ const HEXAGON_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const POWERPC_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
+    ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     ("power10-vector", Unstable(sym::powerpc_target_feature), &["power9-vector"]),
     ("power8-altivec", Unstable(sym::powerpc_target_feature), &["altivec"]),
     ("power8-vector", Unstable(sym::powerpc_target_feature), &["vsx", "power8-altivec"]),
     ("power9-altivec", Unstable(sym::powerpc_target_feature), &["power8-altivec"]),
     ("power9-vector", Unstable(sym::powerpc_target_feature), &["power8-vector", "power9-altivec"]),
+    ("quadword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     ("vsx", Unstable(sym::powerpc_target_feature), &["altivec"]),
     // tidy-alphabetical-end
 ];
