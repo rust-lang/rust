@@ -2744,7 +2744,6 @@ ui/lint/issue-111359.rs
 ui/lint/issue-112489.rs
 ui/lint/issue-117949.rs
 ui/lint/issue-121070-let-range.rs
-ui/lint/issue-14309.rs
 ui/lint/issue-14837.rs
 ui/lint/issue-17718-const-naming.rs
 ui/lint/issue-1866.rs
