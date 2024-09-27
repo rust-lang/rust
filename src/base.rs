@@ -116,10 +116,6 @@ pub fn compile_codegen_unit(
             context.add_command_line_option("-mavx");
         }
 
-        /*for feature in tcx.sess.opts.cg.target_feature.split(',') {
-            println!("Feature: {}", feature);
-        }*/
-
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
         }

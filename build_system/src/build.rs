@@ -131,15 +131,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         rustflags.push_str(" -Csymbol-mangling-version=v0");
     }
 
-    let mut args: Vec<&dyn AsRef<OsStr>> = vec![
-        &"cargo",
-        &"build",
-        &"--target",
-        &config.target,
-        // TODO: remove this feature?
-        &"--features",
-        &"std/compiler-builtins-no-f16-f128",
-    ];
+    let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
     for feature in &config.features {
         args.push(&"--features");
         args.push(feature);

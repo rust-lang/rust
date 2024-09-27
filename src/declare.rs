@@ -170,17 +170,9 @@ fn declare_raw_fn<'gcc>(
     if name.starts_with("llvm.") {
         let intrinsic = match name {
             "llvm.fma.f16" => {
-                let param1 = cx.context.new_parameter(None, cx.double_type, "x");
-                let param2 = cx.context.new_parameter(None, cx.double_type, "y");
-                let param3 = cx.context.new_parameter(None, cx.double_type, "z");
-                cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    cx.double_type,
-                    &[param1, param2, param3],
-                    "fma",
-                    false,
-                )
+                // fma is not a target builtin, but a normal builtin, so we handle it differently
+                // here.
+                cx.context.get_builtin_function("fma")
             }
             _ => llvm::intrinsic(name, cx),
         };
