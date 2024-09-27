@@ -151,7 +151,6 @@
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_from_ref)]
 #![feature(const_slice_split_at_mut)]
-#![feature(const_str_as_mut)]
 #![feature(const_strict_overflow_ops)]
 #![feature(const_swap)]
 #![feature(const_try)]
