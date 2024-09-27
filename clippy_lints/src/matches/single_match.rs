@@ -11,7 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, AdtDef, ParamEnv, TyCtxt, TypeckResults, VariantDef};
+use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
 use rustc_span::{Span, sym};
 
 use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
@@ -67,7 +67,6 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tc
             if v.has_enum {
                 let cx = PatCtxt {
                     tcx: cx.tcx,
-                    param_env: cx.param_env,
                     typeck,
                     arena: DroplessArena::default(),
                 };
@@ -185,7 +184,6 @@ impl<'tcx> Visitor<'tcx> for PatVisitor<'tcx> {
 /// The context needed to manipulate a `PatState`.
 struct PatCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
     typeck: &'tcx TypeckResults<'tcx>,
     arena: DroplessArena,
 }
@@ -334,7 +332,7 @@ impl<'a> PatState<'a> {
                 if match *cx.typeck.pat_ty(pat).peel_refs().kind() {
                     ty::Adt(adt, _) => adt.is_enum() || (adt.is_struct() && !adt.non_enum_variant().fields.is_empty()),
                     ty::Tuple(tys) => !tys.is_empty(),
-                    ty::Array(_, len) => len.try_eval_target_usize(cx.tcx, cx.param_env) != Some(1),
+                    ty::Array(_, len) => len.try_to_target_usize(cx.tcx) != Some(1),
                     ty::Slice(..) => true,
                     _ => false,
                 } =>
@@ -353,7 +351,7 @@ impl<'a> PatState<'a> {
             },
             PatKind::Slice([sub_pat], _, []) | PatKind::Slice([], _, [sub_pat])
                 if let ty::Array(_, len) = *cx.typeck.pat_ty(pat).kind()
-                    && len.try_eval_target_usize(cx.tcx, cx.param_env) == Some(1) =>
+                    && len.try_to_target_usize(cx.tcx) == Some(1) =>
             {
                 self.add_pat(cx, sub_pat)
             },
