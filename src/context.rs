@@ -25,6 +25,7 @@ use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, TlsModel, WasmCA
 use crate::callee::get_fn;
 use crate::common::SignType;
 
+#[cfg_attr(not(feature = "master"), allow(dead_code))]
 pub struct CodegenCx<'gcc, 'tcx> {
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,

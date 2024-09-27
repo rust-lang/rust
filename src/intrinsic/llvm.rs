@@ -7,6 +7,7 @@ use rustc_codegen_ssa::traits::BuilderMethods;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 
+#[cfg_attr(not(feature = "master"), allow(unused_variables))]
 pub fn adjust_function<'gcc>(
     context: &'gcc Context<'gcc>,
     func_name: &str,
@@ -16,6 +17,7 @@ pub fn adjust_function<'gcc>(
     // FIXME: we should not need this hack: this is required because both _mm_fcmadd_sch
     // and _mm_mask3_fcmadd_round_sch calls llvm.x86.avx512fp16.mask.vfcmadd.csh and we
     // seem to need to map this one LLVM intrinsic to 2 different GCC builtins.
+    #[cfg(feature = "master")]
     match func_name {
         "__builtin_ia32_vfcmaddcsh_mask3_round" => {
             if format!("{:?}", args[3]).ends_with("255") {
