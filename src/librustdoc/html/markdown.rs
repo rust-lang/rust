@@ -1298,35 +1298,28 @@ impl LangString {
                     }
                     LangStringToken::LangToken(x) if extra.is_some() => {
                         let s = x.to_lowercase();
-                        if let Some((flag, help)) = if s == "compile-fail"
-                            || s == "compile_fail"
-                            || s == "compilefail"
-                        {
-                            Some((
+                        if let Some((flag, help)) = match s.as_str() {
+                            "compile-fail" | "compile_fail" | "compilefail" => Some((
                                 "compile_fail",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or won't fail if it compiles successfully",
-                            ))
-                        } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
-                            Some((
+                                "the code block will either not be tested if not marked as a rust \
+                                 one or won't fail if it compiles successfully",
+                            )),
+                            "should-panic" | "should_panic" | "shouldpanic" => Some((
                                 "should_panic",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or won't fail if it doesn't panic when running",
-                            ))
-                        } else if s == "no-run" || s == "no_run" || s == "norun" {
-                            Some((
+                                "the code block will either not be tested if not marked as a rust \
+                                 one or won't fail if it doesn't panic when running",
+                            )),
+                            "no-run" | "no_run" | "norun" => Some((
                                 "no_run",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or will be run (which you might not want)",
-                            ))
-                        } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
-                            Some((
+                                "the code block will either not be tested if not marked as a rust \
+                                 one or will be run (which you might not want)",
+                            )),
+                            "test-harness" | "test_harness" | "testharness" => Some((
                                 "test_harness",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or the code will be wrapped inside a main function",
-                            ))
-                        } else {
-                            None
+                                "the code block will either not be tested if not marked as a rust \
+                                 one or the code will be wrapped inside a main function",
+                            )),
+                            _ => None,
                         } {
                             if let Some(extra) = extra {
                                 extra.error_invalid_codeblock_attr_with_help(
