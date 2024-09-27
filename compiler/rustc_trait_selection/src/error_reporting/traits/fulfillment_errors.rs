@@ -33,7 +33,8 @@ use tracing::{debug, instrument};
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{
-    ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate, UnsatisfiedConst,
+    ArgKind, CandidateSimilarity, FindExprBySpan, GetSafeTransmuteErrorAndReason, ImplCandidate,
+    UnsatisfiedConst,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
@@ -378,14 +379,34 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             if let (ty::FnPtr(..), ty::FnDef(..)) =
                                 (cand.self_ty().kind(), main_trait_ref.self_ty().skip_binder().kind())
                             {
-                                err.span_suggestion(
-                                    span.shrink_to_hi(),
+                                // Wrap method receivers and `&`-references in parens
+                                let suggestion = if self.tcx.sess.source_map().span_look_ahead(span, ".", Some(50)).is_some() {
+                                    vec![
+                                        (span.shrink_to_lo(), format!("(")),
+                                        (span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
+                                    ]
+                                } else if let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) {
+                                    let mut expr_finder = FindExprBySpan::new(span, self.tcx);
+                                    expr_finder.visit_expr(body.value);
+                                    if let Some(expr) = expr_finder.result &&
+                                        let hir::ExprKind::AddrOf(_, _, expr) = expr.kind {
+                                        vec![
+                                            (expr.span.shrink_to_lo(), format!("(")),
+                                            (expr.span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
+                                        ]
+                                    } else {
+                                        vec![(span.shrink_to_hi(), format!(" as {}", cand.self_ty()))]
+                                    }
+                                } else {
+                                    vec![(span.shrink_to_hi(), format!(" as {}", cand.self_ty()))]
+                                };
+                                err.multipart_suggestion(
                                     format!(
                                         "the trait `{}` is implemented for fn pointer `{}`, try casting using `as`",
                                         cand.print_trait_sugared(),
                                         cand.self_ty(),
                                     ),
-                                    format!(" as {}", cand.self_ty()),
+                                    suggestion,
                                     Applicability::MaybeIncorrect,
                                 );
                                 true

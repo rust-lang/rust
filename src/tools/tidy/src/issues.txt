@@ -4076,7 +4076,6 @@ ui/traits/issue-96664.rs
 ui/traits/issue-96665.rs
 ui/traits/issue-97576.rs
 ui/traits/issue-97695-double-trivial-bound.rs
-ui/traits/issue-99875.rs
 ui/traits/next-solver/coherence/issue-102048.rs
 ui/traits/next-solver/issue-118950-root-region.rs
 ui/traits/object/issue-33140-traitobject-crate.rs
