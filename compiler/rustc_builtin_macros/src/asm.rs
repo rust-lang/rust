@@ -507,6 +507,7 @@ fn expand_preparsed_asm(
 
         let msg = "asm template must be a string literal";
         let template_sp = template_expr.span;
+        let template_is_mac_call = matches!(template_expr.kind, ast::ExprKind::MacCall(_));
         let (template_str, template_style, template_span) = {
             let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, template_expr, msg) else {
                 return ExpandResult::Retry(());
@@ -596,7 +597,14 @@ fn expand_preparsed_asm(
 
         if !parser.errors.is_empty() {
             let err = parser.errors.remove(0);
-            let err_sp = template_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
+            let err_sp = if template_is_mac_call {
+                // If the template is a macro call we can't reliably point to the error's
+                // span so just use the template's span as the error span (fixes #129503)
+                template_span
+            } else {
+                template_span.from_inner(InnerSpan::new(err.span.start, err.span.end))
+            };
+
             let msg = format!("invalid asm template string: {}", err.description);
             let mut e = ecx.dcx().struct_span_err(err_sp, msg);
             e.span_label(err_sp, err.label + " in asm template string");
