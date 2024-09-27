@@ -625,9 +625,9 @@ class RustBuild(object):
             try:
                 # FIXME: A cheap workaround for https://github.com/rust-lang/rust/issues/125578,
                 # remove this once the issue is closed.
-                bootstrap_out = self.bootstrap_out()
-                if os.path.exists(bootstrap_out):
-                    shutil.rmtree(bootstrap_out)
+                bootstrap_build_artifacts = os.path.join(self.bootstrap_out(), "debug")
+                if os.path.exists(bootstrap_build_artifacts):
+                    shutil.rmtree(bootstrap_build_artifacts)
 
                 p.map(unpack_component, tarballs_download_info)
             finally:
