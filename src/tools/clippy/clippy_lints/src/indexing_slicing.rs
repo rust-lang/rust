@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             if let Some(range) = higher::Range::hir(index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.kind() {
-                    let size: u128 = if let Some(size) = s.try_eval_target_usize(cx.tcx, cx.param_env) {
+                    let size: u128 = if let Some(size) = s.try_to_target_usize(cx.tcx) {
                         size.into()
                     } else {
                         return;
@@ -183,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                             && let ty::Uint(utype) = cx.typeck_results().expr_ty(index).kind()
                             && *utype == ty::UintTy::Usize
                             && let ty::Array(_, s) = ty.kind()
-                            && let Some(size) = s.try_eval_target_usize(cx.tcx, cx.param_env)
+                            && let Some(size) = s.try_to_target_usize(cx.tcx)
                         {
                             // get constant offset and check whether it is in bounds
                             let off = usize::try_from(off).unwrap();
