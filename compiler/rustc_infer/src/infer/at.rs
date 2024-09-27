@@ -159,7 +159,24 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             ToTrace::to_trace(self.cause, true, expected, actual),
             self.param_env,
             define_opaque_types,
-        );
+            ToTrace::to_trace(self.cause, expected, actual),
+            expected,
+            actual,
+        )
+    }
+
+    /// Makes `expected == actual`.
+    pub fn eq_trace<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        trace: TypeTrace<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        let mut fields = CombineFields::new(self.infcx, trace, self.param_env, define_opaque_types);
         fields.equate(StructurallyRelateAliases::No).relate(expected, actual)?;
         Ok(InferOk {
             value: (),
