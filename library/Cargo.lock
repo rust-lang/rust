@@ -313,6 +313,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzstd"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99c3938e133aac070997ddc684d4b393777d293ba170f2988c8fd5ea2ad4ce21"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
 name = "std"
 version = "0.0.0"
 dependencies = [
@@ -337,6 +348,7 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "rustc-demangle",
+ "ruzstd",
  "std_detect",
  "unwind",
  "wasi",

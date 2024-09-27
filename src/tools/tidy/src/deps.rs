@@ -481,6 +481,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rand_core",
     "rand_xorshift",
     "rustc-demangle",
+    "ruzstd",
     "unicode-width",
     "unwinding",
     "wasi",
