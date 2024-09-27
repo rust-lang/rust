@@ -144,7 +144,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 if !self.fcx.tcx.features().unsized_fn_params {
                     self.fcx.require_type_is_sized(
                         var_ty,
-                        p.span,
+                        ty_span,
                         // ty_span == ident.span iff this is a closure parameter with no type
                         // ascription, or if it's an implicit `self` parameter
                         ObligationCauseCode::SizedArgumentType(

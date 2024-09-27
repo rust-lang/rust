@@ -358,10 +358,10 @@ LL ~         b: (T, T),
    |
 
 error[E0282]: type annotations needed
-  --> $DIR/typeck_type_placeholder_item.rs:128:18
+  --> $DIR/typeck_type_placeholder_item.rs:128:21
    |
 LL |     fn fn_test11(_: _) -> (_, _) { panic!() }
-   |                  ^ cannot infer type
+   |                     ^ cannot infer type
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:128:28

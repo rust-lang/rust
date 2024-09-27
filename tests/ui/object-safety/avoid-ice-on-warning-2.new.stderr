@@ -19,10 +19,10 @@ LL |     f()
    |     call expression requires function
 
 error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
-  --> $DIR/avoid-ice-on-warning-2.rs:4:10
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
    |
 LL | fn id<F>(f: Copy) -> usize {
-   |          ^ doesn't have a size known at compile-time
+   |             ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
    = help: unsized fn params are gated as an unstable feature
