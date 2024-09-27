@@ -251,6 +251,56 @@ where
         Rotate::<OFFSET>::swizzle(self)
     }
 
+    /// Shifts the vector elements to the left by `OFFSET`, padding by the
+    /// default value (e.g., zero) to the right.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    fn shift_elements_left<const OFFSET: usize>(self) -> Self
+    where
+        T: Default,
+    {
+        struct Shift<const OFFSET: usize>;
+
+        impl<const OFFSET: usize, const N: usize> Swizzle<N> for Shift<OFFSET> {
+            const INDEX: [usize; N] = const {
+                let mut index = [N; N];
+                let mut i = 0;
+                while i + OFFSET < N {
+                    index[i] = i + OFFSET;
+                    i += 1;
+                }
+                index
+            };
+        }
+
+        Shift::<OFFSET>::concat_swizzle(self, Self::default())
+    }
+
+    /// Shifts the vector elements to the right by `OFFSET`, padding by the
+    /// default value (e.g., zero) from the left.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    fn shift_elements_right<const OFFSET: usize>(self) -> Self
+    where
+        T: Default,
+    {
+        struct Shift<const OFFSET: usize>;
+
+        impl<const OFFSET: usize, const N: usize> Swizzle<N> for Shift<OFFSET> {
+            const INDEX: [usize; N] = const {
+                let mut index = [N; N];
+                let mut i = OFFSET;
+                while i < N {
+                    index[i] = i - OFFSET;
+                    i += 1;
+                }
+                index
+            };
+        }
+
+        Shift::<OFFSET>::concat_swizzle(self, Self::default())
+    }
+
     /// Interleave two vectors.
     ///
     /// The resulting vectors contain elements taken alternatively from `self` and `other`, first
@@ -449,6 +499,30 @@ where
     pub fn rotate_elements_right<const OFFSET: usize>(self) -> Self {
         // Safety: swizzles are safe for masks
         unsafe { Self::from_int_unchecked(self.to_int().rotate_elements_right::<OFFSET>()) }
+    }
+
+    /// Shifts the mask elements to the left by `OFFSET`, padding by the
+    /// default value (e.g., zero) to the right.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn shift_elements_left<const OFFSET: usize>(self) -> Self
+    where
+        T: Default,
+    {
+        // Safety: swizzles are safe for masks
+        unsafe { Self::from_int_unchecked(self.to_int().shift_elements_left::<OFFSET>()) }
+    }
+
+    /// Shifts the mask elements to the right by `OFFSET`, padding by the
+    /// default value (e.g., `false`) from the left.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn shift_elements_right<const OFFSET: usize>(self) -> Self
+    where
+        T: Default,
+    {
+        // Safety: swizzles are safe for masks
+        unsafe { Self::from_int_unchecked(self.to_int().shift_elements_right::<OFFSET>()) }
     }
 
     /// Interleave two masks.
