@@ -102,9 +102,6 @@ fn main() {
         ("arm64ec", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         ("x86_64", "windows") => false,
-        // Apple has a special ABI for `f16` that we do not yet support
-        // FIXME(builtins): fixed by <https://github.com/rust-lang/compiler-builtins/pull/675>
-        ("x86" | "x86_64", _) if target_vendor == "apple" => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         ("csky", _) => false,
         ("hexagon", _) => false,
