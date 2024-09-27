@@ -251,14 +251,11 @@ where
         Rotate::<OFFSET>::swizzle(self)
     }
 
-    /// Shifts the vector elements to the left by `OFFSET`, padding by the
-    /// default value (e.g., zero) to the right.
+    /// Shifts the vector elements to the left by `OFFSET`, filling in with
+    /// `padding` from the right.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn shift_elements_left<const OFFSET: usize>(self) -> Self
-    where
-        T: Default,
-    {
+    pub fn shift_elements_left<const OFFSET: usize>(self, padding: T) -> Self {
         struct Shift<const OFFSET: usize>;
 
         impl<const OFFSET: usize, const N: usize> Swizzle<N> for Shift<OFFSET> {
@@ -273,17 +270,14 @@ where
             };
         }
 
-        Shift::<OFFSET>::concat_swizzle(self, Self::default())
+        Shift::<OFFSET>::concat_swizzle(self, Simd::splat(padding))
     }
 
-    /// Shifts the vector elements to the right by `OFFSET`, padding by the
-    /// default value (e.g., zero) from the left.
+    /// Shifts the vector elements to the right by `OFFSET`, filling in with
+    /// `padding` from the left.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn shift_elements_right<const OFFSET: usize>(self) -> Self
-    where
-        T: Default,
-    {
+    pub fn shift_elements_right<const OFFSET: usize>(self, padding: T) -> Self {
         struct Shift<const OFFSET: usize>;
 
         impl<const OFFSET: usize, const N: usize> Swizzle<N> for Shift<OFFSET> {
@@ -298,7 +292,7 @@ where
             };
         }
 
-        Shift::<OFFSET>::concat_swizzle(self, Self::default())
+        Shift::<OFFSET>::concat_swizzle(self, Simd::splat(padding))
     }
 
     /// Interleave two vectors.
@@ -501,28 +495,22 @@ where
         unsafe { Self::from_int_unchecked(self.to_int().rotate_elements_right::<OFFSET>()) }
     }
 
-    /// Shifts the mask elements to the left by `OFFSET`, padding by the
-    /// default value (e.g., zero) to the right.
+    /// Shifts the mask elements to the left by `OFFSET`, filling in with
+    /// `padding` from the right.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn shift_elements_left<const OFFSET: usize>(self) -> Self
-    where
-        T: Default,
-    {
+    pub fn shift_elements_left<const OFFSET: usize>(self, padding: T) -> Self {
         // Safety: swizzles are safe for masks
-        unsafe { Self::from_int_unchecked(self.to_int().shift_elements_left::<OFFSET>()) }
+        unsafe { Self::from_int_unchecked(self.to_int().shift_elements_left::<OFFSET>(padding)) }
     }
 
-    /// Shifts the mask elements to the right by `OFFSET`, padding by the
-    /// default value (e.g., `false`) from the left.
+    /// Shifts the mask elements to the right by `OFFSET`, filling in with
+    /// `padding` from the left.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn shift_elements_right<const OFFSET: usize>(self) -> Self
-    where
-        T: Default,
-    {
+    pub fn shift_elements_right<const OFFSET: usize>(self, padding: T) -> Self {
         // Safety: swizzles are safe for masks
-        unsafe { Self::from_int_unchecked(self.to_int().shift_elements_right::<OFFSET>()) }
+        unsafe { Self::from_int_unchecked(self.to_int().shift_elements_right::<OFFSET>(padding)) }
     }
 
     /// Interleave two masks.
