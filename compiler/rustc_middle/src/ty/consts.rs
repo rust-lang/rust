@@ -400,7 +400,7 @@ impl<'tcx> Const<'tcx> {
 
     /// Normalizes the constant to a value or an error if possible.
     #[inline]
-    pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
+    pub fn normalize_internal(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
         match self.eval_valtree(tcx, param_env, DUMMY_SP) {
             Ok((ty, val)) => Self::new_value(tcx, val, ty),
             Err(Either::Left(_bad_ty)) => {

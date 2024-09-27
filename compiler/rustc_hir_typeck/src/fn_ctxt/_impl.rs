@@ -1495,7 +1495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         } else if self.tcx.features().generic_const_exprs {
-            ct.normalize(self.tcx, self.param_env)
+            ct.normalize_internal(self.tcx, self.param_env)
         } else {
             ct
         }
