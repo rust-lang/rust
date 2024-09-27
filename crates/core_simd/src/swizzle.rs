@@ -255,7 +255,7 @@ where
     /// default value (e.g., zero) to the right.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    fn shift_elements_left<const OFFSET: usize>(self) -> Self
+    pub fn shift_elements_left<const OFFSET: usize>(self) -> Self
     where
         T: Default,
     {
@@ -280,7 +280,7 @@ where
     /// default value (e.g., zero) from the left.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    fn shift_elements_right<const OFFSET: usize>(self) -> Self
+    pub fn shift_elements_right<const OFFSET: usize>(self) -> Self
     where
         T: Default,
     {
