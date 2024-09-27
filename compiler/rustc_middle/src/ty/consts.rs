@@ -398,36 +398,21 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    /// Returns the evaluated constant
-    #[inline]
-    pub fn eval(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-        span: Span,
-    ) -> Result<(Ty<'tcx>, ValTree<'tcx>), ErrorHandled> {
-        self.eval_valtree(tcx, param_env, span).map_err(|err| {
-            match err {
-                Either::Right(err) => err,
-                Either::Left(_bad_ty) => {
-                    // This can happen when we run on ill-typed code.
-                    let e = tcx.dcx().span_delayed_bug(
-                        span,
-                        "`ty::Const::eval` called on a non-valtree-compatible type",
-                    );
-                    e.into()
-                }
-            }
-        })
-    }
-
     /// Normalizes the constant to a value or an error if possible.
     #[inline]
     pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
-        match self.eval(tcx, param_env, DUMMY_SP) {
+        match self.eval_valtree(tcx, param_env, DUMMY_SP) {
             Ok((ty, val)) => Self::new_value(tcx, val, ty),
-            Err(ErrorHandled::Reported(r, _span)) => Self::new_error(tcx, r.into()),
-            Err(ErrorHandled::TooGeneric(_span)) => self,
+            Err(Either::Left(_bad_ty)) => {
+                // This can happen when we run on ill-typed code.
+                Self::new_error(
+                    tcx,
+                    tcx.dcx()
+                        .delayed_bug("`ty::Const::eval` called on a non-valtree-compatible type"),
+                )
+            }
+            Err(Either::Right(ErrorHandled::Reported(r, _span))) => Self::new_error(tcx, r.into()),
+            Err(Either::Right(ErrorHandled::TooGeneric(_span))) => self,
         }
     }
 

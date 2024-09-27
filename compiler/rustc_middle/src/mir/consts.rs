@@ -6,6 +6,7 @@ use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{HasDataLayout, Size};
+use either::Either;
 
 use crate::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
@@ -320,8 +321,14 @@ impl<'tcx> Const<'tcx> {
             Const::Ty(_, c) => {
                 // We want to consistently have a "clean" value for type system constants (i.e., no
                 // data hidden in the padding), so we always go through a valtree here.
-                let (ty, val) = c.eval(tcx, param_env, span)?;
-                Ok(tcx.valtree_to_const_val((ty, val)))
+                match c.eval_valtree(tcx, param_env, span) {
+                    Ok((ty, val)) => Ok(tcx.valtree_to_const_val((ty, val))),
+                    Err(Either::Left(_bad_ty)) => Err(tcx
+                        .dcx()
+                        .delayed_bug("`mir::Const::eval` called on a non-valtree-compatible type")
+                        .into()),
+                    Err(Either::Right(e)) => Err(e),
+                }
             }
             Const::Unevaluated(uneval, _) => {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`

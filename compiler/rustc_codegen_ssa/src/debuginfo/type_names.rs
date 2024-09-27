@@ -23,7 +23,6 @@ use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{
     self, ExistentialProjection, GenericArgKind, GenericArgsRef, ParamEnv, Ty, TyCtxt,
 };
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::Integer;
 use smallvec::SmallVec;
 
@@ -685,7 +684,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
-        ty::ConstKind::Value(ty, _) => {
+        ty::ConstKind::Value(ty, valtree) => {
             match ty.kind() {
                 ty::Int(ity) => {
                     // FIXME: directly extract the bits from a valtree instead of evaluating an
@@ -715,8 +714,9 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                     // avoiding collisions and will make the emitted type names shorter.
                     let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
                         let mut hasher = StableHasher::new();
-                        let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP).unwrap();
-                        hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
+                        hcx.while_hashing_spans(false, |hcx| {
+                            (ty, valtree).hash_stable(hcx, &mut hasher)
+                        });
                         hasher.finish::<Hash64>()
                     });
 
