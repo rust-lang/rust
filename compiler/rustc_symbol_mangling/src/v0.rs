@@ -555,7 +555,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
         // We only mangle a typed value if the const can be evaluated.
-        let ct = ct.normalize(self.tcx, ty::ParamEnv::reveal_all());
         let (ct_ty, valtree) = match ct.kind() {
             ty::ConstKind::Value(ty, val) => (ty, val),
 
