@@ -76,10 +76,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
                 let (size, ty) = match elem_ty.kind() {
                     ty::Array(ty, len) => {
-                        if let Some(len) =
-                            // TODO:
-                            len.try_to_target_usize(self.tcx)
-                        {
+                        if let Some(len) = len.try_to_target_usize(self.tcx) {
                             (len, *ty)
                         } else {
                             return None;
