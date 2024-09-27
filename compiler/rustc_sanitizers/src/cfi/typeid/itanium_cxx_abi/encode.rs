@@ -133,7 +133,9 @@ fn encode_const<'tcx>(
             // bool value false is encoded as 0 and true as 1.
             match ct_ty.kind() {
                 ty::Int(ity) => {
-                    let bits = c.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    let bits = c
+                        .try_to_bits(tcx, ty::ParamEnv::reveal_all())
+                        .expect("expected monomorphic const in cfi");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
                         s.push('n');
@@ -141,7 +143,9 @@ fn encode_const<'tcx>(
                     let _ = write!(s, "{val}");
                 }
                 ty::Uint(_) => {
-                    let val = c.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    let val = c
+                        .try_to_bits(tcx, ty::ParamEnv::reveal_all())
+                        .expect("expected monomorphic const in cfi");
                     let _ = write!(s, "{val}");
                 }
                 ty::Bool => {

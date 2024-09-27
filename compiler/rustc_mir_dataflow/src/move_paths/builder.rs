@@ -18,6 +18,8 @@ struct MoveDataBuilder<'a, 'tcx, F> {
     body: &'a Body<'tcx>,
     loc: Location,
     tcx: TyCtxt<'tcx>,
+    // TODO:
+    #[allow(unused)]
     param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
     filter: F,
@@ -549,7 +551,9 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             };
             let base_ty = base_place.ty(self.body, self.tcx).ty;
             let len: u64 = match base_ty.kind() {
-                ty::Array(_, size) => size.eval_target_usize(self.tcx, self.param_env),
+                ty::Array(_, size) => size
+                    .try_to_target_usize(self.tcx)
+                    .expect("expected subslice projection on fixed-size array"),
                 _ => bug!("from_end: false slice pattern of non-array type"),
             };
             for offset in from..to {

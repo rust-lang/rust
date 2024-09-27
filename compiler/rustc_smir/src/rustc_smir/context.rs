@@ -406,7 +406,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let mir_const = cnst.internal(&mut *tables, tcx);
         mir_const
-            .try_eval_target_usize(tables.tcx, ParamEnv::empty())
+            .try_to_target_usize(tables.tcx)
             .ok_or_else(|| Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
 

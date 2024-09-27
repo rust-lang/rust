@@ -1082,7 +1082,8 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             return;
         }
 
-        if let Some(len) = len_const.try_eval_target_usize(tcx, tcx.param_env(def.did())) {
+        // TODO:
+        if let Some(len) = len_const.try_to_target_usize(tcx) {
             if len == 0 {
                 struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
                 return;
