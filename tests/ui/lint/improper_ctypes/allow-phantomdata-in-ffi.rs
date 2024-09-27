@@ -1,6 +1,8 @@
 //@ run-pass
 #![forbid(improper_ctypes)]
 #![allow(dead_code)]
+// issue https://github.com/rust-lang/rust/issues/34798
+// We allow PhantomData in FFI so bindgen can bind templated C++ structs with "unused generic args"
 
 #[repr(C)]
 pub struct Foo {

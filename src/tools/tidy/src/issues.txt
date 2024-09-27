@@ -2750,7 +2750,6 @@ ui/lint/issue-1866.rs
 ui/lint/issue-19102.rs
 ui/lint/issue-20343.rs
 ui/lint/issue-30302.rs
-ui/lint/issue-34798.rs
 ui/lint/issue-35075.rs
 ui/lint/issue-47775-nested-macro-unnecessary-parens-arg.rs
 ui/lint/issue-49588-non-shorthand-field-patterns-in-pattern-macro.rs
