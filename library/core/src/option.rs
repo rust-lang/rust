@@ -1639,8 +1639,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_get_or_insert_default)]
-    ///
     /// let mut x = None;
     ///
     /// {
@@ -1653,7 +1651,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(7));
     /// ```
     #[inline]
-    #[unstable(feature = "option_get_or_insert_default", issue = "82901")]
+    #[stable(feature = "option_get_or_insert_default", since = "CURRENT_RUSTC_VERSION")]
     pub fn get_or_insert_default(&mut self) -> &mut T
     where
         T: Default,

@@ -478,7 +478,7 @@ pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
                     &tm,
                     cpu_cstring.as_ptr(),
                     callback,
-                    std::ptr::addr_of_mut!(out) as *mut c_void,
+                    (&raw mut out) as *mut c_void,
                 );
             }
         }
