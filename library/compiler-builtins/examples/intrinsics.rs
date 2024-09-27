@@ -4,12 +4,10 @@
 // to link due to the missing intrinsic (symbol).
 
 #![allow(unused_features)]
-#![allow(stable_features)] // bench_black_box feature is stable, leaving for backcompat
 #![allow(internal_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
 #![feature(allocator_api)]
-#![feature(bench_black_box)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(lang_items)]
