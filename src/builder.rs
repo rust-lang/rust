@@ -28,9 +28,8 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
-use rustc_target::abi::{
-    self, call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange,
-};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
 
 use crate::common::{type_is_pointer, SignType, TypeReflection};
@@ -142,7 +141,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     ) -> RValue<'gcc> {
         let size = get_maybe_pointer_size(src);
         let compare_exchange =
-            self.context.get_builtin_function(&format!("__atomic_compare_exchange_{}", size));
+            self.context.get_builtin_function(format!("__atomic_compare_exchange_{}", size));
         let order = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
         let failure_order = self.context.new_rvalue_from_int(self.i32_type, failure_order.to_gcc());
         let weak = self.context.new_rvalue_from_int(self.bool_type, weak as i32);
@@ -271,10 +270,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                             actual_val.dereference(self.location).to_rvalue()
                         }
                     } else {
+                        // FIXME: this condition seems wrong: it will pass when both types are not
+                        // a vector.
                         assert!(
                             (!expected_ty.is_vector() || actual_ty.is_vector())
                                 && (expected_ty.is_vector() || !actual_ty.is_vector()),
-                            "{:?} ({}) -> {:?} ({}), index: {:?}[{}]",
+                            "{:?} (is vector: {}) -> {:?} (is vector: {}), Function: {:?}[{}]",
                             actual_ty,
                             actual_ty.is_vector(),
                             expected_ty,
@@ -284,6 +285,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         );
                         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
                         // TODO: remove bitcast now that vector types can be compared?
+                        // ==> We use bitcast to avoid having to do many manual casts from e.g. __m256i to __v32qi (in
+                        // the case of _mm256_aesenc_epi128).
                         self.bitcast(actual_val, expected_ty)
                     }
                 } else {
@@ -329,7 +332,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let result = current_func.new_local(
                 self.location,
                 return_type,
-                &format!("returnValue{}", self.next_value_counter()),
+                format!("returnValue{}", self.next_value_counter()),
             );
             self.block.add_assignment(
                 self.location,
@@ -367,6 +370,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let args = {
             let function_address_names = self.function_address_names.borrow();
             let original_function_name = function_address_names.get(&func_ptr);
+            func_ptr = llvm::adjust_function(self.context, &func_name, func_ptr, args);
             llvm::adjust_intrinsic_arguments(
                 self,
                 gcc_func,
@@ -397,7 +401,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let result = current_func.new_local(
                 self.location,
                 return_value.get_type(),
-                &format!("ptrReturnValue{}", self.next_value_counter()),
+                format!("ptrReturnValue{}", self.next_value_counter()),
             );
             self.block.add_assignment(self.location, result, return_value);
             result.to_rvalue()
@@ -439,7 +443,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let result = current_func.new_local(
             self.location,
             return_type,
-            &format!("overflowReturnValue{}", self.next_value_counter()),
+            format!("overflowReturnValue{}", self.next_value_counter()),
         );
         self.block.add_assignment(
             self.location,
@@ -924,7 +928,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let ty = self.cx.type_array(self.cx.type_i8(), size.bytes()).get_aligned(align.bytes());
         // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
         self.current_func()
-            .new_local(self.location, ty, &format!("stack_var_{}", self.next_value_counter()))
+            .new_local(self.location, ty, format!("stack_var_{}", self.next_value_counter()))
             .get_address(self.location)
     }
 
@@ -950,7 +954,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let loaded_value = function.new_local(
             self.location,
             aligned_type,
-            &format!("loadedValue{}", self.next_value_counter()),
+            format!("loadedValue{}", self.next_value_counter()),
         );
         block.add_assignment(self.location, loaded_value, deref);
         loaded_value.to_rvalue()
@@ -971,7 +975,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): use ty.
         // TODO(antoyo): handle alignment.
         let atomic_load =
-            self.context.get_builtin_function(&format!("__atomic_load_{}", size.bytes()));
+            self.context.get_builtin_function(format!("__atomic_load_{}", size.bytes()));
         let ordering = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
 
         let volatile_const_void_ptr_type =
@@ -1030,11 +1034,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                 let load = self.load(llty, llptr, align);
                 scalar_load_metadata(self, load, scalar);
-                if scalar.is_bool() {
-                    self.trunc(load, self.type_i1())
-                } else {
-                    load
-                }
+                if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
             };
 
             OperandValue::Pair(
@@ -1131,7 +1131,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) {
         // TODO(antoyo): handle alignment.
         let atomic_store =
-            self.context.get_builtin_function(&format!("__atomic_store_{}", size.bytes()));
+            self.context.get_builtin_function(format!("__atomic_store_{}", size.bytes()));
         let ordering = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
         let volatile_const_void_ptr_type =
             self.context.new_type::<()>().make_volatile().make_pointer();
@@ -1782,18 +1782,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
         let int_max = |signed: bool, int_width: u64| -> u128 {
             let shift_amount = 128 - int_width;
-            if signed {
-                i128::MAX as u128 >> shift_amount
-            } else {
-                u128::MAX >> shift_amount
-            }
+            if signed { i128::MAX as u128 >> shift_amount } else { u128::MAX >> shift_amount }
         };
         let int_min = |signed: bool, int_width: u64| -> i128 {
-            if signed {
-                i128::MIN >> (128 - int_width)
-            } else {
-                0
-            }
+            if signed { i128::MIN >> (128 - int_width) } else { 0 }
         };
 
         let compute_clamp_bounds_single = |signed: bool, int_width: u64| -> (u128, u128) {

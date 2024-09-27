@@ -9,10 +9,9 @@ use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 
-use crate::attributes;
-use crate::base;
 use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
+use crate::{attributes, base};
 
 impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[cfg_attr(not(feature = "master"), allow(unused_variables))]
@@ -38,7 +37,7 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
         let global = self.define_global(symbol_name, gcc_type, is_tls, attrs.link_section);
         #[cfg(feature = "master")]
-        global.add_string_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
+        global.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
 
         // TODO(antoyo): set linkage.
         self.instances.borrow_mut().insert(instance, global);

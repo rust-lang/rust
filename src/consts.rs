@@ -3,14 +3,14 @@ use gccjit::{FnAttribute, VarAttribute, Visibility};
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, StaticMethods};
 use rustc_hir::def::DefKind;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
     self, read_target_uint, ConstAllocation, ErrorHandled, Scalar as InterpScalar,
 };
-use rustc_middle::span_bug;
+use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 
@@ -257,7 +257,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
             if !self.tcx.is_reachable_non_generic(def_id) {
                 #[cfg(feature = "master")]
-                global.add_string_attribute(VarAttribute::Visibility(Visibility::Hidden));
+                global.add_attribute(VarAttribute::Visibility(Visibility::Hidden));
             }
 
             global
@@ -384,6 +384,11 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // Declare a symbol `foo` with the desired linkage.
         let global1 =
             cx.declare_global_with_linkage(sym, cx.type_i8(), base::global_linkage_to_gcc(linkage));
+
+        if linkage == Linkage::ExternalWeak {
+            #[cfg(feature = "master")]
+            global1.add_attribute(VarAttribute::Weak);
+        }
 
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`.  If `foo` is

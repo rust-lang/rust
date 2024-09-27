@@ -1,3 +1,10 @@
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::fs::{remove_dir_all, File};
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
@@ -5,13 +12,6 @@ use crate::utils::{
     run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
     split_args, walk_dir,
 };
-
-use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::fs::{remove_dir_all, File};
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 type Env = HashMap<String, String>;
 type Runner = fn(&Env, &TestArg) -> Result<(), String>;
@@ -92,6 +92,7 @@ struct TestArg {
     current_part: Option<usize>,
     sysroot_panic_abort: bool,
     config_info: ConfigInfo,
+    sysroot_features: Vec<String>,
 }
 
 impl TestArg {
@@ -109,7 +110,7 @@ impl TestArg {
                         test_arg.flags.extend_from_slice(&["--features".into(), feature]);
                     }
                     _ => {
-                        return Err("Expected an argument after `--features`, found nothing".into())
+                        return Err("Expected an argument after `--features`, found nothing".into());
                     }
                 },
                 "--use-system-gcc" => {
@@ -127,6 +128,14 @@ impl TestArg {
                 "--sysroot-panic-abort" => {
                     test_arg.sysroot_panic_abort = true;
                 }
+                "--sysroot-features" => match args.next() {
+                    Some(feature) if !feature.is_empty() => {
+                        test_arg.sysroot_features.push(feature);
+                    }
+                    _ => {
+                        return Err(format!("Expected an argument after `{}`, found nothing", arg));
+                    }
+                },
                 "--help" => {
                     show_usage();
                     return Ok(None);
@@ -250,7 +259,9 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 fn build_sysroot(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[BUILD] sysroot");
-    build::build_sysroot(env, &args.config_info)?;
+    let mut config = args.config_info.clone();
+    config.features.extend(args.sysroot_features.iter().cloned());
+    build::build_sysroot(env, &config)?;
     Ok(())
 }
 
@@ -458,11 +469,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     .map_err(|error| format!("Failed to retrieve cargo path: {:?}", error))
     .and_then(|cargo| {
         let cargo = cargo.trim().to_owned();
-        if cargo.is_empty() {
-            Err(format!("`cargo` path is empty"))
-        } else {
-            Ok(cargo)
-        }
+        if cargo.is_empty() { Err(format!("`cargo` path is empty")) } else { Ok(cargo) }
     })?;
     let rustc = String::from_utf8(
         run_command_with_env(&[&"rustup", &toolchain, &"which", &"rustc"], rust_dir, Some(env))?
@@ -471,11 +478,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     .map_err(|error| format!("Failed to retrieve rustc path: {:?}", error))
     .and_then(|rustc| {
         let rustc = rustc.trim().to_owned();
-        if rustc.is_empty() {
-            Err(format!("`rustc` path is empty"))
-        } else {
-            Ok(rustc)
-        }
+        if rustc.is_empty() { Err(format!("`rustc` path is empty")) } else { Ok(rustc) }
     })?;
     let llvm_filecheck = match run_command_with_env(
         &[
@@ -634,7 +637,8 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
         "https://github.com/BurntSushi/memchr",
         "https://github.com/dtolnay/itoa",
         "https://github.com/rust-lang/cfg-if",
-        "https://github.com/rust-lang-nursery/lazy-static.rs",
+        //"https://github.com/rust-lang-nursery/lazy-static.rs", // TODO: re-enable when the
+        //failing test is fixed upstream.
         //"https://github.com/marshallpierce/rust-base64", // FIXME: one test is OOM-killed.
         // TODO: ignore the base64 test that is OOM-killed.
         "https://github.com/time-rs/time",

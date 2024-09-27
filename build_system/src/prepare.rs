@@ -1,11 +1,11 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
 use crate::rustc_info::get_rustc_path;
 use crate::utils::{
     cargo_install, create_dir, get_sysroot_dir, git_clone_root_dir, remove_file, run_command,
     run_command_with_output, walk_dir,
 };
-
-use std::fs;
-use std::path::{Path, PathBuf};
 
 fn prepare_libcore(
     sysroot_path: &Path,

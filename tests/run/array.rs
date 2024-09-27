@@ -31,6 +31,7 @@ impl Copy for i32 {}
 impl Copy for u8 {}
 impl Copy for i8 {}
 impl Copy for i16 {}
+impl<T: ?Sized> Copy for *mut T {}
 
 #[lang = "receiver"]
 trait Receiver {

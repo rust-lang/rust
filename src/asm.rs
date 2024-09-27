@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
@@ -6,12 +8,10 @@ use rustc_codegen_ssa::traits::{
     AsmBuilderMethods, AsmMethods, BaseTypeMethods, BuilderMethods, GlobalAsmOperandRef,
     InlineAsmOperandRef,
 };
-
-use rustc_middle::{bug, ty::Instance};
+use rustc_middle::bug;
+use rustc_middle::ty::Instance;
 use rustc_span::Span;
 use rustc_target::asm::*;
-
-use std::borrow::Cow;
 
 use crate::builder::Builder;
 use crate::callee::get_fn;
@@ -858,11 +858,7 @@ fn modifier_to_gcc(
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => modifier,
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg)
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
-            if modifier == Some('v') {
-                None
-            } else {
-                modifier
-            }
+            if modifier == Some('v') { None } else { modifier }
         }
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")

@@ -1,5 +1,4 @@
-use gccjit::LValue;
-use gccjit::{RValue, ToRValue, Type};
+use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, MiscMethods, StaticMethods};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::mir::Mutability;
@@ -58,11 +57,7 @@ pub fn type_is_pointer(typ: Type<'_>) -> bool {
 
 impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn const_null(&self, typ: Type<'gcc>) -> RValue<'gcc> {
-        if type_is_pointer(typ) {
-            self.context.new_null(typ)
-        } else {
-            self.const_int(typ, 0)
-        }
+        if type_is_pointer(typ) { self.context.new_null(typ) } else { self.const_int(typ, 0) }
     }
 
     fn const_undef(&self, typ: Type<'gcc>) -> RValue<'gcc> {
@@ -221,7 +216,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         }
                         value
                     }
-                    GlobalAlloc::Function(fn_instance) => self.get_fn_addr(fn_instance),
+                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
                     GlobalAlloc::VTable(ty, trait_ref) => {
                         let alloc = self
                             .tcx

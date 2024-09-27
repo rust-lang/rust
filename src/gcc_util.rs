@@ -1,11 +1,10 @@
 #[cfg(feature = "master")]
 use gccjit::Context;
-use smallvec::{smallvec, SmallVec};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
+use smallvec::{smallvec, SmallVec};
 
 use crate::errors::{
     PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,
@@ -66,8 +65,8 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
 
             let feature = backend_feature_name(s)?;
             // Warn against use of GCC specific feature names on the CLI.
-            if diagnostics && !supported_features.iter().any(|&(v, _)| v == feature) {
-                let rust_feature = supported_features.iter().find_map(|&(rust_feature, _)| {
+            if diagnostics && !supported_features.iter().any(|&(v, _, _)| v == feature) {
+                let rust_feature = supported_features.iter().find_map(|&(rust_feature, _, _)| {
                     let gcc_features = to_gcc_features(sess, rust_feature);
                     if gcc_features.contains(&feature) && !gcc_features.contains(&rust_feature) {
                         Some(rust_feature)

@@ -175,11 +175,7 @@ pub fn cargo_install(to_install: &str) -> Result<(), String> {
 pub fn get_os_name() -> Result<String, String> {
     let output = run_command(&[&"uname"], None)?;
     let name = std::str::from_utf8(&output.stdout).unwrap_or("").trim().to_string();
-    if !name.is_empty() {
-        Ok(name)
-    } else {
-        Err("Failed to retrieve the OS name".to_string())
-    }
+    if !name.is_empty() { Ok(name) } else { Err("Failed to retrieve the OS name".to_string()) }
 }
 
 #[derive(Default, PartialEq)]

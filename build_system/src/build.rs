@@ -1,11 +1,12 @@
-use crate::config::{Channel, ConfigInfo};
-use crate::utils::{
-    copy_file, create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
-};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
+
+use crate::config::{Channel, ConfigInfo};
+use crate::utils::{
+    copy_file, create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
+};
 
 #[derive(Default)]
 struct BuildArg {
@@ -23,16 +24,6 @@ impl BuildArg {
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
-                "--features" => {
-                    if let Some(arg) = args.next() {
-                        build_arg.flags.push("--features".to_string());
-                        build_arg.flags.push(arg.as_str().into());
-                    } else {
-                        return Err(
-                            "Expected a value after `--features`, found nothing".to_string()
-                        );
-                    }
-                }
                 "--sysroot" => {
                     build_arg.build_sysroot = true;
                 }
@@ -55,7 +46,6 @@ impl BuildArg {
             r#"
 `build` command help:
 
-    --features [arg]       : Add a new feature [arg]
     --sysroot              : Build with sysroot"#
         );
         ConfigInfo::show_usage();
@@ -142,6 +132,10 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     }
 
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
+    for feature in &config.features {
+        args.push(&"--features");
+        args.push(feature);
+    }
 
     if config.no_default_features {
         rustflags.push_str(" -Csymbol-mangling-version=v0");
