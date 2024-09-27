@@ -133,6 +133,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 .expect_const()
                 .try_to_valtree()
                 .expect("expected monomorphic const in codegen")
+                .0
                 .unwrap_branch();
 
             assert_eq!(x.layout(), y.layout());
@@ -806,8 +807,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => m.load_scalar(fx),
                 ty::Array(elem, len)
                     if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                        && len.try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
-                            == Some(expected_bytes) =>
+                        && len
+                            .try_to_target_usize(fx.tcx)
+                            .expect("expected monomorphic const in codegen")
+                            == expected_bytes =>
                 {
                     m.force_stack(fx).0.load(
                         fx,
@@ -907,8 +910,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => {}
                 ty::Array(elem, len)
                     if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                        && len.try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
-                            == Some(expected_bytes) => {}
+                        && len
+                            .try_to_target_usize(fx.tcx)
+                            .expect("expected monomorphic const in codegen")
+                            == expected_bytes => {}
                 _ => {
                     fx.tcx.dcx().span_fatal(
                         span,
