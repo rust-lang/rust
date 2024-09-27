@@ -1298,37 +1298,31 @@ impl LangString {
                     }
                     LangStringToken::LangToken(x) if extra.is_some() => {
                         let s = x.to_lowercase();
-                        if let Some((flag, help)) = match s.as_str() {
-                            "compile-fail" | "compile_fail" | "compilefail" => Some((
-                                "compile_fail",
-                                "the code block will either not be tested if not marked as a rust \
-                                 one or won't fail if it compiles successfully",
-                            )),
-                            "should-panic" | "should_panic" | "shouldpanic" => Some((
-                                "should_panic",
-                                "the code block will either not be tested if not marked as a rust \
-                                 one or won't fail if it doesn't panic when running",
-                            )),
-                            "no-run" | "no_run" | "norun" => Some((
-                                "no_run",
-                                "the code block will either not be tested if not marked as a rust \
-                                 one or will be run (which you might not want)",
-                            )),
-                            "test-harness" | "test_harness" | "testharness" => Some((
-                                "test_harness",
-                                "the code block will either not be tested if not marked as a rust \
-                                 one or the code will be wrapped inside a main function",
-                            )),
+                        if let Some(help) = match s.as_str() {
+                            "compile-fail" | "compile_fail" | "compilefail" => Some(
+                                "use `compile_fail` to invert the results of this test, so that it \
+                                passes if it cannot be compiled and fails if it can",
+                            ),
+                            "should-panic" | "should_panic" | "shouldpanic" => Some(
+                                "use `should_panic` to invert the results of this test, so that if \
+                                passes if it panics and fails if it does not",
+                            ),
+                            "no-run" | "no_run" | "norun" => Some(
+                                "use `no_run` to compile, but not run, the code sample during \
+                                testing",
+                            ),
+                            "test-harness" | "test_harness" | "testharness" => Some(
+                                "use `test_harness` to run functions marked `#[test]` instead of a \
+                                potentially-implicit `main` function",
+                            ),
                             "standalone" | "standalone_crate" => {
                                 if let Some(extra) = extra
                                     && extra.sp.at_least_rust_2024()
                                 {
-                                    Some((
-                                        "standalone-crate",
-                                        "the code block will either not be tested if not marked as \
-                                         a rust one or the code will be run as part of the merged \
-                                         doctests if compatible",
-                                    ))
+                                    Some(
+                                        "use `standalone-crate` to compile this code block \
+                                        separately",
+                                    )
                                 } else {
                                     None
                                 }
@@ -1339,10 +1333,12 @@ impl LangString {
                                 extra.error_invalid_codeblock_attr_with_help(
                                     format!("unknown attribute `{x}`"),
                                     |lint| {
-                                        lint.help(format!(
-                                            "there is an attribute with a similar name: `{flag}`"
-                                        ))
-                                        .help(help);
+                                        lint.help(help).help(
+                                            "this code block may be skipped during testing, \
+                                            because unknown attributes are treated as markers for \
+                                            code samples written in other programming languages, \
+                                            unless it is also explicitly marked as `rust`",
+                                        );
                                     },
                                 );
                             }

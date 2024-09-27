@@ -10,8 +10,8 @@ error: unknown attribute `standalone`
 16 | | //! ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `standalone-crate`
-   = help: the code block will either not be tested if not marked as a rust one or the code will be run as part of the merged doctests if compatible
+   = help: use `standalone-crate` to compile this code block separately
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 note: the lint level is defined here
   --> $DIR/standalone-warning-2024.rs:8:9
    |
@@ -31,8 +31,8 @@ error: unknown attribute `standalone_crate`
 16 | | //! ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `standalone-crate`
-   = help: the code block will either not be tested if not marked as a rust one or the code will be run as part of the merged doctests if compatible
+   = help: use `standalone-crate` to compile this code block separately
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: aborting due to 2 previous errors
 
