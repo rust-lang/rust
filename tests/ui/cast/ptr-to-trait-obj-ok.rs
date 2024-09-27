@@ -1,4 +1,4 @@
-//@ check-fail
+//@ check-pass
 
 trait Trait<'a> {}
 
@@ -37,9 +37,6 @@ fn cast_inherent_lt_wrap<'a, 'b>(
 
 fn cast_away_higher_ranked_wrap<'a>(x: *mut dyn for<'b> Trait<'b>) -> *mut Wrapper<dyn Trait<'a>> {
     x as _
-    //~^ error: lifetime may not live long enough
-    //~| error: mismatched types
-    //~| one type is more general than the other
 }
 
 fn unprincipled_wrap<'a, 'b>(x: *mut (dyn Send + 'a)) -> *mut Wrapper<dyn Sync + 'b> {
