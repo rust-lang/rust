@@ -539,6 +539,17 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn buildfiles(&self) -> Vec<AbsPathBuf> {
+        match &self.kind {
+            ProjectWorkspaceKind::Json(project) => project
+                .crates()
+                .filter_map(|(_, krate)| krate.build.as_ref().map(|build| build.build_file.clone()))
+                .map(AbsPathBuf::assert)
+                .collect(),
+            _ => vec![],
+        }
+    }
+
     pub fn find_sysroot_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
         self.sysroot.discover_proc_macro_srv()
     }

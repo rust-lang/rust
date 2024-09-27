@@ -265,6 +265,11 @@ impl ProjectFolders {
                 entries.push(manifest.to_owned());
             }
 
+            for buildfile in ws.buildfiles() {
+                file_set_roots.push(VfsPath::from(buildfile.to_owned()));
+                entries.push(buildfile.to_owned());
+            }
+
             // In case of detached files we do **not** look for a rust-analyzer.toml.
             if !matches!(ws.kind, ProjectWorkspaceKind::DetachedFile { .. }) {
                 let ws_root = ws.workspace_root();
