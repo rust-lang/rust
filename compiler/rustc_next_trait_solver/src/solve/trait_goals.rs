@@ -634,11 +634,16 @@ where
         // FIXME: This actually should destructure the `Result` we get from transmutability and
         // register candidates. We probably need to register >1 since we may have an OR of ANDs.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let assume = ecx.structurally_normalize_const(
+                goal.param_env,
+                goal.predicate.trait_ref.args.const_at(2),
+            )?;
+
             let certainty = ecx.is_transmutable(
                 goal.param_env,
                 goal.predicate.trait_ref.args.type_at(0),
                 goal.predicate.trait_ref.args.type_at(1),
-                goal.predicate.trait_ref.args.const_at(2),
+                assume,
             )?;
             ecx.evaluate_added_goals_and_make_canonical_response(certainty)
         })
