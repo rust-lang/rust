@@ -36,7 +36,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -113,13 +113,13 @@ jobs:
   duplicates:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: python tools/check_intrinsics_duplicates.py
 
   build_system:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test build system
         run: |
           cd build_system

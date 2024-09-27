@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -24,7 +24,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -35,6 +35,13 @@ jobs:
 
     - name: Install packages
       run: sudo apt-get install ninja-build ripgrep
+
+    # TODO: remove when we have binutils version 2.43 in the repo.
+    - name: Install more recent binutils
+      run: |
+        echo "deb http://archive.ubuntu.com/ubuntu oracular main universe" | sudo tee /etc/apt/sources.list.d/oracular-copies.list
+        sudo apt-get update
+        sudo apt-get install binutils
 
     - name: Install Intel Software Development Emulator
       if: ${{ matrix.cargo_runner }}
@@ -96,4 +103,5 @@ jobs:
       run: |
         # FIXME: these tests fail when the sysroot is compiled with LTO because of a missing symbol in proc-macro.
         # TODO: remove --skip test_mm512_stream_ps when stdarch is updated in rustc.
-        STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml -- --skip rtm --skip tbm --skip sse4a --skip test_mm512_stream_ps
+        # TODO: remove --skip test_tile_ when it's implemented.
+        STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features --cfg stdarch_intel_sde" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml -- --skip rtm --skip tbm --skip sse4a --skip test_mm512_stream_ps --skip test_tile_

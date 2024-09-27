@@ -6,8 +6,8 @@ use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, T
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{ParamEnv, Ty};
-use rustc_target::abi::Endian;
 use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
+use rustc_target::abi::Endian;
 use rustc_target::spec;
 
 use crate::builder::{Builder, ToGccComp};
@@ -733,7 +733,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         // TODO(antoyo): check if it's faster to use string literals and a
         // match instead of format!.
-        let bswap = self.cx.context.get_builtin_function(&format!("__builtin_bswap{}", width));
+        let bswap = self.cx.context.get_builtin_function(format!("__builtin_bswap{}", width));
         // FIXME(antoyo): this cast should not be necessary. Remove
         // when having proper sized integer types.
         let param_type = bswap.get_param(0).to_rvalue().get_type();
