@@ -22,7 +22,7 @@ pub(crate) const PROPAGATE_STABILITY: Pass = Pass {
 
 pub(crate) fn propagate_stability(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
     let crate_stability = cx.tcx.lookup_stability(CRATE_DEF_ID);
-    StabilityPropagator { parent_stability: crate_stability, cx }.fold_crate(cr)
+    StabilityPropagator { parent_stability: crate_stability.cloned(), cx }.fold_crate(cr)
 }
 
 struct StabilityPropagator<'a, 'tcx> {
@@ -32,7 +32,7 @@ struct StabilityPropagator<'a, 'tcx> {
 
 impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
-        let parent_stability = self.parent_stability;
+        let parent_stability = self.parent_stability.clone();
 
         let stability = match item.item_id {
             ItemId::DefId(def_id) => {
@@ -40,20 +40,21 @@ impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
 
                 // If any of the item's parents was stabilized later or is still unstable,
                 // then use the parent's stability instead.
-                if let Some(own_stab) = own_stability
+                if let Some(ref own_stab) = own_stability
                     && let StabilityLevel::Stable {
                         since: own_since,
                         allowed_through_unstable_modules: false,
+                        ..
                     } = own_stab.level
-                    && let Some(parent_stab) = parent_stability
+                    && let Some(ref parent_stab) = parent_stability
                     && (parent_stab.is_unstable()
                         || parent_stab
                             .stable_since()
                             .is_some_and(|parent_since| parent_since > own_since))
                 {
-                    parent_stability
+                    parent_stability.clone()
                 } else {
-                    own_stability
+                    own_stability.cloned()
                 }
             }
             ItemId::Auto { .. } | ItemId::Blanket { .. } => {
@@ -62,7 +63,7 @@ impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
             }
         };
 
-        item.inner.stability = stability;
+        item.inner.stability = stability.clone();
         self.parent_stability = stability;
         let item = self.fold_item_recur(item);
         self.parent_stability = parent_stability;

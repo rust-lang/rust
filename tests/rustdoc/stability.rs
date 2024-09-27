@@ -83,3 +83,11 @@ pub mod stable_earlier {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use crate::stable_later::stable_in_later;
 }
+
+#[unstable(feature = "test", issue = "none")]
+#[unstable(feature = "test2", issue = "none")]
+pub trait UnstableTrait {
+    //@ has stability/trait.UnstableTrait.html \
+    //      '//span[@class="item-info"]//div[@class="stab unstable"]' \
+    //      'This is a nightly-only experimental API. (test, test2)'
+}
