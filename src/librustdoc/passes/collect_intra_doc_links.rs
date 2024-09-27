@@ -816,7 +816,7 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<Vec<(Res, T)>, ResolutionFailu
     }
 }
 
-impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
+impl<'a, 'tcx> DocVisitor<'_> for LinkCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_links(item);
         self.visit_item_recur(item)

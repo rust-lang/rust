@@ -187,7 +187,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
+impl<'a, 'b> DocVisitor<'_> for CoverageCalculator<'a, 'b> {
     fn visit_item(&mut self, i: &clean::Item) {
         if !i.item_id.is_local() {
             // non-local items are skipped because they can be out of the users control,
