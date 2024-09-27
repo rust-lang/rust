@@ -309,7 +309,7 @@ fn rcbox_layout_for_value_layout(layout: Layout) -> Layout {
 /// [get_mut]: Rc::get_mut
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_insignificant_dtor]
+#[rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation]
 pub struct Rc<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,

@@ -1682,7 +1682,7 @@ symbols! {
         rustc_hidden_type_of_opaques,
         rustc_if_this_changed,
         rustc_inherit_overflow_checks,
-        rustc_insignificant_dtor,
+        rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation,
         rustc_intrinsic,
         rustc_intrinsic_must_be_overridden,
         rustc_layout,

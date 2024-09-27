@@ -1419,7 +1419,7 @@ rustc_queries! {
     }
 
     /// A list of types where the ADT requires drop if and only if any of those types
-    /// has significant drop. A type marked with the attribute `rustc_insignificant_dtor`
+    /// has significant drop. A type marked with the attribute `rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation`
     /// is considered to not be significant. A drop is significant if it is implemented
     /// by the user or does anything that will have any observable behavior (other than
     /// freeing up memory). If the ADT is known to have a significant destructor then

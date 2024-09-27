@@ -206,6 +206,9 @@ fn should_ignore(line: &str) -> bool {
         || static_regex!(
             "\\s*//@ \\!?(count|files|has|has-dir|hasraw|matches|matchesraw|snapshot)\\s.*"
         ).is_match(line)
+
+        // This can't be split across lines.
+        || line.contains("rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation")
 }
 
 /// Returns `true` if `line` is allowed to be longer than the normal limit.

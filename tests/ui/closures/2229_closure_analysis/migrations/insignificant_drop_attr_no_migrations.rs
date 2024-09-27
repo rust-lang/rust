@@ -3,7 +3,7 @@
 #![deny(rust_2021_incompatible_closure_captures)]
 #![feature(rustc_attrs)]
 #![allow(unused)]
-#[rustc_insignificant_dtor]
+#[rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation]
 
 struct InsignificantDropPoint {
     x: i32,

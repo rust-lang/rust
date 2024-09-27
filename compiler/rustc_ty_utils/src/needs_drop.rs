@@ -344,19 +344,19 @@ fn adt_consider_insignificant_dtor<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType> + 'tcx {
     move |adt_def: ty::AdtDef<'tcx>| {
-        let is_marked_insig = tcx.has_attr(adt_def.did(), sym::rustc_insignificant_dtor);
+        let is_marked_insig = tcx.has_attr(adt_def.did(), sym::rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation);
         if is_marked_insig {
             // In some cases like `std::collections::HashMap` where the struct is a wrapper around
             // a type that is a Drop type, and the wrapped type (eg: `hashbrown::HashMap`) lies
             // outside stdlib, we might choose to still annotate the wrapper (std HashMap) with
-            // `rustc_insignificant_dtor`, even if the type itself doesn't have a `Drop` impl.
+            // `rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation`, even if the type itself doesn't have a `Drop` impl.
             Some(DtorType::Insignificant)
         } else if adt_def.destructor(tcx).is_some() {
             // There is a Drop impl and the type isn't marked insignificant, therefore Drop must be
             // significant.
             Some(DtorType::Significant)
         } else {
-            // No destructor found nor the type is annotated with `rustc_insignificant_dtor`, we
+            // No destructor found nor the type is annotated with `rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation`, we
             // treat this as the simple case of Drop impl for type.
             None
         }

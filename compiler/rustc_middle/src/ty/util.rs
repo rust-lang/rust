@@ -1473,7 +1473,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Note that this method can return false even if `ty` has a destructor
     /// attached; even if that is the case then the adt has been marked with
-    /// the attribute `rustc_insignificant_dtor`.
+    /// the attribute `rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation`.
     ///
     /// Note that this method is used to check for change in drop order for
     /// 2229 drop reorder migration analysis.

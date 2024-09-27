@@ -7,7 +7,7 @@
 
 use std::sync::Mutex;
 
-    #[rustc_insignificant_dtor]
+    #[rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation]
 struct InsignificantDropPoint {
     x: i32,
     y: Mutex<i32>,
@@ -23,7 +23,7 @@ impl Drop for SigDrop {
     fn drop(&mut self) {}
 }
 
-#[rustc_insignificant_dtor]
+#[rustc_dtor_that_is_insignificant_for_the_purpose_of_warning_users_about_edition_specific_drop_rules_mostly_regarding_mutex_locking_and_certainly_not_just_allocation]
 struct GenericStruct<T>(T, T);
 
 impl<T> Drop for GenericStruct<T> {
