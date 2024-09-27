@@ -278,7 +278,7 @@ pub macro PartialEq($item:item) {
 /// The primary difference to [`PartialEq`] is the additional requirement for reflexivity. A type
 /// that implements [`PartialEq`] guarantees that for all `a`, `b` and `c`:
 ///
-/// - symmetric: `a == b` implies `b == a`
+/// - symmetric: `a == b` implies `b == a` and `a != b` implies `!(a == b)`
 /// - transitive: `a == b` and `b == c` implies `a == c`
 ///
 /// `Eq`, which builds on top of [`PartialEq`] also implies:
@@ -332,11 +332,9 @@ pub macro PartialEq($item:item) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
 pub trait Eq: PartialEq<Self> {
-    // this method is used solely by #[derive(Eq)] to assert
-    // that every component of a type implements `Eq`
-    // itself. The current deriving infrastructure means doing this
-    // assertion without using a method on this trait is nearly
-    // impossible.
+    // this method is used solely by `impl Eq or #[derive(Eq)]` to assert that every component of a
+    // type implements `Eq` itself. The current deriving infrastructure means doing this assertion
+    // without using a method on this trait is nearly impossible.
     //
     // This should never be implemented by hand.
     #[doc(hidden)]
@@ -789,11 +787,13 @@ impl<T: Clone> Clone for Reverse<T> {
 /// fashion `Ord` builds on top of [`PartialOrd`] and adds further properties, such as totality,
 /// which means all values must be comparable.
 ///
-/// Because of different signatures, `Ord` cannot be a simple marker trait like `Eq`. So it can't be
-/// `derive`d automatically when `PartialOrd` is implemented. The recommended best practice for a
-/// type that manually implements `Ord` is to implement the equality comparison logic in `PartialEq`
-/// and implement the ordering comparison logic in `Ord`. From there one should implement
-/// `PartialOrd` as `Some(self.cmp(other))`.
+/// `Ord` requires that the type also be PartialOrd, PartialEq, and Eq.
+///
+/// Because `Ord` implies a stronger ordering relationship than [`PartialOrd`], and both `Ord` and
+/// [`PartialOrd`] must agree, you must choose how to implement `Ord` **first**. You can choose to
+/// derive it, or implement it manually. If you derive it, you should derive all four traits. If you
+/// implement it manually, you should manually implement all four traits, based on the
+/// implementation of `Ord`.
 ///
 /// Here's an example where you want to define the `Character` comparison by `health` and
 /// `experience` only, disregarding the field `mana`:
@@ -888,7 +888,7 @@ impl<T: Clone> Clone for Reverse<T> {
 /// ```
 /// use std::cmp::Ordering;
 ///
-/// #[derive(Eq, Debug)]
+/// #[derive(Debug)]
 /// struct Character {
 ///     health: u32,
 ///     experience: u32,
@@ -917,6 +917,8 @@ impl<T: Clone> Clone for Reverse<T> {
 ///         self.cmp(other) == Ordering::Equal
 ///     }
 /// }
+///
+/// impl Eq for Character {}
 ///
 /// let a = Character {
 ///     health: 3,
@@ -1191,7 +1193,6 @@ pub macro Ord($item:item) {
 /// ```
 /// use std::cmp::Ordering;
 ///
-/// #[derive(Eq)]
 /// struct Person {
 ///     id: u32,
 ///     name: String,
@@ -1215,6 +1216,8 @@ pub macro Ord($item:item) {
 ///         self.height == other.height
 ///     }
 /// }
+///
+/// impl Eq for Person {}
 /// ```
 ///
 /// You may also find it useful to use [`partial_cmp`] on your type's fields. Here is an example of
