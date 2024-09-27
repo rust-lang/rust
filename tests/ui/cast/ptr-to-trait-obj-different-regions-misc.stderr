@@ -61,7 +61,29 @@ LL |     x as _
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:25:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:19:5
+   |
+LL | fn change_lt_hr<'a>(x: *mut dyn Trait<'a>) -> *mut dyn for<'b> Trait<'b> {
+   |                 -- lifetime `'a` defined here
+LL |     x as _
+   |     ^^^^^^ cast requires that `'a` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `x`, you can add an explicit `'a` lifetime bound
+   |
+LL | fn change_lt_hr<'a>(x: *mut dyn Trait<'a>) -> *mut dyn for<'b> Trait<'b> + 'a {
+   |                                                                          ++++
+
+error[E0308]: mismatched types
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:19:5
+   |
+LL |     x as _
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected trait object `dyn for<'b> Trait<'b>`
+              found trait object `dyn Trait<'_>`
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
    |
 LL | fn change_assoc_0<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -77,7 +99,7 @@ LL |     x as _
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:25:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
    |
 LL | fn change_assoc_0<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -97,7 +119,7 @@ help: `'b` and `'a` must be the same: replace one with the other
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5
    |
 LL | fn change_assoc_1<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -113,7 +135,7 @@ LL |     x as _
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5
    |
 LL | fn change_assoc_1<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -133,12 +155,13 @@ help: `'b` and `'a` must be the same: replace one with the other
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:20
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:45:20
    |
 LL | fn extend_to_static<'a>(ptr: *const dyn Trait<'a>) {
    |                     -- lifetime `'a` defined here
 LL |     require_static(ptr as _)
    |                    ^^^^^^^^ cast requires that `'a` must outlive `'static`
 
-error: aborting due to 9 previous errors
+error: aborting due to 11 previous errors
 
+For more information about this error, try `rustc --explain E0308`.
