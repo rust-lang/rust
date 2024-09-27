@@ -2598,7 +2598,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                     DefineOpaqueTypes::Yes,
                                     ToTrace::to_trace(
                                         &obligation.cause,
-                                        true,
                                         hr_target_principal,
                                         hr_source_principal,
                                     ),
@@ -2638,7 +2637,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                                     DefineOpaqueTypes::Yes,
                                                     ToTrace::to_trace(
                                                         &obligation.cause,
-                                                        true,
                                                         hr_target_projection,
                                                         hr_source_projection,
                                                     ),
@@ -2669,7 +2667,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                     DefineOpaqueTypes::Yes,
                                     ToTrace::to_trace(
                                         &obligation.cause,
-                                        true,
                                         hr_target_projection,
                                         hr_source_projection,
                                     ),
