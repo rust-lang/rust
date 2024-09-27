@@ -579,8 +579,8 @@ impl UdpSocket {
     /// This function specifies a new multicast group for this socket to join.
     /// The address must be a valid multicast address, and `interface` is the
     /// address of the local interface with which the system should join the
-    /// multicast group. If it's equal to `INADDR_ANY` then an appropriate
-    /// interface is chosen by the system.
+    /// multicast group. If it's equal to [`UNSPECIFIED`](Ipv4Addr::UNSPECIFIED)
+    /// then an appropriate interface is chosen by the system.
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         self.0.join_multicast_v4(multiaddr, interface)
