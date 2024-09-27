@@ -17,7 +17,12 @@
 // that to `i32`. We then try to unify `i32` from `impl1` with `u32` from `impl2` which fails,
 // causing coherence to consider these two impls distinct.
 
-//@ compile-flags: -Znext-solver
+//@ revisions: classic next
+//@[next] compile-flags: -Znext-solver
+
+//@[classic] known-bug: #102048
+//@[classic] check-pass
+
 pub trait Trait<T> {}
 
 pub trait WithAssoc1<'a> {
@@ -37,7 +42,7 @@ where
 
 // impl 2
 impl<T, U> Trait<for<'a> fn(<U as WithAssoc1<'a>>::Assoc, u32)> for (T, U) where
-    U: for<'a> WithAssoc1<'a> //~^ ERROR conflicting implementations of trait
+    U: for<'a> WithAssoc1<'a> //[next]~^ ERROR conflicting implementations of trait
 {
 }
 
