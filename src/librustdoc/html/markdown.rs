@@ -1319,6 +1319,20 @@ impl LangString {
                                 "the code block will either not be tested if not marked as a rust \
                                  one or the code will be wrapped inside a main function",
                             )),
+                            "standalone" | "standalone_crate" => {
+                                if let Some(extra) = extra
+                                    && extra.sp.at_least_rust_2024()
+                                {
+                                    Some((
+                                        "standalone-crate",
+                                        "the code block will either not be tested if not marked as \
+                                         a rust one or the code will be run as part of the merged \
+                                         doctests if compatible",
+                                    ))
+                                } else {
+                                    None
+                                }
+                            }
                             _ => None,
                         } {
                             if let Some(extra) = extra {
