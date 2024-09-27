@@ -26,7 +26,7 @@ pub(crate) fn propagate_stability(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
 }
 
 struct StabilityPropagator<'a, 'tcx> {
-    parent_stability: Option<Stability>,
+    parent_stability: Option<&'tcx Stability>,
     cx: &'a mut DocContext<'tcx>,
 }
 
@@ -85,7 +85,7 @@ impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
             }
         };
 
-        item.inner.stability = stability;
+        item.inner.stability = stability.cloned();
         self.parent_stability = stability;
         let item = self.fold_item_recur(item);
         self.parent_stability = parent_stability;
@@ -94,13 +94,13 @@ impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
     }
 }
 
-fn merge_stability(
-    own_stability: Option<Stability>,
-    parent_stability: Option<Stability>,
-) -> Option<Stability> {
+fn merge_stability<'tcx>(
+    own_stability: Option<&'tcx Stability>,
+    parent_stability: Option<&'tcx Stability>,
+) -> Option<&'tcx Stability> {
     if let Some(own_stab) = own_stability
-        && let StabilityLevel::Stable { since: own_since, allowed_through_unstable_modules: false } =
-            own_stab.level
+        && let &StabilityLevel::Stable { since: own_since, allowed_through_unstable_modules: false } =
+            &own_stab.level
         && let Some(parent_stab) = parent_stability
         && (parent_stab.is_unstable()
             || parent_stab.stable_since().is_some_and(|parent_since| parent_since > own_since))

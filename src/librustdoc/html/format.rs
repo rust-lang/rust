@@ -1649,7 +1649,7 @@ impl PrintWithSpace for hir::Mutability {
 pub(crate) fn print_constness_with_space(
     c: &hir::Constness,
     overall_stab: Option<StableSince>,
-    const_stab: Option<ConstStability>,
+    const_stab: Option<&ConstStability>,
 ) -> &'static str {
     match c {
         hir::Constness::Const => match (overall_stab, const_stab) {

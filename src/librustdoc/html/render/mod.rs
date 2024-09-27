@@ -53,7 +53,7 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RustcVersion;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
@@ -675,15 +675,21 @@ enum ShortItemInfo {
     Deprecation {
         message: String,
     },
-    /// The feature corresponding to an unstable item, and optionally
-    /// a tracking issue URL and number.
+    /// The features corresponding to an unstable item, and optionally
+    /// a tracking issue URL and number for each.
     Unstable {
-        feature: String,
-        tracking: Option<(String, u32)>,
+        features: Vec<UnstableFeature>,
     },
     Portability {
         message: String,
     },
+}
+
+#[derive(Template)]
+#[template(path = "unstable_feature.html")]
+struct UnstableFeature {
+    feature: String,
+    tracking: Option<(String, u32)>,
 }
 
 /// Render the stability, deprecation and portability information that is displayed at the top of
@@ -724,19 +730,24 @@ fn short_item_info(
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = item
+    if let Some(StabilityLevel::Unstable { unstables, .. }) = item
         .stability(cx.tcx())
         .as_ref()
-        .filter(|stab| stab.feature != sym::rustc_private)
-        .map(|stab| (stab.level, stab.feature))
+        .filter(|stab| !stab.is_rustc_private())
+        .map(|stab| &stab.level)
     {
-        let tracking = if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue)
-        {
-            Some((url.clone(), issue.get()))
-        } else {
-            None
+        let track = |issue: Option<std::num::NonZero<u32>>| {
+            if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
+                Some((url.clone(), issue.get()))
+            } else {
+                None
+            }
         };
-        extra_info.push(ShortItemInfo::Unstable { feature: feature.to_string(), tracking });
+        let features = unstables
+            .iter()
+            .map(|u| UnstableFeature { feature: u.feature.to_string(), tracking: track(u.issue) })
+            .collect();
+        extra_info.push(ShortItemInfo::Unstable { features });
     }
 
     if let Some(message) = portability(item, parent) {
@@ -990,7 +1001,7 @@ fn assoc_method(
 fn render_stability_since_raw_with_extra(
     w: &mut Buffer,
     stable_version: Option<StableSince>,
-    const_stability: Option<ConstStability>,
+    const_stability: Option<&ConstStability>,
     extra_class: &str,
 ) -> bool {
     let mut title = String::new();
@@ -1006,12 +1017,16 @@ fn render_stability_since_raw_with_extra(
             since_to_string(&since)
                 .map(|since| (format!("const since {since}"), format!("const: {since}")))
         }
-        Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }) => {
+        Some(ConstStability { level: StabilityLevel::Unstable { unstables, .. }, .. }) => {
             if stable_version.is_none() {
                 // don't display const unstable if entirely unstable
                 None
             } else {
-                let unstable = if let Some(n) = issue {
+                // if constness depends on multiple unstable features, only link to the first
+                // tracking issue found, to save space. the issue description should link to issues
+                // for any features it can intersect with
+                let feature_issue = unstables.iter().find_map(|u| u.issue.map(|n| (u.feature, n)));
+                let unstable = if let Some((feature, n)) = feature_issue {
                     format!(
                         "<a \
                         href=\"https://github.com/rust-lang/rust/issues/{n}\" \
@@ -1061,7 +1076,7 @@ fn since_to_string(since: &StableSince) -> Option<String> {
 fn render_stability_since_raw(
     w: &mut Buffer,
     ver: Option<StableSince>,
-    const_stability: Option<ConstStability>,
+    const_stability: Option<&ConstStability>,
 ) -> bool {
     render_stability_since_raw_with_extra(w, ver, const_stability, "")
 }

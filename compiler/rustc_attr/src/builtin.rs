@@ -89,6 +89,10 @@ impl Stability {
     pub fn unstable_features(&self) -> impl Iterator<Item = Symbol> + use<'_> {
         self.level.unstable_features()
     }
+
+    pub fn is_rustc_private(&self) -> bool {
+        self.level.has_unstable_feature(sym::rustc_private)
+    }
 }
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
