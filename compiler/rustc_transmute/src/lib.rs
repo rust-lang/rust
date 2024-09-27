@@ -134,12 +134,7 @@ mod rustc {
             use rustc_span::symbol::sym;
 
             let Some((cv, ty)) = c.try_to_valtree() else {
-                return Some(Self {
-                    alignment: true,
-                    lifetimes: true,
-                    safety: true,
-                    validity: true,
-                });
+                return None;
             };
 
             let adt_def = ty.ty_adt_def()?;
