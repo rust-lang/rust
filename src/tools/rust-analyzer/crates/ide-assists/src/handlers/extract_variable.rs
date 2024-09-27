@@ -1,8 +1,12 @@
 use hir::TypeInfo;
 use ide_db::syntax_helpers::suggest_name;
 use syntax::{
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasName},
-    ted, NodeOrToken,
+    ast::{
+        self, edit::IndentLevel, edit_in_place::Indent, make, syntax_factory::SyntaxFactory,
+        AstNode,
+    },
+    syntax_editor::Position,
+    NodeOrToken,
     SyntaxKind::{BLOCK_EXPR, BREAK_EXPR, COMMENT, LOOP_EXPR, MATCH_GUARD, PATH_EXPR, RETURN_EXPR},
     SyntaxNode, T,
 };
@@ -105,39 +109,46 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 ),
             };
 
+            let make = SyntaxFactory::new();
+            let mut editor = edit.make_editor(&expr_replace);
+
+            let pat_name = make.name(&var_name);
+            let name_expr = make.expr_path(make::ext::ident_path(&var_name));
+
+            if let Some(cap) = ctx.config.snippet_cap {
+                let tabstop = edit.make_tabstop_before(cap);
+                editor.add_annotation(pat_name.syntax().clone(), tabstop);
+            }
+
             let ident_pat = match parent {
                 Some(ast::Expr::RefExpr(expr)) if expr.mut_token().is_some() => {
-                    make::ident_pat(false, true, make::name(&var_name))
+                    make.ident_pat(false, true, pat_name)
                 }
                 _ if needs_adjust
                     && !needs_ref
                     && ty.as_ref().is_some_and(|ty| ty.is_mutable_reference()) =>
                 {
-                    make::ident_pat(false, true, make::name(&var_name))
+                    make.ident_pat(false, true, pat_name)
                 }
-                _ => make::ident_pat(false, false, make::name(&var_name)),
+                _ => make.ident_pat(false, false, pat_name),
             };
 
             let to_extract_no_ref = match ty.as_ref().filter(|_| needs_ref) {
                 Some(receiver_type) if receiver_type.is_mutable_reference() => {
-                    make::expr_ref(to_extract_no_ref, true)
+                    make.expr_ref(to_extract_no_ref, true)
                 }
                 Some(receiver_type) if receiver_type.is_reference() => {
-                    make::expr_ref(to_extract_no_ref, false)
+                    make.expr_ref(to_extract_no_ref, false)
                 }
                 _ => to_extract_no_ref,
             };
 
-            let expr_replace = edit.make_syntax_mut(expr_replace);
-            let let_stmt =
-                make::let_stmt(ident_pat.into(), None, Some(to_extract_no_ref)).clone_for_update();
-            let name_expr = make::expr_path(make::ext::ident_path(&var_name)).clone_for_update();
+            let let_stmt = make.let_stmt(ident_pat.into(), None, Some(to_extract_no_ref));
 
             match anchor {
                 Anchor::Before(place) => {
                     let prev_ws = place.prev_sibling_or_token().and_then(|it| it.into_token());
                     let indent_to = IndentLevel::from_node(&place);
-                    let insert_place = edit.make_syntax_mut(place);
 
                     // Adjust ws to insert depending on if this is all inline or on separate lines
                     let trailing_ws = if prev_ws.is_some_and(|it| it.text().starts_with('\n')) {
@@ -146,37 +157,20 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         " ".to_owned()
                     };
 
-                    ted::insert_all_raw(
-                        ted::Position::before(insert_place),
+                    editor.insert_all(
+                        Position::before(place),
                         vec![
                             let_stmt.syntax().clone().into(),
                             make::tokens::whitespace(&trailing_ws).into(),
                         ],
                     );
 
-                    ted::replace(expr_replace, name_expr.syntax());
-
-                    if let Some(cap) = ctx.config.snippet_cap {
-                        if let Some(ast::Pat::IdentPat(ident_pat)) = let_stmt.pat() {
-                            if let Some(name) = ident_pat.name() {
-                                edit.add_tabstop_before(cap, name);
-                            }
-                        }
-                    }
+                    editor.replace(expr_replace, name_expr.syntax());
                 }
                 Anchor::Replace(stmt) => {
                     cov_mark::hit!(test_extract_var_expr_stmt);
 
-                    let stmt_replace = edit.make_mut(stmt);
-                    ted::replace(stmt_replace.syntax(), let_stmt.syntax());
-
-                    if let Some(cap) = ctx.config.snippet_cap {
-                        if let Some(ast::Pat::IdentPat(ident_pat)) = let_stmt.pat() {
-                            if let Some(name) = ident_pat.name() {
-                                edit.add_tabstop_before(cap, name);
-                            }
-                        }
-                    }
+                    editor.replace(stmt.syntax(), let_stmt.syntax());
                 }
                 Anchor::WrapInBlock(to_wrap) => {
                     let indent_to = to_wrap.indent_level();
@@ -184,47 +178,22 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     let block = if to_wrap.syntax() == &expr_replace {
                         // Since `expr_replace` is the same that needs to be wrapped in a block,
                         // we can just directly replace it with a block
-                        let block =
-                            make::block_expr([let_stmt.into()], Some(name_expr)).clone_for_update();
-                        ted::replace(expr_replace, block.syntax());
-
-                        block
+                        make.block_expr([let_stmt.into()], Some(name_expr))
                     } else {
-                        // `expr_replace` is a descendant of `to_wrap`, so both steps need to be
-                        // handled separately, otherwise we wrap the wrong expression
-                        let to_wrap = edit.make_mut(to_wrap);
-
-                        // Replace the target expr first so that we don't need to find where
-                        // `expr_replace` is in the wrapped `to_wrap`
-                        ted::replace(expr_replace, name_expr.syntax());
-
-                        // Wrap `to_wrap` in a block
-                        let block = make::block_expr([let_stmt.into()], Some(to_wrap.clone()))
-                            .clone_for_update();
-                        ted::replace(to_wrap.syntax(), block.syntax());
-
-                        block
+                        // `expr_replace` is a descendant of `to_wrap`, so we just replace it with `name_expr`.
+                        editor.replace(expr_replace, name_expr.syntax());
+                        make.block_expr([let_stmt.into()], Some(to_wrap.clone()))
                     };
 
-                    if let Some(cap) = ctx.config.snippet_cap {
-                        // Adding a tabstop to `name` requires finding the let stmt again, since
-                        // the existing `let_stmt` is not actually added to the tree
-                        let pat = block.statements().find_map(|stmt| {
-                            let ast::Stmt::LetStmt(let_stmt) = stmt else { return None };
-                            let_stmt.pat()
-                        });
-
-                        if let Some(ast::Pat::IdentPat(ident_pat)) = pat {
-                            if let Some(name) = ident_pat.name() {
-                                edit.add_tabstop_before(cap, name);
-                            }
-                        }
-                    }
+                    editor.replace(to_wrap.syntax(), block.syntax());
 
                     // fixup indentation of block
                     block.indent(indent_to);
                 }
             }
+
+            editor.add_mappings(make.finish_with_mappings());
+            edit.add_file_edits(ctx.file_id(), editor);
             edit.rename();
         },
     )
