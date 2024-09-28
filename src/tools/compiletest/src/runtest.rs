@@ -39,7 +39,7 @@ mod assembly;
 mod codegen;
 mod codegen_units;
 mod coverage;
-mod crash;
+mod crashes;
 mod debuginfo;
 mod incremental;
 mod js_doc;
