@@ -499,18 +499,30 @@ where
     /// `padding` from the right.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original inputs"]
-    pub fn shift_elements_left<const OFFSET: usize>(self, padding: T) -> Self {
+    pub fn shift_elements_left<const OFFSET: usize>(self, padding: bool) -> Self {
         // Safety: swizzles are safe for masks
-        unsafe { Self::from_int_unchecked(self.to_int().shift_elements_left::<OFFSET>(padding)) }
+        unsafe {
+            Self::from_int_unchecked(self.to_int().shift_elements_left::<OFFSET>(if padding {
+                T::TRUE
+            } else {
+                T::FALSE
+            }))
+        }
     }
 
     /// Shifts the mask elements to the right by `OFFSET`, filling in with
     /// `padding` from the left.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original inputs"]
-    pub fn shift_elements_right<const OFFSET: usize>(self, padding: T) -> Self {
+    pub fn shift_elements_right<const OFFSET: usize>(self, padding: bool) -> Self {
         // Safety: swizzles are safe for masks
-        unsafe { Self::from_int_unchecked(self.to_int().shift_elements_right::<OFFSET>(padding)) }
+        unsafe {
+            Self::from_int_unchecked(self.to_int().shift_elements_right::<OFFSET>(if padding {
+                T::TRUE
+            } else {
+                T::FALSE
+            }))
+        }
     }
 
     /// Interleave two masks.
