@@ -3448,6 +3448,7 @@ dependencies = [
  "rustc_span",
  "rustc_symbol_mangling",
  "rustc_target",
+ "rustc_trait_selection",
  "rustc_type_ir",
  "serde_json",
  "smallvec",

@@ -27,6 +27,8 @@ use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
+use rustc_trait_selection::infer::TyCtxtInferExt;
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
 
 use crate::assert_module_sources::CguReuse;
@@ -101,6 +103,38 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx.sext(cmp, ret_ty)
 }
 
+/// Codegen takes advantage of the additional assumption, where if the
+/// principal trait def id of what's being casted doesn't change,
+/// then we don't need to adjust the vtable at all. This
+/// corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
+/// requires that `A = B`; we don't allow *upcasting* objects
+/// between the same trait with different args. If we, for
+/// some reason, were to relax the `Unsize` trait, it could become
+/// unsound, so let's validate here that the trait refs are subtypes.
+pub fn validate_trivial_unsize<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    data_a: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    data_b: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+) -> bool {
+    match (data_a.principal(), data_b.principal()) {
+        (Some(principal_a), Some(principal_b)) => {
+            let infcx = tcx.infer_ctxt().build();
+            let ocx = ObligationCtxt::new(&infcx);
+            let Ok(()) = ocx.sub(
+                &ObligationCause::dummy(),
+                ty::ParamEnv::reveal_all(),
+                principal_a,
+                principal_b,
+            ) else {
+                return false;
+            };
+            ocx.select_all_or_error().is_empty()
+        }
+        (None, None) => true,
+        _ => false,
+    }
+}
+
 /// Retrieves the information we are losing (making dynamic) in an unsizing
 /// adjustment.
 ///
@@ -133,12 +167,8 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // between the same trait with different args. If we, for
                 // some reason, were to relax the `Unsize` trait, it could become
                 // unsound, so let's assert here that the trait refs are *equal*.
-                //
-                // We can use `assert_eq` because the binders should have been anonymized,
-                // and because higher-ranked equality now requires the binders are equal.
-                debug_assert_eq!(
-                    data_a.principal(),
-                    data_b.principal(),
+                debug_assert!(
+                    validate_trivial_unsize(cx.tcx(), data_a, data_b),
                     "NOP unsize vtable changed principal trait ref: {data_a} -> {data_b}"
                 );
 
