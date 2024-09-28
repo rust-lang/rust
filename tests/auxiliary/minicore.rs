@@ -18,31 +18,26 @@
 #![no_std]
 #![no_core]
 
+// `core` has some exotic `marker_impls!` macro for handling the with-generics cases, but for our
+// purposes, just use a simple macro_rules macro.
+macro_rules! impl_marker_trait {
+    ($Trait:ident => [$( $ty:ident ),* $(,)?] ) => {
+        $( impl $Trait for $ty {} )*
+    }
+}
+
 #[lang = "sized"]
 pub trait Sized {}
 
-#[lang = "receiver"]
-pub trait Receiver {}
-impl<T: ?Sized> Receiver for &T {}
-impl<T: ?Sized> Receiver for &mut T {}
+#[lang = "legacy_receiver"]
+pub trait LegacyReceiver {}
+impl<T: ?Sized> LegacyReceiver for &T {}
+impl<T: ?Sized> LegacyReceiver for &mut T {}
 
 #[lang = "copy"]
-pub trait Copy {}
+pub trait Copy: Sized {}
 
-impl Copy for bool {}
-impl Copy for u8 {}
-impl Copy for u16 {}
-impl Copy for u32 {}
-impl Copy for u64 {}
-impl Copy for u128 {}
-impl Copy for usize {}
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for isize {}
-impl Copy for f32 {}
-impl Copy for f64 {}
-impl Copy for char {}
+impl_marker_trait!(Copy => [ bool, char, isize, usize, i8, i16, i32, i64, u8, u16, u32, u64 ]);
 impl<'a, T: ?Sized> Copy for &'a T {}
 impl<T: ?Sized> Copy for *const T {}
 impl<T: ?Sized> Copy for *mut T {}
