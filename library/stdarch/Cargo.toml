@@ -1,16 +1,8 @@
 [workspace]
 resolver = "1"
 members = [
-  "crates/stdarch-verify",
-  "crates/core_arch",
-  "crates/std_detect",
-  "crates/stdarch-gen-arm",
-  "crates/stdarch-gen-loongarch",
-  "crates/intrinsic-test",
-  "examples/"
-]
-exclude = [
-  "crates/wasm-assert-instr-tests"
+  "crates/*",
+  "examples"
 ]
 
 [profile.release]

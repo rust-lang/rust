@@ -29,3 +29,8 @@ syscalls = { version = "0.6.18", default-features = false }
 
 [lints.rust]
 unexpected_cfgs = {level = "warn", check-cfg = ['cfg(stdarch_intel_sde)'] }
+
+[lints.clippy]
+too_long_first_doc_paragraph = "allow"
+missing_transmute_annotations = "allow"
+useless_transmute = "allow"
