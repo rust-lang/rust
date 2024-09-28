@@ -2,6 +2,7 @@
 //!
 //! [`PointerCoercion::Unsize`]: `rustc_middle::ty::adjustment::PointerCoercion::Unsize`
 
+use rustc_codegen_ssa::base::validate_trivial_unsize;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 
 use crate::base::codegen_panic_nounwind;
@@ -34,20 +35,8 @@ pub(crate) fn unsized_info<'tcx>(
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
-                // Codegen takes advantage of the additional assumption, where if the
-                // principal trait def id of what's being casted doesn't change,
-                // then we don't need to adjust the vtable at all. This
-                // corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
-                // requires that `A = B`; we don't allow *upcasting* objects
-                // between the same trait with different args. If we, for
-                // some reason, were to relax the `Unsize` trait, it could become
-                // unsound, so let's assert here that the trait refs are *equal*.
-                //
-                // We can use `assert_eq` because the binders should have been anonymized,
-                // and because higher-ranked equality now requires the binders are equal.
-                debug_assert_eq!(
-                    data_a.principal(),
-                    data_b.principal(),
+                debug_assert!(
+                    validate_trivial_unsize(fx.tcx, data_a, data_b),
                     "NOP unsize vtable changed principal trait ref: {data_a} -> {data_b}"
                 );
                 return old_info;
