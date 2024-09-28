@@ -86,7 +86,15 @@ fn compute_mir_scopes<'gcc, 'tcx>(
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
-        make_mir_scope(cx, instance, mir, &variables, debug_context, &mut instantiated, scope);
+        make_mir_scope(
+            cx,
+            instance,
+            mir,
+            variables.as_ref(),
+            debug_context,
+            &mut instantiated,
+            scope,
+        );
     }
     assert!(instantiated.count() == mir.source_scopes.len());
 }
@@ -101,7 +109,7 @@ fn make_mir_scope<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     _instance: Instance<'tcx>,
     mir: &Body<'tcx>,
-    variables: &Option<BitSet<SourceScope>>,
+    variables: Option<&BitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<'tcx, (), Location<'gcc>>,
     instantiated: &mut BitSet<SourceScope>,
     scope: SourceScope,
@@ -126,7 +134,7 @@ fn make_mir_scope<'gcc, 'tcx>(
         return;
     };
 
-    if let Some(ref vars) = *variables {
+    if let Some(vars) = variables {
         if !vars.contains(scope) && scope_data.inlined.is_none() {
             // Do not create a DIScope if there are no variables defined in this
             // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.

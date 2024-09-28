@@ -74,7 +74,7 @@ fn emit_polonius_mir<'tcx>(
     crate::nll::emit_nll_mir(
         tcx,
         regioncx,
-        closure_region_requirements,
+        closure_region_requirements.as_ref(),
         borrow_set,
         pass_where.clone(),
         out,

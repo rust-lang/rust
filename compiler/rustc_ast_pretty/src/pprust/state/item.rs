@@ -390,18 +390,18 @@ impl<'a> State<'a> {
             ast::ItemKind::Delegation(deleg) => self.print_delegation(
                 &item.attrs,
                 &item.vis,
-                &deleg.qself,
+                deleg.qself.as_ref(),
                 &deleg.path,
                 DelegationKind::Single,
-                &deleg.body,
+                deleg.body.as_ref(),
             ),
             ast::ItemKind::DelegationMac(deleg) => self.print_delegation(
                 &item.attrs,
                 &item.vis,
-                &deleg.qself,
+                deleg.qself.as_ref(),
                 &deleg.prefix,
                 deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
-                &deleg.body,
+                deleg.body.as_ref(),
             ),
         }
         self.ann.post(self, AnnNode::Item(item))
@@ -583,18 +583,18 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Delegation(deleg) => self.print_delegation(
                 &item.attrs,
                 vis,
-                &deleg.qself,
+                deleg.qself.as_ref(),
                 &deleg.path,
                 DelegationKind::Single,
-                &deleg.body,
+                deleg.body.as_ref(),
             ),
             ast::AssocItemKind::DelegationMac(deleg) => self.print_delegation(
                 &item.attrs,
                 vis,
-                &deleg.qself,
+                deleg.qself.as_ref(),
                 &deleg.prefix,
                 deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
-                &deleg.body,
+                deleg.body.as_ref(),
             ),
         }
         self.ann.post(self, AnnNode::SubItem(id))
@@ -604,10 +604,10 @@ impl<'a> State<'a> {
         &mut self,
         attrs: &[ast::Attribute],
         vis: &ast::Visibility,
-        qself: &Option<P<ast::QSelf>>,
+        qself: Option<&P<ast::QSelf>>,
         path: &ast::Path,
         kind: DelegationKind<'_>,
-        body: &Option<P<ast::Block>>,
+        body: Option<&P<ast::Block>>,
     ) {
         if body.is_some() {
             self.head("");

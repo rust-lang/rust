@@ -213,7 +213,7 @@ fn do_mir_borrowck<'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_nll_mir(&infcx, body, &regioncx, &opt_closure_req, &borrow_set);
+    nll::dump_nll_mir(&infcx, body, &regioncx, opt_closure_req.as_ref(), &borrow_set);
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
@@ -222,7 +222,7 @@ fn do_mir_borrowck<'tcx>(
         &infcx,
         body,
         &regioncx,
-        &opt_closure_req,
+        opt_closure_req.as_ref(),
         &opaque_type_values,
         diags_buffer,
     );

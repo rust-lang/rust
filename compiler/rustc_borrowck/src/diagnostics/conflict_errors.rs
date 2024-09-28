@@ -2939,7 +2939,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     span,
                     ..
                 },
-            ) => self.report_escaping_data(borrow_span, &name, upvar_span, upvar_name, span),
+            ) => self.report_escaping_data(
+                borrow_span,
+                name.as_deref(),
+                upvar_span,
+                upvar_name,
+                span,
+            ),
             (Some(name), explanation) => self.report_local_value_does_not_live_long_enough(
                 location,
                 &name,
@@ -2992,7 +2998,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 borrow_span,
                 span,
                 category,
-                opt_place_desc.as_ref(),
+                opt_place_desc.as_deref(),
             ) {
                 return diag;
             }
@@ -3335,7 +3341,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         borrow_span: Span,
         return_span: Span,
         category: ConstraintCategory<'tcx>,
-        opt_place_desc: Option<&String>,
+        opt_place_desc: Option<&str>,
     ) -> Result<(), Diag<'infcx>> {
         let return_kind = match category {
             ConstraintCategory::Return(_) => "return",
@@ -3538,7 +3544,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn report_escaping_data(
         &self,
         borrow_span: Span,
-        name: &Option<String>,
+        name: Option<&str>,
         upvar_span: Span,
         upvar_name: Symbol,
         escape_span: Span,

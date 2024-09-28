@@ -203,7 +203,7 @@ pub(super) fn dump_nll_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    closure_region_requirements: Option<&ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let tcx = infcx.tcx;
@@ -249,7 +249,7 @@ pub(super) fn dump_nll_mir<'tcx>(
 pub(crate) fn emit_nll_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    closure_region_requirements: Option<&ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     pass_where: PassWhere,
     out: &mut dyn io::Write,
@@ -296,7 +296,7 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    closure_region_requirements: Option<&ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     diagnostics_buffer: &mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
 ) {

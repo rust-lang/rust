@@ -318,7 +318,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Path(qself, path) => {
                     let qpath = self.lower_qpath(
                         e.id,
-                        qself,
+                        qself.as_ref(),
                         path,
                         ParamMode::Optional,
                         AllowReturnTypeNotation::No,
@@ -363,7 +363,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
                             e.id,
-                            &se.qself,
+                            se.qself.as_ref(),
                             &se.path,
                             ParamMode::Optional,
                             AllowReturnTypeNotation::No,
@@ -1357,7 +1357,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
                     let qpath = self.lower_qpath(
                         callee.id,
-                        qself,
+                        qself.as_ref(),
                         path,
                         ParamMode::Optional,
                         AllowReturnTypeNotation::No,
@@ -1378,7 +1378,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if let Some((qself, path)) = self.extract_unit_struct_path(lhs) {
                     let qpath = self.lower_qpath(
                         lhs.id,
-                        qself,
+                        qself.as_ref(),
                         path,
                         ParamMode::Optional,
                         AllowReturnTypeNotation::No,
@@ -1404,7 +1404,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }));
                 let qpath = self.lower_qpath(
                     lhs.id,
-                    &se.qself,
+                    se.qself.as_ref(),
                     &se.path,
                     ParamMode::Optional,
                     AllowReturnTypeNotation::No,
