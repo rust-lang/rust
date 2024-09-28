@@ -310,7 +310,7 @@ pub(crate) fn expand_deriving_smart_ptr(
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
     let gen_args = vec![GenericArg::Type(alt_self_type.clone())];
     add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
-    add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args.clone());
+    add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args);
 }
 
 fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee: Symbol) -> bool {
