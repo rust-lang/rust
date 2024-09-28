@@ -168,6 +168,20 @@ impl CoverageInfoBuilder {
             // Bail out if branch coverage is not enabled.
             let Some(branch_info) = self.branch_info.as_mut() else { return };
 
+
+            // Avoid duplicates coverage markers.
+            // When lowering match sub-branches (like or-patterns), `if` guards will
+            // be added multiple times for each sub-branch
+            // FIXME: This feels dirty. It would be nice to find a smarter way to avoid duplicate
+            // coverage markers.
+            for arms in &branch_info.branch_arm_lists {
+                for arm in arms {
+                    if arm.span == source_info.span {
+                        return;
+                    }
+                }
+            }
+
             let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
             let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
 
