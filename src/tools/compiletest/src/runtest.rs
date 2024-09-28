@@ -2301,6 +2301,12 @@ impl<'test> TestCx<'test> {
         // eg. /home/user/rust/compiler
         normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
 
+        // Real paths into the libstd/libcore
+        let rust_src_dir = &self.config.sysroot_base.join("lib/rustlib/src/rust");
+        rust_src_dir.try_exists().expect(&*format!("{} should exists", rust_src_dir.display()));
+        let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
+        normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
+
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
         let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();
@@ -2309,12 +2315,6 @@ impl<'test> TestCx<'test> {
         normalize_path(test_build_dir, "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
         normalize_path(parent_build_dir, "$BUILD_DIR");
-
-        // Real paths into the libstd/libcore
-        let rust_src_dir = &self.config.sysroot_base.join("lib/rustlib/src/rust");
-        rust_src_dir.try_exists().expect(&*format!("{} should exists", rust_src_dir.display()));
-        let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
-        normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
         if json {
             // escaped newlines in json strings should be readable
