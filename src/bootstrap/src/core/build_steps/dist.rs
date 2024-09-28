@@ -2036,7 +2036,7 @@ fn maybe_install_llvm(
         }
         !builder.config.dry_run()
     } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult { llvm_config, .. }) =
-        llvm::prebuilt_llvm_config(builder, target)
+        llvm::prebuilt_llvm_config(builder, target, true)
     {
         let mut cmd = command(llvm_config);
         cmd.arg("--libfiles");
