@@ -15,11 +15,10 @@ float_bench! {
     sys_available: not(feature = "no-sys-f16"),
     asm: [
         #[cfg(target_arch = "aarch64")] {
-            // FIXME(f16_f128): remove `to_bits()` after f16 asm support (rust-lang/rust/#116909)
             let ret: f32;
             asm!(
                 "fcvt    {ret:s}, {a:h}",
-                a = in(vreg) a.to_bits(),
+                a = in(vreg) a,
                 ret = lateout(vreg) ret,
                 options(nomem, nostack, pure),
             );
@@ -96,9 +95,7 @@ pub fn float_extend() {
         extend_f16_f32(&mut criterion);
 
         #[cfg(f128_enabled)]
-        {
-            extend_f16_f128(&mut criterion);
-        }
+        extend_f16_f128(&mut criterion);
     }
 
     extend_f32_f64(&mut criterion);
