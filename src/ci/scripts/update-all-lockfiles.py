@@ -21,6 +21,7 @@ LOCKFILES = {
     "root": ".",
     "library": "library",
     "rustbook": "src/tools/rustbook",
+    "bootstrap": "src/bootstrap",
 }
 
 UPDATE_JSON_OUTFILE = "update_output.json"
