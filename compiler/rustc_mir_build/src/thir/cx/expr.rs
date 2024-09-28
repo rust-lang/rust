@@ -703,8 +703,7 @@ impl<'tcx> Cx<'tcx> {
                                 tcx,
                                 anon_const.def_id.to_def_id(),
                             )
-                            .instantiate_identity()
-                            .normalize(tcx, self.param_env);
+                            .instantiate_identity();
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
@@ -714,8 +713,7 @@ impl<'tcx> Cx<'tcx> {
                                 tcx,
                                 anon_const.def_id.to_def_id(),
                             )
-                            .instantiate_identity()
-                            .normalize(tcx, self.param_env);
+                            .instantiate_identity();
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }

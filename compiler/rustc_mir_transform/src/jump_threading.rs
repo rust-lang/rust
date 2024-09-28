@@ -516,9 +516,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     // Avoid handling them, though this could be extended in the future.
                     return;
                 }
-                let Some(value) =
-                    value.const_.normalize(self.tcx, self.param_env).try_to_scalar_int()
-                else {
+                let Some(value) = value.const_.try_eval_scalar_int(self.tcx, self.param_env) else {
                     return;
                 };
                 let conds = conditions.map(self.arena, |c| Condition {
