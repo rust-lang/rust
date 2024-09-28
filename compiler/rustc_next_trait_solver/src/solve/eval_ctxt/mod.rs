@@ -448,10 +448,10 @@ where
                 }
             }
         } else {
-            self.delegate.enter_forall(kind, |kind| {
-                let goal = goal.with(self.cx(), ty::Binder::dummy(kind));
-                self.add_goal(GoalSource::InstantiateHigherRanked, goal);
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            self.enter_forall(kind, |ecx, kind| {
+                let goal = goal.with(ecx.cx(), ty::Binder::dummy(kind));
+                ecx.add_goal(GoalSource::InstantiateHigherRanked, goal);
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
         }
     }
@@ -840,12 +840,14 @@ where
         self.delegate.instantiate_binder_with_infer(value)
     }
 
+    /// `enter_forall`, but takes `&mut self` and passes it back through the
+    /// callback since it can't be aliased during the call.
     pub(super) fn enter_forall<T: TypeFoldable<I> + Copy, U>(
-        &self,
+        &mut self,
         value: ty::Binder<I, T>,
-        f: impl FnOnce(T) -> U,
+        f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
-        self.delegate.enter_forall(value, f)
+        self.delegate.enter_forall(value, |value| f(self, value))
     }
 
     pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T

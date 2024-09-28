@@ -92,12 +92,7 @@ impl<'tcx> InferCtxt<'tcx> {
 }
 
 pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx>;
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx>;
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
@@ -116,7 +111,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     {
         let mut fields = CombineFields::new(
             self.infcx,
-            ToTrace::to_trace(self.cause, true, expected, actual),
+            ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             define_opaque_types,
         );
@@ -136,7 +131,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     {
         let mut fields = CombineFields::new(
             self.infcx,
-            ToTrace::to_trace(self.cause, true, expected, actual),
+            ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             define_opaque_types,
         );
@@ -154,12 +149,26 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        let mut fields = CombineFields::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, true, expected, actual),
-            self.param_env,
+        self.eq_trace(
             define_opaque_types,
-        );
+            ToTrace::to_trace(self.cause, expected, actual),
+            expected,
+            actual,
+        )
+    }
+
+    /// Makes `expected == actual`.
+    pub fn eq_trace<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        trace: TypeTrace<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        let mut fields = CombineFields::new(self.infcx, trace, self.param_env, define_opaque_types);
         fields.equate(StructurallyRelateAliases::No).relate(expected, actual)?;
         Ok(InferOk {
             value: (),
@@ -192,7 +201,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         assert!(self.infcx.next_trait_solver());
         let mut fields = CombineFields::new(
             self.infcx,
-            ToTrace::to_trace(self.cause, true, expected, actual),
+            ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             DefineOpaqueTypes::Yes,
         );
@@ -284,7 +293,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     {
         let mut fields = CombineFields::new(
             self.infcx,
-            ToTrace::to_trace(self.cause, true, expected, actual),
+            ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             define_opaque_types,
         );
@@ -306,7 +315,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     {
         let mut fields = CombineFields::new(
             self.infcx,
-            ToTrace::to_trace(self.cause, true, expected, actual),
+            ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             define_opaque_types,
         );
@@ -316,18 +325,13 @@ impl<'a, 'tcx> At<'a, 'tcx> {
 }
 
 impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         match (a, b) {
             (ImplSubject::Trait(trait_ref_a), ImplSubject::Trait(trait_ref_b)) => {
-                ToTrace::to_trace(cause, a_is_expected, trait_ref_a, trait_ref_b)
+                ToTrace::to_trace(cause, trait_ref_a, trait_ref_b)
             }
             (ImplSubject::Inherent(ty_a), ImplSubject::Inherent(ty_b)) => {
-                ToTrace::to_trace(cause, a_is_expected, ty_a, ty_b)
+                ToTrace::to_trace(cause, ty_a, ty_b)
             }
             (ImplSubject::Trait(_), ImplSubject::Inherent(_))
             | (ImplSubject::Inherent(_), ImplSubject::Trait(_)) => {
@@ -338,65 +342,45 @@ impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
 }
 
 impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(true, a.into(), b.into())),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Regions(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::Regions(ExpectedFound::new(true, a, b)),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(true, a.into(), b.into())),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
             values: match (a.unpack(), b.unpack()) {
                 (GenericArgKind::Lifetime(a), GenericArgKind::Lifetime(b)) => {
-                    ValuePairs::Regions(ExpectedFound::new(a_is_expected, a, b))
+                    ValuePairs::Regions(ExpectedFound::new(true, a, b))
                 }
                 (GenericArgKind::Type(a), GenericArgKind::Type(b)) => {
-                    ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
+                    ValuePairs::Terms(ExpectedFound::new(true, a.into(), b.into()))
                 }
                 (GenericArgKind::Const(a), GenericArgKind::Const(b)) => {
-                    ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
+                    ValuePairs::Terms(ExpectedFound::new(true, a.into(), b.into()))
                 }
 
                 (
@@ -419,72 +403,47 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::Terms(ExpectedFound::new(true, a, b)),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::TraitRefs(ExpectedFound::new(true, a, b)),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Aliases(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Aliases(ExpectedFound::new(true, a.into(), b.into())),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::AliasTerm<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Aliases(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::Aliases(ExpectedFound::new(true, a, b)),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::FnSig<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
             values: ValuePairs::PolySigs(ExpectedFound::new(
-                a_is_expected,
+                true,
                 ty::Binder::dummy(a),
                 ty::Binder::dummy(b),
             )),
@@ -493,43 +452,28 @@ impl<'tcx> ToTrace<'tcx> for ty::FnSig<'tcx> {
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::PolyFnSig<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::PolySigs(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::PolySigs(ExpectedFound::new(true, a, b)),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::PolyExistentialTraitRef<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::ExistentialTraitRef(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::ExistentialTraitRef(ExpectedFound::new(true, a, b)),
         }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::PolyExistentialProjection<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::ExistentialProjection(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::ExistentialProjection(ExpectedFound::new(true, a, b)),
         }
     }
 }

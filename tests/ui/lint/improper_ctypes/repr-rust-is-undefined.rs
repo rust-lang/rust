@@ -1,6 +1,10 @@
 #![deny(improper_ctypes)]
 #![allow(dead_code)]
 
+// issue https://github.com/rust-lang/rust/issues/14309
+// Validates we lint on repr(Rust) structs and not repr(C) structs in FFI, to implement RFC 79:
+// https://rust-lang.github.io/rfcs/0079-undefined-struct-layout.html
+
 struct A {
     x: i32
 }
