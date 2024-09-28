@@ -2589,8 +2589,17 @@ impl<T, A: Allocator> Vec<T, A> {
     #[track_caller]
     unsafe fn append_elements(&mut self, other: *const [T]) {
         let count = other.len();
+        if count == 0 {
+            // The early return is not necessary for correctness, but in cases
+            // where LLVM sees all the way to the allocation site of `other`
+            // this can avoid a phi-node merging the two different pointers
+            // when zero-length allocations are special-cased.
+            // That in turn can enable more optimizations around the memcpy below.
+            return;
+        }
         self.reserve(count);
         let len = self.len();
+        unsafe { core::hint::assert_unchecked(self.capacity() != 0) };
         unsafe { ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count) };
         self.len += count;
     }
