@@ -39,7 +39,7 @@ serde_json = "1.0.59"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tempfile = "3.2"
 thin-vec = "0.2.12"
-thorin-dwp = "0.7"
+thorin-dwp = "0.8"
 tracing = "0.1"
 wasm-encoder = "0.216.0"
 # tidy-alphabetical-end
@@ -55,5 +55,5 @@ default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.52.0"
+version = "0.57.0"
 features = ["Win32_Globalization"]

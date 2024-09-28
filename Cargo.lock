@@ -355,7 +355,7 @@ dependencies = [
 name = "cargo-miri"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.18.1",
+ "cargo_metadata",
  "directories",
  "rustc-build-sysroot",
  "rustc_tools_util",
@@ -371,20 +371,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24b1f0365a6c6bb4020cd05806fd0d33c44d38046b8bd7f0e40814b9763cabfc"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "cargo_metadata"
-version = "0.15.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eee4243f1f26fc7a42710e7439c149e2b10b05472f88090acce52632f231a73a"
-dependencies = [
- "camino",
- "cargo-platform",
- "semver",
- "serde",
- "serde_json",
- "thiserror",
 ]
 
 [[package]]
@@ -533,7 +519,7 @@ name = "clippy"
 version = "0.1.83"
 dependencies = [
  "anstream",
- "cargo_metadata 0.18.1",
+ "cargo_metadata",
  "clippy_config",
  "clippy_lints",
  "clippy_utils",
@@ -585,7 +571,7 @@ name = "clippy_lints"
 version = "0.1.83"
 dependencies = [
  "arrayvec",
- "cargo_metadata 0.18.1",
+ "cargo_metadata",
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
@@ -718,7 +704,7 @@ dependencies = [
  "tracing-subscriber",
  "unified-diff",
  "walkdir",
- "windows 0.52.0",
+ "windows",
 ]
 
 [[package]]
@@ -963,17 +949,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4abae7035bf79b9877b779505d8cf3749285b80c43941eda66604841889451dc"
 dependencies = [
  "derive_builder_core",
- "syn 2.0.77",
-]
-
-[[package]]
-name = "derive_more"
-version = "0.99.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f33878137e4dafd7fa914ad4e259e18a4e8e532b9617a2d0150262bf53abfce"
-dependencies = [
- "proc-macro2",
- "quote",
  "syn 2.0.77",
 ]
 
@@ -1393,7 +1368,7 @@ name = "generate-copyright"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cargo_metadata 0.18.1",
+ "cargo_metadata",
  "rinja",
  "serde",
  "serde_json",
@@ -1442,6 +1417,12 @@ name = "gimli"
 version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
+
+[[package]]
+name = "gimli"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2e1d97fbe9722ba9bbd0c97051c2956e726562b61f86a25a4360398a40edfc9"
 dependencies = [
  "fallible-iterator",
  "indexmap",
@@ -2448,12 +2429,7 @@ version = "0.32.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6a622008b6e321afc04970976f62ee297fdbaa6f95318ca343e3eebb9648441"
 dependencies = [
- "crc32fast",
- "flate2",
- "hashbrown",
- "indexmap",
  "memchr",
- "ruzstd 0.5.0",
 ]
 
 [[package]]
@@ -2467,7 +2443,7 @@ dependencies = [
  "hashbrown",
  "indexmap",
  "memchr",
- "ruzstd 0.7.2",
+ "ruzstd",
  "wasmparser 0.216.0",
 ]
 
@@ -3481,7 +3457,7 @@ dependencies = [
  "thorin-dwp",
  "tracing",
  "wasm-encoder 0.216.0",
- "windows 0.52.0",
+ "windows",
 ]
 
 [[package]]
@@ -3538,7 +3514,7 @@ dependencies = [
  "tempfile",
  "thin-vec",
  "tracing",
- "windows 0.52.0",
+ "windows",
 ]
 
 [[package]]
@@ -3600,7 +3576,7 @@ dependencies = [
  "shlex",
  "time",
  "tracing",
- "windows 0.52.0",
+ "windows",
 ]
 
 [[package]]
@@ -3651,7 +3627,7 @@ dependencies = [
  "termcolor",
  "termize",
  "tracing",
- "windows 0.52.0",
+ "windows",
 ]
 
 [[package]]
@@ -4374,7 +4350,7 @@ dependencies = [
  "smallvec",
  "termize",
  "tracing",
- "windows 0.52.0",
+ "windows",
 ]
 
 [[package]]
@@ -4657,7 +4633,7 @@ dependencies = [
  "annotate-snippets 0.9.2",
  "anyhow",
  "bytecount",
- "cargo_metadata 0.18.1",
+ "cargo_metadata",
  "clap",
  "clap-cargo",
  "diff",
@@ -4697,17 +4673,6 @@ name = "rustversion"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "955d28af4278de8121b7ebeb796b6a45735dc01436d898801014aced2773a3d6"
-
-[[package]]
-name = "ruzstd"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58c4eb8a81997cf040a091d1f7e1938aeab6749d3a0dfa73af43cdc32393483d"
-dependencies = [
- "byteorder",
- "derive_more",
- "twox-hash",
-]
 
 [[package]]
 name = "ruzstd"
@@ -5087,7 +5052,7 @@ checksum = "355dbe4f8799b304b05e1b0f05fc59b2a18d36645cf169607da45bde2f69a1be"
 dependencies = [
  "core-foundation-sys",
  "libc",
- "windows 0.57.0",
+ "windows",
 ]
 
 [[package]]
@@ -5214,13 +5179,13 @@ dependencies = [
 
 [[package]]
 name = "thorin-dwp"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4db52ee8fec06e119b692ef3dd2c4cf621a99204c1b8c47407870ed050305b9b"
+checksum = "813ba76597db32dc4f6992fd8bf8f394715b88d352fd97401da67dab6283b4c6"
 dependencies = [
- "gimli 0.28.1",
+ "gimli 0.30.0",
  "hashbrown",
- "object 0.32.2",
+ "object 0.36.4",
  "tracing",
 ]
 
@@ -5248,7 +5213,7 @@ name = "tidy"
 version = "0.1.0"
 dependencies = [
  "build_helper",
- "cargo_metadata 0.15.4",
+ "cargo_metadata",
  "fluent-syntax",
  "ignore",
  "miropt-test-tools",
@@ -5516,7 +5481,7 @@ dependencies = [
  "anyhow",
  "bstr",
  "cargo-platform",
- "cargo_metadata 0.18.1",
+ "cargo_metadata",
  "color-eyre",
  "colored",
  "comma",
@@ -5937,16 +5902,6 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-
-[[package]]
-name = "windows"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e48a53791691ab099e5e2ad123536d0fff50652600abaf43bbf952894110d0be"
-dependencies = [
- "windows-core 0.52.0",
- "windows-targets 0.52.6",
-]
 
 [[package]]
 name = "windows"
