@@ -296,7 +296,7 @@ fn gen_bind_body(
                 ),
                 _ => panic!("unsupported parameter number"),
             };
-            format!("fn __{}{} {};", current_name, fn_inputs, fn_output)
+            format!("fn __{current_name}{fn_inputs} {fn_output};")
         };
         let function = format!(
             r#"    #[link_name = "llvm.loongarch.{}"]
@@ -448,7 +448,7 @@ fn gen_bind_body(
             };
             rustc_legacy_const_generics = "rustc_legacy_const_generics(2, 3)";
         }
-        format!("pub unsafe fn {}{} {}", current_name, fn_inputs, fn_output)
+        format!("pub unsafe fn {current_name}{fn_inputs} {fn_output}")
     };
     let mut call_params = {
         match para_num {

@@ -169,7 +169,7 @@ fn parse(output: &str) -> HashSet<Function> {
                     }
                 }
                 match (parts.first(), parts.last()) {
-                    (Some(instr), Some(last_arg)) if is_shll(&instr) && last_arg == "#0" => {
+                    (Some(instr), Some(last_arg)) if is_shll(instr) && last_arg == "#0" => {
                         assert_eq!(parts.len(), 4);
                         let mut new_parts = Vec::with_capacity(3);
                         let new_instr = format!("{}{}{}", &instr[..1], "xtl", &instr[5..]);

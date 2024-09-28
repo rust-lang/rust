@@ -3,14 +3,8 @@
 //! We don't need perfect formatting for the generated tests, but simple indentation can make
 //! debugging a lot easier.
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Indentation(u32);
-
-impl std::default::Default for Indentation {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Indentation {
     pub fn nested(self) -> Self {

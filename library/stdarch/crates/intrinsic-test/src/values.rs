@@ -7,7 +7,7 @@ pub fn value_for_array(bits: u32, index: u32) -> u64 {
         8 => VALUES_8[index % VALUES_8.len()].into(),
         16 => VALUES_16[index % VALUES_16.len()].into(),
         32 => VALUES_32[index % VALUES_32.len()].into(),
-        64 => VALUES_64[index % VALUES_64.len()].into(),
+        64 => VALUES_64[index % VALUES_64.len()],
         _ => unimplemented!("value_for_array(bits: {bits}, ..)"),
     }
 }

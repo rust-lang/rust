@@ -169,10 +169,7 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
     }
 
     if !found {
-        panic!(
-            "failed to find instruction `{}` in the disassembly",
-            expected
-        );
+        panic!("failed to find instruction `{expected}` in the disassembly");
     } else if !probably_only_one_instruction {
         panic!(
             "instruction found, but the disassembly contains too many \

@@ -402,7 +402,7 @@ fn main() {
     let args: Cli = clap::Parser::parse();
 
     let filename = args.input;
-    let c_runner = args.runner.unwrap_or_else(String::new);
+    let c_runner = args.runner.unwrap_or_default();
     let skip = if let Some(filename) = args.skip {
         let data = std::fs::read_to_string(&filename).expect("Failed to open file");
         data.lines()

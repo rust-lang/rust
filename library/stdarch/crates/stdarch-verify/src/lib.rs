@@ -535,7 +535,7 @@ fn find_doc(attrs: &[syn::Attribute]) -> String {
                     }
                 }
             }
-            return None;
+            None
         })
         .collect()
 }

@@ -267,9 +267,9 @@ impl IntrinsicType {
         match *self {
             IntrinsicType::Type {
                 kind,
-                bit_len: Some(bit_len),
+                bit_len: Some(8),
                 ..
-            } if bit_len == 8 => match kind {
+            } => match kind {
                 TypeKind::Int => "(int)",
                 TypeKind::UInt => "(unsigned int)",
                 TypeKind::Poly => "(unsigned int)(uint8_t)",
@@ -318,8 +318,8 @@ impl IntrinsicType {
                 ..
             } => {
                 let (prefix, suffix) = match language {
-                    &Language::Rust => ("[", "]"),
-                    &Language::C => ("{", "}"),
+                    Language::Rust => ("[", "]"),
+                    Language::C => ("{", "}"),
                 };
                 let body_indentation = indentation.nested();
                 format!(

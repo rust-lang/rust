@@ -179,7 +179,7 @@ cfg_if::cfg_if! {
 fn do_initialize(value: Initializer) {
     CACHE[0].initialize((value.0) as usize & Cache::MASK);
     CACHE[1].initialize((value.0 >> Cache::CAPACITY) as usize & Cache::MASK);
-    CACHE[2].initialize((value.0 >> 2 * Cache::CAPACITY) as usize & Cache::MASK);
+    CACHE[2].initialize((value.0 >> (2 * Cache::CAPACITY)) as usize & Cache::MASK);
 }
 
 // We only have to detect features once, and it's fairly costly, so hint to LLVM
