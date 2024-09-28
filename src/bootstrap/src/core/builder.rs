@@ -72,36 +72,40 @@ impl<'a> Deref for Builder<'a> {
 }
 
 pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
-    /// `PathBuf` when directories are created or to return a `Compiler` once
-    /// it's been assembled.
+    /// Result type of `Step::run`.
     type Output: Clone;
 
-    /// Whether this step is run by default as part of its respective phase.
-    /// `true` here can still be overwritten by `should_run` calling `default_condition`.
+    /// Whether this step is run by default as part of its respective phase, as defined by the `describe`
+    /// macro in [`Builder::get_step_descriptions`].
+    ///
+    /// Note: Even if set to `true`, it can still be overridden with [`ShouldRun::default_condition`]
+    /// by `Step::should_run`.
     const DEFAULT: bool = false;
 
     /// If true, then this rule should be skipped if --target was specified, but --host was not
     const ONLY_HOSTS: bool = false;
 
-    /// Primary function to execute this rule. Can call `builder.ensure()`
-    /// with other steps to run those.
+    /// Primary function to implement `Step` logic.
     ///
-    /// This gets called twice during a normal `./x.py` execution: first
-    /// with `dry_run() == true`, and then for real.
+    /// This function can be triggered in two ways:
+    ///     1. Directly from [`Builder::execute_cli`].
+    ///     2. Indirectly by being called from other `Step`s using [`Builder::ensure`].
+    ///
+    /// When called with [`Builder::execute_cli`] (as done by `Build::build`), this function executed twice:
+    ///     - First in "dry-run" mode to validate certain things (like cyclic Step invocations,
+    ///         directory creation, etc) super quickly.
+    ///     - Then it's called again to run the actual, very expensive process.
+    ///
+    /// When triggered indirectly from other `Step`s, it may still run twice (as dry-run and real mode)
+    /// depending on the `Step::run` implementation of the caller.
     fn run(self, builder: &Builder<'_>) -> Self::Output;
 
-    /// When bootstrap is passed a set of paths, this controls whether this rule
-    /// will execute. However, it does not get called in a "default" context
-    /// when we are not passed any paths; in that case, `make_run` is called
-    /// directly.
+    /// Determines if this `Step` should be run when given specific paths (e.g., `x build $path`).
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_>;
 
-    /// Builds up a "root" rule, either as a default rule or from a path passed
-    /// to us.
-    ///
-    /// When path is `None`, we are executing in a context where no paths were
-    /// passed. When `./x.py build` is run, for example, this rule could get
-    /// called if it is in the correct list below with a path of `None`.
+    /// Called directly by the bootstrap `Step` handler when not triggered indirectly by other `Step`s using [`Builder::ensure`].
+    /// For example, `./x.py test bootstrap` runs this for `test::Bootstrap`. Similarly, `./x.py test` runs it for every step
+    /// that is listed by the `describe` macro in [`Builder::get_step_descriptions`].
     fn make_run(_run: RunConfig<'_>) {
         // It is reasonable to not have an implementation of make_run for rules
         // who do not want to get called from the root context. This means that
