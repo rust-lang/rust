@@ -5,6 +5,6 @@
 //! bla
 //! ```
 //!
-//! ```standalone_crate
+//! ```standalone-crate
 //! bla
 //! ```

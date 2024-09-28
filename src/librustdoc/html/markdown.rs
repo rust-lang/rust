@@ -1264,7 +1264,7 @@ impl LangString {
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                         data.no_run = true;
                     }
-                    LangStringToken::LangToken("standalone-crate") => {
+                    LangStringToken::LangToken("standalone_crate") => {
                         data.standalone_crate = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     }
@@ -1315,12 +1315,12 @@ impl LangString {
                                 "use `test_harness` to run functions marked `#[test]` instead of a \
                                 potentially-implicit `main` function",
                             ),
-                            "standalone" | "standalone_crate" => {
+                            "standalone" | "standalone_crate" | "standalone-crate" => {
                                 if let Some(extra) = extra
                                     && extra.sp.at_least_rust_2024()
                                 {
                                     Some(
-                                        "use `standalone-crate` to compile this code block \
+                                        "use `standalone_crate` to compile this code block \
                                         separately",
                                     )
                                 } else {
