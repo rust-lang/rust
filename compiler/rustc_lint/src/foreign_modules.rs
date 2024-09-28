@@ -280,7 +280,7 @@ fn structurally_same_type_impl<'tcx>(
 
         ensure_sufficient_stack(|| {
             match (a.kind(), b.kind()) {
-                (&Adt(a_def, _), &Adt(b_def, _)) => {
+                (&Adt(a_def, a_gen_args), &Adt(b_def, b_gen_args)) => {
                     // Only `repr(C)` types can be compared structurally.
                     if !(a_def.repr().c() && b_def.repr().c()) {
                         return false;
@@ -304,8 +304,8 @@ fn structurally_same_type_impl<'tcx>(
                                 seen_types,
                                 tcx,
                                 param_env,
-                                tcx.type_of(a_did).instantiate_identity(),
-                                tcx.type_of(b_did).instantiate_identity(),
+                                tcx.type_of(a_did).instantiate(tcx, a_gen_args),
+                                tcx.type_of(b_did).instantiate(tcx, b_gen_args),
                                 ckind,
                             )
                         },
