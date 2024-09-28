@@ -363,7 +363,7 @@ impl Deref for SyncContext {
 
 unsafe impl Send for SyncContext {}
 // FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm".
-// TODO: disable it here by returing false in CodegenBackend::supports_parallel().
+// TODO: disable it here by returning false in CodegenBackend::supports_parallel().
 unsafe impl Sync for SyncContext {}
 
 impl WriteBackendMethods for GccCodegenBackend {

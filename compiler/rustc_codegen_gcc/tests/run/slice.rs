@@ -26,6 +26,7 @@ impl Copy for isize {}
 impl Copy for usize {}
 impl Copy for i32 {}
 impl Copy for u32 {}
+impl<T: ?Sized> Copy for *mut T {}
 
 #[lang = "receiver"]
 trait Receiver {

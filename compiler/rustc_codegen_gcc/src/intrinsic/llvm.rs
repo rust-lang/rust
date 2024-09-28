@@ -1,10 +1,42 @@
 use std::borrow::Cow;
 
-use gccjit::{Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
+use gccjit::{CType, Context, Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
 use rustc_codegen_ssa::traits::BuilderMethods;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
+
+#[cfg_attr(not(feature = "master"), allow(unused_variables))]
+pub fn adjust_function<'gcc>(
+    context: &'gcc Context<'gcc>,
+    func_name: &str,
+    func_ptr: RValue<'gcc>,
+    args: &[RValue<'gcc>],
+) -> RValue<'gcc> {
+    // FIXME: we should not need this hack: this is required because both _mm_fcmadd_sch
+    // and _mm_mask3_fcmadd_round_sch calls llvm.x86.avx512fp16.mask.vfcmadd.csh and we
+    // seem to need to map this one LLVM intrinsic to 2 different GCC builtins.
+    #[cfg(feature = "master")]
+    match func_name {
+        "__builtin_ia32_vfcmaddcsh_mask3_round" => {
+            if format!("{:?}", args[3]).ends_with("255") {
+                return context
+                    .get_target_builtin_function("__builtin_ia32_vfcmaddcsh_mask_round")
+                    .get_address(None);
+            }
+        }
+        "__builtin_ia32_vfmaddcsh_mask3_round" => {
+            if format!("{:?}", args[3]).ends_with("255") {
+                return context
+                    .get_target_builtin_function("__builtin_ia32_vfmaddcsh_mask_round")
+                    .get_address(None);
+            }
+        }
+        _ => (),
+    }
+
+    func_ptr
+}
 
 pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     builder: &Builder<'a, 'gcc, 'tcx>,
@@ -13,6 +45,11 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     func_name: &str,
     original_function_name: Option<&String>,
 ) -> Cow<'b, [RValue<'gcc>]> {
+    // TODO: this might not be a good way to workaround the missing tile builtins.
+    if func_name == "__builtin_trap" {
+        return vec![].into();
+    }
+
     // Some LLVM intrinsics do not map 1-to-1 to GCC intrinsics, so we add the missing
     // arguments here.
     if gcc_func.get_param_count() != args.len() {
@@ -147,7 +184,11 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             | "__builtin_ia32_psrav16hi_mask"
             | "__builtin_ia32_psrav8hi_mask"
             | "__builtin_ia32_permvarhi256_mask"
-            | "__builtin_ia32_permvarhi128_mask" => {
+            | "__builtin_ia32_permvarhi128_mask"
+            | "__builtin_ia32_maxph128_mask"
+            | "__builtin_ia32_maxph256_mask"
+            | "__builtin_ia32_minph128_mask"
+            | "__builtin_ia32_minph256_mask" => {
                 let mut new_args = args.to_vec();
                 let arg3_type = gcc_func.get_param_type(2);
                 let vector_type = arg3_type.dyncast_vector().expect("vector type");
@@ -182,7 +223,19 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             | "__builtin_ia32_vplzcntd_128_mask"
             | "__builtin_ia32_vplzcntq_512_mask"
             | "__builtin_ia32_vplzcntq_256_mask"
-            | "__builtin_ia32_vplzcntq_128_mask" => {
+            | "__builtin_ia32_vplzcntq_128_mask"
+            | "__builtin_ia32_cvtqq2pd128_mask"
+            | "__builtin_ia32_cvtqq2pd256_mask"
+            | "__builtin_ia32_cvtqq2ps256_mask"
+            | "__builtin_ia32_cvtuqq2pd128_mask"
+            | "__builtin_ia32_cvtuqq2pd256_mask"
+            | "__builtin_ia32_cvtuqq2ps256_mask"
+            | "__builtin_ia32_vcvtw2ph128_mask"
+            | "__builtin_ia32_vcvtw2ph256_mask"
+            | "__builtin_ia32_vcvtuw2ph128_mask"
+            | "__builtin_ia32_vcvtuw2ph256_mask"
+            | "__builtin_ia32_vcvtdq2ph256_mask"
+            | "__builtin_ia32_vcvtudq2ph256_mask" => {
                 let mut new_args = args.to_vec();
                 // Remove last arg as it doesn't seem to be used in GCC and is always false.
                 new_args.pop();
@@ -281,7 +334,11 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 new_args.push(last_arg);
                 args = new_args.into();
             }
-            "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
+            "__builtin_ia32_vfmaddsubps512_mask"
+            | "__builtin_ia32_vfmaddsubpd512_mask"
+            | "__builtin_ia32_cmpsh_mask_round"
+            | "__builtin_ia32_vfmaddph512_mask"
+            | "__builtin_ia32_vfmaddsubph512_mask" => {
                 let mut new_args = args.to_vec();
                 let last_arg = new_args.pop().expect("last arg");
                 let arg4_type = gcc_func.get_param_type(3);
@@ -304,9 +361,8 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             | "__builtin_ia32_vpermi2varpd128_mask"
             | "__builtin_ia32_vpmadd52huq512_mask"
             | "__builtin_ia32_vpmadd52luq512_mask"
-            | "__builtin_ia32_vpmadd52huq256_mask"
-            | "__builtin_ia32_vpmadd52luq256_mask"
-            | "__builtin_ia32_vpmadd52huq128_mask" => {
+            | "__builtin_ia32_vfmaddsubph128_mask"
+            | "__builtin_ia32_vfmaddsubph256_mask" => {
                 let mut new_args = args.to_vec();
                 let arg4_type = gcc_func.get_param_type(3);
                 let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
@@ -355,7 +411,14 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
                 args = vec![new_args[1], new_args[0], new_args[2], minus_one].into();
             }
-            "__builtin_ia32_xrstor" | "__builtin_ia32_xsavec" => {
+            "__builtin_ia32_xrstor"
+            | "__builtin_ia32_xrstor64"
+            | "__builtin_ia32_xsavec"
+            | "__builtin_ia32_xsavec64"
+            | "__builtin_ia32_xsave"
+            | "__builtin_ia32_xsave64"
+            | "__builtin_ia32_xsaveopt"
+            | "__builtin_ia32_xsaveopt64" => {
                 let new_args = args.to_vec();
                 let thirty_two = builder.context.new_rvalue_from_int(new_args[1].get_type(), 32);
                 let arg2 = new_args[1] << thirty_two | new_args[2];
@@ -378,11 +441,76 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 );
                 args = vec![arg.get_address(None)].into();
             }
+            "__builtin_ia32_cvtqq2pd512_mask"
+            | "__builtin_ia32_cvtqq2ps512_mask"
+            | "__builtin_ia32_cvtuqq2pd512_mask"
+            | "__builtin_ia32_cvtuqq2ps512_mask"
+            | "__builtin_ia32_sqrtph512_mask_round"
+            | "__builtin_ia32_vcvtw2ph512_mask_round"
+            | "__builtin_ia32_vcvtuw2ph512_mask_round"
+            | "__builtin_ia32_vcvtdq2ph512_mask_round"
+            | "__builtin_ia32_vcvtudq2ph512_mask_round"
+            | "__builtin_ia32_vcvtqq2ph512_mask_round"
+            | "__builtin_ia32_vcvtuqq2ph512_mask_round" => {
+                let mut old_args = args.to_vec();
+                let mut new_args = vec![];
+                new_args.push(old_args.swap_remove(0));
+                let arg2_type = gcc_func.get_param_type(1);
+                let vector_type = arg2_type.dyncast_vector().expect("vector type");
+                let zero = builder.context.new_rvalue_zero(vector_type.get_element_type());
+                let num_units = vector_type.get_num_units();
+                let first_arg =
+                    builder.context.new_rvalue_from_vector(None, arg2_type, &vec![zero; num_units]);
+                new_args.push(first_arg);
+                let arg3_type = gcc_func.get_param_type(2);
+                let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
+                new_args.push(minus_one);
+                new_args.push(old_args.swap_remove(0));
+                args = new_args.into();
+            }
+            "__builtin_ia32_addph512_mask_round"
+            | "__builtin_ia32_subph512_mask_round"
+            | "__builtin_ia32_mulph512_mask_round"
+            | "__builtin_ia32_divph512_mask_round"
+            | "__builtin_ia32_maxph512_mask_round"
+            | "__builtin_ia32_minph512_mask_round" => {
+                let mut new_args = args.to_vec();
+                let last_arg = new_args.pop().expect("last arg");
+
+                let arg3_type = gcc_func.get_param_type(2);
+                let vector_type = arg3_type.dyncast_vector().expect("vector type");
+                let zero = builder.context.new_rvalue_zero(vector_type.get_element_type());
+                let num_units = vector_type.get_num_units();
+                let first_arg =
+                    builder.context.new_rvalue_from_vector(None, arg3_type, &vec![zero; num_units]);
+                new_args.push(first_arg);
+
+                let arg4_type = gcc_func.get_param_type(3);
+                let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                new_args.push(minus_one);
+                new_args.push(last_arg);
+                args = new_args.into();
+            }
+            // NOTE: the LLVM intrinsics receive 3 floats, but the GCC builtin requires 3 vectors.
+            "__builtin_ia32_vfmaddsh3_mask" => {
+                let new_args = args.to_vec();
+                let arg1_type = gcc_func.get_param_type(0);
+                let arg2_type = gcc_func.get_param_type(1);
+                let arg3_type = gcc_func.get_param_type(2);
+                let arg4_type = gcc_func.get_param_type(3);
+                let a = builder.context.new_rvalue_from_vector(None, arg1_type, &[new_args[0]; 8]);
+                let b = builder.context.new_rvalue_from_vector(None, arg2_type, &[new_args[1]; 8]);
+                let c = builder.context.new_rvalue_from_vector(None, arg3_type, &[new_args[2]; 8]);
+                let arg4 = builder.context.new_rvalue_from_int(arg4_type, -1);
+                args = vec![a, b, c, arg4, new_args[3]].into();
+            }
             _ => (),
         }
     } else {
         match func_name {
-            "__builtin_ia32_rndscaless_mask_round" | "__builtin_ia32_rndscalesd_mask_round" => {
+            "__builtin_ia32_rndscaless_mask_round"
+            | "__builtin_ia32_rndscalesd_mask_round"
+            | "__builtin_ia32_reducesh_mask_round" => {
                 let new_args = args.to_vec();
                 let arg3_type = gcc_func.get_param_type(2);
                 let arg3 = builder.context.new_cast(None, new_args[4], arg3_type);
@@ -390,7 +518,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let arg4 = builder.context.new_bitcast(None, new_args[2], arg4_type);
                 args = vec![new_args[0], new_args[1], arg3, arg4, new_args[3], new_args[5]].into();
             }
-            // NOTE: the LLVM intrinsic receives 3 floats, but the GCC builtin requires 3 vectors.
+            // NOTE: the LLVM intrinsics receive 3 floats, but the GCC builtin requires 3 vectors.
             // FIXME: the intrinsics like _mm_mask_fmadd_sd should probably directly call the GCC
             // intrinsic to avoid this.
             "__builtin_ia32_vfmaddss3_round" => {
@@ -473,6 +601,52 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let new_args = args.to_vec();
                 args = vec![new_args[1], new_args[0], new_args[2]].into();
             }
+            "__builtin_ia32_rangesd128_mask_round"
+            | "__builtin_ia32_rangess128_mask_round"
+            | "__builtin_ia32_reducesd_mask_round"
+            | "__builtin_ia32_reducess_mask_round" => {
+                let new_args = args.to_vec();
+                args = vec![
+                    new_args[0],
+                    new_args[1],
+                    new_args[4],
+                    new_args[2],
+                    new_args[3],
+                    new_args[5],
+                ]
+                .into();
+            }
+            "__builtin_ia32_rndscalesh_mask_round" => {
+                let new_args = args.to_vec();
+                args = vec![
+                    new_args[0],
+                    new_args[1],
+                    new_args[4],
+                    new_args[2],
+                    new_args[3],
+                    new_args[5],
+                ]
+                .into();
+            }
+            "fma" => {
+                let mut new_args = args.to_vec();
+                new_args[0] = builder.context.new_cast(None, new_args[0], builder.double_type);
+                new_args[1] = builder.context.new_cast(None, new_args[1], builder.double_type);
+                new_args[2] = builder.context.new_cast(None, new_args[2], builder.double_type);
+                args = new_args.into();
+            }
+            "__builtin_ia32_sqrtsh_mask_round"
+            | "__builtin_ia32_vcvtss2sh_mask_round"
+            | "__builtin_ia32_vcvtsd2sh_mask_round"
+            | "__builtin_ia32_vcvtsh2ss_mask_round"
+            | "__builtin_ia32_vcvtsh2sd_mask_round"
+            | "__builtin_ia32_rcpsh_mask"
+            | "__builtin_ia32_rsqrtsh_mask" => {
+                // The first two arguments are inverted, so swap them.
+                let mut new_args = args.to_vec();
+                new_args.swap(0, 1);
+                args = new_args.into();
+            }
             _ => (),
         }
     }
@@ -489,7 +663,9 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
     orig_args: &[RValue<'gcc>],
 ) -> RValue<'gcc> {
     match func_name {
-        "__builtin_ia32_vfmaddss3_round" | "__builtin_ia32_vfmaddsd3_round" => {
+        "__builtin_ia32_vfmaddss3_round"
+        | "__builtin_ia32_vfmaddsd3_round"
+        | "__builtin_ia32_vfmaddsh3_mask" => {
             #[cfg(feature = "master")]
             {
                 let zero = builder.context.new_rvalue_zero(builder.int_type);
@@ -545,6 +721,10 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
                     random_number,
                     success_variable.to_rvalue(),
                 ]);
+        }
+        "fma" => {
+            let f16_type = builder.context.new_c_type(CType::Float16);
+            return_value = builder.context.new_cast(None, return_value, f16_type);
         }
         _ => (),
     }
@@ -779,7 +959,9 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.mask.cmp.b.256" => "__builtin_ia32_cmpb256_mask",
         "llvm.x86.avx512.mask.cmp.b.128" => "__builtin_ia32_cmpb128_mask",
         "llvm.x86.xrstor" => "__builtin_ia32_xrstor",
+        "llvm.x86.xrstor64" => "__builtin_ia32_xrstor64",
         "llvm.x86.xsavec" => "__builtin_ia32_xsavec",
+        "llvm.x86.xsavec64" => "__builtin_ia32_xsavec64",
         "llvm.x86.addcarry.32" => "__builtin_ia32_addcarryx_u32",
         "llvm.x86.subborrow.32" => "__builtin_ia32_sbb_u32",
         "llvm.x86.avx512.mask.compress.store.w.512" => "__builtin_ia32_compressstoreuhi512_mask",
@@ -968,9 +1150,9 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.dbpsadbw.128" => "__builtin_ia32_dbpsadbw128_mask",
         "llvm.x86.avx512.vpmadd52h.uq.512" => "__builtin_ia32_vpmadd52huq512_mask",
         "llvm.x86.avx512.vpmadd52l.uq.512" => "__builtin_ia32_vpmadd52luq512_mask",
-        "llvm.x86.avx512.vpmadd52h.uq.256" => "__builtin_ia32_vpmadd52huq256_mask",
-        "llvm.x86.avx512.vpmadd52l.uq.256" => "__builtin_ia32_vpmadd52luq256_mask",
-        "llvm.x86.avx512.vpmadd52h.uq.128" => "__builtin_ia32_vpmadd52huq128_mask",
+        "llvm.x86.avx512.vpmadd52h.uq.256" => "__builtin_ia32_vpmadd52huq256",
+        "llvm.x86.avx512.vpmadd52l.uq.256" => "__builtin_ia32_vpmadd52luq256",
+        "llvm.x86.avx512.vpmadd52h.uq.128" => "__builtin_ia32_vpmadd52huq128",
         "llvm.x86.avx512.vpdpwssd.512" => "__builtin_ia32_vpdpwssd_v16si",
         "llvm.x86.avx512.vpdpwssd.256" => "__builtin_ia32_vpdpwssd_v8si",
         "llvm.x86.avx512.vpdpwssd.128" => "__builtin_ia32_vpdpwssd_v4si",
@@ -983,6 +1165,180 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.vpdpbusds.512" => "__builtin_ia32_vpdpbusds_v16si",
         "llvm.x86.avx512.vpdpbusds.256" => "__builtin_ia32_vpdpbusds_v8si",
         "llvm.x86.avx512.vpdpbusds.128" => "__builtin_ia32_vpdpbusds_v4si",
+        "llvm.x86.xsave" => "__builtin_ia32_xsave",
+        "llvm.x86.xsave64" => "__builtin_ia32_xsave64",
+        "llvm.x86.xsaveopt" => "__builtin_ia32_xsaveopt",
+        "llvm.x86.xsaveopt64" => "__builtin_ia32_xsaveopt64",
+        "llvm.x86.avx512.mask.loadu.w.512" => "__builtin_ia32_loaddquhi512_mask",
+        "llvm.x86.avx512.mask.loadu.b.512" => "__builtin_ia32_loaddquqi512_mask",
+        "llvm.x86.avx512.mask.loadu.w.256" => "__builtin_ia32_loaddquhi256_mask",
+        "llvm.x86.avx512.mask.loadu.b.256" => "__builtin_ia32_loaddquqi256_mask",
+        "llvm.x86.avx512.mask.loadu.w.128" => "__builtin_ia32_loaddquhi128_mask",
+        "llvm.x86.avx512.mask.loadu.b.128" => "__builtin_ia32_loaddquqi128_mask",
+        "llvm.x86.avx512.mask.storeu.w.512" => "__builtin_ia32_storedquhi512_mask",
+        "llvm.x86.avx512.mask.storeu.b.512" => "__builtin_ia32_storedquqi512_mask",
+        "llvm.x86.avx512.mask.storeu.w.256" => "__builtin_ia32_storedquhi256_mask",
+        "llvm.x86.avx512.mask.storeu.b.256" => "__builtin_ia32_storedquqi256_mask",
+        "llvm.x86.avx512.mask.storeu.w.128" => "__builtin_ia32_storedquhi128_mask",
+        "llvm.x86.avx512.mask.storeu.b.128" => "__builtin_ia32_storedquqi128_mask",
+        "llvm.x86.avx512.mask.expand.load.w.512" => "__builtin_ia32_expandloadhi512_mask",
+        "llvm.x86.avx512.mask.expand.load.w.256" => "__builtin_ia32_expandloadhi256_mask",
+        "llvm.x86.avx512.mask.expand.load.w.128" => "__builtin_ia32_expandloadhi128_mask",
+        "llvm.x86.avx512.mask.expand.load.b.512" => "__builtin_ia32_expandloadqi512_mask",
+        "llvm.x86.avx512.mask.expand.load.b.256" => "__builtin_ia32_expandloadqi256_mask",
+        "llvm.x86.avx512.mask.expand.load.b.128" => "__builtin_ia32_expandloadqi128_mask",
+        "llvm.x86.avx512.sitofp.round.v8f64.v8i64" => "__builtin_ia32_cvtqq2pd512_mask",
+        "llvm.x86.avx512.sitofp.round.v2f64.v2i64" => "__builtin_ia32_cvtqq2pd128_mask",
+        "llvm.x86.avx512.sitofp.round.v4f64.v4i64" => "__builtin_ia32_cvtqq2pd256_mask",
+        "llvm.x86.avx512.sitofp.round.v8f32.v8i64" => "__builtin_ia32_cvtqq2ps512_mask",
+        "llvm.x86.avx512.sitofp.round.v4f32.v4i64" => "__builtin_ia32_cvtqq2ps256_mask",
+        "llvm.x86.avx512.uitofp.round.v8f64.v8u64" => "__builtin_ia32_cvtuqq2pd512_mask",
+        "llvm.x86.avx512.uitofp.round.v2f64.v2u64" => "__builtin_ia32_cvtuqq2pd128_mask",
+        "llvm.x86.avx512.uitofp.round.v4f64.v4u64" => "__builtin_ia32_cvtuqq2pd256_mask",
+        "llvm.x86.avx512.uitofp.round.v8f32.v8u64" => "__builtin_ia32_cvtuqq2ps512_mask",
+        "llvm.x86.avx512.uitofp.round.v4f32.v4u64" => "__builtin_ia32_cvtuqq2ps256_mask",
+        "llvm.x86.avx512.mask.reduce.pd.512" => "__builtin_ia32_reducepd512_mask_round",
+        "llvm.x86.avx512.mask.reduce.ps.512" => "__builtin_ia32_reduceps512_mask_round",
+        "llvm.x86.avx512.mask.reduce.sd" => "__builtin_ia32_reducesd_mask_round",
+        "llvm.x86.avx512.mask.reduce.ss" => "__builtin_ia32_reducess_mask_round",
+        "llvm.x86.avx512.mask.loadu.d.256" => "__builtin_ia32_loaddqusi256_mask",
+        "llvm.x86.avx512.mask.loadu.q.256" => "__builtin_ia32_loaddqudi256_mask",
+        "llvm.x86.avx512.mask.loadu.ps.256" => "__builtin_ia32_loadups256_mask",
+        "llvm.x86.avx512.mask.loadu.pd.256" => "__builtin_ia32_loadupd256_mask",
+        "llvm.x86.avx512.mask.loadu.d.128" => "__builtin_ia32_loaddqusi128_mask",
+        "llvm.x86.avx512.mask.loadu.q.128" => "__builtin_ia32_loaddqudi128_mask",
+        "llvm.x86.avx512.mask.loadu.ps.128" => "__builtin_ia32_loadups128_mask",
+        "llvm.x86.avx512.mask.loadu.pd.128" => "__builtin_ia32_loadupd128_mask",
+        "llvm.x86.avx512.mask.load.d.512" => "__builtin_ia32_movdqa32load512_mask",
+        "llvm.x86.avx512.mask.load.q.512" => "__builtin_ia32_movdqa64load512_mask",
+        "llvm.x86.avx512.mask.load.ps.512" => "__builtin_ia32_loadaps512_mask",
+        "llvm.x86.avx512.mask.load.pd.512" => "__builtin_ia32_loadapd512_mask",
+        "llvm.x86.avx512.mask.load.d.256" => "__builtin_ia32_movdqa32load256_mask",
+        "llvm.x86.avx512.mask.load.q.256" => "__builtin_ia32_movdqa64load256_mask",
+        "llvm.x86.avx512fp16.mask.cmp.sh" => "__builtin_ia32_cmpsh_mask_round",
+        "llvm.x86.avx512fp16.vcomi.sh" => "__builtin_ia32_cmpsh_mask_round",
+        "llvm.x86.avx512fp16.add.ph.512" => "__builtin_ia32_addph512_mask_round",
+        "llvm.x86.avx512fp16.sub.ph.512" => "__builtin_ia32_subph512_mask_round",
+        "llvm.x86.avx512fp16.mul.ph.512" => "__builtin_ia32_mulph512_mask_round",
+        "llvm.x86.avx512fp16.div.ph.512" => "__builtin_ia32_divph512_mask_round",
+        "llvm.x86.avx512fp16.mask.vfmul.cph.512" => "__builtin_ia32_vfmulcph512_mask_round",
+        "llvm.x86.avx512fp16.mask.vfmul.csh" => "__builtin_ia32_vfmulcsh_mask_round",
+        "llvm.x86.avx512fp16.mask.vfcmul.cph.512" => "__builtin_ia32_vfcmulcph512_mask_round",
+        "llvm.x86.avx512fp16.mask.vfcmul.csh" => "__builtin_ia32_vfcmulcsh_mask_round",
+        "llvm.x86.avx512fp16.mask.vfmadd.cph.512" => "__builtin_ia32_vfmaddcph512_mask3_round",
+        "llvm.x86.avx512fp16.maskz.vfmadd.cph.512" => "__builtin_ia32_vfmaddcph512_maskz_round",
+        "llvm.x86.avx512fp16.mask.vfmadd.csh" => "__builtin_ia32_vfmaddcsh_mask3_round",
+        "llvm.x86.avx512fp16.maskz.vfmadd.csh" => "__builtin_ia32_vfmaddcsh_maskz_round",
+        "llvm.x86.avx512fp16.mask.vfcmadd.cph.512" => "__builtin_ia32_vfcmaddcph512_mask3_round",
+        "llvm.x86.avx512fp16.maskz.vfcmadd.cph.512" => "__builtin_ia32_vfcmaddcph512_maskz_round",
+        "llvm.x86.avx512fp16.mask.vfcmadd.csh" => "__builtin_ia32_vfcmaddcsh_mask3_round",
+        "llvm.x86.avx512fp16.maskz.vfcmadd.csh" => "__builtin_ia32_vfcmaddcsh_maskz_round",
+        "llvm.x86.avx512fp16.vfmadd.ph.512" => "__builtin_ia32_vfmaddph512_mask",
+        "llvm.x86.avx512fp16.vcvtsi642sh" => "__builtin_ia32_vcvtsi2sh64_round",
+        "llvm.x86.avx512fp16.vcvtusi642sh" => "__builtin_ia32_vcvtusi2sh64_round",
+        "llvm.x86.avx512fp16.vcvtsh2si64" => "__builtin_ia32_vcvtsh2si64_round",
+        "llvm.x86.avx512fp16.vcvtsh2usi64" => "__builtin_ia32_vcvtsh2usi64_round",
+        "llvm.x86.avx512fp16.vcvttsh2si64" => "__builtin_ia32_vcvttsh2si64_round",
+        "llvm.x86.avx512fp16.vcvttsh2usi64" => "__builtin_ia32_vcvttsh2usi64_round",
+        "llvm.x86.avx512.mask.load.ps.256" => "__builtin_ia32_loadaps256_mask",
+        "llvm.x86.avx512.mask.load.pd.256" => "__builtin_ia32_loadapd256_mask",
+        "llvm.x86.avx512.mask.load.d.128" => "__builtin_ia32_movdqa32load128_mask",
+        "llvm.x86.avx512.mask.load.q.128" => "__builtin_ia32_movdqa64load128_mask",
+        "llvm.x86.avx512.mask.load.ps.128" => "__builtin_ia32_loadaps128_mask",
+        "llvm.x86.avx512.mask.load.pd.128" => "__builtin_ia32_loadapd128_mask",
+        "llvm.x86.avx512.mask.storeu.d.256" => "__builtin_ia32_storedqusi256_mask",
+        "llvm.x86.avx512.mask.storeu.q.256" => "__builtin_ia32_storedqudi256_mask",
+        "llvm.x86.avx512.mask.storeu.ps.256" => "__builtin_ia32_storeups256_mask",
+        "llvm.x86.avx512.mask.storeu.pd.256" => "__builtin_ia32_storeupd256_mask",
+        "llvm.x86.avx512.mask.storeu.d.128" => "__builtin_ia32_storedqusi128_mask",
+        "llvm.x86.avx512.mask.storeu.q.128" => "__builtin_ia32_storedqudi128_mask",
+        "llvm.x86.avx512.mask.storeu.ps.128" => "__builtin_ia32_storeups128_mask",
+        "llvm.x86.avx512.mask.storeu.pd.128" => "__builtin_ia32_storeupd128_mask",
+        "llvm.x86.avx512.mask.store.d.512" => "__builtin_ia32_movdqa32store512_mask",
+        "llvm.x86.avx512.mask.store.q.512" => "__builtin_ia32_movdqa64store512_mask",
+        "llvm.x86.avx512.mask.store.ps.512" => "__builtin_ia32_storeaps512_mask",
+        "llvm.x86.avx512.mask.store.pd.512" => "__builtin_ia32_storeapd512_mask",
+        "llvm.x86.avx512.mask.store.d.256" => "__builtin_ia32_movdqa32store256_mask",
+        "llvm.x86.avx512.mask.store.q.256" => "__builtin_ia32_movdqa64store256_mask",
+        "llvm.x86.avx512.mask.store.ps.256" => "__builtin_ia32_storeaps256_mask",
+        "llvm.x86.avx512.mask.store.pd.256" => "__builtin_ia32_storeapd256_mask",
+        "llvm.x86.avx512.mask.store.d.128" => "__builtin_ia32_movdqa32store128_mask",
+        "llvm.x86.avx512.mask.store.q.128" => "__builtin_ia32_movdqa64store128_mask",
+        "llvm.x86.avx512.mask.store.ps.128" => "__builtin_ia32_storeaps128_mask",
+        "llvm.x86.avx512.mask.store.pd.128" => "__builtin_ia32_storeapd128_mask",
+        "llvm.x86.avx512fp16.vfmadd.f16" => "__builtin_ia32_vfmaddsh3_mask",
+        "llvm.x86.avx512fp16.vfmaddsub.ph.128" => "__builtin_ia32_vfmaddsubph128_mask",
+        "llvm.x86.avx512fp16.vfmaddsub.ph.256" => "__builtin_ia32_vfmaddsubph256_mask",
+        "llvm.x86.avx512fp16.vfmaddsub.ph.512" => "__builtin_ia32_vfmaddsubph512_mask",
+        "llvm.x86.avx512fp16.sqrt.ph.512" => "__builtin_ia32_sqrtph512_mask_round",
+        "llvm.x86.avx512fp16.mask.sqrt.sh" => "__builtin_ia32_sqrtsh_mask_round",
+        "llvm.x86.avx512fp16.max.ph.128" => "__builtin_ia32_maxph128_mask",
+        "llvm.x86.avx512fp16.max.ph.256" => "__builtin_ia32_maxph256_mask",
+        "llvm.x86.avx512fp16.max.ph.512" => "__builtin_ia32_maxph512_mask_round",
+        "llvm.x86.avx512fp16.min.ph.128" => "__builtin_ia32_minph128_mask",
+        "llvm.x86.avx512fp16.min.ph.256" => "__builtin_ia32_minph256_mask",
+        "llvm.x86.avx512fp16.min.ph.512" => "__builtin_ia32_minph512_mask_round",
+        "llvm.x86.avx512fp16.mask.getexp.sh" => "__builtin_ia32_getexpsh_mask_round",
+        "llvm.x86.avx512fp16.mask.rndscale.ph.128" => "__builtin_ia32_rndscaleph128_mask",
+        "llvm.x86.avx512fp16.mask.rndscale.ph.256" => "__builtin_ia32_rndscaleph256_mask",
+        "llvm.x86.avx512fp16.mask.rndscale.ph.512" => "__builtin_ia32_rndscaleph512_mask_round",
+        "llvm.x86.avx512fp16.mask.scalef.ph.512" => "__builtin_ia32_scalefph512_mask_round",
+        "llvm.x86.avx512fp16.mask.reduce.ph.512" => "__builtin_ia32_reduceph512_mask_round",
+        "llvm.x86.avx512fp16.mask.reduce.sh" => "__builtin_ia32_reducesh_mask_round",
+        "llvm.x86.avx512.sitofp.round.v8f16.v8i16" => "__builtin_ia32_vcvtw2ph128_mask",
+        "llvm.x86.avx512.sitofp.round.v16f16.v16i16" => "__builtin_ia32_vcvtw2ph256_mask",
+        "llvm.x86.avx512.sitofp.round.v32f16.v32i16" => "__builtin_ia32_vcvtw2ph512_mask_round",
+        "llvm.x86.avx512.uitofp.round.v8f16.v8u16" => "__builtin_ia32_vcvtuw2ph128_mask",
+        "llvm.x86.avx512.uitofp.round.v16f16.v16u16" => "__builtin_ia32_vcvtuw2ph256_mask",
+        "llvm.x86.avx512.uitofp.round.v32f16.v32u16" => "__builtin_ia32_vcvtuw2ph512_mask_round",
+        "llvm.x86.avx512.sitofp.round.v8f16.v8i32" => "__builtin_ia32_vcvtdq2ph256_mask",
+        "llvm.x86.avx512.sitofp.round.v16f16.v16i32" => "__builtin_ia32_vcvtdq2ph512_mask_round",
+        "llvm.x86.avx512fp16.vcvtsi2sh" => "__builtin_ia32_vcvtsi2sh32_round",
+        "llvm.x86.avx512.uitofp.round.v8f16.v8u32" => "__builtin_ia32_vcvtudq2ph256_mask",
+        "llvm.x86.avx512.uitofp.round.v16f16.v16u32" => "__builtin_ia32_vcvtudq2ph512_mask_round",
+        "llvm.x86.avx512fp16.vcvtusi2sh" => "__builtin_ia32_vcvtusi2sh32_round",
+        "llvm.x86.avx512.sitofp.round.v8f16.v8i64" => "__builtin_ia32_vcvtqq2ph512_mask_round",
+        "llvm.x86.avx512.uitofp.round.v8f16.v8u64" => "__builtin_ia32_vcvtuqq2ph512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvtps2phx.512" => "__builtin_ia32_vcvtps2phx512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvtpd2ph.512" => "__builtin_ia32_vcvtpd2ph512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvtph2uw.512" => "__builtin_ia32_vcvtph2uw512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvttph2w.512" => "__builtin_ia32_vcvttph2w512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvttph2uw.512" => "__builtin_ia32_vcvttph2uw512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvtph2dq.512" => "__builtin_ia32_vcvtph2dq512_mask_round",
+        "llvm.x86.avx512fp16.vcvtsh2si32" => "__builtin_ia32_vcvtsh2si32_round",
+        "llvm.x86.avx512fp16.mask.vcvtph2udq.512" => "__builtin_ia32_vcvtph2udq512_mask_round",
+        "llvm.x86.avx512fp16.vcvtsh2usi32" => "__builtin_ia32_vcvtsh2usi32_round",
+        "llvm.x86.avx512fp16.mask.vcvttph2dq.512" => "__builtin_ia32_vcvttph2dq512_mask_round",
+        "llvm.x86.avx512fp16.vcvttsh2si32" => "__builtin_ia32_vcvttsh2si32_round",
+        "llvm.x86.avx512fp16.mask.vcvttph2udq.512" => "__builtin_ia32_vcvttph2udq512_mask_round",
+        "llvm.x86.avx512fp16.vcvttsh2usi32" => "__builtin_ia32_vcvttsh2usi32_round",
+        "llvm.x86.avx512fp16.mask.vcvtph2qq.512" => "__builtin_ia32_vcvtph2qq512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvtph2uqq.512" => "__builtin_ia32_vcvtph2uqq512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvttph2qq.512" => "__builtin_ia32_vcvttph2qq512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvttph2uqq.512" => "__builtin_ia32_vcvttph2uqq512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvtph2psx.512" => "__builtin_ia32_vcvtph2psx512_mask_round",
+        "llvm.x86.avx512fp16.mask.vcvtph2pd.512" => "__builtin_ia32_vcvtph2pd512_mask_round",
+        "llvm.x86.avx512fp16.mask.vfcmadd.cph.256" => "__builtin_ia32_vfcmaddcph256_mask3",
+        "llvm.x86.avx512fp16.mask.vfmadd.cph.256" => "__builtin_ia32_vfmaddcph256_mask3",
+        "llvm.x86.avx512fp16.mask.vfcmadd.cph.128" => "__builtin_ia32_vfcmaddcph128_mask3",
+        "llvm.x86.avx512fp16.mask.vfmadd.cph.128" => "__builtin_ia32_vfmaddcph128_mask3",
+
+        // TODO: support the tile builtins:
+        "llvm.x86.ldtilecfg" => "__builtin_trap",
+        "llvm.x86.sttilecfg" => "__builtin_trap",
+        "llvm.x86.tileloadd64" => "__builtin_trap",
+        "llvm.x86.tilerelease" => "__builtin_trap",
+        "llvm.x86.tilestored64" => "__builtin_trap",
+        "llvm.x86.tileloaddt164" => "__builtin_trap",
+        "llvm.x86.tilezero" => "__builtin_trap",
+        "llvm.x86.tdpbf16ps" => "__builtin_trap",
+        "llvm.x86.tdpbssd" => "__builtin_trap",
+        "llvm.x86.tdpbsud" => "__builtin_trap",
+        "llvm.x86.tdpbusd" => "__builtin_trap",
+        "llvm.x86.tdpbuud" => "__builtin_trap",
+        "llvm.x86.tdpfp16ps" => "__builtin_trap",
+        "llvm.x86.tcmmimfp16ps" => "__builtin_trap",
+        "llvm.x86.tcmmrlfp16ps" => "__builtin_trap",
 
         // NOTE: this file is generated by https://github.com/GuillaumeGomez/llvmint/blob/master/generate_list.py
         _ => include!("archs.rs"),
