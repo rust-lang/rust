@@ -1295,11 +1295,7 @@ mod parse {
     ) -> bool {
         match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
             Some(hash_kind) => {
-                if hash_kind.supported_in_cargo() {
-                    *slot = Some(hash_kind);
-                } else {
-                    return false;
-                }
+                *slot = Some(hash_kind);
             }
             _ => return false,
         }

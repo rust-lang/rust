@@ -1400,15 +1400,6 @@ pub enum SourceFileHashAlgorithm {
     Blake3,
 }
 
-impl SourceFileHashAlgorithm {
-    pub fn supported_in_cargo(&self) -> bool {
-        match self {
-            Self::Md5 | Self::Sha1 => false,
-            Self::Sha256 | Self::Blake3 => true,
-        }
-    }
-}
-
 impl Display for SourceFileHashAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
