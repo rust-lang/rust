@@ -5,9 +5,9 @@
 //! The references are:
 //!
 //! - [Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2:
-//! Instruction Set Reference, A-Z][intel64_ref].
+//!   Instruction Set Reference, A-Z][intel64_ref].
 //! - [AMD64 Architecture Programmer's Manual, Volume 3: General-Purpose and
-//! System Instructions][amd64_ref].
+//!   System Instructions][amd64_ref].
 //!
 //! [Wikipedia][wikipedia_bmi] provides a quick overview of the instructions
 //! available.

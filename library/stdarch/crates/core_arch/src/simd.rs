@@ -473,7 +473,6 @@ simd_m_ty!(
     x7
 );
 
-
 // 512-bit wide types:
 
 simd_ty!(
@@ -965,6 +964,6 @@ pub(crate) fn debug_simd_finish<T: crate::fmt::Debug, const N: usize>(
     crate::fmt::Formatter::debug_tuple_fields_finish(
         formatter,
         type_name,
-        &crate::array::from_fn::<&dyn crate::fmt::Debug, N, _>(|i| &array[i])
+        &crate::array::from_fn::<&dyn crate::fmt::Debug, N, _>(|i| &array[i]),
     )
 }

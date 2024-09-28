@@ -242,14 +242,14 @@ pub unsafe fn _mm_extract_epi32<const IMM8: i32>(a: __m128i) -> i32 {
 ///     - `11`: Selects bits `[127:96]` from operand `b`.
 ///
 /// * Bits `[5:4]` specify the bits in the result to which the selected bits
-/// from operand `b` are copied:
+///   from operand `b` are copied:
 ///     - `00`: Copies the selected bits from `b` to result bits `[31:0]`.
 ///     - `01`: Copies the selected bits from `b` to result bits `[63:32]`.
 ///     - `10`: Copies the selected bits from `b` to result bits `[95:64]`.
 ///     - `11`: Copies the selected bits from `b` to result bits `[127:96]`.
 ///
 /// * Bits `[3:0]`: If any of these bits are set, the corresponding result
-/// element is cleared.
+///   element is cleared.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_insert_ps)
 #[inline]

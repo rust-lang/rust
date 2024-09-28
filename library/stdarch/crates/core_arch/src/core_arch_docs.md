@@ -142,8 +142,8 @@ detail!
   the standard library, this macro will perform necessary runtime detection
   to determine whether the CPU the program is running on supports the
   specified feature. In this case the macro will expand to a boolean
-expression evaluating to whether the local CPU has the AVX2 feature or
-not.
+  expression evaluating to whether the local CPU has the AVX2 feature or
+  not.
 
   Note that this macro, like the `arch` module, is platform-specific. For
   example calling `is_x86_feature_detected!("avx2")` on ARM will be a

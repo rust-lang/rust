@@ -1452,21 +1452,19 @@ pub unsafe fn _mm_getcsr() -> u32 {
 ///
 /// It contains several groups of flags:
 ///
-/// * *Exception flags* report which exceptions occurred since last they were
-/// reset.
+/// * *Exception flags* report which exceptions occurred since last they were reset.
 ///
-/// * *Masking flags* can be used to mask (ignore) certain exceptions. By
-/// default
-/// these flags are all set to 1, so all exceptions are masked. When an
-/// an exception is masked, the processor simply sets the exception flag and
-/// continues the operation. If the exception is unmasked, the flag is also set
-/// but additionally an exception handler is invoked.
+/// * *Masking flags* can be used to mask (ignore) certain exceptions. By default
+///   these flags are all set to 1, so all exceptions are masked. When
+///   an exception is masked, the processor simply sets the exception flag and
+///   continues the operation. If the exception is unmasked, the flag is also set
+///   but additionally an exception handler is invoked.
 ///
 /// * *Rounding mode flags* control the rounding mode of floating point
-/// instructions.
+///   instructions.
 ///
 /// * The *denormals-are-zero mode flag* turns all numbers which would be
-/// denormalized (exponent bits are all zeros) into zeros.
+///   denormalized (exponent bits are all zeros) into zeros.
 ///
 /// Note that modifying the masking flags, rounding mode, or denormals-are-zero mode flags leads to
 /// **immediate Undefined Behavior**: Rust assumes that these are always in their default state and
@@ -1489,14 +1487,12 @@ pub unsafe fn _mm_getcsr() -> u32 {
 /// * `_MM_EXCEPT_DIV_ZERO`: Division by zero occurred.
 ///
 /// * `_MM_EXCEPT_OVERFLOW`: A numeric overflow exception occurred, i.e., a
-/// result was too large to be represented (e.g., an `f32` with absolute
-/// value
-///   greater than `2^128`).
+///   result was too large to be represented (e.g., an `f32` with absolute
+///   value greater than `2^128`).
 ///
 /// * `_MM_EXCEPT_UNDERFLOW`: A numeric underflow exception occurred, i.e., a
-/// result was too small to be represented in a normalized way (e.g., an
-/// `f32`
-///   with absulte value smaller than `2^-126`.)
+///   result was too small to be represented in a normalized way (e.g., an
+///   `f32` with absolute value smaller than `2^-126`.)
 ///
 /// * `_MM_EXCEPT_INEXACT`: An inexact-result exception occurred (a.k.a.
 ///   precision exception). This means some precision was lost due to rounding.
@@ -1829,7 +1825,7 @@ pub const _MM_HINT_ET1: i32 = 6;
 /// * [`_MM_HINT_T1`](constant._MM_HINT_T1.html): Fetch into L2 and higher.
 ///
 /// * [`_MM_HINT_T2`](constant._MM_HINT_T2.html): Fetch into L3 and higher or
-/// an   implementation-specific choice (e.g., L2 if there is no L3).
+///   an implementation-specific choice (e.g., L2 if there is no L3).
 ///
 /// * [`_MM_HINT_NTA`](constant._MM_HINT_NTA.html): Fetch data using the
 ///   non-temporal access (NTA) hint. It may be a place closer than main memory
