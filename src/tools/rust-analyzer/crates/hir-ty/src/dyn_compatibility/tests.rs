@@ -5,29 +5,29 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 
-use crate::{object_safety::object_safety_with_callback, test_db::TestDB};
+use crate::{dyn_compatibility::dyn_compatibility_with_callback, test_db::TestDB};
 
 use super::{
+    DynCompatibilityViolation,
     MethodViolationCode::{self, *},
-    ObjectSafetyViolation,
 };
 
-use ObjectSafetyViolationKind::*;
+use DynCompatibilityViolationKind::*;
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum ObjectSafetyViolationKind {
+enum DynCompatibilityViolationKind {
     SizedSelf,
     SelfReferential,
     Method(MethodViolationCode),
     AssocConst,
     GAT,
-    HasNonSafeSuperTrait,
+    HasNonCompatibleSuperTrait,
 }
 
-fn check_object_safety<'a>(
+fn check_dyn_compatibility<'a>(
     ra_fixture: &str,
-    expected: impl IntoIterator<Item = (&'a str, Vec<ObjectSafetyViolationKind>)>,
+    expected: impl IntoIterator<Item = (&'a str, Vec<DynCompatibilityViolationKind>)>,
 ) {
     let mut expected: FxHashMap<_, _> =
         expected.into_iter().map(|(id, osvs)| (id, FxHashSet::from_iter(osvs))).collect();
@@ -53,18 +53,20 @@ fn check_object_safety<'a>(
             continue;
         };
         let mut osvs = FxHashSet::default();
-        object_safety_with_callback(&db, trait_id, &mut |osv| {
+        dyn_compatibility_with_callback(&db, trait_id, &mut |osv| {
             osvs.insert(match osv {
-                ObjectSafetyViolation::SizedSelf => SizedSelf,
-                ObjectSafetyViolation::SelfReferential => SelfReferential,
-                ObjectSafetyViolation::Method(_, mvc) => Method(mvc),
-                ObjectSafetyViolation::AssocConst(_) => AssocConst,
-                ObjectSafetyViolation::GAT(_) => GAT,
-                ObjectSafetyViolation::HasNonSafeSuperTrait(_) => HasNonSafeSuperTrait,
+                DynCompatibilityViolation::SizedSelf => SizedSelf,
+                DynCompatibilityViolation::SelfReferential => SelfReferential,
+                DynCompatibilityViolation::Method(_, mvc) => Method(mvc),
+                DynCompatibilityViolation::AssocConst(_) => AssocConst,
+                DynCompatibilityViolation::GAT(_) => GAT,
+                DynCompatibilityViolation::HasNonCompatibleSuperTrait(_) => {
+                    HasNonCompatibleSuperTrait
+                }
             });
             ControlFlow::Continue(())
         });
-        assert_eq!(osvs, expected, "Object safety violations for `{name}` do not match;");
+        assert_eq!(osvs, expected, "Dyn Compatibility violations for `{name}` do not match;");
     }
 
     let remains: Vec<_> = expected.keys().collect();
@@ -73,7 +75,7 @@ fn check_object_safety<'a>(
 
 #[test]
 fn item_bounds_can_reference_self() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: eq
 pub trait Foo {
@@ -88,7 +90,7 @@ pub trait Foo {
 
 #[test]
 fn associated_consts() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 trait Bar {
     const X: usize;
@@ -100,7 +102,7 @@ trait Bar {
 
 #[test]
 fn bounds_reference_self() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: eq
 trait X {
@@ -113,7 +115,7 @@ trait X {
 
 #[test]
 fn by_value_self() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Bar {
@@ -135,7 +137,7 @@ trait Quux {
 
 #[test]
 fn generic_methods() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Bar {
@@ -157,7 +159,7 @@ trait Qax {
 
 #[test]
 fn mentions_self() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Bar {
@@ -182,7 +184,7 @@ trait Quux {
 
 #[test]
 fn no_static() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Foo {
@@ -195,7 +197,7 @@ trait Foo {
 
 #[test]
 fn sized_self() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Bar: Sized {
@@ -205,7 +207,7 @@ trait Bar: Sized {
         [("Bar", vec![SizedSelf])],
     );
 
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Bar
@@ -220,7 +222,7 @@ trait Bar
 
 #[test]
 fn supertrait_gat() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait GatTrait {
@@ -229,13 +231,13 @@ trait GatTrait {
 
 trait SuperTrait<T>: GatTrait {}
 "#,
-        [("GatTrait", vec![GAT]), ("SuperTrait", vec![HasNonSafeSuperTrait])],
+        [("GatTrait", vec![GAT]), ("SuperTrait", vec![HasNonCompatibleSuperTrait])],
     );
 }
 
 #[test]
 fn supertrait_mentions_self() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Bar<T> {
@@ -251,7 +253,7 @@ trait Baz : Bar<Self> {
 
 #[test]
 fn rustc_issue_19538() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Foo {
@@ -260,13 +262,13 @@ trait Foo {
 
 trait Bar: Foo {}
 "#,
-        [("Foo", vec![Method(Generic)]), ("Bar", vec![HasNonSafeSuperTrait])],
+        [("Foo", vec![Method(Generic)]), ("Bar", vec![HasNonCompatibleSuperTrait])],
     );
 }
 
 #[test]
 fn rustc_issue_22040() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: fmt, eq, dispatch_from_dyn
 use core::fmt::Debug;
@@ -281,7 +283,7 @@ trait Expr: Debug + PartialEq {
 
 #[test]
 fn rustc_issue_102762() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: future, send, sync, dispatch_from_dyn, deref
 use core::pin::Pin;
@@ -313,7 +315,7 @@ pub trait Fetcher: Send + Sync {
 
 #[test]
 fn rustc_issue_102933() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: future, dispatch_from_dyn, deref
 use core::future::Future;
@@ -351,7 +353,7 @@ pub trait B2: Service<Response = i32> + B1 {
 
 #[test]
 fn rustc_issue_106247() {
-    check_object_safety(
+    check_dyn_compatibility(
         r#"
 //- minicore: sync, dispatch_from_dyn
 pub trait Trait {
@@ -363,8 +365,8 @@ pub trait Trait {
 }
 
 #[test]
-fn std_error_is_object_safe() {
-    check_object_safety(
+fn std_error_is_dyn_compatible() {
+    check_dyn_compatibility(
         r#"
 //- minicore: fmt, dispatch_from_dyn
 trait Erased<'a>: 'a {}
@@ -380,14 +382,14 @@ pub trait Error: core::fmt::Debug + core::fmt::Display {
 }
 
 #[test]
-fn lifetime_gat_is_object_unsafe() {
-    check_object_safety(
+fn lifetime_gat_is_dyn_incompatible() {
+    check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
 trait Foo {
     type Bar<'a>;
 }
 "#,
-        [("Foo", vec![ObjectSafetyViolationKind::GAT])],
+        [("Foo", vec![DynCompatibilityViolationKind::GAT])],
     );
 }
