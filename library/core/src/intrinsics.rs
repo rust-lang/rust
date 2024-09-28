@@ -2659,12 +2659,17 @@ extern "rust-intrinsic" {
     ///
     /// `catch_fn` must not unwind.
     ///
-    /// The third argument is a function called if an unwind occurs (both Rust unwinds and foreign
-    /// unwinds). This function takes the data pointer and a pointer to the target-specific
-    /// exception object that was caught. For more information, see the compiler's source as well as
-    /// std's `catch_unwind` implementation.
+    /// The third argument is a function called if an unwind occurs (both Rust `panic` and foreign
+    /// unwinds). This function takes the data pointer and a pointer to the target- and
+    /// runtime-specific exception object that was caught.
     ///
-    /// The stable version of this intrinsic is `std::panic::catch_unwind`.
+    /// Note that in the case of a foreign unwinding operation, the exception object data may not be
+    /// safely usable from Rust, and should not be directly exposed via the standard library. To
+    /// prevent unsafe access, the library implementation may either abort the process or present an
+    /// opaque error type to the user.
+    ///
+    /// For more information, see the compiler's source, as well as the documentation for the stable
+    /// version of this intrinsic, `std::panic::catch_unwind`.
     #[rustc_nounwind]
     pub fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
 
