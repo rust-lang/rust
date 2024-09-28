@@ -410,8 +410,9 @@ declare_clippy_lint! {
     /// `&Option<T>` in a function signature breaks encapsulation because the caller must own T
     /// and move it into an Option to call with it. When returned, the owner must internally store
     /// it as `Option<T>` in order to return it.
-    /// At a lower level `&Option<T>` points to memory that has `presence` bit flag + value,
-    /// whereas `Option<&T>` is always optimized to a single pointer.
+    /// At a lower level, `&Option<T>` points to memory with the `presence` bit flag plus the `T` value,
+    /// whereas `Option<&T>` is usually [optimized](https://doc.rust-lang.org/1.81.0/std/option/index.html#representation)
+    /// to a single pointer, so it may be more optimal.
     ///
     /// See this [YouTube video](https://www.youtube.com/watch?v=6c7pZYP_iIE) by
     /// Logan Smith for an in-depth explanation of why this is important.
