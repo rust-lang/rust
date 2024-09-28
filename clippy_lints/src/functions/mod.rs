@@ -432,8 +432,10 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // caller should use  foo(opt.as_ref())
-    /// fn foo(a: Option<&String>) {}
+    /// // caller should use  `foo1(opt.as_ref())`
+    /// fn foo1(a: Option<&String>) {}
+    /// // better yet, use string slice  `foo2(opt.as_deref())`
+    /// fn foo2(a: Option<&str>) {}
     /// # struct Unit {}
     /// # impl Unit {
     /// fn bar(&self) -> Option<&String> { None }
