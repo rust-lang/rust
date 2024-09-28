@@ -39,6 +39,12 @@ pub mod unstable {
         #[stable(feature = "rust1", since = "1.0.0")]
         pub struct Inner;
     }
+
+    //@ has stability/unstable/fn.nested_unstable.html \
+    //      '//span[@class="item-info"]//div[@class="stab unstable"]' \
+    //      'This is a nightly-only experimental API. (test, unstable)'
+    #[unstable(feature = "test", issue = "none")]
+    pub fn nested_unstable() {}
 }
 
 #[stable(feature = "rust2", since = "2.2.2")]
