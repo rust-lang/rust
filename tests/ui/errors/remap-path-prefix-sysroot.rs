@@ -1,6 +1,7 @@
 //@ revisions: with-remap without-remap
 //@ compile-flags: -g -Ztranslate-remapped-path-to-local-path=yes
 //@ [with-remap]compile-flags: --remap-path-prefix={{rust-src-base}}=remapped
+//@ [with-remap]compile-flags: --remap-path-prefix={{src-base}}=remapped-tests-ui
 //@ [without-remap]compile-flags:
 //@ error-pattern: E0507
 
