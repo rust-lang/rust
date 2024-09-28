@@ -443,7 +443,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.82.0"]
     pub REF_OPTION,
-    nursery,
+    pedantic,
     "function signature uses `&Option<T>` instead of `Option<&T>`"
 }
 
