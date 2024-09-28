@@ -221,7 +221,9 @@ pub enum Const<'tcx> {
 }
 
 impl<'tcx> Const<'tcx> {
-    pub fn identity_unevaluated(
+    /// Creates an unevaluated const from a `DefId` for a const item.
+    /// The binders of the const item still need to be instantiated.
+    pub fn from_unevaluated(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
