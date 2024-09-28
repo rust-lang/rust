@@ -1,0 +1,34 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |use core::hint::black_box;
+   LL|       |
+   LL|      3|fn foo(a: i32) {
+   LL|      3|    match black_box(a) {
+   LL|      1|        1 | 2 => {
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 2]
+  |  Branch (LL:13): [True: 0, False: 2]
+  ------------------
+   LL|      1|            consume(1);
+   LL|      1|        }
+   LL|      2|        _ => {
+   LL|      2|            consume(2);
+   LL|      2|        }
+   LL|       |    }
+   LL|      3|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn consume<T>(x: T) {
+   LL|       |    core::hint::black_box(x);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    foo(1);
+   LL|       |    foo(3);
+   LL|       |    foo(4);
+   LL|       |}
+
