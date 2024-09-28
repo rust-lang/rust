@@ -498,7 +498,7 @@ where
     /// Shifts the mask elements to the left by `OFFSET`, filling in with
     /// `padding` from the right.
     #[inline]
-    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    #[must_use = "method returns a new mask and does not mutate the original inputs"]
     pub fn shift_elements_left<const OFFSET: usize>(self, padding: T) -> Self {
         // Safety: swizzles are safe for masks
         unsafe { Self::from_int_unchecked(self.to_int().shift_elements_left::<OFFSET>(padding)) }
