@@ -1233,22 +1233,21 @@ fn is_vstx(name: &str) -> bool {
 
 fn create_doc_string(comment_string: &str, fn_name: &str) -> String {
     format!(
-        r#"{}
+        r#"{comment_string}
 ///
-/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/{})"#,
-        comment_string, fn_name
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/{fn_name})"#
     )
 }
 
 #[allow(clippy::too_many_arguments)]
 fn gen_aarch64(
     current_comment: &str,
-    current_fn: &Option<String>,
+    current_fn: Option<&str>,
     current_name: &str,
-    current_aarch64: &Option<String>,
-    link_aarch64: &Option<String>,
-    const_aarch64: &Option<String>,
-    constn: &Option<String>,
+    current_aarch64: Option<&str>,
+    link_aarch64: Option<&str>,
+    const_aarch64: Option<&str>,
+    constn: Option<&str>,
     in_t: &[&str; 3],
     out_t: &str,
     current_tests: &[(
@@ -1264,7 +1263,7 @@ fn gen_aarch64(
     fixed: &[String],
     multi_fn: &[String],
     fn_type: Fntype,
-    assert_instr_cfg: &Option<String>,
+    assert_instr_cfg: Option<&str>,
 ) -> (String, String) {
     let name = match suffix {
         Normal => format!("{current_name}{}", type_to_suffix(in_t[1])),
@@ -1332,23 +1331,20 @@ fn gen_aarch64(
         Rot => type_to_rot_suffix(current_name, type_to_suffix(out_t)),
         RotLane => type_to_rot_suffix(current_name, &type_to_lane_suffixes(out_t, in_t[2], false)),
     };
-    let current_fn = if let Some(current_fn) = current_fn.clone() {
+    let current_fn = if let Some(current_fn) = current_fn {
         if link_aarch64.is_some() {
             panic!("[{name}] Can't specify link and fn at the same time.")
         }
-        current_fn
+        current_fn.to_string()
     } else if link_aarch64.is_some() {
         format!("{name}_")
     } else {
         if multi_fn.is_empty() {
-            panic!(
-                "[{}] Either (multi) fn or link-aarch have to be specified.",
-                name
-            )
+            panic!("[{name}] Either (multi) fn or link-aarch have to be specified.")
         }
         String::new()
     };
-    let current_aarch64 = current_aarch64.clone().unwrap();
+    let current_aarch64 = current_aarch64.unwrap();
     let mut link_t: Vec<String> = vec![
         in_t[0].to_string(),
         in_t[1].to_string(),
@@ -1356,18 +1352,20 @@ fn gen_aarch64(
         out_t.to_string(),
     ];
     let mut ext_c = String::new();
-    if let Some(mut link_aarch64) = link_aarch64.clone() {
-        if link_aarch64.contains(':') {
+    if let Some(link_aarch64) = link_aarch64 {
+        let link_aarch64 = if link_aarch64.contains(':') {
             let links: Vec<_> = link_aarch64.split(':').map(|v| v.to_string()).collect();
             assert_eq!(links.len(), 5);
-            link_aarch64 = links[0].to_string();
             link_t = vec![
                 links[1].clone(),
                 links[2].clone(),
                 links[3].clone(),
                 links[4].clone(),
             ];
-        }
+            links[0].to_string()
+        } else {
+            link_aarch64.to_string()
+        };
         let link_aarch64 = if link_aarch64.starts_with("llvm") {
             ext(&link_aarch64, in_t, out_t)
         } else {
@@ -1388,13 +1386,9 @@ fn gen_aarch64(
                         match type_sub_len(in_t[1]) {
                             1 => format!("a: {sub}, n: i64, ptr: {ptr_type}"),
                             2 => format!("a: {sub}, b: {sub}, n: i64, ptr: {ptr_type}"),
-                            3 => format!(
-                                "a: {}, b: {}, c: {}, n: i64, ptr: {}",
-                                sub, sub, sub, ptr_type
-                            ),
+                            3 => format!("a: {sub}, b: {sub}, c: {sub}, n: i64, ptr: {ptr_type}"),
                             4 => format!(
-                                "a: {}, b: {}, c: {}, d: {}, n: i64, ptr: {}",
-                                sub, sub, sub, sub, ptr_type
+                                "a: {sub}, b: {sub}, c: {sub}, d: {sub}, n: i64, ptr: {ptr_type}"
                             ),
                             _ => panic!("unsupported type: {}", in_t[1]),
                         },
@@ -1452,11 +1446,10 @@ fn gen_aarch64(
         ext_c = format!(
             r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
-        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "{}")]
-        fn {}({}){};
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "{link_aarch64}")]
+        fn {current_fn}({ext_inputs}){ext_output};
     }}
     "#,
-            link_aarch64, current_fn, ext_inputs, ext_output,
         );
     };
     let const_declare = if let Some(constn) = constn {
@@ -1539,10 +1532,7 @@ fn gen_aarch64(
             3 => format!("(a: {}, b: {}, c: {})", in_t[0], in_t[1], in_t[2]),
             _ => panic!("unsupported parameter number"),
         };
-        format!(
-            "pub unsafe fn {}{}{} {}",
-            name, const_declare, fn_inputs, fn_output
-        )
+        format!("pub unsafe fn {name}{const_declare}{fn_inputs} {fn_output}")
     };
     let call_params = {
         if let (Some(const_aarch64), Some(_)) = (const_aarch64, link_aarch64) {
@@ -1561,19 +1551,17 @@ fn gen_aarch64(
                     ext_c,
                     current_fn,
                     subs,
-                    constn.as_deref().unwrap()
+                    constn.unwrap()
                 )
             } else {
                 match para_num {
                     1 => format!(
-                        r#"{}
-    {}{}(a, {})"#,
-                        multi_calls, ext_c, current_fn, const_aarch64
+                        r#"{multi_calls}
+    {ext_c}{current_fn}(a, {const_aarch64})"#
                     ),
                     2 => format!(
-                        r#"{}
-    {}{}(a, b, {})"#,
-                        multi_calls, ext_c, current_fn, const_aarch64
+                        r#"{multi_calls}
+    {ext_c}{current_fn}(a, b, {const_aarch64})"#
                     ),
                     _ => String::new(),
                 }
@@ -1791,7 +1779,7 @@ fn gen_store_test(
         output.push(']');
         let const_n = constn
             .as_deref()
-            .map_or(String::new(), |n| format!("::<{}>", n));
+            .map_or(String::new(), |n| format!("::<{n}>"));
         let t = format!(
             r#"
         let a: [{}; {}] = {};
@@ -1906,15 +1894,15 @@ fn gen_test(
 #[allow(clippy::too_many_arguments)]
 fn gen_arm(
     current_comment: &str,
-    current_fn: &Option<String>,
+    current_fn: Option<&str>,
     current_name: &str,
     current_arm: &str,
-    link_arm: &Option<String>,
-    current_aarch64: &Option<String>,
-    link_aarch64: &Option<String>,
-    const_arm: &Option<String>,
-    const_aarch64: &Option<String>,
-    constn: &Option<String>,
+    link_arm: Option<&str>,
+    current_aarch64: Option<&str>,
+    link_aarch64: Option<&str>,
+    const_arm: Option<&str>,
+    const_aarch64: Option<&str>,
+    constn: Option<&str>,
     in_t: &[&str; 3],
     out_t: &str,
     current_tests: &[(
@@ -1998,25 +1986,19 @@ fn gen_arm(
         Rot => type_to_rot_suffix(current_name, type_to_suffix(out_t)),
         RotLane => type_to_rot_suffix(current_name, &type_to_lane_suffixes(out_t, in_t[2], false)),
     };
-    let current_aarch64 = current_aarch64
-        .clone()
-        .unwrap_or_else(|| current_arm.to_string());
-    let current_fn = if let Some(current_fn) = current_fn.clone() {
+    let current_aarch64 = current_aarch64.to_owned().unwrap_or(current_arm);
+    let current_fn = if let Some(current_fn) = current_fn {
         if link_aarch64.is_some() || link_arm.is_some() {
             panic!(
-                "[{}] Can't specify link and function at the same time. {} / {:?} / {:?}",
-                name, current_fn, link_aarch64, link_arm
+                "[{name}] Can't specify link and function at the same time. {current_fn} / {link_aarch64:?} / {link_arm:?}"
             )
         }
-        current_fn
+        current_fn.to_string()
     } else if link_aarch64.is_some() || link_arm.is_some() {
         format!("{name}_")
     } else {
         if multi_fn.is_empty() {
-            panic!(
-                "[{}] Either fn or link-arm and link-aarch have to be specified.",
-                name
-            )
+            panic!("[{name}] Either fn or link-arm and link-aarch have to be specified.")
         }
         String::new()
     };
@@ -2049,29 +2031,33 @@ fn gen_arm(
         in_t[2].to_string(),
         out_t.to_string(),
     ];
-    if let (Some(mut link_arm), Some(mut link_aarch64)) = (link_arm.clone(), link_aarch64.clone()) {
-        if link_arm.contains(':') {
+    if let (Some(link_arm), Some(link_aarch64)) = (link_arm, link_aarch64) {
+        let link_arm = if link_arm.contains(':') {
             let links: Vec<_> = link_arm.split(':').map(|v| v.to_string()).collect();
             assert_eq!(links.len(), 5);
-            link_arm = links[0].to_string();
             link_arm_t = vec![
                 links[1].clone(),
                 links[2].clone(),
                 links[3].clone(),
                 links[4].clone(),
             ];
-        }
-        if link_aarch64.contains(':') {
+            links[0].to_string()
+        } else {
+            link_arm.to_string()
+        };
+        let link_aarch64 = if link_aarch64.contains(':') {
             let links: Vec<_> = link_aarch64.split(':').map(|v| v.to_string()).collect();
             assert_eq!(links.len(), 5);
-            link_aarch64 = links[0].to_string();
             link_aarch64_t = vec![
                 links[1].clone(),
                 links[2].clone(),
                 links[3].clone(),
                 links[4].clone(),
             ];
-        }
+            links[0].to_string()
+        } else {
+            link_aarch64.to_string()
+        };
         let link_arm = if link_arm.starts_with("llvm") {
             ext(&link_arm, in_t, out_t)
         } else {
@@ -2120,10 +2106,7 @@ fn gen_arm(
                         1 => format!("a: {sub_type}"),
                         2 => format!("a: {sub_type}, b: {sub_type}",),
                         3 => format!("a: {sub_type}, b: {sub_type}, c: {sub_type}",),
-                        4 => format!(
-                            "a: {}, b: {}, c: {}, d: {}",
-                            sub_type, sub_type, sub_type, sub_type,
-                        ),
+                        4 => format!("a: {sub_type}, b: {sub_type}, c: {sub_type}, d: {sub_type}",),
                         _ => panic!("unknown type: {}", in_t[1]),
                     };
                     let out = if out_t == "void" {
@@ -2175,10 +2158,7 @@ fn gen_arm(
                     1 => format!("a: {sub_type}"),
                     2 => format!("a: {sub_type}, b: {sub_type}",),
                     3 => format!("a: {sub_type}, b: {sub_type}, c: {sub_type}",),
-                    4 => format!(
-                        "a: {}, b: {}, c: {}, d: {}",
-                        sub_type, sub_type, sub_type, sub_type,
-                    ),
+                    4 => format!("a: {sub_type}, b: {sub_type}, c: {sub_type}, d: {sub_type}",),
                     _ => panic!("unknown type: {}", in_t[1]),
                 };
                 let (ptr_type, size) = if is_vstx(&name) {
@@ -2202,11 +2182,10 @@ fn gen_arm(
         ext_c_arm.push_str(&format!(
             r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
-        #[cfg_attr(target_arch = "arm", link_name = "{}")]
-        fn {}({}){};
+        #[cfg_attr(target_arch = "arm", link_name = "{link_arm}")]
+        fn {current_fn}({arm_ext_inputs}){arm_ext_output};
     }}
 "#,
-            link_arm, current_fn, arm_ext_inputs, arm_ext_output,
         ));
         let (aarch64_ext_inputs, aarch64_ext_output) = {
             if let Some(const_aarch64) = const_aarch64 {
@@ -2221,10 +2200,7 @@ fn gen_arm(
                         1 => format!("a: {sub_type}",),
                         2 => format!("a: {sub_type}, b: {sub_type}",),
                         3 => format!("a: {sub_type}, b: {sub_type}, c: {sub_type}",),
-                        4 => format!(
-                            "a: {}, b: {}, c: {}, d: {}",
-                            sub_type, sub_type, sub_type, sub_type,
-                        ),
+                        4 => format!("a: {sub_type}, b: {sub_type}, c: {sub_type}, d: {sub_type}",),
                         _ => panic!("unknown type: {}", in_t[1]),
                     };
                     inputs.push_str(&format!(", n: i64, ptr: {ptr_type}"));
@@ -2277,10 +2253,7 @@ fn gen_arm(
                     1 => format!("a: {sub_type}",),
                     2 => format!("a: {sub_type}, b: {sub_type}",),
                     3 => format!("a: {sub_type}, b: {sub_type}, c: {sub_type}",),
-                    4 => format!(
-                        "a: {}, b: {}, c: {}, d: {}",
-                        sub_type, sub_type, sub_type, sub_type,
-                    ),
+                    4 => format!("a: {sub_type}, b: {sub_type}, c: {sub_type}, d: {sub_type}",),
                     _ => panic!("unknown type: {}", in_t[1]),
                 };
                 let ptr_type = if is_vstx(&name) {
@@ -2304,11 +2277,10 @@ fn gen_arm(
         ext_c_aarch64.push_str(&format!(
             r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
-        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "{}")]
-        fn {}({}){};
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "{link_aarch64}")]
+        fn {current_fn}({aarch64_ext_inputs}){aarch64_ext_output};
     }}
 "#,
-            link_aarch64, current_fn, aarch64_ext_inputs, aarch64_ext_output,
         ));
     };
     let const_declare = if let Some(constn) = constn {
@@ -2362,10 +2334,7 @@ fn gen_arm(
             3 => format!("(a: {}, b: {}, c: {})", in_t[0], in_t[1], in_t[2]),
             _ => panic!("unsupported parameter number"),
         };
-        format!(
-            "pub unsafe fn {}{}{} {}",
-            name, const_declare, fn_inputs, fn_output
-        )
+        format!("pub unsafe fn {name}{const_declare}{fn_inputs} {fn_output}")
     };
     let function = if separate {
         let call_arm = {
@@ -2382,7 +2351,7 @@ fn gen_arm(
                         "{}(a as _, {}, {}, {})",
                         current_fn,
                         subs,
-                        constn.as_deref().unwrap(),
+                        constn.unwrap(),
                         type_bits(&type_to_sub_type(in_t[1])) / 8,
                     )
                 } else {
@@ -2392,7 +2361,7 @@ fn gen_arm(
                         consts[0].clone()
                     } else {
                         let const_arm = const_arm.replace("ttn", &type_to_native_type(in_t[1]));
-                        let mut cnt = String::from(format!("const {{ {}", in_t[1]));
+                        let mut cnt = format!("const {{ {}", in_t[1]);
                         cnt.push_str("([");
                         for i in 0..type_len(in_t[1]) {
                             if i != 0 {
@@ -2441,10 +2410,9 @@ fn gen_arm(
                 String::new()
             };
             format!(
-                r#"{}{{
-    {}{}{}
-}}"#,
-                fn_decl, multi_calls, ext_c_arm, arm_params
+                r#"{fn_decl}{{
+    {multi_calls}{ext_c_arm}{arm_params}
+}}"#
             )
         };
         let call_aarch64 = {
@@ -2462,7 +2430,7 @@ fn gen_arm(
                             "{}({}, {} as i64, a as _)",
                             current_fn,
                             subs,
-                            constn.as_deref().unwrap()
+                            constn.unwrap()
                         )
                     } else if const_aarch64.contains("dup-in_len-N as ttn") {
                         let const_aarch64 = format!("N as {}", type_to_native_type(in_t[1]));
@@ -2504,10 +2472,9 @@ fn gen_arm(
                     String::new()
                 };
             format!(
-                r#"{}{{
-    {}{}{}
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, aarch64_params
+                r#"{fn_decl}{{
+    {multi_calls}{ext_c_aarch64}{aarch64_params}
+}}"#
             )
         };
         let stable_aarch64 = target.stability(true);
@@ -2532,7 +2499,7 @@ fn gen_arm(
             target_feature_arm = target.to_target_feature_attr_arm(),
             target_feature_aarch64 = target.to_target_feature_attr_aarch64(),
             assert_arm = expand_intrinsic(current_arm, in_t[1]),
-            assert_aarch64 = expand_intrinsic(&current_aarch64, in_t[1]),
+            assert_aarch64 = expand_intrinsic(current_aarch64, in_t[1]),
         )
     } else {
         let call = {
@@ -2558,10 +2525,9 @@ fn gen_arm(
             };
             if stmts != String::new() {
                 format!(
-                    r#"{}{{
-    {}
-}}"#,
-                    fn_decl, stmts
+                    r#"{fn_decl}{{
+    {stmts}
+}}"#
                 )
             } else {
                 String::new()
@@ -2581,7 +2547,7 @@ fn gen_arm(
 "#,
             function_doc = create_doc_string(current_comment, &name),
             assert_arm = expand_intrinsic(current_arm, in_t[1]),
-            assert_aarch64 = expand_intrinsic(&current_aarch64, in_t[1]),
+            assert_aarch64 = expand_intrinsic(current_aarch64, in_t[1]),
             target_feature = target.to_target_feature_attr_shared(),
         )
     };
@@ -3446,15 +3412,15 @@ mod test {
                 if let Some(current_arm) = current_arm.clone() {
                     let (function, test) = gen_arm(
                         &current_comment,
-                        &current_fn,
+                        current_fn.as_deref(),
                         &current_name,
                         &current_arm,
-                        &link_arm,
-                        &current_aarch64,
-                        &link_aarch64,
-                        &const_arm,
-                        &const_aarch64,
-                        &constn,
+                        link_arm.as_deref(),
+                        current_aarch64.as_deref(),
+                        link_aarch64.as_deref(),
+                        const_arm.as_deref(),
+                        const_aarch64.as_deref(),
+                        constn.as_deref(),
                         &in_t,
                         out_t,
                         &current_tests,
@@ -3471,12 +3437,12 @@ mod test {
                 } else {
                     let (function, test) = gen_aarch64(
                         &current_comment,
-                        &current_fn,
+                        current_fn.as_deref(),
                         &current_name,
-                        &current_aarch64,
-                        &link_aarch64,
-                        &const_aarch64,
-                        &constn,
+                        current_aarch64.as_deref(),
+                        link_aarch64.as_deref(),
+                        const_aarch64.as_deref(),
+                        constn.as_deref(),
                         &in_t,
                         out_t,
                         &current_tests,
@@ -3486,7 +3452,7 @@ mod test {
                         &fixed,
                         &multi_fn,
                         fn_type,
-                        &assert_instr_cfg,
+                        assert_instr_cfg.as_deref(),
                     );
                     out_aarch64.push_str(&function);
                     tests_aarch64.push_str(&test);
