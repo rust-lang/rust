@@ -1,7 +1,7 @@
 //@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
 use std::sync::atomic::*;
-use std::thread::spawn;
+use std::thread::{self, spawn};
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
@@ -143,10 +143,84 @@ fn test_local_variable_lazy_write() {
     assert_eq!(val, 127);
 }
 
+// This test coverse the case where the non-atomic access come first.
+fn test_read_read_race1() {
+    let a = AtomicU16::new(0);
+
+    thread::scope(|s| {
+        s.spawn(|| {
+            let ptr = &a as *const AtomicU16 as *mut u16;
+            unsafe { ptr.read() };
+        });
+        s.spawn(|| {
+            thread::yield_now();
+
+            a.load(Ordering::SeqCst);
+        });
+    });
+}
+
+// This test coverse the case where the atomic access come first.
+fn test_read_read_race2() {
+    let a = AtomicU16::new(0);
+
+    thread::scope(|s| {
+        s.spawn(|| {
+            a.load(Ordering::SeqCst);
+        });
+        s.spawn(|| {
+            thread::yield_now();
+
+            let ptr = &a as *const AtomicU16 as *mut u16;
+            unsafe { ptr.read() };
+        });
+    });
+}
+
+fn mixed_size_read_read() {
+    fn convert(a: &AtomicU16) -> &[AtomicU8; 2] {
+        unsafe { std::mem::transmute(a) }
+    }
+
+    let a = AtomicU16::new(0);
+    let a16 = &a;
+    let a8 = convert(a16);
+
+    // Just two different-sized atomic reads without any writes are fine.
+    thread::scope(|s| {
+        s.spawn(|| {
+            a16.load(Ordering::SeqCst);
+        });
+        s.spawn(|| {
+            a8[0].load(Ordering::SeqCst);
+        });
+    });
+}
+
+fn failing_rmw_is_read() {
+    let a = AtomicUsize::new(0);
+    thread::scope(|s| {
+        s.spawn(|| unsafe {
+            // Non-atomic read.
+            let _val = *(&a as *const AtomicUsize).cast::<usize>();
+        });
+
+        s.spawn(|| {
+            // RMW that will fail.
+            // This is not considered a write, so there is no data race here.
+            a.compare_exchange(1, 2, Ordering::SeqCst, Ordering::SeqCst).unwrap_err();
+        });
+    });
+}
+
 pub fn main() {
     test_fence_sync();
     test_multiple_reads();
     test_rmw_no_block();
     test_simple_release();
     test_local_variable_lazy_write();
+    test_read_read_race1();
+    test_read_read_race2();
+    mixed_size_read_read();
+    failing_rmw_is_read();
 }

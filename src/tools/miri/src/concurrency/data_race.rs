@@ -191,7 +191,8 @@ struct AtomicMemoryCellClocks {
     /// The size of accesses to this atomic location.
     /// We use this to detect non-synchronized mixed-size accesses. Since all accesses must be
     /// aligned to their size, this is sufficient to detect imperfectly overlapping accesses.
-    size: Size,
+    /// `None` indicates that we saw multiple different sizes, which is okay as long as all accesses are reads.
+    size: Option<Size>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -265,6 +266,14 @@ impl AccessType {
         let mut msg = String::new();
 
         if let Some(size) = size {
+            if size == Size::ZERO {
+                // In this case there were multiple read accesss with different sizes and then a write.
+                // We will be reporting *one* of the other reads, but we don't have enough information
+                // to determine which one had which size.
+                assert!(self == AccessType::AtomicLoad);
+                assert!(ty.is_none());
+                return format!("multiple differently-sized atomic loads, including one load");
+            }
             msg.push_str(&format!("{}-byte {}", size.bytes(), msg))
         }
 
@@ -305,8 +314,7 @@ impl AccessType {
     }
 }
 
-/// Memory Cell vector clock metadata
-/// for data-race detection.
+/// Per-byte vector clock metadata for data-race detection.
 #[derive(Clone, PartialEq, Eq, Debug)]
 struct MemoryCellClocks {
     /// The vector-clock timestamp and the thread that did the last non-atomic write. We don't need
@@ -325,8 +333,8 @@ struct MemoryCellClocks {
     read: VClock,
 
     /// Atomic access, acquire, release sequence tracking clocks.
-    /// For non-atomic memory in the common case this
-    /// value is set to None.
+    /// For non-atomic memory this value is set to None.
+    /// For atomic memory, each byte carries this information.
     atomic_ops: Option<Box<AtomicMemoryCellClocks>>,
 }
 
@@ -336,7 +344,7 @@ impl AtomicMemoryCellClocks {
             read_vector: Default::default(),
             write_vector: Default::default(),
             sync_vector: Default::default(),
-            size,
+            size: Some(size),
         }
     }
 }
@@ -383,17 +391,23 @@ impl MemoryCellClocks {
         &mut self,
         thread_clocks: &ThreadClockSet,
         size: Size,
+        write: bool,
     ) -> Result<&mut AtomicMemoryCellClocks, DataRace> {
         match self.atomic_ops {
             Some(ref mut atomic) => {
                 // We are good if the size is the same or all atomic accesses are before our current time.
-                if atomic.size == size {
+                if atomic.size == Some(size) {
                     Ok(atomic)
                 } else if atomic.read_vector <= thread_clocks.clock
                     && atomic.write_vector <= thread_clocks.clock
                 {
-                    // This is now the new size that must be used for accesses here.
-                    atomic.size = size;
+                    // We are fully ordered after all previous accesses, so we can change the size.
+                    atomic.size = Some(size);
+                    Ok(atomic)
+                } else if !write && atomic.write_vector <= thread_clocks.clock {
+                    // This is a read, and it is ordered after the last write. It's okay for the
+                    // sizes to mismatch, as long as no writes with a different size occur later.
+                    atomic.size = None;
                     Ok(atomic)
                 } else {
                     Err(DataRace)
@@ -499,7 +513,7 @@ impl MemoryCellClocks {
         Ok(())
     }
 
-    /// Detect data-races with an atomic read, caused by a non-atomic access that does
+    /// Detect data-races with an atomic read, caused by a non-atomic write that does
     /// not happen-before the atomic-read.
     fn atomic_read_detect(
         &mut self,
@@ -508,14 +522,10 @@ impl MemoryCellClocks {
         access_size: Size,
     ) -> Result<(), DataRace> {
         trace!("Atomic read with vectors: {:#?} :: {:#?}", self, thread_clocks);
-        let atomic = self.atomic_access(thread_clocks, access_size)?;
+        let atomic = self.atomic_access(thread_clocks, access_size, /*write*/ false)?;
         atomic.read_vector.set_at_index(&thread_clocks.clock, index);
-        // Make sure the last non-atomic write and all non-atomic reads were before this access.
-        if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
-            Ok(())
-        } else {
-            Err(DataRace)
-        }
+        // Make sure the last non-atomic write was before this access.
+        if self.write_was_before(&thread_clocks.clock) { Ok(()) } else { Err(DataRace) }
     }
 
     /// Detect data-races with an atomic write, either with a non-atomic read or with
@@ -527,7 +537,7 @@ impl MemoryCellClocks {
         access_size: Size,
     ) -> Result<(), DataRace> {
         trace!("Atomic write with vectors: {:#?} :: {:#?}", self, thread_clocks);
-        let atomic = self.atomic_access(thread_clocks, access_size)?;
+        let atomic = self.atomic_access(thread_clocks, access_size, /*write*/ true)?;
         atomic.write_vector.set_at_index(&thread_clocks.clock, index);
         // Make sure the last non-atomic write and all non-atomic reads were before this access.
         if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
@@ -552,11 +562,9 @@ impl MemoryCellClocks {
         }
         thread_clocks.clock.index_mut(index).set_read_type(read_type);
         if self.write_was_before(&thread_clocks.clock) {
+            // We must be ordered-after all atomic writes.
             let race_free = if let Some(atomic) = self.atomic() {
-                // We must be ordered-after all atomic accesses, reads and writes.
-                // This ensures we don't mix atomic and non-atomic accesses.
                 atomic.write_vector <= thread_clocks.clock
-                    && atomic.read_vector <= thread_clocks.clock
             } else {
                 true
             };
@@ -957,9 +965,7 @@ impl VClockAlloc {
         let mut other_size = None; // if `Some`, this was a size-mismatch race
         let write_clock;
         let (other_access, other_thread, other_clock) =
-            // First check the atomic-nonatomic cases. If it looks like multiple
-            // cases apply, this one should take precedence, else it might look like
-            // we are reporting races between two non-atomic reads.
+            // First check the atomic-nonatomic cases.
             if !access.is_atomic() &&
                 let Some(atomic) = mem_clocks.atomic() &&
                 let Some(idx) = Self::find_gt_index(&atomic.write_vector, &active_clocks.clock)
@@ -977,10 +983,10 @@ impl VClockAlloc {
             } else if let Some(idx) = Self::find_gt_index(&mem_clocks.read, &active_clocks.clock) {
                 (AccessType::NaRead(mem_clocks.read[idx].read_type()), idx, &mem_clocks.read)
             // Finally, mixed-size races.
-            } else if access.is_atomic() && let Some(atomic) = mem_clocks.atomic() && atomic.size != access_size {
+            } else if access.is_atomic() && let Some(atomic) = mem_clocks.atomic() && atomic.size != Some(access_size) {
                 // This is only a race if we are not synchronized with all atomic accesses, so find
                 // the one we are not synchronized with.
-                other_size = Some(atomic.size);
+                other_size = Some(atomic.size.unwrap_or(Size::ZERO));
                 if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &active_clocks.clock)
                     {
                         (AccessType::AtomicStore, idx, &atomic.write_vector)
@@ -1007,10 +1013,7 @@ impl VClockAlloc {
             assert!(!involves_non_atomic);
             Some("overlapping unsynchronized atomic accesses must use the same access size")
         } else if access.is_read() && other_access.is_read() {
-            assert!(involves_non_atomic);
-            Some(
-                "overlapping atomic and non-atomic accesses must be synchronized, even if both are read-only",
-            )
+            panic!("there should be no same-size read-read races")
         } else {
             None
         };
