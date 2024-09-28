@@ -526,7 +526,6 @@ mod c {
                 ("__floatsitf", "floatsitf.c"),
                 ("__floatunditf", "floatunditf.c"),
                 ("__floatunsitf", "floatunsitf.c"),
-                ("__powitf2", "powitf2.c"),
                 ("__fe_getround", "fp_mode.c"),
                 ("__fe_raise_inexact", "fp_mode.c"),
             ]);
