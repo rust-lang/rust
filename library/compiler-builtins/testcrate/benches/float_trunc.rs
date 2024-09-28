@@ -14,8 +14,7 @@ float_bench! {
     sys_available: not(feature = "no-sys-f16"),
     asm: [
         #[cfg(target_arch = "aarch64")] {
-            // FIXME(f16_f128): remove `from_bits()` after f16 asm support (rust-lang/rust/#116909)
-            let ret: u16;
+            let ret: f16;
             asm!(
                 "fcvt    {ret:h}, {a:s}",
                 a = in(vreg) a,
@@ -23,7 +22,7 @@ float_bench! {
                 options(nomem, nostack, pure),
             );
 
-            f16::from_bits(ret)
+            ret
         };
     ],
 }
@@ -37,8 +36,7 @@ float_bench! {
     sys_available: not(feature = "no-sys-f16"),
     asm: [
         #[cfg(target_arch = "aarch64")] {
-            // FIXME(f16_f128): remove `from_bits()` after f16 asm support (rust-lang/rust/#116909)
-            let ret: u16;
+            let ret: f16;
             asm!(
                 "fcvt    {ret:h}, {a:d}",
                 a = in(vreg) a,
@@ -46,7 +44,7 @@ float_bench! {
                 options(nomem, nostack, pure),
             );
 
-            f16::from_bits(ret)
+            ret
         };
     ],
 }
@@ -138,9 +136,7 @@ pub fn float_trunc() {
         // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
         #[cfg(f16_enabled)]
         #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
-        {
-            trunc_f128_f16(&mut criterion);
-        }
+        trunc_f128_f16(&mut criterion);
 
         trunc_f128_f32(&mut criterion);
         trunc_f128_f64(&mut criterion);
