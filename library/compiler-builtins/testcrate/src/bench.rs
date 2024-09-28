@@ -82,12 +82,9 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
 
 /// Still run benchmarks/tests but don't check correctness between compiler-builtins and
 /// assembly functions
-pub fn skip_asm_checks(test_name: &str) -> bool {
-    // FIXME(f16_f128): rounding error
-    // <https://github.com/rust-lang/compiler-builtins/issues/616>
-    const SKIPPED: &[&str] = &["mul_f32", "mul_f64"];
-
-    SKIPPED.contains(&test_name)
+pub fn skip_asm_checks(_test_name: &str) -> bool {
+    // Nothing to skip at this time
+    false
 }
 
 /// Create a comparison of the system symbol, compiler_builtins, and optionally handwritten
