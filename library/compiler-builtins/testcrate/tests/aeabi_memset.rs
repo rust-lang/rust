@@ -5,7 +5,6 @@
     feature = "mem"
 ))]
 #![feature(compiler_builtins_lib)]
-#![feature(lang_items)]
 #![no_std]
 
 extern crate compiler_builtins;
