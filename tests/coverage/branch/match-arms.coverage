@@ -120,6 +120,4 @@
    LL|       |        call_everything(Enum::D(d));
    LL|       |    }
    LL|       |}
-   LL|       |
-   LL|       |// FIXME(#124118) Support match expressions with or-patterns.
 

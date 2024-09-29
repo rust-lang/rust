@@ -18,12 +18,10 @@
    LL|       |    }
    LL|      3|}
    LL|       |
-   LL|       |
    LL|       |#[coverage(off)]
    LL|       |fn main() {
    LL|       |    foo(1, 2);
    LL|       |    foo(1, 99);
    LL|       |    foo(2, 5);
    LL|       |}
-   LL|       |
 
