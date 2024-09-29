@@ -8,10 +8,6 @@ use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered on mutating an immutable variable.
 pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option<Diagnostic> {
-    if d.span.file_id.macro_file().is_some() {
-        // FIXME: Our infra can't handle allow from within macro expansions rn
-        return None;
-    }
     let fixes = (|| {
         if d.local.is_ref(ctx.sema.db) {
             // There is no simple way to add `mut` to `ref x` and `ref mut x`
@@ -53,10 +49,6 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
 // This diagnostic is triggered when a mutable variable isn't actually mutated.
 pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Option<Diagnostic> {
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
-    if ast.file_id.macro_file().is_some() {
-        // FIXME: Our infra can't handle allow from within macro expansions rn
-        return None;
-    }
     let fixes = (|| {
         let file_id = ast.file_id.file_id()?;
         let mut edit_builder = TextEdit::builder();
