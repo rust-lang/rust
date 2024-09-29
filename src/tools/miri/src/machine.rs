@@ -4,40 +4,29 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
-use std::fmt;
 use std::path::Path;
-use std::process;
+use std::{fmt, process};
 
-use rand::Rng;
-use rand::SeedableRng;
 use rand::rngs::StdRng;
-
+use rand::{Rng, SeedableRng};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
-use rustc_middle::{
-    mir,
-    query::TyCtxtAt,
-    ty::{
-        self, Instance, Ty, TyCtxt,
-        layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout},
-    },
-};
+use rustc_middle::mir;
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
-use crate::{
-    concurrency::{
-        cpu_affinity::{self, CpuAffinityMask},
-        data_race::{self, NaReadType, NaWriteType},
-        weak_memory,
-    },
-    *,
-};
+use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
+use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
+use crate::concurrency::weak_memory;
+use crate::*;
 
 /// First real-time signal.
 /// `signal(7)` says this must be between 32 and 64 and specifies 34 or 35

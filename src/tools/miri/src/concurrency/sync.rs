@@ -1,5 +1,6 @@
 use std::any::Any;
-use std::collections::{VecDeque, hash_map::Entry};
+use std::collections::VecDeque;
+use std::collections::hash_map::Entry;
 use std::ops::Not;
 use std::time::Duration;
 

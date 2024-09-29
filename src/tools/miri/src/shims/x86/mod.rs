@@ -1,6 +1,6 @@
 use rand::Rng as _;
-
-use rustc_apfloat::{Float, ieee::Single};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::Single;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::{mir, ty};

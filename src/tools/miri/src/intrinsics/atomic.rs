@@ -1,4 +1,5 @@
-use rustc_middle::{mir, mir::BinOp, ty};
+use rustc_middle::mir::BinOp;
+use rustc_middle::{mir, ty};
 
 use self::helpers::check_arg_count;
 use crate::*;

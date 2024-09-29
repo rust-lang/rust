@@ -12,18 +12,17 @@
 
 use std::{fmt, mem};
 
-use smallvec::SmallVec;
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::Span;
 use rustc_target::abi::Size;
+use smallvec::SmallVec;
 
-use crate::borrow_tracker::tree_borrows::{
-    Permission,
-    diagnostics::{self, NodeDebugInfo, TbError, TransitionError},
-    perms::PermTransition,
-    unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap},
+use crate::borrow_tracker::tree_borrows::Permission;
+use crate::borrow_tracker::tree_borrows::diagnostics::{
+    self, NodeDebugInfo, TbError, TransitionError,
 };
+use crate::borrow_tracker::tree_borrows::perms::PermTransition;
+use crate::borrow_tracker::tree_borrows::unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap};
 use crate::borrow_tracker::{GlobalState, ProtectorKind};
 use crate::*;
 

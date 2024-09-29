@@ -7,7 +7,6 @@ use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
 use either::Either;
-
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;

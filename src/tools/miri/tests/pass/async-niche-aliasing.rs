@@ -1,13 +1,11 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
-use std::{
-    future::Future,
-    mem::MaybeUninit,
-    pin::Pin,
-    sync::Arc,
-    task::{Context, Poll, Wake},
-};
+use std::future::Future;
+use std::mem::MaybeUninit;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll, Wake};
 
 struct ThingAdder<'a> {
     // Using `MaybeUninit` to ensure there are no niches here.

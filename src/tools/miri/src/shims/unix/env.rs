@@ -1,7 +1,6 @@
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
-use std::mem;
+use std::{env, mem};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::Ty;

@@ -1,29 +1,22 @@
-use std::cmp;
 use std::collections::BTreeSet;
-use std::iter;
 use std::num::NonZero;
 use std::sync::Mutex;
 use std::time::Duration;
+use std::{cmp, iter};
 
 use rand::RngCore;
-
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_hir::{
-    Safety,
-    def::{DefKind, Namespace},
-    def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE},
-};
+use rustc_hir::Safety;
+use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::{FnAbiOf, MaybeResult};
-use rustc_middle::ty::{
-    self, FloatTy, IntTy, Ty, TyCtxt, UintTy,
-    layout::{LayoutOf, TyAndLayout},
-};
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
+use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Align, FieldIdx, FieldsShape, Size, Variants};

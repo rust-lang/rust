@@ -5,10 +5,8 @@ use rustc_data_structures::fx::FxHashSet;
 use tracing::trace;
 
 use crate::ProvenanceExtra;
-use crate::borrow_tracker::{
-    AccessKind, BorTag,
-    stacked_borrows::{Item, Permission},
-};
+use crate::borrow_tracker::stacked_borrows::{Item, Permission};
+use crate::borrow_tracker::{AccessKind, BorTag};
 
 /// Exactly what cache size we should use is a difficult trade-off. There will always be some
 /// workload which has a `BorTag` working set which exceeds the size of the cache, and ends up

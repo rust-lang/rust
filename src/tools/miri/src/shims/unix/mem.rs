@@ -14,8 +14,9 @@
 //! munmap shim which would partially unmap a region of address space previously mapped by mmap will
 //! report UB.
 
-use crate::*;
 use rustc_target::abi::Size;
+
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
