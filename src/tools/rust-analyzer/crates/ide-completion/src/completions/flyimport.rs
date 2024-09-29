@@ -258,6 +258,8 @@ fn import_on_the_fly(
 
     let import_cfg = ctx.config.import_path_config();
 
+    let completed_name = ctx.token.to_string();
+
     import_assets
         .search_for_imports(&ctx.sema, import_cfg, ctx.config.insert_use.prefix_kind)
         .filter(ns_filter)
@@ -271,7 +273,13 @@ fn import_on_the_fly(
             if let ModuleDef::Trait(trait_) = import.item_to_import.into_module_def() {
                 let excluded = ctx.exclude_flyimport_traits.contains(&trait_);
                 let trait_itself_imported = import.item_to_import == import.original_item;
-                !excluded || trait_itself_imported
+                if !excluded || trait_itself_imported {
+                    return true;
+                }
+
+                let item = import.original_item.into_module_def();
+                // Filter that item out, unless its name matches the name the user wrote exactly - in which case preserve it.
+                item.name(ctx.db).is_some_and(|name| name.eq_ident(&completed_name))
             } else {
                 true
             }
@@ -355,6 +363,8 @@ fn import_on_the_fly_method(
 
     let cfg = ctx.config.import_path_config();
 
+    let completed_name = ctx.token.to_string();
+
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
         .filter(|import| {
@@ -363,7 +373,13 @@ fn import_on_the_fly_method(
         })
         .filter(|import| {
             if let ModuleDef::Trait(trait_) = import.item_to_import.into_module_def() {
-                !ctx.exclude_flyimport_traits.contains(&trait_)
+                if !ctx.exclude_flyimport_traits.contains(&trait_) {
+                    return true;
+                }
+
+                let item = import.original_item.into_module_def();
+                // Filter that method out, unless its name matches the name the user wrote exactly - in which case preserve it.
+                item.name(ctx.db).is_some_and(|name| name.eq_ident(&completed_name))
             } else {
                 true
             }
