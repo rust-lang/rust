@@ -81,7 +81,13 @@ impl flags::AnalysisStats {
             with_proc_macro_server: if self.disable_proc_macros {
                 ProcMacroServerChoice::None
             } else {
-                ProcMacroServerChoice::Sysroot
+                match self.proc_macro_srv {
+                    Some(ref path) => {
+                        let path = vfs::AbsPathBuf::assert_utf8(path.to_owned());
+                        ProcMacroServerChoice::Explicit(path)
+                    }
+                    None => ProcMacroServerChoice::Sysroot,
+                }
             },
             prefill_caches: false,
         };
