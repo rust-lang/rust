@@ -48,7 +48,7 @@ impl DocTestBuilder {
     ) -> Self {
         let can_merge_doctests = can_merge_doctests
             && lang_str.is_some_and(|lang_str| {
-                !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone
+                !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone_crate
             });
 
         let SourceInfo { crate_attrs, maybe_crate_attrs, crates, everything_else } =
