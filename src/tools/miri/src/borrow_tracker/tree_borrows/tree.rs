@@ -637,7 +637,7 @@ impl<'tcx> Tree {
         {
             perms.insert(idx, perm);
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Deallocation requires
@@ -688,7 +688,7 @@ impl<'tcx> Tree {
                     },
                 )?;
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Map the per-node and per-location `LocationState::perform_access`
@@ -827,7 +827,7 @@ impl<'tcx> Tree {
                 }
             }
         }
-        Ok(())
+        interp_ok(())
     }
 }
 

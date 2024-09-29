@@ -223,10 +223,7 @@ pub fn report_error<'tcx>(
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
-            &Exit { code, leak_check } => {
-                e.discard_interp_err();
-                return Some((code, leak_check));
-            }
+            &Exit { code, leak_check } => return Some((code, leak_check)),
             Abort(_) => Some("abnormal termination"),
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
                 Some("unsupported operation"),
@@ -378,7 +375,6 @@ pub fn report_error<'tcx>(
                 InvalidProgramInfo::AlreadyReported(_)
             ) => {
                 // This got already reported. No point in reporting it again.
-                e.discard_interp_err();
                 return None;
             }
             _ =>

@@ -62,7 +62,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let handler = this
                     .lookup_exported_symbol(Symbol::intern(name))?
                     .expect("missing alloc error handler symbol");
-                return Ok(Some(handler));
+                return interp_ok(Some(handler));
             }
             _ => {}
         }
@@ -80,18 +80,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             EmulateItemResult::AlreadyJumped => (),
             EmulateItemResult::NotSupported => {
                 if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                    return Ok(Some(body));
+                    return interp_ok(Some(body));
                 }
 
                 this.handle_unsupported_foreign_item(format!(
                     "can't call foreign function `{link_name}` on OS `{os}`",
                     os = this.tcx.sess.target.os,
                 ))?;
-                return Ok(None);
+                return interp_ok(None);
             }
         }
 
-        Ok(None)
+        interp_ok(None)
     }
 
     fn is_dyn_sym(&self, name: &str) -> bool {
@@ -116,7 +116,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let res = self.emulate_foreign_item(sym.0, abi, args, dest, ret, unwind)?;
         assert!(res.is_none(), "DynSyms that delegate are not supported");
-        Ok(())
+        interp_ok(())
     }
 
     /// Lookup the body of a function that has `link_name` as the symbol name.
@@ -143,7 +143,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         tcx.item_name(def_id)
                     } else {
                         // Skip over items without an explicitly defined symbol name.
-                        return Ok(());
+                        return interp_ok(());
                     };
                     if symbol_name == link_name {
                         if let Some((original_instance, original_cnum)) = instance_and_crate {
@@ -175,15 +175,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                         instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
                     }
-                    Ok(())
+                    interp_ok(())
                 })?;
 
                 e.insert(instance_and_crate.map(|ic| ic.0))
             }
         };
         match instance {
-            None => Ok(None), // no symbol with this name
-            Some(instance) => Ok(Some((this.load_mir(instance.def, None)?, instance))),
+            None => interp_ok(None), // no symbol with this name
+            Some(instance) => interp_ok(Some((this.load_mir(instance.def, None)?, instance))),
         }
     }
 }
@@ -214,7 +214,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn emulate_foreign_item_inner(
@@ -234,7 +234,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
             if this.call_native_fn(link_name, dest, args)? {
-                return Ok(EmulateItemResult::NeedsReturn);
+                return interp_ok(EmulateItemResult::NeedsReturn);
             }
         }
 
@@ -268,7 +268,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         //
         //     // ...
         //
-        //     Ok(Scalar::from_u32(42))
+        //     interp_ok(Scalar::from_u32(42))
         // }
         // ```
         // You might find existing shims not following this pattern, most
@@ -281,7 +281,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "miri_start_unwind" => {
                 let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 this.handle_miri_start_unwind(payload)?;
-                return Ok(EmulateItemResult::NeedsUnwind);
+                return interp_ok(EmulateItemResult::NeedsUnwind);
             }
             "miri_run_provenance_gc" => {
                 let [] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -294,6 +294,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     err_machine_stop!(TerminationInfo::Abort(format!(
                         "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
                     )))
+                    .into()
                 })?;
                 this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
             }
@@ -524,7 +525,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "__rust_alloc" => return this.emulate_allocator(default),
                     "miri_alloc" => {
                         default(this)?;
-                        return Ok(EmulateItemResult::NeedsReturn);
+                        return interp_ok(EmulateItemResult::NeedsReturn);
                     }
                     _ => unreachable!(),
                 }
@@ -584,7 +585,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     "miri_dealloc" => {
                         default(this)?;
-                        return Ok(EmulateItemResult::NeedsReturn);
+                        return interp_ok(EmulateItemResult::NeedsReturn);
                     }
                     _ => unreachable!(),
                 }
@@ -1000,11 +1001,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
-                    _ => Ok(EmulateItemResult::NotSupported),
+                    _ => interp_ok(EmulateItemResult::NotSupported),
                 },
         };
         // We only fall through to here if we did *not* hit the `_` arm above,
         // i.e., if we actually emulated the function with one of the shims.
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

@@ -348,8 +348,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The only thing that needs to be ensured is the correct calling convention.
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
             }
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

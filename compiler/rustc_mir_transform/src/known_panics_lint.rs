@@ -6,7 +6,7 @@ use std::fmt::Debug;
 
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
-    DiscardInterpError, ImmTy, InterpCx, InterpResult, Projectable, Scalar, format_interp_error,
+    ImmTy, InterpCx, InterpResult, Projectable, Scalar, format_interp_error, interp_ok,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::HirId;
@@ -101,8 +101,7 @@ impl<'tcx> Value<'tcx> {
                 }
                 (PlaceElem::Index(idx), Value::Aggregate { fields, .. }) => {
                     let idx = prop.get_const(idx.into())?.immediate()?;
-                    let idx =
-                        prop.ecx.read_target_usize(idx).discard_interp_err()?.try_into().ok()?;
+                    let idx = prop.ecx.read_target_usize(idx).discard_err()?.try_into().ok()?;
                     if idx <= FieldIdx::MAX_AS_U32 {
                         fields.get(FieldIdx::from_u32(idx)).unwrap_or(&Value::Uninit)
                     } else {
@@ -232,22 +231,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     where
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
-        match f(self) {
-            Ok(val) => Some(val),
-            Err(error) => {
-                trace!("InterpCx operation failed: {:?}", error);
+        f(self)
+            .map_err(|err| {
+                trace!("InterpCx operation failed: {:?}", err);
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
                 // dedicated error variants should be introduced instead.
                 assert!(
-                    !error.kind().formatted_string(),
+                    !err.kind().formatted_string(),
                     "known panics lint encountered formatting error: {}",
-                    format_interp_error(self.ecx.tcx.dcx(), error),
+                    format_interp_error(self.ecx.tcx.dcx(), err),
                 );
-                error.discard_interp_err();
-                None
-            }
-        }
+                err
+            })
+            .discard_err()
     }
 
     /// Returns the value, if any, of evaluating `c`.
@@ -317,7 +314,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     .ecx
                     .binary_op(BinOp::SubWithOverflow, &ImmTy::from_int(0, arg.layout), &arg)?
                     .to_scalar_pair();
-                Ok((arg, overflow.to_bool()?))
+                interp_ok((arg, overflow.to_bool()?))
             })?;
             if overflow {
                 self.report_assert_as_lint(
@@ -349,9 +346,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
             let left_ty = left.ty(self.local_decls(), self.tcx);
-            let left_size = self.ecx.layout_of(left_ty).discard_interp_err()?.size;
+            let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
-            let r_bits = r.to_scalar().to_bits(right_size).discard_interp_err();
+            let r_bits = r.to_scalar().to_bits(right_size).discard_err();
             if r_bits.is_some_and(|b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", location);
                 let panic = AssertKind::Overflow(
@@ -498,7 +495,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // This can be `None` if the lhs wasn't const propagated and we just
                 // triggered the assert on the value of the rhs.
                 self.eval_operand(op)
-                    .and_then(|op| self.ecx.read_immediate(&op).discard_interp_err())
+                    .and_then(|op| self.ecx.read_immediate(&op).discard_err())
                     .map_or(DbgVal::Underscore, |op| DbgVal::Val(op.to_const_int()))
             };
             let msg = match msg {
@@ -542,7 +539,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
         use rustc_middle::mir::Rvalue::*;
-        let layout = self.ecx.layout_of(dest.ty(self.body, self.tcx).ty).discard_interp_err()?;
+        let layout = self.ecx.layout_of(dest.ty(self.body, self.tcx).ty).ok()?;
         trace!(?layout);
 
         let val: Value<'_> = match *rvalue {
@@ -604,7 +601,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
             Len(place) => {
                 let len = match self.get_const(place)? {
-                    Value::Immediate(src) => src.len(&self.ecx).discard_interp_err()?,
+                    Value::Immediate(src) => src.len(&self.ecx).discard_err()?,
                     Value::Aggregate { fields, .. } => fields.len() as u64,
                     Value::Uninit => match place.ty(self.local_decls(), self.tcx).ty.kind() {
                         ty::Array(_, n) => n.try_eval_target_usize(self.tcx, self.param_env)?,
@@ -617,7 +614,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ref(..) | RawPtr(..) => return None,
 
             NullaryOp(ref null_op, ty) => {
-                let op_layout = self.use_ecx(|this| this.ecx.layout_of(ty))?;
+                let op_layout = self.ecx.layout_of(ty).ok()?;
                 let val = match null_op {
                     NullOp::SizeOf => op_layout.size.bytes(),
                     NullOp::AlignOf => op_layout.align.abi.bytes(),
@@ -635,21 +632,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Cast(ref kind, ref value, to) => match kind {
                 CastKind::IntToInt | CastKind::IntToFloat => {
                     let value = self.eval_operand(value)?;
-                    let value = self.ecx.read_immediate(&value).discard_interp_err()?;
-                    let to = self.ecx.layout_of(to).discard_interp_err()?;
-                    let res = self.ecx.int_to_int_or_float(&value, to).discard_interp_err()?;
+                    let value = self.ecx.read_immediate(&value).discard_err()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let res = self.ecx.int_to_int_or_float(&value, to).discard_err()?;
                     res.into()
                 }
                 CastKind::FloatToFloat | CastKind::FloatToInt => {
                     let value = self.eval_operand(value)?;
-                    let value = self.ecx.read_immediate(&value).discard_interp_err()?;
-                    let to = self.ecx.layout_of(to).discard_interp_err()?;
-                    let res = self.ecx.float_to_float_or_int(&value, to).discard_interp_err()?;
+                    let value = self.ecx.read_immediate(&value).discard_err()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let res = self.ecx.float_to_float_or_int(&value, to).discard_err()?;
                     res.into()
                 }
                 CastKind::Transmute => {
                     let value = self.eval_operand(value)?;
-                    let to = self.ecx.layout_of(to).discard_interp_err()?;
+                    let to = self.ecx.layout_of(to).ok()?;
                     // `offset` for immediates only supports scalar/scalar-pair ABIs,
                     // so bail out if the target is not one.
                     match (value.layout.abi, to.abi) {
@@ -658,7 +655,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         _ => return None,
                     }
 
-                    value.offset(Size::ZERO, to, &self.ecx).discard_interp_err()?.into()
+                    value.offset(Size::ZERO, to, &self.ecx).discard_err()?.into()
                 }
                 _ => return None,
             },
@@ -783,8 +780,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             TerminatorKind::SwitchInt { ref discr, ref targets } => {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
-                    && let Some(constant) =
-                        value_const.to_bits(value_const.size()).discard_interp_err()
+                    && let Some(constant) = value_const.to_bits(value_const.size()).discard_err()
                 {
                     // We managed to evaluate the discriminant, so we know we only need to visit
                     // one target.

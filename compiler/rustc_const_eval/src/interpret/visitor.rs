@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use tracing::trace;
 
-use super::{InterpCx, MPlaceTy, Machine, Projectable, throw_inval};
+use super::{InterpCx, MPlaceTy, Machine, Projectable, interp_ok, throw_inval};
 
 /// How to traverse a value and what to do when we are at the leaves.
 pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
@@ -46,14 +46,14 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
     /// Visits the given value as a union. No automatic recursion can happen here.
     #[inline(always)]
     fn visit_union(&mut self, _v: &Self::V, _fields: NonZero<usize>) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
     /// Visits the given value as the pointer of a `Box`. There is nothing to recurse into.
     /// The type of `v` will be a raw pointer to `T`, but this is a field of `Box<T>` and the
     /// pointee type is the actual `T`. `box_ty` provides the full type of the `Box` itself.
     #[inline(always)]
     fn visit_box(&mut self, _box_ty: Ty<'tcx>, _v: &Self::V) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Called each time we recurse down to a field of a "product-like" aggregate
@@ -165,7 +165,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 self.visit_field(v, 1, &alloc)?;
 
                 // We visited all parts of this one.
-                return Ok(());
+                return interp_ok(());
             }
 
             // Non-normalized types should never show up here.
@@ -222,6 +222,6 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
             Variants::Single { .. } => {}
         }
 
-        Ok(())
+        interp_ok(())
     }
 }

@@ -37,7 +37,7 @@ impl FileDescription for Event {
         // We only check the status of EPOLLIN and EPOLLOUT flags for eventfd. If other event flags
         // need to be supported in the future, the check should be added here.
 
-        Ok(EpollReadyEvents {
+        interp_ok(EpollReadyEvents {
             epollin: self.counter.get() != 0,
             epollout: self.counter.get() != MAX_COUNTER,
             ..EpollReadyEvents::new()
@@ -49,7 +49,7 @@ impl FileDescription for Event {
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
-        Ok(Ok(()))
+        interp_ok(Ok(()))
     }
 
     /// Read the counter in the buffer and return the counter if succeeded.
@@ -68,7 +68,7 @@ impl FileDescription for Event {
         if len < ty.size.bytes_usize() {
             ecx.set_last_error_from_io_error(Error::from(ErrorKind::InvalidInput))?;
             ecx.write_int(-1, dest)?;
-            return Ok(());
+            return interp_ok(());
         }
 
         // eventfd read at the size of u64.
@@ -80,7 +80,7 @@ impl FileDescription for Event {
             if self.is_nonblock {
                 ecx.set_last_error_from_io_error(Error::from(ErrorKind::WouldBlock))?;
                 ecx.write_int(-1, dest)?;
-                return Ok(());
+                return interp_ok(());
             }
 
             throw_unsup_format!("eventfd: blocking is unsupported");
@@ -100,7 +100,7 @@ impl FileDescription for Event {
             ecx.write_int(buf_place.layout.size.bytes(), dest)?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// A write call adds the 8-byte integer value supplied in
@@ -226,6 +226,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             clock: RefCell::new(VClock::default()),
         });
 
-        Ok(Scalar::from_i32(fd_value))
+        interp_ok(Scalar::from_i32(fd_value))
     }
 }

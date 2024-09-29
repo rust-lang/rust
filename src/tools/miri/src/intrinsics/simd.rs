@@ -248,7 +248,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let val = this.binary_op(mir_op, &left, &right).map_err(|err| {
                                 match err.kind() {
                                     &InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ShiftOverflow { shift_amount, .. }) => {
-                                        err.discard_interp_err();
                                         // This resets the interpreter backtrace, but it's not worth avoiding that.
                                         let shift_amount = match shift_amount {
                                             Either::Left(v) => v.to_string(),
@@ -787,9 +786,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 
     fn fminmax_op(
@@ -805,7 +804,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let left = left.to_scalar();
         let right = right.to_scalar();
-        Ok(match float_ty {
+        interp_ok(match float_ty {
             FloatTy::F16 => unimplemented!("f16_f128"),
             FloatTy::F32 => {
                 let left = left.to_f32()?;

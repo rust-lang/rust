@@ -17,7 +17,7 @@ use tracing::{info_span, instrument, trace};
 use super::{
     AllocId, CtfeProvenance, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
     MemPlaceMeta, MemoryKind, Operand, Pointer, Provenance, ReturnAction, Scalar,
-    from_known_layout, throw_ub, throw_unsup,
+    from_known_layout, interp_ok, throw_ub, throw_unsup,
 };
 use crate::errors;
 
@@ -189,7 +189,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     pub(super) fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
-            LocalValue::Live(val) => Ok(val),
+            LocalValue::Live(val) => interp_ok(val),
         }
     }
 
@@ -199,7 +199,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     pub(super) fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
-            LocalValue::Live(val) => Ok(val),
+            LocalValue::Live(val) => interp_ok(val),
         }
     }
 }
@@ -391,7 +391,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let span = info_span!("frame", "{}", instance);
         self.frame_mut().tracing_span.enter(span);
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Low-level helper that pops a stack frame from the stack and returns some information about
@@ -426,7 +426,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return_action = ReturnAction::NoCleanup;
         };
 
-        Ok(StackPopInfo { return_action, return_to_block, return_place })
+        interp_ok(StackPopInfo { return_action, return_to_block, return_place })
     }
 
     /// A private helper for [`pop_stack_frame_raw`](InterpCx::pop_stack_frame_raw).
@@ -449,7 +449,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
-        Ok(cleanup)
+        interp_ok(cleanup)
     }
 
     /// In the current stack frame, mark all locals as live that are not arguments and don't have
@@ -464,7 +464,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.storage_live(local)?;
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     pub fn storage_live_dyn(
@@ -550,7 +550,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // If the local is already live, deallocate its old memory.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
         self.deallocate_local(old)?;
-        Ok(())
+        interp_ok(())
     }
 
     /// Mark a storage as live, killing the previous content.
@@ -566,7 +566,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // If the local is already dead, this is a NOP.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead);
         self.deallocate_local(old)?;
-        Ok(())
+        interp_ok(())
     }
 
     fn deallocate_local(&mut self, local: LocalValue<M::Provenance>) -> InterpResult<'tcx> {
@@ -581,7 +581,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             );
             self.deallocate_ptr(ptr, None, MemoryKind::Stack)?;
         };
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -593,19 +593,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let state = &frame.locals[local];
         if let Some(layout) = state.layout.get() {
-            return Ok(layout);
+            return interp_ok(layout);
         }
 
         let layout = from_known_layout(self.tcx, self.param_env, layout, || {
             let local_ty = frame.body.local_decls[local].ty;
             let local_ty =
                 self.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
-            self.layout_of(local_ty)
+            self.layout_of(local_ty).into()
         })?;
 
         // Layouts of locals are requested a lot, so we cache them.
         state.layout.set(Some(layout));
-        Ok(layout)
+        interp_ok(layout)
     }
 }
 

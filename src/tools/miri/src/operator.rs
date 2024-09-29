@@ -21,7 +21,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
-        Ok(match bin_op {
+        interp_ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
                 assert_eq!(left.layout.abi, right.layout.abi); // types can differ, e.g. fn ptrs with different `for`
                 let size = this.pointer_size();

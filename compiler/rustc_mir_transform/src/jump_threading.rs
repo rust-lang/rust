@@ -37,9 +37,7 @@
 
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
-use rustc_const_eval::interpret::{
-    DiscardInterpError, ImmTy, Immediate, InterpCx, OpTy, Projectable,
-};
+use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
@@ -202,7 +200,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         debug!(?discr, ?bb);
 
         let discr_ty = discr.ty(self.body, self.tcx).ty;
-        let Some(discr_layout) = self.ecx.layout_of(discr_ty).discard_interp_err() else {
+        let Ok(discr_layout) = self.ecx.layout_of(discr_ty) else {
             return;
         };
 
@@ -392,28 +390,24 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             lhs,
             constant,
             &mut |elem, op| match elem {
-                TrackElem::Field(idx) => {
-                    self.ecx.project_field(op, idx.as_usize()).discard_interp_err()
-                }
-                TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).discard_interp_err(),
+                TrackElem::Field(idx) => self.ecx.project_field(op, idx.as_usize()).discard_err(),
+                TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).discard_err(),
                 TrackElem::Discriminant => {
-                    let variant = self.ecx.read_discriminant(op).discard_interp_err()?;
-                    let discr_value = self
-                        .ecx
-                        .discriminant_for_variant(op.layout.ty, variant)
-                        .discard_interp_err()?;
+                    let variant = self.ecx.read_discriminant(op).discard_err()?;
+                    let discr_value =
+                        self.ecx.discriminant_for_variant(op.layout.ty, variant).discard_err()?;
                     Some(discr_value.into())
                 }
                 TrackElem::DerefLen => {
-                    let op: OpTy<'_> = self.ecx.deref_pointer(op).discard_interp_err()?.into();
-                    let len_usize = op.len(&self.ecx).discard_interp_err()?;
+                    let op: OpTy<'_> = self.ecx.deref_pointer(op).discard_err()?.into();
+                    let len_usize = op.len(&self.ecx).discard_err()?;
                     let layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
                     Some(ImmTy::from_uint(len_usize, layout).into())
                 }
             },
             &mut |place, op| {
                 if let Some(conditions) = state.try_get_idx(place, &self.map)
-                    && let Some(imm) = self.ecx.read_immediate_raw(op).discard_interp_err()
+                    && let Some(imm) = self.ecx.read_immediate_raw(op).discard_err()
                     && let Some(imm) = imm.right()
                     && let Immediate::Scalar(Scalar::Int(int)) = *imm
                 {
@@ -437,10 +431,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         match rhs {
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
             Operand::Constant(constant) => {
-                let Some(constant) = self
-                    .ecx
-                    .eval_mir_constant(&constant.const_, constant.span, None)
-                    .discard_interp_err()
+                let Some(constant) =
+                    self.ecx.eval_mir_constant(&constant.const_, constant.span, None).discard_err()
                 else {
                     return;
                 };
@@ -482,7 +474,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                             && let Some(discr_value) = self
                                 .ecx
                                 .discriminant_for_variant(agg_ty, *variant_index)
-                                .discard_interp_err()
+                                .discard_err()
                         {
                             self.process_immediate(bb, discr_target, discr_value, state);
                         }
@@ -567,7 +559,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 // `SetDiscriminant` may be a no-op if the assigned variant is the untagged variant
                 // of a niche encoding. If we cannot ensure that we write to the discriminant, do
                 // nothing.
-                let Some(enum_layout) = self.ecx.layout_of(enum_ty).discard_interp_err() else {
+                let Ok(enum_layout) = self.ecx.layout_of(enum_ty) else {
                     return;
                 };
                 let writes_discriminant = match enum_layout.variants {
@@ -582,10 +574,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     } => *variant_index != untagged_variant,
                 };
                 if writes_discriminant {
-                    let Some(discr) = self
-                        .ecx
-                        .discriminant_for_variant(enum_ty, *variant_index)
-                        .discard_interp_err()
+                    let Some(discr) =
+                        self.ecx.discriminant_for_variant(enum_ty, *variant_index).discard_err()
                     else {
                         return;
                     };
@@ -662,7 +652,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
 
         let Some(discr) = discr.place() else { return };
         let discr_ty = discr.ty(self.body, self.tcx).ty;
-        let Some(discr_layout) = self.ecx.layout_of(discr_ty).discard_interp_err() else {
+        let Ok(discr_layout) = self.ecx.layout_of(discr_ty) else {
             return;
         };
         let Some(conditions) = state.try_get(discr.as_ref(), &self.map) else { return };

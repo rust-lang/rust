@@ -103,7 +103,7 @@ impl FileDescription for AnonSocket {
                 epoll_ready_events.epollerr = true;
             }
         }
-        Ok(epoll_ready_events)
+        interp_ok(epoll_ready_events)
     }
 
     fn close<'tcx>(
@@ -122,7 +122,7 @@ impl FileDescription for AnonSocket {
             // Notify peer fd that close has happened, since that can unblock reads and writes.
             ecx.check_and_update_readiness(&peer_fd)?;
         }
-        Ok(Ok(()))
+        interp_ok(Ok(()))
     }
 
     fn read<'tcx>(
@@ -344,7 +344,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_scalar(sv0, &sv)?;
         this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
 
-        Ok(Scalar::from_i32(0))
+        interp_ok(Scalar::from_i32(0))
     }
 
     fn pipe2(
@@ -396,6 +396,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_scalar(pipefd0, &pipefd)?;
         this.write_scalar(pipefd1, &pipefd.offset(pipefd.layout.size, pipefd.layout, this)?)?;
 
-        Ok(Scalar::from_i32(0))
+        interp_ok(Scalar::from_i32(0))
     }
 }

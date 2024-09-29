@@ -226,7 +226,7 @@ impl<'tcx> Tree {
         } else {
             eprintln!("Tag {tag:?} (to be named '{name}') not found!");
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Debug helper: determines if the tree contains a tag.
@@ -798,6 +798,6 @@ impl<'tcx> Tree {
                 /* print warning message about tags not shown */ !show_unnamed,
             );
         }
-        Ok(())
+        interp_ok(())
     }
 }

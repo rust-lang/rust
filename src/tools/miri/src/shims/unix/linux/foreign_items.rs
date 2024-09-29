@@ -134,7 +134,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
                         // neither of which have any effect on our current PRNG.
                         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-                        let _flags = this.read_scalar(&args[3])?.to_i32();
+                        let _flags = this.read_scalar(&args[3])?.to_i32()?;
 
                         this.gen_random(ptr, len)?;
                         this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
@@ -147,7 +147,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.handle_unsupported_foreign_item(format!(
                             "can't execute syscall with ID {id}"
                         ))?;
-                        return Ok(EmulateItemResult::AlreadyJumped);
+                        return interp_ok(EmulateItemResult::AlreadyJumped);
                     }
                 }
             }
@@ -190,9 +190,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
 
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         };
 
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }
