@@ -638,10 +638,7 @@ impl Item {
     }
 
     pub(crate) fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<StableSince> {
-        match self.stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since),
-            StabilityLevel::Unstable { .. } => None,
-        }
+        self.stability(tcx).and_then(|stability| stability.stable_since())
     }
 
     pub(crate) fn is_non_exhaustive(&self) -> bool {
