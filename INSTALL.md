@@ -79,9 +79,23 @@ See [the rustc-dev-guide for more info][sysllvm].
    ./configure
    ```
 
-   If you plan to use `x.py install` to create an installation, it is
-   recommended that you set the `prefix` value in the `[install]` section to a
-   directory: `./configure --set install.prefix=<path>`
+   If you plan to use `x.py install` to create an installation, you can either
+   set `DESTDIR` environment variable to your custom directory path:
+
+   ```bash
+   export DESTDIR=<path>
+   ```
+
+   or set `prefix` and `sysconfdir` in the `[install]` section to your custom
+   directory path:
+
+   ```sh
+   ./configure --set install.prefix=<path> --set install.sysconfdir=<path>
+   ```
+
+   When the `DESTDIR` environment variable is present, the `prefix` and
+   `sysconfdir` values are combined with the path from the `DESTDIR`
+   environment variable.
 
 3. Build and install:
 
