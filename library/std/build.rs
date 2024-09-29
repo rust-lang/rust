@@ -7,6 +7,7 @@ fn main() {
     let target_vendor =
         env::var("CARGO_CFG_TARGET_VENDOR").expect("CARGO_CFG_TARGET_VENDOR was not set");
     let target_env = env::var("CARGO_CFG_TARGET_ENV").expect("CARGO_CFG_TARGET_ENV was not set");
+    let target_abi = env::var("CARGO_CFG_TARGET_ABI").expect("CARGO_CFG_TARGET_ABI was not set");
     let target_pointer_width: u32 = env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
         .expect("CARGO_CFG_TARGET_POINTER_WIDTH was not set")
         .parse()
@@ -101,7 +102,7 @@ fn main() {
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        ("x86_64", "windows") if target_env == "gnu" => false,
+        ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         ("csky", _) => false,
         ("hexagon", _) => false,
@@ -129,7 +130,7 @@ fn main() {
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
         ("sparc", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        ("x86_64", "windows") if target_env == "gnu" => false,
+        ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
         // 64-bit Linux is about the only platform to have f128 symbols by default
         (_, "linux") if target_pointer_width == 64 => true,
         // Almost all OSs are missing symbol. compiler-builtins will have to add them.
