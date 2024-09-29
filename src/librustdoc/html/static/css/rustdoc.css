@@ -182,17 +182,18 @@ h1, h2, h3, h4 {
 		"main-heading-breadcrumbs main-heading-breadcrumbs"
 		"main-heading-h1 main-heading-toolbar"
 		"main-heading-sub-heading main-heading-toolbar";
-	grid-template-columns: 1fr max-content;
-	grid-template-rows: 25px min-content min-content;
+	grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
+	grid-template-rows: minmax(25px, min-content) min-content min-content;
 	padding-bottom: 6px;
 	margin-bottom: 11px;
 }
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
-	height: 25px;
 	line-height: 1.25;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: end;
+	padding-top: 5px;
 }
 .rustdoc-breadcrumbs a {
 	padding: 4px 0;
@@ -928,6 +929,7 @@ rustdoc-toolbar {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
+	min-height: 60px;
 }
 
 .docblock code, .docblock-short code,
@@ -1104,17 +1106,17 @@ table,
 .search-results-title + .sub-heading {
 	color: var(--main-color);
 	display: flex;
-	align-items: center;
+	align-items: baseline;
+	white-space: nowrap;
 }
 #crate-search-div {
 	/* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
 	position: relative;
 	/* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
-	min-width: 5em;
+	min-width: 0;
 }
 #crate-search {
-	min-width: 115px;
 	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
@@ -1825,6 +1827,7 @@ a.tooltip:hover::after {
 	margin-left: var(--button-left-margin);
 	display: flex;
 	line-height: 1.25;
+	min-width: 14px;
 }
 #sidebar-button {
 	display: none;
@@ -1860,6 +1863,9 @@ a.tooltip:hover::after {
 #settings-menu > a, #help-button > a, button#toggle-all-docs {
 	width: 80px;
 	border-radius: var(--toolbar-button-border-radius);
+}
+#settings-menu > a, #help-button > a {
+	min-width: 0;
 }
 #sidebar-button > a {
 	background-color: var(--button-background-color);
