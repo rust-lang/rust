@@ -427,7 +427,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 Err(e) => early_dcx.early_fatal(format!("failed to load fluent bundle: {e}")),
             };
 
-            let mut locale_resources = Vec::from(config.locale_resources);
+            let mut locale_resources = config.locale_resources;
             locale_resources.push(codegen_backend.locale_resource());
 
             let mut sess = rustc_session::build_session(

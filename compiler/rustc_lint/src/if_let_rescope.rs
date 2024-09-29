@@ -304,7 +304,7 @@ impl Subdiagnostic for IfLetRescopeRewrite {
                 .chain(repeat('}').take(closing_brackets.count))
                 .collect(),
         ));
-        let msg = f(diag, crate::fluent_generated::lint_suggestion.into());
+        let msg = f(diag, crate::fluent_generated::lint_suggestion);
         diag.multipart_suggestion_with_style(
             msg,
             suggestions,
