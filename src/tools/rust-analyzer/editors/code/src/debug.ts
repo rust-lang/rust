@@ -173,6 +173,8 @@ async function getDebugConfiguration(
     if (debugConfig.name === "run binary") {
         // The LSP side: crates\rust-analyzer\src\main_loop\handlers.rs,
         // fn to_lsp_runnable(...) with RunnableKind::Bin
+        // FIXME: Neither crates\rust-analyzer\src\main_loop\handlers.rs
+        // nor to_lsp_runnable exist anymore
         debugConfig.name = `run ${path.basename(executable)}`;
     }
 

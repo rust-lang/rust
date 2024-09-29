@@ -167,7 +167,7 @@ mod support {
 }
 
 #[test]
-fn assert_ast_is_object_safe() {
+fn assert_ast_is_dyn_compatible() {
     fn _f(_: &dyn AstNode, _: &dyn HasName) {}
 }
 

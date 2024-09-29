@@ -144,9 +144,9 @@ pub use {
     hir_ty::{
         consteval::ConstEvalError,
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
+        dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
-        object_safety::{MethodViolationCode, ObjectSafetyViolation},
         CastError, FnAbi, PointerCast, Safety,
     },
     // FIXME: Properly encapsulate mir
@@ -2690,8 +2690,8 @@ impl Trait {
             .count()
     }
 
-    pub fn object_safety(&self, db: &dyn HirDatabase) -> Option<ObjectSafetyViolation> {
-        hir_ty::object_safety::object_safety(db, self.id)
+    pub fn dyn_compatibility(&self, db: &dyn HirDatabase) -> Option<DynCompatibilityViolation> {
+        hir_ty::dyn_compatibility::dyn_compatibility(db, self.id)
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {

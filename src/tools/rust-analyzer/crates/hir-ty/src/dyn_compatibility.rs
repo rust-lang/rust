@@ -1,4 +1,4 @@
-//! Compute the object-safety of a trait
+//! Compute the dyn-compatibility of a trait
 
 use std::ops::ControlFlow;
 
@@ -28,14 +28,14 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ObjectSafetyViolation {
+pub enum DynCompatibilityViolation {
     SizedSelf,
     SelfReferential,
     Method(FunctionId, MethodViolationCode),
     AssocConst(ConstId),
     GAT(TypeAliasId),
     // This doesn't exist in rustc, but added for better visualization
-    HasNonSafeSuperTrait(TraitId),
+    HasNonCompatibleSuperTrait(TraitId),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -50,70 +50,73 @@ pub enum MethodViolationCode {
     UndispatchableReceiver,
 }
 
-pub fn object_safety(db: &dyn HirDatabase, trait_: TraitId) -> Option<ObjectSafetyViolation> {
+pub fn dyn_compatibility(
+    db: &dyn HirDatabase,
+    trait_: TraitId,
+) -> Option<DynCompatibilityViolation> {
     for super_trait in all_super_traits(db.upcast(), trait_).into_iter().skip(1).rev() {
-        if db.object_safety_of_trait(super_trait).is_some() {
-            return Some(ObjectSafetyViolation::HasNonSafeSuperTrait(super_trait));
+        if db.dyn_compatibility_of_trait(super_trait).is_some() {
+            return Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait));
         }
     }
 
-    db.object_safety_of_trait(trait_)
+    db.dyn_compatibility_of_trait(trait_)
 }
 
-pub fn object_safety_with_callback<F>(
+pub fn dyn_compatibility_with_callback<F>(
     db: &dyn HirDatabase,
     trait_: TraitId,
     cb: &mut F,
 ) -> ControlFlow<()>
 where
-    F: FnMut(ObjectSafetyViolation) -> ControlFlow<()>,
+    F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
     for super_trait in all_super_traits(db.upcast(), trait_).into_iter().skip(1).rev() {
-        if db.object_safety_of_trait(super_trait).is_some() {
-            cb(ObjectSafetyViolation::HasNonSafeSuperTrait(trait_))?;
+        if db.dyn_compatibility_of_trait(super_trait).is_some() {
+            cb(DynCompatibilityViolation::HasNonCompatibleSuperTrait(trait_))?;
         }
     }
 
-    object_safety_of_trait_with_callback(db, trait_, cb)
+    dyn_compatibility_of_trait_with_callback(db, trait_, cb)
 }
 
-pub fn object_safety_of_trait_with_callback<F>(
+pub fn dyn_compatibility_of_trait_with_callback<F>(
     db: &dyn HirDatabase,
     trait_: TraitId,
     cb: &mut F,
 ) -> ControlFlow<()>
 where
-    F: FnMut(ObjectSafetyViolation) -> ControlFlow<()>,
+    F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
     // Check whether this has a `Sized` bound
     if generics_require_sized_self(db, trait_.into()) {
-        cb(ObjectSafetyViolation::SizedSelf)?;
+        cb(DynCompatibilityViolation::SizedSelf)?;
     }
 
     // Check if there exist bounds that referencing self
     if predicates_reference_self(db, trait_) {
-        cb(ObjectSafetyViolation::SelfReferential)?;
+        cb(DynCompatibilityViolation::SelfReferential)?;
     }
     if bounds_reference_self(db, trait_) {
-        cb(ObjectSafetyViolation::SelfReferential)?;
+        cb(DynCompatibilityViolation::SelfReferential)?;
     }
 
     // rustc checks for non-lifetime binders here, but we don't support HRTB yet
 
     let trait_data = db.trait_data(trait_);
     for (_, assoc_item) in &trait_data.items {
-        object_safety_violation_for_assoc_item(db, trait_, *assoc_item, cb)?;
+        dyn_compatibility_violation_for_assoc_item(db, trait_, *assoc_item, cb)?;
     }
 
     ControlFlow::Continue(())
 }
 
-pub fn object_safety_of_trait_query(
+pub fn dyn_compatibility_of_trait_query(
     db: &dyn HirDatabase,
     trait_: TraitId,
-) -> Option<ObjectSafetyViolation> {
+) -> Option<DynCompatibilityViolation> {
     let mut res = None;
-    object_safety_of_trait_with_callback(db, trait_, &mut |osv| {
+    dyn_compatibility_of_trait_with_callback(db, trait_, &mut |osv| {
         res = Some(osv);
         ControlFlow::Break(())
     });
@@ -321,14 +324,14 @@ fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
     t.visit_with(visitor.as_dyn(), outer_binder).is_break()
 }
 
-fn object_safety_violation_for_assoc_item<F>(
+fn dyn_compatibility_violation_for_assoc_item<F>(
     db: &dyn HirDatabase,
     trait_: TraitId,
     item: AssocItemId,
     cb: &mut F,
 ) -> ControlFlow<()>
 where
-    F: FnMut(ObjectSafetyViolation) -> ControlFlow<()>,
+    F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
     // Any item that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
@@ -337,10 +340,10 @@ where
     }
 
     match item {
-        AssocItemId::ConstId(it) => cb(ObjectSafetyViolation::AssocConst(it)),
+        AssocItemId::ConstId(it) => cb(DynCompatibilityViolation::AssocConst(it)),
         AssocItemId::FunctionId(it) => {
             virtual_call_violations_for_method(db, trait_, it, &mut |mvc| {
-                cb(ObjectSafetyViolation::Method(it, mvc))
+                cb(DynCompatibilityViolation::Method(it, mvc))
             })
         }
         AssocItemId::TypeAliasId(it) => {
@@ -350,7 +353,7 @@ where
             } else {
                 let generic_params = db.generic_params(item.into());
                 if !generic_params.is_empty() {
-                    cb(ObjectSafetyViolation::GAT(it))
+                    cb(DynCompatibilityViolation::GAT(it))
                 } else {
                     ControlFlow::Continue(())
                 }
@@ -469,7 +472,7 @@ fn receiver_is_dispatchable(
         return false;
     };
 
-    // `self: Self` can't be dispatched on, but this is already considered object safe.
+    // `self: Self` can't be dispatched on, but this is already considered dyn compatible
     // See rustc's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/rustc_trait_selection/src/traits/object_safety.rs#L433-L437
     if sig
         .skip_binders()

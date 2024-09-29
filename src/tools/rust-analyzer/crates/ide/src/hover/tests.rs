@@ -7175,7 +7175,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: Yes
+            // Dyn Compatible: Yes
             trait T {}
             ```
         "#]],
@@ -7195,7 +7195,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: Yes
+            // Dyn Compatible: Yes
             trait T {}
             ```
         "#]],
@@ -7219,7 +7219,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: No
+            // Dyn Compatible: No
             // - Reason: has a method `func` that is non dispatchable because of:
             //   - missing a receiver
             trait T { /* … */ }
@@ -7245,7 +7245,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: No
+            // Dyn Compatible: No
             // - Reason: has a method `func` that is non dispatchable because of:
             //   - missing a receiver
             trait T {
@@ -7275,7 +7275,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: No
+            // Dyn Compatible: No
             // - Reason: has a method `func` that is non dispatchable because of:
             //   - missing a receiver
             trait T {
@@ -7305,7 +7305,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: No
+            // Dyn Compatible: No
             // - Reason: has a method `func` that is non dispatchable because of:
             //   - missing a receiver
             trait T {
