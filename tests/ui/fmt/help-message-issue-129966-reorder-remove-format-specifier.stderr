@@ -1,0 +1,26 @@
+error: invalid format string: unknown format identifier '?#'
+  --> $DIR/help-message-issue-129966-reorder-remove-format-specifier.rs:8:17
+   |
+LL |     format!("{f:?#}");
+   |                 ^^ help: the format parameter should be written `#?` in format string
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: unknown format identifier '?x'
+  --> $DIR/help-message-issue-129966-reorder-remove-format-specifier.rs:10:18
+   |
+LL |     format!("{f:?x}");
+   |                  ^ help: consider removing `x` in format string
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: unknown format identifier '?X'
+  --> $DIR/help-message-issue-129966-reorder-remove-format-specifier.rs:12:18
+   |
+LL |     format!("{f:?X}");
+   |                  ^ help: consider removing `X` in format string
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: aborting due to 3 previous errors
+
