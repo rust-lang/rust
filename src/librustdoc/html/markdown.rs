@@ -871,7 +871,7 @@ pub(crate) struct LangString {
     pub(crate) rust: bool,
     pub(crate) test_harness: bool,
     pub(crate) compile_fail: bool,
-    pub(crate) standalone: bool,
+    pub(crate) standalone_crate: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
@@ -1194,7 +1194,7 @@ impl Default for LangString {
             rust: true,
             test_harness: false,
             compile_fail: false,
-            standalone: false,
+            standalone_crate: false,
             error_codes: Vec::new(),
             edition: None,
             added_classes: Vec::new(),
@@ -1264,8 +1264,8 @@ impl LangString {
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                         data.no_run = true;
                     }
-                    LangStringToken::LangToken("standalone") => {
-                        data.standalone = true;
+                    LangStringToken::LangToken("standalone_crate") => {
+                        data.standalone_crate = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     }
                     LangStringToken::LangToken(x) if x.starts_with("edition") => {
@@ -1298,44 +1298,47 @@ impl LangString {
                     }
                     LangStringToken::LangToken(x) if extra.is_some() => {
                         let s = x.to_lowercase();
-                        if let Some((flag, help)) = if s == "compile-fail"
-                            || s == "compile_fail"
-                            || s == "compilefail"
-                        {
-                            Some((
-                                "compile_fail",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or won't fail if it compiles successfully",
-                            ))
-                        } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
-                            Some((
-                                "should_panic",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or won't fail if it doesn't panic when running",
-                            ))
-                        } else if s == "no-run" || s == "no_run" || s == "norun" {
-                            Some((
-                                "no_run",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or will be run (which you might not want)",
-                            ))
-                        } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
-                            Some((
-                                "test_harness",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or the code will be wrapped inside a main function",
-                            ))
-                        } else {
-                            None
+                        if let Some(help) = match s.as_str() {
+                            "compile-fail" | "compile_fail" | "compilefail" => Some(
+                                "use `compile_fail` to invert the results of this test, so that it \
+                                passes if it cannot be compiled and fails if it can",
+                            ),
+                            "should-panic" | "should_panic" | "shouldpanic" => Some(
+                                "use `should_panic` to invert the results of this test, so that if \
+                                passes if it panics and fails if it does not",
+                            ),
+                            "no-run" | "no_run" | "norun" => Some(
+                                "use `no_run` to compile, but not run, the code sample during \
+                                testing",
+                            ),
+                            "test-harness" | "test_harness" | "testharness" => Some(
+                                "use `test_harness` to run functions marked `#[test]` instead of a \
+                                potentially-implicit `main` function",
+                            ),
+                            "standalone" | "standalone_crate" | "standalone-crate" => {
+                                if let Some(extra) = extra
+                                    && extra.sp.at_least_rust_2024()
+                                {
+                                    Some(
+                                        "use `standalone_crate` to compile this code block \
+                                        separately",
+                                    )
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
                         } {
                             if let Some(extra) = extra {
                                 extra.error_invalid_codeblock_attr_with_help(
                                     format!("unknown attribute `{x}`"),
                                     |lint| {
-                                        lint.help(format!(
-                                            "there is an attribute with a similar name: `{flag}`"
-                                        ))
-                                        .help(help);
+                                        lint.help(help).help(
+                                            "this code block may be skipped during testing, \
+                                            because unknown attributes are treated as markers for \
+                                            code samples written in other programming languages, \
+                                            unless it is also explicitly marked as `rust`",
+                                        );
                                     },
                                 );
                             }
