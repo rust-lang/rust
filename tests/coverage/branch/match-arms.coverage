@@ -49,8 +49,15 @@
    LL|     15|    match value {
    LL|     12|        Enum::D(x) | Enum::C(x) => consume(x),
                               ^8           ^4
+  ------------------
+  |  Branch (LL:9): [True: 8, False: 7]
+  |  Branch (LL:22): [True: 4, False: 3]
+  ------------------
    LL|      3|        Enum::B(y) | Enum::A(y) => consume(y),
                               ^2           ^1
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 1]
+  ------------------
    LL|       |    }
    LL|       |
    LL|     15|    consume(0);
