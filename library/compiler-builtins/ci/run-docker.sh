@@ -14,7 +14,7 @@ run() {
     # will be owned by root
     mkdir -p target
 
-    if [ $(uname -s) = "Linux" ] && [ -z "${DOCKER_BASE_IMAGE:-}" ]; then
+    if [ "$(uname -s)" = "Linux" ] && [ -z "${DOCKER_BASE_IMAGE:-}" ]; then
       # Share the host rustc and target. Do this only on Linux and if the image
       # isn't overridden
       run_args=(
@@ -43,19 +43,21 @@ run() {
 
     if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
       # Enable Docker image caching on GHA
-      
+
       build_cmd=("buildx" "build")
       build_args=(
         "--cache-from" "type=local,src=/tmp/.buildx-cache"
         "--cache-to" "type=local,dest=/tmp/.buildx-cache-new"
-        "${build_args[@]:-}"
+        # This is the beautiful bash syntax for expanding an array but neither
+        # raising an error nor returning an empty string if the array is empty.
+        "${build_args[@]:+"${build_args[@]}"}"
         "--load"
       )
     fi
 
-    docker ${build_cmd[@]:-build} \
+    docker "${build_cmd[@]:-build}" \
            -t "builtins-$target" \
-           ${build_args[@]:-} \
+           "${build_args[@]:-}" \
            "ci/docker/$target"
     docker run \
            --rm \
@@ -64,7 +66,7 @@ run() {
            -e "CARGO_TARGET_DIR=/builtins-target" \
            -v "$(pwd):/checkout:ro" \
            -w /checkout \
-           ${run_args[@]:-} \
+           "${run_args[@]:-}" \
            --init \
            "builtins-$target" \
            sh -c "$run_cmd"

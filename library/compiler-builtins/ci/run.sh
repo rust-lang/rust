@@ -38,17 +38,24 @@ fi
 
 if [ "${TEST_VERBATIM:-}" = "1" ]; then
     verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\testcrate\\target2)
-    cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir $verb_path --features c
+    cargo build --manifest-path testcrate/Cargo.toml \
+        --target "$target" --target-dir "$verb_path" --features c
 fi
 
-if [ -d /builtins-target ]; then
-    rlib_paths=/builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib
-else
-    rlib_paths=target/"${target}"/debug/deps/libcompiler_builtins-*.rlib
-fi
+declare -a rlib_paths
+
+# Set the `rlib_paths` global array to a list of all compiler-builtins rlibs
+update_rlib_paths() {
+    if [ -d /builtins-target ]; then
+        rlib_paths=( /builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
+    else
+        rlib_paths=( target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
+    fi
+}
 
 # Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
-rm -f $rlib_paths
+update_rlib_paths
+rm -f "${rlib_paths[@]}"
 
 cargo build --target "$target"
 cargo build --target "$target" --release
@@ -76,6 +83,7 @@ NM=$(find "$(rustc --print sysroot)" \( -name llvm-nm -o -name llvm-nm.exe \) )
 if [ "$NM" = "" ]; then
   NM="${PREFIX}nm"
 fi
+
 # i686-pc-windows-gnu tools have a dependency on some DLLs, so run it with
 # rustup run to ensure that those are in PATH.
 TOOLCHAIN="$(rustup show active-toolchain | sed 's/ (default)//')"
@@ -84,11 +92,13 @@ if [[ "$TOOLCHAIN" == *i686-pc-windows-gnu ]]; then
 fi
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
-for rlib in $rlib_paths; do
+update_rlib_paths
+for rlib in "${rlib_paths[@]}"; do
     set +x
     echo "================================================================"
     echo "checking $rlib for duplicate symbols"
     echo "================================================================"
+    set -x
     
     duplicates_found=0
 
@@ -108,7 +118,7 @@ for rlib in $rlib_paths; do
     fi
 done
 
-rm -f $rlib_paths
+rm -f "${rlib_paths[@]}"
 
 build_intrinsics() {
     cargo build --target "$target" -v --example intrinsics  "$@"
@@ -128,7 +138,8 @@ CARGO_PROFILE_RELEASE_LTO=true \
     cargo build --target "$target" --example intrinsics --release
 
 # Ensure no references to any symbols from core
-for rlib in $(echo $rlib_paths); do
+update_rlib_paths
+for rlib in "${rlib_paths[@]}"; do
     set +x
     echo "================================================================"
     echo "checking $rlib for references to core"
