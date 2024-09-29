@@ -396,11 +396,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 for i in 0..dest_len {
                     let place = self.project_index(&dest, i)?;
-                    let value = if i == index {
-                        elem.clone()
-                    } else {
-                        self.project_index(&input, i)?.into()
-                    };
+                    let value =
+                        if i == index { elem.clone() } else { self.project_index(&input, i)? };
                     self.copy_op(&value, &place)?;
                 }
             }
