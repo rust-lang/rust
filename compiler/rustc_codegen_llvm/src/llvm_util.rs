@@ -536,6 +536,11 @@ pub(crate) fn global_llvm_features(
     // -Ctarget-cpu=native
     match sess.opts.cg.target_cpu {
         Some(ref s) if s == "native" => {
+            // We have already figured out the actual CPU name with `LLVMRustGetHostCPUName` and set
+            // that for LLVM, so the features implied by that CPU name will be available everywhere.
+            // However, that is not sufficient: e.g. `skylake` alone is not sufficient to tell if
+            // some of the instructions are available or not. So we have to also explicitly ask for
+            // the exact set of features available on the host, and enable all of them.
             let features_string = unsafe {
                 let ptr = llvm::LLVMGetHostCPUFeatures();
                 let features_string = if !ptr.is_null() {

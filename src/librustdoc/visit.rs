@@ -1,11 +1,17 @@
 use crate::clean::*;
 
+/// Allows a type to traverse the cleaned ast of a crate.
+///
+/// Note that like [`rustc_ast::visit::Visitor`], but
+/// unlike [`rustc_lint::EarlyLintPass`], if you override a
+/// `visit_*` method, you will need to manually recurse into
+/// its contents.
 pub(crate) trait DocVisitor<'a>: Sized {
     fn visit_item(&mut self, item: &'a Item) {
         self.visit_item_recur(item)
     }
 
-    /// don't override!
+    /// Don't override!
     fn visit_inner_recur(&mut self, kind: &'a ItemKind) {
         match kind {
             StrippedItem(..) => unreachable!(),
@@ -46,7 +52,7 @@ pub(crate) trait DocVisitor<'a>: Sized {
         }
     }
 
-    /// don't override!
+    /// Don't override!
     fn visit_item_recur(&mut self, item: &'a Item) {
         match &item.kind {
             StrippedItem(i) => self.visit_inner_recur(&*i),
@@ -58,6 +64,7 @@ pub(crate) trait DocVisitor<'a>: Sized {
         m.items.iter().for_each(|i| self.visit_item(i))
     }
 
+    /// This is the main entrypoint of [`DocVisitor`].
     fn visit_crate(&mut self, c: &'a Crate) {
         self.visit_item(&c.module);
 
