@@ -50,6 +50,15 @@ fn main() {
     // Set to 0, which means not set or "n/a".
     has_sdk_version("foo.o", "n/a");
 
+    // Check the SDK version in the .rmeta file, as set in `create_object_file`.
+    //
+    // This is just to ensure that we don't set some odd version in `create_object_file`,
+    // if the rmeta file is packed in a different way in the future, this can safely be removed.
+    rustc().target(target()).crate_type("rlib").input("foo.rs").output("libfoo.rlib").run();
+    // Extra .rmeta file (which is encoded as an object file).
+    cmd("ar").arg("-x").arg("libfoo.rlib").arg("lib.rmeta").run();
+    has_sdk_version("lib.rmeta", "n/a");
+
     // Test that version makes it to the linker.
     for (crate_type, file_ext) in [("bin", ""), ("dylib", ".dylib")] {
         // Non-simulator watchOS targets don't support dynamic linking,
