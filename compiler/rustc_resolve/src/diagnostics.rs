@@ -1469,11 +1469,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident))| {
-            if unused_ident.name == ident.name {
-                Some((def_id.clone(), unused_ident.clone()))
-            } else {
-                None
-            }
+            if unused_ident.name == ident.name { Some((def_id, unused_ident)) } else { None }
         });
 
         if let Some((def_id, unused_ident)) = unused_macro {
