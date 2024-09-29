@@ -961,13 +961,20 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         hir_ty.span,
                         "using raw pointers as const generic parameters is forbidden",
                     ),
-                    _ => tcx.dcx().struct_span_err(
-                        hir_ty.span,
-                        format!("`{}` is forbidden as the type of a const generic parameter", ty),
-                    ),
+                    _ => {
+                        // Avoid showing "{type error}" to users. See #118179.
+                        ty.error_reported()?;
+
+                        tcx.dcx().struct_span_err(
+                            hir_ty.span,
+                            format!(
+                                "`{ty}` is forbidden as the type of a const generic parameter",
+                            ),
+                        )
+                    }
                 };
 
-                diag.note("the only supported types are integers, `bool` and `char`");
+                diag.note("the only supported types are integers, `bool`, and `char`");
 
                 let cause = ObligationCause::misc(hir_ty.span, param.def_id);
                 let adt_const_params_feature_string =
