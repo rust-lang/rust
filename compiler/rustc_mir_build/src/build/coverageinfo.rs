@@ -44,14 +44,14 @@ struct NotInfo {
 }
 
 pub(crate) struct MatchArm {
-    pub(crate) source_info: SourceInfo,
     pub(crate) sub_branches: Vec<MatchArmSubBranch>,
 }
 
 #[derive(Debug)]
 pub(crate) struct MatchArmSubBranch {
     pub(crate) source_info: SourceInfo,
-    pub(crate) block: BasicBlock,
+    pub(crate) pre_binding_block: BasicBlock,
+    pub(crate) branch_taken_block: BasicBlock,
 }
 
 #[derive(Default)]
@@ -168,7 +168,6 @@ impl CoverageInfoBuilder {
             // Bail out if branch coverage is not enabled.
             let Some(branch_info) = self.branch_info.as_mut() else { return };
 
-
             // Avoid duplicates coverage markers.
             // When lowering match sub-branches (like or-patterns), `if` guards will
             // be added multiple times for each sub-branch
@@ -206,16 +205,20 @@ impl CoverageInfoBuilder {
 
         let branch_arms = arms
             .iter()
-            .flat_map(|MatchArm { source_info, sub_branches }| {
+            .flat_map(|MatchArm { sub_branches }| {
                 sub_branches
                     .iter()
                     .map(|sub_branch| {
-                        let block = sub_branch.block;
-
-                        let pre_guard_marker =
-                            self.markers.inject_block_marker(cfg, sub_branch.source_info, block);
-                        let arm_taken_marker =
-                            self.markers.inject_block_marker(cfg, *source_info, block);
+                        let pre_guard_marker = self.markers.inject_block_marker(
+                            cfg,
+                            sub_branch.source_info,
+                            sub_branch.pre_binding_block,
+                        );
+                        let arm_taken_marker = self.markers.inject_block_marker(
+                            cfg,
+                            sub_branch.source_info,
+                            sub_branch.branch_taken_block,
+                        );
 
                         BranchArm {
                             span: sub_branch.source_info.span,

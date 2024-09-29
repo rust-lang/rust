@@ -453,12 +453,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         opt_scrutinee_place,
                     );
 
-                    let sub_branches: Vec<_> = branch
+                    let mut sub_branches: Vec<_> = branch
                         .sub_branches
                         .iter()
                         .map(|b| coverageinfo::MatchArmSubBranch {
                             source_info: this.source_info(b.span),
-                            block: b.success_block,
+                            pre_binding_block: b.success_block,
+                            branch_taken_block: b.success_block,
                         })
                         .collect();
 
@@ -471,11 +472,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         EmitStorageLive::Yes,
                     );
 
+                    // If the match arm has a guard, change the branch_taken_block for all of the
+                    // sub-branches to be the guard block.
+                    if arm.guard.is_some() {
+                        for sub_branch in sub_branches.iter_mut() {
+                            sub_branch.branch_taken_block = arm_block;
+                        }
+                    }
+
                     if let Some(coverage_match_arms) = coverage_match_arms.as_mut() {
-                        coverage_match_arms.push(coverageinfo::MatchArm {
-                            source_info: this.source_info(arm.pattern.span),
-                            sub_branches,
-                        })
+                        coverage_match_arms.push(coverageinfo::MatchArm { sub_branches });
                     }
 
                     this.fixed_temps_scope = old_dedup_scope;
