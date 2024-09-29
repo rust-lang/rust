@@ -418,7 +418,8 @@ mod desc {
         "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
     pub(crate) const parse_opt_symbol_visibility: &str =
         "one of: `hidden`, `protected`, or `interposable`";
-    pub(crate) const parse_cargo_src_file_hash: &str = "one of `md5`, `sha1`, or `sha256`";
+    pub(crate) const parse_cargo_src_file_hash: &str =
+        "one of `blake3`, `md5`, `sha1`, or `sha256`";
     pub(crate) const parse_src_file_hash: &str = "one of `md5`, `sha1`, or `sha256`";
     pub(crate) const parse_relocation_model: &str =
         "one of supported relocation models (`rustc --print relocation-models`)";
