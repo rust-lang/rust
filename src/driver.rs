@@ -74,11 +74,11 @@ fn test_has_arg() {
     assert!(!has_arg(args, "--bar"));
 }
 
-fn track_clippy_args(psess: &mut ParseSess, args_env_var: &Option<String>) {
-    psess.env_depinfo.get_mut().insert((
-        Symbol::intern("CLIPPY_ARGS"),
-        args_env_var.as_deref().map(Symbol::intern),
-    ));
+fn track_clippy_args(psess: &mut ParseSess, args_env_var: Option<&str>) {
+    psess
+        .env_depinfo
+        .get_mut()
+        .insert((Symbol::intern("CLIPPY_ARGS"), args_env_var.map(Symbol::intern)));
 }
 
 /// Track files that may be accessed at runtime in `file_depinfo` so that cargo will re-run clippy
@@ -122,7 +122,7 @@ impl rustc_driver::Callbacks for RustcCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let clippy_args_var = self.clippy_args_var.take();
         config.psess_created = Some(Box::new(move |psess| {
-            track_clippy_args(psess, &clippy_args_var);
+            track_clippy_args(psess, clippy_args_var.as_deref());
         }));
     }
 }
@@ -139,7 +139,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
         config.psess_created = Some(Box::new(move |psess| {
-            track_clippy_args(psess, &clippy_args_var);
+            track_clippy_args(psess, clippy_args_var.as_deref());
             track_files(psess);
 
             // Trigger a rebuild if CLIPPY_CONF_DIR changes. The value must be a valid string so
