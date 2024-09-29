@@ -775,19 +775,7 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// ## How can I implement `Ord`?
 ///
-/// `Ord` requires that the type also be [`PartialOrd`], [`PartialEq`] and [`Eq`].
-///
-/// If you manually implement `Ord`, you should also implement [`PartialOrd`]. It is a logic error
-/// to have [`PartialOrd`] and `Ord` disagree, so it is best to have the logic in `Ord` and
-/// implement [`PartialOrd`] as `Some(self.cmp(other))`.
-///
-/// Conceptually [`PartialOrd`] and `Ord` form a similar relationship to [`PartialEq`] and [`Eq`].
-/// [`PartialEq`] defines an equality relationship between types, and [`Eq`] defines an additional
-/// property on top of the properties implied by [`PartialEq`], namely reflexivity. In a similar
-/// fashion `Ord` builds on top of [`PartialOrd`] and adds further properties, such as totality,
-/// which means all values must be comparable.
-///
-/// `Ord` requires that the type also be PartialOrd, PartialEq, and Eq.
+/// `Ord` requires that the type also be [`PartialOrd`], [`PartialEq`], and [`Eq`].
 ///
 /// Because `Ord` implies a stronger ordering relationship than [`PartialOrd`], and both `Ord` and
 /// [`PartialOrd`] must agree, you must choose how to implement `Ord` **first**. You can choose to
