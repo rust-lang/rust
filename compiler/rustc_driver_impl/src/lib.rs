@@ -857,9 +857,10 @@ fn print_crate_info(
             }
             DeploymentTarget => {
                 if sess.target.is_like_osx {
-                    let (major, minor, patch) = apple::deployment_target(sess);
-                    let patch = if patch != 0 { format!(".{patch}") } else { String::new() };
-                    println_info!("deployment_target={major}.{minor}{patch}")
+                    println_info!(
+                        "deployment_target={}",
+                        apple::pretty_version(apple::deployment_target(sess))
+                    )
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")
