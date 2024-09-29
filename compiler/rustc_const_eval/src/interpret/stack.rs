@@ -596,16 +596,24 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return Ok(layout);
         }
 
-        let layout = from_known_layout(self.tcx, self.param_env, layout, || {
-            let local_ty = frame.body.local_decls[local].ty;
-            let local_ty =
-                self.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
-            self.layout_of(local_ty)
-        })?;
-
         // Layouts of locals are requested a lot, so we cache them.
+        let layout = uncached(self, frame, local, layout)?;
         state.layout.set(Some(layout));
-        Ok(layout)
+        return Ok(layout);
+
+        fn uncached<'tcx, M: Machine<'tcx>>(
+            this: &InterpCx<'tcx, M>,
+            frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
+            local: mir::Local,
+            layout: Option<TyAndLayout<'tcx>>,
+        ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+            from_known_layout(this.tcx, this.param_env, layout, || {
+                let local_ty = frame.body.local_decls[local].ty;
+                let local_ty =
+                    this.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
+                this.layout_of(local_ty)
+            })
+        }
     }
 }
 
