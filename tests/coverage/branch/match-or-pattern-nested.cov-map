@@ -1,0 +1,51 @@
+Function name: match_or_pattern_nested::foo
+Raw bytes (102): 0x[01, 01, 19, 17, 1d, 27, 19, 53, 15, 57, 11, 09, 0d, 27, 19, 53, 15, 57, 11, 09, 0d, 53, 15, 57, 11, 09, 0d, 57, 11, 09, 0d, 5f, 21, 63, 1d, 15, 19, 57, 11, 09, 0d, 53, 5b, 57, 11, 09, 0d, 5f, 21, 63, 1d, 15, 19, 08, 01, 08, 01, 01, 1c, 20, 21, 03, 02, 0d, 00, 0e, 20, 1d, 17, 00, 11, 00, 12, 20, 19, 27, 00, 1a, 00, 1b, 20, 15, 53, 00, 1e, 00, 1f, 5b, 00, 24, 00, 26, 53, 01, 0e, 00, 10, 4f, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 25
+- expression 0 operands: lhs = Expression(5, Add), rhs = Counter(7)
+- expression 1 operands: lhs = Expression(9, Add), rhs = Counter(6)
+- expression 2 operands: lhs = Expression(20, Add), rhs = Counter(5)
+- expression 3 operands: lhs = Expression(21, Add), rhs = Counter(4)
+- expression 4 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 5 operands: lhs = Expression(9, Add), rhs = Counter(6)
+- expression 6 operands: lhs = Expression(20, Add), rhs = Counter(5)
+- expression 7 operands: lhs = Expression(21, Add), rhs = Counter(4)
+- expression 8 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 9 operands: lhs = Expression(20, Add), rhs = Counter(5)
+- expression 10 operands: lhs = Expression(21, Add), rhs = Counter(4)
+- expression 11 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 12 operands: lhs = Expression(21, Add), rhs = Counter(4)
+- expression 13 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 14 operands: lhs = Expression(23, Add), rhs = Counter(8)
+- expression 15 operands: lhs = Expression(24, Add), rhs = Counter(7)
+- expression 16 operands: lhs = Counter(5), rhs = Counter(6)
+- expression 17 operands: lhs = Expression(21, Add), rhs = Counter(4)
+- expression 18 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 19 operands: lhs = Expression(20, Add), rhs = Expression(22, Add)
+- expression 20 operands: lhs = Expression(21, Add), rhs = Counter(4)
+- expression 21 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 22 operands: lhs = Expression(23, Add), rhs = Counter(8)
+- expression 23 operands: lhs = Expression(24, Add), rhs = Counter(7)
+- expression 24 operands: lhs = Counter(5), rhs = Counter(6)
+Number of file 0 mappings: 8
+- Code(Counter(0)) at (prev + 8, 1) to (start + 1, 28)
+- Branch { true: Counter(8), false: Expression(0, Add) } at (prev + 2, 13) to (start + 0, 14)
+    true  = c8
+    false = (((((c2 + c3) + c4) + c5) + c6) + c7)
+- Branch { true: Counter(7), false: Expression(5, Add) } at (prev + 0, 17) to (start + 0, 18)
+    true  = c7
+    false = ((((c2 + c3) + c4) + c5) + c6)
+- Branch { true: Counter(6), false: Expression(9, Add) } at (prev + 0, 26) to (start + 0, 27)
+    true  = c6
+    false = (((c2 + c3) + c4) + c5)
+- Branch { true: Counter(5), false: Expression(20, Add) } at (prev + 0, 30) to (start + 0, 31)
+    true  = c5
+    false = ((c2 + c3) + c4)
+- Code(Expression(22, Add)) at (prev + 0, 36) to (start + 0, 38)
+    = (((c5 + c6) + c7) + c8)
+- Code(Expression(20, Add)) at (prev + 1, 14) to (start + 0, 16)
+    = ((c2 + c3) + c4)
+- Code(Expression(19, Add)) at (prev + 2, 1) to (start + 0, 2)
+    = (((c2 + c3) + c4) + (((c5 + c6) + c7) + c8))
+
