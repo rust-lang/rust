@@ -1573,11 +1573,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Feature gate for RPITIT + use<..>
         match origin {
             rustc_hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl: Some(_), .. } => {
-                if let Some(span) = bounds.iter().find_map(|bound| match *bound {
-                    ast::GenericBound::Use(_, span) => Some(span),
-                    _ => None,
-                }) {
-                    self.tcx.dcx().emit_err(errors::NoPreciseCapturesOnRpitit { span });
+                if !self.tcx.features().precise_capturing_in_traits
+                    && let Some(span) = bounds.iter().find_map(|bound| match *bound {
+                        ast::GenericBound::Use(_, span) => Some(span),
+                        _ => None,
+                    })
+                {
+                    let mut diag =
+                        self.tcx.dcx().create_err(errors::NoPreciseCapturesOnRpitit { span });
+                    add_feature_diagnostics(
+                        &mut diag,
+                        self.tcx.sess,
+                        sym::precise_capturing_in_traits,
+                    );
+                    diag.emit();
                 }
             }
             _ => {}

@@ -5,6 +5,9 @@ LL |     fn bar<'tr: 'tr>(&'tr mut self) -> impl Sized + use<Self>;
    |                                                     ^^^^^^^^^
    |
    = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
+   = note: see issue #130044 <https://github.com/rust-lang/rust/issues/130044> for more information
+   = help: add `#![feature(precise_capturing_in_traits)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: return type captures more lifetimes than trait definition
   --> $DIR/rpitit-captures-more-method-lifetimes.rs:11:40
