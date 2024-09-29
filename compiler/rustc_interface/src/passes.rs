@@ -554,14 +554,14 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                         files.iter().all(|(_path, _file_len, hash_algo)| hash_algo.is_some()),
                         "all files must have a checksum hash computed to output checksum hashes"
                     );
-                    write!(file, " # ")?;
+                    write!(file, " #")?;
                     files
                         .iter()
                         .filter_map(|(_path, file_len, hash_algo)| {
                             hash_algo.map(|hash_algo| (path, file_len, hash_algo))
                         })
                         .try_for_each(|(_path, file_len, checksum_hash)| {
-                            write!(file, "checksum:{checksum_hash} file_len:{file_len}, ")
+                            write!(file, " checksum:{checksum_hash} file_len:{file_len}")
                         })?;
                 }
                 writeln!(file)?;
