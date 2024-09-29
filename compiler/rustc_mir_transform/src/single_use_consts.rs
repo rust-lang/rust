@@ -185,15 +185,14 @@ impl<'tcx> MutVisitor<'tcx> for LocalReplacer<'tcx> {
             && let Some(local) = place.as_local()
             && local == self.local
         {
-            let const_op = self
+            let const_op = *self
                 .operand
                 .as_ref()
                 .unwrap_or_else(|| {
                     bug!("the operand was already stolen");
                 })
                 .constant()
-                .unwrap()
-                .clone();
+                .unwrap();
             var_debug_info.value = VarDebugInfoContents::Const(const_op);
         }
     }
