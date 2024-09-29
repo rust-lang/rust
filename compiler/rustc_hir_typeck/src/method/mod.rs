@@ -18,8 +18,8 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::symbol::Ident;
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
 use tracing::{debug, instrument};
@@ -66,6 +66,9 @@ pub(crate) enum MethodError<'tcx> {
 
     // Found a match, but the return type is wrong
     BadReturnType,
+
+    // Error has already been emitted, no need to emit another one.
+    ErrorReported(ErrorGuaranteed),
 }
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
@@ -120,6 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(PrivateMatch(..)) => false,
             Err(IllegalSizedBound { .. }) => true,
             Err(BadReturnType) => false,
+            Err(ErrorReported(_)) => false,
         }
     }
 

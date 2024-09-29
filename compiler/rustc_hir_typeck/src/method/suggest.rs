@@ -386,6 +386,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return err.emit();
             }
 
+            MethodError::ErrorReported(guar) => guar,
+
             MethodError::BadReturnType => bug!("no return type expectations but got BadReturnType"),
         }
     }
