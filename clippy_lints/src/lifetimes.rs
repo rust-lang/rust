@@ -506,8 +506,17 @@ struct LifetimeChecker<'cx, 'tcx, F> {
 }
 
 impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F> {
-    fn new(cx: &'cx LateContext<'tcx>, def_ids: Vec<LocalDefId>) -> LifetimeChecker<'cx, 'tcx, F> {
-        let map = def_ids.into_iter().map(|def_id| (def_id, Vec::new())).collect();
+    fn new(cx: &'cx LateContext<'tcx>, generics: &'tcx Generics<'_>) -> LifetimeChecker<'cx, 'tcx, F> {
+        let map = generics
+            .params
+            .iter()
+            .filter_map(|par| match par.kind {
+                GenericParamKind::Lifetime {
+                    kind: LifetimeParamKind::Explicit,
+                } => Some((par.def_id, Vec::new())),
+                _ => None,
+            })
+            .collect();
         Self {
             cx,
             map,
@@ -556,17 +565,7 @@ where
 }
 
 fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, generics: &'tcx Generics<'_>) {
-    let def_ids = generics
-        .params
-        .iter()
-        .filter_map(|par| match par.kind {
-            GenericParamKind::Lifetime {
-                kind: LifetimeParamKind::Explicit,
-            } => Some(par.def_id),
-            _ => None,
-        })
-        .collect();
-    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, def_ids);
+    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generics);
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
@@ -587,18 +586,7 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
 }
 
 fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'_>) {
-    let def_ids = impl_
-        .generics
-        .params
-        .iter()
-        .filter_map(|par| match par.kind {
-            GenericParamKind::Lifetime {
-                kind: LifetimeParamKind::Explicit,
-            } => Some(par.def_id),
-            _ => None,
-        })
-        .collect();
-    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, def_ids);
+    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics);
 
     walk_generics(&mut checker, impl_.generics);
     if let Some(ref trait_ref) = impl_.of_trait {
