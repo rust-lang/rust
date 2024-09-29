@@ -1,30 +1,58 @@
 use std::borrow::Cow;
 use std::env;
+use std::fmt::{Display, from_fn};
 
 use rustc_session::Session;
 use rustc_target::spec::{
     AppleOSVersion, apple_deployment_target_env_var, apple_minimum_deployment_target,
-    apple_parse_version,
+    apple_os_minimum_deployment_target, apple_parse_version,
 };
+
+use crate::errors::AppleDeploymentTarget;
 
 #[cfg(test)]
 mod tests;
 
+pub fn pretty_version(version: AppleOSVersion) -> impl Display {
+    let (major, minor, patch) = version;
+    from_fn(move |f| {
+        write!(f, "{major}.{minor}")?;
+        if patch != 0 {
+            write!(f, ".{patch}")?;
+        }
+        Ok(())
+    })
+}
+
 /// Get the deployment target based on the standard environment variables, or fall back to the
 /// minimum version supported by `rustc`.
 pub fn deployment_target(sess: &Session) -> AppleOSVersion {
+    let os_min = apple_os_minimum_deployment_target(&sess.target.os);
     let min = apple_minimum_deployment_target(&sess.target);
+    let env_var = apple_deployment_target_env_var(&sess.target.os);
 
-    if let Ok(deployment_target) = env::var(apple_deployment_target_env_var(&sess.target.os)) {
+    if let Ok(deployment_target) = env::var(env_var) {
         match apple_parse_version(&deployment_target) {
-            // It is common that the deployment target is set too low, e.g. on macOS Aarch64 to also
-            // target older x86_64, the user may set a lower deployment target than supported.
-            //
-            // To avoid such issues, we silently raise the deployment target here.
-            // FIXME: We want to show a warning when `version < os_min`.
-            Ok(version) => version.max(min),
-            // FIXME: Report erroneous environment variable to user.
-            Err(_) => min,
+            Ok(version) => {
+                // It is common that the deployment target is set a bit too low, for example on
+                // macOS Aarch64 to also target older x86_64. So we only want to warn when variable
+                // is lower than the minimum OS supported by rustc, not when the variable is lower
+                // than the minimum for a specific target.
+                if version < os_min {
+                    sess.dcx().emit_warn(AppleDeploymentTarget::TooLow {
+                        env_var,
+                        version: pretty_version(version).to_string(),
+                        os_min: pretty_version(os_min).to_string(),
+                    });
+                }
+
+                // Raise the deployment target to the minimum supported.
+                version.max(min)
+            }
+            Err(error) => {
+                sess.dcx().emit_err(AppleDeploymentTarget::Invalid { env_var, error });
+                min
+            }
         }
     } else {
         // If no deployment target variable is set, default to the minimum found above.

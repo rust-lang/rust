@@ -856,10 +856,10 @@ fn print_crate_info(
                 }
             }
             DeploymentTarget => {
+                use rustc_codegen_ssa::apple::{deployment_target, pretty_version};
+
                 if sess.target.is_like_osx {
-                    let (major, minor, patch) = rustc_codegen_ssa::apple::deployment_target(sess);
-                    let patch = if patch != 0 { format!(".{patch}") } else { String::new() };
-                    println_info!("deployment_target={major}.{minor}{patch}")
+                    println_info!("deployment_target={}", pretty_version(deployment_target(sess)))
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")

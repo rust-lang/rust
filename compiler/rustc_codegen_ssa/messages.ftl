@@ -2,6 +2,12 @@ codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not imp
 
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
+codegen_ssa_apple_deployment_target_invalid =
+    failed to parse deployment target specified in {$env_var}: {$error}
+
+codegen_ssa_apple_deployment_target_too_low =
+    deployment target in {$env_var} was set to {$version}, but the minimum supported by `rustc` is {$os_min}
+
 codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
