@@ -9,7 +9,6 @@ trait Trait {
 impl Trait for () {
     fn hello(self_: Invariant<'_>) -> impl Sized + use<'_> {}
     //~^ ERROR return type captures more lifetimes than trait definition
-    //~| WARNING impl trait in impl method signature does not match trait method signature
 }
 
 fn main() {}

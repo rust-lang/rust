@@ -13,22 +13,5 @@ LL |     fn hello(self_: Invariant<'_>) -> impl Sized + use<Self>;
    |                                       ^^^^^^^^^^^^^^^^^^^^^^
    = note: hidden type inferred to be `impl Sized`
 
-warning: impl trait in impl method signature does not match trait method signature
-  --> $DIR/rpitit-impl-captures-too-much.rs:10:39
-   |
-LL |     fn hello(self_: Invariant<'_>) -> impl Sized + use<Self>;
-   |                                       ---------------------- return type from trait method defined here
-...
-LL |     fn hello(self_: Invariant<'_>) -> impl Sized + use<'_> {}
-   |                                       ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
-   = note: `#[warn(refining_impl_trait_internal)]` on by default
-help: replace the return type so that it matches the trait
-   |
-LL |     fn hello(self_: Invariant<'_>) -> impl Sized {}
-   |                                       ~~~~~~~~~~
-
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
