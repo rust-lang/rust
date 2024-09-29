@@ -92,7 +92,7 @@ use hir_def::{
         keys::{self, Key},
         DynMap,
     },
-    hir::{BindingId, LabelId},
+    hir::{BindingId, Expr, LabelId},
     AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId,
     FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, Lookup, MacroId,
     ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId,
@@ -341,6 +341,20 @@ impl SourceToDefCtx<'_, '_> {
         let (_body, source_map) = self.db.body_with_source_map(container);
         let label_id = source_map.node_label(src)?;
         Some((container, label_id))
+    }
+
+    pub(super) fn label_ref_to_def(
+        &mut self,
+        src: InFile<&ast::Lifetime>,
+    ) -> Option<(DefWithBodyId, LabelId)> {
+        let break_or_continue = ast::Expr::cast(src.value.syntax().parent()?)?;
+        let container = self.find_pat_or_label_container(src.syntax_ref())?;
+        let (body, source_map) = self.db.body_with_source_map(container);
+        let break_or_continue = source_map.node_expr(src.with_value(&break_or_continue))?;
+        let (Expr::Break { label, .. } | Expr::Continue { label }) = body[break_or_continue] else {
+            return None;
+        };
+        Some((container, label?))
     }
 
     pub(super) fn item_to_macro_call(&mut self, src: InFile<&ast::Item>) -> Option<MacroCallId> {

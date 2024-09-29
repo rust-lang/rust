@@ -36,9 +36,9 @@ use span::{EditionedFileId, FileId, HirFileIdRepr};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody, IsString as _},
-    match_ast, AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
-    TextRange, TextSize,
+    ast::{self, HasAttrs as _, HasGenericParams, IsString as _},
+    AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
+    TextSize,
 };
 
 use crate::{
@@ -1221,26 +1221,10 @@ impl<'db> SemanticsImpl<'db> {
         ToDef::to_def(self, src.as_ref())
     }
 
-    pub fn resolve_label(&self, lifetime: &ast::Lifetime) -> Option<Label> {
-        let text = lifetime.text();
-        let label = lifetime.syntax().ancestors().find_map(|syn| {
-            let label = match_ast! {
-                match syn {
-                    ast::ForExpr(it) => it.label(),
-                    ast::WhileExpr(it) => it.label(),
-                    ast::LoopExpr(it) => it.label(),
-                    ast::BlockExpr(it) => it.label(),
-                    _ => None,
-                }
-            };
-            label.filter(|l| {
-                l.lifetime()
-                    .and_then(|lt| lt.lifetime_ident_token())
-                    .map_or(false, |lt| lt.text() == text)
-            })
-        })?;
-        let src = self.wrap_node_infile(label);
-        ToDef::to_def(self, src.as_ref())
+    pub fn resolve_label(&self, label: &ast::Lifetime) -> Option<Label> {
+        let (parent, label_id) = self
+            .with_ctx(|ctx| ctx.label_ref_to_def(self.wrap_node_infile(label.clone()).as_ref()))?;
+        Some(Label { parent, label_id })
     }
 
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
