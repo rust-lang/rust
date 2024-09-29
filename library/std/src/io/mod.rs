@@ -809,7 +809,8 @@ pub trait Read {
     ///
     /// If any other read error is encountered then this function immediately
     /// returns. Any bytes which have already been read will be appended to
-    /// `buf`.
+    /// `buf`; except if the error kind is `OutOfMemory`, in which case some
+    /// data may be lost.
     ///
     /// # Examples
     ///
