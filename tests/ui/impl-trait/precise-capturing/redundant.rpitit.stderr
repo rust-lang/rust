@@ -5,6 +5,9 @@ LL |     fn in_trait() -> impl Sized + use<'a, Self>;
    |                                   ^^^^^^^^^^^^^
    |
    = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
+   = note: see issue #130044 <https://github.com/rust-lang/rust/issues/130044> for more information
+   = help: add `#![feature(precise_capturing_in_traits)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
   --> $DIR/redundant.rs:21:35
@@ -13,6 +16,9 @@ LL |     fn in_trait() -> impl Sized + use<'a> {}
    |                                   ^^^^^^^
    |
    = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
+   = note: see issue #130044 <https://github.com/rust-lang/rust/issues/130044> for more information
+   = help: add `#![feature(precise_capturing_in_traits)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors
 
