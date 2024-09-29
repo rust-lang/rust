@@ -18,7 +18,6 @@
 #![feature(const_align_offset)]
 #![feature(const_array_from_ref)]
 #![feature(const_black_box)]
-#![feature(const_cell_into_inner)]
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_ip)]
