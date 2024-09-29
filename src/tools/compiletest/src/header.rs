@@ -1115,6 +1115,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
     const BUILD_BASE: &str = "{{build-base}}";
+    const RUST_SRC_BASE: &str = "{{rust-src-base}}";
     const SYSROOT_BASE: &str = "{{sysroot-base}}";
     const TARGET_LINKER: &str = "{{target-linker}}";
     const TARGET: &str = "{{target}}";
@@ -1142,6 +1143,13 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(TARGET) {
         value = value.replace(TARGET, &config.target);
+    }
+
+    if value.contains(RUST_SRC_BASE) {
+        let src_base = config.sysroot_base.join("lib/rustlib/src/rust");
+        src_base.try_exists().expect(&*format!("{} should exists", src_base.display()));
+        let src_base = src_base.read_link().unwrap_or(src_base);
+        value = value.replace(RUST_SRC_BASE, &src_base.to_string_lossy());
     }
 
     value
