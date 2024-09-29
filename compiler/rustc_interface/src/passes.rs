@@ -538,7 +538,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             for path in out_filenames {
                 write!(
                     file,
-                    "{}: {}\n",
+                    "{}: {}",
                     path.display(),
                     files
                         .iter()
@@ -564,6 +564,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                             write!(file, "checksum:{checksum_hash} file_len:{file_len}, ")
                         })?;
                 }
+                writeln!(file)?;
                 writeln!(file)?;
             }
 
