@@ -1,9 +1,0 @@
-error[E0080]: evaluation of `test::<T>::{constant#0}` failed
-  --> $DIR/const-error.rs:10:32
-   |
-LL |         asm!("/* {} */", const 1 / 0);
-   |                                ^^^^^ attempt to divide `1_i32` by zero
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0080`.
