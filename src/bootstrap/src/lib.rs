@@ -305,18 +305,15 @@ impl Build {
         #[cfg(not(unix))]
         let is_sudo = false;
 
-        let omit_git_hash = config.omit_git_hash;
-        let rust_info = GitInfo::new(omit_git_hash, &src);
-        let cargo_info = GitInfo::new(omit_git_hash, &src.join("src/tools/cargo"));
-        let rust_analyzer_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rust-analyzer"));
-        let clippy_info = GitInfo::new(omit_git_hash, &src.join("src/tools/clippy"));
-        let miri_info = GitInfo::new(omit_git_hash, &src.join("src/tools/miri"));
-        let rustfmt_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rustfmt"));
-        let enzyme_info = GitInfo::new(omit_git_hash, &src.join("src/tools/enzyme"));
-
-        // we always try to use git for LLVM builds
-        let in_tree_llvm_info = GitInfo::new(false, &src.join("src/llvm-project"));
-        let in_tree_gcc_info = GitInfo::new(false, &src.join("src/gcc"));
+        let rust_info = config.rust_info.clone();
+        let cargo_info = config.cargo_info.clone();
+        let rust_analyzer_info = config.rust_analyzer_info.clone();
+        let clippy_info = config.clippy_info.clone();
+        let miri_info = config.miri_info.clone();
+        let rustfmt_info = config.rustfmt_info.clone();
+        let enzyme_info = config.enzyme_info.clone();
+        let in_tree_llvm_info = config.in_tree_llvm_info.clone();
+        let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
         let initial_target_libdir_str = if config.dry_run() {
             "/dummy/lib/path/to/lib/".to_string()
