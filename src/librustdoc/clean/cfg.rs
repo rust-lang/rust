@@ -6,7 +6,7 @@
 use std::fmt::{self, Write};
 use std::{mem, ops};
 
-use rustc_ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_ast::{LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
@@ -48,6 +48,10 @@ impl Cfg {
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
             NestedMetaItem::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
+            NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => match *b {
+                true => Ok(Some(Cfg::True)),
+                false => Ok(Some(Cfg::False)),
+            },
             NestedMetaItem::Lit(ref lit) => {
                 Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
             }
@@ -120,8 +124,8 @@ impl Cfg {
     ///
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
-    pub(crate) fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
-        Self::parse_without(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
+    pub(crate) fn parse(cfg: &NestedMetaItem) -> Result<Cfg, InvalidCfgError> {
+        Self::parse_nested(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
     }
 
     /// Checks whether the given configuration can be matched in the current session.

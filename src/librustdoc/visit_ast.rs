@@ -164,7 +164,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .unwrap_or(&[])
                     .iter()
                     .filter_map(|attr| {
-                        Cfg::parse(attr.meta_item()?)
+                        Cfg::parse(attr)
                             .map_err(|e| self.cx.sess().dcx().span_err(e.span, e.msg))
                             .ok()
                     })

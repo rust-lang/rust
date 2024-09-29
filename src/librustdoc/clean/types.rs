@@ -5,6 +5,7 @@ use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
+use rustc_ast::NestedMetaItem;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
@@ -1016,7 +1017,7 @@ pub(crate) trait AttributesExt {
                 .peekable();
             if doc_cfg.peek().is_some() && doc_cfg_active {
                 doc_cfg
-                    .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
+                    .filter_map(|attr| Cfg::parse(&attr).ok())
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             } else if doc_auto_cfg_active {
                 // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
@@ -1072,7 +1073,7 @@ pub(crate) trait AttributesExt {
                     let mut meta = attr.meta_item().unwrap().clone();
                     meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                    if let Ok(feat_cfg) = Cfg::parse(&meta) {
+                    if let Ok(feat_cfg) = Cfg::parse(&NestedMetaItem::MetaItem(meta)) {
                         cfg &= feat_cfg;
                     }
                 }
