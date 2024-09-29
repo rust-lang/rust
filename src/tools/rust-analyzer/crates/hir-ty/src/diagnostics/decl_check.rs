@@ -58,7 +58,7 @@ impl fmt::Display for CaseType {
         let repr = match self {
             CaseType::LowerSnakeCase => "snake_case",
             CaseType::UpperSnakeCase => "UPPER_SNAKE_CASE",
-            CaseType::UpperCamelCase => "CamelCase",
+            CaseType::UpperCamelCase => "UpperCamelCase",
         };
 
         repr.fmt(f)
