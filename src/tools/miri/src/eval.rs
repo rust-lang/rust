@@ -1,25 +1,21 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
 use std::ffi::{OsStr, OsString};
-use std::iter;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::task::Poll;
-use std::thread;
+use std::{iter, thread};
 
-use crate::concurrency::thread::TlsAllocAction;
-use crate::diagnostics::report_leaks;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{
-    self, Ty, TyCtxt,
-    layout::{LayoutCx, LayoutOf},
-};
+use rustc_middle::ty::layout::{LayoutCx, LayoutOf};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::config::EntryFnType;
 use rustc_target::spec::abi::Abi;
 
-use rustc_session::config::EntryFnType;
-
+use crate::concurrency::thread::TlsAllocAction;
+use crate::diagnostics::report_leaks;
 use crate::shims::tls;
 use crate::*;
 

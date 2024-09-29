@@ -1,8 +1,6 @@
 use std::ffi::OsStr;
-use std::io;
-use std::iter;
 use std::path::{self, Path, PathBuf};
-use std::str;
+use std::{io, iter, str};
 
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};

@@ -1,15 +1,12 @@
-use rustc_middle::{
-    mir::{Mutability, RetagKind},
-    ty::{self, Ty, layout::HasParamEnv},
-};
+use rustc_middle::mir::{Mutability, RetagKind};
+use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};
 
+use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
+use crate::concurrency::data_race::NaReadType;
 use crate::*;
-use crate::{
-    borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind},
-    concurrency::data_race::NaReadType,
-};
 
 pub mod diagnostics;
 mod perms;

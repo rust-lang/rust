@@ -2,7 +2,8 @@ use std::ffi::{OsStr, OsString};
 
 use rustc_data_structures::fx::FxHashMap;
 
-use self::shims::{unix::UnixEnvVars, windows::WindowsEnvVars};
+use self::shims::unix::UnixEnvVars;
+use self::shims::windows::WindowsEnvVars;
 use crate::*;
 
 #[derive(Default)]

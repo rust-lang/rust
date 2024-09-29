@@ -8,7 +8,8 @@ use std::{env, thread};
 
 use rustc_version::VersionMeta;
 
-use crate::{setup::*, util::*};
+use crate::setup::*;
+use crate::util::*;
 
 const CARGO_MIRI_HELP: &str = r"Runs binary crates and tests in Miri
 

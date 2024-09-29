@@ -28,31 +28,27 @@ use std::num::NonZero;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use tracing::debug;
-
+use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields, ValidationMode};
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_interface::interface::Config;
-use rustc_middle::{
-    middle::{
-        codegen_fn_attrs::CodegenFnAttrFlags,
-        exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel},
-    },
-    query::LocalCrate,
-    traits::{ObligationCause, ObligationCauseCode},
-    ty::{self, Ty, TyCtxt},
-    util::Providers,
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::exported_symbols::{
+    ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
+use rustc_middle::query::LocalCrate;
+use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, EntryFnType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::spec::abi::Abi;
-
-use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields, ValidationMode};
+use tracing::debug;
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,

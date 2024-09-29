@@ -3,10 +3,11 @@ use std::cell::{Cell, RefCell};
 use std::io;
 use std::io::{Error, ErrorKind};
 
+use crate::concurrency::VClock;
 use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
-use crate::{concurrency::VClock, *};
+use crate::*;
 
 /// Maximum value that the eventfd counter can hold.
 const MAX_COUNTER: u64 = u64::MAX - 1;

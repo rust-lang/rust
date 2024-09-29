@@ -6,16 +6,15 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::concurrency::cpu_affinity::CpuAffinityMask;
-use crate::shims::alloc::EvalContextExt as _;
-use crate::shims::unix::*;
-use crate::*;
-
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
 use self::shims::unix::linux::foreign_items as linux;
 use self::shims::unix::macos::foreign_items as macos;
 use self::shims::unix::solarish::foreign_items as solarish;
+use crate::concurrency::cpu_affinity::CpuAffinityMask;
+use crate::shims::alloc::EvalContextExt as _;
+use crate::shims::unix::*;
+use crate::*;
 
 pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {

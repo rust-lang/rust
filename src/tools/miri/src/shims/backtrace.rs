@@ -1,9 +1,11 @@
-use crate::*;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{BytePos, Loc, Symbol, hygiene};
-use rustc_target::{abi::Size, spec::abi::Abi};
+use rustc_target::abi::Size;
+use rustc_target::spec::abi::Abi;
+
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {

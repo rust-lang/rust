@@ -5,8 +5,7 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::io::{self, ErrorKind, IsTerminal, Read, SeekFrom, Write};
 use std::ops::Deref;
-use std::rc::Rc;
-use std::rc::Weak;
+use std::rc::{Rc, Weak};
 
 use rustc_target::abi::Size;
 

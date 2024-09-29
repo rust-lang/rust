@@ -1,12 +1,9 @@
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::io::Write;
-use std::net;
-use std::ops::Not;
-use std::ops::Range;
+use std::ops::{Not, Range};
 use std::path::PathBuf;
-use std::process;
 use std::time::Duration;
+use std::{env, net, process};
 
 use anyhow::{Context, Result, anyhow, bail};
 use path_macro::path;

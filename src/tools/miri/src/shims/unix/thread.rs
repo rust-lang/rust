@@ -1,5 +1,6 @@
-use crate::*;
 use rustc_target::spec::abi::Abi;
+
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
