@@ -82,19 +82,6 @@ index d9de37e..8293fce 100644
  #[cfg(target_has_atomic_load_store = "ptr")]
  macro_rules! atomic_int_ptr_sized {
      ( $($target_pointer_width:literal $align:literal)* ) => { $(
-diff --git a/library/core/src/cell.rs b/library/core/src/cell.rs
-index 58b9ba4..91bbd0a 100644
---- a/library/core/src/cell.rs
-+++ b/library/core/src/cell.rs
-@@ -2246,8 +2246,6 @@ unsafe_cell_primitive_into_inner! {
-     u32 "32"
-     i64 "64"
-     u64 "64"
--    i128 "128"
--    u128 "128"
-     isize "ptr"
-     usize "ptr"
- }
 --
 2.26.2.7.g19db9cfb68
 
