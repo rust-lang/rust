@@ -2012,6 +2012,11 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
         }
 
+        if self.is_verbose() {
+            // This provides very useful logs especially when debugging build cache-related stuff.
+            cargo.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
+        }
+
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
 
         // Downstream forks of the Rust compiler might want to use a custom libc to add support for
