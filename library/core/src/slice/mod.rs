@@ -111,7 +111,6 @@ impl<T> [T] {
     #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
-    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     #[inline]
     #[must_use]
     pub const fn len(&self) -> usize {
