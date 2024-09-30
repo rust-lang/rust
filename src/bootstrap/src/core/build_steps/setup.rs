@@ -522,6 +522,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum EditorKind {
     Vscode,
+    Vim,
     Emacs,
     Helix,
 }
@@ -532,7 +533,7 @@ impl EditorKind {
     /// outdated vs. user-modified settings files.
     fn hashes(&self) -> Vec<&str> {
         match self {
-            EditorKind::Vscode => vec![
+            EditorKind::Vscode | EditorKind::Vim => vec![
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
                 "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
                 "af1b5efe196aed007577899db9dae15d6dbc923d6fa42fa0934e68617ba9bbe0",
@@ -546,9 +547,9 @@ impl EditorKind {
                 "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",
                 "d29af4d949bbe2371eac928a3c31cf9496b1701aa1c45f11cd6c759865ad5c45",
             ],
-            EditorKind::Helix => vec![
-                "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233"
-            ]
+            EditorKind::Helix => {
+                vec!["2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233"]
+            }
         }
     }
 
@@ -559,6 +560,7 @@ impl EditorKind {
     fn settings_short_path(&self) -> PathBuf {
         self.settings_folder().join(match self {
             EditorKind::Vscode => "settings.json",
+            EditorKind::Vim => "coc-settings.json",
             EditorKind::Emacs => ".dir-locals.el",
             EditorKind::Helix => "languages.toml",
         })
@@ -567,6 +569,7 @@ impl EditorKind {
     fn settings_folder(&self) -> PathBuf {
         match self {
             EditorKind::Vscode => PathBuf::new().join(".vscode"),
+            EditorKind::Vim => PathBuf::new().join(".vim"),
             EditorKind::Emacs => PathBuf::new(),
             EditorKind::Helix => PathBuf::new().join(".helix"),
         }
@@ -574,18 +577,16 @@ impl EditorKind {
 
     fn settings_template(&self) -> &str {
         match self {
-            EditorKind::Vscode => include_str!("../../../../etc/rust_analyzer_settings.json"),
+            EditorKind::Vscode | EditorKind::Vim => {
+                include_str!("../../../../etc/rust_analyzer_settings.json")
+            }
             EditorKind::Emacs => include_str!("../../../../etc/rust_analyzer_eglot.el"),
             EditorKind::Helix => include_str!("../../../../etc/rust_analyzer_helix.toml"),
         }
     }
 
-    fn backup_extension(&self) -> &str {
-        match self {
-            EditorKind::Vscode => "json.bak",
-            EditorKind::Emacs => "el.bak",
-            EditorKind::Helix => "toml.bak",
-        }
+    fn backup_extension(&self) -> String {
+        format!("{}.bak", self.settings_short_path().extension().unwrap().to_str().unwrap())
     }
 }
 
@@ -627,6 +628,7 @@ macro_rules! impl_editor_support {
 }
 
 impl_editor_support!(vscode, Vscode);
+impl_editor_support!(vim, Vim);
 impl_editor_support!(emacs, Emacs);
 impl_editor_support!(helix, Helix);
 

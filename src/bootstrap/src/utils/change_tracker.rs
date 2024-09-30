@@ -270,4 +270,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "If `llvm.download-ci-llvm` is not defined, it defaults to `true`.",
     },
+    ChangeInfo {
+        change_id: 131075,
+        severity: ChangeSeverity::Info,
+        summary: "New options for ./x setup added - ./x setup [vim|emacs|helix]",
+    },
 ];
