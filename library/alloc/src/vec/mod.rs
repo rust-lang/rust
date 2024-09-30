@@ -2590,11 +2590,9 @@ impl<T, A: Allocator> Vec<T, A> {
     unsafe fn append_elements(&mut self, other: *const [T]) {
         let count = other.len();
         if count == 0 {
-            // The early return is not necessary for correctness, but in cases
-            // where LLVM sees all the way to the allocation site of `other`
-            // this can avoid a phi-node merging the two different pointers
-            // when zero-length allocations are special-cased.
-            // That in turn can enable more optimizations around the memcpy below.
+            // The early return is not necessary for correctness, but it helps
+            // LLVM by avoiding phi nodes flowing into memcpy.
+            // See codegen/lib-optimizations/append-elements.rs
             return;
         }
         self.reserve(count);
