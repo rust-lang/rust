@@ -439,6 +439,14 @@ fn run_compiler(
                 return early_exit();
             }
 
+            rustc_interface::export::write_interface(tcx);
+
+            if sess.opts.output_types.contains_key(&OutputType::Interface)
+                && sess.opts.output_types.len() == 1
+            {
+                return early_exit();
+            }
+
             if sess.opts.unstable_opts.no_analysis {
                 return early_exit();
             }

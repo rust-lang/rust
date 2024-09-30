@@ -861,6 +861,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 // as used, and ensures that their values are valid.
                 tcx.ensure().limits(());
                 tcx.ensure().stability_index(());
+                tcx.ensure().exportable_items(LOCAL_CRATE);
             }
         );
     });

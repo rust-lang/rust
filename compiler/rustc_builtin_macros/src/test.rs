@@ -352,7 +352,12 @@ pub(crate) fn expand_test_or_bench(
     });
 
     // extern crate test
-    let test_extern = cx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
+    let test_extern = cx.item(
+        sp,
+        test_id,
+        ast::AttrVec::new(),
+        ast::ItemKind::ExternCrate(ast::ExternCrateKind::Default, None),
+    );
 
     debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 

@@ -824,3 +824,10 @@ pub(crate) struct DuplicatePreciseCapturing {
     #[label]
     pub bound2: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_wrong_mangling_scheme_for_extern_dyn)]
+pub(crate) struct WrongManglingSchemeForExternDyn {
+    #[primary_span]
+    pub span: Span,
+}

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
+rustc_ast = { path = "../rustc_ast" }
 rustc_abi = { path = "../rustc_abi" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }

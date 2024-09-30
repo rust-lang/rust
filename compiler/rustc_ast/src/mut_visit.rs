@@ -1196,7 +1196,7 @@ impl WalkItemKind for ItemKind {
         vis: &mut impl MutVisitor,
     ) {
         match self {
-            ItemKind::ExternCrate(_orig_name) => {}
+            ItemKind::ExternCrate(_kind, _orig_name) => {}
             ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
             ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                 vis.visit_ty(ty);
@@ -1898,7 +1898,7 @@ impl DummyAstNode for Item {
                 tokens: Default::default(),
             },
             ident: Ident::empty(),
-            kind: ItemKind::ExternCrate(None),
+            kind: ItemKind::ExternCrate(ExternCrateKind::Default, None),
             tokens: Default::default(),
         }
     }

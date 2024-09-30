@@ -40,8 +40,8 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
-    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
-    LitKind, NodeId, Path, attr,
+    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, ExternCrateKind,
+    GenericArg, GenericArgs, LitKind, NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -1049,6 +1049,7 @@ pub struct Resolver<'ra, 'tcx> {
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    extern_crate_kind_map: FxHashMap<CrateNum, ExternCrateKind>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
@@ -1452,6 +1453,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
+            extern_crate_kind_map: Default::default(),
             module_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
@@ -1614,6 +1616,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let expn_that_defined = self.expn_that_defined;
         let extern_crate_map = self.extern_crate_map;
+        let extern_crate_kind_map = self.extern_crate_kind_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let glob_map = self.glob_map;
         let main_def = self.main_def;
@@ -1636,6 +1639,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             visibilities_for_hashing: self.visibilities_for_hashing,
             effective_visibilities,
             extern_crate_map,
+            extern_crate_kind_map,
             module_children: self.module_children,
             glob_map,
             maybe_unused_trait_imports,

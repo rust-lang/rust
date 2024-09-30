@@ -528,6 +528,7 @@ pub enum OutputType {
     Object,
     Exe,
     DepInfo,
+    Interface,
 }
 
 impl StableOrd for OutputType {
@@ -554,7 +555,8 @@ impl OutputType {
             | OutputType::Assembly
             | OutputType::LlvmAssembly
             | OutputType::Mir
-            | OutputType::Object => false,
+            | OutputType::Object
+            | OutputType::Interface => false,
         }
     }
 
@@ -569,6 +571,7 @@ impl OutputType {
             OutputType::Metadata => "metadata",
             OutputType::Exe => "link",
             OutputType::DepInfo => "dep-info",
+            OutputType::Interface => "i-rs",
         }
     }
 
@@ -583,13 +586,14 @@ impl OutputType {
             "metadata" => OutputType::Metadata,
             "link" => OutputType::Exe,
             "dep-info" => OutputType::DepInfo,
+            "i-rs" => OutputType::Interface,
             _ => return None,
         })
     }
 
     fn shorthands_display() -> String {
         format!(
-            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
+            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
             OutputType::Bitcode.shorthand(),
             OutputType::ThinLinkBitcode.shorthand(),
             OutputType::Assembly.shorthand(),
@@ -599,6 +603,7 @@ impl OutputType {
             OutputType::Metadata.shorthand(),
             OutputType::Exe.shorthand(),
             OutputType::DepInfo.shorthand(),
+            OutputType::Interface.shorthand(),
         )
     }
 
@@ -613,6 +618,7 @@ impl OutputType {
             OutputType::Metadata => "rmeta",
             OutputType::DepInfo => "d",
             OutputType::Exe => "",
+            OutputType::Interface => "rs",
         }
     }
 
@@ -626,7 +632,8 @@ impl OutputType {
             | OutputType::ThinLinkBitcode
             | OutputType::Object
             | OutputType::Metadata
-            | OutputType::Exe => false,
+            | OutputType::Exe
+            | OutputType::Interface => false,
         }
     }
 }
@@ -716,7 +723,7 @@ impl OutputTypes {
             | OutputType::Mir
             | OutputType::Object
             | OutputType::Exe => true,
-            OutputType::Metadata | OutputType::DepInfo => false,
+            OutputType::Metadata | OutputType::DepInfo | OutputType::Interface => false,
         })
     }
 
@@ -730,7 +737,8 @@ impl OutputTypes {
             | OutputType::Mir
             | OutputType::Metadata
             | OutputType::Object
-            | OutputType::DepInfo => false,
+            | OutputType::DepInfo
+            | OutputType::Interface => false,
             OutputType::Exe => true,
         })
     }
@@ -1000,6 +1008,7 @@ pub struct OutputFilenames {
 pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
 pub const DWARF_OBJECT_EXT: &str = "dwo";
+pub const RUST_EXT: &str = "rs";
 
 impl OutputFilenames {
     pub fn new(
@@ -1034,9 +1043,10 @@ impl OutputFilenames {
     fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
         match flavor {
-            OutputType::Metadata => {
+            OutputType::Metadata | OutputType::Interface => {
                 self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
             }
+
             _ => self.with_directory_and_extension(&self.out_directory, extension),
         }
     }

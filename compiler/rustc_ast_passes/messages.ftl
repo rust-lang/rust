@@ -273,3 +273,6 @@ ast_passes_where_clause_before_type_alias = where clauses are not allowed before
     .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
     .remove_suggestion = remove this `where`
     .move_suggestion = move it to the end of the type declaration
+
+ast_passes_wrong_mangling_scheme_for_extern_dyn =
+    `extern dyn` annotation is only allowed with `v0` mangling scheme

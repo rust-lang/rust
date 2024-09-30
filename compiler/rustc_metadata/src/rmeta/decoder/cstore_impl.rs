@@ -412,6 +412,7 @@ provide! { tcx, def_id, other, cdata,
     used_crate_source => { Lrc::clone(&cdata.source) }
     debugger_visualizers => { cdata.get_debugger_visualizers() }
 
+    exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items()) }
     exported_symbols => {
         let syms = cdata.exported_symbols(tcx);
 

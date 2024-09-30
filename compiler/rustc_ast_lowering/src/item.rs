@@ -180,7 +180,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
         match i {
-            ItemKind::ExternCrate(orig_name) => hir::ItemKind::ExternCrate(*orig_name),
+            ItemKind::ExternCrate(_, orig_name) => hir::ItemKind::ExternCrate(*orig_name),
             ItemKind::Use(use_tree) => {
                 // Start with an empty prefix.
                 let prefix = Path { segments: ThinVec::new(), span: use_tree.span, tokens: None };

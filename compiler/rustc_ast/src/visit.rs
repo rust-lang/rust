@@ -363,7 +363,7 @@ impl WalkItemKind for ItemKind {
         visitor: &mut V,
     ) -> V::Result {
         match self {
-            ItemKind::ExternCrate(_rename) => {}
+            ItemKind::ExternCrate(_kind, _rename) => {}
             ItemKind::Use(use_tree) => try_visit!(visitor.visit_use_tree(use_tree, id, false)),
             ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                 try_visit!(visitor.visit_ty(ty));
