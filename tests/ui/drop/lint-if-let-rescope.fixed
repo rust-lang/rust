@@ -1,8 +1,8 @@
 //@ run-rustfix
 
 #![deny(if_let_rescope)]
-#![feature(if_let_rescope)]
-#![allow(irrefutable_let_patterns)]
+#![feature(if_let_rescope, stmt_expr_attributes)]
+#![allow(irrefutable_let_patterns, unused_parens)]
 
 fn droppy() -> Droppy {
     Droppy
@@ -63,6 +63,32 @@ fn main() {
     }
 
     if let () = { match Droppy.get() { Some(_value) => {} _ => {}} } {
+        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN: this changes meaning in Rust 2024
+        //~| HELP: the value is now dropped here in Edition 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+    }
+
+    #[rustfmt::skip]
+    if (match droppy().get() { Some(_value) => { true } _ => { false }}) {
+        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN: this changes meaning in Rust 2024
+        //~| HELP: the value is now dropped here in Edition 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        // do something
+    } else if (((match droppy().get() { Some(_value) => { true } _ => { false }}))) {
+        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN: this changes meaning in Rust 2024
+        //~| HELP: the value is now dropped here in Edition 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+    }
+
+    while let Some(_value) = droppy().get() {
+        // Should not lint
+        break;
+    }
+
+    while (match droppy().get() { Some(_value) => { false } _ => { true }}) {
         //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
         //~| WARN: this changes meaning in Rust 2024
         //~| HELP: the value is now dropped here in Edition 2024

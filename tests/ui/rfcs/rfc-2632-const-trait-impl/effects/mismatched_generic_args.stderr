@@ -22,7 +22,7 @@ error: `Dimension` is forbidden as the type of a const generic parameter
 LL | pub struct Quantity<S, const D: Dimension>(S);
    |                                 ^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -40,7 +40,7 @@ error: `Dimension` is forbidden as the type of a const generic parameter
 LL | impl<const D: Dimension, LHS, RHS> Add<LHS, D> for Quantity<LHS, { Dimension }> {}
    |               ^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -52,7 +52,7 @@ error: `Dimension` is forbidden as the type of a const generic parameter
 LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
    |                     ^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]

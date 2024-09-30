@@ -9,7 +9,6 @@ where
 
 const I<const S: &str>: &str = "";
 //~^ ERROR `&` without an explicit lifetime name cannot be used here
-//~| ERROR `&str` is forbidden as the type of a const generic parameter
 
 const B<T: Trait<'_>>: () = (); //~ ERROR `'_` cannot be used here
 
