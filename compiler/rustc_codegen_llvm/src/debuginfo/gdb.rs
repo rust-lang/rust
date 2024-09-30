@@ -95,7 +95,11 @@ pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
     // in the `.debug_gdb_scripts` section. For that reason, we make sure that the
     // section is only emitted for leaf crates.
     let embed_visualizers = cx.tcx.crate_types().iter().any(|&crate_type| match crate_type {
-        CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::Staticlib => {
+        CrateType::Executable
+        | CrateType::Dylib
+        | CrateType::Cdylib
+        | CrateType::Staticlib
+        | CrateType::Sdylib => {
             // These are crate types for which we will embed pretty printers since they
             // are treated as leaf crates.
             true

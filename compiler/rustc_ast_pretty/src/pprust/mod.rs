@@ -7,7 +7,9 @@ use std::borrow::Cow;
 use rustc_ast as ast;
 use rustc_ast::token::{Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-pub use state::{AnnNode, Comments, PpAnn, PrintState, State, print_crate};
+pub use state::{
+    AnnNode, Comments, PpAnn, PrintState, State, print_crate, print_crate_as_interface,
+};
 
 pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
     State::new().nonterminal_to_string(nt)

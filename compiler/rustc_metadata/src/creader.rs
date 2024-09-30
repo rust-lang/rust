@@ -148,7 +148,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  hash: {}", data.hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
-            let CrateSource { dylib, rlib, rmeta } = data.source();
+            let CrateSource { dylib, rlib, rmeta, sdylib } = data.source();
             if let Some(dylib) = dylib {
                 writeln!(fmt, "  dylib: {}", dylib.0.display())?;
             }
@@ -157,6 +157,10 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             }
             if let Some(rmeta) = rmeta {
                 writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+            }
+            if let Some(sdylib) = sdylib {
+                writeln!(fmt, "   interface: {}", sdylib.interface.display())?;
+                writeln!(fmt, "   dylib: {}", sdylib.dylib.display())?;
             }
         }
         Ok(())
@@ -753,6 +757,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 hash,
                 extra_filename,
                 path_kind,
+                dep_kind == CrateDepKind::Stable,
             );
 
             match self.load(&mut locator)? {
@@ -1276,41 +1281,36 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         def_id: LocalDefId,
         definitions: &Definitions,
     ) -> Option<CrateNum> {
-        match item.kind {
-            ast::ItemKind::ExternCrate(orig_name) => {
-                debug!(
-                    "resolving extern crate stmt. ident: {} orig_name: {:?}",
-                    item.ident, orig_name
-                );
-                let name = match orig_name {
-                    Some(orig_name) => {
-                        validate_crate_name(self.sess, orig_name, Some(item.span));
-                        orig_name
-                    }
-                    None => item.ident.name,
-                };
-                let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
-                    CrateDepKind::MacrosOnly
-                } else {
-                    CrateDepKind::Explicit
-                };
-
-                let cnum = self.resolve_crate(name, item.span, dep_kind, CrateOrigin::Extern)?;
-
-                let path_len = definitions.def_path(def_id).data.len();
-                self.cstore.update_extern_crate(
-                    cnum,
-                    ExternCrate {
-                        src: ExternCrateSource::Extern(def_id.to_def_id()),
-                        span: item.span,
-                        path_len,
-                        dependency_of: LOCAL_CRATE,
-                    },
-                );
-                Some(cnum)
-            }
+        let (mut dep_kind, orig_name) = match item.kind {
+            ast::ItemKind::ExternCrate(orig_name) => (CrateDepKind::Explicit, orig_name),
+            ast::ItemKind::ExternDynCrate(orig_name) => (CrateDepKind::Stable, orig_name),
             _ => bug!(),
-        }
+        };
+        if attr::contains_name(&item.attrs, sym::no_link) {
+            dep_kind = CrateDepKind::MacrosOnly;
+        };
+        debug!("resolving extern crate stmt. ident: {} orig_name: {:?}", item.ident, orig_name);
+        let name = match orig_name {
+            Some(orig_name) => {
+                validate_crate_name(self.sess, orig_name, Some(item.span));
+                orig_name
+            }
+            None => item.ident.name,
+        };
+
+        let cnum = self.resolve_crate(name, item.span, dep_kind, CrateOrigin::Extern)?;
+
+        let path_len = definitions.def_path(def_id).data.len();
+        self.cstore.update_extern_crate(
+            cnum,
+            ExternCrate {
+                src: ExternCrateSource::Extern(def_id.to_def_id()),
+                span: item.span,
+                path_len,
+                dependency_of: LOCAL_CRATE,
+            },
+        );
+        Some(cnum)
     }
 
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {

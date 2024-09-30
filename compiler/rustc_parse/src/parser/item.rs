@@ -222,7 +222,12 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(exp!(Extern)) {
             if self.eat_keyword(exp!(Crate)) {
                 // EXTERN CRATE
-                self.parse_item_extern_crate()?
+                self.parse_item_extern_crate(false)?
+            } else if self.eat_keyword(exp!(Dyn)) {
+                // EXTERN DYN CRATE
+                self.expect_keyword(exp!(Crate))?;
+                self.psess.gated_spans.gate(sym::export, lo.to(self.prev_token.span));
+                self.parse_item_extern_crate(true)?
             } else {
                 // EXTERN BLOCK
                 self.parse_item_foreign_mod(attrs, Safety::Default)?
@@ -1143,7 +1148,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses `extern crate` links.
+    /// Parses `extern crate` and `extern dyn crate` links.
     ///
     /// # Examples
     ///
@@ -1151,7 +1156,7 @@ impl<'a> Parser<'a> {
     /// extern crate foo;
     /// extern crate bar as foo;
     /// ```
-    fn parse_item_extern_crate(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_extern_crate(&mut self, is_extern_dyn: bool) -> PResult<'a, ItemInfo> {
         // Accept `extern crate name-like-this` for better diagnostics
         let orig_name = self.parse_crate_name_with_dashes()?;
         let (item_name, orig_name) = if let Some(rename) = self.parse_rename()? {
@@ -1160,7 +1165,10 @@ impl<'a> Parser<'a> {
             (orig_name, None)
         };
         self.expect_semi()?;
-        Ok((item_name, ItemKind::ExternCrate(orig_name)))
+        match is_extern_dyn {
+            true => Ok((item_name, ItemKind::ExternDynCrate(orig_name))),
+            false => Ok((item_name, ItemKind::ExternCrate(orig_name))),
+        }
     }
 
     fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, Ident> {

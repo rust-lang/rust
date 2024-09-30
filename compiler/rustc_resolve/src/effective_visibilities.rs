@@ -273,6 +273,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
             }
 
             ast::ItemKind::ExternCrate(..)
+            | ast::ItemKind::ExternDynCrate(..)
             | ast::ItemKind::Use(..)
             | ast::ItemKind::Static(..)
             | ast::ItemKind::Const(..)

@@ -1746,7 +1746,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     MetadataKind::None
                 }
                 CrateType::Rlib => MetadataKind::Uncompressed,
-                CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
+                CrateType::Dylib | CrateType::ProcMacro | CrateType::Sdylib => {
+                    MetadataKind::Compressed
+                }
             })
             .max()
             .unwrap_or(MetadataKind::None)
@@ -2033,7 +2035,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 CrateType::Executable
                 | CrateType::Staticlib
                 | CrateType::ProcMacro
-                | CrateType::Cdylib => false,
+                | CrateType::Cdylib
+                | CrateType::Sdylib => false,
 
                 // FIXME rust-lang/rust#64319, rust-lang/rust#64872:
                 // We want to block export of generics from dylibs,
@@ -3202,6 +3205,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
         self.def_kind(def_id) == DefKind::Impl { of_trait: true }
             && self.impl_trait_header(def_id).unwrap().constness == hir::Constness::Const
+    }
+
+    pub fn is_interface_build(self) -> bool {
+        self.sess.opts.unstable_opts.build_interface
     }
 
     pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
