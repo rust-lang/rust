@@ -5153,8 +5153,7 @@ dependencies = [
 [[package]]
 name = "thin-vec"
 version = "0.2.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a38c90d48152c236a3ab59271da4f4ae63d678c5d7ad6b7714d7cb9760be5e4b"
+source = "git+https://github.com/GnomedDev/thin-vec?branch=outline-capacity-overflow#3f61c4016972cf641c1dff6593e6e87ec94f0f59"
 
 [[package]]
 name = "thiserror"

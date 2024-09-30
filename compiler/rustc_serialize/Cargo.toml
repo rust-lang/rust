@@ -7,7 +7,7 @@ edition = "2021"
 # tidy-alphabetical-start
 indexmap = "2.0.0"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-thin-vec = "0.2.12"
+thin-vec = { git = "https://github.com/GnomedDev/thin-vec", branch = "outline-capacity-overflow" }
 # tidy-alphabetical-end
 
 [dev-dependencies]

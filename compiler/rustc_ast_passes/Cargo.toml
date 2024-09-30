@@ -18,5 +18,5 @@ rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-thin-vec = "0.2.12"
+thin-vec = { git = "https://github.com/GnomedDev/thin-vec", branch = "outline-capacity-overflow" }
 # tidy-alphabetical-end
