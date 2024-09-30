@@ -672,6 +672,7 @@ fn build_module_items(
                     item_id: ItemId::DefId(did),
                     inner: Box::new(clean::ItemInner {
                         attrs: Default::default(),
+                        stability: None,
                         kind: clean::ImportItem(clean::Import::new_simple(
                             item.ident.name,
                             clean::ImportSource {
