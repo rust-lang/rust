@@ -71,10 +71,11 @@ impl<'tcx> pprust_hir::PpAnn for HirIdentifiedAnn<'tcx> {
         self.tcx.nested(state, nested)
     }
 
-    fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
+    fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) -> bool {
         if let pprust_hir::AnnNode::Expr(_) = node {
             s.popen();
         }
+        true
     }
 
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -154,10 +155,11 @@ impl<'tcx> pprust_hir::PpAnn for HirTypedAnn<'tcx> {
         self.maybe_typeck_results.set(old_maybe_typeck_results);
     }
 
-    fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
+    fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) -> bool {
         if let pprust_hir::AnnNode::Expr(_) = node {
             s.popen();
         }
+        true
     }
 
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {

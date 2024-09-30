@@ -762,7 +762,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::ExternCrate(orig_name) => {
+            ItemKind::ExternCrate(orig_name) | ItemKind::ExternDynCrate(orig_name) => {
                 self.build_reduced_graph_for_extern_crate(
                     orig_name,
                     item,
@@ -920,6 +920,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             });
             crate_id.map(|crate_id| {
                 self.r.extern_crate_map.insert(local_def_id, crate_id);
+                if let ItemKind::ExternDynCrate(_) = item.kind {
+                    self.r.extern_dyn_crates.insert(crate_id);
+                }
                 self.r.expect_module(crate_id.as_def_id())
             })
         }
@@ -1043,11 +1046,17 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         span: item.span,
                     });
                 }
-                if let ItemKind::ExternCrate(Some(orig_name)) = item.kind
-                    && orig_name == kw::SelfLower
-                {
-                    self.r.dcx().emit_err(errors::MacroUseExternCrateSelf { span: attr.span });
-                }
+                match item.kind {
+                    ItemKind::ExternCrate(Some(orig_name))
+                    | ItemKind::ExternDynCrate(Some(orig_name)) => {
+                        if orig_name == kw::SelfLower {
+                            self.r
+                                .dcx()
+                                .emit_err(errors::MacroUseExternCrateSelf { span: attr.span });
+                        }
+                    }
+                    _ => {}
+                };
                 let ill_formed = |span| {
                     self.r.dcx().emit_err(errors::BadMacroImport { span });
                 };

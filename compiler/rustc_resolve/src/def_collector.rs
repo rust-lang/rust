@@ -122,6 +122,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ItemKind::Struct(..) => DefKind::Struct,
             ItemKind::Union(..) => DefKind::Union,
             ItemKind::ExternCrate(..) => DefKind::ExternCrate,
+            ItemKind::ExternDynCrate(..) => DefKind::ExternCrate,
             ItemKind::TyAlias(..) => DefKind::TyAlias,
             ItemKind::Static(s) => DefKind::Static {
                 safety: hir::Safety::Safe,

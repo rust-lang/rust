@@ -1728,7 +1728,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     MetadataKind::None
                 }
                 CrateType::Rlib => MetadataKind::Uncompressed,
-                CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
+                CrateType::Dylib | CrateType::ProcMacro | CrateType::Sdylib => {
+                    MetadataKind::Compressed
+                }
             })
             .max()
             .unwrap_or(MetadataKind::None)
@@ -2022,6 +2024,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // but we must fix rust-lang/rust#65890 before we can
                 // do that robustly.
                 CrateType::Dylib => true,
+                CrateType::Sdylib => true,
 
                 CrateType::Rlib => true,
             }
@@ -3200,6 +3203,11 @@ impl<'tcx> TyCtxt<'tcx> {
             && self.impl_trait_header(def_id).unwrap().constness == hir::Constness::Const
     }
 
+    pub fn is_interface_build(self) -> bool {
+        self.crate_types().contains(&rustc_session::config::CrateType::Sdylib)
+            && !self.sess.opts.output_types.should_codegen()
+    }
+
     pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
         match self.def_kind(def_id) {
             DefKind::Fn | DefKind::AssocFn => {}
@@ -3291,6 +3299,8 @@ pub fn provide(providers: &mut Providers) {
             tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default(),
         ))
     };
+
+    providers.is_extern_dyn_crate = |tcx, id| tcx.resolutions(()).extern_dyn_crates.contains(&id);
 
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();

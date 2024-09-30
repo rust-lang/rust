@@ -1,0 +1,15 @@
+error[E0463]: can't find crate for `foo`
+  --> $DIR/extern-crate-dyn.rs:1:1
+   |
+LL | extern dyn crate foo;
+   | ^^^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: `extern dyn` annotation is only allowed with `v0` mangling scheme
+  --> $DIR/extern-crate-dyn.rs:1:1
+   |
+LL | extern dyn crate foo;
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0463`.

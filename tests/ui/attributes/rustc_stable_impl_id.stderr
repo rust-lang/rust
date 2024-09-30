@@ -1,0 +1,38 @@
+error: stable impl id: 0
+  --> $DIR/rustc_stable_impl_id.rs:8:1
+   |
+LL | impl S {}
+   | ^^^^^^^^^
+
+error: stable impl id: 4
+  --> $DIR/rustc_stable_impl_id.rs:28:1
+   |
+LL | impl S {}
+   | ^^^^^^^^^
+
+error: stable impl id: 1
+  --> $DIR/rustc_stable_impl_id.rs:14:5
+   |
+LL |     impl crate::S {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: stable impl id: 2
+  --> $DIR/rustc_stable_impl_id.rs:17:5
+   |
+LL |     impl crate::S {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: stable impl id: 3
+  --> $DIR/rustc_stable_impl_id.rs:21:9
+   |
+LL |         impl crate::S {}
+   |         ^^^^^^^^^^^^^^^^
+
+error: stable impl id: 5
+  --> $DIR/rustc_stable_impl_id.rs:34:5
+   |
+LL |     impl crate::S {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

@@ -26,6 +26,7 @@ rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
+rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_hir_typeck = { path = "../rustc_hir_typeck" }
 rustc_incremental = { path = "../rustc_incremental" }
 rustc_lint = { path = "../rustc_lint" }

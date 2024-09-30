@@ -371,6 +371,8 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 return early_exit();
             }
 
+            rustc_interface::export::write_interface(tcx);
+
             Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
         });
 

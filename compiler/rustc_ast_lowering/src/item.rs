@@ -180,7 +180,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
         match i {
-            ItemKind::ExternCrate(orig_name) => hir::ItemKind::ExternCrate(*orig_name),
+            ItemKind::ExternCrate(orig_name) | ItemKind::ExternDynCrate(orig_name) => {
+                hir::ItemKind::ExternCrate(*orig_name)
+            }
             ItemKind::Use(use_tree) => {
                 // Start with an empty prefix.
                 let prefix = Path { segments: ThinVec::new(), span: use_tree.span, tokens: None };
@@ -1178,7 +1180,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
             // this as a special case.
             return self.lower_fn_body(decl, contract, |this| {
-                if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic) {
+                if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic)
+                    || this.tcx.is_interface_build()
+                {
                     let span = this.lower_span(span);
                     let empty_block = hir::Block {
                         hir_id: this.next_id(),

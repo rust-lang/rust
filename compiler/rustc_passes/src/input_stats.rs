@@ -545,6 +545,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             (self, i, i.kind, None, ast, Item, ItemKind),
             [
                 ExternCrate,
+                ExternDynCrate,
                 Use,
                 Static,
                 Const,

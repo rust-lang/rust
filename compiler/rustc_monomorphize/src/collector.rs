@@ -976,6 +976,11 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
         return true;
     }
 
+    if tcx.is_extern_dyn_crate(def_id.krate) {
+        // Skip the codegen of an item from an interface file.
+        return false;
+    }
+
     if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(tcx).is_some() {
         // We can link to the item in question, no instance needed in this crate.
         return false;

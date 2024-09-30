@@ -166,6 +166,7 @@ pub struct ResolverGlobalCtxt {
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    pub extern_dyn_crates: FxHashSet<CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
     pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
@@ -1918,6 +1919,10 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         None
+    }
+
+    pub fn is_exportable(self, def_id: DefId) -> bool {
+        self.exportable_items(def_id.krate).contains(&def_id)
     }
 
     /// Check if the given `DefId` is `#\[automatically_derived\]`, *and*

@@ -10,10 +10,13 @@ use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
 use rustc_parse::validate_attr;
-use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_tuple};
+use rustc_session::config::{
+    Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, host_tuple,
+};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
+use rustc_session::parse::feature_err;
 use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -408,12 +411,18 @@ pub(crate) fn check_attr_crate_type(
     sess: &Session,
     attrs: &[ast::Attribute],
     lint_buffer: &mut LintBuffer,
+    features: &rustc_feature::Features,
 ) {
     // Unconditionally collect crate types from attributes to make them used
     for a in attrs.iter() {
         if a.has_name(sym::crate_type) {
             if let Some(n) = a.value_str() {
-                if categorize_crate_type(n).is_some() {
+                if let Some(crate_type) = categorize_crate_type(n) {
+                    if crate_type == CrateType::Sdylib && !features.export() {
+                        feature_err(sess, sym::export, a.span, "`sdylib` crate type is unstable")
+                            .emit();
+                    }
+
                     return;
                 }
 
