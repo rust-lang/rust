@@ -556,7 +556,7 @@ impl Module {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        let _p = tracing::info_span!("Module::diagnostics", name = ?self.name(db)).entered();
+        let _p = tracing::info_span!("diagnostics", name = ?self.name(db)).entered();
         let edition = db.crate_graph()[self.id.krate()].edition;
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
