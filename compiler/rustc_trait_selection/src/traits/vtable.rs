@@ -332,14 +332,10 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
     let ty::Dynamic(source, _, _) = *key.self_ty().kind() else {
         bug!();
     };
-    let source_principal = tcx
-        .normalize_erasing_regions(ty::ParamEnv::reveal_all(), source.principal().unwrap())
-        .with_self_ty(tcx, tcx.types.trait_object_dummy_self);
+    let source_principal =
+        source.principal().unwrap().with_self_ty(tcx, tcx.types.trait_object_dummy_self);
 
-    let target_principal = tcx
-        .normalize_erasing_regions(ty::ParamEnv::reveal_all(), key)
-        // We don't care about the self type, since it will always be the same thing.
-        .with_self_ty(tcx, tcx.types.trait_object_dummy_self);
+    let target_principal = ty::Binder::dummy(ty::ExistentialTraitRef::erase_self_ty(tcx, key));
 
     let vtable_segment_callback = {
         let mut vptr_offset = 0;
@@ -348,15 +344,18 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
                 VtblSegment::MetadataDSA => {
                     vptr_offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
                 }
-                VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                    if tcx
-                        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), trait_ref)
-                        == target_principal
-                    {
+                VtblSegment::TraitOwnEntries { trait_ref: vtable_principal, emit_vptr } => {
+                    if trait_refs_are_compatible(
+                        tcx,
+                        vtable_principal
+                            .map_bound(|t| ty::ExistentialTraitRef::erase_self_ty(tcx, t)),
+                        target_principal,
+                    ) {
                         return ControlFlow::Break(vptr_offset);
                     }
 
-                    vptr_offset += tcx.own_existential_vtable_entries(trait_ref.def_id()).len();
+                    vptr_offset +=
+                        tcx.own_existential_vtable_entries(vtable_principal.def_id()).len();
 
                     if emit_vptr {
                         vptr_offset += 1;
