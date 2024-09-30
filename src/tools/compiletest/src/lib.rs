@@ -83,6 +83,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
+        .optflag("", "has-enzyme", "run tests that require enzyme")
         .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
         .optmulti(
             "",
@@ -233,6 +234,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         // Avoid spawning an external command when we know tidy won't be used.
         false
     };
+    let has_enzyme = matches.opt_present("has-enzyme");
     let filters = if mode == Mode::RunMake {
         matches
             .free
@@ -331,6 +333,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             .map(|s| s.parse().expect("invalid --compare-mode provided")),
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_tidy,
+        has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition"),
