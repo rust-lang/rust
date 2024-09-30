@@ -37,6 +37,31 @@ pub use crate::{
     snippet::{Snippet, SnippetScope},
 };
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CompletionFieldsToResolve {
+    pub resolve_label_details: bool,
+    pub resolve_tags: bool,
+    pub resolve_detail: bool,
+    pub resolve_documentation: bool,
+    pub resolve_filter_text: bool,
+    pub resolve_text_edit: bool,
+    pub resolve_command: bool,
+}
+
+impl CompletionFieldsToResolve {
+    pub const fn empty() -> Self {
+        Self {
+            resolve_label_details: false,
+            resolve_tags: false,
+            resolve_detail: false,
+            resolve_documentation: false,
+            resolve_filter_text: false,
+            resolve_text_edit: false,
+            resolve_command: false,
+        }
+    }
+}
+
 //FIXME: split the following feature into fine-grained features.
 
 // Feature: Magic Completions

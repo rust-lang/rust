@@ -12,7 +12,8 @@
 
 use hir::ChangeWithProcMacros;
 use ide::{
-    AnalysisHost, CallableSnippets, CompletionConfig, DiagnosticsConfig, FilePosition, TextSize,
+    AnalysisHost, CallableSnippets, CompletionConfig, CompletionFieldsToResolve, DiagnosticsConfig,
+    FilePosition, TextSize,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -172,6 +173,7 @@ fn integrated_completion_benchmark() {
             snippets: Vec::new(),
             limit: None,
             add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -219,6 +221,7 @@ fn integrated_completion_benchmark() {
             snippets: Vec::new(),
             limit: None,
             add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -264,6 +267,7 @@ fn integrated_completion_benchmark() {
             snippets: Vec::new(),
             limit: None,
             add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
