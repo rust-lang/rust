@@ -6,16 +6,15 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::concurrency::cpu_affinity::CpuAffinityMask;
-use crate::shims::alloc::EvalContextExt as _;
-use crate::shims::unix::*;
-use crate::*;
-
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
 use self::shims::unix::linux::foreign_items as linux;
 use self::shims::unix::macos::foreign_items as macos;
 use self::shims::unix::solarish::foreign_items as solarish;
+use crate::concurrency::cpu_affinity::CpuAffinityMask;
+use crate::shims::alloc::EvalContextExt as _;
+use crate::shims::unix::*;
+use crate::*;
 
 pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {
@@ -791,6 +790,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We ignore the flags, just always use the same PRNG / host RNG.
                 this.gen_random(ptr, len)?;
                 this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
+            }
+            "arc4random_buf" => {
+                // This function is non-standard but exists with the same signature and
+                // same behavior (eg never fails) on FreeBSD and Solaris/Illumos.
+                if !matches!(&*this.tcx.sess.target.os, "freebsd" | "illumos" | "solaris") {
+                    throw_unsup_format!(
+                        "`arc4random_buf` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                let [ptr, len] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let len = this.read_target_usize(len)?;
+                this.gen_random(ptr, len)?;
             }
             "_Unwind_RaiseException" => {
                 // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.

@@ -219,7 +219,7 @@ degree documented below):
   - `solaris` / `illumos`: maintained by @devnexen. Supports `std::{env, thread, sync}`, but not `std::fs`.
   - `freebsd`: **maintainer wanted**. Supports `std::env` and parts of `std::{thread, fs}`, but not `std::sync`.
   - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
-  - `wasm`: **maintainer wanted**. Support very incomplete, not even standard output works, but an empty `main` function works.
+  - `wasi`: **maintainer wanted**. Support very incomplete, not even standard output works, but an empty `main` function works.
 - For targets on other operating systems, Miri might fail before even reaching the `main` function.
 
 However, even for targets that we do support, the degree of support for accessing platform APIs

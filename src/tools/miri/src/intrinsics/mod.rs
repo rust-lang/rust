@@ -5,17 +5,15 @@ mod simd;
 
 use rand::Rng;
 use rustc_apfloat::{Float, Round};
-use rustc_middle::{
-    mir,
-    ty::{self, FloatTy},
-};
+use rustc_middle::mir;
+use rustc_middle::ty::{self, FloatTy};
 use rustc_span::{Symbol, sym};
 use rustc_target::abi::Size;
 
-use crate::*;
 use self::atomic::EvalContextExt as _;
 use self::helpers::{ToHost, ToSoft, check_arg_count};
 use self::simd::EvalContextExt as _;
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {

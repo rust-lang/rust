@@ -5,8 +5,7 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::io::{self, ErrorKind, IsTerminal, Read, SeekFrom, Write};
 use std::ops::Deref;
-use std::rc::Rc;
-use std::rc::Weak;
+use std::rc::{Rc, Weak};
 
 use rustc_target::abi::Size;
 
@@ -676,12 +675,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_bytes_ptr(buf, bytes[..read_bytes].iter().copied())?;
                 // The actual read size is always less than what got originally requested so this cannot fail.
                 this.write_int(u64::try_from(read_bytes).unwrap(), dest)?;
-                return Ok(());
+                Ok(())
             }
             Err(e) => {
                 this.set_last_error_from_io_error(e)?;
                 this.write_int(-1, dest)?;
-                return Ok(());
+                Ok(())
             }
         }
     }

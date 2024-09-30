@@ -9,10 +9,11 @@ use std::io::{Error, ErrorKind, Read};
 
 use rustc_target::abi::Size;
 
+use crate::concurrency::VClock;
 use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
-use crate::{concurrency::VClock, *};
+use crate::*;
 
 /// The maximum capacity of the socketpair buffer in bytes.
 /// This number is arbitrary as the value can always

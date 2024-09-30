@@ -1,8 +1,7 @@
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-preemption-rate=0
 //@ignore-target: windows # No libc env support on Windows
 
-use std::env;
-use std::thread;
+use std::{env, thread};
 
 fn main() {
     let t = thread::spawn(|| unsafe {

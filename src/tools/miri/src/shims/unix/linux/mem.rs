@@ -1,8 +1,9 @@
 //! This follows the pattern in src/shims/unix/mem.rs: We only support uses of mremap that would
 //! correspond to valid uses of realloc.
 
-use crate::*;
 use rustc_target::abi::Size;
+
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {

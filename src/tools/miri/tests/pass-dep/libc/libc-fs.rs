@@ -230,8 +230,7 @@ fn test_posix_mkstemp() {
 
 /// Test allocating variant of `realpath`.
 fn test_posix_realpath_alloc() {
-    use std::os::unix::ffi::OsStrExt;
-    use std::os::unix::ffi::OsStringExt;
+    use std::os::unix::ffi::{OsStrExt, OsStringExt};
 
     let buf;
     let path = utils::tmp().join("miri_test_libc_posix_realpath_alloc");

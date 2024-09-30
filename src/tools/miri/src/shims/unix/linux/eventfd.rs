@@ -3,10 +3,11 @@ use std::cell::{Cell, RefCell};
 use std::io;
 use std::io::{Error, ErrorKind};
 
+use crate::concurrency::VClock;
 use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
-use crate::{concurrency::VClock, *};
+use crate::*;
 
 /// Maximum value that the eventfd counter can hold.
 const MAX_COUNTER: u64 = u64::MAX - 1;
@@ -110,7 +111,7 @@ impl FileDescription for Event {
     /// write either blocks until a read is performed on the
     /// file descriptor, or fails with the error EAGAIN if the
     /// file descriptor has been made nonblocking.
-
+    ///
     /// A write fails with the error EINVAL if the size of the
     /// supplied buffer is less than 8 bytes, or if an attempt is
     /// made to write the value 0xffffffffffffffff.

@@ -12,9 +12,6 @@ on:
   schedule:
     - cron: '44 4 * * *' # At 4:44 UTC every day.
 
-permissions:
-  contents: write
-
 defaults:
   run:
     shell: bash
@@ -90,6 +87,11 @@ jobs:
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
+    permissions:
+        # The cronjob needs to be able to push to the repo...
+        contents: write
+        # ... and create a PR.
+        pull-requests: write
     needs: [build, style]
     if: github.event_name == 'schedule' && failure()
     steps:

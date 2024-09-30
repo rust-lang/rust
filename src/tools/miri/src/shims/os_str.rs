@@ -1,11 +1,10 @@
 use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
-
 #[cfg(unix)]
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
+use std::path::{Path, PathBuf};
 
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;

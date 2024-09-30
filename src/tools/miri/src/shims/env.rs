@@ -2,8 +2,9 @@ use std::ffi::{OsStr, OsString};
 
 use rustc_data_structures::fx::FxHashMap;
 
+use self::shims::unix::UnixEnvVars;
+use self::shims::windows::WindowsEnvVars;
 use crate::*;
-use self::shims::{unix::UnixEnvVars, windows::WindowsEnvVars};
 
 #[derive(Default)]
 pub enum EnvVars<'tcx> {
@@ -103,7 +104,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn get_env_var(&mut self, name: &OsStr) -> InterpResult<'tcx, Option<OsString>> {
         let this = self.eval_context_ref();
         match &this.machine.env_vars {
-            EnvVars::Uninit => return Ok(None),
+            EnvVars::Uninit => Ok(None),
             EnvVars::Unix(vars) => vars.get(this, name),
             EnvVars::Windows(vars) => vars.get(name),
         }

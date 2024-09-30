@@ -148,18 +148,18 @@ case $HOST_TARGET in
     TEST_TARGET=arm-unknown-linux-gnueabi run_tests
     TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Partially supported targets (tier 2)
-    BASIC="empty_main integer vec string btreemap hello hashmap heap_alloc align" # ensures we have the basics: stdout/stderr, system allocator, randomness (for HashMap initialization)
-    UNIX="panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
-    TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX threadname pthread time fs
-    TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX threadname pthread time fs
-    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX thread sync available-parallelism time tls
-    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX thread sync available-parallelism time tls
-    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX pthread --skip threadname --skip pthread_cond_timedwait
-    TEST_TARGET=wasm32-wasip2          run_tests_minimal empty_main wasm heap_alloc libc-mem
-    TEST_TARGET=wasm32-unknown-unknown run_tests_minimal empty_main wasm
+    BASIC="empty_main integer heap_alloc libc-mem vec string btreemap" # ensures we have the basics: pre-main code, system allocator
+    UNIX="hello panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
+    TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX time hashmap random threadname pthread fs
+    TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX time hashmap random threadname pthread fs
+    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX time hashmap random thread sync available-parallelism tls
+    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX time hashmap random thread sync available-parallelism tls
+    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap pthread --skip threadname
+    TEST_TARGET=wasm32-wasip2          run_tests_minimal $BASIC wasm
+    TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
     # Custom target JSON file
-    TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std
+    TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
   i686-pc-windows-msvc)
     # Host

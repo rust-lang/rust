@@ -7,14 +7,13 @@ use std::cell::RefCell;
 use std::cmp::max;
 
 use rand::Rng;
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
 
-use crate::{concurrency::VClock, *};
-
 use self::reuse_pool::ReusePool;
+use crate::concurrency::VClock;
+use crate::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ProvenanceMode {

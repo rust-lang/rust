@@ -1,4 +1,4 @@
-use rustc_apfloat::{ieee::Double, ieee::Single};
+use rustc_apfloat::ieee::{Double, Single};
 use rustc_middle::mir;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf as _;

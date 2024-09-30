@@ -5,11 +5,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_span::{Span, SpanData};
 
 use crate::borrow_tracker::ProtectorKind;
-use crate::borrow_tracker::tree_borrows::{
-    perms::{PermTransition, Permission},
-    tree::LocationState,
-    unimap::UniIndex,
-};
+use crate::borrow_tracker::tree_borrows::perms::{PermTransition, Permission};
+use crate::borrow_tracker::tree_borrows::tree::LocationState;
+use crate::borrow_tracker::tree_borrows::unimap::UniIndex;
 use crate::*;
 
 /// Cause of an access: either a real access or one

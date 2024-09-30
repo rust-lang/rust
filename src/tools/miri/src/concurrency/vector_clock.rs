@@ -1,11 +1,10 @@
+use std::cmp::Ordering;
+use std::fmt::Debug;
+use std::ops::{Index, Shr};
+
 use rustc_index::Idx;
 use rustc_span::{DUMMY_SP, Span, SpanData};
 use smallvec::SmallVec;
-use std::{
-    cmp::Ordering,
-    fmt::Debug,
-    ops::{Index, Shr},
-};
 
 use super::data_race::NaReadType;
 
@@ -430,10 +429,12 @@ impl Index<VectorIdx> for VClock {
 ///  test suite
 #[cfg(test)]
 mod tests {
+    use std::cmp::Ordering;
+
+    use rustc_span::DUMMY_SP;
+
     use super::{VClock, VTimestamp, VectorIdx};
     use crate::concurrency::data_race::NaReadType;
-    use rustc_span::DUMMY_SP;
-    use std::cmp::Ordering;
 
     #[test]
     fn test_equal() {

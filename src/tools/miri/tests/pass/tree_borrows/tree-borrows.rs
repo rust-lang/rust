@@ -3,8 +3,7 @@
 //@[uniq]compile-flags: -Zmiri-unique-is-unique
 #![feature(allocator_api)]
 
-use std::mem;
-use std::ptr;
+use std::{mem, ptr};
 
 fn main() {
     aliasing_read_only_mutable_refs();

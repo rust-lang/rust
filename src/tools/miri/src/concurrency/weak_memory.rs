@@ -76,20 +76,15 @@
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L295)
 // and here.
 
-use std::{
-    cell::{Ref, RefCell},
-    collections::VecDeque,
-};
+use std::cell::{Ref, RefCell};
+use std::collections::VecDeque;
 
 use rustc_data_structures::fx::FxHashMap;
 
+use super::data_race::{GlobalState as DataRaceState, ThreadClockSet};
+use super::range_object_map::{AccessType, RangeObjectMap};
+use super::vector_clock::{VClock, VTimestamp, VectorIdx};
 use crate::*;
-
-use super::{
-    data_race::{GlobalState as DataRaceState, ThreadClockSet},
-    range_object_map::{AccessType, RangeObjectMap},
-    vector_clock::{VClock, VTimestamp, VectorIdx},
-};
 
 pub type AllocState = StoreBufferAlloc;
 

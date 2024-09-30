@@ -1,7 +1,8 @@
-use rustc_middle::{mir, mir::BinOp, ty};
+use rustc_middle::mir::BinOp;
+use rustc_middle::{mir, ty};
 
-use crate::*;
 use self::helpers::check_arg_count;
+use crate::*;
 
 pub enum AtomicOp {
     /// The `bool` indicates whether the result of the operation should be negated (`UnOp::Not`,

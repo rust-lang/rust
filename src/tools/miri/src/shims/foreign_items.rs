@@ -1,21 +1,22 @@
-use std::{collections::hash_map::Entry, io::Write, iter, path::Path};
+use std::collections::hash_map::Entry;
+use std::io::Write;
+use std::iter;
+use std::path::Path;
 
 use rustc_apfloat::Float;
 use rustc_ast::expand::allocator::alloc_error_handler_name;
-use rustc_hir::{def::DefKind, def_id::CrateNum};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir;
-use rustc_middle::ty;
+use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
-use rustc_target::{
-    abi::{Align, AlignFromBytesError, Size},
-    spec::abi::Abi,
-};
+use rustc_target::abi::{Align, AlignFromBytesError, Size};
+use rustc_target::spec::abi::Abi;
 
+use self::helpers::{ToHost, ToSoft};
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
 use crate::*;
-use self::helpers::{ToHost, ToSoft};
 
 /// Type of dynamic symbols (for `dlsym` et al)
 #[derive(Debug, Copy, Clone)]

@@ -1,17 +1,15 @@
 use std::ffi::OsStr;
-use std::io;
-use std::iter;
 use std::path::{self, Path, PathBuf};
-use std::str;
+use std::{io, iter, str};
 
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
+use self::shims::windows::handle::{Handle, PseudoHandle};
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::windows::*;
 use crate::*;
-use self::shims::windows::handle::{Handle, PseudoHandle};
 
 pub fn is_dyn_sym(name: &str) -> bool {
     // std does dynamic detection for these symbols
@@ -23,8 +21,8 @@ pub fn is_dyn_sym(name: &str) -> bool {
 
 #[cfg(windows)]
 fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
-    // We are on Windows so we can simply lte the host do this.
-    return Ok(path::absolute(path));
+    // We are on Windows so we can simply let the host do this.
+    Ok(path::absolute(path))
 }
 
 #[cfg(unix)]

@@ -6,25 +6,24 @@ mod item;
 mod stack;
 
 use std::cell::RefCell;
-use std::cmp;
 use std::fmt::Write;
-use std::mem;
+use std::{cmp, mem};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::{self, Ty, layout::HasParamEnv};
+use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{Abi, Size};
-
-use crate::borrow_tracker::{
-    GlobalStateInner, ProtectorKind,
-    stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
-};
-use crate::concurrency::data_race::{NaReadType, NaWriteType};
-use crate::*;
 
 use self::diagnostics::{RetagCause, RetagInfo};
 pub use self::item::{Item, Permission};
 pub use self::stack::Stack;
+use crate::borrow_tracker::stacked_borrows::diagnostics::{
+    AllocHistory, DiagnosticCx, DiagnosticCxBuilder,
+};
+use crate::borrow_tracker::{GlobalStateInner, ProtectorKind};
+use crate::concurrency::data_race::{NaReadType, NaWriteType};
+use crate::*;
 
 pub type AllocState = Stacks;
 
@@ -171,7 +170,7 @@ impl NewPermission {
 ///     F2b: No `SharedReadWrite` or `Unique` will ever be added on top of our `SharedReadOnly`.
 /// F3: If an access happens with an `&` outside `UnsafeCell`,
 ///     it requires the `SharedReadOnly` to still be in the stack.
-
+///
 /// Core relation on `Permission` to define which accesses are allowed
 impl Permission {
     /// This defines for a given permission, whether it permits the given kind of access.

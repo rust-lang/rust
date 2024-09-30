@@ -40,27 +40,22 @@
 //! code some atomic operations may increment the timestamp when not necessary but this has no effect
 //! on the data-race detection code.
 
-use std::{
-    cell::{Cell, Ref, RefCell, RefMut},
-    fmt::Debug,
-    mem,
-};
+use std::cell::{Cell, Ref, RefCell, RefMut};
+use std::fmt::Debug;
+use std::mem;
 
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::{mir, ty::Ty};
+use rustc_middle::mir;
+use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
+use super::vector_clock::{VClock, VTimestamp, VectorIdx};
+use super::weak_memory::EvalContextExt as _;
 use crate::diagnostics::RacingOp;
 use crate::*;
-
-use super::{
-    vector_clock::{VClock, VTimestamp, VectorIdx},
-    weak_memory::EvalContextExt as _,
-};
 
 pub type AllocState = VClockAlloc;
 

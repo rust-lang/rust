@@ -1,8 +1,8 @@
 use either::Either;
-
 use rustc_apfloat::{Float, Round};
+use rustc_middle::ty::FloatTy;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
-use rustc_middle::{mir, ty, ty::FloatTy};
+use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 use rustc_target::abi::{Endian, HasDataLayout};
 

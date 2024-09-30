@@ -11,13 +11,12 @@ use std::time::SystemTime;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::abi::Size;
 
+use self::fd::FlockOp;
+use self::shims::time::system_time_to_duration;
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::*;
 use crate::*;
-use self::shims::time::system_time_to_duration;
-
-use self::fd::FlockOp;
 
 #[derive(Debug)]
 struct FileHandle {
@@ -186,12 +185,14 @@ impl FileDescription for FileHandle {
         #[cfg(target_family = "windows")]
         {
             use std::os::windows::io::AsRawHandle;
-            use windows_sys::Win32::{
-                Foundation::{ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE},
-                Storage::FileSystem::{
-                    LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
-                },
+
+            use windows_sys::Win32::Foundation::{
+                ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE,
             };
+            use windows_sys::Win32::Storage::FileSystem::{
+                LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
+            };
+
             let fh = self.file.as_raw_handle() as HANDLE;
 
             use FlockOp::*;

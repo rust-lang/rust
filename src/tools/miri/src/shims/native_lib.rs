@@ -1,7 +1,8 @@
 //! Implements calling functions from a native library.
-use libffi::{high::call as ffi, low::CodePtr};
 use std::ops::Deref;
 
+use libffi::high::call as ffi;
+use libffi::low::CodePtr;
 use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
 use rustc_target::abi::{Abi, HasDataLayout};

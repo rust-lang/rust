@@ -80,7 +80,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Random data generation
             "CCRandomGenerateBytes" => {
-                let [bytes, count] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [bytes, count] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let bytes = this.read_pointer(bytes)?;
                 let count = this.read_target_usize(count)?;
                 let success = this.eval_libc_i32("kCCSuccess");

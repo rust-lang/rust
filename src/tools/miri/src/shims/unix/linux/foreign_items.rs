@@ -1,14 +1,13 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use crate::machine::SIGRTMAX;
-use crate::machine::SIGRTMIN;
-use crate::shims::unix::*;
-use crate::*;
 use self::shims::unix::linux::epoll::EvalContextExt as _;
 use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use self::shims::unix::linux::mem::EvalContextExt as _;
 use self::shims::unix::linux::sync::futex;
+use crate::machine::{SIGRTMAX, SIGRTMIN};
+use crate::shims::unix::*;
+use crate::*;
 
 pub fn is_dyn_sym(name: &str) -> bool {
     matches!(name, "statx")
