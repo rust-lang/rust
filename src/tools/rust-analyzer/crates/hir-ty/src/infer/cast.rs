@@ -70,8 +70,9 @@ pub enum CastError {
     NeedViaThinPtr,
     NeedViaInt,
     NonScalar,
-    UnknownCastPtrKind,
-    UnknownExprPtrKind,
+    // We don't want to report errors with unknown types currently.
+    // UnknownCastPtrKind,
+    // UnknownExprPtrKind,
 }
 
 impl CastError {
@@ -272,9 +273,10 @@ impl CastCheck {
 
         match (src_kind, dst_kind) {
             (Some(PointerKind::Error), _) | (_, Some(PointerKind::Error)) => Ok(()),
-            (_, None) => Err(CastError::UnknownCastPtrKind),
+            // (_, None) => Err(CastError::UnknownCastPtrKind),
+            // (None, _) => Err(CastError::UnknownExprPtrKind),
+            (_, None) | (None, _) => Ok(()),
             (_, Some(PointerKind::Thin)) => Ok(()),
-            (None, _) => Err(CastError::UnknownExprPtrKind),
             (Some(PointerKind::Thin), _) => Err(CastError::SizedUnsizedCast),
             (Some(PointerKind::VTable(src_tty)), Some(PointerKind::VTable(dst_tty))) => {
                 let principal = |tty: &Binders<QuantifiedWhereClauses>| {
@@ -315,7 +317,8 @@ impl CastCheck {
         expr_ty: &Ty,
     ) -> Result<(), CastError> {
         match pointer_kind(expr_ty, table).map_err(|_| CastError::Unknown)? {
-            None => Err(CastError::UnknownExprPtrKind),
+            // None => Err(CastError::UnknownExprPtrKind),
+            None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
             Some(PointerKind::Thin) => Ok(()),
             _ => Err(CastError::NeedViaThinPtr),
@@ -328,7 +331,8 @@ impl CastCheck {
         cast_ty: &Ty,
     ) -> Result<(), CastError> {
         match pointer_kind(cast_ty, table).map_err(|_| CastError::Unknown)? {
-            None => Err(CastError::UnknownCastPtrKind),
+            // None => Err(CastError::UnknownCastPtrKind),
+            None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
             Some(PointerKind::Thin) => Ok(()),
             Some(PointerKind::VTable(_)) => Err(CastError::IntToFatCast),
@@ -343,7 +347,8 @@ impl CastCheck {
         cast_ty: &Ty,
     ) -> Result<(), CastError> {
         match pointer_kind(cast_ty, table).map_err(|_| CastError::Unknown)? {
-            None => Err(CastError::UnknownCastPtrKind),
+            // None => Err(CastError::UnknownCastPtrKind),
+            None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
             Some(PointerKind::Thin) => Ok(()),
             _ => Err(CastError::IllegalCast),
