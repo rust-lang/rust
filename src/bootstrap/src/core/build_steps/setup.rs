@@ -523,6 +523,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 enum EditorKind {
     Vscode,
     Emacs,
+    Helix,
 }
 
 impl EditorKind {
@@ -545,6 +546,9 @@ impl EditorKind {
                 "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",
                 "d29af4d949bbe2371eac928a3c31cf9496b1701aa1c45f11cd6c759865ad5c45",
             ],
+            EditorKind::Helix => vec![
+                "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233"
+            ]
         }
     }
 
@@ -556,6 +560,7 @@ impl EditorKind {
         self.settings_folder().join(match self {
             EditorKind::Vscode => "settings.json",
             EditorKind::Emacs => ".dir-locals.el",
+            EditorKind::Helix => "languages.toml",
         })
     }
 
@@ -563,6 +568,7 @@ impl EditorKind {
         match self {
             EditorKind::Vscode => PathBuf::new().join(".vscode"),
             EditorKind::Emacs => PathBuf::new(),
+            EditorKind::Helix => PathBuf::new().join(".helix"),
         }
     }
 
@@ -570,6 +576,7 @@ impl EditorKind {
         match self {
             EditorKind::Vscode => include_str!("../../../../etc/rust_analyzer_settings.json"),
             EditorKind::Emacs => include_str!("../../../../etc/rust_analyzer_eglot.el"),
+            EditorKind::Helix => include_str!("../../../../etc/rust_analyzer_helix.toml"),
         }
     }
 
@@ -577,6 +584,7 @@ impl EditorKind {
         match self {
             EditorKind::Vscode => "json.bak",
             EditorKind::Emacs => "el.bak",
+            EditorKind::Helix => "toml.bak",
         }
     }
 }
@@ -620,6 +628,7 @@ macro_rules! impl_editor_support {
 
 impl_editor_support!(vscode, Vscode);
 impl_editor_support!(emacs, Emacs);
+impl_editor_support!(helix, Helix);
 
 /// Create the recommended editor LSP config file for rustc development, or just print it
 /// If this method should be re-called, it returns `false`.
