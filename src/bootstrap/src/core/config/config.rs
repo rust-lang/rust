@@ -2450,7 +2450,7 @@ impl Config {
 
     /// Runs a function if verbosity is greater than 0
     pub fn verbose(&self, f: impl Fn()) {
-        if self.verbose > 0 {
+        if self.is_verbose() {
             f()
         }
     }
@@ -2735,7 +2735,7 @@ impl Config {
         .success();
         if has_changes {
             if if_unchanged {
-                if self.verbose > 0 {
+                if self.is_verbose() {
                     println!(
                         "WARNING: saw changes to compiler/ or library/ since {commit}; \
                             ignoring `download-rustc`"
@@ -2832,7 +2832,7 @@ impl Config {
         let has_changes = !t!(git.as_command_mut().status()).success();
         if has_changes {
             if if_unchanged {
-                if self.verbose > 0 {
+                if self.is_verbose() {
                     println!(
                         "warning: saw changes to one of {modified_paths:?} since {commit}; \
                             ignoring `{option_name}`"
