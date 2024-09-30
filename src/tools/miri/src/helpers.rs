@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::num::NonZero;
 use std::sync::Mutex;
 use std::time::Duration;
-use std::{cmp, iter};
+use std::{cmp, io, iter};
 
 use rand::RngCore;
 use rustc_apfloat::Float;
@@ -837,6 +837,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Sets the last OS error using a `std::io::ErrorKind`.
     fn set_last_error_from_io_error(&mut self, err: std::io::Error) -> InterpResult<'tcx> {
         self.set_last_error(self.io_error_to_errnum(err)?)
+    }
+
+    /// Sets the last OS error using a `std::io::ErrorKind` and writes -1 to dest place.
+    fn set_last_error_and_return(
+        &mut self,
+        err: impl Into<io::Error>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        self.set_last_error(self.io_error_to_errnum(err.into())?)?;
+        self.write_int(-1, dest)?;
+        Ok(())
     }
 
     /// Helper function that consumes an `std::io::Result<T>` and returns an

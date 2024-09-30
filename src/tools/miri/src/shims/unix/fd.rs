@@ -150,7 +150,10 @@ impl FileDescription for io::Stdin {
             helpers::isolation_abort_error("`read` from stdin")?;
         }
         let result = Read::read(&mut { self }, &mut bytes);
-        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
+        match result {
+            Ok(read_size) => ecx.return_read_success(ptr, &bytes, read_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -181,7 +184,10 @@ impl FileDescription for io::Stdout {
         // the host -- there is no good in adding extra buffering
         // here.
         io::stdout().flush().unwrap();
-        ecx.return_written_byte_count_or_error(result, dest)
+        match result {
+            Ok(write_size) => ecx.return_write_success(write_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -207,7 +213,10 @@ impl FileDescription for io::Stderr {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
         let result = Write::write(&mut { self }, bytes);
-        ecx.return_written_byte_count_or_error(result, dest)
+        match result {
+            Ok(write_size) => ecx.return_write_success(write_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -234,8 +243,7 @@ impl FileDescription for NullOutput {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
         // We just don't write anything, but report to the user that we did.
-        let result = Ok(len);
-        ecx.return_written_byte_count_or_error(result, dest)
+        ecx.return_write_success(len, dest)
     }
 }
 
@@ -655,46 +663,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Helper to implement `FileDescription::read`:
-    /// `result` should be the return value of some underlying `read` call that used `bytes` as its output buffer.
+    /// This is only used when `read` is successful.
+    /// `actual_read_size` should be the return value of some underlying `read` call that used
+    /// `bytes` as its output buffer.
     /// The length of `bytes` must not exceed either the host's or the target's `isize`.
-    /// If `Result` indicates success, `bytes` is written to `buf` and the size is written to `dest`.
-    /// Otherwise, `-1` is written to `dest` and the last libc error is set appropriately.
-    fn return_read_bytes_and_count(
+    /// `bytes` is written to `buf` and the size is written to `dest`.
+    fn return_read_success(
         &mut self,
         buf: Pointer,
         bytes: &[u8],
-        result: io::Result<usize>,
+        actual_read_size: usize,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        match result {
-            Ok(read_bytes) => {
-                // If reading to `bytes` did not fail, we write those bytes to the buffer.
-                // Crucially, if fewer than `bytes.len()` bytes were read, only write
-                // that much into the output buffer!
-                this.write_bytes_ptr(buf, bytes[..read_bytes].iter().copied())?;
-                // The actual read size is always less than what got originally requested so this cannot fail.
-                this.write_int(u64::try_from(read_bytes).unwrap(), dest)?;
-                Ok(())
-            }
-            Err(e) => {
-                this.set_last_error_from_io_error(e)?;
-                this.write_int(-1, dest)?;
-                Ok(())
-            }
-        }
+        // If reading to `bytes` did not fail, we write those bytes to the buffer.
+        // Crucially, if fewer than `bytes.len()` bytes were read, only write
+        // that much into the output buffer!
+        this.write_bytes_ptr(buf, bytes[..actual_read_size].iter().copied())?;
+
+        // The actual read size is always less than what got originally requested so this cannot fail.
+        this.write_int(u64::try_from(actual_read_size).unwrap(), dest)?;
+        Ok(())
     }
 
-    /// This function writes the number of written bytes (given in `result`) to `dest`, or sets the
-    /// last libc error and writes -1 to dest.
-    fn return_written_byte_count_or_error(
+    /// Helper to implement `FileDescription::write`:
+    /// This function is only used when `write` is successful, and writes `actual_write_size` to `dest`
+    fn return_write_success(
         &mut self,
-        result: io::Result<usize>,
+        actual_write_size: usize,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let result = this.try_unwrap_io_result(result.map(|c| i64::try_from(c).unwrap()))?;
-        this.write_int(result, dest)?;
+        // The actual write size is always less than what got originally requested so this cannot fail.
+        this.write_int(u64::try_from(actual_write_size).unwrap(), dest)?;
         Ok(())
     }
 }
