@@ -24,7 +24,6 @@
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
-#![feature(unnamed_fields)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 #[prelude_import]
