@@ -10,33 +10,29 @@
 use run_make_support::{llvm, rustc};
 
 fn main() {
-    let disassemble_symbols_arg = "--disassemble-symbols=tailcall_fn,empty_fn";
-    {
-        rustc().input("lib.rs").crate_name("regular").crate_type("lib").opt_level("3").run();
+    fn base_rustc() -> rustc::Rustc {
+        let mut rustc = rustc();
+        rustc.input("lib.rs").crate_type("lib").opt_level("3");
+        rustc
+    }
 
-        let regular_dump = llvm::llvm_objdump()
-            .arg(disassemble_symbols_arg)
-            .input("libregular.rlib")
+    fn dump_lib(libname: &str) -> String {
+        llvm::llvm_objdump()
+            .arg("--disassemble-symbols=tailcall_fn,empty_fn")
+            .input(libname)
             .run()
-            .stdout_utf8();
+            .stdout_utf8()
+    }
 
+    {
+        base_rustc().crate_name("regular").run();
+        let regular_dump = dump_lib("libregular.rlib");
         llvm::llvm_filecheck().patterns("lib.rs").stdin_buf(regular_dump).run();
     }
 
     {
-        rustc()
-            .input("lib.rs")
-            .crate_name("hotpatch")
-            .crate_type("lib")
-            .opt_level("3")
-            .arg("-Zhotpatch")
-            .run();
-
-        let hotpatch_dump = llvm::llvm_objdump()
-            .arg(disassemble_symbols_arg)
-            .input("libhotpatch.rlib")
-            .run()
-            .stdout_utf8();
+        base_rustc().crate_name("hotpatch").arg("-Zhotpatch").run();
+        let hotpatch_dump = dump_lib("libhotpatch.rlib");
 
         llvm::llvm_filecheck()
             .patterns("lib.rs")

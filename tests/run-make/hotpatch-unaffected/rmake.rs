@@ -8,29 +8,25 @@
 use run_make_support::{assertion_helpers, llvm, rustc};
 
 fn main() {
-    let disassemble_symbols_arg = "--disassemble-symbols=return_42,tailcall";
+    fn base_rustc() -> rustc::Rustc {
+        let mut rustc = rustc();
+        rustc.input("lib.rs").crate_type("lib").opt_level("3");
+        rustc
+    }
 
-    rustc().input("lib.rs").crate_name("regular").crate_type("lib").opt_level("3").run();
+    fn dump_lib(libname: &str) -> String {
+        llvm::llvm_objdump()
+            .arg("--disassemble-symbols=return_42,tailcall")
+            .input(libname)
+            .run()
+            .stdout_utf8()
+    }
 
-    let regular_dump = llvm::llvm_objdump()
-        .arg(disassemble_symbols_arg)
-        .input("libregular.rlib")
-        .run()
-        .stdout_utf8();
+    base_rustc().crate_name("regular").run();
+    let regular_dump = dump_lib("libregular.rlib");
 
-    rustc()
-        .input("lib.rs")
-        .crate_name("hotpatch")
-        .crate_type("lib")
-        .opt_level("3")
-        .arg("-Zhotpatch")
-        .run();
-
-    let hotpatch_dump = llvm::llvm_objdump()
-        .arg(disassemble_symbols_arg)
-        .input("libhotpatch.rlib")
-        .run()
-        .stdout_utf8();
+    base_rustc().crate_name("hotpatch").arg("-Zhotpatch").run();
+    let hotpatch_dump = dump_lib("libhotpatch.rlib");
 
     {
         let mut lines_regular = regular_dump.lines();
@@ -46,7 +42,7 @@ fn main() {
                         assertion_helpers::assert_equals(&r, &h)
                     }
                 }
-                _ => panic!("the files should have equal length"),
+                _ => panic!("expected files to have equal number of lines"),
             }
         }
     }
