@@ -1370,7 +1370,7 @@ Executed at: {executed_at}"#,
         }
 
         if target.starts_with("wasm") && target.contains("wasi") {
-            self.default_wasi_runner()
+            self.default_wasi_runner(target)
         } else {
             None
         }
@@ -1379,7 +1379,7 @@ Executed at: {executed_at}"#,
     /// When a `runner` configuration is not provided and a WASI-looking target
     /// is being tested this is consulted to prove the environment to see if
     /// there's a runtime already lying around that seems reasonable to use.
-    fn default_wasi_runner(&self) -> Option<String> {
+    fn default_wasi_runner(&self, target: TargetSelection) -> Option<String> {
         let mut finder = crate::core::sanity::Finder::new();
 
         // Look for Wasmtime, and for its default options be sure to disable
@@ -1395,6 +1395,11 @@ Executed at: {executed_at}"#,
                 // inherit the entire environment rather than just this single
                 // environment variable.
                 path.push_str(" --env RUSTC_BOOTSTRAP");
+
+                if target.contains("wasip2") {
+                    path.push_str(" --wasi inherit-network --wasi allow-ip-name-lookup");
+                }
+
                 return Some(path);
             }
         }
