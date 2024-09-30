@@ -21,9 +21,8 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame, GlobalAlloc, ImmTy,
-    InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, RangeSet, Scalar, compile_time_machine,
-    interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_custom, throw_unsup,
-    throw_unsup_format,
+    InterpCx, InterpResult, MPlaceTy, OpTy, RangeSet, Scalar, compile_time_machine, interp_ok,
+    throw_exhaust, throw_inval, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -586,7 +585,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn expose_ptr(_ecx: &mut InterpCx<'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx> {
+    fn expose_provenance(
+        _ecx: &InterpCx<'tcx, Self>,
+        _provenance: Self::Provenance,
+    ) -> InterpResult<'tcx> {
         // This is only reachable with -Zunleash-the-miri-inside-of-you.
         throw_unsup_format!("exposing pointers is not possible at compile-time")
     }
