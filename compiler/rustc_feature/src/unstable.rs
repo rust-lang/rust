@@ -485,6 +485,8 @@ declare_features! (
     (unstable, explicit_extern_abis, "CURRENT_RUSTC_VERSION", Some(134986)),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
+    /// Allows using `#[export_stable]` which indicates that an item is exportable.
+    (incomplete, export_stable, "CURRENT_RUSTC_VERSION", Some(139939)),
     /// Allows using `aapcs`, `efiapi`, `sysv64` and `win64` as calling conventions
     /// for functions with varargs.
     (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
