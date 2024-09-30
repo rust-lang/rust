@@ -12,7 +12,7 @@ error: using function pointers as const generic parameters is forbidden
 LL | fn func<A, const F: fn(inner: A)>(outer: A) {
    |                     ^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: aborting due to 2 previous errors
 

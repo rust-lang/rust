@@ -4,7 +4,7 @@ error: `[u8; 0]` is forbidden as the type of a const generic parameter
 LL | struct Foo<const N: [u8; 0]>;
    |                     ^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -16,7 +16,7 @@ error: `()` is forbidden as the type of a const generic parameter
 LL | struct Bar<const N: ()>;
    |                     ^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -28,7 +28,7 @@ error: `No` is forbidden as the type of a const generic parameter
 LL | struct Fez<const N: No>;
    |                     ^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -40,7 +40,7 @@ error: `&'static u8` is forbidden as the type of a const generic parameter
 LL | struct Faz<const N: &'static u8>;
    |                     ^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -56,7 +56,7 @@ error: `!` is forbidden as the type of a const generic parameter
 LL | struct Fiz<const N: !>;
    |                     ^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `()` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:20:19
@@ -64,7 +64,7 @@ error: `()` is forbidden as the type of a const generic parameter
 LL | enum Goo<const N: ()> { A, B }
    |                   ^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -76,7 +76,7 @@ error: `()` is forbidden as the type of a const generic parameter
 LL | union Boo<const N: ()> { a: () }
    |                    ^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]

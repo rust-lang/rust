@@ -5,109 +5,29 @@ LL | struct A<const N: &u8>;
    |                   ^ explicit lifetime name needed here
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:14:15
+  --> $DIR/const-param-elided-lifetime.rs:13:15
    |
 LL | impl<const N: &u8> A<N> {
    |               ^ explicit lifetime name needed here
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:17:21
+  --> $DIR/const-param-elided-lifetime.rs:15:21
    |
 LL |     fn foo<const M: &u8>(&self) {}
    |                     ^ explicit lifetime name needed here
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:22:15
+  --> $DIR/const-param-elided-lifetime.rs:19:15
    |
 LL | impl<const N: &u8> B for A<N> {}
    |               ^ explicit lifetime name needed here
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:26:17
+  --> $DIR/const-param-elided-lifetime.rs:22:17
    |
 LL | fn bar<const N: &u8>() {}
    |                 ^ explicit lifetime name needed here
 
-error: `&u8` is forbidden as the type of a const generic parameter
-  --> $DIR/const-param-elided-lifetime.rs:9:19
-   |
-LL | struct A<const N: &u8>;
-   |                   ^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
-
-error: `&u8` is forbidden as the type of a const generic parameter
-  --> $DIR/const-param-elided-lifetime.rs:14:15
-   |
-LL | impl<const N: &u8> A<N> {
-   |               ^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
-
-error: `&u8` is forbidden as the type of a const generic parameter
-  --> $DIR/const-param-elided-lifetime.rs:22:15
-   |
-LL | impl<const N: &u8> B for A<N> {}
-   |               ^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
-
-error: `&u8` is forbidden as the type of a const generic parameter
-  --> $DIR/const-param-elided-lifetime.rs:26:17
-   |
-LL | fn bar<const N: &u8>() {}
-   |                 ^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
-
-error: `&u8` is forbidden as the type of a const generic parameter
-  --> $DIR/const-param-elided-lifetime.rs:17:21
-   |
-LL |     fn foo<const M: &u8>(&self) {}
-   |                     ^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
-
-error: aborting due to 10 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0637`.

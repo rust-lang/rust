@@ -73,7 +73,7 @@ error: `(dyn Bar<2> + 'static)` is forbidden as the type of a const generic para
 LL | trait Foo<const N: Bar<2>> {
    |                    ^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:11
@@ -104,7 +104,7 @@ error: `(dyn Foo<2> + 'static)` is forbidden as the type of a const generic para
 LL | trait Bar<const M: Foo<2>> {}
    |                    ^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: aborting due to 5 previous errors; 2 warnings emitted
 
