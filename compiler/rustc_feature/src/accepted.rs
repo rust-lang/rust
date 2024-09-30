@@ -349,7 +349,7 @@ declare_features! (
     (accepted, repr_packed, "1.33.0", Some(33158)),
     /// Allows `#[repr(transparent)]` attribute on newtype structs.
     (accepted, repr_transparent, "1.28.0", Some(43036)),
-    /// Allows enums like Result<T, E> to be used across FFI, if T's niche value can
+    /// Allows `Result<T, E>` to be used across FFI if T's niche value can
     /// be used to describe E or vice-versa.
     (accepted, result_ffi_guarantees, "CURRENT_RUSTC_VERSION", Some(110503)),
     /// Allows return-position `impl Trait` in traits.
