@@ -830,6 +830,46 @@ impl RelroLevel {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum SymbolVisibility {
+    Hidden,
+    Protected,
+    Interposable,
+}
+
+impl SymbolVisibility {
+    pub fn desc(&self) -> &str {
+        match *self {
+            SymbolVisibility::Hidden => "hidden",
+            SymbolVisibility::Protected => "protected",
+            SymbolVisibility::Interposable => "interposable",
+        }
+    }
+}
+
+impl FromStr for SymbolVisibility {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<SymbolVisibility, ()> {
+        match s {
+            "hidden" => Ok(SymbolVisibility::Hidden),
+            "protected" => Ok(SymbolVisibility::Protected),
+            "interposable" => Ok(SymbolVisibility::Interposable),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for SymbolVisibility {
+    fn to_json(&self) -> Json {
+        match *self {
+            SymbolVisibility::Hidden => "hidden".to_json(),
+            SymbolVisibility::Protected => "protected".to_json(),
+            SymbolVisibility::Interposable => "interposable".to_json(),
+        }
+    }
+}
+
 impl FromStr for RelroLevel {
     type Err = ();
 
@@ -2326,13 +2366,12 @@ pub struct TargetOptions {
     /// for this target unconditionally.
     pub no_builtins: bool,
 
-    /// The default visibility for symbols in this target should be "hidden"
-    /// rather than "default".
+    /// The default visibility for symbols in this target.
     ///
-    /// This value typically shouldn't be accessed directly, but through
-    /// the `rustc_session::Session::default_hidden_visibility` method, which
-    /// allows `rustc` users to override this setting using cmdline flags.
-    pub default_hidden_visibility: bool,
+    /// This value typically shouldn't be accessed directly, but through the
+    /// `rustc_session::Session::default_visibility` method, which allows `rustc` users to override
+    /// this setting using cmdline flags.
+    pub default_visibility: Option<SymbolVisibility>,
 
     /// Whether a .debug_gdb_scripts section will be added to the output object file
     pub emit_debug_gdb_scripts: bool,
@@ -2623,7 +2662,7 @@ impl Default for TargetOptions {
             requires_lto: false,
             singlethread: false,
             no_builtins: false,
-            default_hidden_visibility: false,
+            default_visibility: None,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
             default_uwtable: false,
@@ -2958,6 +2997,18 @@ impl Target {
                         Ok(level) => base.$key_name = level,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       relro-level. Use 'full', 'partial, or 'off'.",
+                                                      s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
+            ($key_name:ident, Option<SymbolVisibility>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
+                    match s.parse::<SymbolVisibility>() {
+                        Ok(level) => base.$key_name = Some(level),
+                        _ => return Some(Err(format!("'{}' is not a valid value for \
+                                                      symbol-visibility. Use 'hidden', 'protected, or 'interposable'.",
                                                       s))),
                     }
                     Some(Ok(()))
@@ -3353,7 +3404,7 @@ impl Target {
         key!(requires_lto, bool);
         key!(singlethread, bool);
         key!(no_builtins, bool);
-        key!(default_hidden_visibility, bool);
+        key!(default_visibility, Option<SymbolVisibility>)?;
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
         key!(default_uwtable, bool);
@@ -3633,7 +3684,7 @@ impl ToJson for Target {
         target_option_val!(requires_lto);
         target_option_val!(singlethread);
         target_option_val!(no_builtins);
-        target_option_val!(default_hidden_visibility);
+        target_option_val!(default_visibility);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
         target_option_val!(default_uwtable);
