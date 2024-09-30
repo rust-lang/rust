@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-#[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi", target_env = "sgx"), ignore)]
 fn test_self_exe_path() {
     let path = current_exe();
     assert!(path.is_ok());

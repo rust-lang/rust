@@ -3165,7 +3165,7 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128 {
 /// change the possible layouts of pointers.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(_data: D, _meta: M) -> P {
@@ -3190,7 +3190,7 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 /// This is used to implement functions like `ptr::metadata`.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *const P) -> M {

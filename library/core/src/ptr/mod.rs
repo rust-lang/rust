@@ -599,7 +599,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T: ?Sized + Thin>() -> *const T {
     from_raw_parts(without_provenance::<()>(0), ())
@@ -625,7 +624,6 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
     from_raw_parts_mut(without_provenance_mut::<()>(0), ())
@@ -949,7 +947,6 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data, len)
