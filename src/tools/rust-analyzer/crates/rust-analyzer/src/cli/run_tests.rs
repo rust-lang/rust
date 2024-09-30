@@ -16,6 +16,7 @@ impl flags::RunTests {
         let cargo_config = CargoConfig {
             sysroot: Some(RustLibSource::Discover),
             all_targets: true,
+            set_test: true,
             ..Default::default()
         };
         let load_cargo_config = LoadCargoConfig {

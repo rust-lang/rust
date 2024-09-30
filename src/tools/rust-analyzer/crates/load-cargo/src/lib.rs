@@ -526,7 +526,7 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let cargo_config = CargoConfig::default();
+        let cargo_config = CargoConfig { set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,

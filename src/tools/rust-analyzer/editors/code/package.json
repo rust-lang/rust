@@ -854,6 +854,16 @@
                 }
             },
             {
+                "title": "cfg",
+                "properties": {
+                    "rust-analyzer.cfg.setTest": {
+                        "markdownDescription": "Set `cfg(test)` for local crates. Defaults to true.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "general",
                 "properties": {
                     "rust-analyzer.checkOnSave": {

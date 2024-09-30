@@ -36,6 +36,8 @@ fn integrated_highlighting_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
@@ -102,6 +104,8 @@ fn integrated_completion_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
@@ -279,6 +283,8 @@ fn integrated_diagnostics_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {

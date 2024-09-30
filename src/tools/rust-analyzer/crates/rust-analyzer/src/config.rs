@@ -574,6 +574,9 @@ config_data! {
         /// set to a path relative to the workspace to use that path.
         cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
 
+        /// Set `cfg(test)` for local crates. Defaults to true.
+        cfg_setTest: bool = true,
+
         /// Run the check command for diagnostics on save.
         checkOnSave | checkOnSave_enable: bool                         = true,
 
@@ -695,7 +698,6 @@ config_data! {
         workspace_symbol_search_limit: usize = 128,
         /// Workspace symbol search scope.
         workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = WorkspaceSymbolSearchScopeDef::Workspace,
-
     }
 }
 
@@ -1859,7 +1861,12 @@ impl Config {
             extra_args: self.cargo_extraArgs(source_root).clone(),
             extra_env: self.cargo_extraEnv(source_root).clone(),
             target_dir: self.target_dir_from_config(source_root),
+            set_test: *self.cfg_setTest(source_root),
         }
+    }
+
+    pub fn cfg_set_test(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.cfg_setTest(source_root)
     }
 
     pub(crate) fn completion_snippets_default() -> FxHashMap<String, SnippetDef> {

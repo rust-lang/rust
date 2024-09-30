@@ -65,6 +65,7 @@ impl flags::AnalysisStats {
                 false => Some(RustLibSource::Discover),
             },
             all_targets: true,
+            set_test: true,
             ..Default::default()
         };
         let no_progress = &|_| ();
