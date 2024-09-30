@@ -1,0 +1,8 @@
+error: lang items are not allowed in stable dylibs
+  --> $DIR/lang-item.rs:6:1
+   |
+LL | #[lang = "sized"]
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

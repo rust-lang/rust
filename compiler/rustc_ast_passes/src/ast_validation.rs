@@ -82,6 +82,8 @@ struct AstValidator<'a> {
     /// Used to ban explicit safety on foreign items when the extern block is not marked as unsafe.
     extern_mod_safety: Option<Safety>,
 
+    is_sdylib_interface: bool,
+
     lint_buffer: &'a mut LintBuffer,
 }
 
@@ -948,7 +950,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(item.span, *defaultness);
 
                 let is_intrinsic = item.attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic));
-                if body.is_none() && !is_intrinsic {
+                if body.is_none() && !is_intrinsic && !self.is_sdylib_interface {
                     self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -1435,7 +1437,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
-                    if body.is_none() {
+                    if body.is_none() && !self.is_sdylib_interface {
                         self.dcx().emit_err(errors::AssocFnWithoutBody {
                             span: item.span,
                             replace_span: self.ending_semi_or_hi(item.span),
@@ -1683,6 +1685,7 @@ pub fn check_crate(
     sess: &Session,
     features: &Features,
     krate: &Crate,
+    is_sdylib_interface: bool,
     lints: &mut LintBuffer,
 ) -> bool {
     let mut validator = AstValidator {
@@ -1694,6 +1697,7 @@ pub fn check_crate(
         outer_impl_trait_span: None,
         disallow_tilde_const: Some(TildeConstReason::Item),
         extern_mod_safety: None,
+        is_sdylib_interface,
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);
