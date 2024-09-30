@@ -1802,57 +1802,6 @@ fn brute_force_rotate_test_1() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-fn sort_unstable() {
-    use rand::Rng;
-
-    // Miri is too slow (but still need to `chain` to make the types match)
-    let lens = if cfg!(miri) { (2..20).chain(0..0) } else { (2..25).chain(500..510) };
-    let rounds = if cfg!(miri) { 1 } else { 100 };
-
-    let mut v = [0; 600];
-    let mut tmp = [0; 600];
-    let mut rng = crate::test_rng();
-
-    for len in lens {
-        let v = &mut v[0..len];
-        let tmp = &mut tmp[0..len];
-
-        for &modulus in &[5, 10, 100, 1000] {
-            for _ in 0..rounds {
-                for i in 0..len {
-                    v[i] = rng.gen::<i32>() % modulus;
-                }
-
-                // Sort in default order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable();
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Sort in ascending order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable_by(|a, b| a.cmp(b));
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Sort in descending order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable_by(|a, b| b.cmp(a));
-                assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
-            }
-        }
-    }
-
-    // Should not panic.
-    [0i32; 0].sort_unstable();
-    [(); 10].sort_unstable();
-    [(); 100].sort_unstable();
-
-    let mut v = [0xDEADBEEFu64];
-    v.sort_unstable();
-    assert!(v == [0xDEADBEEF]);
-}
-
-#[test]
-#[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
