@@ -27,7 +27,8 @@ use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
-use rustc_trait_selection::infer::TyCtxtInferExt;
+use rustc_trait_selection::infer::at::ToTrace;
+use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
 
@@ -113,22 +114,38 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// unsound, so let's validate here that the trait refs are subtypes.
 pub fn validate_trivial_unsize<'tcx>(
     tcx: TyCtxt<'tcx>,
-    data_a: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    data_b: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    source_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    target_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> bool {
-    match (data_a.principal(), data_b.principal()) {
-        (Some(principal_a), Some(principal_b)) => {
+    match (source_data.principal(), target_data.principal()) {
+        (Some(hr_source_principal), Some(hr_target_principal)) => {
             let infcx = tcx.infer_ctxt().build();
+            let universe = infcx.universe();
             let ocx = ObligationCtxt::new(&infcx);
-            let Ok(()) = ocx.sub(
-                &ObligationCause::dummy(),
-                ty::ParamEnv::reveal_all(),
-                principal_a,
-                principal_b,
-            ) else {
-                return false;
-            };
-            ocx.select_all_or_error().is_empty()
+            infcx.enter_forall(hr_target_principal, |target_principal| {
+                let source_principal = infcx.instantiate_binder_with_fresh_vars(
+                    DUMMY_SP,
+                    BoundRegionConversionTime::HigherRankedType,
+                    hr_source_principal,
+                );
+                let Ok(()) = ocx.eq_trace(
+                    &ObligationCause::dummy(),
+                    ty::ParamEnv::reveal_all(),
+                    ToTrace::to_trace(
+                        &ObligationCause::dummy(),
+                        hr_target_principal,
+                        hr_source_principal,
+                    ),
+                    target_principal,
+                    source_principal,
+                ) else {
+                    return false;
+                };
+                if !ocx.select_all_or_error().is_empty() {
+                    return false;
+                }
+                infcx.leak_check(universe, None).is_ok()
+            })
         }
         (None, None) => true,
         _ => false,

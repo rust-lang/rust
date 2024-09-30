@@ -9,12 +9,13 @@ use rustc_infer::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError, TypeTrace};
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast, Variance};
+use rustc_type_ir::relate::Relate;
 
 use super::{FromSolverError, FulfillmentContext, ScrubbedTraitError, TraitEngine};
 use crate::error_reporting::InferCtxtErrorExt;
@@ -130,6 +131,20 @@ where
         self.infcx
             .at(cause, param_env)
             .eq(DefineOpaqueTypes::Yes, expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+    }
+
+    pub fn eq_trace<T: Relate<TyCtxt<'tcx>>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        trace: TypeTrace<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> Result<(), TypeError<'tcx>> {
+        self.infcx
+            .at(cause, param_env)
+            .eq_trace(DefineOpaqueTypes::Yes, trace, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
