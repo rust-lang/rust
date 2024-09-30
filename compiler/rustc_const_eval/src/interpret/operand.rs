@@ -113,28 +113,47 @@ impl<Prov: Provenance> Immediate<Prov> {
     }
 
     /// Assert that this immediate is a valid value for the given ABI.
-    pub fn assert_matches_abi(self, abi: Abi, cx: &impl HasDataLayout) {
+    pub fn assert_matches_abi(self, abi: Abi, msg: &str, cx: &impl HasDataLayout) {
         match (self, abi) {
             (Immediate::Scalar(scalar), Abi::Scalar(s)) => {
-                assert_eq!(scalar.size(), s.size(cx));
+                assert_eq!(scalar.size(), s.size(cx), "{msg}: scalar value has wrong size");
                 if !matches!(s.primitive(), abi::Pointer(..)) {
                     // This is not a pointer, it should not carry provenance.
-                    assert!(matches!(scalar, Scalar::Int(..)));
+                    assert!(
+                        matches!(scalar, Scalar::Int(..)),
+                        "{msg}: scalar value should be an integer, but has provenance"
+                    );
                 }
             }
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
-                assert_eq!(a_val.size(), a.size(cx));
+                assert_eq!(
+                    a_val.size(),
+                    a.size(cx),
+                    "{msg}: first component of scalar pair has wrong size"
+                );
                 if !matches!(a.primitive(), abi::Pointer(..)) {
-                    assert!(matches!(a_val, Scalar::Int(..)));
+                    assert!(
+                        matches!(a_val, Scalar::Int(..)),
+                        "{msg}: first component of scalar pair should be an integer, but has provenance"
+                    );
                 }
-                assert_eq!(b_val.size(), b.size(cx));
+                assert_eq!(
+                    b_val.size(),
+                    b.size(cx),
+                    "{msg}: second component of scalar pair has wrong size"
+                );
                 if !matches!(b.primitive(), abi::Pointer(..)) {
-                    assert!(matches!(b_val, Scalar::Int(..)));
+                    assert!(
+                        matches!(b_val, Scalar::Int(..)),
+                        "{msg}: second component of scalar pair should be an integer, but has provenance"
+                    );
                 }
             }
-            (Immediate::Uninit, _) => {}
+            (Immediate::Uninit, _) => {
+                assert!(abi.is_sized(), "{msg}: unsized immediates are not a thing");
+            }
             _ => {
-                bug!("value {self:?} does not match ABI {abi:?})",)
+                bug!("{msg}: value {self:?} does not match ABI {abi:?})",)
             }
         }
     }
@@ -241,6 +260,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline(always)]
     pub fn from_immediate(imm: Immediate<Prov>, layout: TyAndLayout<'tcx>) -> Self {
+        // Without a `cx` we cannot call `assert_matches_abi`.
         debug_assert!(
             match (imm, layout.abi) {
                 (Immediate::Scalar(..), Abi::Scalar(..)) => true,
@@ -261,7 +281,6 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline]
     pub fn from_scalar_int(s: ScalarInt, layout: TyAndLayout<'tcx>) -> Self {
-        assert_eq!(s.size(), layout.size);
         Self::from_scalar(Scalar::from(s), layout)
     }
 
@@ -334,7 +353,10 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     /// given layout.
     // Not called `offset` to avoid confusion with the trait method.
     fn offset_(&self, offset: Size, layout: TyAndLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
-        debug_assert!(layout.is_sized(), "unsized immediates are not a thing");
+        // Verify that the input matches its type.
+        if cfg!(debug_assertions) {
+            self.assert_matches_abi(self.layout.abi, "invalid input to Immediate::offset", cx);
+        }
         // `ImmTy` have already been checked to be in-bounds, so we can just check directly if this
         // remains in-bounds. This cannot actually be violated since projections are type-checked
         // and bounds-checked.
@@ -368,32 +390,14 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             // the field covers the entire type
             _ if layout.size == self.layout.size => {
                 assert_eq!(offset.bytes(), 0);
-                assert!(
-                    match (self.layout.abi, layout.abi) {
-                        (Abi::Scalar(l), Abi::Scalar(r)) => l.size(cx) == r.size(cx),
-                        (Abi::ScalarPair(l1, l2), Abi::ScalarPair(r1, r2)) =>
-                            l1.size(cx) == r1.size(cx) && l2.size(cx) == r2.size(cx),
-                        _ => false,
-                    },
-                    "cannot project into {} immediate with equally-sized field {}\nouter ABI: {:#?}\nfield ABI: {:#?}",
-                    self.layout.ty,
-                    layout.ty,
-                    self.layout.abi,
-                    layout.abi,
-                );
                 **self
             }
             // extract fields from types with `ScalarPair` ABI
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
-                assert_matches!(layout.abi, Abi::Scalar(..));
                 Immediate::from(if offset.bytes() == 0 {
-                    // It is "okay" to transmute from `usize` to a pointer (GVN relies on that).
-                    // So only compare the size.
-                    assert_eq!(layout.size, a.size(cx));
                     a_val
                 } else {
                     assert_eq!(offset, a.size(cx).align_to(b.align(cx).abi));
-                    assert_eq!(layout.size, b.size(cx));
                     b_val
                 })
             }
@@ -405,6 +409,8 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
                 self.layout
             ),
         };
+        // Ensure the new layout matches the new value.
+        inner_val.assert_matches_abi(layout.abi, "invalid field type in Immediate::offset", cx);
 
         ImmTy::from_immediate(inner_val, layout)
     }
