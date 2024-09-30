@@ -815,15 +815,6 @@ pub(crate) struct NegativeBoundWithParentheticalNotation {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_anon_struct_or_union_not_allowed)]
-pub(crate) struct AnonStructOrUnionNotAllowed {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub struct_or_union: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_match_arm_with_no_body)]
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]

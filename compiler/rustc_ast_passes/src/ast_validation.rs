@@ -244,9 +244,6 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::AnonStruct(_, ref fields) | TyKind::AnonUnion(_, ref fields) => {
-                walk_list!(self, visit_struct_field_def, fields)
-            }
             _ => visit::walk_ty(self, t),
         }
     }
@@ -291,15 +288,6 @@ impl<'a> AstValidator<'a> {
                 _ => report_err(pat.span, None, false),
             }
         }
-    }
-
-    fn deny_anon_struct_or_union(&self, ty: &Ty) {
-        let struct_or_union = match &ty.kind {
-            TyKind::AnonStruct(..) => "struct",
-            TyKind::AnonUnion(..) => "union",
-            _ => return,
-        };
-        self.dcx().emit_err(errors::AnonStructOrUnionNotAllowed { struct_or_union, span: ty.span });
     }
 
     fn check_trait_fn_not_const(&self, constness: Const, parent: &TraitOrTraitImpl) {
@@ -865,12 +853,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
-        self.deny_anon_struct_or_union(ty);
         self.walk_ty(ty)
-    }
-
-    fn visit_field_def(&mut self, field: &'a FieldDef) {
-        visit::walk_field_def(self, field)
     }
 
     fn visit_item(&mut self, item: &'a Item) {
