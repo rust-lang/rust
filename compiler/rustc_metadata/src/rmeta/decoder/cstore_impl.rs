@@ -406,6 +406,8 @@ provide! { tcx, def_id, other, cdata,
     used_crate_source => { Arc::clone(&cdata.source) }
     debugger_visualizers => { cdata.get_debugger_visualizers() }
 
+    exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items()) }
+    stable_order_of_exportable_impls => { tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls().collect()) }
     exported_symbols => {
         let syms = cdata.exported_symbols(tcx);
 

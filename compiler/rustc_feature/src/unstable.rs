@@ -209,6 +209,8 @@ declare_features! (
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
+    /// Allows using `#[export]` which indicates that an item is exportable.
+    (internal, export, "CURRENT_RUSTC_VERSION", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
     /// Allows using the `rust-intrinsic`'s "ABI".
