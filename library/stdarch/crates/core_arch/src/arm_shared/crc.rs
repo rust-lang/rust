@@ -170,16 +170,9 @@ pub unsafe fn __crc32cw(crc: u32, data: u32) -> u32 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32d)
 #[inline]
 #[target_feature(enable = "crc")]
-#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
+#[cfg(not(target_arch = "arm"))]
 #[cfg_attr(test, assert_instr(crc32x))]
-#[cfg_attr(
-    target_arch = "arm",
-    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
-)]
-#[cfg_attr(
-    not(target_arch = "arm"),
-    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
-)]
+#[stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")]
 pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
     crc32x_(crc, data)
 }
@@ -191,14 +184,7 @@ pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(test, assert_instr(crc32w))]
-#[cfg_attr(
-    target_arch = "arm",
-    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
-)]
-#[cfg_attr(
-    not(target_arch = "arm"),
-    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
-)]
+#[unstable(feature = "stdarch_aarch32_crc32", issue = "125085")]
 pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
     // On 32-bit ARM this intrinsic emits a chain of two `crc32_w` instructions
     // and truncates the data to 32 bits in both clang and gcc
@@ -213,16 +199,9 @@ pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32cd)
 #[inline]
 #[target_feature(enable = "crc")]
-#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
+#[cfg(not(target_arch = "arm"))]
 #[cfg_attr(test, assert_instr(crc32cx))]
-#[cfg_attr(
-    target_arch = "arm",
-    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
-)]
-#[cfg_attr(
-    not(target_arch = "arm"),
-    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
-)]
+#[stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")]
 pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
     crc32cx_(crc, data)
 }
@@ -234,14 +213,7 @@ pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(test, assert_instr(crc32cw))]
-#[cfg_attr(
-    target_arch = "arm",
-    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
-)]
-#[cfg_attr(
-    not(target_arch = "arm"),
-    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
-)]
+#[unstable(feature = "stdarch_aarch32_crc32", issue = "125085")]
 pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
     // On 32-bit ARM this intrinsic emits a chain of two `crc32_cw` instructions
     // and truncates the data to 32 bits in both clang and gcc
