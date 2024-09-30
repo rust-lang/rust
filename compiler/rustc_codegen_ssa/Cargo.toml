@@ -8,7 +8,7 @@ edition = "2021"
 ar_archive_writer = "0.4.2"
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
-cc = "=1.0.105" # FIXME(cc): pinned to keep support for VS2013
+cc = "1.1.23"
 either = "1.5.0"
 itertools = "0.12"
 jobserver = "0.1.28"
