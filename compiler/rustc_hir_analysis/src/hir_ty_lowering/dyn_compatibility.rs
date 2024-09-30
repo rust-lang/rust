@@ -250,7 +250,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                     })
                     .collect();
-                let args = tcx.mk_args(&args);
 
                 let span = i.bottom().1;
                 let empty_generic_args = hir_trait_bounds.iter().any(|(hir_bound, _)| {
@@ -283,7 +282,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .emit();
                 }
 
-                ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }
+                ty::ExistentialTraitRef::new(tcx, trait_ref.def_id, args)
             })
         });
 
