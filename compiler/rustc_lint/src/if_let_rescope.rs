@@ -260,7 +260,8 @@ impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
             //     if let .. { body } else { break; }
             // }
             // ```
-            // There is no observable from the `{ break; }` block so the edition change
+            // There is no observable change in drop order on the overall `if let` expression
+            // given that the `{ break; }` block is trivial so the edition change
             // means nothing substantial to this `while` statement.
             self.skip.insert(value.hir_id);
             return;
