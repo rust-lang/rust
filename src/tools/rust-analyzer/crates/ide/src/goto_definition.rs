@@ -2661,6 +2661,24 @@ fn foo() {
     }
 
     #[test]
+    fn label_inside_macro() {
+        check(
+            r#"
+macro_rules! m {
+    ($s:stmt) => { $s };
+}
+
+fn foo() {
+    'label: loop {
+ // ^^^^^^
+        m!(continue 'label$0);
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_def_on_return_in_try() {
         check(
             r#"

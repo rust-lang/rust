@@ -148,6 +148,7 @@ pub fn token_tree_to_syntax_node<Ctx>(
 ) -> (Parse<SyntaxNode>, SpanMap<Ctx>)
 where
     SpanData<Ctx>: Copy + fmt::Debug,
+    Ctx: PartialEq,
 {
     let buffer = match tt {
         tt::Subtree {
@@ -892,6 +893,7 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
 impl<Ctx> TtTreeSink<'_, Ctx>
 where
     SpanData<Ctx>: Copy + fmt::Debug,
+    Ctx: PartialEq,
 {
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.
@@ -949,6 +951,7 @@ where
         }
 
         let mut last = self.cursor;
+        let mut combined_span = None;
         'tokens: for _ in 0..n_tokens {
             let tmp: u8;
             if self.cursor.eof() {
@@ -982,7 +985,10 @@ where
                             format_to!(self.buf, "{lit}");
                             debug_assert_ne!(self.buf.len() - buf_l, 0);
                             self.text_pos += TextSize::new((self.buf.len() - buf_l) as u32);
-                            self.token_map.push(self.text_pos, lit.span);
+                            combined_span = match combined_span {
+                                None => Some(lit.span),
+                                Some(prev_span) => Some(Self::merge_spans(prev_span, lit.span)),
+                            };
                             self.cursor = self.cursor.bump();
                             continue 'tokens;
                         }
@@ -1006,9 +1012,13 @@ where
             };
             self.buf += text;
             self.text_pos += TextSize::of(text);
-            self.token_map.push(self.text_pos, span);
+            combined_span = match combined_span {
+                None => Some(span),
+                Some(prev_span) => Some(Self::merge_spans(prev_span, span)),
+            }
         }
 
+        self.token_map.push(self.text_pos, combined_span.expect("expected at least one token"));
         self.inner.token(kind, self.buf.as_str());
         self.buf.clear();
         // FIXME: Emitting whitespace for this is really just a hack, we should get rid of it.
@@ -1042,5 +1052,23 @@ where
 
     fn error(&mut self, error: String) {
         self.inner.error(error, self.text_pos)
+    }
+
+    fn merge_spans(a: SpanData<Ctx>, b: SpanData<Ctx>) -> SpanData<Ctx> {
+        // We don't do what rustc does exactly, rustc does something clever when the spans have different syntax contexts
+        // but this runs afoul of our separation between `span` and `hir-expand`.
+        SpanData {
+            range: if a.ctx == b.ctx {
+                TextRange::new(
+                    std::cmp::min(a.range.start(), b.range.start()),
+                    std::cmp::max(a.range.end(), b.range.end()),
+                )
+            } else {
+                // Combining ranges make no sense when they come from different syntax contexts.
+                a.range
+            },
+            anchor: a.anchor,
+            ctx: a.ctx,
+        }
     }
 }
