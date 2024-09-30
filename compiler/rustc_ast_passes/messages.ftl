@@ -160,14 +160,6 @@ ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
     .type = inherent impl for this type
     .only_trait = only trait implementations may be annotated with {$annotation}
 
-ast_passes_invalid_unnamed_field =
-    unnamed fields are not allowed outside of structs or unions
-    .label = unnamed field declared here
-
-ast_passes_invalid_unnamed_field_ty =
-    unnamed fields can only have struct or union types
-    .label = not a struct or union
-
 ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item
 

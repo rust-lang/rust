@@ -815,24 +815,6 @@ pub(crate) struct NegativeBoundWithParentheticalNotation {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_invalid_unnamed_field_ty)]
-pub(crate) struct InvalidUnnamedFieldTy {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub ty_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_invalid_unnamed_field)]
-pub(crate) struct InvalidUnnamedField {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub ident_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_anon_struct_or_union_not_allowed)]
 pub(crate) struct AnonStructOrUnionNotAllowed {
     #[primary_span]

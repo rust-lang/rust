@@ -786,20 +786,6 @@ mod types {
         let _: (T, T);
     }
 
-    /// TyKind::AnonStruct
-    fn ty_anon_struct() {
-        struct Struct {
-            _: struct { t: T },
-        }
-    }
-
-    /// TyKind::AnonUnion
-    fn ty_anon_union() {
-        struct Struct {
-            _: union { t: T },
-        }
-    }
-
     /// TyKind::Path
     fn ty_path() {
         let _: T;
