@@ -728,7 +728,6 @@ fn is_niche_optimization_candidate<'tcx>(
 /// can, return the type that `ty` can be safely converted to, otherwise return `None`.
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero`,
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
-/// FIXME: This duplicates code in codegen.
 pub(crate) fn repr_nullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
