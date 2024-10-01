@@ -960,6 +960,13 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	display: inline-block;
 }
 
+.docblock li {
+	margin-bottom: .8em;
+}
+.docblock li p {
+	margin-bottom: .1em;
+}
+
 /* "where ..." clauses with block display are also smaller */
 div.where {
 	white-space: pre-wrap;
