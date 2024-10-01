@@ -569,14 +569,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         self
     }
 
-    pub fn with_defining_opaque_types(
-        mut self,
-        defining_opaque_types: &'tcx ty::List<LocalDefId>,
-    ) -> Self {
-        self.defining_opaque_types = defining_opaque_types;
-        self
-    }
-
     pub fn with_next_trait_solver(mut self, next_trait_solver: bool) -> Self {
         self.next_trait_solver = next_trait_solver;
         self
@@ -605,14 +597,15 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
     pub fn build_with_canonical<T>(
-        self,
+        mut self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
     ) -> (InferCtxt<'tcx>, T, CanonicalVarValues<'tcx>)
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let infcx = self.with_defining_opaque_types(canonical.defining_opaque_types).build();
+        self.defining_opaque_types = canonical.defining_opaque_types;
+        let infcx = self.build();
         let (value, args) = infcx.instantiate_canonical(span, canonical);
         (infcx, value, args)
     }
