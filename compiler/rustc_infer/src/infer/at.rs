@@ -82,7 +82,6 @@ impl<'tcx> InferCtxt<'tcx> {
             reported_trait_errors: self.reported_trait_errors.clone(),
             reported_signature_mismatch: self.reported_signature_mismatch.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
-            err_count_on_creation: self.err_count_on_creation,
             universe: self.universe.clone(),
             intercrate,
             next_trait_solver: self.next_trait_solver,

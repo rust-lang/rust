@@ -279,26 +279,13 @@ pub struct InferCtxt<'tcx> {
     pub reported_signature_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
-    /// errors that are due to this original failure. Normally, we
-    /// handle this with the `err_count_on_creation` count, which
-    /// basically just tracks how many errors were reported when we
-    /// started type-checking a fn and checks to see if any new errors
-    /// have been reported since then. Not great, but it works.
-    ///
-    /// However, when errors originated in other passes -- notably
-    /// resolve -- this heuristic breaks down. Therefore, we have this
-    /// auxiliary flag that one can set whenever one creates a
-    /// type-error that is due to an error in a prior pass.
+    /// errors that are due to this original failure. We have this
+    /// flag that one can set whenever one creates a type-error that
+    /// is due to an error in a prior pass.
     ///
     /// Don't read this flag directly, call `is_tainted_by_errors()`
     /// and `set_tainted_by_errors()`.
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
-
-    /// Track how many errors were reported when this infcx is created.
-    /// If the number of errors increases, that's also a sign (like
-    /// `tainted_by_errors`) to avoid reporting certain kinds of errors.
-    // FIXME(matthewjasper) Merge into `tainted_by_errors`
-    err_count_on_creation: usize,
 
     /// What is the innermost universe we have created? Starts out as
     /// `UniverseIndex::root()` but grows from there as we enter
@@ -656,7 +643,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_trait_errors: Default::default(),
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
-            err_count_on_creation: tcx.dcx().err_count_excluding_lint_errs(),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             next_trait_solver,
