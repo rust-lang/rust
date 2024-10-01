@@ -344,6 +344,7 @@ impl Step for Llvm {
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
             .define("LLVM_INCLUDE_TESTS", enable_tests)
+            // FIXME: remove this when minimal llvm is 19
             .define("LLVM_ENABLE_TERMINFO", "OFF")
             .define("LLVM_ENABLE_LIBEDIT", "OFF")
             .define("LLVM_ENABLE_BINDINGS", "OFF")
