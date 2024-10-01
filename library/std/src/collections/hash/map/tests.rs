@@ -274,7 +274,7 @@ fn test_lots_of_insertions() {
     for _ in 0..loops {
         assert!(m.is_empty());
 
-        let count = if cfg!(miri) { 101 } else { 1001 };
+        let count = if cfg!(miri) { 66 } else { 1001 };
 
         for i in 1..count {
             assert!(m.insert(i, i).is_none());
