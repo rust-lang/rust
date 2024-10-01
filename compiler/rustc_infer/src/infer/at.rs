@@ -29,6 +29,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{Const, ImplSubject};
 
 use super::*;
+use crate::infer::UnitInferResult;
 use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
 use crate::traits::Obligation;
 
@@ -105,7 +106,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
-    ) -> InferResult<'tcx, ()>
+    ) -> UnitInferResult<'tcx>
     where
         T: ToTrace<'tcx>,
     {
@@ -116,7 +117,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             define_opaque_types,
         );
         fields.sup().relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: fields.into_obligations() })
+        Ok(fields.into_obligations())
     }
 
     /// Makes `expected <: actual`.
@@ -125,7 +126,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
-    ) -> InferResult<'tcx, ()>
+    ) -> UnitInferResult<'tcx>
     where
         T: ToTrace<'tcx>,
     {
@@ -136,7 +137,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             define_opaque_types,
         );
         fields.sub().relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: fields.into_obligations() })
+        Ok(fields.into_obligations())
     }
 
     /// Makes `expected == actual`.
@@ -145,7 +146,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
-    ) -> InferResult<'tcx, ()>
+    ) -> UnitInferResult<'tcx>
     where
         T: ToTrace<'tcx>,
     {
@@ -164,27 +165,24 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         trace: TypeTrace<'tcx>,
         expected: T,
         actual: T,
-    ) -> InferResult<'tcx, ()>
+    ) -> UnitInferResult<'tcx>
     where
         T: Relate<TyCtxt<'tcx>>,
     {
         let mut fields = CombineFields::new(self.infcx, trace, self.param_env, define_opaque_types);
         fields.equate(StructurallyRelateAliases::No).relate(expected, actual)?;
-        Ok(InferOk {
-            value: (),
-            obligations: fields
-                .goals
-                .into_iter()
-                .map(|goal| {
-                    Obligation::new(
-                        self.infcx.tcx,
-                        fields.trace.cause.clone(),
-                        goal.param_env,
-                        goal.predicate,
-                    )
-                })
-                .collect(),
-        })
+        Ok(fields
+            .goals
+            .into_iter()
+            .map(|goal| {
+                Obligation::new(
+                    self.infcx.tcx,
+                    fields.trace.cause.clone(),
+                    goal.param_env,
+                    goal.predicate,
+                )
+            })
+            .collect())
     }
 
     pub fn relate<T>(
@@ -193,7 +191,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         expected: T,
         variance: ty::Variance,
         actual: T,
-    ) -> InferResult<'tcx, ()>
+    ) -> UnitInferResult<'tcx>
     where
         T: ToTrace<'tcx>,
     {

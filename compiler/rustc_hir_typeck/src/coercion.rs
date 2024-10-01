@@ -138,7 +138,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 at.lub(DefineOpaqueTypes::Yes, b, a)
             } else {
                 at.sup(DefineOpaqueTypes::Yes, b, a)
-                    .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
+                    .map(|obligations| InferOk { value: b, obligations })
             };
 
             // In the new solver, lazy norm may allow us to shallowly equate
@@ -1599,8 +1599,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     expected,
                     found,
                 )
-                .map(|infer_ok| {
-                    fcx.register_infer_ok_obligations(infer_ok);
+                .map(|obligations| {
+                    fcx.register_predicates(obligations);
                     expression_ty
                 })
         };

@@ -28,7 +28,7 @@ use tracing::{debug, instrument};
 use super::{SelectionContext, util};
 use crate::error_reporting::traits::to_pretty_impl_header;
 use crate::errors::NegativePositiveConflict;
-use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt, coherence};
 
@@ -235,7 +235,7 @@ fn fulfill_implication<'tcx>(
         util::impl_subject_and_oblig(&selcx, param_env, target_impl, target_args, error_cause);
 
     // do the impls unify? If not, no specialization.
-    let Ok(InferOk { obligations: more_obligations, .. }) = infcx
+    let Ok(more_obligations) = infcx
         .at(&ObligationCause::dummy(), param_env)
         // Ok to use `Yes`, as all the generic params are already replaced by inference variables,
         // which will match the opaque type no matter if it is defining or not.

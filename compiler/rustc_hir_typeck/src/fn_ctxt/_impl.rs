@@ -613,12 +613,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty::Infer(ty::InferTy::TyVar(_)) = interior.kind() else {
                 span_bug!(span, "coroutine interior witness not infer: {:?}", interior.kind())
             };
-            let ok = self
+            let mut obligations = self
                 .at(&self.misc(span), self.param_env)
                 // Will never define opaque types, as all we do is instantiate a type variable.
                 .eq(DefineOpaqueTypes::Yes, interior, witness)
                 .expect("Failed to unify coroutine interior type");
-            let mut obligations = ok.obligations;
 
             // Also collect the obligations that were unstalled by this unification.
             obligations
@@ -1386,7 +1385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 impl_ty,
                 self_ty,
             ) {
-                Ok(ok) => self.register_infer_ok_obligations(ok),
+                Ok(obligations) => self.register_predicates(obligations),
                 Err(_) => {
                     self.dcx().span_bug(
                         span,

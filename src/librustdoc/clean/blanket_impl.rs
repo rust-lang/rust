@@ -1,5 +1,5 @@
 use rustc_hir as hir;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::ty::{self, Upcast};
 use rustc_span::DUMMY_SP;
@@ -48,14 +48,13 @@ pub(crate) fn synthesize_blanket_impls(
 
             // Require the type the impl is implemented on to match
             // our type, and ignore the impl if there was a mismatch.
-            let Ok(eq_result) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(
+            let Ok(obligations) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(
                 DefineOpaqueTypes::Yes,
                 impl_trait_ref.self_ty(),
                 impl_ty,
             ) else {
                 continue;
             };
-            let InferOk { value: (), obligations } = eq_result;
             // FIXME(eddyb) ignoring `obligations` might cause false positives.
             drop(obligations);
 

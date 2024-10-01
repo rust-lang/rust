@@ -16,7 +16,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
@@ -1832,7 +1832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     target_ty,
                                     fru_ty,
                                 ) {
-                                    Ok(InferOk { obligations, value: () }) => {
+                                    Ok(obligations) => {
                                         self.register_predicates(obligations)
                                     }
                                     Err(_) => {

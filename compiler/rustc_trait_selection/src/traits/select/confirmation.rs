@@ -13,7 +13,7 @@ use std::ops::ControlFlow;
 use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
+use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
@@ -193,7 +193,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
                 .eq(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
-                .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| Unimplemented)?,
         );
 
@@ -590,7 +589,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
                 .eq(DefineOpaqueTypes::No, trait_predicate.trait_ref, upcast_trait_ref)
-                .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| Unimplemented)?,
         );
 
@@ -1077,7 +1075,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::Yes, obligation_trait_ref, found_trait_ref)
-            .map(|InferOk { mut obligations, .. }| {
+            .map(|mut obligations| {
                 obligations.extend(nested);
                 obligations
             })
@@ -1168,7 +1166,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
-                let InferOk { mut obligations, .. } = self
+                let mut obligations = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .sup(DefineOpaqueTypes::Yes, target, source_trait)
@@ -1235,7 +1233,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // `[T; n]` -> `[T]`
             (&ty::Array(a, _), &ty::Slice(b)) => {
-                let InferOk { obligations, .. } = self
+                let obligations = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .eq(DefineOpaqueTypes::Yes, b, a)
@@ -1283,7 +1281,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if unsizing_params.contains(i as u32) { args_b[i] } else { k }
                     }));
                 let new_struct = Ty::new_adt(tcx, def, args);
-                let InferOk { obligations, .. } = self
+                let obligations = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .eq(DefineOpaqueTypes::Yes, target, new_struct)
@@ -1315,7 +1313,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // last element is equal to the target.
                 let new_tuple =
                     Ty::new_tup_from_iter(tcx, a_mid.iter().copied().chain(iter::once(b_last)));
-                let InferOk { mut obligations, .. } = self
+                let mut obligations = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .eq(DefineOpaqueTypes::Yes, target, new_tuple)

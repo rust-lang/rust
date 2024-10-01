@@ -13,7 +13,7 @@ use std::assert_matches::assert_matches;
 
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt};
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
@@ -72,7 +72,7 @@ impl<'tcx> NormalizesToTermHack<'tcx> {
             .at(&ObligationCause::dummy_with_span(span), param_env)
             .eq(DefineOpaqueTypes::Yes, self.term, self.unconstrained_term)
             .map_err(|_| NoSolution)
-            .and_then(|InferOk { value: (), obligations }| {
+            .and_then(|obligations| {
                 let ocx = ObligationCtxt::new(infcx);
                 ocx.register_obligations(obligations);
                 let errors = ocx.select_all_or_error();

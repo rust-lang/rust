@@ -541,7 +541,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 goals.extend(
                     self.at(&ObligationCause::dummy_with_span(span), param_env)
                         .eq(DefineOpaqueTypes::Yes, prev, hidden_ty)?
-                        .obligations
                         .into_iter()
                         // FIXME: Shuttling between obligations and goals is awkward.
                         .map(Goal::from),

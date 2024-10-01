@@ -7,7 +7,7 @@ use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::Visitor;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
@@ -116,7 +116,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             let expected = self.tcx.consts.true_;
             let cause = self.misc(DUMMY_SP);
             match self.at(&cause, self.param_env).eq(DefineOpaqueTypes::Yes, expected, effect) {
-                Ok(InferOk { obligations, value: () }) => {
+                Ok(obligations) => {
                     self.register_predicates(obligations);
                 }
                 Err(e) => {

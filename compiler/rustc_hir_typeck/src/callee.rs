@@ -890,7 +890,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cause = self.misc(span);
         // We know the type of `effect` to be `bool`, there will be no opaque type inference.
         match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::Yes, effect, param) {
-            Ok(infer::InferOk { obligations, value: () }) => {
+            Ok(obligations) => {
                 self.register_predicates(obligations);
             }
             Err(e) => {

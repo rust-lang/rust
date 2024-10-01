@@ -190,7 +190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Result<(), Diag<'a>> {
         self.at(cause, self.param_env)
             .sup(DefineOpaqueTypes::Yes, expected, actual)
-            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map(|obligations| self.register_predicates(obligations))
             .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
     }
 
@@ -217,7 +217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Result<(), Diag<'a>> {
         self.at(cause, self.param_env)
             .eq(DefineOpaqueTypes::Yes, expected, actual)
-            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map(|obligations| self.register_predicates(obligations))
             .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
     }
 

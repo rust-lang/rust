@@ -9,7 +9,7 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
 use rustc_hir_analysis::hir_ty_lowering::{
     GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
-use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::{self, DefineOpaqueTypes};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
@@ -512,7 +512,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             })),
         );
         match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
-            Ok(InferOk { obligations, value: () }) => {
+            Ok(obligations) => {
                 self.register_predicates(obligations);
             }
             Err(terr) => {

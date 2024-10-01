@@ -918,7 +918,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         if fcx
                             .at(&cause, fcx.param_env)
                             .eq(DefineOpaqueTypes::Yes, src_obj, dst_obj)
-                            .map(|infer_ok| fcx.register_infer_ok_obligations(infer_ok))
+                            .map(|obligations| fcx.register_predicates(obligations))
                             .is_err()
                         {
                             return Err(CastError::DifferingKinds { src_kind, dst_kind });

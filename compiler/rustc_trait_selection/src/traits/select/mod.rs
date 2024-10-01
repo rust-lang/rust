@@ -45,7 +45,7 @@ use super::{
     TraitQueryMode, const_evaluatable, project, util, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
-use crate::infer::{InferCtxt, InferOk, TypeFreshener};
+use crate::infer::{InferCtxt, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
@@ -649,7 +649,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
-                        Ok(Ok(InferOk { obligations, .. })) => {
+                        Ok(Ok(obligations)) => {
                             self.evaluate_predicates_recursively(previous_stack, obligations)
                         }
                         Ok(Err(_)) => Ok(EvaluatedToErr),
@@ -661,7 +661,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.coerce_predicate(&obligation.cause, obligation.param_env, p) {
-                        Ok(Ok(InferOk { obligations, .. })) => {
+                        Ok(Ok(obligations)) => {
                             self.evaluate_predicates_recursively(previous_stack, obligations)
                         }
                         Ok(Err(_)) => Ok(EvaluatedToErr),
@@ -883,7 +883,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             (Unevaluated(a), Unevaluated(b))
                                 if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
                             {
-                                if let Ok(InferOk { obligations, value: () }) = self
+                                if let Ok(obligations) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
                                     // Can define opaque types as this is only reachable with
@@ -902,7 +902,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             }
                             (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
                             (_, _) => {
-                                if let Ok(InferOk { obligations, value: () }) = self
+                                if let Ok(obligations) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
                                     // Can define opaque types as this is only reachable with
@@ -942,10 +942,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 c1,
                                 c2,
                             ) {
-                                Ok(inf_ok) => self.evaluate_predicates_recursively(
-                                    previous_stack,
-                                    inf_ok.into_obligations(),
-                                ),
+                                Ok(obligations) => self
+                                    .evaluate_predicates_recursively(previous_stack, obligations),
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
@@ -997,10 +995,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         ct_ty,
                         ty,
                     ) {
-                        Ok(inf_ok) => self.evaluate_predicates_recursively(
-                            previous_stack,
-                            inf_ok.into_obligations(),
-                        ),
+                        Ok(obligations) => {
+                            self.evaluate_predicates_recursively(previous_stack, obligations)
+                        }
                         Err(_) => Ok(EvaluatedToErr),
                     }
                 }
@@ -1676,7 +1673,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, placeholder_trait_ref, trait_bound)
-            .map(|InferOk { obligations: _, value: () }| {
+            .map(|_| {
                 // This method is called within a probe, so we can't have
                 // inference variables and placeholders escape.
                 if !trait_bound.has_infer() && !trait_bound.has_placeholders() {
@@ -1740,7 +1737,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, obligation.predicate, infer_projection)
-            .is_ok_and(|InferOk { obligations, value: () }| {
+            .is_ok_and(|obligations| {
                 self.evaluate_predicates_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                     nested_obligations.into_iter().chain(obligations),
@@ -2527,7 +2524,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ObligationCauseCode::MatchImpl(obligation.cause.clone(), impl_def_id),
         );
 
-        let InferOk { obligations, .. } = self
+        let obligations = self
             .infcx
             .at(&cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, placeholder_obligation_trait_ref, impl_trait_ref)
@@ -2605,8 +2602,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                     source_principal,
                                 )
                             })
-                            .map_err(|_| SelectionError::Unimplemented)?
-                            .into_obligations(),
+                            .map_err(|_| SelectionError::Unimplemented)?,
                     );
                 }
                 // Check that b_ty's projection is satisfied by exactly one of
@@ -2674,8 +2670,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                     source_projection,
                                 )
                             })
-                            .map_err(|_| SelectionError::Unimplemented)?
-                            .into_obligations(),
+                            .map_err(|_| SelectionError::Unimplemented)?,
                     );
                 }
                 // Check that b_ty's auto traits are present in a_ty's bounds.
@@ -2726,7 +2721,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)
-            .map(|InferOk { obligations, .. }| obligations)
+            .map(|obligations| obligations)
             .map_err(|_| ())
     }
 

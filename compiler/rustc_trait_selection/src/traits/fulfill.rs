@@ -477,7 +477,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ct_ty,
                         ty,
                     ) {
-                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
+                        Ok(obligations) => ProcessResult::Changed(mk_pending(obligations)),
                         Err(_) => ProcessResult::Error(FulfillmentErrorCode::Select(
                             SelectionError::ConstArgHasWrongType { ct, ct_ty, expected_ty: ty },
                         )),
@@ -527,11 +527,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Ok(Ok(mut ok)) => {
-                            for subobligation in &mut ok.obligations {
+                        Ok(Ok(mut obligations)) => {
+                            for subobligation in &mut obligations {
                                 subobligation.set_depth_from_parent(obligation.recursion_depth);
                             }
-                            ProcessResult::Changed(mk_pending(ok.obligations))
+                            ProcessResult::Changed(mk_pending(obligations))
                         }
                         Ok(Err(err)) => {
                             let expected_found =
@@ -553,7 +553,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Ok(Ok(obligations)) => ProcessResult::Changed(mk_pending(obligations)),
                         Ok(Err(err)) => {
                             let expected_found = ExpectedFound::new(false, coerce.a, coerce.b);
                             ProcessResult::Error(FulfillmentErrorCode::Subtype(expected_found, err))
@@ -616,9 +616,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                         ty::AliasTerm::from(b),
                                     )
                                 {
-                                    return ProcessResult::Changed(mk_pending(
-                                        new_obligations.into_obligations(),
-                                    ));
+                                    return ProcessResult::Changed(mk_pending(new_obligations));
                                 }
                             }
                             (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
@@ -629,9 +627,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     // `generic_const_exprs`
                                     .eq(DefineOpaqueTypes::Yes, c1, c2)
                                 {
-                                    return ProcessResult::Changed(mk_pending(
-                                        new_obligations.into_obligations(),
-                                    ));
+                                    return ProcessResult::Changed(mk_pending(new_obligations));
                                 }
                             }
                         }
@@ -673,9 +669,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 c1,
                                 c2,
                             ) {
-                                Ok(inf_ok) => {
-                                    ProcessResult::Changed(mk_pending(inf_ok.into_obligations()))
-                                }
+                                Ok(obligations) => ProcessResult::Changed(mk_pending(obligations)),
                                 Err(err) => {
                                     ProcessResult::Error(FulfillmentErrorCode::ConstEquate(
                                         ExpectedFound::new(true, c1, c2),

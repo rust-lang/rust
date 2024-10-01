@@ -266,7 +266,7 @@ fn project_and_unify_term<'cx, 'tcx>(
         normalized,
         actual,
     ) {
-        Ok(InferOk { obligations: inferred_obligations, value: () }) => {
+        Ok(inferred_obligations) => {
             obligations.extend(inferred_obligations);
             ProjectAndUnifyResult::Holds(obligations)
         }
@@ -638,7 +638,7 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
     }
 
     match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::Yes, impl_ty, self_ty) {
-        Ok(mut ok) => obligations.append(&mut ok.obligations),
+        Ok(mut more_obligations) => obligations.append(&mut more_obligations),
         Err(_) => {
             tcx.dcx().span_bug(
                 cause.span,
@@ -2021,7 +2021,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         cache_projection,
         obligation_projection,
     ) {
-        Ok(InferOk { value: _, obligations }) => {
+        Ok(obligations) => {
             nested_obligations.extend(obligations);
             assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
             // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress type should just take

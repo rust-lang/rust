@@ -292,7 +292,7 @@ fn equate_impl_headers<'tcx>(
             _ => bug!("equate_impl_headers given mismatched impl kinds"),
         };
 
-    result.map(|infer_ok| infer_ok.obligations).ok()
+    result.map(|obligations| obligations).ok()
 }
 
 /// The result of [fn impl_intersection_has_impossible_obligation].
@@ -464,7 +464,7 @@ fn plug_infer_with_placeholders<'tcx>(
         fn visit_ty(&mut self, ty: Ty<'tcx>) {
             let ty = self.infcx.shallow_resolve(ty);
             if ty.is_ty_var() {
-                let Ok(InferOk { value: (), obligations }) =
+                let Ok(obligations) =
                     self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
                         // Comparing against a type variable never registers hidden types anyway
                         DefineOpaqueTypes::Yes,
@@ -489,7 +489,7 @@ fn plug_infer_with_placeholders<'tcx>(
         fn visit_const(&mut self, ct: ty::Const<'tcx>) {
             let ct = self.infcx.shallow_resolve_const(ct);
             if ct.is_ct_infer() {
-                let Ok(InferOk { value: (), obligations }) =
+                let Ok(obligations) =
                     self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
                         // The types of the constants are the same, so there is no hidden type
                         // registration happening anyway.
@@ -518,7 +518,7 @@ fn plug_infer_with_placeholders<'tcx>(
                     .unwrap_region_constraints()
                     .opportunistic_resolve_var(self.infcx.tcx, vid);
                 if r.is_var() {
-                    let Ok(InferOk { value: (), obligations }) =
+                    let Ok(obligations) =
                         self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
                             // Lifetimes don't contain opaque types (or any types for that matter).
                             DefineOpaqueTypes::Yes,

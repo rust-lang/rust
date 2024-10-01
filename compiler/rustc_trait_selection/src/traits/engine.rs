@@ -131,7 +131,7 @@ where
         self.infcx
             .at(cause, param_env)
             .eq(DefineOpaqueTypes::Yes, expected, actual)
-            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map(|obligations| self.register_obligations(obligations))
     }
 
     pub fn eq_trace<T: Relate<TyCtxt<'tcx>>>(
@@ -145,7 +145,7 @@ where
         self.infcx
             .at(cause, param_env)
             .eq_trace(DefineOpaqueTypes::Yes, trace, expected, actual)
-            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map(|obligations| self.register_obligations(obligations))
     }
 
     /// Checks whether `expected` is a subtype of `actual`: `expected <: actual`.
@@ -159,7 +159,7 @@ where
         self.infcx
             .at(cause, param_env)
             .sub(DefineOpaqueTypes::Yes, expected, actual)
-            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map(|obligations| self.register_obligations(obligations))
     }
 
     pub fn relate<T: ToTrace<'tcx>>(
@@ -173,7 +173,7 @@ where
         self.infcx
             .at(cause, param_env)
             .relate(DefineOpaqueTypes::Yes, expected, variance, actual)
-            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map(|obligations| self.register_obligations(obligations))
     }
 
     /// Checks whether `expected` is a supertype of `actual`: `expected :> actual`.
@@ -187,7 +187,7 @@ where
         self.infcx
             .at(cause, param_env)
             .sup(DefineOpaqueTypes::Yes, expected, actual)
-            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map(|infer_ok| self.register_obligations(infer_ok))
     }
 
     #[must_use]

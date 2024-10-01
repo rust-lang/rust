@@ -50,7 +50,6 @@ use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
-use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
 
 pub mod at;
@@ -76,7 +75,9 @@ pub struct InferOk<'tcx, T> {
 }
 pub type InferResult<'tcx, T> = Result<InferOk<'tcx, T>, TypeError<'tcx>>;
 
-pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
+// Like `InferResult<'tcx, ()>`, but without the useless `InferOk<'tcx, ()>` wrapper.
+pub type UnitInferResult<'tcx> = Result<Vec<PredicateObligation<'tcx>>, TypeError<'tcx>>;
+
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
@@ -679,12 +680,6 @@ impl<'tcx, T> InferOk<'tcx, T> {
     }
 }
 
-impl<'tcx> InferOk<'tcx, ()> {
-    pub fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
-        self.obligations
-    }
-}
-
 impl<'tcx> InferCtxt<'tcx> {
     pub fn dcx(&self) -> DiagCtxtHandle<'_> {
         self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
@@ -807,7 +802,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         predicate: ty::PolyCoercePredicate<'tcx>,
-    ) -> Result<InferResult<'tcx, ()>, (TyVid, TyVid)> {
+    ) -> Result<UnitInferResult<'tcx>, (TyVid, TyVid)> {
         let subtype_predicate = predicate.map_bound(|p| ty::SubtypePredicate {
             a_is_expected: false, // when coercing from `a` to `b`, `b` is expected
             a: p.a,
@@ -821,7 +816,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         predicate: ty::PolySubtypePredicate<'tcx>,
-    ) -> Result<InferResult<'tcx, ()>, (TyVid, TyVid)> {
+    ) -> Result<UnitInferResult<'tcx>, (TyVid, TyVid)> {
         // Check for two unresolved inference variables, in which case we can
         // make no progress. This is partly a micro-optimization, but it's
         // also an opportunity to "sub-unify" the variables. This isn't

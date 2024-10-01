@@ -15,7 +15,7 @@ use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_index::IndexVec;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TypeTrace};
+use rustc_infer::infer::{DefineOpaqueTypes, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::TypeVisitableExt;
@@ -338,7 +338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If neither check failed, the types are compatible
             match formal_ty_error {
-                Ok(InferOk { obligations, value: () }) => {
+                Ok(obligations) => {
                     self.register_predicates(obligations);
                     Compatibility::Compatible
                 }

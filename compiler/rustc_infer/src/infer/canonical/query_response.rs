@@ -25,7 +25,7 @@ use crate::infer::canonical::{
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
 };
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, UnitInferResult};
 use crate::traits::query::NoSolution;
 use crate::traits::{
     Obligation, ObligationCause, PredicateObligation, ScrubbedTraitError, TraitEngine,
@@ -283,19 +283,19 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                    obligations.extend(
-                        self.at(&cause, param_env)
-                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
-                            .into_obligations(),
-                    );
+                    obligations.extend(self.at(&cause, param_env).eq(
+                        DefineOpaqueTypes::Yes,
+                        v1,
+                        v2,
+                    )?);
                 }
 
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                    obligations.extend(
-                        self.at(&cause, param_env)
-                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
-                            .into_obligations(),
-                    );
+                    obligations.extend(self.at(&cause, param_env).eq(
+                        DefineOpaqueTypes::Yes,
+                        v1,
+                        v2,
+                    )?);
                 }
 
                 _ => {
@@ -363,16 +363,13 @@ impl<'tcx> InferCtxt<'tcx> {
             query_response,
         )?;
 
-        value.obligations.extend(
-            self.unify_query_response_instantiation_guess(
-                cause,
-                param_env,
-                original_values,
-                &value.value,
-                query_response,
-            )?
-            .into_obligations(),
-        );
+        value.obligations.extend(self.unify_query_response_instantiation_guess(
+            cause,
+            param_env,
+            original_values,
+            &value.value,
+            query_response,
+        )?);
 
         Ok(value)
     }
@@ -504,15 +501,11 @@ impl<'tcx> InferCtxt<'tcx> {
             // opaque type's hidden value directly, because the hidden type may have been an inference
             // variable that got constrained to the opaque type itself. In that case we want to equate
             // the generic args of the opaque with the generic params of its hidden type version.
-            obligations.extend(
-                self.at(cause, param_env)
-                    .eq(
-                        DefineOpaqueTypes::Yes,
-                        Ty::new_opaque(self.tcx, a.def_id.to_def_id(), a.args),
-                        b,
-                    )?
-                    .obligations,
-            );
+            obligations.extend(self.at(cause, param_env).eq(
+                DefineOpaqueTypes::Yes,
+                Ty::new_opaque(self.tcx, a.def_id.to_def_id(), a.args),
+                b,
+            )?);
         }
 
         Ok(InferOk { value: result_args, obligations })
@@ -531,7 +524,7 @@ impl<'tcx> InferCtxt<'tcx> {
         original_values: &OriginalQueryValues<'tcx>,
         result_args: &CanonicalVarValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
-    ) -> InferResult<'tcx, ()>
+    ) -> UnitInferResult<'tcx>
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -597,18 +590,18 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         variables1: &OriginalQueryValues<'tcx>,
         variables2: impl Fn(BoundVar) -> GenericArg<'tcx>,
-    ) -> InferResult<'tcx, ()> {
+    ) -> UnitInferResult<'tcx> {
         let mut obligations = vec![];
         for (index, value1) in variables1.var_values.iter().enumerate() {
             let value2 = variables2(BoundVar::new(index));
 
             match (value1.unpack(), value2.unpack()) {
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                    obligations.extend(
-                        self.at(cause, param_env)
-                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
-                            .into_obligations(),
-                    );
+                    obligations.extend(self.at(cause, param_env).eq(
+                        DefineOpaqueTypes::Yes,
+                        v1,
+                        v2,
+                    )?);
                 }
                 (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
                     if re1.is_erased() && re2.is_erased() =>
@@ -616,22 +609,25 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no action needed
                 }
                 (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
-                    obligations.extend(
-                        self.at(cause, param_env)
-                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
-                            .into_obligations(),
-                    );
+                    obligations.extend(self.at(cause, param_env).eq(
+                        DefineOpaqueTypes::Yes,
+                        v1,
+                        v2,
+                    )?);
                 }
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                    let ok = self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
-                    obligations.extend(ok.into_obligations());
+                    obligations.extend(self.at(cause, param_env).eq(
+                        DefineOpaqueTypes::Yes,
+                        v1,
+                        v2,
+                    )?);
                 }
                 _ => {
                     bug!("kind mismatch, cannot unify {:?} and {:?}", value1, value2,);
                 }
             }
         }
-        Ok(InferOk { value: (), obligations })
+        Ok(obligations)
     }
 }
 
