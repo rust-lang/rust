@@ -50,7 +50,6 @@ use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
-use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
 
 pub mod at;
@@ -76,7 +75,6 @@ pub struct InferOk<'tcx, T> {
 }
 pub type InferResult<'tcx, T> = Result<InferOk<'tcx, T>, TypeError<'tcx>>;
 
-pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
