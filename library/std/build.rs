@@ -101,7 +101,7 @@ fn main() {
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        ("x86_64", "windows") => false,
+        ("x86_64", "windows") if target_env == "gnu" => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         ("csky", _) => false,
         ("hexagon", _) => false,
@@ -129,10 +129,10 @@ fn main() {
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
         ("sparc", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        ("x86_64", "windows") => false,
+        ("x86_64", "windows") if target_env == "gnu" => false,
         // 64-bit Linux is about the only platform to have f128 symbols by default
         (_, "linux") if target_pointer_width == 64 => true,
-        // Same as for f16, except MacOS is also missing f128 symbols.
+        // Almost all OSs are missing symbol. compiler-builtins will have to add them.
         _ => false,
     };
 
