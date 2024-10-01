@@ -3,9 +3,6 @@
 //@[edi2021]compile-flags: --edition=2021
 
 // This test ensures that the inline const match only on edition 2024
-#![feature(expr_fragment_specifier_2024)]
-#![allow(incomplete_features)]
-
 macro_rules! m2021 {
     ($e:expr_2021) => {
         $e
