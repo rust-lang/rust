@@ -7,7 +7,8 @@ mod tests;
 use std::{iter, ops::ControlFlow};
 
 use hir::{
-    HasAttrs, Local, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo,
+    HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type,
+    TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
@@ -743,7 +744,12 @@ impl<'a> CompletionContext<'a> {
             }
         });
 
-        let depth_from_crate_root = iter::successors(module.parent(db), |m| m.parent(db)).count();
+        let depth_from_crate_root = iter::successors(Some(module), |m| m.parent(db))
+            // `BlockExpr` modules are not count as module depth
+            .filter(|m| !matches!(m.definition_source(db).value, ModuleSource::BlockExpr(_)))
+            .count()
+            // exclude `m` itself
+            .saturating_sub(1);
 
         let complete_semicolon = if config.add_semicolon_to_unit {
             let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {

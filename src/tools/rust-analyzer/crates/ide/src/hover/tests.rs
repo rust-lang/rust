@@ -8962,3 +8962,29 @@ fn test_hover_function_with_pat_param() {
         "#]],
     );
 }
+
+#[test]
+fn hover_path_inside_block_scope() {
+    check(
+        r#"
+mod m {
+    const _: () = {
+        mod m2 {
+            const C$0: () = ();
+        }
+    };
+}
+"#,
+        expect![[r#"
+            *C*
+
+            ```rust
+            test::m::m2
+            ```
+
+            ```rust
+            const C: () = ()
+            ```
+        "#]],
+    );
+}

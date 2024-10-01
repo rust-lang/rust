@@ -3,7 +3,7 @@ use std::{mem, ops::Not};
 
 use either::Either;
 use hir::{
-    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind,
+    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, AssocItemContainer, CaptureKind,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
     MethodViolationCode, Name, Semantics, Trait, Type, TypeInfo,
 };
@@ -813,7 +813,15 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition, edition: Edition) ->
     if matches!(def, Definition::GenericParam(_) | Definition::Local(_) | Definition::Label(_)) {
         return None;
     }
-    def.module(db).map(|module| path(db, module, definition_owner_name(db, def, edition), edition))
+    let container: Option<Definition> =
+        def.as_assoc_item(db).and_then(|assoc| match assoc.container(db) {
+            AssocItemContainer::Trait(trait_) => Some(trait_.into()),
+            AssocItemContainer::Impl(impl_) => impl_.self_ty(db).as_adt().map(|adt| adt.into()),
+        });
+    container
+        .unwrap_or(*def)
+        .module(db)
+        .map(|module| path(db, module, definition_owner_name(db, def, edition), edition))
 }
 
 fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Markup {

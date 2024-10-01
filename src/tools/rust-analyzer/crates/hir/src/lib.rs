@@ -497,10 +497,9 @@ impl Module {
 
     /// Finds a parent module.
     pub fn parent(self, db: &dyn HirDatabase) -> Option<Module> {
-        // FIXME: handle block expressions as modules (their parent is in a different DefMap)
         let def_map = self.id.def_map(db.upcast());
-        let parent_id = def_map[self.id.local_id].parent?;
-        Some(Module { id: def_map.module_id(parent_id) })
+        let parent_id = def_map.containing_module(self.id.local_id)?;
+        Some(Module { id: parent_id })
     }
 
     /// Finds nearest non-block ancestor `Module` (`self` included).
