@@ -6,7 +6,7 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_ast_pretty::pprust;
-use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableSince};
+use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -333,6 +333,8 @@ pub(crate) struct ItemInner {
     /// E.g., struct vs enum vs function.
     pub(crate) kind: ItemKind,
     pub(crate) attrs: Attributes,
+    /// The effective stability, filled out by the `propagate-stability` pass.
+    pub(crate) stability: Option<Stability>,
 }
 
 impl std::ops::Deref for Item {
@@ -381,46 +383,17 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 impl Item {
+    /// Returns the effective stability of the item.
+    ///
+    /// This method should only be called after the `propagate-stability` pass has been run.
     pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<Stability> {
-        let (mut def_id, mut stability) = if let Some(inlined) = self.inline_stmt_id {
-            let inlined_def_id = inlined.to_def_id();
-            if let Some(stability) = tcx.lookup_stability(inlined_def_id) {
-                (inlined_def_id, stability)
-            } else {
-                // For re-exports into crates without `staged_api`, reuse the original stability.
-                // This is necessary, because we always want to mark unstable items.
-                let def_id = self.def_id()?;
-                return tcx.lookup_stability(def_id);
-            }
-        } else {
-            let def_id = self.def_id()?;
-            let stability = tcx.lookup_stability(def_id)?;
-            (def_id, stability)
-        };
-
-        let StabilityLevel::Stable { mut since, allowed_through_unstable_modules: false } =
-            stability.level
-        else {
-            return Some(stability);
-        };
-
-        // If any of the item's ancestors was stabilized later or is still unstable,
-        // then report the ancestor's stability instead.
-        while let Some(parent_def_id) = tcx.opt_parent(def_id) {
-            if let Some(parent_stability) = tcx.lookup_stability(parent_def_id) {
-                match parent_stability.level {
-                    StabilityLevel::Unstable { .. } => return Some(parent_stability),
-                    StabilityLevel::Stable { since: parent_since, .. } => {
-                        if parent_since > since {
-                            stability = parent_stability;
-                            since = parent_since;
-                        }
-                    }
-                }
-            }
-            def_id = parent_def_id;
-        }
-        Some(stability)
+        let stability = self.inner.stability;
+        debug_assert!(
+            stability.is_some()
+                || self.def_id().is_none_or(|did| tcx.lookup_stability(did).is_none()),
+            "missing stability for cleaned item: {self:?}",
+        );
+        stability
     }
 
     pub(crate) fn const_stability(&self, tcx: TyCtxt<'_>) -> Option<ConstStability> {
@@ -502,7 +475,7 @@ impl Item {
 
         Item {
             item_id: def_id.into(),
-            inner: Box::new(ItemInner { kind, attrs }),
+            inner: Box::new(ItemInner { kind, attrs, stability: None }),
             name,
             cfg,
             inline_stmt_id: None,
@@ -638,10 +611,7 @@ impl Item {
     }
 
     pub(crate) fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<StableSince> {
-        match self.stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since),
-            StabilityLevel::Unstable { .. } => None,
-        }
+        self.stability(tcx).and_then(|stability| stability.stable_since())
     }
 
     pub(crate) fn is_non_exhaustive(&self) -> bool {
