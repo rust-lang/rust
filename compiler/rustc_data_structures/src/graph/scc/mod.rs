@@ -137,6 +137,12 @@ impl<N: Idx, S: Idx + Ord, A: Annotation> Sccs<N, S, A> {
         (0..self.scc_data.len()).map(S::new)
     }
 
+    /// Returns an iterator over the SCC annotations in the graph
+    /// The order is the same as `all_sccs()`, dependency order.
+    pub fn all_annotations(&self) -> impl Iterator<Item = (S, A)> + use<'_, N, S, A> {
+        self.all_sccs().map(|scc| (scc, self.annotation(scc)))
+    }
+
     /// Returns the SCC to which a node `r` belongs.
     pub fn scc(&self, r: N) -> S {
         self.scc_indices[r]

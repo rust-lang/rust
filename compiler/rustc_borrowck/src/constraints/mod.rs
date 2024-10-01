@@ -1,6 +1,7 @@
 use std::fmt;
 use std::ops::Index;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::ConstraintCategory;
@@ -134,12 +135,14 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         let fr_static = universal_regions.fr_static;
         let sccs = self.compute_sccs(fr_static, definitions);
 
-        // Changed to `true` if we added any constraints to `self` and need to
-        // recompute SCCs.
-        let mut added_constraints = false;
+        // Is this SCC already outliving static directly or transitively?
+        let mut outlives_static = FxHashSet::default();
 
-        for scc in sccs.all_sccs() {
-            let annotation = sccs.annotation(scc);
+        for (scc, annotation) in sccs.all_annotations() {
+            if scc == sccs.scc(fr_static) {
+                // No use adding 'static: 'static.
+                continue;
+            }
 
             // If this SCC participates in a universe violation
             // e.g. if it reaches a region with a universe smaller than
@@ -147,12 +150,7 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
             // outlive `'static`. Here we get to know which reachable region
             // caused the violation.
             if let Some(to) = annotation.universe_violation() {
-                // Optimisation opportunity: this will potentially add more constraints
-                // than needed for correctness, since an SCC upstream of another with
-                // a universe violation will "infect" its downstream SCCs to also
-                // outlive static. However, some of those may be useful for error
-                // reporting.
-                added_constraints = true;
+                outlives_static.insert(scc);
                 self.add_placeholder_violation_constraint(
                     annotation.representative,
                     annotation.representative,
@@ -162,18 +160,28 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
             }
         }
 
+        // Note: it's possible to sort this iterator by SCC and get dependency order,
+        // which makes it easy to only add only one constraint per future cycle.
+        // However, this worsens diagnostics and requires iterating over
+        // all successors to determine if we outlive static transitively,
+        // a cost you pay even if you have no placeholders.
+        let placeholders_and_sccs =
+            definitions.iter_enumerated().filter_map(|(rvid, definition)| {
+                if matches!(definition.origin, NllRegionVariableOrigin::Placeholder { .. }) {
+                    Some((sccs.scc(rvid), rvid))
+                } else {
+                    None
+                }
+            });
+
         // The second kind of violation: a placeholder reaching another placeholder.
-        // OPTIMIZATION: This one is even more optimisable since it adds constraints for every
-        // placeholder in an SCC.
-        for rvid in definitions.iter_enumerated().filter_map(|(rvid, definition)| {
-            if matches!(definition.origin, NllRegionVariableOrigin::Placeholder { .. }) {
-                Some(rvid)
-            } else {
-                None
-            }
-        }) {
-            let scc = sccs.scc(rvid);
+        for (scc, rvid) in placeholders_and_sccs {
             let annotation = sccs.annotation(scc);
+
+            if sccs.scc(fr_static) == scc || outlives_static.contains(&scc) {
+                debug!("{:?} already outlives (or is) static", annotation.representative);
+                continue;
+            }
 
             // Unwrap safety: since this is our SCC it must contain us, which is
             // at worst min AND max, but it has at least one or there is a bug.
@@ -193,7 +201,7 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
             debug!(
                 "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
             );
-            added_constraints = true;
+            outlives_static.insert(scc);
             self.add_placeholder_violation_constraint(
                 annotation.representative,
                 rvid,
@@ -202,7 +210,8 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
             );
         }
 
-        if added_constraints {
+        if !outlives_static.is_empty() {
+            debug!("The following SCCs had :'static constraints added: {:?}", outlives_static);
             // We changed the constraint set and so must recompute SCCs.
             self.compute_sccs(fr_static, definitions)
         } else {

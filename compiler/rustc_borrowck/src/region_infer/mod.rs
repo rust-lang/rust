@@ -91,9 +91,6 @@ pub struct RegionTracker {
 
     /// The largest reachable placeholder from this SCC (including in it).
     pub(crate) max_reachable_placeholder: Option<RegionVid>,
-
-    /// Is there at least one placeholder in this SCC?
-    contains_placeholder: bool,
 }
 
 impl scc::Annotation for RegionTracker {
@@ -110,7 +107,6 @@ impl scc::Annotation for RegionTracker {
             _ if self.representative <= other.representative => (self, other),
             _ => (other, self),
         };
-        shorter.contains_placeholder |= longer.contains_placeholder;
         shorter.merge_min_max_seen(&longer);
         shorter
     }
@@ -148,7 +144,6 @@ impl RegionTracker {
             representative_origin,
             min_reachable_placeholder: representative_if_placeholder,
             max_reachable_placeholder: representative_if_placeholder,
-            contains_placeholder: rvid_is_placeholder,
         }
     }
 
