@@ -17,31 +17,10 @@ LL | fn foo(_: Pin<&mut Foo>) {
    |    in this function
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/feature-gate-pin_ergonomics.rs:19:5
+  --> $DIR/feature-gate-pin_ergonomics.rs:22:5
    |
-LL | fn bar(mut x: Pin<&mut Foo>) {
+LL | fn baz(mut x: Pin<&mut Foo>) {
    |        ----- move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
-LL |     foo(x);
-LL |     foo(x);
-   |         - value moved here
-LL |
-LL |     x.foo();
-   |     ^ value used here after move
-   |
-note: consider changing this parameter type in function `foo` to borrow instead if owning the value isn't necessary
-  --> $DIR/feature-gate-pin_ergonomics.rs:12:11
-   |
-LL | fn foo(_: Pin<&mut Foo>) {
-   |    ---    ^^^^^^^^^^^^^ this parameter takes ownership of the value
-   |    |
-   |    in this function
-
-error[E0382]: use of moved value: `x`
-  --> $DIR/feature-gate-pin_ergonomics.rs:20:5
-   |
-LL | fn bar(mut x: Pin<&mut Foo>) {
-   |        ----- move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
-...
 LL |     x.foo();
    |       ----- `x` moved due to this method call
 LL |     x.foo();
@@ -57,6 +36,6 @@ help: consider reborrowing the `Pin` instead of moving it
 LL |     x.as_mut().foo();
    |      +++++++++
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0382`.
