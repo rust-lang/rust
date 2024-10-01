@@ -153,7 +153,7 @@
 //! the [`io`], [`fs`], and [`net`] modules.
 //!
 //! The [`thread`] module contains Rust's threading abstractions. [`sync`]
-//! contains further primitive shared memory types, including [`atomic`] and
+//! contains further primitive shared memory types, including [`atomic`], [`mpmc`] and
 //! [`mpsc`], which contains the channel types for message passing.
 //!
 //! # Use before and after `main()`
@@ -177,6 +177,7 @@
 //! - after-main use of thread-locals, which also affects additional features:
 //!   - [`thread::current()`]
 //!   - [`thread::scope()`]
+//!   - [`sync::mpmc`]
 //!   - [`sync::mpsc`]
 //! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
 //!
@@ -202,6 +203,7 @@
 //! [`atomic`]: sync::atomic
 //! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
 //! [`str`]: prim@str
+//! [`mpmc`]: sync::mpmc
 //! [`mpsc`]: sync::mpsc
 //! [`std::cmp`]: cmp
 //! [`std::slice`]: mod@slice
