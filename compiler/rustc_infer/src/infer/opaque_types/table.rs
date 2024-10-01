@@ -7,7 +7,7 @@ use super::{OpaqueTypeDecl, OpaqueTypeMap};
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};
 
 #[derive(Default, Debug, Clone)]
-pub struct OpaqueTypeStorage<'tcx> {
+pub(crate) struct OpaqueTypeStorage<'tcx> {
     /// Opaque types found in explicit return types and their
     /// associated fresh inference variable. Writeback resolves these
     /// variables to get the concrete type, which can be used to

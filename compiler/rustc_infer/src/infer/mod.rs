@@ -56,17 +56,17 @@ use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligat
 pub mod at;
 pub mod canonical;
 mod context;
-pub mod free_regions;
+mod free_regions;
 mod freshen;
 mod lexical_region_resolve;
-pub mod opaque_types;
+mod opaque_types;
 pub mod outlives;
 mod projection;
 pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
-pub mod type_variable;
+mod type_variable;
 
 #[must_use]
 #[derive(Debug)]

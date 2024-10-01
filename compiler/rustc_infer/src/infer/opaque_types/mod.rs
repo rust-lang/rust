@@ -19,8 +19,8 @@ use crate::traits::{self, Obligation};
 
 mod table;
 
-pub type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
-pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
+pub(crate) type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
+pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
 
 use super::DefineOpaqueTypes;
 
@@ -377,9 +377,9 @@ impl<'tcx> InferCtxt<'tcx> {
 ///
 /// We ignore any type parameters because impl trait values are assumed to
 /// capture all the in-scope type parameters.
-pub struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
-    pub tcx: TyCtxt<'tcx>,
-    pub op: OP,
+struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
+    tcx: TyCtxt<'tcx>,
+    op: OP,
 }
 
 impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
@@ -451,20 +451,6 @@ where
             _ => {
                 ty.super_visit_with(self);
             }
-        }
-    }
-}
-
-pub enum UseKind {
-    DefiningUse,
-    OpaqueUse,
-}
-
-impl UseKind {
-    pub fn is_defining(self) -> bool {
-        match self {
-            UseKind::DefiningUse => true,
-            UseKind::OpaqueUse => false,
         }
     }
 }
