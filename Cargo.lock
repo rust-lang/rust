@@ -1493,6 +1493,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashbrown"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e087f84d4f86bf4b218b927129862374b72199ae7d8657835f1e89000eea4fb"
+
+[[package]]
 name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1741,11 +1747,10 @@ checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 [[package]]
 name = "indexmap"
 version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68b900aa2f7301e21c36462b170ee99994de34dff39a4a6a528e80e7376d07e5"
+source = "git+https://github.com/cuviper/indexmap?branch=hash_table#e577bf2556a40cb85d3befceeead50ee77ae508d"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.15.0",
  "rustc-rayon",
  "serde",
 ]
@@ -2439,7 +2444,7 @@ checksum = "084f1a5821ac4c651660a94a7153d27ac9d8a53736203f58b31945ded098070a"
 dependencies = [
  "crc32fast",
  "flate2",
- "hashbrown",
+ "hashbrown 0.14.5",
  "indexmap",
  "memchr",
  "ruzstd",
@@ -2468,7 +2473,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30c7f82d6d446dd295845094f3a76bcdc5e6183b66667334e169f019cd05e5a0"
 dependencies = [
  "ahash",
- "hashbrown",
+ "hashbrown 0.14.5",
  "parking_lot",
  "stable_deref_trait",
 ]
@@ -5183,7 +5188,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "813ba76597db32dc4f6992fd8bf8f394715b88d352fd97401da67dab6283b4c6"
 dependencies = [
  "gimli 0.30.0",
- "hashbrown",
+ "hashbrown 0.14.5",
  "object 0.36.4",
  "tracing",
 ]
@@ -5843,7 +5848,7 @@ checksum = "ca917a21307d3adf2b9857b94dd05ebf8496bdcff4437a9b9fb3899d3e6c74e7"
 dependencies = [
  "ahash",
  "bitflags 2.6.0",
- "hashbrown",
+ "hashbrown 0.14.5",
  "indexmap",
  "semver",
  "serde",
