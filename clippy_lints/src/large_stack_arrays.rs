@@ -30,6 +30,7 @@ declare_clippy_lint! {
 pub struct LargeStackArrays {
     maximum_allowed_size: u64,
     prev_vec_macro_callsite: Option<Span>,
+    is_in_const_item: bool,
 }
 
 impl LargeStackArrays {
@@ -37,6 +38,7 @@ impl LargeStackArrays {
         Self {
             maximum_allowed_size: conf.array_size_threshold,
             prev_vec_macro_callsite: None,
+            is_in_const_item: false,
         }
     }
 
@@ -60,8 +62,21 @@ impl LargeStackArrays {
 impl_lint_pass!(LargeStackArrays => [LARGE_STACK_ARRAYS]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
+    fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        if matches!(item.kind, ItemKind::Static(..) | ItemKind::Const(..)) {
+            self.is_in_const_item = true;
+        }
+    }
+
+    fn check_item_post(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        if matches!(item.kind, ItemKind::Static(..) | ItemKind::Const(..)) {
+            self.is_in_const_item = false;
+        }
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if let ExprKind::Repeat(_, _) | ExprKind::Array(_) = expr.kind
+        if !self.is_in_const_item
+            && let ExprKind::Repeat(_, _) | ExprKind::Array(_) = expr.kind
             && !self.is_from_vec_macro(cx, expr.span)
             && let ty::Array(element_type, cst) = cx.typeck_results().expr_ty(expr).kind()
             && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()

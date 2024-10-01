@@ -15,6 +15,7 @@ enum E {
     T(u32),
 }
 
+const STATIC_PROMOTED_LARGE_ARRAY: &[u8; 512001] = &[0; 512001];
 pub static DOESNOTLINT: [u8; 512_001] = [0; 512_001];
 pub static DOESNOTLINT2: [u8; 512_001] = {
     let x = 0;
