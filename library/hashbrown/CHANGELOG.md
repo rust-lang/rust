@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [v0.15.0] - 2024-09-??
+## [v0.15.0] - 2024-10-01
 
 This update contains breaking changes that remove the `raw` API with the hope of
 centralising on the `HashTable` API in the future. You can follow the discussion
@@ -31,9 +31,11 @@ that were previously only possible on the `raw` API.
 - Improved `HashSet::is_disjoint` performance. (#531)
 - `equivalent` feature is now enabled by default. (#532)
 - `HashSet` operators now return a set with the same allocator. (#529)
+- Changed the default hasher to foldhash. (#563)
 - `ahash` feature has been renamed to `default-hasher`. (#533)
 - Entry API has been reworked and several methods have been renamed. (#535)
 - `Hash{Map,Set}::insert_unique_unchecked` is now unsafe. (#556)
+- The signature of `get_many_mut` and related methods was changed. (#562)
 
 ### Fixed
 
