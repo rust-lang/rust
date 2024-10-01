@@ -200,10 +200,6 @@ pub fn prepare_tool_cargo(
         cargo.arg("--features").arg(features.join(", "));
     }
 
-    // Warning: be very careful with RUSTFLAGS or command-line options, as conditionally applied
-    // RUSTFLAGS or cli flags can lead to hard-to-diagnose rebuilds due to flag differences, causing
-    // previous tool build artifacts to get invalidated.
-
     // Enable internal lints for clippy and rustdoc
     // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
     // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
@@ -212,6 +208,13 @@ pub fn prepare_tool_cargo(
     // and `x test $tool` executions.
     // See https://github.com/rust-lang/rust/issues/116538
     cargo.rustflag("-Zunstable-options");
+
+    // `-Zon-broken-pipe=kill` breaks cargo tests
+    if !path.ends_with("cargo") {
+        // If the output is piped to e.g. `head -n1` we want the process to be killed,
+        // rather than having an error bubble up and cause a panic.
+        cargo.rustflag("-Zon-broken-pipe=kill");
+    }
 
     cargo
 }
