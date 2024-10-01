@@ -18,7 +18,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 - MSP430
 - M68k
 - CSKY
-- s390x
 - Arm64EC
 - SPARC
 
@@ -52,11 +51,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `reg_addr`     | `a[0-3]`                           | `a`                  |
 | CSKY         | `reg`          | `r[0-31]`                          | `r`                  |
 | CSKY         | `freg`         | `f[0-31]`                          | `f`                  |
-| s390x        | `reg`          | `r[0-10]`, `r[12-14]`              | `r`                  |
-| s390x        | `reg_addr`     | `r[1-10]`, `r[12-14]`              | `a`                  |
-| s390x        | `freg`         | `f[0-15]`                          | `f`                  |
-| s390x        | `vreg`         | `v[0-31]`                          | Only clobbers        |
-| s390x        | `areg`         | `a[2-15]`                          | Only clobbers        |
 | SPARC        | `reg`          | `r[2-29]`                          | `r`                  |
 | SPARC        | `yreg`         | `y`                                | Only clobbers        |
 | Arm64EC      | `reg`          | `x[0-12]`, `x[15-22]`, `x[25-27]`, `x30` | `r`            |
@@ -96,10 +90,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `reg_data`                      | None           | `i8`, `i16`, `i32`                      |
 | CSKY         | `reg`                           | None           | `i8`, `i16`, `i32`                      |
 | CSKY         | `freg`                          | None           | `f32`,                                  |
-| s390x        | `reg`, `reg_addr`               | None           | `i8`, `i16`, `i32`, `i64`               |
-| s390x        | `freg`                          | None           | `f32`, `f64`                            |
-| s390x        | `vreg`                          | N/A            | Only clobbers                           |
-| s390x        | `areg`                          | N/A            | Only clobbers                           |
 | SPARC        | `reg`                           | None           | `i8`, `i16`, `i32`, `i64` (SPARC64 only) |
 | SPARC        | `yreg`                          | N/A            | Only clobbers                           |
 | Arm64EC      | `reg`                           | None           | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
@@ -159,8 +149,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 
 | Architecture | Unsupported register                    | Reason                                                                                                                                                                              |
 | ------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| All          | `sp`, `r15` (s390x), `r14`/`o6` (SPARC) | The stack pointer must be restored to its original value at the end of an asm code block.                                                                                           |
-| All          | `fr` (Hexagon), `fp` (PowerPC), `$fp` (MIPS), `Y` (AVR), `r4` (MSP430), `a6` (M68k), `r11` (s390x), `r30`/`i6` (SPARC), `x29` (Arm64EC) | The frame pointer cannot be used as an input or output.                             |
+| All          | `sp`, `r14`/`o6` (SPARC)                | The stack pointer must be restored to its original value at the end of an asm code block.                                                                                           |
+| All          | `fr` (Hexagon), `fp` (PowerPC), `$fp` (MIPS), `Y` (AVR), `r4` (MSP430), `a6` (M68k), `r30`/`i6` (SPARC), `x29` (Arm64EC) | The frame pointer cannot be used as an input or output.                                            |
 | All          | `r19` (Hexagon), `r29` (PowerPC), `r30` (PowerPC), `x19` (Arm64EC) | These are used internally by LLVM as "base pointer" for functions with complex stack frames.                                                             |
 | MIPS         | `$0` or `$zero`                         | This is a constant zero register which can't be modified.                                                                                                                           |
 | MIPS         | `$1` or `$at`                           | Reserved for assembler.                                                                                                                                                             |
@@ -181,8 +171,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | CSKY         | `r15`                                   | This is the link register. |
 | CSKY         | `r[26-30]`                              | Reserved by its ABI.       |
 | CSKY         | `r31`                                   | This is the TLS register.  |
-| s390x        | `c[0-15]`                               | Reserved by the kernel. |
-| s390x        | `a[0-1]`                                | Reserved for system use. |
 | SPARC        | `r0`/`g0`                               | This is always zero and cannot be used as inputs or outputs. |
 | SPARC        | `r1`/`g1`                               | Used internally by LLVM. |
 | SPARC        | `r5`/`g5`                               | Reserved for system. (SPARC32 only) |
@@ -206,9 +194,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg`          | None     | `0`            | None          |
 | PowerPC      | `reg_nonzero`  | None     | `3`            | None          |
 | PowerPC      | `freg`         | None     | `0`            | None          |
-| s390x        | `reg`          | None     | `%r0`          | None          |
-| s390x        | `reg_addr`     | None     | `%r1`          | None          |
-| s390x        | `freg`         | None     | `%f0`          | None          |
 | SPARC        | `reg`          | None     | `%o0`          | None          |
 | CSKY         | `reg`          | None     | `r0`           | None          |
 | CSKY         | `freg`         | None     | `f0`           | None          |
@@ -232,8 +217,6 @@ These flags registers must be restored upon exiting the asm block if the `preser
   - The status register `r2`.
 - M68k
   - The condition code register `ccr`.
-- s390x
-  - The condition code register `cc`.
 - SPARC
   - Integer condition codes (`icc` and `xcc`)
   - Floating-point condition codes (`fcc[0-3]`)
