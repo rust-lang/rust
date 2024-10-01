@@ -39,7 +39,6 @@
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
-#![feature(debug_more_non_exhaustive)]
 #![feature(dec2flt)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]

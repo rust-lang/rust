@@ -366,8 +366,6 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(debug_more_non_exhaustive)]
-    ///
     /// use std::fmt;
     ///
     /// struct Foo(i32, String);
@@ -385,7 +383,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///     "Foo(10, ..)",
     /// );
     /// ```
-    #[unstable(feature = "debug_more_non_exhaustive", issue = "127942")]
+    #[stable(feature = "debug_more_non_exhaustive", since = "CURRENT_RUSTC_VERSION")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.result = self.result.and_then(|_| {
             if self.fields > 0 {
@@ -606,8 +604,6 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(debug_more_non_exhaustive)]
-    ///
     /// use std::fmt;
     ///
     /// struct Foo(Vec<i32>);
@@ -630,7 +626,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     ///     "{1, 2, ..}",
     /// );
     /// ```
-    #[unstable(feature = "debug_more_non_exhaustive", issue = "127942")]
+    #[stable(feature = "debug_more_non_exhaustive", since = "CURRENT_RUSTC_VERSION")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.inner.result = self.inner.result.and_then(|_| {
             if self.inner.has_fields {
@@ -800,8 +796,6 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(debug_more_non_exhaustive)]
-    ///
     /// use std::fmt;
     ///
     /// struct Foo(Vec<i32>);
@@ -824,7 +818,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     ///     "[1, 2, ..]",
     /// );
     /// ```
-    #[unstable(feature = "debug_more_non_exhaustive", issue = "127942")]
+    #[stable(feature = "debug_more_non_exhaustive", since = "CURRENT_RUSTC_VERSION")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.inner.result.and_then(|_| {
             if self.inner.has_fields {
@@ -1126,8 +1120,6 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(debug_more_non_exhaustive)]
-    ///
     /// use std::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
@@ -1154,7 +1146,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///     r#"{"A": 10, "B": 11, ..}"#,
     /// );
     /// ```
-    #[unstable(feature = "debug_more_non_exhaustive", issue = "127942")]
+    #[stable(feature = "debug_more_non_exhaustive", since = "CURRENT_RUSTC_VERSION")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.result = self.result.and_then(|_| {
             assert!(!self.has_key, "attempted to finish a map with a partial entry");
