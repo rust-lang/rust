@@ -110,7 +110,6 @@ impl Res {
 
         let prefix = match kind {
             DefKind::Fn | DefKind::AssocFn => return Suggestion::Function,
-            DefKind::Field => return Suggestion::RemoveDisambiguator,
             DefKind::Macro(MacroKind::Bang) => return Suggestion::Macro,
 
             DefKind::Macro(MacroKind::Derive) => "derive",
@@ -123,6 +122,8 @@ impl Res {
                 "const"
             }
             DefKind::Static { .. } => "static",
+            DefKind::Field => "field",
+            DefKind::Variant | DefKind::Ctor(..) => "variant",
             // Now handle things that don't have a specific disambiguator
             _ => match kind
                 .ns()
@@ -415,6 +416,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         &mut self,
         path_str: &'path str,
         ns: Namespace,
+        disambiguator: Option<Disambiguator>,
         item_id: DefId,
         module_id: DefId,
     ) -> Result<Vec<(Res, Option<DefId>)>, UnresolvedPath<'path>> {
@@ -454,7 +456,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         match resolve_primitive(path_root, TypeNS)
             .or_else(|| self.resolve_path(path_root, TypeNS, item_id, module_id))
             .map(|ty_res| {
-                self.resolve_associated_item(ty_res, item_name, ns, module_id)
+                self.resolve_associated_item(ty_res, item_name, ns, disambiguator, module_id)
                     .into_iter()
                     .map(|(res, def_id)| (res, Some(def_id)))
                     .collect::<Vec<_>>()
@@ -557,6 +559,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         root_res: Res,
         item_name: Symbol,
         ns: Namespace,
+        disambiguator: Option<Disambiguator>,
         module_id: DefId,
     ) -> Vec<(Res, DefId)> {
         let tcx = self.cx.tcx;
@@ -583,7 +586,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // FIXME: if the associated item is defined directly on the type alias,
                 // it will show up on its documentation page, we should link there instead.
                 let Some(res) = self.def_id_to_res(did) else { return Vec::new() };
-                self.resolve_associated_item(res, item_name, ns, module_id)
+                self.resolve_associated_item(res, item_name, ns, disambiguator, module_id)
             }
             Res::Def(
                 def_kind @ (DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::ForeignTy),
@@ -602,6 +605,39 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         }
                         _ => unreachable!(),
                     }
+                }
+
+                let search_for_field = || {
+                    let (DefKind::Struct | DefKind::Union) = def_kind else { return vec![] };
+                    debug!("looking for fields named {item_name} for {did:?}");
+                    // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
+                    // NOTE: it's different from variant_field because it only resolves struct fields,
+                    // not variant fields (2 path segments, not 3).
+                    //
+                    // We need to handle struct (and union) fields in this code because
+                    // syntactically their paths are identical to associated item paths:
+                    // `module::Type::field` and `module::Type::Assoc`.
+                    //
+                    // On the other hand, variant fields can't be mistaken for associated
+                    // items because they look like this: `module::Type::Variant::field`.
+                    //
+                    // Variants themselves don't need to be handled here, even though
+                    // they also look like associated items (`module::Type::Variant`),
+                    // because they are real Rust syntax (unlike the intra-doc links
+                    // field syntax) and are handled by the compiler's resolver.
+                    let ty::Adt(def, _) = tcx.type_of(did).instantiate_identity().kind() else {
+                        unreachable!()
+                    };
+                    def.non_enum_variant()
+                        .fields
+                        .iter()
+                        .filter(|field| field.name == item_name)
+                        .map(|field| (root_res, field.did))
+                        .collect::<Vec<_>>()
+                };
+
+                if let Some(Disambiguator::Kind(DefKind::Field)) = disambiguator {
+                    return search_for_field();
                 }
 
                 // Checks if item_name belongs to `impl SomeItem`
@@ -646,32 +682,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if ns != Namespace::ValueNS {
                     return Vec::new();
                 }
-                debug!("looking for fields named {item_name} for {did:?}");
-                // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
-                // NOTE: it's different from variant_field because it only resolves struct fields,
-                // not variant fields (2 path segments, not 3).
-                //
-                // We need to handle struct (and union) fields in this code because
-                // syntactically their paths are identical to associated item paths:
-                // `module::Type::field` and `module::Type::Assoc`.
-                //
-                // On the other hand, variant fields can't be mistaken for associated
-                // items because they look like this: `module::Type::Variant::field`.
-                //
-                // Variants themselves don't need to be handled here, even though
-                // they also look like associated items (`module::Type::Variant`),
-                // because they are real Rust syntax (unlike the intra-doc links
-                // field syntax) and are handled by the compiler's resolver.
-                let def = match tcx.type_of(did).instantiate_identity().kind() {
-                    ty::Adt(def, _) if !def.is_enum() => def,
-                    _ => return Vec::new(),
-                };
-                def.non_enum_variant()
-                    .fields
-                    .iter()
-                    .filter(|field| field.name == item_name)
-                    .map(|field| (root_res, field.did))
-                    .collect::<Vec<_>>()
+
+                search_for_field()
             }
             Res::Def(DefKind::Trait, did) => filter_assoc_items_by_name_and_namespace(
                 tcx,
@@ -1297,7 +1309,7 @@ impl LinkCollector<'_, '_> {
 
         match disambiguator.map(Disambiguator::ns) {
             Some(expected_ns) => {
-                match self.resolve(path_str, expected_ns, item_id, module_id) {
+                match self.resolve(path_str, expected_ns, disambiguator, item_id, module_id) {
                     Ok(candidates) => candidates,
                     Err(err) => {
                         // We only looked in one namespace. Try to give a better error if possible.
@@ -1306,8 +1318,9 @@ impl LinkCollector<'_, '_> {
                         let mut err = ResolutionFailure::NotResolved(err);
                         for other_ns in [TypeNS, ValueNS, MacroNS] {
                             if other_ns != expected_ns {
-                                if let Ok(&[res, ..]) =
-                                    self.resolve(path_str, other_ns, item_id, module_id).as_deref()
+                                if let Ok(&[res, ..]) = self
+                                    .resolve(path_str, other_ns, None, item_id, module_id)
+                                    .as_deref()
                                 {
                                     err = ResolutionFailure::WrongNamespace {
                                         res: full_res(self.cx.tcx, res),
@@ -1327,7 +1340,7 @@ impl LinkCollector<'_, '_> {
             None => {
                 // Try everything!
                 let mut candidate = |ns| {
-                    self.resolve(path_str, ns, item_id, module_id)
+                    self.resolve(path_str, ns, None, item_id, module_id)
                         .map_err(ResolutionFailure::NotResolved)
                 };
 
@@ -1531,6 +1544,8 @@ impl Disambiguator {
                 }),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
                 "derive" => Kind(DefKind::Macro(MacroKind::Derive)),
+                "field" => Kind(DefKind::Field),
+                "variant" => Kind(DefKind::Variant),
                 "type" => NS(Namespace::TypeNS),
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
@@ -1569,6 +1584,8 @@ impl Disambiguator {
     fn ns(self) -> Namespace {
         match self {
             Self::Namespace(n) => n,
+            // for purposes of link resolution, fields are in the value namespace.
+            Self::Kind(DefKind::Field) => ValueNS,
             Self::Kind(k) => {
                 k.ns().expect("only DefKinds with a valid namespace can be disambiguators")
             }
@@ -1603,8 +1620,6 @@ enum Suggestion {
     Function,
     /// `m!`
     Macro,
-    /// `foo` without any disambiguator
-    RemoveDisambiguator,
 }
 
 impl Suggestion {
@@ -1613,7 +1628,6 @@ impl Suggestion {
             Self::Prefix(x) => format!("prefix with `{x}@`").into(),
             Self::Function => "add parentheses".into(),
             Self::Macro => "add an exclamation mark".into(),
-            Self::RemoveDisambiguator => "remove the disambiguator".into(),
         }
     }
 
@@ -1623,13 +1637,11 @@ impl Suggestion {
             Self::Prefix(prefix) => format!("{prefix}@{path_str}"),
             Self::Function => format!("{path_str}()"),
             Self::Macro => format!("{path_str}!"),
-            Self::RemoveDisambiguator => path_str.into(),
         }
     }
 
     fn as_help_span(
         &self,
-        path_str: &str,
         ori_link: &str,
         sp: rustc_span::Span,
     ) -> Vec<(rustc_span::Span, String)> {
@@ -1677,7 +1689,6 @@ impl Suggestion {
                 }
                 sugg
             }
-            Self::RemoveDisambiguator => vec![(sp, path_str.into())],
         }
     }
 }
@@ -1826,7 +1837,9 @@ fn resolution_failure(
                         };
                         name = start;
                         for ns in [TypeNS, ValueNS, MacroNS] {
-                            if let Ok(v_res) = collector.resolve(start, ns, item_id, module_id) {
+                            if let Ok(v_res) =
+                                collector.resolve(start, ns, None, item_id, module_id)
+                            {
                                 debug!("found partial_res={v_res:?}");
                                 if let Some(&res) = v_res.first() {
                                     *partial_res = Some(full_res(tcx, res));
@@ -2164,7 +2177,7 @@ fn suggest_disambiguator(
     };
 
     if let (Some(sp), Some(ori_link)) = (sp, ori_link) {
-        let mut spans = suggestion.as_help_span(path_str, ori_link, sp);
+        let mut spans = suggestion.as_help_span(ori_link, sp);
         if spans.len() > 1 {
             diag.multipart_suggestion(help, spans, Applicability::MaybeIncorrect);
         } else {
