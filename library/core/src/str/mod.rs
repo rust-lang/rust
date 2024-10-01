@@ -27,10 +27,8 @@ mod lossy;
 #[unstable(feature = "str_from_raw_parts", issue = "119206")]
 pub use converts::{from_raw_parts, from_raw_parts_mut};
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated_in_future)]
 pub use converts::{from_utf8, from_utf8_unchecked};
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-#[allow(deprecated_in_future)]
 pub use converts::{from_utf8_mut, from_utf8_unchecked_mut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::{ParseBoolError, Utf8Error};
