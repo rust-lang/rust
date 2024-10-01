@@ -131,6 +131,13 @@ fn main() {
         }
         x.wait().unwrap();
     }
+
+    {
+        let mut x = Command::new("").spawn().unwrap();
+        std::thread::spawn(move || {
+            x.wait().unwrap();
+        });
+    }
 }
 
 fn process_child(c: Child) {
