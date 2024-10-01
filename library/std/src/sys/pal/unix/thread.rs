@@ -524,8 +524,6 @@ mod cgroups {
     //! * paths containing control characters or spaces, since those would be escaped in procfs
     //!   output and we don't unescape
 
-    use str::from_utf8;
-
     use crate::borrow::Cow;
     use crate::ffi::OsString;
     use crate::fs::{File, exists};
@@ -560,7 +558,7 @@ mod cgroups {
                     let version = match fields.nth(1) {
                         Some(b"") => Cgroup::V2,
                         Some(controllers)
-                            if from_utf8(controllers)
+                            if str::from_utf8(controllers)
                                 .is_ok_and(|c| c.split(',').any(|c| c == "cpu")) =>
                         {
                             Cgroup::V1
