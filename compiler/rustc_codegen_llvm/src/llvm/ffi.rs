@@ -4,6 +4,7 @@
 use std::marker::PhantomData;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
@@ -131,6 +132,16 @@ pub enum Visibility {
     Default = 0,
     Hidden = 1,
     Protected = 2,
+}
+
+impl Visibility {
+    pub fn from_generic(visibility: SymbolVisibility) -> Self {
+        match visibility {
+            SymbolVisibility::Hidden => Visibility::Hidden,
+            SymbolVisibility::Protected => Visibility::Protected,
+            SymbolVisibility::Interposable => Visibility::Default,
+        }
+    }
 }
 
 /// LLVMUnnamedAddr

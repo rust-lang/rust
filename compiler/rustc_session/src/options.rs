@@ -13,8 +13,8 @@ use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
-    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
-    WasmCAbi,
+    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
+    TargetTriple, TlsModel, WasmCAbi,
 };
 
 use crate::config::*;
@@ -416,6 +416,8 @@ mod desc {
         "one of: `disabled`, `trampolines`, or `aliases`";
     pub(crate) const parse_symbol_mangling_version: &str =
         "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
+    pub(crate) const parse_opt_symbol_visibility: &str =
+        "one of: `hidden`, `protected`, or `interposable`";
     pub(crate) const parse_src_file_hash: &str = "either `md5` or `sha1`";
     pub(crate) const parse_relocation_model: &str =
         "one of supported relocation models (`rustc --print relocation-models`)";
@@ -918,6 +920,20 @@ mod parse {
         match v.and_then(LinkerFlavorCli::from_str) {
             Some(lf) => *slot = Some(lf),
             _ => return false,
+        }
+        true
+    }
+
+    pub(crate) fn parse_opt_symbol_visibility(
+        slot: &mut Option<SymbolVisibility>,
+        v: Option<&str>,
+    ) -> bool {
+        if let Some(v) = v {
+            if let Ok(vis) = SymbolVisibility::from_str(v) {
+                *slot = Some(vis);
+            } else {
+                return false;
+            }
         }
         true
     }
@@ -1688,8 +1704,8 @@ options! {
         "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),
-    default_hidden_visibility: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "overrides the `default_hidden_visibility` setting of the target"),
+    default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
+        "overrides the `default_visibility` setting of the target"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),

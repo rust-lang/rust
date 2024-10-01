@@ -1,11 +1,12 @@
-// Verifies that `Session::default_hidden_visibility` is affected when using the related cmdline
-// flag.  This is a regression test for https://github.com/rust-lang/compiler-team/issues/656.  See
+// Verifies that `Session::default_visibility` is affected when using the related cmdline
+// flag.  This is a regression test for https://github.com/rust-lang/compiler-team/issues/782.  See
 // also https://github.com/rust-lang/rust/issues/73295 and
 // https://github.com/rust-lang/rust/issues/37530.
 
-//@ revisions:DEFAULT YES NO
-//@[YES] compile-flags: -Zdefault-hidden-visibility=yes
-//@[NO]  compile-flags: -Zdefault-hidden-visibility=no
+//@ revisions:DEFAULT HIDDEN PROTECTED INTERPOSABLE
+//@[HIDDEN] compile-flags: -Zdefault-visibility=hidden
+//@[PROTECTED] compile-flags: -Zdefault-visibility=protected
+//@[INTERPOSABLE] compile-flags: -Zdefault-visibility=interposable
 
 // The test scenario is specifically about visibility of symbols exported out of dynamically linked
 // libraries.
@@ -26,6 +27,7 @@ pub static tested_symbol: [u8; 6] = *b"foobar";
 //
 //@     only-x86_64-unknown-linux-gnu
 
-// DEFAULT: @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = constant
-// YES:     @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = hidden constant
-// NO:      @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = constant
+// HIDDEN:       @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = hidden constant
+// PROTECTED:    @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = protected constant
+// INTERPOSABLE: @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
+// DEFAULT:      @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
