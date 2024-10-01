@@ -58,7 +58,7 @@ This crate has the following Cargo features:
 - `serde`: Enables serde serialization support.
 - `borsh`: Enables borsh serialization support.
 - `rayon`: Enables rayon parallel iterator support.
-- `equivalent`: Allows comparisons to be customized with the `Equivalent` trait.
+- `equivalent`: Allows comparisons to be customized with the `Equivalent` trait. (enabled by default)
 - `raw-entry`: Enables access to the deprecated `RawEntry` API.
 - `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
   of compilation time. (enabled by default)
