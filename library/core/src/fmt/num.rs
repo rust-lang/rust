@@ -208,7 +208,7 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
       8081828384858687888990919293949596979899";
 
 macro_rules! impl_Display {
-    ($($t:ident => $size:literal $(as $positive:ident)? named $name:ident,)* ; as $u:ident via $conv_fn:ident named $gen_name:ident) => {
+    ($($t:ident $(as $positive:ident)? named $name:ident,)* ; as $u:ident via $conv_fn:ident named $gen_name:ident) => {
 
         $(
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -248,8 +248,9 @@ macro_rules! impl_Display {
         #[cfg(not(feature = "optimize_for_size"))]
         impl $t {
             fn _fmt(mut self: $t, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let mut buf = [MaybeUninit::<u8>::uninit(); $size];
-                let mut curr = $size;
+                const SIZE: usize = $t::MAX.ilog(10) as usize + 1;
+                let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
+                let mut curr = SIZE;
                 let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
                 let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
@@ -526,16 +527,16 @@ macro_rules! impl_Exp {
 mod imp {
     use super::*;
     impl_Display!(
-        i8 => 3 as u8 named fmt_i8,
-        u8 => 3 named fmt_u8,
-        i16 => 5 as u16  named fmt_i16,
-        u16 => 5 named fmt_u16,
-        i32 => 10 as u32 named fmt_i32,
-        u32 => 10 named fmt_u32,
-        i64 => 19 as u64 named fmt_i64,
-        u64 => 20 named fmt_u64,
-        isize => 19 as usize named fmt_isize,
-        usize => 20 named fmt_usize,
+        i8 as u8 named fmt_i8,
+        u8 named fmt_u8,
+        i16 as u16  named fmt_i16,
+        u16 named fmt_u16,
+        i32 as u32 named fmt_i32,
+        u32 named fmt_u32,
+        i64 as u64 named fmt_i64,
+        u64 named fmt_u64,
+        isize as usize named fmt_isize,
+        usize named fmt_usize,
         ; as u64 via to_u64 named fmt_u64
     );
     impl_Exp!(
@@ -548,18 +549,18 @@ mod imp {
 mod imp {
     use super::*;
     impl_Display!(
-        i8 => 3 as u8 named fmt_i8,
-        u8 => 3 named fmt_u8,
-        i16 => 5 as u16  named fmt_i16,
-        u16 => 5 named fmt_u16,
-        i32 => 10 as u32 named fmt_i32,
-        u32 => 10 named fmt_u32,
-        isize => 19 as usize named fmt_isize,
-        usize => 20 named fmt_usize,
+        i8 as u8 named fmt_i8,
+        u8 named fmt_u8,
+        i16 as u16  named fmt_i16,
+        u16 named fmt_u16,
+        i32 as u32 named fmt_i32,
+        u32 named fmt_u32,
+        isize as usize named fmt_isize,
+        usize named fmt_usize,
         ; as u32 via to_u32 named fmt_u32);
     impl_Display!(
-        i64 => 19 as u64 named fmt_i64,
-        u64 => 20 named fmt_u64,
+        i64 as u64 named fmt_i64,
+        u64 named fmt_u64,
         ; as u64 via to_u64 named fmt_u64);
 
     impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
