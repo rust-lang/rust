@@ -3,7 +3,7 @@
 use crate::mem::MaybeUninit;
 use crate::num::fmt as numfmt;
 use crate::ops::{Div, Rem, Sub};
-use crate::{fmt, ptr, slice, str};
+use crate::{fmt, ptr, slice};
 
 #[doc(hidden)]
 trait DisplayInt:

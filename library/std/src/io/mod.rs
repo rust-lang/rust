@@ -331,7 +331,7 @@ pub use self::{
 use crate::mem::take;
 use crate::ops::{Deref, DerefMut};
 use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
-use crate::{cmp, fmt, slice, str, sys};
+use crate::{cmp, fmt, slice, sys};
 
 mod buffered;
 pub(crate) mod copy;

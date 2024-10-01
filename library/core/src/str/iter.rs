@@ -4,7 +4,7 @@ use super::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use super::validations::{next_code_point, next_code_point_reverse};
 use super::{
     BytesIsNotEmpty, CharEscapeDebugContinue, CharEscapeDefault, CharEscapeUnicode,
-    IsAsciiWhitespace, IsNotEmpty, IsWhitespace, LinesMap, UnsafeBytesToStr, from_utf8_unchecked,
+    IsAsciiWhitespace, IsNotEmpty, IsWhitespace, LinesMap, UnsafeBytesToStr,
 };
 use crate::fmt::{self, Write};
 use crate::iter::{
@@ -158,7 +158,7 @@ impl<'a> Chars<'a> {
     #[inline]
     pub fn as_str(&self) -> &'a str {
         // SAFETY: `Chars` is only made from a str, which guarantees the iter is valid UTF-8.
-        unsafe { from_utf8_unchecked(self.iter.as_slice()) }
+        unsafe { str::from_utf8_unchecked(self.iter.as_slice()) }
     }
 }
 
@@ -1413,7 +1413,7 @@ impl<'a> SplitAsciiWhitespace<'a> {
         }
 
         // SAFETY: Slice is created from str.
-        Some(unsafe { crate::str::from_utf8_unchecked(&self.inner.iter.iter.v) })
+        Some(unsafe { str::from_utf8_unchecked(&self.inner.iter.iter.v) })
     }
 }
 

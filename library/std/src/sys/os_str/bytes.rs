@@ -9,7 +9,7 @@ use crate::fmt::Write;
 use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::{AsInner, IntoInner};
-use crate::{fmt, mem, str};
+use crate::{fmt, mem};
 
 #[cfg(test)]
 mod tests;

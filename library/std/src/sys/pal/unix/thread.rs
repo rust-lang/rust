@@ -524,13 +524,14 @@ mod cgroups {
     //! * paths containing control characters or spaces, since those would be escaped in procfs
     //!   output and we don't unescape
 
+    use str::from_utf8;
+
     use crate::borrow::Cow;
     use crate::ffi::OsString;
     use crate::fs::{File, exists};
     use crate::io::{BufRead, Read};
     use crate::os::unix::ffi::OsStringExt;
     use crate::path::{Path, PathBuf};
-    use crate::str::from_utf8;
 
     #[derive(PartialEq)]
     enum Cgroup {

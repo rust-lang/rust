@@ -2,7 +2,6 @@ use super::{Command, Output, Stdio};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind};
 use crate::mem::MaybeUninit;
-use crate::str;
 
 fn known_command() -> Command {
     if cfg!(windows) { Command::new("help") } else { Command::new("echo") }
