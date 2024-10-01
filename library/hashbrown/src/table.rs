@@ -966,8 +966,11 @@ where
     /// the `i`th key to be looked up.
     ///
     /// Returns an array of length `N` with the results of each query. For soundness, at most one
-    /// mutable reference will be returned to any value. `None` will be returned if any of the
-    /// keys are duplicates or missing.
+    /// mutable reference will be returned to any value. `None` will be used if the key is missing.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any keys are overlapping.
     ///
     /// # Examples
     ///
@@ -994,29 +997,52 @@ where
     /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
     /// assert_eq!(
     ///     got,
-    ///     Some([&mut ("Athenæum", 1807), &mut ("Library of Congress", 1800),]),
+    ///     [Some(&mut ("Athenæum", 1807)), Some(&mut ("Library of Congress", 1800))],
     /// );
     ///
     /// // Missing keys result in None
     /// let keys = ["Athenæum", "New York Public Library"];
     /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
-    /// assert_eq!(got, None);
-    ///
-    /// // Duplicate keys result in None
-    /// let keys = ["Athenæum", "Athenæum"];
-    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
-    /// assert_eq!(got, None);
+    /// assert_eq!(got, [Some(&mut ("Athenæum", 1807)), None]);
     /// # }
     /// # fn main() {
     /// #     #[cfg(feature = "nightly")]
     /// #     test()
     /// # }
     /// ```
+    ///
+    /// ```should_panic
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// # use hashbrown::{HashTable, DefaultHashBuilder};
+    /// # use std::hash::BuildHasher;
+    ///
+    /// let mut libraries: HashTable<(&str, u32)> = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// for (k, v) in [
+    ///     ("Athenæum", 1807),
+    ///     ("Library of Congress", 1800),
+    /// ] {
+    ///     libraries.insert_unique(hasher(&k), (k, v), |(k, _)| hasher(&k));
+    /// }
+    ///
+    /// // Duplicate keys result in a panic!
+    /// let keys = ["Athenæum", "Athenæum"];
+    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test();
+    /// #     #[cfg(not(feature = "nightly"))]
+    /// #     panic!();
+    /// # }
+    /// ```
     pub fn get_many_mut<const N: usize>(
         &mut self,
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
-    ) -> Option<[&'_ mut T; N]> {
+    ) -> [Option<&'_ mut T>; N] {
         self.raw.get_many_mut(hashes, eq)
     }
 
@@ -1063,18 +1089,13 @@ where
     /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
     /// assert_eq!(
     ///     got,
-    ///     Some([&mut ("Athenæum", 1807), &mut ("Library of Congress", 1800),]),
+    ///     [Some(&mut ("Athenæum", 1807)), Some(&mut ("Library of Congress", 1800))],
     /// );
     ///
     /// // Missing keys result in None
     /// let keys = ["Athenæum", "New York Public Library"];
     /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
-    /// assert_eq!(got, None);
-    ///
-    /// // Duplicate keys result in None
-    /// let keys = ["Athenæum", "Athenæum"];
-    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
-    /// assert_eq!(got, None);
+    /// assert_eq!(got, [Some(&mut ("Athenæum", 1807)), None]);
     /// # }
     /// # fn main() {
     /// #     #[cfg(feature = "nightly")]
@@ -1085,7 +1106,7 @@ where
         &mut self,
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
-    ) -> Option<[&'_ mut T; N]> {
+    ) -> [Option<&'_ mut T>; N] {
         self.raw.get_many_unchecked_mut(hashes, eq)
     }
 
