@@ -82,9 +82,16 @@ fn build_native_lib() -> PathBuf {
     native_lib_path
 }
 
+struct WithDependencies {}
+
 /// Does *not* set any args or env vars, since it is shared between the test runner and
 /// run_dep_mode.
-fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) -> Config {
+fn miri_config(
+    target: &str,
+    path: &str,
+    mode: Mode,
+    with_dependencies: Option<WithDependencies>,
+) -> Config {
     // Miri is rustc-like, so we create a default builder for rustc and modify it
     let mut program = CommandBuilder::rustc();
     program.program = miri_path();
@@ -119,7 +126,7 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     // keep in sync with `./miri run`
     config.comment_defaults.base().add_custom("edition", Edition("2021".into()));
 
-    if with_dependencies {
+    if let Some(WithDependencies {}) = with_dependencies {
         config.comment_defaults.base().set_custom("dependencies", DependencyBuilder {
             program: CommandBuilder {
                 // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
@@ -146,7 +153,20 @@ fn run_tests(
     with_dependencies: bool,
     tmpdir: &Path,
 ) -> Result<()> {
+    // Handle command-line arguments.
+    let mut args = ui_test::Args::test()?;
+    args.bless |= env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
+
+    let with_dependencies = with_dependencies.then_some(WithDependencies {});
+
     let mut config = miri_config(target, path, mode, with_dependencies);
+    config.with_args(&args);
+    config.bless_command = Some("./miri test --bless".into());
+
+    if env::var_os("MIRI_SKIP_UI_CHECKS").is_some() {
+        assert!(!args.bless, "cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time");
+        config.output_conflict_handling = OutputConflictHandling::Ignore;
+    }
 
     // Add a test env var to do environment communication tests.
     config.program.envs.push(("MIRI_ENV_VAR_TEST".into(), Some("0".into())));
@@ -182,16 +202,6 @@ fn run_tests(
         config.program.args.push(flag);
     }
 
-    // Handle command-line arguments.
-    let mut args = ui_test::Args::test()?;
-    args.bless |= env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
-    config.with_args(&args);
-    config.bless_command = Some("./miri test --bless".into());
-
-    if env::var_os("MIRI_SKIP_UI_CHECKS").is_some() {
-        assert!(!args.bless, "cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time");
-        config.output_conflict_handling = OutputConflictHandling::Ignore;
-    }
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
         // Only run one test suite. In the future we can add all test suites to one `Vec` and run
@@ -327,7 +337,7 @@ fn main() -> Result<()> {
 }
 
 fn run_dep_mode(target: String, args: impl Iterator<Item = OsString>) -> Result<()> {
-    let mut config = miri_config(&target, "", Mode::RunDep, /* with dependencies */ true);
+    let mut config = miri_config(&target, "", Mode::RunDep, Some(WithDependencies {}));
     config.comment_defaults.base().custom.remove("edition"); // `./miri` adds an `--edition` in `args`, so don't set it twice
     config.fill_host_and_target()?;
     config.program.args = args.collect();
