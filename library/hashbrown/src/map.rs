@@ -15,7 +15,7 @@ pub use crate::raw_entry::*;
 
 /// A hash map implemented with quadratic probing and SIMD lookup.
 ///
-/// The default hashing algorithm is currently [`AHash`], though this is
+/// The default hashing algorithm is currently [`foldhash`], though this is
 /// subject to change at any point in the future. This hash function is very
 /// fast for all types of keys, but this algorithm will typically *not* protect
 /// against attacks such as HashDoS.
@@ -142,7 +142,7 @@ pub use crate::raw_entry::*;
 /// [`with_hasher`]: #method.with_hasher
 /// [`with_capacity_and_hasher`]: #method.with_capacity_and_hasher
 /// [`fnv`]: https://crates.io/crates/fnv
-/// [`AHash`]: https://crates.io/crates/ahash
+/// [`foldhash`]: https://crates.io/crates/foldhash
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -270,7 +270,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashMap`], for example with
     /// [`with_hasher`](HashMap::with_hasher) method.
     ///
@@ -300,7 +300,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashMap`], for example with
     /// [`with_capacity_and_hasher`](HashMap::with_capacity_and_hasher) method.
     ///
@@ -333,7 +333,7 @@ impl<K, V, A: Allocator> HashMap<K, V, DefaultHashBuilder, A> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashMap`], for example with
     /// [`with_hasher_in`](HashMap::with_hasher_in) method.
     ///
@@ -377,7 +377,7 @@ impl<K, V, A: Allocator> HashMap<K, V, DefaultHashBuilder, A> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashMap`], for example with
     /// [`with_capacity_and_hasher_in`](HashMap::with_capacity_and_hasher_in) method.
     ///
@@ -429,7 +429,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashMap`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
@@ -471,7 +471,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashMap`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
@@ -521,7 +521,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashMap`].
     ///
     /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
@@ -556,7 +556,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashMap`].
     ///
     /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack

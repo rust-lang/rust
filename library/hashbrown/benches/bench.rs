@@ -1,5 +1,5 @@
 // This benchmark suite contains some benchmarks along a set of dimensions:
-//   Hasher: std default (SipHash) and crate default (AHash).
+//   Hasher: std default (SipHash) and crate default (foldhash).
 //   Int key distribution: low bit heavy, top bit heavy, and random.
 //   Task: basic functionality: insert, insert_erase, lookup, lookup_fail, iter
 #![feature(test)]
@@ -18,7 +18,7 @@ use std::{
 const SIZE: usize = 1000;
 
 // The default hashmap when using this crate directly.
-type AHashMap<K, V> = HashMap<K, V, DefaultHashBuilder>;
+type FoldHashMap<K, V> = HashMap<K, V, DefaultHashBuilder>;
 // This uses the hashmap from this crate with the default hasher of the stdlib.
 type StdHashMap<K, V> = HashMap<K, V, RandomState>;
 
@@ -58,14 +58,14 @@ impl Drop for DropType {
 }
 
 macro_rules! bench_suite {
-    ($bench_macro:ident, $bench_ahash_serial:ident, $bench_std_serial:ident,
-     $bench_ahash_highbits:ident, $bench_std_highbits:ident,
-     $bench_ahash_random:ident, $bench_std_random:ident) => {
-        $bench_macro!($bench_ahash_serial, AHashMap, 0..);
+    ($bench_macro:ident, $bench_foldhash_serial:ident, $bench_std_serial:ident,
+     $bench_foldhash_highbits:ident, $bench_std_highbits:ident,
+     $bench_foldhash_random:ident, $bench_std_random:ident) => {
+        $bench_macro!($bench_foldhash_serial, FoldHashMap, 0..);
         $bench_macro!($bench_std_serial, StdHashMap, 0..);
         $bench_macro!(
-            $bench_ahash_highbits,
-            AHashMap,
+            $bench_foldhash_highbits,
+            FoldHashMap,
             (0..).map(usize::swap_bytes)
         );
         $bench_macro!(
@@ -73,7 +73,7 @@ macro_rules! bench_suite {
             StdHashMap,
             (0..).map(usize::swap_bytes)
         );
-        $bench_macro!($bench_ahash_random, AHashMap, RandomKeys::new());
+        $bench_macro!($bench_foldhash_random, FoldHashMap, RandomKeys::new());
         $bench_macro!($bench_std_random, StdHashMap, RandomKeys::new());
     };
 }
@@ -97,11 +97,11 @@ macro_rules! bench_insert {
 
 bench_suite!(
     bench_insert,
-    insert_ahash_serial,
+    insert_foldhash_serial,
     insert_std_serial,
-    insert_ahash_highbits,
+    insert_foldhash_highbits,
     insert_std_highbits,
-    insert_ahash_random,
+    insert_foldhash_random,
     insert_std_random
 );
 
@@ -122,11 +122,11 @@ macro_rules! bench_grow_insert {
 
 bench_suite!(
     bench_grow_insert,
-    grow_insert_ahash_serial,
+    grow_insert_foldhash_serial,
     grow_insert_std_serial,
-    grow_insert_ahash_highbits,
+    grow_insert_foldhash_highbits,
     grow_insert_std_highbits,
-    grow_insert_ahash_random,
+    grow_insert_foldhash_random,
     grow_insert_std_random
 );
 
@@ -158,11 +158,11 @@ macro_rules! bench_insert_erase {
 
 bench_suite!(
     bench_insert_erase,
-    insert_erase_ahash_serial,
+    insert_erase_foldhash_serial,
     insert_erase_std_serial,
-    insert_erase_ahash_highbits,
+    insert_erase_foldhash_highbits,
     insert_erase_std_highbits,
-    insert_erase_ahash_random,
+    insert_erase_foldhash_random,
     insert_erase_std_random
 );
 
@@ -187,11 +187,11 @@ macro_rules! bench_lookup {
 
 bench_suite!(
     bench_lookup,
-    lookup_ahash_serial,
+    lookup_foldhash_serial,
     lookup_std_serial,
-    lookup_ahash_highbits,
+    lookup_foldhash_highbits,
     lookup_std_highbits,
-    lookup_ahash_random,
+    lookup_foldhash_random,
     lookup_std_random
 );
 
@@ -216,11 +216,11 @@ macro_rules! bench_lookup_fail {
 
 bench_suite!(
     bench_lookup_fail,
-    lookup_fail_ahash_serial,
+    lookup_fail_foldhash_serial,
     lookup_fail_std_serial,
-    lookup_fail_ahash_highbits,
+    lookup_fail_foldhash_highbits,
     lookup_fail_std_highbits,
-    lookup_fail_ahash_random,
+    lookup_fail_foldhash_random,
     lookup_fail_std_random
 );
 
@@ -244,11 +244,11 @@ macro_rules! bench_iter {
 
 bench_suite!(
     bench_iter,
-    iter_ahash_serial,
+    iter_foldhash_serial,
     iter_std_serial,
-    iter_ahash_highbits,
+    iter_foldhash_highbits,
     iter_std_highbits,
-    iter_ahash_random,
+    iter_foldhash_random,
     iter_std_random
 );
 
