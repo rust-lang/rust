@@ -708,6 +708,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             S390x(S390xInlineAsmRegClass::reg) => "r",
             S390x(S390xInlineAsmRegClass::reg_addr) => "a",
             S390x(S390xInlineAsmRegClass::freg) => "f",
+            S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+                unreachable!("clobber-only")
+            }
             Msp430(Msp430InlineAsmRegClass::reg) => "r",
             M68k(M68kInlineAsmRegClass::reg) => "r",
             M68k(M68kInlineAsmRegClass::reg_addr) => "a",
@@ -866,6 +869,9 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         Avr(AvrInlineAsmRegClass::reg_ptr) => cx.type_i16(),
         S390x(S390xInlineAsmRegClass::reg | S390xInlineAsmRegClass::reg_addr) => cx.type_i32(),
         S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
+        S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+            unreachable!("clobber-only")
+        }
         Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
         M68k(M68kInlineAsmRegClass::reg_addr) => cx.type_i32(),

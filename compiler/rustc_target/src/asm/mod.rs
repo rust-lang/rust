@@ -439,7 +439,7 @@ impl InlineAsmReg {
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
             Self::LoongArch(_) => cb(self),
             Self::Mips(_) => cb(self),
-            Self::S390x(_) => cb(self),
+            Self::S390x(r) => r.overlapping_regs(|r| cb(Self::S390x(r))),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
             Self::Avr(r) => r.overlapping_regs(|r| cb(Self::Avr(r))),
             Self::Msp430(_) => cb(self),
@@ -892,6 +892,7 @@ pub enum InlineAsmClobberAbi {
     AArch64NoX18,
     RiscV,
     LoongArch,
+    S390x,
 }
 
 impl InlineAsmClobberAbi {
@@ -939,6 +940,10 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::LoongArch64 => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::LoongArch),
+                _ => Err(&["C", "system"]),
+            },
+            InlineAsmArch::S390x => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::S390x),
                 _ => Err(&["C", "system"]),
             },
             _ => Err(&[]),
@@ -1096,6 +1101,28 @@ impl InlineAsmClobberAbi {
                     // ft0-ft15
                     f8, f9, f10, f11, f12, f13, f14, f15,
                     f16, f17, f18, f19, f20, f21, f22, f23,
+                }
+            },
+            InlineAsmClobberAbi::S390x => clobbered_regs! {
+                S390x S390xInlineAsmReg {
+                    r0, r1, r2, r3, r4, r5,
+                    r14,
+
+                    // f0-f7, v0-v7
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+
+                    // Technically the left halves of v8-v15 (i.e., f8-f15) are saved, but
+                    // we have no way of expressing this using clobbers.
+                    v8, v9, v10, v11, v12, v13, v14, v15,
+
+                    // Other vector registers are volatile
+                    v16, v17, v18, v19, v20, v21, v22, v23,
+                    v24, v25, v26, v27, v28, v29, v30, v31,
+
+                    // a0-a1 are reserved, other access registers are volatile
+                    a2, a3, a4, a5, a6, a7,
+                    a8, a9, a10, a11, a12, a13, a14, a15,
                 }
             },
         }
