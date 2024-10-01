@@ -366,7 +366,7 @@ define_Conf! {
     arithmetic_side_effects_allowed_unary: Vec<String> = <_>::default(),
     /// The maximum allowed size for arrays on the stack
     #[lints(large_const_arrays, large_stack_arrays)]
-    array_size_threshold: u64 = 512_000,
+    array_size_threshold: u64 = 16 * 1024,
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     #[lints(
         box_collection,
