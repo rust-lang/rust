@@ -1210,7 +1210,6 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// ```
     /// #![feature(const_nonnull_new)]
-    /// #![feature(const_option)]
     /// #![feature(const_pointer_is_aligned)]
     /// use std::ptr::NonNull;
     ///
@@ -1263,7 +1262,6 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// ```
     /// #![feature(const_pointer_is_aligned)]
-    /// #![feature(const_option)]
     /// #![feature(const_nonnull_new)]
     /// use std::ptr::NonNull;
     ///

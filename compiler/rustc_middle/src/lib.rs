@@ -37,7 +37,6 @@
 #![feature(box_as_ptr)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]
-#![feature(const_option)]
 #![feature(const_type_name)]
 #![feature(core_intrinsics)]
 #![feature(coroutines)]
