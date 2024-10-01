@@ -41,7 +41,10 @@ impl FileDescription for FileHandle {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         let mut bytes = vec![0; len];
         let result = (&mut &self.file).read(&mut bytes);
-        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
+        match result {
+            Ok(read_size) => ecx.return_read_success(ptr, &bytes, read_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn write<'tcx>(
@@ -56,7 +59,10 @@ impl FileDescription for FileHandle {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         let result = (&mut &self.file).write(bytes);
-        ecx.return_written_byte_count_or_error(result, dest)
+        match result {
+            Ok(write_size) => ecx.return_write_success(write_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn pread<'tcx>(
@@ -84,7 +90,10 @@ impl FileDescription for FileHandle {
             res
         };
         let result = f();
-        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
+        match result {
+            Ok(read_size) => ecx.return_read_success(ptr, &bytes, read_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn pwrite<'tcx>(
@@ -112,7 +121,10 @@ impl FileDescription for FileHandle {
             res
         };
         let result = f();
-        ecx.return_written_byte_count_or_error(result, dest)
+        match result {
+            Ok(write_size) => ecx.return_write_success(write_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn seek<'tcx>(
