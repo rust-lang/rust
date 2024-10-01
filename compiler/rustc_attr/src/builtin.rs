@@ -36,6 +36,7 @@ pub fn is_builtin_attr(attr: &Attribute) -> bool {
 pub(crate) enum UnsupportedLiteralReason {
     Generic,
     CfgString,
+    CfgBoolean,
     DeprecatedString,
     DeprecatedKvPair,
 }
@@ -623,7 +624,7 @@ pub fn eval_condition(
         _ => {
             dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: cfg.span(),
-                reason: UnsupportedLiteralReason::Generic,
+                reason: UnsupportedLiteralReason::CfgBoolean,
                 is_bytestr: false,
                 start_point_span: sess.source_map().start_point(cfg.span()),
             });
