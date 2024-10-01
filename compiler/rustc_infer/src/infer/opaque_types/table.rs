@@ -46,7 +46,7 @@ impl<'tcx> Drop for OpaqueTypeStorage<'tcx> {
     }
 }
 
-pub struct OpaqueTypeTable<'a, 'tcx> {
+pub(crate) struct OpaqueTypeTable<'a, 'tcx> {
     storage: &'a mut OpaqueTypeStorage<'tcx>,
 
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,

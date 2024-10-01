@@ -33,7 +33,7 @@ use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace, relate};
 use crate::traits::{Obligation, PredicateObligation};
 
 #[derive(Clone)]
-pub struct CombineFields<'infcx, 'tcx> {
+pub(crate) struct CombineFields<'infcx, 'tcx> {
     pub infcx: &'infcx InferCtxt<'tcx>,
     // Immutable fields
     pub trace: TypeTrace<'tcx>,
@@ -47,7 +47,7 @@ pub struct CombineFields<'infcx, 'tcx> {
 }
 
 impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         infcx: &'infcx InferCtxt<'tcx>,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -283,22 +283,22 @@ impl<'tcx> InferCtxt<'tcx> {
 }
 
 impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'tcx> {
+    pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
-    pub fn equate<'a>(
+    pub(crate) fn equate<'a>(
         &'a mut self,
         structurally_relate_aliases: StructurallyRelateAliases,
     ) -> TypeRelating<'a, 'infcx, 'tcx> {
         TypeRelating::new(self, structurally_relate_aliases, ty::Invariant)
     }
 
-    pub fn sub<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
+    pub(crate) fn sub<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
         TypeRelating::new(self, StructurallyRelateAliases::No, ty::Covariant)
     }
 
-    pub fn sup<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
+    pub(crate) fn sup<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
         TypeRelating::new(self, StructurallyRelateAliases::No, ty::Contravariant)
     }
 
@@ -310,14 +310,14 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         LatticeOp::new(self, LatticeOpKind::Glb)
     }
 
-    pub fn register_obligations(
+    pub(crate) fn register_obligations(
         &mut self,
         obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
         self.goals.extend(obligations);
     }
 
-    pub fn register_predicates(
+    pub(crate) fn register_predicates(
         &mut self,
         obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {

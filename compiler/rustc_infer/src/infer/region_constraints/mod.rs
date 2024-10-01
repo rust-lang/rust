@@ -304,7 +304,7 @@ pub struct RegionVariableInfo {
     pub universe: ty::UniverseIndex,
 }
 
-pub struct RegionSnapshot {
+pub(crate) struct RegionSnapshot {
     any_unifications: bool,
 }
 

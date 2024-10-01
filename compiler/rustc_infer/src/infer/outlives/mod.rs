@@ -14,7 +14,7 @@ pub mod env;
 pub mod for_liveness;
 pub mod obligations;
 pub mod test_type_match;
-pub mod verify;
+pub(crate) mod verify;
 
 #[instrument(level = "debug", skip(param_env), ret)]
 pub fn explicit_outlives_bounds<'tcx>(
