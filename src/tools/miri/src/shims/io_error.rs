@@ -119,6 +119,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_scalar(errno, &errno_place)
     }
 
+    /// Sets the last OS error and writes -1 to dest place.
+    fn set_last_error_and_return(
+        &mut self,
+        err: impl Into<IoError>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.set_last_error(err)?;
+        this.write_int(-1, dest)?;
+        Ok(())
+    }
+
+    /// Sets the last OS error and return `-1` as a `i32`-typed Scalar
+    fn set_last_error_and_return_i32(
+        &mut self,
+        err: impl Into<IoError>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        this.set_last_error(err)?;
+        Ok(Scalar::from_i32(-1))
+    }
+
     /// Gets the last error variable.
     fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
@@ -183,18 +205,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 target.os
             )
         }
-    }
-
-    /// Sets the last OS error using a `std::io::ErrorKind` and writes -1 to dest place.
-    fn set_last_error_and_return(
-        &mut self,
-        err: impl Into<IoError>,
-        dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        this.set_last_error(err)?;
-        this.write_int(-1, dest)?;
-        Ok(())
     }
 
     /// Helper function that consumes an `std::io::Result<T>` and returns an

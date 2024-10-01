@@ -524,8 +524,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Reject if isolation is enabled.
             if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
                 this.reject_in_isolation("`fcntl`", reject_with)?;
-                this.set_last_error(ErrorKind::PermissionDenied)?;
-                return Ok(Scalar::from_i32(-1));
+                return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
             }
 
             this.ffullsync_fd(fd_num)
@@ -606,9 +605,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => fd.read(&fd, communicate, buf, count, dest, this)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
-                    this.set_last_error(LibcError("EINVAL"))?;
-                    this.write_int(-1, dest)?;
-                    return Ok(());
+                    return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
                 fd.pread(communicate, offset, buf, count, dest, this)?
             }
@@ -650,9 +647,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => fd.write(&fd, communicate, buf, count, dest, this)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
-                    this.set_last_error(LibcError("EINVAL"))?;
-                    this.write_int(-1, dest)?;
-                    return Ok(());
+                    return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
                 fd.pwrite(communicate, buf, count, offset, dest, this)?
             }

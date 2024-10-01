@@ -177,8 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(Scalar::from_i32(0)) // return zero on success
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            this.set_last_error(LibcError("EINVAL"))?;
-            Ok(Scalar::from_i32(-1))
+            this.set_last_error_and_return_i32(LibcError("EINVAL"))
         }
     }
 
@@ -202,8 +201,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(Scalar::from_i32(0))
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            this.set_last_error(LibcError("EINVAL"))?;
-            Ok(Scalar::from_i32(-1))
+            this.set_last_error_and_return_i32(LibcError("EINVAL"))
         }
     }
 
@@ -242,9 +240,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`chdir`", reject_with)?;
-            this.set_last_error(ErrorKind::PermissionDenied)?;
-
-            return Ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
         }
 
         let result = env::set_current_dir(path).map(|()| 0);
