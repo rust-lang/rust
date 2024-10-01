@@ -14,7 +14,7 @@ rust-version = "1.63.0"
 
 [dependencies]
 # For the default hasher
-ahash = { version = "0.8.7", default-features = false, optional = true }
+foldhash = { version = "0.1.2", default-features = false, optional = true }
 
 # For external trait impls
 rayon = { version = "1.0", optional = true }
@@ -66,10 +66,10 @@ rustc-dep-of-std = [
 # Enables the deprecated RawEntry API.
 raw-entry = []
 
-# Provides a default hasher. Currently this is AHash but this is subject to
+# Provides a default hasher. Currently this is foldhash but this is subject to
 # change in the future. Note that the default hasher does *not* provide HashDoS
 # resistance, unlike the one in the standard library.
-default-hasher = ["dep:ahash"]
+default-hasher = ["dep:foldhash"]
 
 # Enables usage of `#[inline]` on far more functions than by default in this
 # crate. This may lead to a performance increase but often comes at a compile

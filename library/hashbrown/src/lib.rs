@@ -39,11 +39,11 @@
 #![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
-/// Default hasher for [`HashMap`], [`HashSet`] and [`HashTable`].
+/// Default hasher for [`HashMap`] and [`HashSet`].
 #[cfg(feature = "default-hasher")]
-pub type DefaultHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+pub type DefaultHashBuilder = foldhash::fast::RandomState;
 
-/// Dummy default hasher for [`HashMap`], [`HashSet`] and [`HashTable`].
+/// Dummy default hasher for [`HashMap`] and [`HashSet`].
 #[cfg(not(feature = "default-hasher"))]
 pub enum DefaultHashBuilder {}
 

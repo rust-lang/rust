@@ -139,7 +139,7 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashSet`], for example with
     /// [`with_hasher`](HashSet::with_hasher) method.
     ///
@@ -169,7 +169,7 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashSet`], for example with
     /// [`with_capacity_and_hasher`](HashSet::with_capacity_and_hasher) method.
     ///
@@ -203,7 +203,7 @@ impl<T: Hash + Eq, A: Allocator> HashSet<T, DefaultHashBuilder, A> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashSet`], for example with
     /// [`with_hasher_in`](HashSet::with_hasher_in) method.
     ///
@@ -233,7 +233,7 @@ impl<T: Hash + Eq, A: Allocator> HashSet<T, DefaultHashBuilder, A> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashSet`], for example with
     /// [`with_capacity_and_hasher_in`](HashSet::with_capacity_and_hasher_in) method.
     ///
@@ -444,7 +444,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
@@ -482,7 +482,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
@@ -531,7 +531,7 @@ where
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
@@ -569,7 +569,7 @@ where
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
-    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// [`std::collections::hash_map::RandomState`]
     /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
