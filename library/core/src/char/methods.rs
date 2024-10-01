@@ -69,7 +69,7 @@ impl char {
     /// assert_eq!(char::from_u32(value_at_max + 1), None);
     /// ```
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
-    pub const MAX: char = '\u{10ffff}';
+    pub const MAX: char = '\u{10FFFF}';
 
     /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
     /// decoding error.
@@ -1841,7 +1841,6 @@ pub const fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
         }
         (2, [a, b, ..]) => {
             code -= 0x1_0000;
-
             *a = (code >> 10) as u16 | 0xD800;
             *b = (code & 0x3FF) as u16 | 0xDC00;
         }
