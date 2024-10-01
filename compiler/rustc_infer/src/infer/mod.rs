@@ -495,14 +495,31 @@ pub enum NllRegionVariableOrigin {
     },
 }
 
-// FIXME(eddyb) investigate overlap between this and `TyOrConstInferVar`.
 #[derive(Copy, Clone, Debug)]
-pub enum FixupError {
-    UnresolvedIntTy(IntVid),
-    UnresolvedFloatTy(FloatVid),
-    UnresolvedTy(TyVid),
-    UnresolvedConst(ConstVid),
-    UnresolvedEffect(EffectVid),
+pub struct FixupError {
+    unresolved: TyOrConstInferVar,
+}
+
+impl fmt::Display for FixupError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use TyOrConstInferVar::*;
+
+        match self.unresolved {
+            TyInt(_) => write!(
+                f,
+                "cannot determine the type of this integer; \
+                 add a suffix to specify the type explicitly"
+            ),
+            TyFloat(_) => write!(
+                f,
+                "cannot determine the type of this number; \
+                 add a suffix to specify the type explicitly"
+            ),
+            Ty(_) => write!(f, "unconstrained type"),
+            Const(_) => write!(f, "unconstrained const value"),
+            Effect(_) => write!(f, "unconstrained effect value"),
+        }
+    }
 }
 
 /// See the `region_obligations` field for more information.
@@ -511,28 +528,6 @@ pub struct RegionObligation<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
     pub origin: SubregionOrigin<'tcx>,
-}
-
-impl fmt::Display for FixupError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::FixupError::*;
-
-        match *self {
-            UnresolvedIntTy(_) => write!(
-                f,
-                "cannot determine the type of this integer; \
-                 add a suffix to specify the type explicitly"
-            ),
-            UnresolvedFloatTy(_) => write!(
-                f,
-                "cannot determine the type of this number; \
-                 add a suffix to specify the type explicitly"
-            ),
-            UnresolvedTy(_) => write!(f, "unconstrained type"),
-            UnresolvedConst(_) => write!(f, "unconstrained const value"),
-            UnresolvedEffect(_) => write!(f, "unconstrained effect value"),
-        }
-    }
 }
 
 /// Used to configure inference contexts before their creation.
