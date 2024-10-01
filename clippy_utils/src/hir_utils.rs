@@ -5,7 +5,7 @@ use crate::tokenize_with_text;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
 use rustc_hir::MatchSource::TryDesugar;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
     ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
@@ -17,10 +17,32 @@ use rustc_middle::ty::TypeckResults;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext, sym};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
+use std::slice;
 
 /// Callback that is called when two expressions are not equal in the sense of `SpanlessEq`, but
 /// other conditions would make them equal.
 type SpanlessEqCallback<'a> = dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a;
+
+/// Determines how paths are hashed and compared for equality.
+#[derive(Copy, Clone, Debug, Default)]
+pub enum PathCheck {
+    /// Paths must match exactly and are hashed by their exact HIR tree.
+    ///
+    /// Thus, `std::iter::Iterator` and `Iterator` are not considered equal even though they refer
+    /// to the same item.
+    #[default]
+    Exact,
+    /// Paths are compared and hashed based on their resolution.
+    ///
+    /// They can appear different in the HIR tree but are still considered equal
+    /// and have equal hashes as long as they refer to the same item.
+    ///
+    /// Note that this is currently only partially implemented specifically for paths that are
+    /// resolved before type-checking, i.e. the final segment must have a non-error resolution.
+    /// If a path with an error resolution is encountered, it falls back to the default exact
+    /// matching behavior.
+    Resolution,
+}
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator `==` on ast types as this operator would compare true equality with
@@ -33,6 +55,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     maybe_typeck_results: Option<(&'tcx TypeckResults<'tcx>, &'tcx TypeckResults<'tcx>)>,
     allow_side_effects: bool,
     expr_fallback: Option<Box<SpanlessEqCallback<'a>>>,
+    path_check: PathCheck,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
@@ -42,6 +65,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             maybe_typeck_results: cx.maybe_typeck_results().map(|x| (x, x)),
             allow_side_effects: true,
             expr_fallback: None,
+            path_check: PathCheck::default(),
         }
     }
 
@@ -50,6 +74,16 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn deny_side_effects(self) -> Self {
         Self {
             allow_side_effects: false,
+            ..self
+        }
+    }
+
+    /// Check paths by their resolution instead of exact equality. See [`PathCheck`] for more
+    /// details.
+    #[must_use]
+    pub fn paths_by_resolution(self) -> Self {
+        Self {
+            path_check: PathCheck::Resolution,
             ..self
         }
     }
@@ -498,7 +532,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         match (left.res, right.res) {
             (Res::Local(l), Res::Local(r)) => l == r || self.locals.get(&l) == Some(&r),
             (Res::Local(_), _) | (_, Res::Local(_)) => false,
-            _ => over(left.segments, right.segments, |l, r| self.eq_path_segment(l, r)),
+            _ => self.eq_path_segments(left.segments, right.segments),
         }
     }
 
@@ -511,17 +545,39 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
-    pub fn eq_path_segments(&mut self, left: &[PathSegment<'_>], right: &[PathSegment<'_>]) -> bool {
-        left.len() == right.len() && left.iter().zip(right).all(|(l, r)| self.eq_path_segment(l, r))
+    pub fn eq_path_segments<'tcx>(
+        &mut self,
+        mut left: &'tcx [PathSegment<'tcx>],
+        mut right: &'tcx [PathSegment<'tcx>],
+    ) -> bool {
+        if let PathCheck::Resolution = self.inner.path_check
+            && let Some(left_seg) = generic_path_segments(left)
+            && let Some(right_seg) = generic_path_segments(right)
+        {
+            // If we compare by resolution, then only check the last segments that could possibly have generic
+            // arguments
+            left = left_seg;
+            right = right_seg;
+        }
+
+        over(left, right, |l, r| self.eq_path_segment(l, r))
     }
 
     pub fn eq_path_segment(&mut self, left: &PathSegment<'_>, right: &PathSegment<'_>) -> bool {
-        // The == of idents doesn't work with different contexts,
-        // we have to be explicit about hygiene
-        left.ident.name == right.ident.name
-            && both(left.args.as_ref(), right.args.as_ref(), |l, r| {
-                self.eq_path_parameters(l, r)
-            })
+        if !self.eq_path_parameters(left.args(), right.args()) {
+            return false;
+        }
+
+        if let PathCheck::Resolution = self.inner.path_check
+            && left.res != Res::Err
+            && right.res != Res::Err
+        {
+            left.res == right.res
+        } else {
+            // The == of idents doesn't work with different contexts,
+            // we have to be explicit about hygiene
+            left.ident.name == right.ident.name
+        }
     }
 
     pub fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
@@ -684,6 +740,21 @@ pub fn eq_expr_value(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>) ->
     SpanlessEq::new(cx).deny_side_effects().eq_expr(left, right)
 }
 
+/// Returns the segments of a path that might have generic parameters.
+/// Usually just the last segment for free items, except for when the path resolves to an associated
+/// item, in which case it is the last two
+fn generic_path_segments<'tcx>(segments: &'tcx [PathSegment<'tcx>]) -> Option<&'tcx [PathSegment<'tcx>]> {
+    match segments.last()?.res {
+        Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _) => {
+            // <Ty as module::Trait<T>>::assoc::<U>
+            //        ^^^^^^^^^^^^^^^^   ^^^^^^^^^^ segments: [module, Trait<T>, assoc<U>]
+            Some(&segments[segments.len().checked_sub(2)?..])
+        },
+        Res::Err => None,
+        _ => Some(slice::from_ref(segments.last()?)),
+    }
+}
+
 /// Type used to hash an ast element. This is different from the `Hash` trait
 /// on ast types as this
 /// trait would consider IDs and spans.
@@ -694,6 +765,7 @@ pub struct SpanlessHash<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
     s: FxHasher,
+    path_check: PathCheck,
 }
 
 impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
@@ -701,7 +773,18 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         Self {
             cx,
             maybe_typeck_results: cx.maybe_typeck_results(),
+            path_check: PathCheck::default(),
             s: FxHasher::default(),
+        }
+    }
+
+    /// Check paths by their resolution instead of exact equality. See [`PathCheck`] for more
+    /// details.
+    #[must_use]
+    pub fn paths_by_resolution(self) -> Self {
+        Self {
+            path_check: PathCheck::Resolution,
+            ..self
         }
     }
 
@@ -1042,9 +1125,19 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             // even though the binding names are different and they have different `HirId`s.
             Res::Local(_) => 1_usize.hash(&mut self.s),
             _ => {
-                for seg in path.segments {
-                    self.hash_name(seg.ident.name);
-                    self.hash_generic_args(seg.args().args);
+                if let PathCheck::Resolution = self.path_check
+                    && let [.., last] = path.segments
+                    && let Some(segments) = generic_path_segments(path.segments)
+                {
+                    for seg in segments {
+                        self.hash_generic_args(seg.args().args);
+                    }
+                    last.res.hash(&mut self.s);
+                } else {
+                    for seg in path.segments {
+                        self.hash_name(seg.ident.name);
+                        self.hash_generic_args(seg.args().args);
+                    }
                 }
             },
         }
