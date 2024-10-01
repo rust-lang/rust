@@ -2,6 +2,34 @@ use std::io;
 
 use crate::*;
 
+/// A representation of an IO error: either a libc error name,
+/// or a host error.
+#[derive(Debug)]
+pub enum IoError {
+    LibcError(&'static str),
+    HostError(io::Error),
+    Raw(Scalar),
+}
+pub use self::IoError::*;
+
+impl From<io::Error> for IoError {
+    fn from(value: io::Error) -> Self {
+        IoError::HostError(value)
+    }
+}
+
+impl From<io::ErrorKind> for IoError {
+    fn from(value: io::ErrorKind) -> Self {
+        IoError::HostError(value.into())
+    }
+}
+
+impl From<Scalar> for IoError {
+    fn from(value: Scalar) -> Self {
+        IoError::Raw(value)
+    }
+}
+
 // This mapping should match `decode_error_kind` in
 // <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/unix/mod.rs>.
 const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
@@ -80,10 +108,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Sets the last error variable.
-    fn set_last_error(&mut self, scalar: Scalar) -> InterpResult<'tcx> {
+    fn set_last_error(&mut self, err: impl Into<IoError>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        let errno = match err.into() {
+            HostError(err) => this.io_error_to_errnum(err)?,
+            LibcError(name) => this.eval_libc(name),
+            Raw(val) => val,
+        };
         let errno_place = this.last_error_place()?;
-        this.write_scalar(scalar, &errno_place)
+        this.write_scalar(errno, &errno_place)
     }
 
     /// Gets the last error variable.
@@ -152,19 +185,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    /// Sets the last OS error using a `std::io::ErrorKind`.
-    fn set_last_error_from_io_error(&mut self, err: std::io::Error) -> InterpResult<'tcx> {
-        self.set_last_error(self.io_error_to_errnum(err)?)
-    }
-
     /// Sets the last OS error using a `std::io::ErrorKind` and writes -1 to dest place.
     fn set_last_error_and_return(
         &mut self,
-        err: impl Into<io::Error>,
+        err: impl Into<IoError>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        this.set_last_error(this.io_error_to_errnum(err.into())?)?;
+        this.set_last_error(err)?;
         this.write_int(-1, dest)?;
         Ok(())
     }
@@ -182,7 +210,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match result {
             Ok(ok) => Ok(ok),
             Err(e) => {
-                self.eval_context_mut().set_last_error_from_io_error(e)?;
+                self.eval_context_mut().set_last_error(e)?;
                 Ok((-1).into())
             }
         }

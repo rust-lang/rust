@@ -177,8 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(Scalar::from_i32(0)) // return zero on success
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             Ok(Scalar::from_i32(-1))
         }
     }
@@ -203,8 +202,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(Scalar::from_i32(0))
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             Ok(Scalar::from_i32(-1))
         }
     }
@@ -218,7 +216,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`getcwd`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return Ok(Pointer::null());
         }
 
@@ -228,10 +226,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if this.write_path_to_c_str(&cwd, buf, size)?.0 {
                     return Ok(buf);
                 }
-                let erange = this.eval_libc("ERANGE");
-                this.set_last_error(erange)?;
+                this.set_last_error(LibcError("ERANGE"))?;
             }
-            Err(e) => this.set_last_error_from_io_error(e)?,
+            Err(e) => this.set_last_error(e)?,
         }
 
         Ok(Pointer::null())
@@ -245,7 +242,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`chdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
 
             return Ok(Scalar::from_i32(-1));
         }

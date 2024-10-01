@@ -261,8 +261,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Throw EINVAL if epfd and fd have the same value.
         if epfd_value == fd {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -443,8 +442,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout = this.read_scalar(timeout)?.to_i32()?;
 
         if epfd_value <= 0 || maxevents <= 0 {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             this.write_int(-1, dest)?;
             return Ok(());
         }
