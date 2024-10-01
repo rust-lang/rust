@@ -12,6 +12,7 @@ mod x86;
 pub mod env;
 pub mod extern_static;
 pub mod foreign_items;
+pub mod io_error;
 pub mod os_str;
 pub mod panic;
 pub mod time;
