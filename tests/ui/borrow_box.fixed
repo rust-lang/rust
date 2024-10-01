@@ -3,7 +3,8 @@
 #![allow(
     clippy::uninlined_format_args,
     clippy::disallowed_names,
-    clippy::needless_pass_by_ref_mut
+    clippy::needless_pass_by_ref_mut,
+    clippy::needless_lifetimes
 )]
 
 use std::fmt::Display;

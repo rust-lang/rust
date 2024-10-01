@@ -1345,7 +1345,7 @@ pub struct ContainsName<'a, 'tcx> {
     pub result: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ContainsName<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ContainsName<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_name(&mut self, name: Symbol) {
@@ -3115,7 +3115,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
         is_never: bool,
     }
 
-    impl<'tcx> V<'_, 'tcx> {
+    impl V<'_, '_> {
         fn push_break_target(&mut self, id: HirId) {
             self.break_targets.push(BreakTarget { id, unused: true });
             self.break_targets_for_result_ty += u32::from(self.in_final_expr);

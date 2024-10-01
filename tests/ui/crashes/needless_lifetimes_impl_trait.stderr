@@ -1,8 +1,8 @@
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/crashes/needless_lifetimes_impl_trait.rs:15:12
+  --> tests/ui/crashes/needless_lifetimes_impl_trait.rs:12:6
    |
-LL |     fn baz<'a>(&'a self) -> impl Foo + 'a {
-   |            ^^   ^^                     ^^
+LL | impl<'a> Foo for Baz<'a> {}
+   |      ^^              ^^
    |
 note: the lint level is defined here
   --> tests/ui/crashes/needless_lifetimes_impl_trait.rs:1:9
@@ -11,9 +11,21 @@ LL | #![deny(clippy::needless_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: elide the lifetimes
    |
+LL - impl<'a> Foo for Baz<'a> {}
+LL + impl Foo for Baz<'_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/crashes/needless_lifetimes_impl_trait.rs:15:12
+   |
+LL |     fn baz<'a>(&'a self) -> impl Foo + 'a {
+   |            ^^   ^^                     ^^
+   |
+help: elide the lifetimes
+   |
 LL -     fn baz<'a>(&'a self) -> impl Foo + 'a {
 LL +     fn baz(&self) -> impl Foo + '_ {
    |
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 

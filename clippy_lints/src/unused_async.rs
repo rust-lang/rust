@@ -67,7 +67,7 @@ struct AsyncFnVisitor<'a, 'tcx> {
     async_depth: usize,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for AsyncFnVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {

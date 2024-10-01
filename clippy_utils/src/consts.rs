@@ -118,7 +118,7 @@ impl IntTypeBounds for IntTy {
     }
 }
 
-impl<'tcx> PartialEq for Constant<'tcx> {
+impl PartialEq for Constant<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Str(ls), Self::Str(rs)) => ls == rs,
@@ -147,7 +147,7 @@ impl<'tcx> PartialEq for Constant<'tcx> {
     }
 }
 
-impl<'tcx> Hash for Constant<'tcx> {
+impl Hash for Constant<'_> {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -203,7 +203,7 @@ impl<'tcx> Hash for Constant<'tcx> {
     }
 }
 
-impl<'tcx> Constant<'tcx> {
+impl Constant<'_> {
     pub fn partial_cmp(tcx: TyCtxt<'_>, cmp_type: Ty<'_>, left: &Self, right: &Self) -> Option<Ordering> {
         match (left, right) {
             (Self::Str(ls), Self::Str(rs)) => Some(ls.cmp(rs)),

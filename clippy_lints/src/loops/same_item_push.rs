@@ -123,7 +123,7 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SameItemPushVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             // Non-determinism may occur ... don't give a lint

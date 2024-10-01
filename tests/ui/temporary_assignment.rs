@@ -1,4 +1,5 @@
 #![warn(clippy::temporary_assignment)]
+#![allow(clippy::needless_lifetimes)]
 
 use std::ops::{Deref, DerefMut};
 

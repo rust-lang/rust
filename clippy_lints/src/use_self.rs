@@ -280,7 +280,7 @@ struct SkipTyCollector {
     types_to_skip: Vec<HirId>,
 }
 
-impl<'tcx> Visitor<'tcx> for SkipTyCollector {
+impl Visitor<'_> for SkipTyCollector {
     fn visit_infer(&mut self, inf: &hir::InferArg) {
         self.types_to_skip.push(inf.hir_id);
 

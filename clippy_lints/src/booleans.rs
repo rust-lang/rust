@@ -205,7 +205,7 @@ struct Hir2Qmm<'a, 'tcx, 'v> {
     cx: &'a LateContext<'tcx>,
 }
 
-impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
+impl<'v> Hir2Qmm<'_, '_, 'v> {
     fn extract(&mut self, op: BinOpKind, a: &[&'v Expr<'_>], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
             if let ExprKind::Binary(binop, lhs, rhs) = &a.kind {
@@ -292,7 +292,7 @@ struct SuggestContext<'a, 'tcx, 'v> {
     output: String,
 }
 
-impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
+impl SuggestContext<'_, '_, '_> {
     fn recurse(&mut self, suggestion: &Bool) -> Option<()> {
         use quine_mc_cluskey::Bool::{And, False, Not, Or, Term, True};
         match suggestion {
@@ -475,7 +475,7 @@ fn terminal_stats(b: &Bool) -> Stats {
     stats
 }
 
-impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
+impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
     fn bool_expr(&self, e: &'tcx Expr<'_>) {
         let mut h2q = Hir2Qmm {
             terminals: Vec::new(),
@@ -582,7 +582,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         if !e.span.from_expansion() {
             match &e.kind {

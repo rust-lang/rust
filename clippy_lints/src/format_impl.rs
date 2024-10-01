@@ -148,7 +148,7 @@ struct FormatImplExpr<'a, 'tcx> {
     format_trait_impl: FormatTraitNames,
 }
 
-impl<'a, 'tcx> FormatImplExpr<'a, 'tcx> {
+impl FormatImplExpr<'_, '_> {
     fn check_to_string_in_display(&self) {
         if self.format_trait_impl.name == sym::Display
             && let ExprKind::MethodCall(path, self_arg, ..) = self.expr.kind
