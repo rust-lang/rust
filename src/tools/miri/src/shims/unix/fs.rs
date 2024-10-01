@@ -534,8 +534,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
             if flag & o_tmpfile == o_tmpfile {
                 // if the flag contains `O_TMPFILE` then we return a graceful error
-                let eopnotsupp = this.eval_libc("EOPNOTSUPP");
-                this.set_last_error(eopnotsupp)?;
+                this.set_last_error(LibcError("EOPNOTSUPP"))?;
                 return Ok(Scalar::from_i32(-1));
             }
         }
@@ -572,7 +571,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`open`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -591,8 +590,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
             if offset < 0 {
                 // Negative offsets return `EINVAL`.
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
+                this.set_last_error(LibcError("EINVAL"))?;
                 return Ok(Scalar::from_i64(-1));
             } else {
                 SeekFrom::Start(u64::try_from(offset).unwrap())
@@ -602,8 +600,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if whence == this.eval_libc_i32("SEEK_END") {
             SeekFrom::End(i64::try_from(offset).unwrap())
         } else {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return Ok(Scalar::from_i64(-1));
         };
 
@@ -627,7 +624,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`unlink`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -658,7 +655,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`symlink`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -959,7 +956,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rename`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -983,7 +980,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`mkdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -1011,7 +1008,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rmdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -1045,7 +1042,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Ok(Scalar::from_target_usize(id, this))
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error(e)?;
                 Ok(Scalar::null_ptr(this))
             }
         }
@@ -1130,7 +1127,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 None
             }
             Some(Err(e)) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error(e)?;
                 None
             }
         };
@@ -1314,15 +1311,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Ok(Scalar::from_i32(result))
             } else {
                 drop(fd);
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
+                this.set_last_error(LibcError("EINVAL"))?;
                 Ok(Scalar::from_i32(-1))
             }
         } else {
             drop(fd);
             // The file is not writable
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             Ok(Scalar::from_i32(-1))
         }
     }
@@ -1400,16 +1395,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let flags = this.read_scalar(flags_op)?.to_i32()?;
 
         if offset < 0 || nbytes < 0 {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return Ok(Scalar::from_i32(-1));
         }
         let allowed_flags = this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_BEFORE")
             | this.eval_libc_i32("SYNC_FILE_RANGE_WRITE")
             | this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_AFTER");
         if flags & allowed_flags != flags {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -1471,7 +1464,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Ok(path_bytes.len().try_into().unwrap())
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error(e)?;
                 Ok(-1)
             }
         }
@@ -1551,7 +1544,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Ok(Scalar::from_maybe_pointer(dest, this))
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error(e)?;
                 Ok(Scalar::from_target_usize(0, this))
             }
         }
@@ -1603,8 +1596,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If we don't find the suffix, it is an error.
         if last_six_char_bytes != suffix_bytes {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return Ok(Scalar::from_i32(-1));
         }
 
@@ -1670,7 +1662,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         _ => {
                             // "On error, -1 is returned, and errno is set to
                             // indicate the error"
-                            this.set_last_error_from_io_error(e)?;
+                            this.set_last_error(e)?;
                             return Ok(Scalar::from_i32(-1));
                         }
                     },
@@ -1749,7 +1741,7 @@ impl FileMetadata {
         let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(e) => {
-                ecx.set_last_error_from_io_error(e)?;
+                ecx.set_last_error(e)?;
                 return Ok(None);
             }
         };

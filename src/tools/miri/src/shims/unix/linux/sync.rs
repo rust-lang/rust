@@ -75,8 +75,7 @@ pub fn futex<'tcx>(
             };
 
             if bitset == 0 {
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
+                this.set_last_error(LibcError("EINVAL"))?;
                 this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
                 return Ok(());
             }
@@ -88,8 +87,7 @@ pub fn futex<'tcx>(
                 let duration = match this.read_timespec(&timeout)? {
                     Some(duration) => duration,
                     None => {
-                        let einval = this.eval_libc("EINVAL");
-                        this.set_last_error(einval)?;
+                        this.set_last_error(LibcError("EINVAL"))?;
                         this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
                         return Ok(());
                     }
@@ -198,8 +196,7 @@ pub fn futex<'tcx>(
                 u32::MAX
             };
             if bitset == 0 {
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
+                this.set_last_error(LibcError("EINVAL"))?;
                 this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
                 return Ok(());
             }
