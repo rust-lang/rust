@@ -38,8 +38,8 @@ use crate::errors::{
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType,
-    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
+    QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
     StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
     SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
     UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
@@ -1991,7 +1991,7 @@ impl<'a> Parser<'a> {
             self.parse_expr()
         }
         .map_err(|mut err| {
-            err.span_label(await_sp, "while parsing this incorrect await expression");
+            err.span_label(await_sp, format!("while parsing this incorrect await expression"));
             err
         })?;
         Ok((expr.span, expr, is_question))
@@ -2028,6 +2028,21 @@ impl<'a> Parser<'a> {
             self.bump(); // )
 
             self.dcx().emit_err(IncorrectUseOfAwait { span });
+        }
+    }
+    ///
+    /// If encountering `x.use()`, consumes and emits an error.
+    pub(super) fn recover_from_use(&mut self) {
+        if self.token == token::OpenDelim(Delimiter::Parenthesis)
+            && self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
+        {
+            // var.use()
+            let lo = self.token.span;
+            self.bump(); // (
+            let span = lo.to(self.token.span);
+            self.bump(); // )
+
+            self.dcx().emit_err(IncorrectUseOfUse { span });
         }
     }
 

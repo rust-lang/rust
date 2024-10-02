@@ -464,6 +464,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             }
 
+            hir::ExprKind::Use(expr, span) => {
+                ExprKind::ByUse { expr: self.mirror_expr(expr), span }
+            }
+
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, arg) => {
                 ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg: self.mirror_expr(arg) }
             }

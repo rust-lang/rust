@@ -348,6 +348,9 @@ parse_incorrect_use_of_await = incorrect use of `await`
 
 parse_incorrect_use_of_await_postfix_suggestion = `await` is a postfix operation
 
+parse_incorrect_use_of_use = incorrect use of `use`
+    .parentheses_suggestion = `use` is not a method call, try removing the parentheses
+
 parse_incorrect_visibility_restriction = incorrect visibility restriction
     .help = some possible visibility restrictions are:
             `pub(crate)`: visible only on the current crate

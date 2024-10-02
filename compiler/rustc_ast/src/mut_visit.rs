@@ -1745,6 +1745,10 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             vis.visit_expr(expr);
             vis.visit_span(await_kw_span);
         }
+        ExprKind::Use(expr, use_kw_span) => {
+            vis.visit_expr(expr);
+            vis.visit_span(use_kw_span);
+        }
         ExprKind::Assign(el, er, span) => {
             vis.visit_expr(el);
             vis.visit_expr(er);

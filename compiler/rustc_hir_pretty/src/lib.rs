@@ -1544,6 +1544,10 @@ impl<'a> State<'a> {
             hir::ExprKind::MethodCall(segment, receiver, args, _) => {
                 self.print_expr_method_call(segment, receiver, args);
             }
+            hir::ExprKind::Use(expr, _) => {
+                self.print_expr(expr);
+                self.word(".use");
+            }
             hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
             }

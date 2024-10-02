@@ -574,6 +574,14 @@ impl<'a> State<'a> {
                 );
                 self.word(".await");
             }
+            ast::ExprKind::Use(expr, _) => {
+                self.print_expr_cond_paren(
+                    expr,
+                    expr.precedence() < ExprPrecedence::Unambiguous,
+                    fixup,
+                );
+                self.word(".use");
+            }
             ast::ExprKind::Assign(lhs, rhs, _) => {
                 self.print_expr_cond_paren(
                     lhs,
