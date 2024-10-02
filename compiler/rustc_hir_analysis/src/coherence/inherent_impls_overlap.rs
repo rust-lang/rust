@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -215,7 +215,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
             struct ConnectedRegion {
                 idents: SmallVec<[Symbol; 8]>,
-                impl_blocks: FxHashSet<usize>,
+                impl_blocks: FxIndexSet<usize>,
             }
             let mut connected_regions: IndexVec<RegionId, _> = Default::default();
             // Reverse map from the Symbol to the connected region id.
