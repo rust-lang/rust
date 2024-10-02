@@ -207,9 +207,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        let mut epoll_instance = Epoll::default();
-        epoll_instance.ready_list = Rc::new(RefCell::new(BTreeMap::new()));
-
         let fd = this.machine.fds.insert_new(Epoll::default());
         Ok(Scalar::from_i32(fd))
     }
