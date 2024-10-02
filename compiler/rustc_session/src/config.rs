@@ -1242,6 +1242,10 @@ impl UnstableOptions {
             }
         })
     }
+
+    pub fn checksum_hash_algorithm(&self) -> Option<SourceFileHashAlgorithm> {
+        self.checksum_hash_algorithm
+    }
 }
 
 // The type of entry function, so users can have their own entry functions
