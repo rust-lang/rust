@@ -86,4 +86,8 @@ package.json
 ## Rustdoc GUI tests
 tests/rustdoc-gui/src/**.lock
 
+## direnv
+.envrc
+.direnv/
+
 # Before adding new lines, see the comment at the top.
