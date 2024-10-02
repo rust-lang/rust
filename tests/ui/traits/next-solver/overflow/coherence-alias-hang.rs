@@ -1,6 +1,8 @@
 //@ check-pass
-//@ revisions: current next
-//[next]@ compile-flags: -Znext-solver
+//@ revisions: ai_current ai_next ia_current ia_next ii_current ii_next
+//@[ai_next] compile-flags: -Znext-solver
+//@[ia_next] compile-flags: -Znext-solver
+//@[ii_next] compile-flags: -Znext-solver
 
 // Regression test for nalgebra hang <https://github.com/rust-lang/rust/issues/130056>.
 
@@ -15,7 +17,12 @@ trait Trait {
     type Assoc: ?Sized;
 }
 impl<T: ?Sized + Trait> Trait for W<T, T> {
+    #[cfg(any(ai_current, ai_next))]
     type Assoc = W<T::Assoc, Id<T::Assoc>>;
+    #[cfg(any(ia_current, ia_next))]
+    type Assoc = W<Id<T::Assoc>, T::Assoc>;
+    #[cfg(any(ii_current, ii_next))]
+    type Assoc = W<Id<T::Assoc>, Id<T::Assoc>>;
 }
 
 trait Overlap<T: ?Sized> {}

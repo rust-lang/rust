@@ -6,6 +6,8 @@ pub use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 pub type IndexMap<K, V> = indexmap::IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 pub type IndexSet<V> = indexmap::IndexSet<V, BuildHasherDefault<FxHasher>>;
 
+mod delayed_map;
+
 #[cfg(feature = "nightly")]
 mod impl_ {
     pub use rustc_data_structures::sso::{SsoHashMap, SsoHashSet};
@@ -24,4 +26,5 @@ mod impl_ {
     }
 }
 
+pub use delayed_map::{DelayedMap, DelayedSet};
 pub use impl_::*;
