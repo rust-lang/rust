@@ -187,28 +187,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         })
     }
 
-    /// Equates `expected` and `found` while structurally relating aliases.
-    /// This should only be used inside of the next generation trait solver
-    /// when relating rigid aliases.
-    pub fn eq_structurally_relating_aliases<T>(
-        self,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        assert!(self.infcx.next_trait_solver());
-        let mut fields = CombineFields::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, expected, actual),
-            self.param_env,
-            DefineOpaqueTypes::Yes,
-        );
-        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: fields.into_obligations() })
-    }
-
     pub fn relate<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
