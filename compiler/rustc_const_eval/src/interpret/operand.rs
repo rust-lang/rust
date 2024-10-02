@@ -118,6 +118,7 @@ impl<Prov: Provenance> Immediate<Prov> {
             (Immediate::Scalar(scalar), Abi::Scalar(s)) => {
                 assert_eq!(scalar.size(), s.size(cx));
                 if !matches!(s.primitive(), abi::Pointer(..)) {
+                    // This is not a pointer, it should not carry provenance.
                     assert!(matches!(scalar, Scalar::Int(..)));
                 }
             }
