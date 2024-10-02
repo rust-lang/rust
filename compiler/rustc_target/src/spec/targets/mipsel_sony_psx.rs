@@ -14,8 +14,7 @@ pub(crate) fn target() -> Target {
         arch: "mips".into(),
 
         options: TargetOptions {
-            os: "none".into(),
-            env: "psx".into(),
+            os: "psx".into(),
             vendor: "sony".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips1".into(),
