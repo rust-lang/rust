@@ -475,8 +475,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let epoll_file_description = epfd
                 .downcast::<Epoll>()
                 .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
-            let binding = epoll_file_description.get_ready_list();
-            ready_list_empty = binding.mapping.borrow_mut().is_empty();
+            ready_list_empty = epoll_file_description.ready_list.mapping.borrow().is_empty();
             thread_ids = epoll_file_description.thread_id.borrow_mut();
         }
         if timeout == 0 || !ready_list_empty {
