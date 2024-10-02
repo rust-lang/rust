@@ -23,7 +23,7 @@ mod lint;
 use std::slice;
 
 use rustc_ast::TraitObjectSyntax;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, struct_span_code_err,
@@ -2394,8 +2394,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     #[instrument(level = "trace", skip(self, generate_err))]
     fn validate_late_bound_regions<'cx>(
         &'cx self,
-        constrained_regions: FxHashSet<ty::BoundRegionKind>,
-        referenced_regions: FxHashSet<ty::BoundRegionKind>,
+        constrained_regions: FxIndexSet<ty::BoundRegionKind>,
+        referenced_regions: FxIndexSet<ty::BoundRegionKind>,
         generate_err: impl Fn(&str) -> Diag<'cx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {

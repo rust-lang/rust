@@ -19,8 +19,8 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{
-    FmtPrinter, Print, PrintTraitPredicateExt as _, PrintTraitRefExt as _,
-    with_forced_trimmed_paths,
+    FmtPrinter, Print, PrintPolyTraitPredicateExt, PrintTraitPredicateExt as _,
+    PrintTraitRefExt as _, with_forced_trimmed_paths,
 };
 use rustc_middle::ty::{
     self, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast,
@@ -154,6 +154,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         } else {
                             (leaf_trait_predicate, &obligation)
                         };
+
+                        let (main_trait_predicate, leaf_trait_predicate, predicate_constness) = self.get_effects_trait_pred_override(main_trait_predicate, leaf_trait_predicate, span);
+
                         let main_trait_ref = main_trait_predicate.to_poly_trait_ref();
                         let leaf_trait_ref = leaf_trait_predicate.to_poly_trait_ref();
 
@@ -163,9 +166,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ) {
                             return guar;
                         }
-
-                        // FIXME(effects)
-                        let predicate_is_const = false;
 
                         if let Err(guar) = leaf_trait_predicate.error_reported()
                         {
@@ -227,7 +227,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let err_msg = self.get_standard_error_message(
                             main_trait_predicate,
                             message,
-                            predicate_is_const,
+                            predicate_constness,
                             append_const_msg,
                             post_message,
                         );
@@ -286,7 +286,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
 
                         if tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Drop)
-                            && predicate_is_const
+                            && matches!(predicate_constness, ty::BoundConstness::ConstIfConst | ty::BoundConstness::Const)
                         {
                             err.note("`~const Drop` was renamed to `~const Destruct`");
                             err.note("See <https://github.com/rust-lang/rust/pull/94901> for more details");
@@ -2187,29 +2187,34 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         message: Option<String>,
-        predicate_is_const: bool,
+        predicate_constness: ty::BoundConstness,
         append_const_msg: Option<AppendConstMessage>,
         post_message: String,
     ) -> String {
         message
             .and_then(|cannot_do_this| {
-                match (predicate_is_const, append_const_msg) {
+                match (predicate_constness, append_const_msg) {
                     // do nothing if predicate is not const
-                    (false, _) => Some(cannot_do_this),
+                    (ty::BoundConstness::NotConst, _) => Some(cannot_do_this),
                     // suggested using default post message
-                    (true, Some(AppendConstMessage::Default)) => {
-                        Some(format!("{cannot_do_this} in const contexts"))
-                    }
+                    (
+                        ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst,
+                        Some(AppendConstMessage::Default),
+                    ) => Some(format!("{cannot_do_this} in const contexts")),
                     // overridden post message
-                    (true, Some(AppendConstMessage::Custom(custom_msg, _))) => {
-                        Some(format!("{cannot_do_this}{custom_msg}"))
-                    }
+                    (
+                        ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst,
+                        Some(AppendConstMessage::Custom(custom_msg, _)),
+                    ) => Some(format!("{cannot_do_this}{custom_msg}")),
                     // fallback to generic message
-                    (true, None) => None,
+                    (ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst, None) => None,
                 }
             })
             .unwrap_or_else(|| {
-                format!("the trait bound `{trait_predicate}` is not satisfied{post_message}")
+                format!(
+                    "the trait bound `{}` is not satisfied{post_message}",
+                    trait_predicate.print_with_bound_constness(predicate_constness)
+                )
             })
     }
 
@@ -2331,6 +2336,51 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 GetSafeTransmuteErrorAndReason::Error { err_msg, safe_transmute_explanation: None }
             }
         }
+    }
+
+    /// For effects predicates such as `<u32 as Add>::Effects: Compat<host>`, pretend that the
+    /// predicate that failed was `u32: Add`. Return the constness of such predicate to later
+    /// print as `u32: ~const Add`.
+    fn get_effects_trait_pred_override(
+        &self,
+        p: ty::PolyTraitPredicate<'tcx>,
+        leaf: ty::PolyTraitPredicate<'tcx>,
+        span: Span,
+    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, ty::BoundConstness) {
+        let trait_ref = p.to_poly_trait_ref();
+        if !self.tcx.is_lang_item(trait_ref.def_id(), LangItem::EffectsCompat) {
+            return (p, leaf, ty::BoundConstness::NotConst);
+        }
+
+        let Some(ty::Alias(ty::AliasTyKind::Projection, projection)) =
+            trait_ref.self_ty().no_bound_vars().map(Ty::kind)
+        else {
+            return (p, leaf, ty::BoundConstness::NotConst);
+        };
+
+        let constness = trait_ref.skip_binder().args.const_at(1);
+
+        let constness = if constness == self.tcx.consts.true_ || constness.is_ct_infer() {
+            ty::BoundConstness::NotConst
+        } else if constness == self.tcx.consts.false_ {
+            ty::BoundConstness::Const
+        } else if matches!(constness.kind(), ty::ConstKind::Param(_)) {
+            ty::BoundConstness::ConstIfConst
+        } else {
+            self.dcx().span_bug(span, format!("Unknown constness argument: {constness:?}"));
+        };
+
+        let new_pred = p.map_bound(|mut trait_pred| {
+            trait_pred.trait_ref = projection.trait_ref(self.tcx);
+            trait_pred
+        });
+
+        let new_leaf = leaf.map_bound(|mut trait_pred| {
+            trait_pred.trait_ref = projection.trait_ref(self.tcx);
+            trait_pred
+        });
+
+        (new_pred, new_leaf, constness)
     }
 
     fn add_tuple_trait_message(

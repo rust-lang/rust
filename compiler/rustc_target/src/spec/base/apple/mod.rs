@@ -158,23 +158,6 @@ pub(crate) fn base(
     (opts, llvm_target(os, arch, abi), arch.target_arch())
 }
 
-pub fn sdk_version(platform: u32) -> Option<(u16, u8)> {
-    // NOTE: These values are from an arbitrary point in time but shouldn't make it into the final
-    // binary since the final link command will have the current SDK version passed to it.
-    match platform {
-        object::macho::PLATFORM_MACOS => Some((13, 1)),
-        object::macho::PLATFORM_IOS
-        | object::macho::PLATFORM_IOSSIMULATOR
-        | object::macho::PLATFORM_TVOS
-        | object::macho::PLATFORM_TVOSSIMULATOR
-        | object::macho::PLATFORM_MACCATALYST => Some((16, 2)),
-        object::macho::PLATFORM_WATCHOS | object::macho::PLATFORM_WATCHOSSIMULATOR => Some((9, 1)),
-        // FIXME: Upgrade to `object-rs` 0.33+ implementation with visionOS platform definition
-        11 | 12 => Some((1, 0)),
-        _ => None,
-    }
-}
-
 pub fn platform(target: &Target) -> Option<u32> {
     Some(match (&*target.os, &*target.abi) {
         ("macos", _) => object::macho::PLATFORM_MACOS,

@@ -2,7 +2,7 @@ use std::cell::LazyCell;
 use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::ItemKind;
@@ -404,7 +404,7 @@ fn check_trait_item<'tcx>(
 /// ```
 fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
     // Associates every GAT's def_id to a list of possibly missing bounds detected by this lint.
-    let mut required_bounds_by_item = FxHashMap::default();
+    let mut required_bounds_by_item = FxIndexMap::default();
     let associated_items = tcx.associated_items(trait_def_id);
 
     // Loop over all GATs together, because if this lint suggests adding a where-clause bound
@@ -430,7 +430,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
             // Gather the bounds with which all other items inside of this trait constrain the GAT.
             // This is calculated by taking the intersection of the bounds that each item
             // constrains the GAT with individually.
-            let mut new_required_bounds: Option<FxHashSet<ty::Clause<'_>>> = None;
+            let mut new_required_bounds: Option<FxIndexSet<ty::Clause<'_>>> = None;
             for item in associated_items.in_definition_order() {
                 let item_def_id = item.def_id.expect_local();
                 // Skip our own GAT, since it does not constrain itself at all.
@@ -589,7 +589,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
 fn augment_param_env<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    new_predicates: Option<&FxHashSet<ty::Clause<'tcx>>>,
+    new_predicates: Option<&FxIndexSet<ty::Clause<'tcx>>>,
 ) -> ty::ParamEnv<'tcx> {
     let Some(new_predicates) = new_predicates else {
         return param_env;
@@ -625,9 +625,9 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     wf_tys: &FxIndexSet<Ty<'tcx>>,
     gat_def_id: LocalDefId,
     gat_generics: &'tcx ty::Generics,
-) -> Option<FxHashSet<ty::Clause<'tcx>>> {
+) -> Option<FxIndexSet<ty::Clause<'tcx>>> {
     // The bounds we that we would require from `to_check`
-    let mut bounds = FxHashSet::default();
+    let mut bounds = FxIndexSet::default();
 
     let (regions, types) = GATArgsCollector::visit(gat_def_id.to_def_id(), to_check);
 
@@ -789,18 +789,18 @@ fn test_region_obligations<'tcx>(
 struct GATArgsCollector<'tcx> {
     gat: DefId,
     // Which region appears and which parameter index its instantiated with
-    regions: FxHashSet<(ty::Region<'tcx>, usize)>,
+    regions: FxIndexSet<(ty::Region<'tcx>, usize)>,
     // Which params appears and which parameter index its instantiated with
-    types: FxHashSet<(Ty<'tcx>, usize)>,
+    types: FxIndexSet<(Ty<'tcx>, usize)>,
 }
 
 impl<'tcx> GATArgsCollector<'tcx> {
     fn visit<T: TypeFoldable<TyCtxt<'tcx>>>(
         gat: DefId,
         t: T,
-    ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
+    ) -> (FxIndexSet<(ty::Region<'tcx>, usize)>, FxIndexSet<(Ty<'tcx>, usize)>) {
         let mut visitor =
-            GATArgsCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
+            GATArgsCollector { gat, regions: FxIndexSet::default(), types: FxIndexSet::default() };
         t.visit_with(&mut visitor);
         (visitor.regions, visitor.types)
     }

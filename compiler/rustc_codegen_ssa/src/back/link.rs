@@ -2959,11 +2959,12 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
     }
 }
 
-/// We need to communicate four things to the linker on Apple/Darwin targets:
+/// We need to communicate five things to the linker on Apple/Darwin targets:
 /// - The architecture.
 /// - The operating system (and that it's an Apple platform).
-/// - The deployment target.
 /// - The environment / ABI.
+/// - The deployment target.
+/// - The SDK version.
 fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if !sess.target.is_like_osx {
         return;
@@ -3039,7 +3040,38 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         let (major, minor, patch) = current_apple_deployment_target(&sess.target);
         let min_version = format!("{major}.{minor}.{patch}");
 
-        // Lie about the SDK version, we don't know it here
+        // The SDK version is used at runtime when compiling with a newer SDK / version of Xcode:
+        // - By dyld to give extra warnings and errors, see e.g.:
+        //   <https://github.com/apple-oss-distributions/dyld/blob/dyld-1165.3/common/MachOFile.cpp#L3029>
+        //   <https://github.com/apple-oss-distributions/dyld/blob/dyld-1165.3/common/MachOFile.cpp#L3738-L3857>
+        // - By system frameworks to change certain behaviour. For example, the default value of
+        //   `-[NSView wantsBestResolutionOpenGLSurface]` is `YES` when the SDK version is >= 10.15.
+        //   <https://developer.apple.com/documentation/appkit/nsview/1414938-wantsbestresolutionopenglsurface?language=objc>
+        //
+        // We do not currently know the actual SDK version though, so we have a few options:
+        // 1. Use the minimum version supported by rustc.
+        // 2. Use the same as the deployment target.
+        // 3. Use an arbitary recent version.
+        // 4. Omit the version.
+        //
+        // The first option is too low / too conservative, and means that users will not get the
+        // same behaviour from a binary compiled with rustc as with one compiled by clang.
+        //
+        // The second option is similarly conservative, and also wrong since if the user specified a
+        // higher deployment target than the SDK they're compiling/linking with, the runtime might
+        // make invalid assumptions about the capabilities of the binary.
+        //
+        // The third option requires that `rustc` is periodically kept up to date with Apple's SDK
+        // version, and is also wrong for similar reasons as above.
+        //
+        // The fourth option is bad because while `ld`, `otool`, `vtool` and such understand it to
+        // mean "absent" or `n/a`, dyld doesn't actually understand it, and will end up interpreting
+        // it as 0.0, which is again too low/conservative.
+        //
+        // Currently, we lie about the SDK version, and choose the second option.
+        //
+        // FIXME(madsmtm): Parse the SDK version from the SDK root instead.
+        // <https://github.com/rust-lang/rust/issues/129432>
         let sdk_version = &*min_version;
 
         // From the man page for ld64 (`man ld`):
@@ -3053,11 +3085,13 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         cmd.link_args(&["-platform_version", platform_name, &*min_version, sdk_version]);
     } else {
         // cc == Cc::Yes
+        //
         // We'd _like_ to use `-target` everywhere, since that can uniquely
-        // communicate all the required details, but that doesn't work on GCC,
-        // and since we don't know whether the `cc` compiler is Clang, GCC, or
-        // something else, we fall back to other options that also work on GCC
-        // when compiling for macOS.
+        // communicate all the required details except for the SDK version
+        // (which is read by Clang itself from the SDKROOT), but that doesn't
+        // work on GCC, and since we don't know whether the `cc` compiler is
+        // Clang, GCC, or something else, we fall back to other options that
+        // also work on GCC when compiling for macOS.
         //
         // Targets other than macOS are ill-supported by GCC (it doesn't even
         // support e.g. `-miphoneos-version-min`), so in those cases we can

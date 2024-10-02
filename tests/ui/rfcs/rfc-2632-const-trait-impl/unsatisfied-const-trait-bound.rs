@@ -19,7 +19,6 @@ impl Trait for Ty {
 }
 
 fn main() {
-    // FIXME(effects): improve diagnostics on this
     require::<Ty>();
 }
 
