@@ -578,13 +578,14 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             // If caller requested this information, add special comments about source file checksums.
             // These are not necessarily the same checksums as was used in the debug files.
             if sess.opts.unstable_opts.checksum_hash_algorithm().is_some() {
-                for (path, file_len, checksum_hash) in
-                    files.iter().filter_map(|(path, file_len, hash_algo)| {
+                files
+                    .iter()
+                    .filter_map(|(path, file_len, hash_algo)| {
                         hash_algo.map(|hash_algo| (path, file_len, hash_algo))
                     })
-                {
-                    writeln!(file, "# checksum:{checksum_hash} file_len:{file_len} {path}")?;
-                }
+                    .try_for_each(|(path, file_len, checksum_hash)| {
+                        writeln!(file, "# checksum:{checksum_hash} file_len:{file_len} {path}")
+                    })?;
             }
 
             Ok(())
