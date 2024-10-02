@@ -419,6 +419,10 @@ impl<'tcx, 'a> Visitor<'tcx> for FindSignificantDropper<'tcx, 'a> {
                 }
                 ControlFlow::Continue(())
             }
+            hir::ExprKind::Use(expr, _) => {
+                self.visit_expr(expr)?;
+                ControlFlow::Continue(())
+            }
             hir::ExprKind::Index(left, right, _) | hir::ExprKind::Binary(_, left, right) => {
                 self.visit_expr(left)?;
                 self.visit_expr(right)
