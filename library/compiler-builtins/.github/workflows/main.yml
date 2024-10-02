@@ -61,6 +61,9 @@ jobs:
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-latest
           rust: nightly
+        - target: riscv64gc-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
         - target: thumbv6m-none-eabi
           os: ubuntu-latest
           rust: nightly
