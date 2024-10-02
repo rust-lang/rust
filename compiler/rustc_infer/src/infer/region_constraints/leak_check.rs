@@ -55,8 +55,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// * what placeholder they must outlive transitively
     ///   * if they must also be equal to a placeholder, report an error because `P1: P2`
     /// * minimum universe U of all SCCs they must outlive
-    ///   * if they must also be equal to a placeholder P, and U cannot name P, report an error, as that
-    ///     indicates `P: R` and `R` is in an incompatible universe
+    ///   * if they must also be equal to a placeholder P, and U cannot name P, report an error, as
+    ///     that indicates `P: R` and `R` is in an incompatible universe
     ///
     /// To improve performance and for the old trait solver caching to be sound, this takes
     /// an optional snapshot in which case we only look at region constraints added in that
@@ -216,8 +216,8 @@ impl<'a, 'b, 'tcx> LeakCheck<'a, 'b, 'tcx> {
             // Walk over each `scc2` such that `scc1: scc2` and compute:
             //
             // * `scc1_universe`: the minimum universe of `scc2` and the constituents of `scc1`
-            // * `succ_bound`: placeholder `P` that the successors must outlive, if any (if there are multiple,
-            //   we pick one arbitrarily)
+            // * `succ_bound`: placeholder `P` that the successors must outlive, if any (if there
+            //   are multiple, we pick one arbitrarily)
             let mut scc1_universe = self.scc_universes[scc1];
             let mut succ_bound = None;
             for &scc2 in self.mini_graph.sccs.successors(scc1) {
@@ -260,7 +260,8 @@ impl<'a, 'b, 'tcx> LeakCheck<'a, 'b, 'tcx> {
                 self.scc_placeholders[scc1] = succ_bound;
             }
 
-            // At this point, `scc_placeholder[scc1]` stores some placeholder that `scc1` must outlive (if any).
+            // At this point, `scc_placeholder[scc1]` stores some placeholder that `scc1` must
+            // outlive (if any).
         }
         Ok(())
     }

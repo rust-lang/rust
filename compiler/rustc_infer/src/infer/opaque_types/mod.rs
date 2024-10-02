@@ -148,11 +148,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
-                    // We could accept this, but there are various ways to handle this situation, and we don't
-                    // want to make a decision on it right now. Likely this case is so super rare anyway, that
-                    // no one encounters it in practice.
-                    // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
-                    // where it is of no concern, so we only check for TAITs.
+                    // We could accept this, but there are various ways to handle this situation,
+                    // and we don't want to make a decision on it right now. Likely this case is so
+                    // super rare anyway, that no one encounters it in practice. It does occur
+                    // however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`, where
+                    // it is of no concern, so we only check for TAITs.
                     if self.can_define_opaque_ty(b_def_id)
                         && self.tcx.is_type_alias_impl_trait(b_def_id)
                     {

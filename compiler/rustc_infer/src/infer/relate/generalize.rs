@@ -50,7 +50,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
         // region/type inference variables.
         //
-        // We then relate `generalized_ty <: source_ty`,adding constraints like `'x: '?2` and `?1 <: ?3`.
+        // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
+        // `?1 <: ?3`.
         let Generalization { value_may_be_infer: generalized_ty, has_unconstrained_ty_var } = self
             .generalize(
                 relation.span(),
@@ -104,7 +105,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     &ty::Alias(ty::Projection, data) => {
                         // FIXME: This does not handle subtyping correctly, we could
                         // instead create a new inference variable `?normalized_source`, emitting
-                        // `Projection(normalized_source, ?ty_normalized)` and `?normalized_source <: generalized_ty`.
+                        // `Projection(normalized_source, ?ty_normalized)` and
+                        // `?normalized_source <: generalized_ty`.
                         relation.register_predicates([ty::ProjectionPredicate {
                             projection_term: data.into(),
                             term: generalized_ty.into(),

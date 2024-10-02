@@ -1011,8 +1011,8 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(effect_vid)).into()
     }
 
-    /// Given a set of generics defined on a type or impl, returns the generic parameters mapping each
-    /// type/region parameter to a fresh inference variable.
+    /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
+    /// each type/region parameter to a fresh inference variable.
     pub fn fresh_args_for_item(&self, span: Span, def_id: DefId) -> GenericArgsRef<'tcx> {
         GenericArgs::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
     }
@@ -1390,10 +1390,10 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// The constant can be located on a trait like `<A as B>::C`, in which case the given
     /// generic parameters and environment are used to resolve the constant. Alternatively if the
-    /// constant has generic parameters in scope the instantiations are used to evaluate the value of
-    /// the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
-    /// constant `bar::<T>()` requires a instantiation for `T`, if the instantiation for `T` is still
-    /// too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
+    /// constant has generic parameters in scope the instantiations are used to evaluate the value
+    /// of the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
+    /// constant `bar::<T>()` requires a instantiation for `T`, if the instantiation for `T` is
+    /// still too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
     /// returned.
     ///
     /// This handles inferences variables within both `param_env` and `args` by
