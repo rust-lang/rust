@@ -381,21 +381,7 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
                 (GenericArgKind::Const(a), GenericArgKind::Const(b)) => {
                     ValuePairs::Terms(ExpectedFound::new(true, a.into(), b.into()))
                 }
-
-                (
-                    GenericArgKind::Lifetime(_),
-                    GenericArgKind::Type(_) | GenericArgKind::Const(_),
-                )
-                | (
-                    GenericArgKind::Type(_),
-                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_),
-                )
-                | (
-                    GenericArgKind::Const(_),
-                    GenericArgKind::Lifetime(_) | GenericArgKind::Type(_),
-                ) => {
-                    bug!("relating different kinds: {a:?} {b:?}")
-                }
+                _ => bug!("relating different kinds: {a:?} {b:?}"),
             },
         }
     }
