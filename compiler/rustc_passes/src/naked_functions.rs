@@ -179,6 +179,7 @@ impl CheckInlineAssembly {
             | ExprKind::Array(..)
             | ExprKind::Call(..)
             | ExprKind::MethodCall(..)
+            | ExprKind::Use(..)
             | ExprKind::Tup(..)
             | ExprKind::Binary(..)
             | ExprKind::Unary(..)

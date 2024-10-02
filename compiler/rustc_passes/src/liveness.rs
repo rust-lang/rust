@@ -426,6 +426,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Array(..)
             | hir::ExprKind::Call(..)
             | hir::ExprKind::MethodCall(..)
+            | hir::ExprKind::Use(..)
             | hir::ExprKind::Tup(..)
             | hir::ExprKind::Binary(..)
             | hir::ExprKind::AddrOf(..)
@@ -1031,6 +1032,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(receiver, succ)
             }
 
+            hir::ExprKind::Use(expr, _) => {
+                let succ = self.check_is_ty_uninhabited(expr, succ);
+                self.propagate_through_expr(expr, succ)
+            }
+
             hir::ExprKind::Tup(exprs) => self.propagate_through_exprs(exprs, succ),
 
             hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
@@ -1418,6 +1424,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         // no correctness conditions related to liveness
         hir::ExprKind::Call(..)
         | hir::ExprKind::MethodCall(..)
+        | hir::ExprKind::Use(..)
         | hir::ExprKind::Match(..)
         | hir::ExprKind::Loop(..)
         | hir::ExprKind::Index(..)

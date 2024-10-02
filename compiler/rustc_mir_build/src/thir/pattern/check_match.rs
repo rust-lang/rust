@@ -345,6 +345,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Borrow { .. }
             | Box { .. }
             | Call { .. }
+            | ByUse { .. }
             | Closure { .. }
             | ConstBlock { .. }
             | ConstParam { .. }
