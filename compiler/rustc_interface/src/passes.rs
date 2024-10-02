@@ -564,8 +564,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                             write!(file, " checksum:{checksum_hash} file_len:{file_len}")
                         })?;
                 }
-                writeln!(file)?;
-                writeln!(file)?;
+                write!(file, "\n\n")?;
             }
 
             // Emit a fake target for each input file to the compilation. This
