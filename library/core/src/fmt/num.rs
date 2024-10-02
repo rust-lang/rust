@@ -248,7 +248,7 @@ macro_rules! impl_Display {
         #[cfg(not(feature = "optimize_for_size"))]
         impl $t {
             fn _fmt(mut self: $t, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                const SIZE: usize = $t::MAX.ilog(10) as usize + 1;
+                const SIZE: usize = $t::MAX.ilog10() as usize + 1;
                 let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
                 let mut curr = SIZE;
                 let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
@@ -359,7 +359,8 @@ macro_rules! impl_Exp {
             mut n: $u,
             is_nonnegative: bool,
             upper: bool,
-            f: &mut fmt::Formatter<'_>
+            f: &mut fmt::Formatter<'_>,
+            buf: &mut [MaybeUninit::<u8>],
         ) -> fmt::Result {
             let (mut n, mut exponent, trailing_zeros, added_precision) = {
                 let mut exponent = 0;
@@ -405,9 +406,8 @@ macro_rules! impl_Exp {
 
             // Since `curr` always decreases by the number of digits copied, this means
             // that `curr >= 0`.
-            let mut buf = [MaybeUninit::<u8>::uninit(); 40];
             let mut curr = buf.len(); //index for buf
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+            let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // decode 2 chars at a time
@@ -500,10 +500,12 @@ macro_rules! impl_Exp {
                         // convert the negative num to positive by summing 1 to its 2s complement
                         (!self.$conv_fn()).wrapping_add(1)
                     };
-                    $name(n, is_nonnegative, false, f)
+                    const SIZE: usize = $t::MAX.ilog10() as usize + 1;
+                    let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
+                    $name(n, is_nonnegative, false, f, &mut buf)
                 }
-            })*
-        $(
+            }
+
             #[stable(feature = "integer_exp_format", since = "1.42.0")]
             impl fmt::UpperExp for $t {
                 #[allow(unused_comparisons)]
@@ -515,9 +517,12 @@ macro_rules! impl_Exp {
                         // convert the negative num to positive by summing 1 to its 2s complement
                         (!self.$conv_fn()).wrapping_add(1)
                     };
-                    $name(n, is_nonnegative, true, f)
+                    const SIZE: usize = $t::MAX.ilog10() as usize + 1;
+                    let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
+                    $name(n, is_nonnegative, true, f, &mut buf)
                 }
-            })*
+            }
+        )*
     };
 }
 
