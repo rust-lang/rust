@@ -1350,6 +1350,7 @@ impl Expr {
             // Never need parens
             ExprKind::Array(_)
             | ExprKind::Await(..)
+            | ExprKind::Use(..)
             | ExprKind::Block(..)
             | ExprKind::Call(..)
             | ExprKind::ConstBlock(_)
@@ -1530,6 +1531,8 @@ pub enum ExprKind {
     Gen(CaptureBy, P<Block>, GenBlockKind, Span),
     /// An await expression (`my_future.await`). Span is of await keyword.
     Await(P<Expr>, Span),
+    /// A use expression (`x.use`). Span is of use keyword.
+    Use(P<Expr>, Span),
 
     /// A try block (`try { ... }`).
     TryBlock(P<Block>),

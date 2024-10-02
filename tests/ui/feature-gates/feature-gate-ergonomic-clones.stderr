@@ -1,26 +1,49 @@
-error: expected identifier, found keyword `use`
-  --> $DIR/feature-gate-ergonomic-clones.rs:2:7
+error: incorrect use of `use`
+  --> $DIR/feature-gate-ergonomic-clones.rs:9:14
    |
-LL |     x.use
-   |       ^^^ expected identifier, found keyword
+LL |       let s2 = use || {
+   |  ______________^
+LL | |
+LL | |         s1
+LL | |     };
+   | |_____^
    |
-help: escape `use` to use it as an identifier
+help: `use` is a postfix operation
    |
-LL |     x.r#use
-   |       ++
+LL ~     let s2 = || {
+LL |
+LL |         s1
+LL ~     }.use;
+   |
 
-error: expected expression, found keyword `use`
-  --> $DIR/feature-gate-ergonomic-clones.rs:10:14
+error: incorrect use of `use`
+  --> $DIR/feature-gate-ergonomic-clones.rs:14:14
    |
-LL |     let s2 = use || {
-   |              ^^^ expected expression
+LL |       let s3 = use || {
+   |  ______________^
+LL | |
+LL | |         s1
+LL | |     };
+   | |_____^
+   |
+help: `use` is a postfix operation
+   |
+LL ~     let s3 = || {
+LL |
+LL |         s1
+LL ~     }.use;
+   |
 
-error[E0610]: `i32` is a primitive type and therefore doesn't have fields
+error[E0658]: `.use` calls are experimental
   --> $DIR/feature-gate-ergonomic-clones.rs:2:7
    |
 LL |     x.use
    |       ^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0610`.
+For more information about this error, try `rustc --explain E0658`.

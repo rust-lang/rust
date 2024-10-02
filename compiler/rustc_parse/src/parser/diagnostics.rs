@@ -40,12 +40,13 @@ use crate::errors::{
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType,
-    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
-    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
-    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
-    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
+    IncorrectSemicolon, IncorrectUse, IncorrectUseOfAwait, IncorrectUseOfUse,
+    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
+    StructLiteralNeedingParensSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
+    TernaryOperator, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, UseSuggestion,
+    WrapType,
 };
 use crate::parser::attr::InnerAttrPolicy;
 use crate::{exp, fluent_generated as fluent};
@@ -1960,16 +1961,30 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         let (hi, expr, is_question) = if self.token == token::Not {
             // Handle `await!(<expr>)`.
-            self.recover_await_macro()?
+            self.recover_macro()?
         } else {
-            self.recover_await_prefix(await_sp)?
+            self.recover_prefix(await_sp, "await")?
         };
         let (sp, guar) = self.error_on_incorrect_await(await_sp, hi, &expr, is_question);
         let expr = self.mk_expr_err(await_sp.to(sp), guar);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
+    /// Consumes alternative use syntaxes like `use!(<expr>)`, `use <expr>`,
+    /// `use? <expr>`, `use(<expr>)`, and `use { <expr> }`.
+    pub(super) fn recover_incorrect_use_syntax(&mut self, use_sp: Span) -> PResult<'a, P<Expr>> {
+        let (hi, expr, is_question) = if self.token == token::Not {
+            // Handle `use!(<expr>)`.
+            self.recover_macro()?
+        } else {
+            self.recover_prefix(use_sp, "use")?
+        };
+        let (sp, guar) = self.error_on_incorrect_use(use_sp, hi, &expr, is_question);
+        let expr = self.mk_expr_err(use_sp.to(sp), guar);
+        self.maybe_recover_from_bad_qpath(expr)
+    }
+
+    fn recover_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
         self.expect(exp!(Not))?;
         self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
@@ -1977,7 +1992,11 @@ impl<'a> Parser<'a> {
         Ok((self.prev_token.span, expr, false))
     }
 
-    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, P<Expr>, bool)> {
+    fn recover_prefix(
+        &mut self,
+        await_sp: Span,
+        expr_str: &str,
+    ) -> PResult<'a, (Span, P<Expr>, bool)> {
         let is_question = self.eat(exp!(Question)); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenDelim(Delimiter::Brace) {
             // Handle `await { <expr> }`.
@@ -1988,7 +2007,10 @@ impl<'a> Parser<'a> {
             self.parse_expr()
         }
         .map_err(|mut err| {
-            err.span_label(await_sp, "while parsing this incorrect await expression");
+            err.span_label(
+                await_sp,
+                format!("while parsing this incorrect {} expression", expr_str),
+            );
             err
         })?;
         Ok((expr.span, expr, is_question))
@@ -2013,6 +2035,25 @@ impl<'a> Parser<'a> {
         (span, guar)
     }
 
+    fn error_on_incorrect_use(
+        &self,
+        lo: Span,
+        hi: Span,
+        expr: &Expr,
+        is_question: bool,
+    ) -> (Span, ErrorGuaranteed) {
+        let span = lo.to(hi);
+        let guar = self.dcx().emit_err(IncorrectUse {
+            span,
+            suggestion: UseSuggestion {
+                removal: lo.until(expr.span),
+                dot_use: expr.span.shrink_to_hi(),
+                question_mark: if is_question { "?" } else { "" },
+            },
+        });
+        (span, guar)
+    }
+
     /// If encountering `future.await()`, consumes and emits an error.
     pub(super) fn recover_from_await_method_call(&mut self) {
         if self.token == token::OpenDelim(Delimiter::Parenthesis)
@@ -2025,6 +2066,21 @@ impl<'a> Parser<'a> {
             self.bump(); // )
 
             self.dcx().emit_err(IncorrectUseOfAwait { span });
+        }
+    }
+    ///
+    /// If encountering `future.await()`, consumes and emits an error.
+    pub(super) fn recover_from_use(&mut self) {
+        if self.token == token::OpenDelim(Delimiter::Parenthesis)
+            && self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
+        {
+            // var.use()
+            let lo = self.token.span;
+            self.bump(); // (
+            let span = lo.to(self.token.span);
+            self.bump(); // )
+
+            self.dcx().emit_err(IncorrectUseOfUse { span });
         }
     }
 

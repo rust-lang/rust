@@ -246,6 +246,13 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
                 print_indented!(self, "}", depth_lvl);
             }
+            ByUse { expr, span } => {
+                print_indented!(self, "ByUse {", depth_lvl);
+                print_indented!(self, "expr:", depth_lvl + 1);
+                self.print_expr(*expr, depth_lvl + 2);
+                print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
+                print_indented!(self, "}", depth_lvl);
+            }
             Deref { arg } => {
                 print_indented!(self, "Deref {", depth_lvl);
                 self.print_expr(*arg, depth_lvl + 1);
