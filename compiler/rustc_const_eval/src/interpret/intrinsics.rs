@@ -18,7 +18,7 @@ use super::util::ensure_monomorphic_enough;
 use super::{
     Allocation, CheckInAllocMsg, ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult,
     MPlaceTy, Machine, OpTy, Pointer, PointerArithmetic, Provenance, Scalar, err_inval,
-    err_ub_custom, err_unsup_format, throw_inval, throw_ub_custom, throw_ub_format,
+    err_ub_custom, err_unsup_format, interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -39,7 +39,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
 ) -> InterpResult<'tcx, ConstValue<'tcx>> {
     let tp_ty = args.type_at(0);
     let name = tcx.item_name(def_id);
-    Ok(match name {
+    interp_ok(match name {
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
             let alloc = alloc_type_name(tcx, tp_ty);
@@ -329,6 +329,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         fluent::const_eval_offset_from_different_allocations,
                         name = intrinsic_name,
                     )
+                    .into()
                 })?;
 
                 // Perform division by size to compute return value.
@@ -378,7 +379,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     M::panic_nounwind(self, &msg)?;
                     // Skip the `return_to_block` at the end (we panicked, we do not return).
-                    return Ok(true);
+                    return interp_ok(true);
                 }
             }
             sym::simd_insert => {
@@ -438,12 +439,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             // Unsupported intrinsic: skip the return_to_block below.
-            _ => return Ok(false),
+            _ => return interp_ok(false),
         }
 
         trace!("{:?}", self.dump_place(&dest.clone().into()));
         self.return_to_block(ret)?;
-        Ok(true)
+        interp_ok(true)
     }
 
     pub(super) fn eval_nondiverging_intrinsic(
@@ -457,7 +458,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if !cond {
                     throw_ub_custom!(fluent::const_eval_assume_false);
                 }
-                Ok(())
+                interp_ok(())
             }
             NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
                 count,
@@ -499,7 +500,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             _ => bug!("not a numeric intrinsic: {}", name),
         };
-        Ok(Scalar::from_uint(bits_out, ret_layout.size))
+        interp_ok(Scalar::from_uint(bits_out, ret_layout.size))
     }
 
     pub fn exact_div(
@@ -540,7 +541,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         let (val, overflowed) =
             self.binary_op(mir_op.wrapping_to_overflowing().unwrap(), l, r)?.to_scalar_pair();
-        Ok(if overflowed.to_bool()? {
+        interp_ok(if overflowed.to_bool()? {
             let size = l.layout.size;
             if l.layout.abi.is_signed() {
                 // For signed ints the saturated value depends on the sign of the first
@@ -582,7 +583,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // The offset must be in bounds starting from `ptr`.
         self.check_ptr_access_signed(ptr, offset_bytes, CheckInAllocMsg::PointerArithmeticTest)?;
         // This also implies that there is no overflow, so we are done.
-        Ok(ptr.wrapping_signed_offset(offset_bytes, self))
+        interp_ok(ptr.wrapping_signed_offset(offset_bytes, self))
     }
 
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.
@@ -628,7 +629,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.copy_op(&right, &left)?;
         self.copy_op(&temp, &right)?;
         self.deallocate_ptr(temp.ptr(), None, kind)?;
-        Ok(())
+        interp_ok(())
     }
 
     pub fn write_bytes_intrinsic(
@@ -669,7 +670,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // `Ordering`'s discriminants are -1/0/+1, so casting does the right thing.
         let result = Ord::cmp(left_bytes, right_bytes) as i32;
-        Ok(Scalar::from_i32(result))
+        interp_ok(Scalar::from_i32(result))
     }
 
     pub(crate) fn raw_eq_intrinsic(
@@ -687,13 +688,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             this.check_ptr_align(ptr, layout.align.abi)?;
             let Some(alloc_ref) = self.get_ptr_alloc(ptr, layout.size)? else {
                 // zero-sized access
-                return Ok(&[]);
+                return interp_ok(&[]);
             };
             alloc_ref.get_bytes_strip_provenance()
         };
 
         let lhs_bytes = get_bytes(self, lhs)?;
         let rhs_bytes = get_bytes(self, rhs)?;
-        Ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
+        interp_ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 }

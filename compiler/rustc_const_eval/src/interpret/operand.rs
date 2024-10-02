@@ -16,7 +16,7 @@ use tracing::trace;
 use super::{
     CtfeProvenance, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode,
     PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub, from_known_layout,
-    mir_assign_valid_types, throw_ub,
+    interp_ok, mir_assign_valid_types, throw_ub,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -149,7 +149,7 @@ impl<Prov: Provenance> Immediate<Prov> {
             }
             Immediate::Uninit => {}
         }
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -307,7 +307,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
                 data_size: s.size().bytes(),
             }));
         }
-        Ok(s)
+        interp_ok(s)
     }
 
     #[inline]
@@ -430,7 +430,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
         ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         assert_matches!(meta, MemPlaceMeta::None); // we can't store this anywhere anyway
-        Ok(self.offset_(offset, layout, ecx))
+        interp_ok(self.offset_(offset, layout, ecx))
     }
 
     #[inline(always)]
@@ -438,7 +438,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
         &self,
         _ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        Ok(self.clone().into())
+        interp_ok(self.clone().into())
     }
 }
 
@@ -514,11 +514,13 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
         ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         match self.as_mplace_or_imm() {
-            Left(mplace) => Ok(mplace.offset_with_meta(offset, mode, meta, layout, ecx)?.into()),
+            Left(mplace) => {
+                interp_ok(mplace.offset_with_meta(offset, mode, meta, layout, ecx)?.into())
+            }
             Right(imm) => {
                 assert_matches!(meta, MemPlaceMeta::None); // no place to store metadata here
                 // Every part of an uninit is uninit.
-                Ok(imm.offset_(offset, layout, ecx).into())
+                interp_ok(imm.offset_(offset, layout, ecx).into())
             }
         }
     }
@@ -528,7 +530,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
         &self,
         _ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        Ok(self.clone())
+        interp_ok(self.clone())
     }
 }
 
@@ -543,12 +545,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::Provenance>>> {
         if mplace.layout.is_unsized() {
             // Don't touch unsized
-            return Ok(None);
+            return interp_ok(None);
         }
 
         let Some(alloc) = self.get_place_alloc(mplace)? else {
             // zero-sized type can be left uninit
-            return Ok(Some(ImmTy::uninit(mplace.layout)));
+            return interp_ok(Some(ImmTy::uninit(mplace.layout)));
         };
 
         // It may seem like all types with `Scalar` or `ScalarPair` ABI are fair game at this point.
@@ -557,7 +559,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // case where some of the bytes are initialized and others are not. So, we need an extra
         // check that walks over the type of `mplace` to make sure it is truly correct to treat this
         // like a `Scalar` (or `ScalarPair`).
-        Ok(match mplace.layout.abi {
+        interp_ok(match mplace.layout.abi {
             Abi::Scalar(abi::Scalar::Initialized { value: s, .. }) => {
                 let size = s.size(self);
                 assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
@@ -606,7 +608,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         src: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
-        Ok(match src.to_op(self)?.as_mplace_or_imm() {
+        interp_ok(match src.to_op(self)?.as_mplace_or_imm() {
             Left(ref mplace) => {
                 if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
                     Right(val)
@@ -637,7 +639,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if matches!(*imm, Immediate::Uninit) {
             throw_ub!(InvalidUninitBytes(None));
         }
-        Ok(imm)
+        interp_ok(imm)
     }
 
     /// Read a scalar from a place
@@ -645,7 +647,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
-        Ok(self.read_immediate(op)?.to_scalar())
+        interp_ok(self.read_immediate(op)?.to_scalar())
     }
 
     // Pointer-sized reads are fairly common and need target layout access, so we wrap them in
@@ -678,7 +680,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let len = mplace.len(self)?;
         let bytes = self.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len))?;
         let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
-        Ok(str)
+        interp_ok(str)
     }
 
     /// Read from a local of the current frame.
@@ -698,7 +700,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             assert!(!layout.is_unsized());
         }
         M::after_local_read(self, local)?;
-        Ok(OpTy { op, layout })
+        interp_ok(OpTy { op, layout })
     }
 
     /// Every place can be read from, so we can turn them into an operand.
@@ -709,12 +711,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         place: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         match place.as_mplace_or_local() {
-            Left(mplace) => Ok(mplace.into()),
+            Left(mplace) => interp_ok(mplace.into()),
             Right((local, offset, locals_addr, _)) => {
                 debug_assert!(place.layout.is_sized()); // only sized locals can ever be `Place::Local`.
                 debug_assert_eq!(locals_addr, self.frame().locals_addr());
                 let base = self.local_to_op(local, None)?;
-                Ok(match offset {
+                interp_ok(match offset {
                     Some(offset) => base.offset(offset, place.layout, self)?,
                     None => {
                         // In the common case this hasn't been projected.
@@ -764,7 +766,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )
             }
         }
-        Ok(op)
+        interp_ok(op)
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.
@@ -794,7 +796,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         };
         trace!("{:?}: {:?}", mir_op, op);
-        Ok(op)
+        interp_ok(op)
     }
 
     pub(crate) fn const_val_to_op(
@@ -805,12 +807,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         // Other cases need layout.
         let adjust_scalar = |scalar| -> InterpResult<'tcx, _> {
-            Ok(match scalar {
+            interp_ok(match scalar {
                 Scalar::Ptr(ptr, size) => Scalar::Ptr(self.global_root_pointer(ptr)?, size),
                 Scalar::Int(int) => Scalar::Int(int),
             })
         };
-        let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
+        let layout =
+            from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty).into())?;
         let imm = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
                 // This is const data, no mutation allowed.
@@ -818,7 +821,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     CtfeProvenance::from(alloc_id).as_immutable(),
                     offset,
                 ))?;
-                return Ok(self.ptr_to_mplace(ptr.into(), layout).into());
+                return interp_ok(self.ptr_to_mplace(ptr.into(), layout).into());
             }
             mir::ConstValue::Scalar(x) => adjust_scalar(x)?.into(),
             mir::ConstValue::ZeroSized => Immediate::Uninit,
@@ -829,7 +832,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 Immediate::new_slice(self.global_root_pointer(ptr)?.into(), meta, self)
             }
         };
-        Ok(OpTy { op: Operand::Immediate(imm), layout })
+        interp_ok(OpTy { op: Operand::Immediate(imm), layout })
     }
 }
 

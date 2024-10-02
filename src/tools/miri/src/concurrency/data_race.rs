@@ -624,7 +624,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let buffered_scalar = this.buffered_atomic_read(place, atomic, scalar, || {
             this.validate_atomic_load(place, atomic)
         })?;
-        Ok(buffered_scalar.ok_or_else(|| err_ub!(InvalidUninitBytes(None)))?)
+        interp_ok(buffered_scalar.ok_or_else(|| err_ub!(InvalidUninitBytes(None)))?)
     }
 
     /// Perform an atomic write operation at the memory location.
@@ -641,7 +641,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // The program didn't actually do a read, so suppress the memory access hooks.
         // This is also a very special exception where we just ignore an error -- if this read
         // was UB e.g. because the memory is uninitialized, we don't want to know!
-        let old_val = this.run_for_validation(|this| this.read_scalar(dest)).ok();
+        let old_val = this.run_for_validation(|this| this.read_scalar(dest)).discard_err();
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
         this.buffered_atomic_write(val, dest, atomic, old_val)
@@ -668,7 +668,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         this.validate_atomic_rmw(place, atomic)?;
 
         this.buffered_atomic_rmw(val.to_scalar(), place, atomic, old.to_scalar())?;
-        Ok(old)
+        interp_ok(old)
     }
 
     /// Perform an atomic exchange with a memory place and a new
@@ -688,7 +688,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         this.validate_atomic_rmw(place, atomic)?;
 
         this.buffered_atomic_rmw(new, place, atomic, old)?;
-        Ok(old)
+        interp_ok(old)
     }
 
     /// Perform an conditional atomic exchange with a memory place and a new
@@ -720,7 +720,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         this.buffered_atomic_rmw(new_val.to_scalar(), place, atomic, old.to_scalar())?;
 
         // Return the old value.
-        Ok(old)
+        interp_ok(old)
     }
 
     /// Perform an atomic compare and exchange at a given memory location.
@@ -777,7 +777,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
 
         // Return the old value.
-        Ok(res)
+        interp_ok(res)
     }
 
     /// Update the data-race detector for an atomic fence on the current thread.
@@ -809,11 +809,11 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                     }
 
                     // Increment timestamp in case of release semantics.
-                    Ok(atomic != AtomicFenceOrd::Acquire)
+                    interp_ok(atomic != AtomicFenceOrd::Acquire)
                 },
             )
         } else {
-            Ok(())
+            interp_ok(())
         }
     }
 
@@ -1047,7 +1047,7 @@ impl VClockAlloc {
         let current_span = machine.current_span();
         let global = machine.data_race.as_ref().unwrap();
         if !global.race_detecting() {
-            return Ok(());
+            return interp_ok(());
         }
         let (index, mut thread_clocks) = global.active_thread_state_mut(&machine.threads);
         let mut alloc_ranges = self.alloc_ranges.borrow_mut();
@@ -1070,7 +1070,7 @@ impl VClockAlloc {
                 );
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Detect data-races for an unsynchronized write operation. It will not perform
@@ -1089,7 +1089,7 @@ impl VClockAlloc {
         let current_span = machine.current_span();
         let global = machine.data_race.as_mut().unwrap();
         if !global.race_detecting() {
-            return Ok(());
+            return interp_ok(());
         }
         let (index, mut thread_clocks) = global.active_thread_state_mut(&machine.threads);
         for (mem_clocks_range, mem_clocks) in
@@ -1111,7 +1111,7 @@ impl VClockAlloc {
                 );
             }
         }
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -1307,7 +1307,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
                 }
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Update the data-race detector for an atomic read occurring at the
@@ -1399,9 +1399,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         assert!(access.is_atomic());
-        let Some(data_race) = &this.machine.data_race else { return Ok(()) };
+        let Some(data_race) = &this.machine.data_race else { return interp_ok(()) };
         if !data_race.race_detecting() {
-            return Ok(());
+            return interp_ok(());
         }
         let size = place.layout.size;
         let (alloc_id, base_offset, _prov) = this.ptr_get_alloc_id(place.ptr(), 0)?;
@@ -1444,7 +1444,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
                 }
 
                 // This conservatively assumes all operations have release semantics
-                Ok(true)
+                interp_ok(true)
             },
         )?;
 
@@ -1460,7 +1460,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             }
         }
 
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -1757,7 +1757,7 @@ impl GlobalState {
                 clocks.increment_clock(index, current_span);
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Internal utility to identify a thread stored internally

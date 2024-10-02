@@ -47,7 +47,7 @@ impl<'tcx> UnixEnvVars<'tcx> {
         let environ_block = alloc_environ_block(ecx, env_vars_machine.values().copied().collect())?;
         ecx.write_pointer(environ_block, &environ)?;
 
-        Ok(UnixEnvVars { map: env_vars_machine, environ })
+        interp_ok(UnixEnvVars { map: env_vars_machine, environ })
     }
 
     pub(crate) fn cleanup(ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx> {
@@ -61,7 +61,7 @@ impl<'tcx> UnixEnvVars<'tcx> {
         let old_vars_ptr = ecx.read_pointer(environ)?;
         ecx.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
 
-        Ok(())
+        interp_ok(())
     }
 
     pub(crate) fn environ(&self) -> Pointer {
@@ -77,14 +77,14 @@ impl<'tcx> UnixEnvVars<'tcx> {
         // but we do want to do this read so it shows up as a data race.
         let _vars_ptr = ecx.read_pointer(&self.environ)?;
         let Some(var_ptr) = self.map.get(name) else {
-            return Ok(None);
+            return interp_ok(None);
         };
         // The offset is used to strip the "{name}=" part of the string.
         let var_ptr = var_ptr.wrapping_offset(
             Size::from_bytes(u64::try_from(name.len()).unwrap().strict_add(1)),
             ecx,
         );
-        Ok(Some(var_ptr))
+        interp_ok(Some(var_ptr))
     }
 
     /// Implementation detail for [`InterpCx::get_env_var`]. This basically does `getenv`, complete
@@ -97,9 +97,9 @@ impl<'tcx> UnixEnvVars<'tcx> {
         let var_ptr = self.get_ptr(ecx, name)?;
         if let Some(ptr) = var_ptr {
             let var = ecx.read_os_str_from_c_str(ptr)?;
-            Ok(Some(var.to_owned()))
+            interp_ok(Some(var.to_owned()))
         } else {
-            Ok(None)
+            interp_ok(None)
         }
     }
 }
@@ -133,7 +133,7 @@ fn alloc_environ_block<'tcx>(
         let place = ecx.project_field(&vars_place, idx)?;
         ecx.write_pointer(var, &place)?;
     }
-    Ok(vars_place.ptr())
+    interp_ok(vars_place.ptr())
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -146,7 +146,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let name = this.read_os_str_from_c_str(name_ptr)?;
 
         let var_ptr = this.machine.env_vars.unix().get_ptr(this, name)?;
-        Ok(var_ptr.unwrap_or_else(Pointer::null))
+        interp_ok(var_ptr.unwrap_or_else(Pointer::null))
     }
 
     fn setenv(
@@ -174,12 +174,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
             }
             this.update_environ()?;
-            Ok(Scalar::from_i32(0)) // return zero on success
+            interp_ok(Scalar::from_i32(0)) // return zero on success
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
-            Ok(Scalar::from_i32(-1))
+            interp_ok(Scalar::from_i32(-1))
         }
     }
 
@@ -200,12 +200,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
             }
             this.update_environ()?;
-            Ok(Scalar::from_i32(0))
+            interp_ok(Scalar::from_i32(0))
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
-            Ok(Scalar::from_i32(-1))
+            interp_ok(Scalar::from_i32(-1))
         }
     }
 
@@ -219,14 +219,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`getcwd`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-            return Ok(Pointer::null());
+            return interp_ok(Pointer::null());
         }
 
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
                 if this.write_path_to_c_str(&cwd, buf, size)?.0 {
-                    return Ok(buf);
+                    return interp_ok(buf);
                 }
                 let erange = this.eval_libc("ERANGE");
                 this.set_last_error(erange)?;
@@ -234,7 +234,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) => this.set_last_error_from_io_error(e)?,
         }
 
-        Ok(Pointer::null())
+        interp_ok(Pointer::null())
     }
 
     fn chdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
@@ -247,11 +247,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.reject_in_isolation("`chdir`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
 
-            return Ok(Scalar::from_i32(-1));
+            return interp_ok(Scalar::from_i32(-1));
         }
 
         let result = env::set_current_dir(path).map(|()| 0);
-        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
     /// Updates the `environ` static.
@@ -267,7 +267,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let environ_block = alloc_environ_block(this, vals)?;
         this.write_pointer(environ_block, &environ)?;
 
-        Ok(())
+        interp_ok(())
     }
 
     fn getpid(&mut self) -> InterpResult<'tcx, Scalar> {
@@ -278,7 +278,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // `libc::getpid` returns an i32, however, `std::process::id()` return an u32.
         // So we un-do the conversion that stdlib does and turn it back into an i32.
         // In `Scalar` representation, these are the same, so we don't need to anything else.
-        Ok(Scalar::from_u32(this.get_pid()))
+        interp_ok(Scalar::from_u32(this.get_pid()))
     }
 
     fn linux_gettid(&mut self) -> InterpResult<'tcx, Scalar> {
@@ -290,6 +290,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Compute a TID for this thread, ensuring that the main thread has PID == TID.
         let tid = this.get_pid().strict_add(index);
 
-        Ok(Scalar::from_u32(tid))
+        interp_ok(Scalar::from_u32(tid))
     }
 }

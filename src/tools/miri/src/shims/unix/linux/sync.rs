@@ -78,7 +78,7 @@ pub fn futex<'tcx>(
                 let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;
                 this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
-                return Ok(());
+                return interp_ok(());
             }
 
             let timeout = this.deref_pointer_as(&args[3], this.libc_ty_layout("timespec"))?;
@@ -91,7 +91,7 @@ pub fn futex<'tcx>(
                         let einval = this.eval_libc("EINVAL");
                         this.set_last_error(einval)?;
                         this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
-                        return Ok(());
+                        return interp_ok(());
                     }
                 };
                 let timeout_clock = if op & futex_realtime == futex_realtime {
@@ -201,7 +201,7 @@ pub fn futex<'tcx>(
                 let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;
                 this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
-                return Ok(());
+                return interp_ok(());
             }
             // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
             // will see the latest value on addr which could be changed by our caller
@@ -221,5 +221,5 @@ pub fn futex<'tcx>(
         op => throw_unsup_format!("Miri does not support `futex` syscall with op={}", op),
     }
 
-    Ok(())
+    interp_ok(())
 }
