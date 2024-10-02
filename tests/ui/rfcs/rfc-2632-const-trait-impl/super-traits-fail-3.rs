@@ -20,7 +20,7 @@ trait Bar: ~const Foo {}
 const fn foo<T: ~const Bar>(x: &T) {
     //[yn,nn]~^ ERROR: `~const` can only be applied to `#[const_trait]`
     x.a();
-    //[yn]~^ ERROR: the trait bound
+    //[yn]~^ ERROR: the trait bound `T: ~const Foo` is not satisfied
 }
 
 fn main() {}

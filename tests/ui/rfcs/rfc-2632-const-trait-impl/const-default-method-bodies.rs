@@ -1,4 +1,6 @@
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait ConstDefaultFn: Sized {
@@ -22,7 +24,7 @@ impl const ConstDefaultFn for ConstImpl {
 
 const fn test() {
     NonConstImpl.a();
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait bound `NonConstImpl: ~const ConstDefaultFn` is not satisfied
     ConstImpl.a();
 }
 

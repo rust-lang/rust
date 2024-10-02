@@ -1951,19 +1951,18 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     fn pretty_print_bound_constness(
         &mut self,
-        trait_ref: ty::TraitRef<'tcx>,
+        constness: ty::BoundConstness,
     ) -> Result<(), PrintError> {
         define_scoped_cx!(self);
 
-        let Some(idx) = self.tcx().generics_of(trait_ref.def_id).host_effect_index else {
-            return Ok(());
-        };
-        let arg = trait_ref.args.const_at(idx);
-
-        if arg == self.tcx().consts.false_ {
-            p!("const ");
-        } else if arg != self.tcx().consts.true_ && !arg.has_infer() {
-            p!("~const ");
+        match constness {
+            ty::BoundConstness::NotConst => {}
+            ty::BoundConstness::Const => {
+                p!("const ");
+            }
+            ty::BoundConstness::ConstIfConst => {
+                p!("~const ");
+            }
         }
         Ok(())
     }
@@ -2948,12 +2947,28 @@ impl<'tcx> ty::TraitPredicate<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
+pub struct TraitPredPrintWithBoundConstness<'tcx>(ty::TraitPredicate<'tcx>, ty::BoundConstness);
+
+impl<'tcx> fmt::Debug for TraitPredPrintWithBoundConstness<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
 #[extension(pub trait PrintPolyTraitPredicateExt<'tcx>)]
 impl<'tcx> ty::PolyTraitPredicate<'tcx> {
     fn print_modifiers_and_trait_path(
         self,
     ) -> ty::Binder<'tcx, TraitPredPrintModifiersAndPath<'tcx>> {
         self.map_bound(TraitPredPrintModifiersAndPath)
+    }
+
+    fn print_with_bound_constness(
+        self,
+        constness: ty::BoundConstness,
+    ) -> ty::Binder<'tcx, TraitPredPrintWithBoundConstness<'tcx>> {
+        self.map_bound(|trait_pred| TraitPredPrintWithBoundConstness(trait_pred, constness))
     }
 }
 
@@ -3052,7 +3067,6 @@ define_print! {
 
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ");
-        p!(pretty_print_bound_constness(self.trait_ref));
         if let ty::PredicatePolarity::Negative = self.polarity {
             p!("!");
         }
@@ -3184,11 +3198,19 @@ define_print_and_forward_display! {
     }
 
     TraitPredPrintModifiersAndPath<'tcx> {
-        p!(pretty_print_bound_constness(self.0.trait_ref));
         if let ty::PredicatePolarity::Negative = self.0.polarity {
             p!("!")
         }
         p!(print(self.0.trait_ref.print_trait_sugared()));
+    }
+
+    TraitPredPrintWithBoundConstness<'tcx> {
+        p!(print(self.0.trait_ref.self_ty()), ": ");
+        p!(pretty_print_bound_constness(self.1));
+        if let ty::PredicatePolarity::Negative = self.0.polarity {
+            p!("!");
+        }
+        p!(print(self.0.trait_ref.print_trait_sugared()))
     }
 
     PrintClosureAsImpl<'tcx> {
