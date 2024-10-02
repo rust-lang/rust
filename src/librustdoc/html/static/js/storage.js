@@ -291,12 +291,12 @@ class RustdocToolbarElement extends HTMLElement {
         const rootPath = getVar("root-path");
         this.innerHTML = `
         <div id="settings-menu" tabindex="-1">
-            <a href="${rootPath}settings.html"><span class="label">Settings</span></a>
+            <a href="${rootPath}settings.html"><span class="label">S<u>e</u>ttings</span></a>
         </div>
         <div id="help-button" tabindex="-1">
-            <a href="${rootPath}help.html"><span class="label">Help</span></a>
+            <a href="${rootPath}help.html"><span class="label"><u>H</u>elp</span></a>
         </div>
-        <button id="toggle-all-docs"><span class="label">Summary</span></button>`;
+        <button id="toggle-all-docs"><span class="label">Summ<u>a</u>ry</span></button>`;
     }
 }
 window.customElements.define("rustdoc-toolbar", RustdocToolbarElement);
