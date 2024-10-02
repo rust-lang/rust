@@ -25,7 +25,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
         if old_address.addr().bytes() % this.machine.page_size != 0 || new_size == 0 {
             this.set_last_error(this.eval_libc("EINVAL"))?;
-            return Ok(this.eval_libc("MAP_FAILED"));
+            return interp_ok(this.eval_libc("MAP_FAILED"));
         }
 
         if flags & this.eval_libc_i32("MREMAP_FIXED") != 0 {
@@ -39,7 +39,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if flags & this.eval_libc_i32("MREMAP_MAYMOVE") == 0 {
             // We only support MREMAP_MAYMOVE, so not passing the flag is just a failure
             this.set_last_error(this.eval_libc("EINVAL"))?;
-            return Ok(this.eval_libc("MAP_FAILED"));
+            return interp_ok(this.eval_libc("MAP_FAILED"));
         }
 
         let align = this.machine.page_align();
@@ -60,6 +60,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .unwrap();
         }
 
-        Ok(Scalar::from_pointer(ptr, this))
+        interp_ok(Scalar::from_pointer(ptr, this))
     }
 }

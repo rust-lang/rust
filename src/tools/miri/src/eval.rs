@@ -259,7 +259,7 @@ impl<'tcx> MainThreadState<'tcx> {
                 throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
             }
         }
-        Ok(Poll::Pending)
+        interp_ok(Poll::Pending)
     }
 }
 
@@ -420,7 +420,7 @@ pub fn create_ecx<'tcx>(
         }
     }
 
-    Ok(ecx)
+    interp_ok(ecx)
 }
 
 /// Evaluates the entry function specified by `entry_id`.
@@ -436,7 +436,7 @@ pub fn eval_entry<'tcx>(
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 
-    let mut ecx = match create_ecx(tcx, entry_id, entry_type, &config) {
+    let mut ecx = match create_ecx(tcx, entry_id, entry_type, &config).report_err() {
         Ok(v) => v,
         Err(err) => {
             let (kind, backtrace) = err.into_parts();
@@ -453,7 +453,7 @@ pub fn eval_entry<'tcx>(
         panic::resume_unwind(panic_payload)
     });
     // `Ok` can never happen.
-    let Err(res) = res;
+    let Err(err) = res.report_err();
 
     // Machine cleanup. Only do this if all threads have terminated; threads that are still running
     // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).
@@ -466,7 +466,7 @@ pub fn eval_entry<'tcx>(
     }
 
     // Process the result.
-    let (return_code, leak_check) = report_error(&ecx, res)?;
+    let (return_code, leak_check) = report_error(&ecx, err)?;
     if leak_check && !ignore_leaks {
         // Check for thread leaks.
         if !ecx.have_all_terminated() {

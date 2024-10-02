@@ -206,7 +206,7 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )?
             .to_scalar_pair();
 
-        Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
+        interp_ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
             // We set the in-memory ID to `next_index`, now also create this object in the machine
             // state.
             let obj = create_obj(this)?;
@@ -247,7 +247,7 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let new_index = get_objs(this).push(obj);
         this.write_scalar(Scalar::from_u32(new_index.to_u32()), &id_place)?;
-        Ok(new_index)
+        interp_ok(new_index)
     }
 
     fn condvar_reacquire_mutex(
@@ -266,7 +266,7 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Don't forget to write the return value.
             this.write_scalar(retval, &dest)?;
         }
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -307,7 +307,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             |ecx| &mut ecx.machine.sync.mutexes,
             |ecx| initialize_data(ecx).map(|data| Mutex { data, ..Default::default() }),
         )?
-        .ok_or_else(|| err_ub_format!("mutex has invalid ID").into())
+        .ok_or_else(|| err_ub_format!("mutex has invalid ID")).into()
     }
 
     /// Retrieve the additional data stored for a mutex.
@@ -334,7 +334,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             |ecx| &mut ecx.machine.sync.rwlocks,
             |ecx| initialize_data(ecx).map(|data| RwLock { data, ..Default::default() }),
         )?
-        .ok_or_else(|| err_ub_format!("rwlock has invalid ID").into())
+        .ok_or_else(|| err_ub_format!("rwlock has invalid ID")).into()
     }
 
     /// Retrieve the additional data stored for a rwlock.
@@ -375,7 +375,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             |ecx| &mut ecx.machine.sync.condvars,
             |ecx| initialize_data(ecx).map(|data| Condvar { data, ..Default::default() }),
         )?
-        .ok_or_else(|| err_ub_format!("condvar has invalid ID").into())
+        .ok_or_else(|| err_ub_format!("condvar has invalid ID")).into()
     }
 
     /// Retrieve the additional data stored for a condvar.
@@ -428,11 +428,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn mutex_unlock(&mut self, id: MutexId) -> InterpResult<'tcx, Option<usize>> {
         let this = self.eval_context_mut();
         let mutex = &mut this.machine.sync.mutexes[id];
-        Ok(if let Some(current_owner) = mutex.owner {
+        interp_ok(if let Some(current_owner) = mutex.owner {
             // Mutex is locked.
             if current_owner != this.machine.threads.active_thread() {
                 // Only the owner can unlock the mutex.
-                return Ok(None);
+                return interp_ok(None);
             }
             let old_lock_count = mutex.lock_count;
             mutex.lock_count = old_lock_count.strict_sub(1);
@@ -484,7 +484,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.write_scalar(retval, &dest)?;
                     }
 
-                    Ok(())
+                    interp_ok(())
                 }
             ),
         );
@@ -546,7 +546,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     trace!("rwlock_reader_unlock: {:?} held one less time by {:?}", id, thread);
                 }
             }
-            Entry::Vacant(_) => return Ok(false), // we did not even own this lock
+            Entry::Vacant(_) => return interp_ok(false), // we did not even own this lock
         }
         if let Some(data_race) = &this.machine.data_race {
             // Add this to the shared-release clock of all concurrent readers.
@@ -565,7 +565,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.unblock_thread(writer, BlockReason::RwLock(id))?;
             }
         }
-        Ok(true)
+        interp_ok(true)
     }
 
     /// Put the reader in the queue waiting for the lock and block it.
@@ -593,7 +593,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @unblock = |this| {
                     this.rwlock_reader_lock(id);
                     this.write_scalar(retval, &dest)?;
-                    Ok(())
+                    interp_ok(())
                 }
             ),
         );
@@ -620,10 +620,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
         let rwlock = &mut this.machine.sync.rwlocks[id];
-        Ok(if let Some(current_writer) = rwlock.writer {
+        interp_ok(if let Some(current_writer) = rwlock.writer {
             if current_writer != thread {
                 // Only the owner can unlock the rwlock.
-                return Ok(false);
+                return interp_ok(false);
             }
             rwlock.writer = None;
             trace!("rwlock_writer_unlock: {:?} unlocked by {:?}", id, thread);
@@ -676,7 +676,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @unblock = |this| {
                     this.rwlock_writer_lock(id);
                     this.write_scalar(retval, &dest)?;
-                    Ok(())
+                    interp_ok(())
                 }
             ),
         );
@@ -749,7 +749,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             ),
         );
-        Ok(())
+        interp_ok(())
     }
 
     /// Wake up some thread (if there is any) sleeping on the conditional
@@ -764,10 +764,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             condvar.clock.clone_from(&*data_race.release_clock(&this.machine.threads));
         }
         let Some(waiter) = condvar.waiters.pop_front() else {
-            return Ok(false);
+            return interp_ok(false);
         };
         this.unblock_thread(waiter, BlockReason::Condvar(id))?;
-        Ok(true)
+        interp_ok(true)
     }
 
     /// Wait for the futex to be signaled, or a timeout.
@@ -808,7 +808,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     // Write the return value.
                     this.write_scalar(retval_succ, &dest)?;
-                    Ok(())
+                    interp_ok(())
                 }
                 @timeout = |this| {
                     // Remove the waiter from the futex.
@@ -818,7 +818,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Set errno and write return value.
                     this.set_last_error(errno_timeout)?;
                     this.write_scalar(retval_timeout, &dest)?;
-                    Ok(())
+                    interp_ok(())
                 }
             ),
         );
@@ -828,7 +828,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn futex_wake(&mut self, addr: u64, bitset: u32) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let Some(futex) = this.machine.sync.futexes.get_mut(&addr) else {
-            return Ok(false);
+            return interp_ok(false);
         };
         let data_race = &this.machine.data_race;
 
@@ -839,10 +839,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Wake up the first thread in the queue that matches any of the bits in the bitset.
         let Some(i) = futex.waiters.iter().position(|w| w.bitset & bitset != 0) else {
-            return Ok(false);
+            return interp_ok(false);
         };
         let waiter = futex.waiters.remove(i).unwrap();
         this.unblock_thread(waiter.thread, BlockReason::Futex { addr })?;
-        Ok(true)
+        interp_ok(true)
     }
 }

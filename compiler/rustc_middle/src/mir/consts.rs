@@ -148,7 +148,7 @@ impl<'tcx> ConstValue<'tcx> {
                         /* read_provenance */ true,
                     )
                     .ok()?;
-                let ptr = ptr.to_pointer(&tcx).ok()?;
+                let ptr = ptr.to_pointer(&tcx).discard_err()?;
                 let len = a
                     .read_scalar(
                         &tcx,
@@ -156,7 +156,7 @@ impl<'tcx> ConstValue<'tcx> {
                         /* read_provenance */ false,
                     )
                     .ok()?;
-                let len = len.to_target_usize(&tcx).ok()?;
+                let len = len.to_target_usize(&tcx).discard_err()?;
                 if len == 0 {
                     return Some(&[]);
                 }
