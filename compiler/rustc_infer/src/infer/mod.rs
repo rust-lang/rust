@@ -67,6 +67,13 @@ pub mod resolve;
 pub(crate) mod snapshot;
 mod type_variable;
 
+/// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
+/// around `Vec<PredicateObligation<'tcx>>`, but it has one important property:
+/// because `InferOk` is marked with `#[must_use]`, if you have a method
+/// `InferCtxt::f` that returns `InferResult<'tcx, ()>` and you call it with
+/// `infcx.f()?;` you'll get a warning about the obligations being discarded
+/// without use, which is probably unintentional and has been a source of bugs
+/// in the past.
 #[must_use]
 #[derive(Debug)]
 pub struct InferOk<'tcx, T> {
