@@ -1,4 +1,6 @@
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 struct S;
 
@@ -21,7 +23,6 @@ const fn equals_self<T: ~const Foo>(t: &T) -> bool {
 // it not using the impl.
 
 pub const EQ: bool = equals_self(&S);
-//~^ ERROR: the trait bound `Runtime: const Compat` is not satisfied
-// FIXME(effects) diagnostic
+//~^ ERROR: the trait bound `S: const Foo` is not satisfied
 
 fn main() {}

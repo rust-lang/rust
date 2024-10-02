@@ -755,3 +755,10 @@ impl fmt::Display for BoundConstness {
         }
     }
 }
+
+impl<I> Lift<I> for BoundConstness {
+    type Lifted = BoundConstness;
+    fn lift_to_interner(self, _: I) -> Option<Self::Lifted> {
+        Some(self)
+    }
+}

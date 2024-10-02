@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `FnOnce<()>::{synthetic#0}: const Compat` is not satisfied
+error[E0277]: the trait bound `fn() {foo}: const FnOnce()` is not satisfied
   --> $DIR/const-fns-are-early-bound.rs:31:17
    |
 LL |     is_const_fn(foo);
-   |     ----------- ^^^ the trait `const Compat` is not implemented for `FnOnce<()>::{synthetic#0}`
+   |     ----------- ^^^ the trait `FnOnce()` is not implemented for fn item `fn() {foo}`
    |     |
    |     required by a bound introduced by this call
    |
