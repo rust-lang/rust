@@ -358,7 +358,7 @@ fn find_item_ty_spans(
     match ty.kind {
         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
             if let Res::Def(kind, def_id) = path.res
-                && !matches!(kind, DefKind::TyAlias)
+                && matches!(kind, DefKind::Enum | DefKind::Struct | DefKind::Union)
             {
                 let check_params = def_id.as_local().map_or(true, |def_id| {
                     if def_id == needle {
