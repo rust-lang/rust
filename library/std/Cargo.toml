@@ -20,7 +20,7 @@ core = { path = "../core", public = true }
 compiler_builtins = { version = "0.1.130" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
-hashbrown = { version = "0.14", default-features = false, features = [
+hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
 ] }
 # FIXME(#127890): `object` depends on `memchr`, but `memchr` > v2.5 causes
