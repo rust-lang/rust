@@ -14,14 +14,16 @@ use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 
 /// Enforce that `a` is equal to or a subtype of `b`.
 pub struct TypeRelating<'combine, 'a, 'tcx> {
-    // Partially mutable.
+    // Immutable except for the `InferCtxt` and the
+    // resulting nested `goals`.
     fields: &'combine mut CombineFields<'a, 'tcx>,
 
-    // Immutable fields.
+    // Immutable field.
     structurally_relate_aliases: StructurallyRelateAliases,
+    // Mutable field.
     ambient_variance: ty::Variance,
 
-    /// The cache has only tracks the `ambient_variance` as its the
+    /// The cache only tracks the `ambient_variance` as it's the
     /// only field which is mutable and which meaningfully changes
     /// the result when relating types.
     ///

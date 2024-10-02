@@ -16,6 +16,8 @@ where
     I: Interner,
 {
     delegate: &'a D,
+    /// We're able to use a cache here as the folder does not have any
+    /// mutable state.
     cache: DelayedMap<I::Ty, I::Ty>,
 }
 

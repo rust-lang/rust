@@ -210,16 +210,17 @@ where
                 debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
                 ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32())
             }
-            _ if t.has_vars_bound_at_or_above(self.current_index) => {
-                if let Some(&ty) = self.cache.get(&(self.current_index, t)) {
-                    return ty;
+            _ => {
+                if !t.has_vars_bound_at_or_above(self.current_index) {
+                    t
+                } else if let Some(&t) = self.cache.get(&(self.current_index, t)) {
+                    t
+                } else {
+                    let res = t.super_fold_with(self);
+                    assert!(self.cache.insert((self.current_index, t), res));
+                    res
                 }
-
-                let res = t.super_fold_with(self);
-                assert!(self.cache.insert((self.current_index, t), res));
-                res
             }
-            _ => t,
         }
     }
 

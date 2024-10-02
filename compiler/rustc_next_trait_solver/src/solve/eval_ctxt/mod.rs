@@ -1057,16 +1057,17 @@ where
                 );
                 infer_ty
             }
-            _ if ty.has_aliases() => {
-                if let Some(&entry) = self.cache.get(&ty) {
+            _ => {
+                if !ty.has_aliases() {
+                    ty
+                } else if let Some(&entry) = self.cache.get(&ty) {
                     return entry;
+                } else {
+                    let res = ty.super_fold_with(self);
+                    assert!(self.cache.insert(ty, res).is_none());
+                    res
                 }
-
-                let res = ty.super_fold_with(self);
-                assert!(self.cache.insert(ty, res).is_none());
-                res
             }
-            _ => ty,
         }
     }
 

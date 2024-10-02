@@ -42,17 +42,19 @@ pub enum CanonicalizeMode {
 
 pub struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
     delegate: &'a D,
+
+    // Immutable field.
     canonicalize_mode: CanonicalizeMode,
 
+    // Mutable fields.
     variables: &'a mut Vec<I::GenericArg>,
-    variable_lookup_table: HashMap<I::GenericArg, usize>,
-
     primitive_var_infos: Vec<CanonicalVarInfo<I>>,
+    variable_lookup_table: HashMap<I::GenericArg, usize>,
     binder_index: ty::DebruijnIndex,
 
-    /// We only use the debruijn index during lookup as all other fields
-    /// should not be impacted by whether a type is folded once or multiple
-    /// times.
+    /// We only use the debruijn index during lookup. We don't need to
+    /// track the `variables` as each generic arg only results in a single
+    /// bound variable regardless of how many times it is encountered.
     cache: HashMap<(ty::DebruijnIndex, I::Ty), I::Ty>,
 }
 
