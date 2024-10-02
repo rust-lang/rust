@@ -66,29 +66,31 @@
 //! use std::thread;
 //! use std::sync::mpmc::channel;
 //!
-//! // Create a shared channel that can be sent along from many threads
-//! // where tx is the sending half (tx for transmission), and rx is the receiving
-//! // half (rx for receiving).
-//! let (tx, rx) = channel();
-//! for i in 0..10 {
-//!     let tx = tx.clone();
-//!     thread::spawn(move || {
-//!         tx.send(i).unwrap();
-//!     });
-//! }
+//! thread::scope(|s| {
+//!     // Create a shared channel that can be sent along from many threads
+//!     // where tx is the sending half (tx for transmission), and rx is the receiving
+//!     // half (rx for receiving).
+//!     let (tx, rx) = channel();
+//!     for i in 0..10 {
+//!         let tx = tx.clone();
+//!         s.spawn(move || {
+//!             tx.send(i).unwrap();
+//!         });
+//!     }
 //!
-//! for _ in 0..5 {
-//!     let rx1 = rx.clone();
-//!     let rx2 = rx.clone();
-//!     thread::spawn(move || {
-//!         let j = rx1.recv().unwrap();
-//!         assert!(0 <= j && j < 10);
-//!     });
-//!     thread::spawn(move || {
-//!         let j = rx2.recv().unwrap();
-//!         assert!(0 <= j && j < 10);
-//!     });
-//! }
+//!     for _ in 0..5 {
+//!         let rx1 = rx.clone();
+//!         let rx2 = rx.clone();
+//!         s.spawn(move || {
+//!             let j = rx1.recv().unwrap();
+//!             assert!(0 <= j && j < 10);
+//!         });
+//!         s.spawn(move || {
+//!             let j = rx2.recv().unwrap();
+//!             assert!(0 <= j && j < 10);
+//!         });
+//!     }
+//! })
 //! ```
 //!
 //! Propagating panics:
