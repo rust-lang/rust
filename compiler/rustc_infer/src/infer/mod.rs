@@ -892,28 +892,16 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Const::new_var(self.tcx, vid)
     }
 
-    pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid {
-        self.inner
-            .borrow_mut()
-            .const_unification_table()
-            .new_key(ConstVariableValue::Unknown { origin, universe: self.universe() })
-            .vid
-    }
-
-    fn next_int_var_id(&self) -> IntVid {
-        self.inner.borrow_mut().int_unification_table().new_key(ty::IntVarValue::Unknown)
-    }
-
     pub fn next_int_var(&self) -> Ty<'tcx> {
-        Ty::new_int_var(self.tcx, self.next_int_var_id())
-    }
-
-    fn next_float_var_id(&self) -> FloatVid {
-        self.inner.borrow_mut().float_unification_table().new_key(ty::FloatVarValue::Unknown)
+        let next_int_var_id =
+            self.inner.borrow_mut().int_unification_table().new_key(ty::IntVarValue::Unknown);
+        Ty::new_int_var(self.tcx, next_int_var_id)
     }
 
     pub fn next_float_var(&self) -> Ty<'tcx> {
-        Ty::new_float_var(self.tcx, self.next_float_var_id())
+        let next_float_var_id =
+            self.inner.borrow_mut().float_unification_table().new_key(ty::FloatVarValue::Unknown);
+        Ty::new_float_var(self.tcx, next_float_var_id)
     }
 
     /// Creates a fresh region variable with the next available index.
