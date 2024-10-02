@@ -13,6 +13,7 @@ use rustc_middle::ty::{
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
+use super::DefineOpaqueTypes;
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, Obligation};
@@ -21,8 +22,6 @@ mod table;
 
 pub(crate) type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
-
-use super::DefineOpaqueTypes;
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
