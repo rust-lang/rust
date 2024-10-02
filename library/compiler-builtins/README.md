@@ -89,8 +89,8 @@ to test against, located in a directory called `compiler-rt`. This can be
 obtained with the following:
 
 ```sh
-curl -L -o rustc-llvm-18.0.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/18.0-2024-02-13.tar.gz
-tar xzf rustc-llvm-18.0.tar.gz --strip-components 1 llvm-project-rustc-18.0-2024-02-13/compiler-rt
+curl -L -o rustc-llvm-19.1.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/19.1-2024-09-17.tar.gz
+tar xzf rustc-llvm-19.1.tar.gz --strip-components 1 llvm-project-rustc-19.1-2024-09-17/compiler-rt
 ```
 
 Local targets may also be tested with `./ci/run.sh [target]`.
