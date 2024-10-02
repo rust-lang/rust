@@ -285,7 +285,7 @@ where
             }
 
             None if dump_enabled(tcx, A::NAME, def_id) => {
-                create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
+                create_dump_file(tcx, "dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
             }
 
             _ => return (Ok(()), results),
