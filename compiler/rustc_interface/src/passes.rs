@@ -536,9 +536,9 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
         let write_deps_to_file = |file: &mut dyn Write| -> io::Result<()> {
             for path in out_filenames {
-                write!(
+                writeln!(
                     file,
-                    "{}: {}",
+                    "{}: {}\n",
                     path.display(),
                     files
                         .iter()
@@ -546,25 +546,6 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                         .intersperse(" ")
                         .collect::<String>()
                 )?;
-
-                // If caller requested this information, add special comments about source file checksums.
-                // These are not necessarily the same checksums as was used in the debug files.
-                if sess.opts.unstable_opts.checksum_hash_algorithm().is_some() {
-                    assert!(
-                        files.iter().all(|(_path, _file_len, hash_algo)| hash_algo.is_some()),
-                        "all files must have a checksum hash computed to output checksum hashes"
-                    );
-                    write!(file, " #")?;
-                    files
-                        .iter()
-                        .filter_map(|(_path, file_len, hash_algo)| {
-                            hash_algo.map(|hash_algo| (path, file_len, hash_algo))
-                        })
-                        .try_for_each(|(_path, file_len, checksum_hash)| {
-                            write!(file, " checksum:{checksum_hash} file_len:{file_len}")
-                        })?;
-                }
-                write!(file, "\n\n")?;
             }
 
             // Emit a fake target for each input file to the compilation. This
@@ -591,6 +572,18 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                         write!(file, "={v}")?;
                     }
                     writeln!(file)?;
+                }
+            }
+
+            // If caller requested this information, add special comments about source file checksums.
+            // These are not necessarily the same checksums as was used in the debug files.
+            if sess.opts.unstable_opts.checksum_hash_algorithm().is_some() {
+                for (path, file_len, checksum_hash) in
+                    files.iter().filter_map(|(path, file_len, hash_algo)| {
+                        hash_algo.map(|hash_algo| (path, file_len, hash_algo))
+                    })
+                {
+                    writeln!(file, "# checksum:{checksum_hash} file_len:{file_len} {path}")?;
                 }
             }
 
