@@ -54,7 +54,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let thread = this.active_thread_mut();
         thread.panic_payloads.push(payload);
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Handles the `try` intrinsic, the underlying implementation of `std::panicking::try`.
@@ -106,7 +106,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Some(CatchUnwindData { catch_fn, data, dest: dest.clone(), ret });
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn handle_stack_pop_unwind(
@@ -150,9 +150,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )?;
 
             // We pushed a new stack frame, the engine should not do any jumping now!
-            Ok(ReturnAction::NoJump)
+            interp_ok(ReturnAction::NoJump)
         } else {
-            Ok(ReturnAction::Normal)
+            interp_ok(ReturnAction::Normal)
         }
     }
 
@@ -254,6 +254,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 })?;
             }
         }
-        Ok(())
+        interp_ok(())
     }
 }

@@ -1053,6 +1053,10 @@ pub fn rustc_cargo(
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
 
+    // If the rustc output is piped to e.g. `head -n1` we want the process to be
+    // killed, rather than having an error bubble up and cause a panic.
+    cargo.rustflag("-Zon-broken-pipe=kill");
+
     if builder.config.llvm_enzyme {
         cargo.rustflag("-l").rustflag("Enzyme-19");
     }

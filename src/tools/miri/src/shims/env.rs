@@ -56,15 +56,15 @@ impl<'tcx> EnvVars<'tcx> {
         };
         ecx.machine.env_vars = env_vars;
 
-        Ok(())
+        interp_ok(())
     }
 
     pub(crate) fn cleanup(ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx> {
         let this = ecx.eval_context_mut();
         match this.machine.env_vars {
             EnvVars::Unix(_) => UnixEnvVars::cleanup(this),
-            EnvVars::Windows(_) => Ok(()), // no cleanup needed
-            EnvVars::Uninit => Ok(()),
+            EnvVars::Windows(_) => interp_ok(()), // no cleanup needed
+            EnvVars::Uninit => interp_ok(()),
         }
     }
 
@@ -104,7 +104,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn get_env_var(&mut self, name: &OsStr) -> InterpResult<'tcx, Option<OsString>> {
         let this = self.eval_context_ref();
         match &this.machine.env_vars {
-            EnvVars::Uninit => Ok(None),
+            EnvVars::Uninit => interp_ok(None),
             EnvVars::Unix(vars) => vars.get(this, name),
             EnvVars::Windows(vars) => vars.get(name),
         }

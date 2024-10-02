@@ -107,7 +107,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),
         };
 
-        Ok(())
+        interp_ok(())
     }
 
     fn resolve_frame_pointer(
@@ -135,7 +135,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let name = fn_instance.to_string();
         let filename = lo.file.name.prefer_remapped_unconditionaly().to_string();
 
-        Ok((fn_instance, lo, name, filename))
+        interp_ok((fn_instance, lo, name, filename))
     }
 
     fn handle_miri_resolve_frame(
@@ -213,7 +213,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.write_pointer(fn_ptr, &this.project_field(dest, 4)?)?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn handle_miri_resolve_frame_names(
@@ -237,6 +237,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_bytes_ptr(this.read_pointer(name_ptr)?, name.bytes())?;
         this.write_bytes_ptr(this.read_pointer(filename_ptr)?, filename.bytes())?;
 
-        Ok(())
+        interp_ok(())
     }
 }

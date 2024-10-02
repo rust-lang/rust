@@ -79,6 +79,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.join_thread(thread)?;
 
-        Ok(0)
+        interp_ok(0)
     }
 }
