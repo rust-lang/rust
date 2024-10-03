@@ -87,7 +87,7 @@ impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for MutArgVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

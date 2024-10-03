@@ -96,13 +96,13 @@ where
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     struct RangeBound<'a, T>(T, BoundKind, &'a SpannedRange<T>);
 
-    impl<'a, T: Copy + Ord> PartialOrd for RangeBound<'a, T> {
+    impl<T: Copy + Ord> PartialOrd for RangeBound<'_, T> {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             Some(self.cmp(other))
         }
     }
 
-    impl<'a, T: Copy + Ord> Ord for RangeBound<'a, T> {
+    impl<T: Copy + Ord> Ord for RangeBound<'_, T> {
         fn cmp(&self, RangeBound(other_value, other_kind, _): &Self) -> Ordering {
             let RangeBound(self_value, self_kind, _) = *self;
             (self_value, self_kind).cmp(&(*other_value, *other_kind))

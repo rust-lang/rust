@@ -65,7 +65,7 @@ impl<'a, 'b, 'tcx> PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'b, 'tcx> {
+impl<'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'_, '_, 'tcx> {
     fn visit_assign(&mut self, place: &mir::Place<'tcx>, rvalue: &mir::Rvalue<'_>, _location: mir::Location) {
         let lhs = place.local;
         match rvalue {
@@ -177,8 +177,8 @@ pub struct PossibleBorrowerMap<'b, 'tcx> {
     pub bitset: (BitSet<mir::Local>, BitSet<mir::Local>),
 }
 
-impl<'a, 'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
-    pub fn new(cx: &'a LateContext<'tcx>, mir: &'b mir::Body<'tcx>) -> Self {
+impl<'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
+    pub fn new(cx: &LateContext<'tcx>, mir: &'b mir::Body<'tcx>) -> Self {
         let possible_origin = {
             let mut vis = PossibleOriginVisitor::new(mir);
             vis.visit_body(mir);

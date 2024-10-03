@@ -1,5 +1,5 @@
 #![warn(clippy::float_equality_without_abs)]
-//@no-rustfix
+//@no-rustfix: suggestions cause type ambiguity
 
 // FIXME(f16_f128): add tests for these types when abs is available
 

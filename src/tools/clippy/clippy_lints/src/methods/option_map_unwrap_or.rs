@@ -130,7 +130,7 @@ struct UnwrapVisitor<'a, 'tcx> {
     identifiers: FxHashSet<HirId>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for UnwrapVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn visit_path(&mut self, path: &Path<'tcx>, _: HirId) {
@@ -154,7 +154,7 @@ struct ReferenceVisitor<'a, 'tcx> {
     unwrap_or_span: Span,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ReferenceVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
     type Result = ControlFlow<()>;
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'_>) -> ControlFlow<()> {

@@ -235,7 +235,7 @@ impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
     fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
-impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
+impl<'tcx> UnwrappableVariablesVisitor<'_, 'tcx> {
     fn visit_branch(
         &mut self,
         if_expr: &'tcx Expr<'_>,
@@ -288,7 +288,7 @@ fn consume_option_as_ref<'tcx>(expr: &'tcx Expr<'tcx>) -> (&'tcx Expr<'tcx>, Opt
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

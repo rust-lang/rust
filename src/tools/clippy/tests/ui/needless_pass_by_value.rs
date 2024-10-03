@@ -5,7 +5,8 @@
     clippy::redundant_clone,
     clippy::redundant_pattern_matching,
     clippy::single_match,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::needless_lifetimes
 )]
 //@no-rustfix
 use std::borrow::Borrow;

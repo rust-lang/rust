@@ -193,7 +193,7 @@ fn bound_to_trait_def_id(bound: &GenericBound<'_>) -> Option<LocalDefId> {
     bound.trait_ref()?.trait_def_id()?.as_local()
 }
 
-impl<'cx, 'tcx> Visitor<'tcx> for TypeWalker<'cx, 'tcx> {
+impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
