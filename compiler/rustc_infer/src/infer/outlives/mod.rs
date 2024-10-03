@@ -1,11 +1,12 @@
 //! Various code related to computing outlives relations.
 
+use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::{NoSolution, OutlivesBound};
 use rustc_middle::ty;
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
-use super::region_constraints::RegionConstraintData;
+use super::region_constraints::{RegionConstraintData, UndoLog};
 use super::{InferCtxt, RegionResolutionError, SubregionOrigin};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
@@ -63,7 +64,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         };
 
-        let (var_infos, data) = {
+        let storage = {
             let mut inner = self.inner.borrow_mut();
             let inner = &mut *inner;
             assert!(
@@ -71,18 +72,14 @@ impl<'tcx> InferCtxt<'tcx> {
                 "region_obligations not empty: {:#?}",
                 inner.region_obligations
             );
-            inner
-                .region_constraint_storage
-                .take()
-                .expect("regions already resolved")
-                .with_log(&mut inner.undo_log)
-                .into_infos_and_data()
+            assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
+            inner.region_constraint_storage.take().expect("regions already resolved")
         };
 
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, var_infos, data);
+            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());

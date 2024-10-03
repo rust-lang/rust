@@ -18,7 +18,7 @@ pub use relate::combine::PredicateEmittingRelation;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -50,6 +50,7 @@ use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
+use crate::infer::region_constraints::UndoLog;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
 
 pub mod at;
@@ -1043,18 +1044,14 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Clone the list of variable regions. This is used only during NLL processing
     /// to put the set of region variables into the NLL region context.
     pub fn get_region_var_origins(&self) -> VarInfos {
-        let mut inner = self.inner.borrow_mut();
-        let (var_infos, data) = inner
-            .region_constraint_storage
-            // We clone instead of taking because borrowck still wants to use
-            // the inference context after calling this for diagnostics
-            // and the new trait solver.
-            .clone()
-            .expect("regions already resolved")
-            .with_log(&mut inner.undo_log)
-            .into_infos_and_data();
-        assert!(data.is_empty());
-        var_infos
+        let inner = self.inner.borrow();
+        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
+        let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
+        assert!(storage.data.is_empty());
+        // We clone instead of taking because borrowck still wants to use the
+        // inference context after calling this for diagnostics and the new
+        // trait solver.
+        storage.var_infos.clone()
     }
 
     #[instrument(level = "debug", skip(self), ret)]

@@ -27,9 +27,9 @@ pub use rustc_middle::infer::MemberConstraint;
 #[derive(Clone, Default)]
 pub struct RegionConstraintStorage<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
-    var_infos: IndexVec<RegionVid, RegionVariableInfo>,
+    pub(super) var_infos: IndexVec<RegionVid, RegionVariableInfo>,
 
-    data: RegionConstraintData<'tcx>,
+    pub(super) data: RegionConstraintData<'tcx>,
 
     /// For a given pair of regions (R1, R2), maps to a region R3 that
     /// is designated as their LUB (edges R1 <= R3 and R2 <= R3
@@ -352,14 +352,6 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     pub fn region_constraint_data(&self) -> &RegionConstraintData<'tcx> {
         &self.data
-    }
-
-    /// Once all the constraints have been gathered, extract out the final data.
-    ///
-    /// Not legal during a snapshot.
-    pub fn into_infos_and_data(self) -> (VarInfos, RegionConstraintData<'tcx>) {
-        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
-        (mem::take(&mut self.storage.var_infos), mem::take(&mut self.storage.data))
     }
 
     /// Takes (and clears) the current set of constraints. Note that
