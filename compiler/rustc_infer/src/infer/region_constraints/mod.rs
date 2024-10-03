@@ -372,7 +372,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         &self.storage.data
     }
 
-    pub(super) fn start_snapshot(&mut self) -> RegionSnapshot {
+    pub(super) fn start_snapshot(&self) -> RegionSnapshot {
         debug!("RegionConstraintCollector: start_snapshot");
         RegionSnapshot { any_unifications: self.storage.any_unifications }
     }
