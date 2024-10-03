@@ -1776,7 +1776,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::TyKind::OpaqueDef(
             hir::ItemId { owner_id: hir::OwnerId { def_id: opaque_ty_def_id } },
             generic_args,
-            in_trait,
         )
     }
 

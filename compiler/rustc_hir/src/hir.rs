@@ -2632,7 +2632,7 @@ impl<'hir> Ty<'hir> {
             }
             TyKind::Tup(tys) => tys.iter().any(Self::is_suggestable_infer_ty),
             TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => mut_ty.ty.is_suggestable_infer_ty(),
-            TyKind::OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
+            TyKind::OpaqueDef(_, generic_args) => are_suggestable_generic_args(generic_args),
             TyKind::Path(QPath::TypeRelative(ty, segment)) => {
                 ty.is_suggestable_infer_ty() || are_suggestable_generic_args(segment.args().args)
             }
@@ -2856,7 +2856,7 @@ pub enum TyKind<'hir> {
     /// possibly parameters) that are actually bound on the `impl Trait`.
     ///
     /// The last parameter specifies whether this opaque appears in a trait definition.
-    OpaqueDef(ItemId, &'hir [GenericArg<'hir>], bool),
+    OpaqueDef(ItemId, &'hir [GenericArg<'hir>]),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(
