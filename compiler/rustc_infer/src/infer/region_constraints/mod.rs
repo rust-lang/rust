@@ -61,21 +61,6 @@ pub struct RegionConstraintCollector<'a, 'tcx> {
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
-impl<'tcx> std::ops::Deref for RegionConstraintCollector<'_, 'tcx> {
-    type Target = RegionConstraintStorage<'tcx>;
-    #[inline]
-    fn deref(&self) -> &RegionConstraintStorage<'tcx> {
-        self.storage
-    }
-}
-
-impl<'tcx> std::ops::DerefMut for RegionConstraintCollector<'_, 'tcx> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut RegionConstraintStorage<'tcx> {
-        self.storage
-    }
-}
-
 pub type VarInfos = IndexVec<RegionVid, RegionVariableInfo>;
 
 /// The full set of region constraints gathered up by the collector.
@@ -324,11 +309,11 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
 
 impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     pub fn num_region_vars(&self) -> usize {
-        self.var_infos.len()
+        self.storage.var_infos.len()
     }
 
     pub fn region_constraint_data(&self) -> &RegionConstraintData<'tcx> {
-        &self.data
+        &self.storage.data
     }
 
     /// Takes (and clears) the current set of constraints. Note that
@@ -384,17 +369,17 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     pub fn data(&self) -> &RegionConstraintData<'tcx> {
-        &self.data
+        &self.storage.data
     }
 
     pub(super) fn start_snapshot(&mut self) -> RegionSnapshot {
         debug!("RegionConstraintCollector: start_snapshot");
-        RegionSnapshot { any_unifications: self.any_unifications }
+        RegionSnapshot { any_unifications: self.storage.any_unifications }
     }
 
     pub(super) fn rollback_to(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionConstraintCollector: rollback_to({:?})", snapshot);
-        self.any_unifications = snapshot.any_unifications;
+        self.storage.any_unifications = snapshot.any_unifications;
     }
 
     pub(super) fn new_region_var(
@@ -402,7 +387,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         universe: ty::UniverseIndex,
         origin: RegionVariableOrigin,
     ) -> RegionVid {
-        let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
+        let vid = self.storage.var_infos.push(RegionVariableInfo { origin, universe });
 
         let u_vid = self.unification_table_mut().new_key(RegionVariableValue::Unknown { universe });
         assert_eq!(vid, u_vid.vid);
@@ -413,7 +398,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     /// Returns the origin for the given variable.
     pub(super) fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
-        self.var_infos[vid].origin
+        self.storage.var_infos[vid].origin
     }
 
     fn add_constraint(&mut self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
@@ -436,8 +421,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             return;
         }
 
-        let index = self.data.verifys.len();
-        self.data.verifys.push(verify);
+        let index = self.storage.data.verifys.len();
+        self.storage.data.verifys.push(verify);
         self.undo_log.push(AddVerify(index));
     }
 
@@ -457,7 +442,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 (ty::ReVar(a), ty::ReVar(b)) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", a, b);
                     if self.unification_table_mut().unify_var_var(a, b).is_ok() {
-                        self.any_unifications = true;
+                        self.storage.any_unifications = true;
                     }
                 }
                 (ty::ReVar(vid), _) => {
@@ -467,7 +452,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                         .unify_var_value(vid, RegionVariableValue::Known { value: b })
                         .is_ok()
                     {
-                        self.any_unifications = true;
+                        self.storage.any_unifications = true;
                     };
                 }
                 (_, ty::ReVar(vid)) => {
@@ -477,7 +462,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                         .unify_var_value(vid, RegionVariableValue::Known { value: a })
                         .is_ok()
                     {
-                        self.any_unifications = true;
+                        self.storage.any_unifications = true;
                     };
                 }
                 (_, _) => {}
@@ -499,7 +484,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             return;
         }
 
-        self.data.member_constraints.push(MemberConstraint {
+        self.storage.data.member_constraints.push(MemberConstraint {
             key,
             definition_span,
             hidden_ty,
@@ -615,8 +600,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     fn combine_map(&mut self, t: CombineMapType) -> &mut CombineMap<'tcx> {
         match t {
-            Glb => &mut self.glbs,
-            Lub => &mut self.lubs,
+            Glb => &mut self.storage.glbs,
+            Lub => &mut self.storage.lubs,
         }
     }
 
@@ -669,11 +654,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         &self,
         value_count: usize,
     ) -> (Range<RegionVid>, Vec<RegionVariableOrigin>) {
-        let range = RegionVid::from(value_count)..RegionVid::from(self.unification_table.len());
+        let range =
+            RegionVid::from(value_count)..RegionVid::from(self.storage.unification_table.len());
         (
             range.clone(),
             (range.start.index()..range.end.index())
-                .map(|index| self.var_infos[ty::RegionVid::from(index)].origin)
+                .map(|index| self.storage.var_infos[ty::RegionVid::from(index)].origin)
                 .collect(),
         )
     }
