@@ -270,7 +270,7 @@ struct LintCollector<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for LintCollector<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn visit_path(&mut self, path: &Path<'_>, _: HirId) {

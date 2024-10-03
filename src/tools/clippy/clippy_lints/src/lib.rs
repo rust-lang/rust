@@ -609,7 +609,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |tcx| Box::new(await_holding_invalid::AwaitHolding::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(serde_api::SerdeApi));
     store.register_late_pass(move |_| Box::new(types::Types::new(conf)));
-    store.register_late_pass(|_| Box::new(booleans::NonminimalBool));
+    store.register_late_pass(move |_| Box::new(booleans::NonminimalBool::new(conf)));
     store.register_late_pass(|_| Box::new(enum_clike::UnportableVariant));
     store.register_late_pass(|_| Box::new(float_literal::FloatLiteral));
     store.register_late_pass(|_| Box::new(ptr::Ptr));

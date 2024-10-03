@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
                         && let ty = cx.tcx.type_of(item_def_id).instantiate_identity()
                         && match_type(cx, ty, &paths::SYMBOL)
                         && let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id)
-                        && let Ok(value) = value.to_u32()
+                        && let Some(value) = value.to_u32().discard_err()
                     {
                         self.symbol_map.insert(value, item_def_id);
                     }

@@ -370,3 +370,23 @@ fn issue12907() -> String {
 }
 
 fn main() {}
+
+fn a(x: Option<u8>) -> Option<u8> {
+    match x {
+        Some(_) => None,
+        None => {
+            #[expect(clippy::needless_return, reason = "Use early return for errors.")]
+            return None;
+        },
+    }
+}
+
+fn b(x: Option<u8>) -> Option<u8> {
+    match x {
+        Some(_) => None,
+        None => {
+            #[expect(clippy::needless_return)]
+            return None;
+        },
+    }
+}

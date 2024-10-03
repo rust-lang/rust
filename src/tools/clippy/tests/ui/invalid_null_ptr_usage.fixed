@@ -24,11 +24,8 @@ fn main() {
         let _a: A = std::ptr::read_volatile(core::ptr::NonNull::dangling().as_ptr());
 
         let _a: A = std::ptr::replace(core::ptr::NonNull::dangling().as_ptr(), A);
-
-        let _slice: *const [usize] = std::ptr::slice_from_raw_parts(core::ptr::NonNull::dangling().as_ptr(), 0);
-        let _slice: *const [usize] = std::ptr::slice_from_raw_parts(core::ptr::NonNull::dangling().as_ptr(), 0);
-
-        let _slice: *const [usize] = std::ptr::slice_from_raw_parts_mut(core::ptr::NonNull::dangling().as_ptr(), 0);
+        let _slice: *const [usize] = std::ptr::slice_from_raw_parts(std::ptr::null_mut(), 0); // shouldn't lint
+        let _slice: *const [usize] = std::ptr::slice_from_raw_parts_mut(std::ptr::null_mut(), 0);
 
         std::ptr::swap::<A>(core::ptr::NonNull::dangling().as_ptr(), &mut A);
         std::ptr::swap::<A>(&mut A, core::ptr::NonNull::dangling().as_ptr());

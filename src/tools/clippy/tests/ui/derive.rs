@@ -1,4 +1,9 @@
-#![allow(clippy::non_canonical_clone_impl, clippy::non_canonical_partial_ord_impl, dead_code)]
+#![allow(
+    clippy::non_canonical_clone_impl,
+    clippy::non_canonical_partial_ord_impl,
+    clippy::needless_lifetimes,
+    dead_code
+)]
 #![warn(clippy::expl_impl_clone_on_copy)]
 
 

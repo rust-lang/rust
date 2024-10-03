@@ -135,7 +135,7 @@ impl NestingVisitor<'_, '_> {
     }
 }
 
-impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
+impl Visitor<'_> for NestingVisitor<'_, '_> {
     fn visit_block(&mut self, block: &Block) {
         if block.span.from_expansion() {
             return;

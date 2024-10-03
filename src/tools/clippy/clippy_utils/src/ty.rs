@@ -1319,7 +1319,7 @@ pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl 
 /// If you need this, you should wrap this call in `clippy_utils::ty::deref_chain().any(...)`.
 pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<&'a AssocItem> {
     if let Some(ty_did) = ty.ty_adt_def().map(AdtDef::did) {
-        cx.tcx.inherent_impls(ty_did).into_iter().find_map(|&did| {
+        cx.tcx.inherent_impls(ty_did).iter().find_map(|&did| {
             cx.tcx
                 .associated_items(did)
                 .filter_by_name_unhygienic(method_name)

@@ -37,5 +37,11 @@ error: this lifetime isn't used in the function definition
 LL |         pub fn something<'c>() -> Self {
    |                          ^^
 
-error: aborting due to 6 previous errors
+error: this lifetime isn't used in the impl
+  --> tests/ui/extra_unused_lifetimes.rs:119:10
+   |
+LL |     impl<'a, T: Source + ?Sized + 'a> Source for Box<T> {
+   |          ^^
+
+error: aborting due to 7 previous errors
 
