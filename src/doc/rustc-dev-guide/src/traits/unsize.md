@@ -16,7 +16,7 @@ pointers, and there are rules about when a type is allowed to implement
 # [`Unsize`](https://doc.rust-lang.org/std/marker/trait.Unsize.html)
 
 To contrast, the `Unsize` trait is concerned the actual types that are allowed
-to be unsized. 
+to be unsized.
 
 This is not intended to be implemented by users ever, since `Unsize` does not
 instruct the compiler (namely codegen) *how* to unsize a type, just whether it
@@ -27,7 +27,7 @@ which must understand how types are represented and unsized.
 
 Built-in implementations are provided for:
 * `T` -> `dyn Trait + 'a` when `T: Trait` (and `T: Sized + 'a`, and `Trait`
-  is object safe).
+  is dyn-compatible[^2]).
 * `[T; N]` -> `[T]`
 
 ## Structural implementations
@@ -82,4 +82,4 @@ Specifically, (3.) prevents a choice of projection bound to guide inference
 unnecessarily, though it may guide inference when it is unambiguous.
 
 [^1]: The principal is the one non-auto trait of a `dyn Trait`.
-
+[^2]: Formerly known as "object safe".
