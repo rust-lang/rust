@@ -60,7 +60,7 @@ struct PathbufPushSearcher<'tcx> {
     err_span: Span,
 }
 
-impl<'tcx> PathbufPushSearcher<'tcx> {
+impl PathbufPushSearcher<'_> {
     /// Try to generate a suggestion with `PathBuf::from`.
     /// Returns `None` if the suggestion would be invalid.
     fn gen_pathbuf_from(&self, cx: &LateContext<'_>) -> Option<String> {

@@ -118,7 +118,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
         eagerness: EagernessSuggestion,
     }
 
-    impl<'cx, 'tcx> Visitor<'tcx> for V<'cx, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             use EagernessSuggestion::{ForceNoChange, Lazy, NoChange};
             if self.eagerness == ForceNoChange {

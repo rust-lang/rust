@@ -1,5 +1,5 @@
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace_no_std.rs:24:13
+  --> tests/ui/mem_replace_no_std.rs:23:13
    |
 LL |     let _ = mem::replace(&mut an_option, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
@@ -8,13 +8,13 @@ LL |     let _ = mem::replace(&mut an_option, None);
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_option_with_none)]`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace_no_std.rs:26:13
+  --> tests/ui/mem_replace_no_std.rs:25:13
    |
 LL |     let _ = mem::replace(an_option, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `core::mem::take`
-  --> tests/ui/mem_replace_no_std.rs:31:13
+  --> tests/ui/mem_replace_no_std.rs:30:13
    |
 LL |     let _ = mem::replace(&mut refstr, "");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `core::mem::take(&mut refstr)`
@@ -23,25 +23,25 @@ LL |     let _ = mem::replace(&mut refstr, "");
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_default)]`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `core::mem::take`
-  --> tests/ui/mem_replace_no_std.rs:34:13
+  --> tests/ui/mem_replace_no_std.rs:33:13
    |
 LL |     let _ = mem::replace(&mut slice, &[]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `core::mem::take(&mut slice)`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace_no_std.rs:77:13
+  --> tests/ui/mem_replace_no_std.rs:76:13
    |
 LL |     let _ = mem::replace(&mut f.0, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `f.0.take()`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace_no_std.rs:78:13
+  --> tests/ui/mem_replace_no_std.rs:77:13
    |
 LL |     let _ = mem::replace(&mut *f, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `(*f).take()`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace_no_std.rs:79:13
+  --> tests/ui/mem_replace_no_std.rs:78:13
    |
 LL |     let _ = mem::replace(&mut b.opt, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `b.opt.take()`

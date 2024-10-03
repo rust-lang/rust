@@ -60,7 +60,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
 
-impl<'tcx> LateLintPass<'tcx> for EmptyEnum {
+impl LateLintPass<'_> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Enum(..) = item.kind
             // Only suggest the `never_type` if the feature is enabled

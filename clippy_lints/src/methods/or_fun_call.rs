@@ -77,7 +77,7 @@ pub(super) fn check<'tcx>(
         let Some(suggested_method_def_id) = receiver_ty.ty_adt_def().and_then(|adt_def| {
             cx.tcx
                 .inherent_impls(adt_def.did())
-                .into_iter()
+                .iter()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
                 .find_map(|assoc| {
                     if assoc.fn_has_self_parameter

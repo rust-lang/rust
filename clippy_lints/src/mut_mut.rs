@@ -55,7 +55,7 @@ pub struct MutVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
 
-impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
+impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if in_external_macro(self.cx.sess(), expr.span) {
             return;

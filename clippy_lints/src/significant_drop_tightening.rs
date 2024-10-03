@@ -249,7 +249,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> StmtsChecker<'ap, 'lc, 'others, 'stmt, 'tcx
     }
 }
 
-impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'others, 'stmt, 'tcx> {
+impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
     fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) {
         self.ap.curr_block_hir_id = block.hir_id;
         self.ap.curr_block_span = block.span;
