@@ -2437,7 +2437,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                                     debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
 
-                                    self.eq_types(
+                                    self.sub_types(
                                         src_obj,
                                         dst_obj,
                                         location.to_locations(),

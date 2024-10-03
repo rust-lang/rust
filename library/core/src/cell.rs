@@ -514,7 +514,8 @@ impl<T> Cell<T> {
     /// assert_eq!(five, 5);
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value.into_inner()
     }
@@ -857,7 +858,8 @@ impl<T> RefCell<T> {
     /// let five = c.into_inner();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     #[inline]
     pub const fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
@@ -1895,11 +1897,17 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// uniqueness guarantee for mutable references is unaffected. There is *no* legal way to obtain
 /// aliasing `&mut`, not even with `UnsafeCell<T>`.
 ///
+/// `UnsafeCell` does nothing to avoid data races; they are still undefined behavior. If multiple
+/// threads have access to the same `UnsafeCell`, they must follow the usual rules of the
+/// [concurrent memory model]: conflicting non-synchronized accesses must be done via the APIs in
+/// [`core::sync::atomic`].
+///
 /// The `UnsafeCell` API itself is technically very simple: [`.get()`] gives you a raw pointer
 /// `*mut T` to its contents. It is up to _you_ as the abstraction designer to use that raw pointer
 /// correctly.
 ///
 /// [`.get()`]: `UnsafeCell::get`
+/// [concurrent memory model]: ../sync/atomic/index.html#memory-model-for-atomic-accesses
 ///
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
 ///
@@ -1921,10 +1929,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///     However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
 /// live memory and the compiler is allowed to insert spurious reads if it can prove that this
 /// memory has not yet been deallocated.
-///
-/// - At all times, you must avoid data races. If multiple threads have access to
-/// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other
-/// accesses (or use atomics).
 ///
 /// To assist with proper design, the following scenarios are explicitly declared legal
 /// for single-threaded code:
@@ -2098,8 +2102,8 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    // When this is const stabilized, please remove `primitive_into_inner` below.
-    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value
     }
@@ -2244,47 +2248,6 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 // `self: UnsafeCellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> {}
-
-// Special cases of UnsafeCell::into_inner where T is a primitive. These are
-// used by Atomic*::into_inner.
-//
-// The real UnsafeCell::into_inner cannot be used yet in a stable const function.
-// That is blocked on a "precise drop analysis" unstable const feature.
-// https://github.com/rust-lang/rust/issues/73255
-macro_rules! unsafe_cell_primitive_into_inner {
-    ($($primitive:ident $atomic:literal)*) => {
-        $(
-            #[cfg(target_has_atomic_load_store = $atomic)]
-            impl UnsafeCell<$primitive> {
-                pub(crate) const fn primitive_into_inner(self) -> $primitive {
-                    self.value
-                }
-            }
-        )*
-    };
-}
-
-unsafe_cell_primitive_into_inner! {
-    i8 "8"
-    u8 "8"
-    i16 "16"
-    u16 "16"
-    i32 "32"
-    u32 "32"
-    i64 "64"
-    u64 "64"
-    i128 "128"
-    u128 "128"
-    isize "ptr"
-    usize "ptr"
-}
-
-#[cfg(target_has_atomic_load_store = "ptr")]
-impl<T> UnsafeCell<*mut T> {
-    pub(crate) const fn primitive_into_inner(self) -> *mut T {
-        self.value
-    }
-}
 
 /// [`UnsafeCell`], but [`Sync`].
 ///

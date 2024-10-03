@@ -3008,7 +3008,8 @@ pub(crate) mod dep_tracking {
     use rustc_span::edition::Edition;
     use rustc_target::spec::{
         CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
-        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,
+        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTriple,
+        TlsModel, WasmCAbi,
     };
 
     use super::{
@@ -3101,6 +3102,7 @@ pub(crate) mod dep_tracking {
         StackProtector,
         SwitchWithOptPath,
         SymbolManglingVersion,
+        SymbolVisibility,
         RemapPathScopeComponents,
         SourceFileHashAlgorithm,
         OutFileName,

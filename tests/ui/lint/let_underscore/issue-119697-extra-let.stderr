@@ -1,4 +1,4 @@
-error: non-binding let on a type that implements `Drop`
+error: non-binding let on a type that has a destructor
   --> $DIR/issue-119697-extra-let.rs:15:5
    |
 LL |     _ = field;
@@ -18,7 +18,7 @@ help: consider immediately dropping the value
 LL |     drop(field);
    |     ~~~~~     +
 
-error: non-binding let on a type that implements `Drop`
+error: non-binding let on a type that has a destructor
   --> $DIR/issue-119697-extra-let.rs:17:5
    |
 LL |     let _ = field;

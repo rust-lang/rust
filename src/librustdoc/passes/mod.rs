@@ -23,6 +23,9 @@ pub(crate) use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
 mod propagate_doc_cfg;
 pub(crate) use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
+mod propagate_stability;
+pub(crate) use self::propagate_stability::PROPAGATE_STABILITY;
+
 pub(crate) mod collect_intra_doc_links;
 pub(crate) use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
@@ -75,6 +78,7 @@ pub(crate) const PASSES: &[Pass] = &[
     STRIP_PRIVATE,
     STRIP_PRIV_IMPORTS,
     PROPAGATE_DOC_CFG,
+    PROPAGATE_STABILITY,
     COLLECT_INTRA_DOC_LINKS,
     COLLECT_TRAIT_IMPLS,
     CALCULATE_DOC_COVERAGE,
@@ -91,6 +95,7 @@ pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
     ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
     ConditionalPass::always(PROPAGATE_DOC_CFG),
+    ConditionalPass::always(PROPAGATE_STABILITY),
     ConditionalPass::always(RUN_LINTS),
 ];
 

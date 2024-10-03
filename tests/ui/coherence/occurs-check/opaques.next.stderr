@@ -8,10 +8,10 @@ LL | impl<T> Trait<T> for defining_scope::Alias<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
 error[E0282]: type annotations needed
-  --> $DIR/opaques.rs:13:20
+  --> $DIR/opaques.rs:13:23
    |
 LL |     pub fn cast<T>(x: Container<Alias<T>, T>) -> Container<T, T> {
-   |                    ^ cannot infer type
+   |                       ^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
 
 error: aborting due to 2 previous errors
 

@@ -103,13 +103,13 @@ impl<H, T> RawList<H, T> {
         let mem = arena.dropless.alloc_raw(layout) as *mut RawList<H, T>;
         unsafe {
             // Write the header
-            ptr::addr_of_mut!((*mem).skel.header).write(header);
+            (&raw mut (*mem).skel.header).write(header);
 
             // Write the length
-            ptr::addr_of_mut!((*mem).skel.len).write(slice.len());
+            (&raw mut (*mem).skel.len).write(slice.len());
 
             // Write the elements
-            ptr::addr_of_mut!((*mem).skel.data)
+            (&raw mut (*mem).skel.data)
                 .cast::<T>()
                 .copy_from_nonoverlapping(slice.as_ptr(), slice.len());
 
@@ -160,7 +160,7 @@ macro_rules! impl_list_empty {
 
                 // SAFETY: `EMPTY` is sufficiently aligned to be an empty list for all
                 // types with `align_of(T) <= align_of(MaxAlign)`, which we checked above.
-                unsafe { &*(std::ptr::addr_of!(EMPTY) as *const RawList<$header_ty, T>) }
+                unsafe { &*((&raw const EMPTY) as *const RawList<$header_ty, T>) }
             }
         }
     };
@@ -238,7 +238,7 @@ impl<H, T> Deref for RawList<H, T> {
 impl<H, T> AsRef<[T]> for RawList<H, T> {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
-        let data_ptr = ptr::addr_of!(self.skel.data).cast::<T>();
+        let data_ptr = (&raw const self.skel.data).cast::<T>();
         // SAFETY: `data_ptr` has the same provenance as `self` and can therefore
         // access the `self.skel.len` elements stored at `self.skel.data`.
         // Note that we specifically don't reborrow `&self.skel.data`, because that

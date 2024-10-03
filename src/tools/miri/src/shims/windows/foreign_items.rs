@@ -22,7 +22,7 @@ pub fn is_dyn_sym(name: &str) -> bool {
 #[cfg(windows)]
 fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
     // We are on Windows so we can simply let the host do this.
-    Ok(path::absolute(path))
+    interp_ok(path::absolute(path))
 }
 
 #[cfg(unix)]
@@ -33,7 +33,7 @@ fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
     // If it starts with `//` (these were backslashes but are already converted)
     // then this is a magic special path, we just leave it unchanged.
     if bytes.get(0).copied() == Some(b'/') && bytes.get(1).copied() == Some(b'/') {
-        return Ok(Ok(path.into()));
+        return interp_ok(Ok(path.into()));
     };
     // Special treatment for Windows' magic filenames: they are treated as being relative to `\\.\`.
     let magic_filenames = &[
@@ -43,7 +43,7 @@ fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
     if magic_filenames.iter().any(|m| m.as_bytes() == bytes) {
         let mut result: Vec<u8> = br"//./".into();
         result.extend(bytes);
-        return Ok(Ok(bytes_to_os_str(&result)?.into()));
+        return interp_ok(Ok(bytes_to_os_str(&result)?.into()));
     }
     // Otherwise we try to do something kind of close to what Windows does, but this is probably not
     // right in all cases. We iterate over the components between `/`, and remove trailing `.`,
@@ -71,7 +71,7 @@ fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
         }
     }
     // Let the host `absolute` function do working-dir handling
-    Ok(path::absolute(bytes_to_os_str(&result)?))
+    interp_ok(path::absolute(bytes_to_os_str(&result)?))
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -769,12 +769,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This function looks and behaves excatly like miri_start_unwind.
                 let [payload] = this.check_shim(abi, Abi::C { unwind: true }, link_name, args)?;
                 this.handle_miri_start_unwind(payload)?;
-                return Ok(EmulateItemResult::NeedsUnwind);
+                return interp_ok(EmulateItemResult::NeedsUnwind);
             }
 
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
 
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

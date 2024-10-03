@@ -151,6 +151,8 @@ declare_features! (
     (accepted, const_raw_ptr_deref, "1.58.0", Some(51911)),
     /// Allows references to types with interior mutability within constants
     (accepted, const_refs_to_cell, "CURRENT_RUSTC_VERSION", Some(80384)),
+    /// Allows creating pointers and references to `static` items in constants.
+    (accepted, const_refs_to_static, "CURRENT_RUSTC_VERSION", Some(119618)),
     /// Allows implementing `Copy` for closures where possible (RFC 2132).
     (accepted, copy_closures, "1.26.0", Some(44490)),
     /// Allows `crate` in paths.
@@ -187,6 +189,8 @@ declare_features! (
     (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907)),
     /// Allows explicit generic arguments specification with `impl Trait` present.
     (accepted, explicit_generic_args_with_impl_trait, "1.63.0", Some(83701)),
+    /// Uses 2024 rules for matching `expr` fragments in macros. Also enables `expr_2021` fragment.
+    (accepted, expr_fragment_specifier_2024, "CURRENT_RUSTC_VERSION", Some(123742)),
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835)),
     /// Allows resolving absolute paths as paths from other crates.

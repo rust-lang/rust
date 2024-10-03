@@ -9,10 +9,11 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: to link to the field, remove the disambiguator
+help: to link to the field, prefix with `field@`
    |
-LL | /// [`Foo::bar`]
-   |       ~~~~~~~~
+LL - /// [`Foo::bar()`]
+LL + /// [`field@Foo::bar`]
+   |
 
 error: aborting due to 1 previous error
 

@@ -558,7 +558,7 @@ hir_analysis_unrecognized_intrinsic_function =
     .help = if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 hir_analysis_unused_associated_type_bounds =
-    unnecessary associated type bound for not object safe associated type
+    unnecessary associated type bound for dyn-incompatible associated type
     .note = this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`
     .suggestion = remove this bound
 

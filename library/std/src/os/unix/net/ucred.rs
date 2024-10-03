@@ -60,7 +60,7 @@ mod impl_linux {
                 socket.as_raw_fd(),
                 SOL_SOCKET,
                 SO_PEERCRED,
-                core::ptr::addr_of_mut!(ucred) as *mut c_void,
+                (&raw mut ucred) as *mut c_void,
                 &mut ucred_size,
             );
 
@@ -121,7 +121,7 @@ mod impl_apple {
                 socket.as_raw_fd(),
                 SOL_LOCAL,
                 LOCAL_PEERPID,
-                core::ptr::addr_of_mut!(pid) as *mut c_void,
+                (&raw mut pid) as *mut c_void,
                 &mut pid_size,
             );
 

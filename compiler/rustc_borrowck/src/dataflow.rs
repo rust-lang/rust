@@ -1,5 +1,3 @@
-use std::fmt;
-
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
 use rustc_index::bit_set::BitSet;
@@ -425,10 +423,6 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location }
     }
 
-    pub fn location(&self, idx: BorrowIndex) -> &Location {
-        &self.borrow_set[idx].reserve_location
-    }
-
     /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
     /// That means they went out of a nonlexical scope
     fn kill_loans_out_of_scope_at_location(
@@ -615,8 +609,4 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 }
 
-impl DebugWithContext<Borrows<'_, '_>> for BorrowIndex {
-    fn fmt_with(&self, ctxt: &Borrows<'_, '_>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", ctxt.location(*self))
-    }
-}
+impl<C> DebugWithContext<C> for BorrowIndex {}

@@ -61,29 +61,6 @@ error: could not evaluate constant pattern
 LL |         U8_MUT3 => true,
    |         ^^^^^^^
 
-warning: skipping const checks
-   |
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:14:15
-   |
-LL |     unsafe { &static_cross_crate::ZERO }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:19:15
-   |
-LL |     unsafe { &static_cross_crate::ZERO[0] }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:25:17
-   |
-LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:29:15
-   |
-LL |         match static_cross_crate::OPT_ZERO {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 8 previous errors; 1 warning emitted
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

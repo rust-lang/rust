@@ -514,7 +514,7 @@ lint_mixed_script_confusables =
     .includes_note = the usage includes {$includes}
     .note = please recheck to make sure their usages are indeed what you want
 
-lint_multiple_supertrait_upcastable = `{$ident}` is object-safe and has multiple supertraits
+lint_multiple_supertrait_upcastable = `{$ident}` is dyn-compatible and has multiple supertraits
 
 lint_named_argument_used_positionally = named argument `{$named_arg_name}` is not used by name
     .label_named_arg = this named argument is referred to by position in formatting string
@@ -531,7 +531,7 @@ lint_non_binding_let_multi_suggestion =
     consider immediately dropping the value
 
 lint_non_binding_let_on_drop_type =
-    non-binding let on a type that implements `Drop`
+    non-binding let on a type that has a destructor
 
 lint_non_binding_let_on_sync_lock = non-binding let on a synchronization lock
     .label = this lock is not assigned to a binding and is immediately dropped

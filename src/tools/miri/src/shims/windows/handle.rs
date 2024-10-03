@@ -139,10 +139,10 @@ impl Handle {
             signed_handle as u32
         } else {
             // if a handle doesn't fit in an i32, it isn't valid.
-            return Ok(None);
+            return interp_ok(None);
         };
 
-        Ok(Self::from_packed(handle))
+        interp_ok(Self::from_packed(handle))
     }
 }
 
@@ -167,6 +167,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ => this.invalid_handle("CloseHandle")?,
         }
 
-        Ok(())
+        interp_ok(())
     }
 }

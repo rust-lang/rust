@@ -1168,7 +1168,7 @@ pub struct ProcMacro {
     pub kind: MacroKind,
     /// Helper attributes defined by a macro to be used inside it.
     ///
-    /// Defined only for attribute & derive macros.
+    /// Defined only for derive macros.
     ///
     /// E.g. the [`Default`] derive macro defines a `#[default]` helper attribute so that one can
     /// do:

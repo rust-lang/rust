@@ -73,11 +73,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // have the output_type `Tuple([])`.
             ty::Tuple(t_list) if t_list.len() == 0 => {
                 unsafe { ffi::call::<()>(ptr, libffi_args.as_slice()) };
-                return Ok(ImmTy::uninit(dest.layout));
+                return interp_ok(ImmTy::uninit(dest.layout));
             }
             _ => throw_unsup_format!("unsupported return type for native call: {:?}", link_name),
         };
-        Ok(ImmTy::from_scalar(scalar, dest.layout))
+        interp_ok(ImmTy::from_scalar(scalar, dest.layout))
     }
 
     /// Get the pointer to the function of the specified name in the shared object file,
@@ -142,7 +142,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(ptr) => ptr,
             None => {
                 // Shared object file does not export this function -- try the shims next.
-                return Ok(false);
+                return interp_ok(false);
             }
         };
 
@@ -164,7 +164,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Call the function and store output, depending on return type in the function signature.
         let ret = this.call_native_with_args(link_name, dest, code_ptr, libffi_args)?;
         this.write_immediate(*ret, dest)?;
-        Ok(true)
+        interp_ok(true)
     }
 }
 
@@ -221,7 +221,7 @@ impl<'a> CArg {
 /// Extract the scalar value from the result of reading a scalar from the machine,
 /// and convert it to a `CArg`.
 fn imm_to_carg<'tcx>(v: ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'tcx, CArg> {
-    Ok(match v.layout.ty.kind() {
+    interp_ok(match v.layout.ty.kind() {
         // If the primitive provided can be converted to a type matching the type pattern
         // then create a `CArg` of this primitive value with the corresponding `CArg` constructor.
         // the ints

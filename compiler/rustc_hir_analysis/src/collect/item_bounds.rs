@@ -360,33 +360,10 @@ pub(super) fn explicit_item_bounds_with_filter(
         None => {}
     }
 
-    if tcx.is_effects_desugared_assoc_ty(def_id.to_def_id()) {
-        let mut predicates = Vec::new();
-
-        let parent = tcx.local_parent(def_id);
-
-        let preds = tcx.explicit_predicates_of(parent);
-
-        if let ty::AssocItemContainer::TraitContainer = tcx.associated_item(def_id).container {
-            // for traits, emit `type Effects: TyCompat<<(T1::Effects, ..) as Min>::Output>`
-            let tup = Ty::new(tcx, ty::Tuple(preds.effects_min_tys));
-            // FIXME(effects) span
-            let span = tcx.def_span(def_id);
-            let assoc = tcx.require_lang_item(hir::LangItem::EffectsIntersectionOutput, Some(span));
-            let proj = Ty::new_projection(tcx, assoc, [tup]);
-            let self_proj = Ty::new_projection(
-                tcx,
-                def_id.to_def_id(),
-                ty::GenericArgs::identity_for_item(tcx, def_id),
-            );
-            let trait_ = tcx.require_lang_item(hir::LangItem::EffectsTyCompat, Some(span));
-            let trait_ref = ty::TraitRef::new(tcx, trait_, [self_proj, proj]);
-            predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
-        }
-        return ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(predicates));
-    }
-
     let bounds = match tcx.hir_node_by_def_id(def_id) {
+        _ if tcx.is_effects_desugared_assoc_ty(def_id.to_def_id()) => {
+            associated_type_bounds(tcx, def_id, &[], tcx.def_span(def_id), filter)
+        }
         hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Type(bounds, _),
             span,

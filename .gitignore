@@ -25,6 +25,7 @@ Session.vim
 .favorites.json
 .settings/
 .vs/
+.dir-locals.el
 
 ## Tool
 .valgrindrc

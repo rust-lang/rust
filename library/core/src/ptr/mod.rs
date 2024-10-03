@@ -599,7 +599,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T: ?Sized + Thin>() -> *const T {
     from_raw_parts(without_provenance::<()>(0), ())
@@ -625,7 +624,6 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
     from_raw_parts_mut(without_provenance_mut::<()>(0), ())
@@ -949,7 +947,6 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data, len)
@@ -1730,7 +1727,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        copy_nonoverlapping(addr_of!(src) as *const u8, dst as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, mem::size_of::<T>());
         // We are calling the intrinsic directly to avoid function calls in the generated code.
         intrinsics::forget(src);
     }
@@ -2348,7 +2345,6 @@ impl<F: FnPtr> fmt::Debug for F {
 /// no difference whether the pointer is null or dangling.)
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
-#[allow_internal_unstable(raw_ref_op)]
 pub macro addr_of($place:expr) {
     &raw const $place
 }
@@ -2439,7 +2435,6 @@ pub macro addr_of($place:expr) {
 /// makes no difference whether the pointer is null or dangling.)
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
-#[allow_internal_unstable(raw_ref_op)]
 pub macro addr_of_mut($place:expr) {
     &raw mut $place
 }

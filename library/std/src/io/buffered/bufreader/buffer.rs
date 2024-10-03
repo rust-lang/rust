@@ -143,11 +143,13 @@ impl Buffer {
                 buf.set_init(self.initialized);
             }
 
-            reader.read_buf(buf.unfilled())?;
+            let result = reader.read_buf(buf.unfilled());
 
             self.pos = 0;
             self.filled = buf.len();
             self.initialized = buf.init_len();
+
+            result?;
         }
         Ok(self.buffer())
     }

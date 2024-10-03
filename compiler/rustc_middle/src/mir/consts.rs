@@ -148,7 +148,7 @@ impl<'tcx> ConstValue<'tcx> {
                         /* read_provenance */ true,
                     )
                     .ok()?;
-                let ptr = ptr.to_pointer(&tcx).ok()?;
+                let ptr = ptr.to_pointer(&tcx).discard_err()?;
                 let len = a
                     .read_scalar(
                         &tcx,
@@ -156,7 +156,7 @@ impl<'tcx> ConstValue<'tcx> {
                         /* read_provenance */ false,
                     )
                     .ok()?;
-                let len = len.to_target_usize(&tcx).ok()?;
+                let len = len.to_target_usize(&tcx).discard_err()?;
                 if len == 0 {
                     return Some(&[]);
                 }
@@ -221,7 +221,9 @@ pub enum Const<'tcx> {
 }
 
 impl<'tcx> Const<'tcx> {
-    pub fn identity_unevaluated(
+    /// Creates an unevaluated const from a `DefId` for a const item.
+    /// The binders of the const item still need to be instantiated.
+    pub fn from_unevaluated(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
@@ -326,18 +328,6 @@ impl<'tcx> Const<'tcx> {
                 tcx.const_eval_resolve(param_env, uneval, span)
             }
             Const::Val(val, _) => Ok(val),
-        }
-    }
-
-    /// Normalizes the constant to a value or an error if possible.
-    #[inline]
-    pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
-        match self.eval(tcx, param_env, DUMMY_SP) {
-            Ok(val) => Self::Val(val, self.ty()),
-            Err(ErrorHandled::Reported(guar, _span)) => {
-                Self::Ty(Ty::new_error(tcx, guar.into()), ty::Const::new_error(tcx, guar.into()))
-            }
-            Err(ErrorHandled::TooGeneric(_span)) => self,
         }
     }
 

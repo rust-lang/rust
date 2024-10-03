@@ -96,14 +96,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn last_error_place(&mut self) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_mut();
         if let Some(errno_place) = this.active_thread_ref().last_error.as_ref() {
-            Ok(errno_place.clone())
+            interp_ok(errno_place.clone())
         } else {
             // Allocate new place, set initial value to 0.
             let errno_layout = this.machine.layouts.u32;
             let errno_place = this.allocate(errno_layout, MiriMemoryKind::Machine.into())?;
             this.write_scalar(Scalar::from_u32(0), &errno_place)?;
             this.active_thread_mut().last_error = Some(errno_place.clone());
-            Ok(errno_place)
+            interp_ok(errno_place)
         }
     }
 
@@ -128,7 +128,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.set_last_error(err)?;
         this.write_int(-1, dest)?;
-        Ok(())
+        interp_ok(())
     }
 
     /// Sets the last OS error and return `-1` as a `i32`-typed Scalar
@@ -138,7 +138,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         this.set_last_error(err)?;
-        Ok(Scalar::from_i32(-1))
+        interp_ok(Scalar::from_i32(-1))
     }
 
     /// Gets the last error variable.
@@ -156,14 +156,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if target.families.iter().any(|f| f == "unix") {
             for &(name, kind) in UNIX_IO_ERROR_TABLE {
                 if err.kind() == kind {
-                    return Ok(this.eval_libc(name));
+                    return interp_ok(this.eval_libc(name));
                 }
             }
             throw_unsup_format!("unsupported io error: {err}")
         } else if target.families.iter().any(|f| f == "windows") {
             for &(name, kind) in WINDOWS_IO_ERROR_TABLE {
                 if err.kind() == kind {
-                    return Ok(this.eval_windows("c", name));
+                    return interp_ok(this.eval_windows("c", name));
                 }
             }
             throw_unsup_format!("unsupported io error: {err}");
@@ -187,18 +187,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let errnum = errnum.to_i32()?;
             for &(name, kind) in UNIX_IO_ERROR_TABLE {
                 if errnum == this.eval_libc_i32(name) {
-                    return Ok(Some(kind));
+                    return interp_ok(Some(kind));
                 }
             }
-            return Ok(None);
+            return interp_ok(None);
         } else if target.families.iter().any(|f| f == "windows") {
             let errnum = errnum.to_u32()?;
             for &(name, kind) in WINDOWS_IO_ERROR_TABLE {
                 if errnum == this.eval_windows("c", name).to_u32()? {
-                    return Ok(Some(kind));
+                    return interp_ok(Some(kind));
                 }
             }
-            return Ok(None);
+            return interp_ok(None);
         } else {
             throw_unsup_format!(
                 "converting errnum into io::Error is unsupported for OS {}",
@@ -218,10 +218,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         result: std::io::Result<T>,
     ) -> InterpResult<'tcx, T> {
         match result {
-            Ok(ok) => Ok(ok),
+            Ok(ok) => interp_ok(ok),
             Err(e) => {
                 self.eval_context_mut().set_last_error(e)?;
-                Ok((-1).into())
+                interp_ok((-1).into())
             }
         }
     }

@@ -1792,6 +1792,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
 
+        if builder.build.config.llvm_enzyme {
+            cmd.arg("--has-enzyme");
+        }
+
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }

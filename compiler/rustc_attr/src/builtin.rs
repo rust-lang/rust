@@ -80,6 +80,10 @@ impl Stability {
     pub fn is_stable(&self) -> bool {
         self.level.is_stable()
     }
+
+    pub fn stable_since(&self) -> Option<StableSince> {
+        self.level.stable_since()
+    }
 }
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
@@ -169,6 +173,12 @@ impl StabilityLevel {
     }
     pub fn is_stable(&self) -> bool {
         matches!(self, StabilityLevel::Stable { .. })
+    }
+    pub fn stable_since(&self) -> Option<StableSince> {
+        match *self {
+            StabilityLevel::Stable { since, .. } => Some(since),
+            StabilityLevel::Unstable { .. } => None,
+        }
     }
 }
 

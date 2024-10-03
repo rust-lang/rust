@@ -37,9 +37,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             lock,
             offset,
             |ecx| &mut ecx.machine.sync.init_onces,
-            |_| Ok(Default::default()),
+            |_| interp_ok(Default::default()),
         )?
-        .ok_or_else(|| err_ub_format!("init_once has invalid ID").into())
+        .ok_or_else(|| err_ub_format!("init_once has invalid ID"))
+        .into()
     }
 
     #[inline]
@@ -101,7 +102,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.unblock_thread(waiter, BlockReason::InitOnce(id))?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     #[inline]
@@ -126,7 +127,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.unblock_thread(waiter, BlockReason::InitOnce(id))?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Synchronize with the previous completion of an InitOnce.

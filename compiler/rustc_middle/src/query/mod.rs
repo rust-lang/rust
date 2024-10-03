@@ -70,8 +70,8 @@ use crate::traits::query::{
     MethodAutoderefStepsResult, NoSolution, NormalizationResult, OutlivesBound,
 };
 use crate::traits::{
-    CodegenObligationError, EvaluationResult, ImplSource, ObjectSafetyViolation, ObligationCause,
-    OverflowError, WellFormedLoc, specialization_graph,
+    CodegenObligationError, DynCompatibilityViolation, EvaluationResult, ImplSource,
+    ObligationCause, OverflowError, WellFormedLoc, specialization_graph,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
@@ -1344,11 +1344,11 @@ rustc_queries! {
         cache_on_disk_if { true }
         ensure_forwards_result_if_red
     }
-    query object_safety_violations(trait_id: DefId) -> &'tcx [ObjectSafetyViolation] {
-        desc { |tcx| "determining object safety of trait `{}`", tcx.def_path_str(trait_id) }
+    query dyn_compatibility_violations(trait_id: DefId) -> &'tcx [DynCompatibilityViolation] {
+        desc { |tcx| "determining dyn-compatibility of trait `{}`", tcx.def_path_str(trait_id) }
     }
-    query is_object_safe(trait_id: DefId) -> bool {
-        desc { |tcx| "checking if trait `{}` is object safe", tcx.def_path_str(trait_id) }
+    query is_dyn_compatible(trait_id: DefId) -> bool {
+        desc { |tcx| "checking if trait `{}` is dyn-compatible", tcx.def_path_str(trait_id) }
     }
 
     /// Gets the ParameterEnvironment for a given item; this environment

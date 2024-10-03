@@ -882,7 +882,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty = self.lowerer().lower_ty(hir_ty);
                     debug!(?ty, "return type (lowered)");
                     debug!(?expected, "expected type");
-                    let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
+                    let bound_vars =
+                        self.tcx.late_bound_vars(self.tcx.local_def_id_to_hir_id(fn_id));
                     let ty = Binder::bind_with_vars(ty, bound_vars);
                     let ty = self.normalize(hir_ty.span, ty);
                     let ty = self.tcx.instantiate_bound_regions_with_erased(ty);
