@@ -1,0 +1,15 @@
+error[E0801]: expected associated function, found function `test`
+  --> $DIR/E0801.rs:5:5
+   |
+LL |     test(..): Send,
+   |     ^^^^^^^^ not a associated function
+
+error: return type notation not allowed in this position yet
+  --> $DIR/E0801.rs:5:5
+   |
+LL |     test(..): Send,
+   |     ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0801`.

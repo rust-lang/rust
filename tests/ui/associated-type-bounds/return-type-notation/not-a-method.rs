@@ -5,7 +5,7 @@ fn function() {}
 fn not_a_method()
 where
     function(..): Send,
-    //~^ ERROR expected function, found function `function`
+    //~^ ERROR expected associated function, found function `function`
     //~| ERROR return type notation not allowed in this position yet
 {
 }
@@ -25,7 +25,7 @@ trait Tr {
 fn maybe_method_overlaps<T: Tr>()
 where
     method(..): Send,
-    //~^ ERROR cannot find function `method` in this scope
+    //~^ ERROR cannot find associated function `method` in this scope
     //~| ERROR return type notation not allowed in this position yet
 {
 }
