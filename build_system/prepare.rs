@@ -1,8 +1,8 @@
 use std::ffi::OsStr;
-use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{fs, io};
 
 use crate::path::{Dirs, RelPath};
 use crate::utils::{copy_dir_recursively, ensure_empty_dir, spawn_and_wait};
@@ -155,6 +155,13 @@ impl GitRepo {
 
 fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
+
+    match fs::remove_dir_all(download_dir) {
+        Ok(()) => {}
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+        Err(err) => panic!("Failed to remove {path}: {err}", path = download_dir.display()),
+    }
+
     // Ignore exit code as the repo may already have been checked out
     git_command(None, "clone").arg(repo).arg(download_dir).spawn().unwrap().wait().unwrap();
 
