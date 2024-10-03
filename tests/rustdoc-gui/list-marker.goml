@@ -1,0 +1,21 @@
+// This test ensures that the documentation list markers are correctly placed.
+// It also serves as a regression test for <https://github.com/rust-lang/rust/issues/130622>.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/long_list/index.html"
+show-text: true
+define-function: (
+    "check_pos",
+    [nb],
+    block {
+        compare-elements-position: (
+            ".top-doc .docblock ul li:nth-child(" + |nb| + ")",
+            ".top-doc .docblock ul li:nth-child(" + |nb| + ")::marker",
+            ["y"],
+        )
+    },
+)
+
+call-function: ("check_pos", {"nb": 1})
+call-function: ("check_pos", {"nb": 2})
+call-function: ("check_pos", {"nb": 3})
+call-function: ("check_pos", {"nb": 4})

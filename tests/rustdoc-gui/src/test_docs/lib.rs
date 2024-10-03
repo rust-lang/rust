@@ -628,3 +628,20 @@ pub mod short_docs {
     /// subt_vec_num(x: &[f64], y: f64)
     pub fn subt_vec_num() {}
 }
+
+pub mod long_list {
+    //! bla
+    //!
+    //! * `alloc`
+    //!
+    //!   Small bla bla bla bla bla bla bla bla.
+    //! * `macros`
+    //!
+    //!   Small bla bla bla bla bla bla bla bla.
+    //! * `std` (why not)
+    //!
+    //!   Small bla bla bla bla bla bla bla bla.
+    //! * `local` (yep)
+    //!
+    //!   Small bla bla bla bla bla bla bla bla.
+}
