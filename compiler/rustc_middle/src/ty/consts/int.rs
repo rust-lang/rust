@@ -398,6 +398,11 @@ impl ScalarInt {
     pub fn to_f128(self) -> Quad {
         self.to_float()
     }
+
+    #[inline]
+    pub fn bitwise_not(self) -> Self {
+        Self { data: self.size().truncate(!self.data), size: self.size }
+    }
 }
 
 macro_rules! from_x_for_scalar_int {
