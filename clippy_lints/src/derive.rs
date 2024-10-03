@@ -385,8 +385,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
         && cx
             .tcx
             .inherent_impls(def.did())
-            .into_iter()
-            .flatten()
+            .iter()
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
     {

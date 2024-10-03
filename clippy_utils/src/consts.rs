@@ -870,10 +870,10 @@ pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::Const<'tcx>) -> Option
                 let range = alloc_range(offset + size * idx, size);
                 let val = alloc.read_scalar(&tcx, range, /* read_provenance */ false).ok()?;
                 res.push(match flt {
-                    FloatTy::F16 => Constant::F16(f16::from_bits(val.to_u16().ok()?)),
-                    FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().ok()?)),
-                    FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().ok()?)),
-                    FloatTy::F128 => Constant::F128(f128::from_bits(val.to_u128().ok()?)),
+                    FloatTy::F16 => Constant::F16(f16::from_bits(val.to_u16().discard_err()?)),
+                    FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().discard_err()?)),
+                    FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().discard_err()?)),
+                    FloatTy::F128 => Constant::F128(f128::from_bits(val.to_u128().discard_err()?)),
                 });
             }
             Some(Constant::Vec(res))
@@ -903,7 +903,7 @@ fn mir_is_empty<'tcx>(tcx: TyCtxt<'tcx>, result: mir::Const<'tcx>) -> Option<boo
                         .read_scalar(&tcx, alloc_range(offset + ptr_size, ptr_size), false)
                         .ok()?
                         .to_target_usize(&tcx)
-                        .ok()?;
+                        .discard_err()?;
                     Some(len == 0)
                 } else {
                     None

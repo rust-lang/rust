@@ -460,8 +460,7 @@ fn check_for_is_empty(
     let is_empty = cx
         .tcx
         .inherent_impls(impl_ty)
-        .into_iter()
-        .flatten()
+        .iter()
         .flat_map(|&id| cx.tcx.associated_items(id).filter_by_name_unhygienic(is_empty))
         .find(|item| item.kind == AssocKind::Fn);
 
@@ -629,7 +628,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Checks the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext<'_>, id: DefId) -> bool {
         let is_empty = sym!(is_empty);
-        cx.tcx.inherent_impls(id).into_iter().flatten().any(|imp| {
+        cx.tcx.inherent_impls(id).iter().any(|imp| {
             cx.tcx
                 .associated_items(*imp)
                 .filter_by_name_unhygienic(is_empty)

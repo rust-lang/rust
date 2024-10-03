@@ -2,7 +2,6 @@
 
 from string import Template
 import argparse
-import json
 import os
 import sys
 

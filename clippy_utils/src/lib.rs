@@ -593,14 +593,11 @@ fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<It
         "f32" => SimplifiedType::Float(FloatTy::F32),
         "f64" => SimplifiedType::Float(FloatTy::F64),
         _ => {
-            return Result::<&[_], rustc_errors::ErrorGuaranteed>::Ok(&[])
-                .into_iter()
-                .flatten()
-                .copied();
+            return [].iter().copied();
         },
     };
 
-    tcx.incoherent_impls(ty).into_iter().flatten().copied()
+    tcx.incoherent_impls(ty).iter().copied()
 }
 
 fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Res> {
@@ -734,8 +731,7 @@ pub fn def_path_res_with_base(tcx: TyCtxt<'_>, mut base: Vec<Res>, mut path: &[&
                 // `impl S { ... }`
                 let inherent_impl_children = tcx
                     .inherent_impls(def_id)
-                    .into_iter()
-                    .flatten()
+                    .iter()
                     .flat_map(|&impl_def_id| item_children_by_name(tcx, impl_def_id, segment));
 
                 let direct_children = item_children_by_name(tcx, def_id, segment);
