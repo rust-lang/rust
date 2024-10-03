@@ -17,12 +17,15 @@
 //!
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
-use rustc_middle::ty::relate::RelateResult;
-use rustc_middle::ty::{self, Ty, TyVar};
-use tracing::instrument;
+use rustc_middle::traits::solve::Goal;
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::{self, Ty, TyCtxt, TyVar, TypeVisitableExt};
+use rustc_span::Span;
+use tracing::{debug, instrument};
 
-use super::combine::PredicateEmittingRelation;
-use crate::infer::{DefineOpaqueTypes, InferCtxt};
+use super::StructurallyRelateAliases;
+use super::combine::{CombineFields, PredicateEmittingRelation};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 use crate::traits::ObligationCause;
 
 /// Trait for returning data about a lattice, and for abstracting
@@ -30,7 +33,7 @@ use crate::traits::ObligationCause;
 ///
 /// GLB moves "down" the lattice (to smaller values); LUB moves
 /// "up" the lattice (to bigger values).
-pub(crate) trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<InferCtxt<'tcx>> {
+trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<InferCtxt<'tcx>> {
     fn infcx(&self) -> &'f InferCtxt<'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;
@@ -48,7 +51,7 @@ pub(crate) trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<InferCtxt<'tcx>
 
 /// Relates two types using a given lattice.
 #[instrument(skip(this), level = "debug")]
-pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
+fn super_lattice_tys<'a, 'tcx: 'a, L>(
     this: &mut L,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
@@ -111,5 +114,185 @@ where
         }
 
         _ => infcx.super_combine_tys(this, a, b),
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum LatticeOpKind {
+    Glb,
+    Lub,
+}
+
+impl LatticeOpKind {
+    fn invert(self) -> Self {
+        match self {
+            LatticeOpKind::Glb => LatticeOpKind::Lub,
+            LatticeOpKind::Lub => LatticeOpKind::Glb,
+        }
+    }
+}
+
+/// A greatest lower bound" (common subtype) or least upper bound (common supertype).
+pub(crate) struct LatticeOp<'combine, 'infcx, 'tcx> {
+    fields: &'combine mut CombineFields<'infcx, 'tcx>,
+    kind: LatticeOpKind,
+}
+
+impl<'combine, 'infcx, 'tcx> LatticeOp<'combine, 'infcx, 'tcx> {
+    pub(crate) fn new(
+        fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        kind: LatticeOpKind,
+    ) -> LatticeOp<'combine, 'infcx, 'tcx> {
+        LatticeOp { fields, kind }
+    }
+}
+
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.fields.tcx()
+    }
+
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
+        &mut self,
+        variance: ty::Variance,
+        _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
+        a: T,
+        b: T,
+    ) -> RelateResult<'tcx, T> {
+        match variance {
+            ty::Invariant => self.fields.equate(StructurallyRelateAliases::No).relate(a, b),
+            ty::Covariant => self.relate(a, b),
+            // FIXME(#41044) -- not correct, need test
+            ty::Bivariant => Ok(a),
+            ty::Contravariant => {
+                self.kind = self.kind.invert();
+                let res = self.relate(a, b);
+                self.kind = self.kind.invert();
+                res
+            }
+        }
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        super_lattice_tys(self, a, b)
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
+        let mut inner = self.fields.infcx.inner.borrow_mut();
+        let mut constraints = inner.unwrap_region_constraints();
+        Ok(match self.kind {
+            // GLB(&'static u8, &'a u8) == &RegionLUB('static, 'a) u8 == &'static u8
+            LatticeOpKind::Glb => constraints.lub_regions(self.cx(), origin, a, b),
+
+            // LUB(&'static u8, &'a u8) == &RegionGLB('static, 'a) u8 == &'a u8
+            LatticeOpKind::Lub => constraints.glb_regions(self.cx(), origin, a, b),
+        })
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn consts(
+        &mut self,
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        self.fields.infcx.super_combine_consts(self, a, b)
+    }
+
+    fn binders<T>(
+        &mut self,
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        // GLB/LUB of a binder and itself is just itself
+        if a == b {
+            return Ok(a);
+        }
+
+        debug!("binders(a={:?}, b={:?})", a, b);
+        if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
+            // When higher-ranked types are involved, computing the GLB/LUB is
+            // very challenging, switch to invariance. This is obviously
+            // overly conservative but works ok in practice.
+            self.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)?;
+            Ok(a)
+        } else {
+            Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
+        }
+    }
+}
+
+impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for LatticeOp<'combine, 'infcx, 'tcx> {
+    fn infcx(&self) -> &'infcx InferCtxt<'tcx> {
+        self.fields.infcx
+    }
+
+    fn cause(&self) -> &ObligationCause<'tcx> {
+        &self.fields.trace.cause
+    }
+
+    fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
+        let mut sub = self.fields.sub();
+        match self.kind {
+            LatticeOpKind::Glb => {
+                sub.relate(v, a)?;
+                sub.relate(v, b)?;
+            }
+            LatticeOpKind::Lub => {
+                sub.relate(a, v)?;
+                sub.relate(b, v)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn define_opaque_types(&self) -> DefineOpaqueTypes {
+        self.fields.define_opaque_types
+    }
+}
+
+impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        self.fields.trace.span()
+    }
+
+    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
+        StructurallyRelateAliases::No
+    }
+
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.fields.param_env
+    }
+
+    fn register_predicates(
+        &mut self,
+        obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
+    ) {
+        self.fields.register_predicates(obligations);
+    }
+
+    fn register_goals(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
+        self.fields.register_obligations(obligations);
+    }
+
+    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
+            a.into(),
+            b.into(),
+            // FIXME(deferred_projection_equality): This isn't right, I think?
+            ty::AliasRelationDirection::Equate,
+        ))]);
     }
 }
