@@ -210,7 +210,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(&hir::OpaqueTy {
                 origin:
-                    hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
+                    hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id }
+                    | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id },
                 in_trait,
                 ..
             }) => {

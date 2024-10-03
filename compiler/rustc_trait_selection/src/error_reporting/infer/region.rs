@@ -1271,7 +1271,7 @@ fn suggest_precise_capturing<'tcx>(
     let hir::OpaqueTy { bounds, origin, .. } =
         tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
 
-    let hir::OpaqueTyOrigin::FnReturn(fn_def_id) = *origin else {
+    let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id } = *origin else {
         return;
     };
 

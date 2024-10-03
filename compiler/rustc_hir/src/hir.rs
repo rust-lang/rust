@@ -2806,9 +2806,15 @@ pub struct PreciseCapturingNonLifetimeArg {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
     /// `-> impl Trait`
-    FnReturn(LocalDefId),
+    FnReturn {
+        /// The defining function.
+        parent: LocalDefId,
+    },
     /// `async fn`
-    AsyncFn(LocalDefId),
+    AsyncFn {
+        /// The defining function.
+        parent: LocalDefId,
+    },
     /// type aliases: `type Foo = impl Trait;`
     TyAlias {
         /// The type alias or associated type parent of the TAIT/ATPIT

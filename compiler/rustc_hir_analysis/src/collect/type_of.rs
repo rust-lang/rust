@@ -618,7 +618,8 @@ pub(super) fn type_of_opaque(
                 // Opaque types desugared from `impl Trait`.
                 ItemKind::OpaqueTy(&OpaqueTy {
                     origin:
-                        hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner),
+                        hir::OpaqueTyOrigin::FnReturn { parent: owner }
+                        | hir::OpaqueTyOrigin::AsyncFn { parent: owner },
                     in_trait,
                     ..
                 }) => {

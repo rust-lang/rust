@@ -1555,7 +1555,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         .map(|(ident, id, _)| Lifetime { id, ident })
                         .collect()
                 }
-                hir::OpaqueTyOrigin::FnReturn(..) => {
+                hir::OpaqueTyOrigin::FnReturn { .. } => {
                     if matches!(
                         fn_kind.expect("expected RPITs to be lowered with a FnKind"),
                         FnDeclKind::Impl | FnDeclKind::Trait
@@ -1576,7 +1576,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
                     }
                 }
-                hir::OpaqueTyOrigin::AsyncFn(..) => {
+                hir::OpaqueTyOrigin::AsyncFn { .. } => {
                     unreachable!("should be using `lower_async_fn_ret_ty`")
                 }
             }
@@ -1867,7 +1867,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         | FnDeclKind::Inherent
                         | FnDeclKind::Trait
                         | FnDeclKind::Impl => ImplTraitContext::OpaqueTy {
-                            origin: hir::OpaqueTyOrigin::FnReturn(self.local_def_id(fn_node_id)),
+                            origin: hir::OpaqueTyOrigin::FnReturn {
+                                parent: self.local_def_id(fn_node_id),
+                            },
                             fn_kind: Some(kind),
                         },
                         FnDeclKind::ExternFn => {
@@ -1952,7 +1954,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_ref = self.lower_opaque_inner(
             opaque_ty_node_id,
-            hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
+            hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id },
             matches!(fn_kind, FnDeclKind::Trait),
             captured_lifetimes,
             span,
@@ -1963,7 +1965,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     coro,
                     opaque_ty_span,
                     ImplTraitContext::OpaqueTy {
-                        origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                        origin: hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id },
                         fn_kind: Some(fn_kind),
                     },
                 );

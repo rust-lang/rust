@@ -388,8 +388,8 @@ pub(super) fn explicit_item_bounds_with_filter(
             span,
             ..
         }) => {
-            let (hir::OpaqueTyOrigin::FnReturn(fn_def_id)
-            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) = *origin
+            let (hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id }
+            | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id }) = *origin
             else {
                 span_bug!(*span, "RPITIT cannot be a TAIT, but got origin {origin:?}");
             };

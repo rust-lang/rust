@@ -313,7 +313,7 @@ fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&
             kind: ItemKind::OpaqueTy(opaque),
             ..
         } = item
-        && let OpaqueTyOrigin::AsyncFn(_) = opaque.origin
+        && let OpaqueTyOrigin::AsyncFn { .. } = opaque.origin
         && let [GenericBound::Trait(trait_ref, _)] = &opaque.bounds
         && let Some(segment) = trait_ref.trait_ref.path.segments.last()
         && let Some(generic_args) = segment.args
