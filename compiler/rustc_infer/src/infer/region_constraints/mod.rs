@@ -320,29 +320,6 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
     ) -> RegionConstraintCollector<'a, 'tcx> {
         RegionConstraintCollector { storage: self, undo_log }
     }
-
-    fn rollback_undo_entry(&mut self, undo_entry: UndoLog<'tcx>) {
-        match undo_entry {
-            AddVar(vid) => {
-                self.var_infos.pop().unwrap();
-                assert_eq!(self.var_infos.len(), vid.index());
-            }
-            AddConstraint(index) => {
-                self.data.constraints.pop().unwrap();
-                assert_eq!(self.data.constraints.len(), index);
-            }
-            AddVerify(index) => {
-                self.data.verifys.pop();
-                assert_eq!(self.data.verifys.len(), index);
-            }
-            AddCombination(Glb, ref regions) => {
-                self.glbs.remove(regions);
-            }
-            AddCombination(Lub, ref regions) => {
-                self.lubs.remove(regions);
-            }
-        }
-    }
 }
 
 impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
@@ -793,6 +770,25 @@ impl<'tcx> RegionConstraintData<'tcx> {
 
 impl<'tcx> Rollback<UndoLog<'tcx>> for RegionConstraintStorage<'tcx> {
     fn reverse(&mut self, undo: UndoLog<'tcx>) {
-        self.rollback_undo_entry(undo)
+        match undo {
+            AddVar(vid) => {
+                self.var_infos.pop().unwrap();
+                assert_eq!(self.var_infos.len(), vid.index());
+            }
+            AddConstraint(index) => {
+                self.data.constraints.pop().unwrap();
+                assert_eq!(self.data.constraints.len(), index);
+            }
+            AddVerify(index) => {
+                self.data.verifys.pop();
+                assert_eq!(self.data.verifys.len(), index);
+            }
+            AddCombination(Glb, ref regions) => {
+                self.glbs.remove(regions);
+            }
+            AddCombination(Lub, ref regions) => {
+                self.lubs.remove(regions);
+            }
+        }
     }
 }
