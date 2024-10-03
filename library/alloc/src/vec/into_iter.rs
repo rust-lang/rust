@@ -21,11 +21,11 @@ use crate::raw_vec::RawVec;
 macro non_null {
     (mut $place:expr, $t:ident) => {{
         #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
-        unsafe { &mut *(ptr::addr_of_mut!($place) as *mut NonNull<$t>) }
+        unsafe { &mut *((&raw mut $place) as *mut NonNull<$t>) }
     }},
     ($place:expr, $t:ident) => {{
         #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
-        unsafe { *(ptr::addr_of!($place) as *const NonNull<$t>) }
+        unsafe { *((&raw const $place) as *const NonNull<$t>) }
     }},
 }
 

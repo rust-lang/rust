@@ -103,7 +103,7 @@ impl LocalSourcesCollector<'_, '_> {
     }
 }
 
-impl DocVisitor for LocalSourcesCollector<'_, '_> {
+impl DocVisitor<'_> for LocalSourcesCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
         self.add_local_source(item);
 
@@ -122,7 +122,7 @@ struct SourceCollector<'a, 'tcx> {
     crate_name: &'a str,
 }
 
-impl DocVisitor for SourceCollector<'_, '_> {
+impl DocVisitor<'_> for SourceCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
         if !self.cx.include_sources {
             return;

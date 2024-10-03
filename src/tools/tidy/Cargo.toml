@@ -6,7 +6,7 @@ autobins = false
 
 [dependencies]
 build_helper = { path = "../build_helper" }
-cargo_metadata = "0.15"
+cargo_metadata = "0.18"
 regex = "1"
 miropt-test-tools = { path = "../miropt-test-tools" }
 walkdir = "2"

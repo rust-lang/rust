@@ -117,6 +117,7 @@ fn synthesize_auto_trait_impl<'tcx>(
         name: None,
         inner: Box::new(clean::ItemInner {
             attrs: Default::default(),
+            stability: None,
             kind: clean::ImplItem(Box::new(clean::Impl {
                 safety: hir::Safety::Safe,
                 generics,

@@ -80,6 +80,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without SafeStack support",
         },
         Need {
+            name: "needs-enzyme",
+            condition: config.has_enzyme,
+            ignore_reason: "ignored when LLVM Enzyme is disabled",
+        },
+        Need {
             name: "needs-run-enabled",
             condition: config.run_enabled(),
             ignore_reason: "ignored when running the resulting test binaries is disabled",

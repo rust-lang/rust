@@ -46,8 +46,8 @@ pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
 
-    /// Trait must be object-safe.
-    ObjectSafe(I::DefId),
+    /// Trait must be dyn-compatible.
+    DynCompatible(I::DefId),
 
     /// `T1 <: T2`
     ///
@@ -74,13 +74,13 @@ pub enum PredicateKind<I: Interner> {
     Ambiguous,
 
     /// This should only be used inside of the new solver for `AliasRelate` and expects
-    /// the `term` to be an unconstrained inference variable.
+    /// the `term` to be always be an unconstrained inference variable. It is used to
+    /// normalize `alias` as much as possible. In case the alias is rigid - i.e. it cannot
+    /// be normalized in the current environment - this constrains `term` to be equal to
+    /// the alias itself.
     ///
-    /// The alias normalizes to `term`. Unlike `Projection`, this always fails if the
-    /// alias cannot be normalized in the current context. For the rigid alias
-    /// `T as Trait>::Assoc`, `Projection(<T as Trait>::Assoc, ?x)` constrains `?x`
-    /// to `<T as Trait>::Assoc` while `NormalizesTo(<T as Trait>::Assoc, ?x)`
-    /// results in `NoSolution`.
+    /// It is likely more useful to think of this as a function `normalizes_to(alias)`,
+    /// whose return value is written into `term`.
     NormalizesTo(ty::NormalizesTo<I>),
 
     /// Separate from `ClauseKind::Projection` which is used for normalization in new solver.
@@ -128,8 +128,8 @@ impl<I: Interner> fmt::Debug for PredicateKind<I> {
             PredicateKind::Clause(a) => a.fmt(f),
             PredicateKind::Subtype(pair) => pair.fmt(f),
             PredicateKind::Coerce(pair) => pair.fmt(f),
-            PredicateKind::ObjectSafe(trait_def_id) => {
-                write!(f, "ObjectSafe({trait_def_id:?})")
+            PredicateKind::DynCompatible(trait_def_id) => {
+                write!(f, "DynCompatible({trait_def_id:?})")
             }
             PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             PredicateKind::Ambiguous => write!(f, "Ambiguous"),

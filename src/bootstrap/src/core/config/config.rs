@@ -343,6 +343,15 @@ pub struct Config {
     pub out: PathBuf,
     pub rust_info: channel::GitInfo,
 
+    pub cargo_info: channel::GitInfo,
+    pub rust_analyzer_info: channel::GitInfo,
+    pub clippy_info: channel::GitInfo,
+    pub miri_info: channel::GitInfo,
+    pub rustfmt_info: channel::GitInfo,
+    pub enzyme_info: channel::GitInfo,
+    pub in_tree_llvm_info: channel::GitInfo,
+    pub in_tree_gcc_info: channel::GitInfo,
+
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
@@ -1796,6 +1805,19 @@ impl Config {
         config.omit_git_hash = omit_git_hash.unwrap_or(default);
         config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
 
+        config.cargo_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/cargo"));
+        config.rust_analyzer_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
+        config.clippy_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/clippy"));
+        config.miri_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/miri"));
+        config.rustfmt_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
+        config.enzyme_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
+        config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
+        config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
+
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
         // This is because if the compiler uses a different channel than the one specified in config.toml,
         // tests may fail due to using a different channel than the one used by the compiler during tests.
@@ -2428,7 +2450,7 @@ impl Config {
 
     /// Runs a function if verbosity is greater than 0
     pub fn verbose(&self, f: impl Fn()) {
-        if self.verbose > 0 {
+        if self.is_verbose() {
             f()
         }
     }
@@ -2713,7 +2735,7 @@ impl Config {
         .success();
         if has_changes {
             if if_unchanged {
-                if self.verbose > 0 {
+                if self.is_verbose() {
                     println!(
                         "WARNING: saw changes to compiler/ or library/ since {commit}; \
                             ignoring `download-rustc`"
@@ -2810,7 +2832,7 @@ impl Config {
         let has_changes = !t!(git.as_command_mut().status()).success();
         if has_changes {
             if if_unchanged {
-                if self.verbose > 0 {
+                if self.is_verbose() {
                     println!(
                         "warning: saw changes to one of {modified_paths:?} since {commit}; \
                             ignoring `{option_name}`"

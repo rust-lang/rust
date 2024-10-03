@@ -5,6 +5,6 @@ trait A {}
 trait B {}
 
 trait C: A + B {}
-//~^ ERROR `C` is object-safe and has multiple supertraits
+//~^ ERROR `C` is dyn-compatible and has multiple supertraits
 
 fn main() {}

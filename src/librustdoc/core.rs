@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, LazyLock};
 use std::{io, mem};
@@ -41,7 +39,7 @@ pub(crate) struct DocContext<'tcx> {
     /// Most of this logic is copied from rustc_lint::late.
     pub(crate) param_env: ParamEnv<'tcx>,
     /// Later on moved through `clean::Crate` into `cache`
-    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
+    pub(crate) external_traits: FxHashMap<DefId, clean::Trait>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub(crate) active_extern_traits: DefIdSet,
@@ -359,7 +357,7 @@ pub(crate) fn run_global_ctxt(
     // Note that in case of `#![no_core]`, the trait is not available.
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
         let sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
-        ctxt.external_traits.borrow_mut().insert(sized_trait_did, sized_trait);
+        ctxt.external_traits.insert(sized_trait_did, sized_trait);
     }
 
     debug!("crate: {:?}", tcx.hir().krate());

@@ -740,7 +740,7 @@ impl Iterator for ReadDir {
                 //
                 // Like for uninitialized contents, converting entry_ptr to `&dirent64`
                 // would not be legal. However, unique to dirent64 is that we don't even
-                // get to use `addr_of!((*entry_ptr).d_name)` because that operation
+                // get to use `&raw const (*entry_ptr).d_name` because that operation
                 // requires the full extent of *entry_ptr to be in bounds of the same
                 // allocation, which is not necessarily the case here.
                 //
@@ -754,7 +754,7 @@ impl Iterator for ReadDir {
                         } else {
                             #[allow(deref_nullptr)]
                             {
-                                ptr::addr_of!((*ptr::null::<dirent64>()).$field)
+                                &raw const (*ptr::null::<dirent64>()).$field
                             }
                         }
                     }};
@@ -1385,7 +1385,7 @@ impl File {
                 }
                 cvt(unsafe { libc::fsetattrlist(
                     self.as_raw_fd(),
-                    core::ptr::addr_of!(attrlist).cast::<libc::c_void>().cast_mut(),
+                    (&raw const attrlist).cast::<libc::c_void>().cast_mut(),
                     buf.as_ptr().cast::<libc::c_void>().cast_mut(),
                     num_times * mem::size_of::<libc::timespec>(),
                     0
@@ -1944,7 +1944,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         libc::copyfile_state_get(
             state.0,
             libc::COPYFILE_STATE_COPIED as u32,
-            core::ptr::addr_of_mut!(bytes_copied) as *mut libc::c_void,
+            (&raw mut bytes_copied) as *mut libc::c_void,
         )
     })?;
     Ok(bytes_copied as u64)

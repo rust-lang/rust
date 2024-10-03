@@ -264,6 +264,10 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
             Some(LLVMFeature::new("fast-unaligned-access"))
         }
+        // Filter out features that are not supported by the current LLVM version
+        ("riscv32" | "riscv64", "zaamo") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zabha") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zalrsc") if get_version().0 < 19 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => {
             Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
@@ -478,7 +482,7 @@ pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
                     &tm,
                     cpu_cstring.as_ptr(),
                     callback,
-                    std::ptr::addr_of_mut!(out) as *mut c_void,
+                    (&raw mut out) as *mut c_void,
                 );
             }
         }
@@ -536,6 +540,11 @@ pub(crate) fn global_llvm_features(
     // -Ctarget-cpu=native
     match sess.opts.cg.target_cpu {
         Some(ref s) if s == "native" => {
+            // We have already figured out the actual CPU name with `LLVMRustGetHostCPUName` and set
+            // that for LLVM, so the features implied by that CPU name will be available everywhere.
+            // However, that is not sufficient: e.g. `skylake` alone is not sufficient to tell if
+            // some of the instructions are available or not. So we have to also explicitly ask for
+            // the exact set of features available on the host, and enable all of them.
             let features_string = unsafe {
                 let ptr = llvm::LLVMGetHostCPUFeatures();
                 let features_string = if !ptr.is_null() {

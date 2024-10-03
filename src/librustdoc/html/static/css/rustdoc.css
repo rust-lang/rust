@@ -182,17 +182,18 @@ h1, h2, h3, h4 {
 		"main-heading-breadcrumbs main-heading-breadcrumbs"
 		"main-heading-h1 main-heading-toolbar"
 		"main-heading-sub-heading main-heading-toolbar";
-	grid-template-columns: 1fr max-content;
-	grid-template-rows: 25px min-content min-content;
+	grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
+	grid-template-rows: minmax(25px, min-content) min-content min-content;
 	padding-bottom: 6px;
 	margin-bottom: 11px;
 }
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
-	height: 25px;
 	line-height: 1.25;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: end;
+	padding-top: 5px;
 }
 .rustdoc-breadcrumbs a {
 	padding: 4px 0;
@@ -928,6 +929,7 @@ rustdoc-toolbar {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
+	min-height: 60px;
 }
 
 .docblock code, .docblock-short code,
@@ -956,6 +958,13 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 
 .docblock .stab, .docblock-short .stab {
 	display: inline-block;
+}
+
+.docblock li {
+	margin-bottom: .8em;
+}
+.docblock li p {
+	margin-bottom: .1em;
 }
 
 /* "where ..." clauses with block display are also smaller */
@@ -1104,17 +1113,17 @@ table,
 .search-results-title + .sub-heading {
 	color: var(--main-color);
 	display: flex;
-	align-items: center;
+	align-items: baseline;
+	white-space: nowrap;
 }
 #crate-search-div {
 	/* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
 	position: relative;
 	/* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
-	min-width: 5em;
+	min-width: 0;
 }
 #crate-search {
-	min-width: 115px;
 	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
@@ -1687,7 +1696,6 @@ instead, we check that it's not a "finger" cursor.
 	padding-right: 3px;
 	background-color: var(--target-background-color);
 	border-right: 3px solid var(--target-border-color);
-	animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
 }
 
 .code-header a.tooltip {
@@ -1712,12 +1720,18 @@ a.tooltip:hover::after {
 	content: "\00a0";
 }
 
-/* This animation is layered onto the mistake-proofing delay for dismissing
-	a hovered tooltip, to ensure it feels responsive even with the delay.
-	*/
-.fade-out {
-	opacity: 0;
-	transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+@media not (prefers-reduced-motion) {
+	:target {
+		animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
+	}
+
+	/* This animation is layered onto the mistake-proofing delay for dismissing
+		a hovered tooltip, to ensure it feels responsive even with the delay.
+		*/
+	.fade-out {
+		opacity: 0;
+		transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+	}
 }
 
 .popover.tooltip .content {
@@ -1820,6 +1834,7 @@ a.tooltip:hover::after {
 	margin-left: var(--button-left-margin);
 	display: flex;
 	line-height: 1.25;
+	min-width: 14px;
 }
 #sidebar-button {
 	display: none;
@@ -1855,6 +1870,9 @@ a.tooltip:hover::after {
 #settings-menu > a, #help-button > a, button#toggle-all-docs {
 	width: 80px;
 	border-radius: var(--toolbar-button-border-radius);
+}
+#settings-menu > a, #help-button > a {
+	min-width: 0;
 }
 #sidebar-button > a {
 	background-color: var(--button-background-color);

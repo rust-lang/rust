@@ -735,6 +735,69 @@ fn read_buf_full_read() {
     assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), DEFAULT_BUF_SIZE);
 }
 
+struct DataAndErrorReader(&'static [u8]);
+
+impl Read for DataAndErrorReader {
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+        panic!("We want tests to use `read_buf`")
+    }
+
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+        self.0.read_buf(buf).unwrap();
+        Err(io::Error::other("error"))
+    }
+}
+
+#[test]
+fn read_buf_data_and_error_take() {
+    let mut buf = [0; 64];
+    let mut buf = io::BorrowedBuf::from(buf.as_mut_slice());
+
+    let mut r = DataAndErrorReader(&[4, 5, 6]).take(1);
+    assert!(r.read_buf(buf.unfilled()).is_err());
+    assert_eq!(buf.filled(), &[4]);
+
+    assert!(r.read_buf(buf.unfilled()).is_ok());
+    assert_eq!(buf.filled(), &[4]);
+    assert_eq!(r.get_ref().0, &[5, 6]);
+}
+
+#[test]
+fn read_buf_data_and_error_buf() {
+    let mut r = BufReader::new(DataAndErrorReader(&[4, 5, 6]));
+
+    assert!(r.fill_buf().is_err());
+    assert_eq!(r.fill_buf().unwrap(), &[4, 5, 6]);
+}
+
+#[test]
+fn read_buf_data_and_error_read_to_end() {
+    let mut r = DataAndErrorReader(&[4, 5, 6]);
+
+    let mut v = Vec::with_capacity(200);
+    assert!(r.read_to_end(&mut v).is_err());
+
+    assert_eq!(v, &[4, 5, 6]);
+}
+
+#[test]
+fn read_to_end_error() {
+    struct ErrorReader;
+
+    impl Read for ErrorReader {
+        fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::other("error"))
+        }
+    }
+
+    let mut r = [4, 5, 6].chain(ErrorReader);
+
+    let mut v = Vec::with_capacity(200);
+    assert!(r.read_to_end(&mut v).is_err());
+
+    assert_eq!(v, &[4, 5, 6]);
+}
+
 #[test]
 // Miri does not support signalling OOM
 #[cfg_attr(miri, ignore)]

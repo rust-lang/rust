@@ -123,7 +123,7 @@ fn get_llvm_object_symbols(
         llvm::LLVMRustGetSymbols(
             buf.as_ptr(),
             buf.len(),
-            std::ptr::addr_of_mut!(*state) as *mut c_void,
+            (&raw mut *state) as *mut c_void,
             callback,
             error_callback,
         )

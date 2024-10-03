@@ -155,7 +155,7 @@
 // Under `test`, `__FastLocalKeyInner` seems unused.
 #![cfg_attr(test, allow(dead_code))]
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
 use crate::any::Any;
@@ -165,7 +165,6 @@ use crate::marker::PhantomData;
 use crate::mem::{self, ManuallyDrop, forget};
 use crate::num::NonZero;
 use crate::pin::Pin;
-use crate::ptr::addr_of_mut;
 use crate::sync::Arc;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::sync::Parker;
@@ -665,6 +664,19 @@ impl Builder {
 /// println!("{result}");
 /// ```
 ///
+/// # Notes
+///
+/// This function has the same minimal guarantee regarding "foreign" unwinding operations (e.g.
+/// an exception thrown from C++ code, or a `panic!` in Rust code compiled or linked with a
+/// different runtime) as [`catch_unwind`]; namely, if the thread created with `thread::spawn`
+/// unwinds all the way to the root with such an exception, one of two behaviors are possible,
+/// and it is unspecified which will occur:
+///
+/// * The process aborts.
+/// * The process does not abort, and [`join`] will return a `Result::Err`
+///   containing an opaque type.
+///
+/// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
 /// [`channels`]: crate::sync::mpsc
 /// [`join`]: JoinHandle::join
 /// [`Err`]: crate::result::Result::Err
@@ -1386,9 +1398,9 @@ impl Thread {
         let inner = unsafe {
             let mut arc = Arc::<Inner>::new_uninit();
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
-            addr_of_mut!((*ptr).name).write(name);
-            addr_of_mut!((*ptr).id).write(ThreadId::new());
-            Parker::new_in_place(addr_of_mut!((*ptr).parker));
+            (&raw mut (*ptr).name).write(name);
+            (&raw mut (*ptr).id).write(ThreadId::new());
+            Parker::new_in_place(&raw mut (*ptr).parker);
             Pin::new_unchecked(arc.assume_init())
         };
 
@@ -1785,7 +1797,7 @@ impl<T> JoinHandle<T> {
     /// operations that happen after `join` returns.
     ///
     /// If the associated thread panics, [`Err`] is returned with the parameter given
-    /// to [`panic!`].
+    /// to [`panic!`] (though see the Notes below).
     ///
     /// [`Err`]: crate::result::Result::Err
     /// [atomic memory orderings]: crate::sync::atomic
@@ -1807,6 +1819,18 @@ impl<T> JoinHandle<T> {
     /// }).unwrap();
     /// join_handle.join().expect("Couldn't join on the associated thread");
     /// ```
+    ///
+    /// # Notes
+    ///
+    /// If a "foreign" unwinding operation (e.g. an exception thrown from C++
+    /// code, or a `panic!` in Rust code compiled or linked with a different
+    /// runtime) unwinds all the way to the thread root, the process may be
+    /// aborted; see the Notes on [`thread::spawn`]. If the process is not
+    /// aborted, this function will return a `Result::Err` containing an opaque
+    /// type.
+    ///
+    /// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
+    /// [`thread::spawn`]: spawn
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join(self) -> Result<T> {
         self.0.join()

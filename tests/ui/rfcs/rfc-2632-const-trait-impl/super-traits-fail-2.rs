@@ -17,8 +17,7 @@ trait Bar: ~const Foo {}
 
 const fn foo<T: Bar>(x: &T) {
     x.a();
-    //[yy,yn]~^ ERROR the trait bound
-    // FIXME(effects) diagnostic
+    //[yy,yn]~^ ERROR the trait bound `T: ~const Foo`
 }
 
 fn main() {}

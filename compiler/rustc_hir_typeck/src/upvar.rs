@@ -1369,13 +1369,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (&var_hir_id, _) in upvars.iter() {
             let mut diagnostics_info = Vec::new();
 
-            let auto_trait_diagnostic = if let Some(diagnostics_info) =
-                self.compute_2229_migrations_for_trait(min_captures, var_hir_id, closure_clause)
-            {
-                diagnostics_info
-            } else {
-                FxIndexMap::default()
-            };
+            let auto_trait_diagnostic = self
+                .compute_2229_migrations_for_trait(min_captures, var_hir_id, closure_clause)
+                .unwrap_or_default();
 
             let drop_reorder_diagnostic = if let Some(diagnostics_info) = self
                 .compute_2229_migrations_for_drop(

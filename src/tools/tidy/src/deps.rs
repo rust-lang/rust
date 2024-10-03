@@ -242,7 +242,7 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
-    "adler",
+    "adler2",
     "ahash",
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
@@ -271,7 +271,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "datafrog",
     "deranged",
     "derive-where",
-    "derive_more",
     "derive_setters",
     "digest",
     "displaydoc",
@@ -435,6 +434,9 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "winapi-x86_64-pc-windows-gnu",
     "windows",
     "windows-core",
+    "windows-implement",
+    "windows-interface",
+    "windows-result",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -481,6 +483,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rand_core",
     "rand_xorshift",
     "rustc-demangle",
+    "shlex",
     "unicode-width",
     "unwinding",
     "wasi",

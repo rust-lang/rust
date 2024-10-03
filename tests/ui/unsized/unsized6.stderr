@@ -206,10 +206,10 @@ LL + fn f4<X: T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
    |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized6.rs:38:18
+  --> $DIR/unsized6.rs:38:21
    |
 LL | fn g1<X: ?Sized>(x: X) {}
-   |       -          ^ doesn't have a size known at compile-time
+   |       -             ^ doesn't have a size known at compile-time
    |       |
    |       this type parameter needs to be `Sized`
    |
@@ -225,10 +225,10 @@ LL | fn g1<X: ?Sized>(x: &X) {}
    |                     +
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized6.rs:40:22
+  --> $DIR/unsized6.rs:40:25
    |
 LL | fn g2<X: ?Sized + T>(x: X) {}
-   |       -              ^ doesn't have a size known at compile-time
+   |       -                 ^ doesn't have a size known at compile-time
    |       |
    |       this type parameter needs to be `Sized`
    |

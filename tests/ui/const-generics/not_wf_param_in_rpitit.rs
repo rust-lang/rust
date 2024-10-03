@@ -6,7 +6,6 @@ trait Trait<const N: Trait = bar> {
     //~| ERROR: the trait `Trait` cannot be made into an object
     //~| ERROR: the trait `Trait` cannot be made into an object
     //~| ERROR: the trait `Trait` cannot be made into an object
-    //~| ERROR: `(dyn Trait<{const error}> + 'static)` is forbidden as the type of a const generic parameter
     //~| ERROR: trait objects must include the `dyn` keyword
     async fn a() {}
 }

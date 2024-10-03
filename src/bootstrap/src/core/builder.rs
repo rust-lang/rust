@@ -1537,7 +1537,9 @@ impl<'a> Builder<'a> {
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
-            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target).should_build() {
+            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target, false)
+                .should_build()
+            {
                 cargo.env("RUST_CHECK", "1");
             }
         }
@@ -1562,8 +1564,8 @@ impl<'a> Builder<'a> {
         let libdir = self.rustc_libdir(compiler);
 
         let sysroot_str = sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
-        if !matches!(self.config.dry_run, DryRun::SelfCheck) {
-            self.verbose_than(0, || println!("using sysroot {sysroot_str}"));
+        if self.is_verbose() && !matches!(self.config.dry_run, DryRun::SelfCheck) {
+            println!("using sysroot {sysroot_str}");
         }
 
         let mut rustflags = Rustflags::new(target);
@@ -2010,6 +2012,11 @@ impl<'a> Builder<'a> {
 
         if self.config.backtrace_on_ice {
             cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
+        }
+
+        if self.is_verbose() {
+            // This provides very useful logs especially when debugging build cache-related stuff.
+            cargo.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
         }
 
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());

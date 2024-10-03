@@ -733,7 +733,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         // TODO(antoyo): check if it's faster to use string literals and a
         // match instead of format!.
-        let bswap = self.cx.context.get_builtin_function(&format!("__builtin_bswap{}", width));
+        let bswap = self.cx.context.get_builtin_function(format!("__builtin_bswap{}", width));
         // FIXME(antoyo): this cast should not be necessary. Remove
         // when having proper sized integer types.
         let param_type = bswap.get_param(0).to_rvalue().get_type();

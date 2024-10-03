@@ -1854,7 +1854,10 @@ fn to_lowercase() {
     assert_eq!("ΑΣ''Α".to_lowercase(), "ασ''α");
 
     // https://github.com/rust-lang/rust/issues/124714
+    // input lengths around the boundary of the chunk size used by the ascii prefix optimization
+    assert_eq!("abcdefghijklmnoΣ".to_lowercase(), "abcdefghijklmnoς");
     assert_eq!("abcdefghijklmnopΣ".to_lowercase(), "abcdefghijklmnopς");
+    assert_eq!("abcdefghijklmnopqΣ".to_lowercase(), "abcdefghijklmnopqς");
 
     // a really long string that has it's lowercase form
     // even longer. this tests that implementations don't assume

@@ -22,6 +22,7 @@ use tracing::debug;
 use crate::abi::{FnAbi, FnAbiLlvmExt};
 use crate::context::CodegenCx;
 use crate::llvm::AttributePlace::Function;
+use crate::llvm::Visibility;
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, llvm};
@@ -84,11 +85,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         fn_type: &'ll Type,
     ) -> &'ll Value {
         // Declare C ABI functions with the visibility used by C by default.
-        let visibility = if self.tcx.sess.default_hidden_visibility() {
-            llvm::Visibility::Hidden
-        } else {
-            llvm::Visibility::Default
-        };
+        let visibility = Visibility::from_generic(self.tcx.sess.default_visibility());
 
         declare_raw_fn(self, name, llvm::CCallConv, unnamed, visibility, fn_type)
     }
@@ -107,11 +104,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         unnamed: llvm::UnnamedAddr,
         fn_type: &'ll Type,
     ) -> &'ll Value {
-        let visibility = if self.tcx.sess.default_hidden_visibility() {
-            llvm::Visibility::Hidden
-        } else {
-            llvm::Visibility::Default
-        };
+        let visibility = Visibility::from_generic(self.tcx.sess.default_visibility());
         declare_raw_fn(self, name, callconv, unnamed, visibility, fn_type)
     }
 

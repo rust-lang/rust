@@ -349,6 +349,9 @@ pub struct Config {
     /// whether to run `tidy` when a rustdoc test fails
     pub has_tidy: bool,
 
+    /// whether to run `enzyme` autodiff tests
+    pub has_enzyme: bool,
+
     /// The current Rust channel
     pub channel: String,
 

@@ -91,12 +91,46 @@ impl<'tcx> Bounds<'tcx> {
                 }
                 tcx.consts.true_
             }
+            (DefKind::Trait, ty::BoundConstness::ConstIfConst) => {
+                // we are in a trait, where `bound_trait_ref` could be:
+                // (1) a super trait `trait Foo: ~const Bar`.
+                //     - This generates `<Self as Foo>::Effects: TyCompat<<Self as Bar>::Effects>`
+                //
+                // (2) a where clause `where for<..> Something: ~const Bar`.
+                //     - This generates `for<..> <Self as Foo>::Effects: TyCompat<<Something as Bar>::Effects>`
+                let Some(own_fx) = tcx.associated_type_for_effects(defining_def_id) else {
+                    tcx.dcx().span_delayed_bug(span, "should not have allowed `~const` on a trait that doesn't have `#[const_trait]`");
+                    return;
+                };
+                let own_fx_ty = Ty::new_projection(
+                    tcx,
+                    own_fx,
+                    ty::GenericArgs::identity_for_item(tcx, own_fx),
+                );
+                let Some(their_fx) = tcx.associated_type_for_effects(bound_trait_ref.def_id())
+                else {
+                    tcx.dcx().span_delayed_bug(span, "`~const` on trait without Effects assoc");
+                    return;
+                };
+                let their_fx_ty =
+                    Ty::new_projection(tcx, their_fx, bound_trait_ref.skip_binder().args);
+                let compat = tcx.require_lang_item(LangItem::EffectsTyCompat, Some(span));
+                let clause = bound_trait_ref
+                    .map_bound(|_| {
+                        let trait_ref = ty::TraitRef::new(tcx, compat, [own_fx_ty, their_fx_ty]);
+                        ty::ClauseKind::Trait(ty::TraitPredicate {
+                            trait_ref,
+                            polarity: ty::PredicatePolarity::Positive,
+                        })
+                    })
+                    .upcast(tcx);
 
-            (
-                DefKind::Trait | DefKind::Impl { of_trait: true },
-                ty::BoundConstness::ConstIfConst,
-            ) => {
-                // this is either a where clause on an impl/trait header or on a trait.
+                self.clauses.push((clause, span));
+                return;
+            }
+
+            (DefKind::Impl { of_trait: true }, ty::BoundConstness::ConstIfConst) => {
+                // this is a where clause on an impl header.
                 // push `<T as Tr>::Effects` into the set for the `Min` bound.
                 let Some(assoc) = tcx.associated_type_for_effects(bound_trait_ref.def_id()) else {
                     tcx.dcx().span_delayed_bug(span, "`~const` on trait without Effects assoc");

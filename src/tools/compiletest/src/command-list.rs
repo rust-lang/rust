@@ -139,6 +139,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-deterministic-layouts",
     "needs-dlltool",
     "needs-dynamic-linking",
+    "needs-enzyme",
     "needs-force-clang-based-tests",
     "needs-git-hash",
     "needs-llvm-components",
