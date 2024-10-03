@@ -336,9 +336,9 @@ fn check_opaque_meets_bounds<'tcx>(
     origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
     let defining_use_anchor = match *origin {
-        hir::OpaqueTyOrigin::FnReturn(did)
-        | hir::OpaqueTyOrigin::AsyncFn(did)
-        | hir::OpaqueTyOrigin::TyAlias { parent: did, .. } => did,
+        hir::OpaqueTyOrigin::FnReturn { parent, .. }
+        | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
+        | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
@@ -346,8 +346,8 @@ fn check_opaque_meets_bounds<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let args = match *origin {
-        hir::OpaqueTyOrigin::FnReturn(parent)
-        | hir::OpaqueTyOrigin::AsyncFn(parent)
+        hir::OpaqueTyOrigin::FnReturn { parent, .. }
+        | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
         | hir::OpaqueTyOrigin::TyAlias { parent, .. } => GenericArgs::identity_for_item(
             tcx, parent,
         )
@@ -409,7 +409,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
 
-    if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
+    if let hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } = origin {
         // HACK: this should also fall through to the hidden type check below, but the original
         // implementation had a bug where equivalent lifetimes are not identical. This caused us
         // to reject existing stable code that is otherwise completely fine. The real fix is to
@@ -736,8 +736,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_opaque_precise_captures(tcx, def_id);
 
             let origin = tcx.opaque_type_origin(def_id);
-            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
-            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
+            if let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
+            | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. } = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {

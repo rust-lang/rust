@@ -894,7 +894,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
         TyKind::Path(ref qpath) => {
             try_visit!(visitor.visit_qpath(qpath, typ.hir_id, typ.span));
         }
-        TyKind::OpaqueDef(item_id, lifetimes, _in_trait) => {
+        TyKind::OpaqueDef(item_id, lifetimes) => {
             try_visit!(visitor.visit_nested_item(item_id));
             walk_list!(visitor, visit_generic_arg, lifetimes);
         }

@@ -503,8 +503,8 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
         let &Self { tcx, def_id, .. } = self;
         let origin = tcx.opaque_type_origin(def_id);
         let parent = match origin {
-            hir::OpaqueTyOrigin::FnReturn(parent)
-            | hir::OpaqueTyOrigin::AsyncFn(parent)
+            hir::OpaqueTyOrigin::FnReturn { parent, .. }
+            | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
             | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
         };
         let param_env = tcx.param_env(parent);

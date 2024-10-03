@@ -323,7 +323,7 @@ fn associated_types_for_impl_traits_in_associated_fn(
 
             impl<'tcx> Visitor<'tcx> for RPITVisitor<'tcx> {
                 fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-                    if let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind
+                    if let hir::TyKind::OpaqueDef(item_id, _) = ty.kind
                         && self.rpits.insert(item_id.owner_id.def_id)
                     {
                         let opaque_item =
@@ -379,7 +379,8 @@ fn associated_type_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
 ) -> LocalDefId {
-    let (hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) =
+    let (hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
+    | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. }) =
         tcx.opaque_type_origin(opaque_ty_def_id)
     else {
         bug!("expected opaque for {opaque_ty_def_id:?}");
