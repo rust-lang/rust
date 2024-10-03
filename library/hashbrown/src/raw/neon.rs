@@ -1,5 +1,5 @@
 use super::bitmask::BitMask;
-use super::EMPTY;
+use super::Tag;
 use core::arch::aarch64 as neon;
 use core::mem;
 use core::num::NonZeroU64;
@@ -10,7 +10,7 @@ pub(crate) const BITMASK_STRIDE: usize = 8;
 pub(crate) const BITMASK_MASK: BitMaskWord = !0;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = 0x8080_8080_8080_8080;
 
-/// Abstraction over a group of control bytes which can be scanned in
+/// Abstraction over a group of control tags which can be scanned in
 /// parallel.
 ///
 /// This implementation uses a 64-bit NEON value.
@@ -22,69 +22,69 @@ impl Group {
     /// Number of bytes in the group.
     pub(crate) const WIDTH: usize = mem::size_of::<Self>();
 
-    /// Returns a full group of empty bytes, suitable for use as the initial
+    /// Returns a full group of empty tags, suitable for use as the initial
     /// value for an empty hash table.
     ///
     /// This is guaranteed to be aligned to the group size.
     #[inline]
-    pub(crate) const fn static_empty() -> &'static [u8; Group::WIDTH] {
+    pub(crate) const fn static_empty() -> &'static [Tag; Group::WIDTH] {
         #[repr(C)]
-        struct AlignedBytes {
+        struct AlignedTags {
             _align: [Group; 0],
-            bytes: [u8; Group::WIDTH],
+            tags: [Tag; Group::WIDTH],
         }
-        const ALIGNED_BYTES: AlignedBytes = AlignedBytes {
+        const ALIGNED_TAGS: AlignedTags = AlignedTags {
             _align: [],
-            bytes: [EMPTY; Group::WIDTH],
+            tags: [Tag::EMPTY; Group::WIDTH],
         };
-        &ALIGNED_BYTES.bytes
+        &ALIGNED_TAGS.tags
     }
 
-    /// Loads a group of bytes starting at the given address.
+    /// Loads a group of tags starting at the given address.
     #[inline]
     #[allow(clippy::cast_ptr_alignment)] // unaligned load
-    pub(crate) unsafe fn load(ptr: *const u8) -> Self {
-        Group(neon::vld1_u8(ptr))
+    pub(crate) unsafe fn load(ptr: *const Tag) -> Self {
+        Group(neon::vld1_u8(ptr.cast()))
     }
 
-    /// Loads a group of bytes starting at the given address, which must be
+    /// Loads a group of tags starting at the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
-    pub(crate) unsafe fn load_aligned(ptr: *const u8) -> Self {
+    pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
         // FIXME: use align_offset once it stabilizes
         debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
-        Group(neon::vld1_u8(ptr))
+        Group(neon::vld1_u8(ptr.cast()))
     }
 
-    /// Stores the group of bytes to the given address, which must be
+    /// Stores the group of tags to the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
-    pub(crate) unsafe fn store_aligned(self, ptr: *mut u8) {
+    pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
         // FIXME: use align_offset once it stabilizes
         debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
-        neon::vst1_u8(ptr, self.0);
+        neon::vst1_u8(ptr.cast(), self.0);
     }
 
-    /// Returns a `BitMask` indicating all bytes in the group which *may*
+    /// Returns a `BitMask` indicating all tags in the group which *may*
     /// have the given value.
     #[inline]
-    pub(crate) fn match_byte(self, byte: u8) -> BitMask {
+    pub(crate) fn match_tag(self, tag: Tag) -> BitMask {
         unsafe {
-            let cmp = neon::vceq_u8(self.0, neon::vdup_n_u8(byte));
+            let cmp = neon::vceq_u8(self.0, neon::vdup_n_u8(tag.0));
             BitMask(neon::vget_lane_u64(neon::vreinterpret_u64_u8(cmp), 0))
         }
     }
 
-    /// Returns a `BitMask` indicating all bytes in the group which are
+    /// Returns a `BitMask` indicating all tags in the group which are
     /// `EMPTY`.
     #[inline]
     pub(crate) fn match_empty(self) -> BitMask {
-        self.match_byte(EMPTY)
+        self.match_tag(Tag::EMPTY)
     }
 
-    /// Returns a `BitMask` indicating all bytes in the group which are
+    /// Returns a `BitMask` indicating all tags in the group which are
     /// `EMPTY` or `DELETED`.
     #[inline]
     pub(crate) fn match_empty_or_deleted(self) -> BitMask {
@@ -94,7 +94,7 @@ impl Group {
         }
     }
 
-    /// Returns a `BitMask` indicating all bytes in the group which are full.
+    /// Returns a `BitMask` indicating all tags in the group which are full.
     #[inline]
     pub(crate) fn match_full(self) -> BitMask {
         unsafe {
@@ -103,7 +103,7 @@ impl Group {
         }
     }
 
-    /// Performs the following transformation on all bytes in the group:
+    /// Performs the following transformation on all tags in the group:
     /// - `EMPTY => EMPTY`
     /// - `DELETED => EMPTY`
     /// - `FULL => DELETED`
@@ -113,7 +113,7 @@ impl Group {
         // and high_bit = 0 (FULL) to 1000_0000
         //
         // Here's this logic expanded to concrete values:
-        //   let special = 0 > byte = 1111_1111 (true) or 0000_0000 (false)
+        //   let special = 0 > tag = 1111_1111 (true) or 0000_0000 (false)
         //   1111_1111 | 1000_0000 = 1111_1111
         //   0000_0000 | 1000_0000 = 1000_0000
         unsafe {
