@@ -23,4 +23,8 @@ fn main() {
     //~^ HELP you might have meant to use `push_str`
     String::new().append(""); //~ ERROR E0599
     //~^ HELP you might have meant to use `push_str`
+    let mut buffer = String::new();
+    let stdin = std::io::stdin();
+    stdin.get_line(&mut buffer).unwrap(); //~ ERROR E0599
+    //~^ HELP you might have meant to use `read_line`
 }
