@@ -171,12 +171,12 @@ impl<'tcx> InferCtxtInner<'tcx> {
             undo_log: InferCtxtUndoLogs::default(),
 
             projection_cache: Default::default(),
-            type_variable_storage: type_variable::TypeVariableStorage::new(),
-            const_unification_storage: ut::UnificationTableStorage::new(),
-            int_unification_storage: ut::UnificationTableStorage::new(),
-            float_unification_storage: ut::UnificationTableStorage::new(),
-            effect_unification_storage: ut::UnificationTableStorage::new(),
-            region_constraint_storage: Some(RegionConstraintStorage::new()),
+            type_variable_storage: Default::default(),
+            const_unification_storage: Default::default(),
+            int_unification_storage: Default::default(),
+            float_unification_storage: Default::default(),
+            effect_unification_storage: Default::default(),
+            region_constraint_storage: Some(Default::default()),
             region_obligations: vec![],
             opaque_type_storage: Default::default(),
         }

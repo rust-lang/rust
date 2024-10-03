@@ -294,10 +294,6 @@ pub(crate) struct RegionSnapshot {
 }
 
 impl<'tcx> RegionConstraintStorage<'tcx> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     #[inline]
     pub(crate) fn with_log<'a>(
         &'a mut self,
