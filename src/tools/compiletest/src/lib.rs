@@ -364,6 +364,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_runtime: matches.opt_present("profiler-runtime"),
+        diff_command: env::var("COMPILETEST_DIFF_TOOL").ok(),
     }
 }
 
