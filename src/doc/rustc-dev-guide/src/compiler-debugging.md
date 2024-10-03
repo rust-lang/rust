@@ -276,7 +276,7 @@ Here are some notable ones:
 | `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
 | `rustc_dump_predicates` | Dumps the [`predicates_of`] an item. |
 | `rustc_dump_vtable` |  |
-| `rustc_hidden_type_of_opaques` | Dumps the [hidden type of all opaque types][opaq] in the crate. |
+| `rustc_hidden_type_of_opaques` | Dumps the [hidden type of each opaque types][opaq] in the crate. |
 | `rustc_layout` | [See this section](#debugging-type-layouts). |
 | `rustc_object_lifetime_default` | Dumps the [object lifetime defaults] of an item. |
 | `rustc_outlives` | Dumps implied bounds of an item. More precisely, the [`inferred_outlives_of`] an item. |
