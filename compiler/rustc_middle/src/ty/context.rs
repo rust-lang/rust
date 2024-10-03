@@ -2074,7 +2074,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns the origin of the opaque type `def_id`.
     #[instrument(skip(self), level = "trace", ret)]
-    pub fn opaque_type_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin {
+    pub fn local_opaque_ty_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin<LocalDefId> {
         self.hir().expect_item(def_id).expect_opaque_ty().origin
     }
 }
