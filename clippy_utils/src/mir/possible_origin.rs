@@ -39,7 +39,7 @@ impl<'a, 'tcx> PossibleOriginVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleOriginVisitor<'a, 'tcx> {
+impl<'tcx> mir::visit::Visitor<'tcx> for PossibleOriginVisitor<'_, 'tcx> {
     fn visit_assign(&mut self, place: &mir::Place<'tcx>, rvalue: &mir::Rvalue<'_>, _location: mir::Location) {
         let lhs = place.local;
         match rvalue {

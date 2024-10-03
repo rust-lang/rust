@@ -332,7 +332,7 @@ struct IndexBinding<'a, 'tcx> {
     applicability: &'a mut Applicability,
 }
 
-impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
+impl<'tcx> IndexBinding<'_, 'tcx> {
     fn snippet_index_bindings(&mut self, exprs: &[&'tcx Expr<'tcx>]) -> String {
         let mut bindings = FxHashSet::default();
         for expr in exprs {

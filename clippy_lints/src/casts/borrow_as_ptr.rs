@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_no_std_crate;
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::std_or_core;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
@@ -16,8 +16,8 @@ pub(super) fn check<'tcx>(
 ) {
     if matches!(cast_to.kind, TyKind::Ptr(_))
         && let ExprKind::AddrOf(BorrowKind::Ref, mutability, e) = cast_expr.kind
+        && let Some(std_or_core) = std_or_core(cx)
     {
-        let core_or_std = if is_no_std_crate(cx) { "core" } else { "std" };
         let macro_name = match mutability {
             Mutability::Not => "addr_of",
             Mutability::Mut => "addr_of_mut",
@@ -40,7 +40,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             "borrow as raw pointer",
             "try",
-            format!("{core_or_std}::ptr::{macro_name}!({snip})"),
+            format!("{std_or_core}::ptr::{macro_name}!({snip})"),
             Applicability::MachineApplicable,
         );
     }
