@@ -101,12 +101,12 @@ pub(crate) fn codegen_fn<'tcx>(
     let block_map: IndexVec<BasicBlock, Block> =
         (0..mir.basic_blocks.len()).map(|_| bcx.create_block()).collect();
 
+    let fn_abi = RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty());
+
     // Make FunctionCx
     let target_config = module.target_config();
     let pointer_type = target_config.pointer_type();
-    let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
-
-    let fn_abi = RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty());
+    let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance, fn_abi);
 
     let func_debug_cx = if let Some(debug_context) = &mut cx.debug_context {
         Some(debug_context.define_function(tcx, type_dbg, instance, fn_abi, &symbol_name, mir.span))

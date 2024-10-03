@@ -562,6 +562,11 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             adjust_call_for_c_variadic(fx, &fn_abi, source_info, func_ref, &mut call_args);
         }
 
+        if fx.clif_comments.enabled() {
+            let nop_inst = fx.bcx.ins().nop();
+            with_no_trimmed_paths!(fx.add_comment(nop_inst, format!("abi: {:?}", fn_abi)));
+        }
+
         match func_ref {
             CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
             CallTarget::Indirect(sig, func_ptr) => {
