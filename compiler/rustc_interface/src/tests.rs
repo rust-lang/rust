@@ -44,10 +44,12 @@ where
     let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
     let target = rustc_session::config::build_target_config(&early_dcx, &sessopts, &sysroot);
     let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
+    let checksum_hash_kind = sessopts.unstable_opts.checksum_hash_algorithm();
     let sm_inputs = Some(SourceMapInputs {
         file_loader: Box::new(RealFileLoader) as _,
         path_mapping: sessopts.file_path_mapping(),
         hash_kind,
+        checksum_hash_kind,
     });
 
     rustc_span::create_session_globals_then(DEFAULT_EDITION, sm_inputs, || {

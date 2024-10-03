@@ -23,6 +23,7 @@ pub(crate) fn target() -> Target {
             linker: Some("rust-lld".into()),
             link_script: Some(LINKER_SCRIPT.into()),
             os: "horizon".into(),
+            vendor: "nintendo".into(),
             max_atomic_width: Some(128),
             stack_probes: StackProbeType::Inline,
             panic_strategy: PanicStrategy::Abort,
