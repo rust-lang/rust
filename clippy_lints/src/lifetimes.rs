@@ -420,7 +420,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_>) {
         match ty.kind {
-            TyKind::OpaqueDef(item, bounds, _) => {
+            TyKind::OpaqueDef(item, bounds) => {
                 let map = self.cx.tcx.hir();
                 let item = map.item(item);
                 let len = self.lts.len();
