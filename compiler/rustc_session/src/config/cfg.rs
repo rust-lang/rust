@@ -413,7 +413,7 @@ impl CheckCfg {
                 ] = self
                     .expecteds
                     .get_many_mut(VALUES)
-                    .expect("unable to get all the check-cfg values buckets");
+                    .map(|x| x.expect("unable to get all the check-cfg values buckets"));
 
                 for target in TARGETS
                     .iter()
