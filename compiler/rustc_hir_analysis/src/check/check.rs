@@ -336,8 +336,8 @@ fn check_opaque_meets_bounds<'tcx>(
     origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
     let defining_use_anchor = match *origin {
-        hir::OpaqueTyOrigin::FnReturn { parent }
-        | hir::OpaqueTyOrigin::AsyncFn { parent }
+        hir::OpaqueTyOrigin::FnReturn { parent, .. }
+        | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
         | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
     };
     let param_env = tcx.param_env(defining_use_anchor);
@@ -346,8 +346,8 @@ fn check_opaque_meets_bounds<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let args = match *origin {
-        hir::OpaqueTyOrigin::FnReturn { parent }
-        | hir::OpaqueTyOrigin::AsyncFn { parent }
+        hir::OpaqueTyOrigin::FnReturn { parent, .. }
+        | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
         | hir::OpaqueTyOrigin::TyAlias { parent, .. } => GenericArgs::identity_for_item(
             tcx, parent,
         )
@@ -736,8 +736,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_opaque_precise_captures(tcx, def_id);
 
             let origin = tcx.opaque_type_origin(def_id);
-            if let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id }
-            | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id } = origin
+            if let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
+            | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. } = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {

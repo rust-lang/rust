@@ -2762,10 +2762,6 @@ pub struct OpaqueTy<'hir> {
     /// This mapping associated a captured lifetime (first parameter) with the new
     /// early-bound lifetime that was generated for the opaque.
     pub lifetime_mapping: &'hir [(&'hir Lifetime, LocalDefId)],
-    /// Whether the opaque is a return-position impl trait (or async future)
-    /// originating from a trait method. This makes it so that the opaque is
-    /// lowered as an associated type.
-    pub in_trait: bool,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -2802,6 +2798,12 @@ pub struct PreciseCapturingNonLifetimeArg {
     pub res: Res,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
+pub enum RpitContext {
+    Trait,
+    TraitImpl,
+}
+
 /// From whence the opaque type came.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
@@ -2809,11 +2811,15 @@ pub enum OpaqueTyOrigin {
     FnReturn {
         /// The defining function.
         parent: LocalDefId,
+        // Whether this is an RPITIT (return position impl trait in trait)
+        in_trait_or_impl: Option<RpitContext>,
     },
     /// `async fn`
     AsyncFn {
         /// The defining function.
         parent: LocalDefId,
+        // Whether this is an AFIT (async fn in trait)
+        in_trait_or_impl: Option<RpitContext>,
     },
     /// type aliases: `type Foo = impl Trait;`
     TyAlias {

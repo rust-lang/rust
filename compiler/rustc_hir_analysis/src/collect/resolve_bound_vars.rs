@@ -515,8 +515,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }
             hir::ItemKind::OpaqueTy(&hir::OpaqueTy {
                 origin:
-                    hir::OpaqueTyOrigin::FnReturn { parent }
-                    | hir::OpaqueTyOrigin::AsyncFn { parent }
+                    hir::OpaqueTyOrigin::FnReturn { parent, .. }
+                    | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
                     | hir::OpaqueTyOrigin::TyAlias { parent, .. },
                 generics,
                 ..

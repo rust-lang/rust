@@ -636,8 +636,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.impl_trait_pass
-            && let hir::ItemKind::OpaqueTy(opaque) = item.kind
-            && !opaque.in_trait
+            && let hir::ItemKind::OpaqueTy(..) = item.kind
         {
             // FIXME: This is some serious pessimization intended to workaround deficiencies
             // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time

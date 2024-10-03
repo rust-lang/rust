@@ -2091,17 +2091,37 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let opaque_ty = tcx.hir().item(item_id);
 
                 match opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(&hir::OpaqueTy { in_trait, .. }) => {
+                    hir::ItemKind::OpaqueTy(&hir::OpaqueTy { origin, .. }) => {
                         let local_def_id = item_id.owner_id.def_id;
                         // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
                         // generate the def_id of an associated type for the trait and return as
                         // type a projection.
-                        let def_id = if in_trait {
-                            tcx.associated_type_for_impl_trait_in_trait(local_def_id).to_def_id()
-                        } else {
-                            local_def_id.to_def_id()
-                        };
-                        self.lower_opaque_ty(def_id, lifetimes, in_trait)
+                        match origin {
+                            hir::OpaqueTyOrigin::FnReturn {
+                                in_trait_or_impl: Some(hir::RpitContext::Trait),
+                                ..
+                            }
+                            | hir::OpaqueTyOrigin::AsyncFn {
+                                in_trait_or_impl: Some(hir::RpitContext::Trait),
+                                ..
+                            } => self.lower_opaque_ty(
+                                tcx.associated_type_for_impl_trait_in_trait(local_def_id)
+                                    .to_def_id(),
+                                lifetimes,
+                                true,
+                            ),
+                            hir::OpaqueTyOrigin::FnReturn {
+                                in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+                                ..
+                            }
+                            | hir::OpaqueTyOrigin::AsyncFn {
+                                in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+                                ..
+                            }
+                            | hir::OpaqueTyOrigin::TyAlias { .. } => {
+                                self.lower_opaque_ty(local_def_id.to_def_id(), lifetimes, false)
+                            }
+                        }
                     }
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
