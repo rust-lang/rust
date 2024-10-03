@@ -1834,6 +1834,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if builder.config.cmd.only_modified() {
             cmd.arg("--only-modified");
         }
+        if let Some(display_diff_tool) = &builder.config.display_diff_tool {
+            cmd.arg("--display-diff-tool").arg(display_diff_tool);
+        }
 
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));

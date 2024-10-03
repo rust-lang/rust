@@ -2459,7 +2459,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
+    fn compare_output(&self, stream: &str, actual: &str, expected: &str) -> usize {
         let are_different = match (self.force_color_svg(), expected.find('\n'), actual.find('\n')) {
             // FIXME: We ignore the first line of SVG files
             // because the width parameter is non-deterministic.
@@ -2499,56 +2499,66 @@ impl<'test> TestCx<'test> {
             (expected, actual)
         };
 
-        if !self.config.bless {
-            if expected.is_empty() {
-                println!("normalized {}:\n{}\n", kind, actual);
-            } else {
-                println!("diff of {}:\n", kind);
-                print!("{}", write_diff(expected, actual, 3));
-            }
-        }
-
-        let mode = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
-        let output_file = self
+        // Write the actual output to a file in build/
+        let test_name = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
+        let actual_path = self
             .output_base_name()
             .with_extra_extension(self.revision.unwrap_or(""))
-            .with_extra_extension(mode)
-            .with_extra_extension(kind);
+            .with_extra_extension(test_name)
+            .with_extra_extension(stream);
 
-        let mut files = vec![output_file];
-        if self.config.bless {
+        if let Err(err) = fs::write(&actual_path, &actual) {
+            self.fatal(&format!("failed to write {stream} to `{actual_path:?}`: {err}",));
+        }
+        println!("Saved the actual {stream} to {actual_path:?}");
+
+        let expected_path =
+            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
+
+        if !self.config.bless {
+            if expected.is_empty() {
+                println!("normalized {}:\n{}\n", stream, actual);
+            } else {
+                println!("diff of {stream}:\n");
+                if let Some(diff_command) = self.config.diff_command.as_deref() {
+                    let mut args = diff_command.split_whitespace();
+                    let name = args.next().unwrap();
+                    match Command::new(name)
+                        .args(args)
+                        .args([&expected_path, &actual_path])
+                        .output()
+                    {
+                        Err(err) => {
+                            self.fatal(&format!(
+                                "failed to call custom diff command `{diff_command}`: {err}"
+                            ));
+                        }
+                        Ok(output) => {
+                            let output = String::from_utf8_lossy_owned(output.stdout).unwrap();
+                            print!("{output}");
+                        }
+                    }
+                } else {
+                    print!("{}", write_diff(expected, actual, 3));
+                }
+            }
+        } else {
             // Delete non-revision .stderr/.stdout file if revisions are used.
             // Without this, we'd just generate the new files and leave the old files around.
             if self.revision.is_some() {
                 let old =
-                    expected_output_path(self.testpaths, None, &self.config.compare_mode, kind);
+                    expected_output_path(self.testpaths, None, &self.config.compare_mode, stream);
                 self.delete_file(&old);
             }
-            files.push(expected_output_path(
-                self.testpaths,
-                self.revision,
-                &self.config.compare_mode,
-                kind,
-            ));
-        }
 
-        for output_file in &files {
-            if actual.is_empty() {
-                self.delete_file(output_file);
-            } else if let Err(err) = fs::write(&output_file, &actual) {
-                self.fatal(&format!(
-                    "failed to write {} to `{}`: {}",
-                    kind,
-                    output_file.display(),
-                    err,
-                ));
+            if let Err(err) = fs::write(&expected_path, &actual) {
+                self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
             }
+            println!("Blessing the {stream} of {test_name} in {expected_path:?}");
         }
 
-        println!("\nThe actual {0} differed from the expected {0}.", kind);
-        for output_file in files {
-            println!("Actual {} saved to {}", kind, output_file.display());
-        }
+        println!("\nThe actual {0} differed from the expected {0}.", stream);
+
         if self.config.bless { 0 } else { 1 }
     }
 
