@@ -2224,6 +2224,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> GetSafeTransmuteErrorAndReason {
         use rustc_transmute::Answer;
 
+        // We don't assemble a transmutability candidate for types that are generic
+        // and we should have ambiguity for types that still have non-region infer.
         if obligation.predicate.has_non_region_param() || obligation.has_non_region_infer() {
             return GetSafeTransmuteErrorAndReason::Default;
         }
