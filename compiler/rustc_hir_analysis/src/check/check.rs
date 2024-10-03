@@ -1105,7 +1105,7 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         // Check that we use types valid for use in the lanes of a SIMD "vector register"
         // These are scalar types which directly match a "machine" type
         // Yes: Integers, floats, "thin" pointers
-        // No: char, "fat" pointers, compound types
+        // No: char, "wide" pointers, compound types
         match element_ty.kind() {
             ty::Param(_) => (), // pass struct<T>([T; 4]) through, let monomorphization catch errors
             ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) => (), // struct([u8; 4]) is ok

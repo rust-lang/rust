@@ -413,7 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty, _) => {
                     if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
-                        // For example, dereferences of a fat pointer and
+                        // For example, dereferences of a wide pointer and
                         // the last field of a struct can be unsized.
                         ExpectHasType(*ty)
                     } else {

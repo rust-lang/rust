@@ -637,7 +637,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         }
     }
 
-    /// Pass this argument indirectly, by passing a (thin or fat) pointer to the argument instead.
+    /// Pass this argument indirectly, by passing a (thin or wide) pointer to the argument instead.
     /// This is valid for both sized and unsized arguments.
     pub fn make_indirect(&mut self) {
         match self.mode {

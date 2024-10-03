@@ -1137,7 +1137,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (UnOp::PtrMetadata, Value::Aggregate(AggregateTy::RawPtr { .. }, _, fields)) => {
                 return Some(fields[1]);
             }
-            // We have an unsizing cast, which assigns the length to fat pointer metadata.
+            // We have an unsizing cast, which assigns the length to wide pointer metadata.
             (
                 UnOp::PtrMetadata,
                 Value::Cast {
@@ -1421,7 +1421,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let mut inner = self.simplify_place_value(place, location)?;
 
-        // The length information is stored in the fat pointer.
+        // The length information is stored in the wide pointer.
         // Reborrowing copies length information from one pointer to the other.
         while let Value::Address { place: borrowed, .. } = self.get(inner)
             && let [PlaceElem::Deref] = borrowed.projection[..]
@@ -1430,7 +1430,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             inner = borrowed;
         }
 
-        // We have an unsizing cast, which assigns the length to fat pointer metadata.
+        // We have an unsizing cast, which assigns the length to wide pointer metadata.
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
             && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
             && let Some(from) = from.builtin_deref(true)
