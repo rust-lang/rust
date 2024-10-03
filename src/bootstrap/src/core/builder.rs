@@ -1001,15 +1001,7 @@ impl<'a> Builder<'a> {
                 run::GenerateCompletions,
             ),
             Kind::Setup => {
-                describe!(
-                    setup::Profile,
-                    setup::Hook,
-                    setup::Link,
-                    setup::Vscode,
-                    setup::Emacs,
-                    setup::Helix,
-                    setup::Vim
-                )
+                describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
             }
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             Kind::Vendor => describe!(vendor::Vendor),

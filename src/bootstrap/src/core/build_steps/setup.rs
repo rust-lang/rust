@@ -528,6 +528,35 @@ enum EditorKind {
 }
 
 impl EditorKind {
+    fn prompt_user() -> io::Result<Option<EditorKind>> {
+        let prompt_str = "Available editors:
+1. vscode
+2. vim
+3. emacs
+4. helix
+
+Select which editor you would like to set up [default: None]: ";
+
+        let mut input = String::new();
+        loop {
+            print!("{}", prompt_str);
+            io::stdout().flush()?;
+            input.clear();
+            io::stdin().read_line(&mut input)?;
+            match input.trim().to_lowercase().as_str() {
+                "1" | "vscode" => return Ok(Some(EditorKind::Vscode)),
+                "2" | "vim" => return Ok(Some(EditorKind::Vim)),
+                "3" | "emacs" => return Ok(Some(EditorKind::Emacs)),
+                "4" | "helix" => return Ok(Some(EditorKind::Helix)),
+                "" => return Ok(None),
+                _ => {
+                    eprintln!("ERROR: unrecognized option '{}'", input.trim());
+                    eprintln!("NOTE: press Ctrl+C to exit");
+                }
+            };
+        }
+    }
+
     /// A list of historical hashes of each LSP settings file
     /// New entries should be appended whenever this is updated so we can detect
     /// outdated vs. user-modified settings files.
@@ -568,10 +597,10 @@ impl EditorKind {
 
     fn settings_folder(&self) -> PathBuf {
         match self {
-            EditorKind::Vscode => PathBuf::new().join(".vscode"),
-            EditorKind::Vim => PathBuf::new().join(".vim"),
+            EditorKind::Vscode => PathBuf::from(".vscode"),
+            EditorKind::Vim => PathBuf::from(".vim"),
             EditorKind::Emacs => PathBuf::new(),
-            EditorKind::Helix => PathBuf::new().join(".helix"),
+            EditorKind::Helix => PathBuf::from(".helix"),
         }
     }
 
@@ -590,47 +619,46 @@ impl EditorKind {
     }
 }
 
-/// Helper macro for implementing the necessary Step to support editor LSP setup
-/// The first argument must match the argument set up in `flags.rs`
-/// The second argument must match the name of some `EditorKind` variant
-/// After using the macro, the editor needs to be registered in `builder.rs` with describe!()
-macro_rules! impl_editor_support {
-    ( $($editor:ident, $kind:ident),+ ) => {$(
-        #[doc = concat!(" Sets up or displays the LSP config for ", stringify!($editor), ".")]
-        #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-        pub struct $kind;
+/// Sets up or displays the LSP config for one of the supported editors
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Editor;
 
-        impl Step for $kind {
-            type Output = ();
-            const DEFAULT: bool = true;
-            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.alias(stringify!($editor))
-            }
-            fn make_run(run: RunConfig<'_>) {
-                if run.builder.config.dry_run() {
-                    return;
-                }
-                if let [cmd] = &run.paths[..] {
-                    if cmd.assert_single_path().path.as_path().as_os_str() == stringify!($editor) {
-                        run.builder.ensure($kind);
-                    }
-                }
-            }
-            fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let config = &builder.config;
-                if config.dry_run() {
-                    return;
-                }
-                while !t!(create_editor_settings_maybe(config, EditorKind::$kind)) {}
+impl Step for Editor {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("editor")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        if run.builder.config.dry_run() {
+            return;
+        }
+        if let [cmd] = &run.paths[..] {
+            if cmd.assert_single_path().path.as_path().as_os_str() == "editor" {
+                run.builder.ensure(Editor);
             }
         }
-    )+};
-}
+    }
 
-impl_editor_support!(vscode, Vscode);
-impl_editor_support!(vim, Vim);
-impl_editor_support!(emacs, Emacs);
-impl_editor_support!(helix, Helix);
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let config = &builder.config;
+        if config.dry_run() {
+            return;
+        }
+        match EditorKind::prompt_user() {
+            Ok(editor_kind) => {
+                if let Some(editor_kind) = editor_kind {
+                    while !t!(create_editor_settings_maybe(config, editor_kind.clone())) {}
+                } else {
+                    println!("Ok, skipping editor setup!");
+                }
+            }
+            Err(e) => eprintln!("Could not determine the editor: {e}"),
+        }
+    }
+}
 
 /// Create the recommended editor LSP config file for rustc development, or just print it
 /// If this method should be re-called, it returns `false`.
@@ -662,13 +690,11 @@ fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Resu
     );
 
     match mismatched_settings {
-        Some(true) => eprintln!(
-            "WARNING: existing `{}` is out of date, x.py will update it",
-            settings_filename
-        ),
+        Some(true) => {
+            eprintln!("WARNING: existing `{settings_filename}` is out of date, x.py will update it")
+        }
         Some(false) => eprintln!(
-            "WARNING: existing `{}` has been modified by user, x.py will back it up and replace it",
-            settings_filename
+            "WARNING: existing `{settings_filename}` has been modified by user, x.py will back it up and replace it"
         ),
         _ => (),
     }

@@ -273,6 +273,6 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 131075,
         severity: ChangeSeverity::Info,
-        summary: "New options for ./x setup added - ./x setup [vim|emacs|helix]",
+        summary: "New option `./x setup editor` added, replacing `./x setup vscode` and adding support for vim, emacs and helix.",
     },
 ];
