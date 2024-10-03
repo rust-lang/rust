@@ -637,17 +637,44 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.impl_trait_pass
             && let hir::ItemKind::OpaqueTy(opaque) = item.kind
-            && !opaque.in_trait
         {
-            // FIXME: This is some serious pessimization intended to workaround deficiencies
-            // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
-            // reachable if they are returned via `impl Trait`, even from private functions.
-            let pub_ev = EffectiveVisibility::from_vis(ty::Visibility::Public);
-            self.reach_through_impl_trait(item.owner_id.def_id, pub_ev)
-                .generics()
-                .predicates()
-                .ty();
-            return;
+            let should_visit = match opaque.origin {
+                hir::OpaqueTyOrigin::FnReturn {
+                    parent,
+                    in_trait_or_impl: Some(hir::RpitContext::Trait),
+                }
+                | hir::OpaqueTyOrigin::AsyncFn {
+                    parent,
+                    in_trait_or_impl: Some(hir::RpitContext::Trait),
+                } => match self.tcx.hir_node_by_def_id(parent).expect_trait_item().expect_fn().1 {
+                    hir::TraitFn::Required(_) => false,
+                    hir::TraitFn::Provided(..) => true,
+                },
+
+                // Always visit RPITs in functions that have definitions,
+                // and all TAITs.
+                hir::OpaqueTyOrigin::FnReturn {
+                    in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+                    ..
+                }
+                | hir::OpaqueTyOrigin::AsyncFn {
+                    in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+                    ..
+                }
+                | hir::OpaqueTyOrigin::TyAlias { .. } => true,
+            };
+
+            if should_visit {
+                // FIXME: This is some serious pessimization intended to workaround deficiencies
+                // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
+                // reachable if they are returned via `impl Trait`, even from private functions.
+                let pub_ev = EffectiveVisibility::from_vis(ty::Visibility::Public);
+                self.reach_through_impl_trait(item.owner_id.def_id, pub_ev)
+                    .generics()
+                    .predicates()
+                    .ty();
+                return;
+            }
         }
 
         // Update levels of nested things and mark all items

@@ -515,7 +515,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 self.add_to_current_mod(item, renamed, import_id);
             }
             hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::AsyncFn(_) | hir::OpaqueTyOrigin::FnReturn(_),
+                origin: hir::OpaqueTyOrigin::AsyncFn { .. } | hir::OpaqueTyOrigin::FnReturn { .. },
                 ..
             }) => {
                 // return-position impl traits are never nameable, and should never be documented.

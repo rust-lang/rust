@@ -370,39 +370,47 @@ pub(super) fn explicit_item_bounds_with_filter(
             ..
         }) => associated_type_bounds(tcx, def_id, bounds, *span, filter),
         hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait: false, .. }),
+            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, origin, .. }),
             span,
             ..
-        }) => {
-            let args = GenericArgs::identity_for_item(tcx, def_id);
-            let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-            let bounds = opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter);
-            assert_only_contains_predicates_from(filter, bounds, item_ty);
-            bounds
-        }
-        // Since RPITITs are lowered as projections in `<dyn HirTyLowerer>::lower_ty`, when we're
-        // asking for the item bounds of the *opaques* in a trait's default method signature, we
-        // need to map these projections back to opaques.
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait: true, origin, .. }),
-            span,
-            ..
-        }) => {
-            let (hir::OpaqueTyOrigin::FnReturn(fn_def_id)
-            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) = *origin
-            else {
-                span_bug!(*span, "RPITIT cannot be a TAIT, but got origin {origin:?}");
-            };
-            let args = GenericArgs::identity_for_item(tcx, def_id);
-            let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-            let bounds = &*tcx.arena.alloc_slice(
-                &opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
-                    .to_vec()
-                    .fold_with(&mut AssocTyToOpaque { tcx, fn_def_id: fn_def_id.to_def_id() }),
-            );
-            assert_only_contains_predicates_from(filter, bounds, item_ty);
-            bounds
-        }
+        }) => match origin {
+            // Since RPITITs are lowered as projections in `<dyn HirTyLowerer>::lower_ty`,
+            // when we're asking for the item bounds of the *opaques* in a trait's default
+            // method signature, we need to map these projections back to opaques.
+            rustc_hir::OpaqueTyOrigin::FnReturn {
+                parent,
+                in_trait_or_impl: Some(hir::RpitContext::Trait),
+            }
+            | rustc_hir::OpaqueTyOrigin::AsyncFn {
+                parent,
+                in_trait_or_impl: Some(hir::RpitContext::Trait),
+            } => {
+                let args = GenericArgs::identity_for_item(tcx, def_id);
+                let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+                let bounds = &*tcx.arena.alloc_slice(
+                    &opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
+                        .to_vec()
+                        .fold_with(&mut AssocTyToOpaque { tcx, fn_def_id: parent.to_def_id() }),
+                );
+                assert_only_contains_predicates_from(filter, bounds, item_ty);
+                bounds
+            }
+            rustc_hir::OpaqueTyOrigin::FnReturn {
+                parent: _,
+                in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+            }
+            | rustc_hir::OpaqueTyOrigin::AsyncFn {
+                parent: _,
+                in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+            }
+            | rustc_hir::OpaqueTyOrigin::TyAlias { parent: _, .. } => {
+                let args = GenericArgs::identity_for_item(tcx, def_id);
+                let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+                let bounds = opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter);
+                assert_only_contains_predicates_from(filter, bounds, item_ty);
+                bounds
+            }
+        },
         hir::Node::Item(hir::Item { kind: hir::ItemKind::TyAlias(..), .. }) => &[],
         _ => bug!("item_bounds called on {:?}", def_id),
     };

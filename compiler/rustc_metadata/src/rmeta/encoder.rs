@@ -1186,9 +1186,9 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
 
         DefKind::OpaqueTy => {
             let origin = tcx.opaque_type_origin(def_id);
-            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
-            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
-                && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
+            if let hir::OpaqueTyOrigin::FnReturn { parent, .. }
+            | hir::OpaqueTyOrigin::AsyncFn { parent, .. } = origin
+                && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(parent)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {
                 false
