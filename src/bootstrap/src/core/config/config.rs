@@ -365,6 +365,9 @@ pub struct Config {
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
+
+    /// What custom diff tool to use for displaying compiletest tests.
+    pub display_diff_tool: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -885,6 +888,7 @@ define_config! {
         metrics: Option<bool> = "metrics",
         android_ndk: Option<PathBuf> = "android-ndk",
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
+        display_diff_tool: Option<String> = "display-diff-tool",
     }
 }
 
@@ -1504,6 +1508,7 @@ impl Config {
             metrics: _,
             android_ndk,
             optimized_compiler_builtins,
+            display_diff_tool,
         } = toml.build.unwrap_or_default();
 
         if let Some(file_build) = build {
@@ -2141,6 +2146,7 @@ impl Config {
         config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
+        config.display_diff_tool = display_diff_tool;
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
