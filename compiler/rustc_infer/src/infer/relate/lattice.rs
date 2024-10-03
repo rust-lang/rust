@@ -26,96 +26,6 @@ use tracing::{debug, instrument};
 use super::StructurallyRelateAliases;
 use super::combine::{CombineFields, PredicateEmittingRelation};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
-use crate::traits::ObligationCause;
-
-/// Trait for returning data about a lattice, and for abstracting
-/// over the "direction" of the lattice operation (LUB/GLB).
-///
-/// GLB moves "down" the lattice (to smaller values); LUB moves
-/// "up" the lattice (to bigger values).
-trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<InferCtxt<'tcx>> {
-    fn infcx(&self) -> &'f InferCtxt<'tcx>;
-
-    fn cause(&self) -> &ObligationCause<'tcx>;
-
-    fn define_opaque_types(&self) -> DefineOpaqueTypes;
-
-    // Relates the type `v` to `a` and `b` such that `v` represents
-    // the LUB/GLB of `a` and `b` as appropriate.
-    //
-    // Subtle hack: ordering *may* be significant here. This method
-    // relates `v` to `a` first, which may help us to avoid unnecessary
-    // type variable obligations. See caller for details.
-    fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
-}
-
-/// Relates two types using a given lattice.
-#[instrument(skip(this), level = "debug")]
-fn super_lattice_tys<'a, 'tcx: 'a, L>(
-    this: &mut L,
-    a: Ty<'tcx>,
-    b: Ty<'tcx>,
-) -> RelateResult<'tcx, Ty<'tcx>>
-where
-    L: LatticeDir<'a, 'tcx>,
-{
-    if a == b {
-        return Ok(a);
-    }
-
-    let infcx = this.infcx();
-
-    let a = infcx.shallow_resolve(a);
-    let b = infcx.shallow_resolve(b);
-
-    match (a.kind(), b.kind()) {
-        // If one side is known to be a variable and one is not,
-        // create a variable (`v`) to represent the LUB. Make sure to
-        // relate `v` to the non-type-variable first (by passing it
-        // first to `relate_bound`). Otherwise, we would produce a
-        // subtype obligation that must then be processed.
-        //
-        // Example: if the LHS is a type variable, and RHS is
-        // `Box<i32>`, then we current compare `v` to the RHS first,
-        // which will instantiate `v` with `Box<i32>`. Then when `v`
-        // is compared to the LHS, we instantiate LHS with `Box<i32>`.
-        // But if we did in reverse order, we would create a `v <:
-        // LHS` (or vice versa) constraint and then instantiate
-        // `v`. This would require further processing to achieve same
-        // end-result; in particular, this screws up some of the logic
-        // in coercion, which expects LUB to figure out that the LHS
-        // is (e.g.) `Box<i32>`. A more obvious solution might be to
-        // iterate on the subtype obligations that are returned, but I
-        // think this suffices. -nmatsakis
-        (&ty::Infer(TyVar(..)), _) => {
-            let v = infcx.next_ty_var(this.cause().span);
-            this.relate_bound(v, b, a)?;
-            Ok(v)
-        }
-        (_, &ty::Infer(TyVar(..))) => {
-            let v = infcx.next_ty_var(this.cause().span);
-            this.relate_bound(v, a, b)?;
-            Ok(v)
-        }
-
-        (
-            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
-        ) if a_def_id == b_def_id => infcx.super_combine_tys(this, a, b),
-
-        (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
-        | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-            if this.define_opaque_types() == DefineOpaqueTypes::Yes
-                && def_id.is_local()
-                && !this.infcx().next_trait_solver() =>
-        {
-            this.register_goals(infcx.handle_opaque_type(a, b, this.span(), this.param_env())?);
-            Ok(a)
-        }
-
-        _ => infcx.super_combine_tys(this, a, b),
-    }
-}
 
 #[derive(Clone, Copy)]
 pub(crate) enum LatticeOpKind {
@@ -173,9 +83,70 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
         }
     }
 
+    /// Relates two types using a given lattice.
     #[instrument(skip(self), level = "trace")]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        super_lattice_tys(self, a, b)
+        if a == b {
+            return Ok(a);
+        }
+
+        let infcx = self.fields.infcx;
+
+        let a = infcx.shallow_resolve(a);
+        let b = infcx.shallow_resolve(b);
+
+        match (a.kind(), b.kind()) {
+            // If one side is known to be a variable and one is not,
+            // create a variable (`v`) to represent the LUB. Make sure to
+            // relate `v` to the non-type-variable first (by passing it
+            // first to `relate_bound`). Otherwise, we would produce a
+            // subtype obligation that must then be processed.
+            //
+            // Example: if the LHS is a type variable, and RHS is
+            // `Box<i32>`, then we current compare `v` to the RHS first,
+            // which will instantiate `v` with `Box<i32>`. Then when `v`
+            // is compared to the LHS, we instantiate LHS with `Box<i32>`.
+            // But if we did in reverse order, we would create a `v <:
+            // LHS` (or vice versa) constraint and then instantiate
+            // `v`. This would require further processing to achieve same
+            // end-result; in particular, this screws up some of the logic
+            // in coercion, which expects LUB to figure out that the LHS
+            // is (e.g.) `Box<i32>`. A more obvious solution might be to
+            // iterate on the subtype obligations that are returned, but I
+            // think this suffices. -nmatsakis
+            (&ty::Infer(TyVar(..)), _) => {
+                let v = infcx.next_ty_var(self.fields.trace.cause.span);
+                self.relate_bound(v, b, a)?;
+                Ok(v)
+            }
+            (_, &ty::Infer(TyVar(..))) => {
+                let v = infcx.next_ty_var(self.fields.trace.cause.span);
+                self.relate_bound(v, a, b)?;
+                Ok(v)
+            }
+
+            (
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+            ) if a_def_id == b_def_id => infcx.super_combine_tys(self, a, b),
+
+            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+                if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
+                    && def_id.is_local()
+                    && !infcx.next_trait_solver() =>
+            {
+                self.register_goals(infcx.handle_opaque_type(
+                    a,
+                    b,
+                    self.span(),
+                    self.param_env(),
+                )?);
+                Ok(a)
+            }
+
+            _ => infcx.super_combine_tys(self, a, b),
+        }
     }
 
     #[instrument(skip(self), level = "trace")]
@@ -231,15 +202,13 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
     }
 }
 
-impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for LatticeOp<'combine, 'infcx, 'tcx> {
-    fn infcx(&self) -> &'infcx InferCtxt<'tcx> {
-        self.fields.infcx
-    }
-
-    fn cause(&self) -> &ObligationCause<'tcx> {
-        &self.fields.trace.cause
-    }
-
+impl<'combine, 'infcx, 'tcx> LatticeOp<'combine, 'infcx, 'tcx> {
+    // Relates the type `v` to `a` and `b` such that `v` represents
+    // the LUB/GLB of `a` and `b` as appropriate.
+    //
+    // Subtle hack: ordering *may* be significant here. This method
+    // relates `v` to `a` first, which may help us to avoid unnecessary
+    // type variable obligations. See caller for details.
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let mut sub = self.fields.sub();
         match self.kind {
@@ -253,10 +222,6 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for LatticeOp<'combine, 'i
             }
         }
         Ok(())
-    }
-
-    fn define_opaque_types(&self) -> DefineOpaqueTypes {
-        self.fields.define_opaque_types
     }
 }
 
