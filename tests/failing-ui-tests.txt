@@ -92,6 +92,7 @@ tests/ui/delegation/fn-header.rs
 tests/ui/consts/zst_no_llvm_alloc.rs
 tests/ui/consts/const-eval/parse_ints.rs
 tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
+tests/ui/simd/intrinsic/generic-as.rs
 tests/ui/backtrace/backtrace.rs
 tests/ui/lifetimes/tail-expr-lock-poisoning.rs
 tests/ui/runtime/rt-explody-panic-payloads.rs
