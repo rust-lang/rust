@@ -21,3 +21,4 @@ pub mod fs;
 // well as `std::os::macos`/`std::os::ios`, because those modules precede the
 // decision to remove these.
 pub(super) mod raw;
+pub mod thread;

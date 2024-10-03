@@ -1,0 +1,29 @@
+error[E0277]: `MainThreadMarker` cannot be shared between threads safely
+  --> $DIR/darwin_mtm_not_send_sync.rs:12:18
+   |
+LL |     needs_sync::<MainThreadMarker>();
+   |                  ^^^^^^^^^^^^^^^^ `MainThreadMarker` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `MainThreadMarker`
+note: required by a bound in `needs_sync`
+  --> $DIR/darwin_mtm_not_send_sync.rs:8:18
+   |
+LL | fn needs_sync<T: Sync>() {}
+   |                  ^^^^ required by this bound in `needs_sync`
+
+error[E0277]: `MainThreadMarker` cannot be sent between threads safely
+  --> $DIR/darwin_mtm_not_send_sync.rs:14:18
+   |
+LL |     needs_send::<MainThreadMarker>();
+   |                  ^^^^^^^^^^^^^^^^ `MainThreadMarker` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `MainThreadMarker`
+note: required by a bound in `needs_send`
+  --> $DIR/darwin_mtm_not_send_sync.rs:9:18
+   |
+LL | fn needs_send<T: Send>() {}
+   |                  ^^^^ required by this bound in `needs_send`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
