@@ -88,7 +88,10 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
 const EXCEPTIONS: ExceptionList = &[
     // tidy-alphabetical-start
     ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
+    ("arrayref", "BSD-2-Clause"),                            // rustc
+    ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),  // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
+    ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),  // rustc
     ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
     ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
     ("instant", "BSD-3-Clause"),                             // rustc_driver/tracing-subscriber/parking_lot
@@ -249,14 +252,17 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "annotate-snippets",
     "anstyle",
     "ar_archive_writer",
+    "arrayref",
     "arrayvec",
     "autocfg",
     "bitflags",
+    "blake3",
     "block-buffer",
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
     "cfg_aliases",
+    "constant_time_eq",
     "cpufeatures",
     "crc32fast",
     "crossbeam-channel",

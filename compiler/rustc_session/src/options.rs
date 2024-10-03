@@ -418,7 +418,9 @@ mod desc {
         "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
     pub(crate) const parse_opt_symbol_visibility: &str =
         "one of: `hidden`, `protected`, or `interposable`";
-    pub(crate) const parse_src_file_hash: &str = "either `md5` or `sha1`";
+    pub(crate) const parse_cargo_src_file_hash: &str =
+        "one of `blake3`, `md5`, `sha1`, or `sha256`";
+    pub(crate) const parse_src_file_hash: &str = "one of `md5`, `sha1`, or `sha256`";
     pub(crate) const parse_relocation_model: &str =
         "one of supported relocation models (`rustc --print relocation-models`)";
     pub(crate) const parse_code_model: &str =
@@ -1288,6 +1290,19 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_cargo_src_file_hash(
+        slot: &mut Option<SourceFileHashAlgorithm>,
+        v: Option<&str>,
+    ) -> bool {
+        match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
+            Some(hash_kind) => {
+                *slot = Some(hash_kind);
+            }
+            _ => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_target_feature(slot: &mut String, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
@@ -1688,6 +1703,8 @@ options! {
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
         "show all expected values in check-cfg diagnostics (default: no)"),
+    checksum_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_cargo_src_file_hash, [TRACKED],
+        "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],

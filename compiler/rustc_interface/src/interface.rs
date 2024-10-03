@@ -389,12 +389,13 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     let file_loader = config.file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let path_mapping = config.opts.file_path_mapping();
     let hash_kind = config.opts.unstable_opts.src_hash_algorithm(&target);
+    let checksum_hash_kind = config.opts.unstable_opts.checksum_hash_algorithm();
 
     util::run_in_thread_pool_with_globals(
         &early_dcx,
         config.opts.edition,
         config.opts.unstable_opts.threads,
-        SourceMapInputs { file_loader, path_mapping, hash_kind },
+        SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind },
         |current_gcx| {
             // The previous `early_dcx` can't be reused here because it doesn't
             // impl `Send`. Creating a new one is fine.
