@@ -533,7 +533,13 @@ fn floats() -> u32 {
 
 fn not_int() -> i32 {
     // CHECK-LABEL: fn not_int(
+    // CHECK: goto -> bb2
 
+    // CHECK-LABEL: bb1: {
+    // _0 = const 1_i32;
+
+    // CHECK-LABEL: bb2: {
+    // _0 = const 0_i32;
     // Test for issue #131195, where !a == b is assumed to be equivalent to a != b
     // This is only the case for bools
     let a = 1;

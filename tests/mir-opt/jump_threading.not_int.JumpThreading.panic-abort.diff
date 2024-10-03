@@ -22,7 +22,7 @@
           StorageDead(_4);
           _2 = Eq(move _3, const 0_i32);
 -         switchInt(move _2) -> [0: bb2, otherwise: bb1];
-+         goto -> bb1;
++         goto -> bb2;
       }
   
       bb1: {

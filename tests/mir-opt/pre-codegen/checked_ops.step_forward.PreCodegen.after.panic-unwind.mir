@@ -33,7 +33,7 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
         StorageLive(_4);
         StorageLive(_3);
         _3 = Gt(copy _2, const 65535_usize);
-        switchInt(move _3) -> [0: bb1, otherwise: bb5];
+        switchInt(move _3) -> [0: bb1, otherwise: bb6];
     }
 
     bb1: {
@@ -54,27 +54,30 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     bb3: {
         StorageDead(_5);
         StorageDead(_6);
-        StorageDead(_7);
-        goto -> bb7;
+        goto -> bb5;
     }
 
     bb4: {
         StorageDead(_5);
         StorageDead(_6);
-        StorageDead(_7);
-        goto -> bb6;
+        goto -> bb5;
     }
 
     bb5: {
-        StorageDead(_3);
-        goto -> bb6;
+        StorageDead(_7);
+        goto -> bb7;
     }
 
     bb6: {
-        assert(!const true, "attempt to compute `{} + {}`, which would overflow", const core::num::<impl u16>::MAX, const 1_u16) -> [success: bb7, unwind continue];
+        StorageDead(_3);
+        goto -> bb7;
     }
 
     bb7: {
+        assert(!const true, "attempt to compute `{} + {}`, which would overflow", const core::num::<impl u16>::MAX, const 1_u16) -> [success: bb8, unwind continue];
+    }
+
+    bb8: {
         StorageLive(_8);
         _8 = copy _2 as u16 (IntToInt);
         _0 = Add(copy _1, copy _8);

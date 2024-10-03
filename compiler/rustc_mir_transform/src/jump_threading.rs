@@ -150,10 +150,8 @@ impl Condition {
     }
 
     fn inv(mut self) -> Self {
-        self.polarity = match self.polarity {
-            Polarity::Eq => Polarity::Ne,
-            Polarity::Ne => Polarity::Eq,
-        };
+        self.value = self.value.bitwise_not();
+
         self
     }
 }
