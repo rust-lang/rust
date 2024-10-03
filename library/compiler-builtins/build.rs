@@ -327,6 +327,8 @@ mod c {
             // in https://github.com/rust-lang/compiler-rt/blob/c8fbcb3/cmake/config-ix.cmake#L19.
             cfg.flag_if_supported("-fomit-frame-pointer");
             cfg.define("VISIBILITY_HIDDEN", None);
+            // Avoid implicitly creating references to undefined functions
+            cfg.flag("-Werror=implicit-function-declaration");
         }
 
         // int_util.c tries to include stdlib.h if `_WIN32` is defined,
