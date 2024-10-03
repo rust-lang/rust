@@ -246,7 +246,7 @@ fn associated_type_for_impl_trait_in_trait(
 ) -> LocalDefId {
     let (hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
     | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. }) =
-        tcx.opaque_type_origin(opaque_ty_def_id)
+        tcx.local_opaque_ty_origin(opaque_ty_def_id)
     else {
         bug!("expected opaque for {opaque_ty_def_id:?}");
     };
@@ -283,8 +283,6 @@ fn associated_type_for_impl_trait_in_trait(
 
     // Copy defaultness of the containing function.
     trait_assoc_ty.defaultness(tcx.defaultness(fn_def_id));
-
-    trait_assoc_ty.is_type_alias_impl_trait(false);
 
     // There are no inferred outlives for the synthesized associated type.
     trait_assoc_ty.inferred_outlives_of(&[]);

@@ -601,7 +601,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None,
         };
         let hir::OpaqueTyOrigin::FnReturn { parent: parent_def_id, .. } =
-            self.tcx.opaque_type_origin(def_id)
+            self.tcx.local_opaque_ty_origin(def_id)
         else {
             return None;
         };

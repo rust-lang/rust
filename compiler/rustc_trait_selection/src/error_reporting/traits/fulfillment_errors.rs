@@ -2648,7 +2648,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         def_id: DefId,
     ) -> ErrorGuaranteed {
-        let name = match self.tcx.opaque_type_origin(def_id.expect_local()) {
+        let name = match self.tcx.local_opaque_ty_origin(def_id.expect_local()) {
             hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } => {
                 "opaque type".to_string()
             }
