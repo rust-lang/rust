@@ -1196,8 +1196,8 @@ pub struct Resolver<'ra, 'tcx> {
     stripped_cfg_items: Vec<StrippedCfgItem<NodeId>>,
 
     effective_visibilities: EffectiveVisibilities,
-    doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
-    doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
+    doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
+    doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
     all_macro_rules: FxHashMap<Symbol, Res>,
 
     /// Invocation ids of all glob delegations.
