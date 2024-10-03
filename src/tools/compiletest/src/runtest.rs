@@ -2534,7 +2534,7 @@ impl<'test> TestCx<'test> {
                             ));
                         }
                         Ok(output) => {
-                            let output = String::from_utf8_lossy_owned(output.stdout).unwrap();
+                            let output = String::from_utf8_lossy(&output.stdout);
                             print!("{output}");
                         }
                     }
