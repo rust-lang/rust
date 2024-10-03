@@ -704,20 +704,11 @@ macro_rules! define_queries {
                     let name = stringify!($name);
                     $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                 };
-                let res = tcx.query_system.states.$name.try_collect_active_jobs(
+                tcx.query_system.states.$name.try_collect_active_jobs(
                     tcx,
                     make_query,
                     qmap,
-                );
-                // this can be called during unwinding, and the function has a `try_`-prefix, so
-                // don't `unwrap()` here, just manually check for `None` and do best-effort error
-                // reporting.
-                if res.is_none() {
-                    tracing::warn!(
-                        "Failed to collect active jobs for query with name `{}`!",
-                        stringify!($name)
-                    );
-                }
+                ).unwrap();
             }
 
             pub(crate) fn alloc_self_profile_query_strings<'tcx>(
