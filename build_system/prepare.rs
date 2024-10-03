@@ -89,6 +89,19 @@ impl GitRepo {
         }
     }
 
+    fn verify_checksum(&self, dirs: &Dirs) {
+        let download_dir = self.download_dir(dirs);
+        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
+        if actual_hash != self.content_hash {
+            eprintln!(
+                "Mismatched content hash for {download_dir}: {actual_hash} != {content_hash}. Please run ./y.sh prepare again.",
+                download_dir = download_dir.display(),
+                content_hash = self.content_hash,
+            );
+            std::process::exit(1);
+        }
+    }
+
     pub(crate) fn fetch(&self, dirs: &Dirs) {
         let download_dir = self.download_dir(dirs);
 
@@ -126,18 +139,11 @@ impl GitRepo {
             assert!(target_lockfile.exists());
         }
 
-        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
-        if actual_hash != self.content_hash {
-            eprintln!(
-                "Download of {download_dir} failed with mismatched content hash: {actual_hash} != {content_hash}",
-                download_dir = download_dir.display(),
-                content_hash = self.content_hash,
-            );
-            std::process::exit(1);
-        }
+        self.verify_checksum(dirs);
     }
 
     pub(crate) fn patch(&self, dirs: &Dirs) {
+        self.verify_checksum(dirs);
         apply_patches(
             dirs,
             self.patch_name,
