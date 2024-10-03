@@ -56,9 +56,10 @@ where
         return;
     }
 
+    // The AIX ABI expect byval for aggregates
     // See https://github.com/llvm/llvm-project/blob/main/clang/lib/CodeGen/Targets/PPC.cpp.
     if !is_ret && abi == AIX {
-        arg.make_indirect_byval(None);
+        arg.pass_by_stack_offset(None);
         return;
     }
 
