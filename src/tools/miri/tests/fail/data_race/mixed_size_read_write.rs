@@ -4,7 +4,7 @@
 // Two revisions, depending on which access goes first.
 //@revisions: read_write write_read
 
-use std::sync::atomic::{AtomicU16, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU16, Ordering};
 use std::thread;
 
 fn convert(a: &AtomicU16) -> &[AtomicU8; 2] {

@@ -517,7 +517,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let start = this.read_scalar(&args[2])?.to_i32()?;
 
             match this.machine.fds.get(fd_num) {
-                Some(fd) => interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start))),
+                Some(fd) =>
+                    interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start))),
                 None => interp_ok(Scalar::from_i32(this.fd_not_found()?)),
             }
         } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC") {
