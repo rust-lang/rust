@@ -122,6 +122,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let sys_getrandom = this.eval_libc("SYS_getrandom").to_target_usize(this)?;
                 let sys_futex = this.eval_libc("SYS_futex").to_target_usize(this)?;
+                let sys_eventfd2 = this.eval_libc("SYS_eventfd2").to_target_usize(this)?;
 
                 if args.is_empty() {
                     throw_ub_format!(
@@ -154,6 +155,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // `futex` is used by some synchronization primitives.
                     id if id == sys_futex => {
                         futex(this, &args[1..], dest)?;
+                    }
+                    id if id == sys_eventfd2 => {
+                        let [_, initval, flags, ..] = args else {
+                            throw_ub_format!(
+                                "incorrect number of arguments for `eventfd2` syscall: got {}, expected at least 3",
+                                args.len()
+                            );
+                        };
+
+                        let result = this.eventfd(initval, flags)?;
+                        this.write_int(result.to_i32()?, dest)?;
                     }
                     id => {
                         this.handle_unsupported_foreign_item(format!(
