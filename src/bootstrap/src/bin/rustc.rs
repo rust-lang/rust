@@ -136,6 +136,14 @@ fn main() {
         cmd.args(lint_flags.split_whitespace());
     }
 
+    // Conditionally pass `-Zon-broken-pipe=kill` to rustc bin shim when this shim is *not* used to
+    // build cargo itself, i.e. set `-Zon-broken-pipe=kill` only when building non-cargo tools.
+    //
+    // See <https://github.com/rust-lang/rust/issues/131059> for more context.
+    if env::var_os("FORCE_ON_BROKEN_PIPE_KILL").is_some() {
+        cmd.arg("-Z").arg("on-broken-pipe=kill");
+    }
+
     if target.is_some() {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,

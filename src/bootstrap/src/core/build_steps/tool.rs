@@ -209,11 +209,28 @@ pub fn prepare_tool_cargo(
     // See https://github.com/rust-lang/rust/issues/116538
     cargo.rustflag("-Zunstable-options");
 
-    // `-Zon-broken-pipe=kill` breaks cargo tests
+    // NOTE: The root cause of needing `-Zon-broken-pipe=kill` in the first place is because `rustc`
+    // and `rustdoc` doesn't gracefully handle I/O errors due to usages of raw std `println!` macros
+    // which panics upon encountering broken pipes. `-Zon-broken-pipe=kill` just papers over that
+    // and stops rustc/rustdoc ICEing on e.g. `rustc --print=sysroot | false`.
+    //
+    // cargo explicitly does not want the `-Zon-broken-pipe=kill` paper because it does actually use
+    // variants of `println!` that handles I/O errors gracefully. It's also a breaking change for a
+    // spawn process not written in Rust, especially if the language default handler is not
+    // `SIG_IGN`. Thankfully cargo tests will break if we do set the flag.
+    //
+    // For the cargo discussion, see
+    // <https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/Applying.20.60-Zon-broken-pipe.3Dkill.60.20flags.20in.20bootstrap.3F>.
+    //
+    // For the rustc discussion, see
+    // <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Internal.20lint.20for.20raw.20.60print!.60.20and.20.60println!.60.3F>
+    // for proper solutions.
     if !path.ends_with("cargo") {
-        // If the output is piped to e.g. `head -n1` we want the process to be killed,
-        // rather than having an error bubble up and cause a panic.
-        cargo.rustflag("-Zon-broken-pipe=kill");
+        // Use an untracked env var `FORCE_ON_BROKEN_PIPE_KILL` here instead of `RUSTFLAGS`.
+        // `RUSTFLAGS` is tracked by cargo. Conditionally omitting `-Zon-broken-pipe=kill` from
+        // `RUSTFLAGS` causes unnecessary tool rebuilds due to cache invalidation from building e.g.
+        // cargo *without* `-Zon-broken-pipe=kill` but then rustdoc *with* `-Zon-broken-pipe=kill`.
+        cargo.env("FORCE_ON_BROKEN_PIPE_KILL", "-Zon-broken-pipe=kill");
     }
 
     cargo
