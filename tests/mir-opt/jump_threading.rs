@@ -531,6 +531,15 @@ fn floats() -> u32 {
     if x == 0.0 { 0 } else { 1 }
 }
 
+fn not_int() -> i32 {
+    // CHECK-LABEL: fn not_int(
+
+    // Test for issue #131195, where !a == b is assumed to be equivalent to a != b
+    // This is only the case for bools
+    let a = 1;
+    if !a == 0 { 1 } else { 0 }
+}
+
 fn main() {
     // CHECK-LABEL: fn main(
     too_complex(Ok(0));
@@ -546,6 +555,7 @@ fn main() {
     aggregate(7);
     assume(7, false);
     floats();
+    not_int();
 }
 
 // EMIT_MIR jump_threading.too_complex.JumpThreading.diff
@@ -562,3 +572,4 @@ fn main() {
 // EMIT_MIR jump_threading.assume.JumpThreading.diff
 // EMIT_MIR jump_threading.aggregate_copy.JumpThreading.diff
 // EMIT_MIR jump_threading.floats.JumpThreading.diff
+// EMIT_MIR jump_threading.not_int.JumpThreading.diff
