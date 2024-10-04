@@ -136,6 +136,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.enter_forall(value, f)
     }
 
+    fn equate_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
+        self.inner.borrow_mut().type_variables().equate(a, b);
+    }
+
     fn equate_int_vids_raw(&self, a: rustc_type_ir::IntVid, b: rustc_type_ir::IntVid) {
         self.inner.borrow_mut().int_unification_table().union(a, b);
     }
@@ -150,6 +154,23 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn equate_effect_vids_raw(&self, a: rustc_type_ir::EffectVid, b: rustc_type_ir::EffectVid) {
         self.inner.borrow_mut().effect_unification_table().union(a, b);
+    }
+
+    fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
+        &self,
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: rustc_type_ir::TyVid,
+        instantiation_variance: rustc_type_ir::Variance,
+        source_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, ()> {
+        self.instantiate_ty_var(
+            relation,
+            target_is_expected,
+            target_vid,
+            instantiation_variance,
+            source_ty,
+        )
     }
 
     fn instantiate_int_var_raw(
@@ -228,7 +249,19 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>) {
-        self.sub_regions(SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None), sub, sup)
+        self.inner.borrow_mut().unwrap_region_constraints().make_subregion(
+            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            sub,
+            sup,
+        );
+    }
+
+    fn equate_regions(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) {
+        self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(
+            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            a,
+            b,
+        );
     }
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>) {

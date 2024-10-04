@@ -67,11 +67,20 @@ pub trait InferCtxtLike: Sized {
         f: impl FnOnce(T) -> U,
     ) -> U;
 
+    fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid);
     fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid);
     fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid);
     fn equate_effect_vids_raw(&self, a: ty::EffectVid, b: ty::EffectVid);
 
+    fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
+        &self,
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: ty::TyVid,
+        instantiation_variance: ty::Variance,
+        source_ty: <Self::Interner as Interner>::Ty,
+    ) -> RelateResult<Self::Interner, ()>;
     fn instantiate_int_var_raw(&self, vid: ty::IntVid, value: ty::IntVarValue);
     fn instantiate_float_var_raw(&self, vid: ty::FloatVid, value: ty::FloatVarValue);
     fn instantiate_effect_var_raw(
@@ -123,6 +132,12 @@ pub trait InferCtxtLike: Sized {
         &self,
         sub: <Self::Interner as Interner>::Region,
         sup: <Self::Interner as Interner>::Region,
+    );
+
+    fn equate_regions(
+        &self,
+        a: <Self::Interner as Interner>::Region,
+        b: <Self::Interner as Interner>::Region,
     );
 
     fn register_ty_outlives(

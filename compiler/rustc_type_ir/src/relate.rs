@@ -10,6 +10,7 @@ use crate::inherent::*;
 use crate::{self as ty, Interner};
 
 pub mod combine;
+pub mod solver_relating;
 
 pub type RelateResult<I, T> = Result<T, TypeError<I>>;
 
