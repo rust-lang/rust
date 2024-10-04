@@ -23,17 +23,17 @@ hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
 
 hir_typeck_cast_enum_drop = cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`
 
-hir_typeck_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
+hir_typeck_cast_thin_pointer_to_wide_pointer = cannot cast thin pointer `{$expr_ty}` to wide pointer `{$cast_ty}`
     .teach_help = Thin pointers are "simple" pointers: they are purely a reference to a
         memory address.
 
-        Fat pointers are pointers referencing "Dynamically Sized Types" (also
+        Wide pointers are pointers referencing "Dynamically Sized Types" (also
         called DST). DST don't have a statically known size, therefore they can
         only exist behind some kind of pointers that contain additional
         information. Slices and trait objects are DSTs. In the case of slices,
-        the additional information the fat pointer holds is their size.
+        the additional information the wide pointer holds is their size.
 
-        To fix this error, don't try to cast directly between thin and fat
+        To fix this error, don't try to cast directly between thin and wide
         pointers.
 
         For more information about casts, take a look at The Book:

@@ -164,17 +164,17 @@ impl Primitive {
     }
 }
 
-/// The first half of a fat pointer.
+/// The first half of a wide pointer.
 ///
 /// - For a trait object, this is the address of the box.
 /// - For a slice, this is the base address.
-pub const FAT_PTR_ADDR: usize = 0;
+pub const WIDE_PTR_ADDR: usize = 0;
 
-/// The second half of a fat pointer.
+/// The second half of a wide pointer.
 ///
 /// - For a trait object, this is the address of the vtable.
 /// - For a slice, this is the length.
-pub const FAT_PTR_EXTRA: usize = 1;
+pub const WIDE_PTR_EXTRA: usize = 1;
 
 /// The maximum supported number of lanes in a SIMD vector.
 ///
@@ -312,7 +312,7 @@ pub enum SizeSkeleton<'tcx> {
     /// that another SizeSkeleton is of equal size.
     Generic(ty::Const<'tcx>),
 
-    /// A potentially-fat pointer.
+    /// A potentially-wide pointer.
     Pointer {
         /// If true, this pointer is never null.
         non_zero: bool,
@@ -785,11 +785,11 @@ where
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }
 
-                // Potentially-fat pointers.
+                // Potentially-wide pointers.
                 ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                     assert!(i < this.fields.count());
 
-                    // Reuse the fat `*T` type as its own thin pointer data field.
+                    // Reuse the wide `*T` type as its own thin pointer data field.
                     // This provides information about, e.g., DST struct pointees
                     // (which may have no non-DST form), and will work as long
                     // as the `Abi` or `FieldsShape` is checked by users.

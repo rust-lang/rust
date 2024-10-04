@@ -7,7 +7,7 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
-pub(crate) use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+pub(crate) use rustc_middle::ty::layout::{WIDE_PTR_ADDR, WIDE_PTR_EXTRA};
 use rustc_middle::{bug, ty};
 use rustc_session::config;
 pub(crate) use rustc_target::abi::call::*;

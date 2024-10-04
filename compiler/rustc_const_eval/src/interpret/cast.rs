@@ -204,12 +204,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         assert!(src.layout.ty.is_any_ptr());
         assert!(cast_to.ty.is_unsafe_ptr());
-        // Handle casting any ptr to raw ptr (might be a fat ptr).
+        // Handle casting any ptr to raw ptr (might be a wide ptr).
         if cast_to.size == src.layout.size {
-            // Thin or fat pointer that just has the ptr kind of target type changed.
+            // Thin or wide pointer that just has the ptr kind of target type changed.
             return interp_ok(ImmTy::from_immediate(**src, cast_to));
         } else {
-            // Casting the metadata away from a fat ptr.
+            // Casting the metadata away from a wide ptr.
             assert_eq!(src.layout.size, 2 * self.pointer_size());
             assert_eq!(cast_to.size, self.pointer_size());
             assert!(src.layout.ty.is_unsafe_ptr());

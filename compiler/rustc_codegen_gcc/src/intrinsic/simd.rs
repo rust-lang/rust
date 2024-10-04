@@ -478,7 +478,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                require!(metadata.is_unit(), InvalidMonomorphization::CastFatPointer {
+                require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
                     name,
                     ty: in_elem
@@ -493,7 +493,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                require!(metadata.is_unit(), InvalidMonomorphization::CastFatPointer {
+                require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
                     name,
                     ty: out_elem
