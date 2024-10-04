@@ -1,7 +1,6 @@
 #![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
