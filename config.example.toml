@@ -420,7 +420,7 @@
 #jobs = 0
 
 # What custom diff tool to use for displaying compiletest tests.
-#compiletest-diff-tool = "difft --color=always --background=light --display=side-by-side"
+#compiletest-diff-tool = <none>
 
 # =============================================================================
 # General install configuration options
