@@ -7,7 +7,7 @@ use clippy_utils::{
     path_to_local_id, span_contains_cfg, span_find_starting_semi,
 };
 use core::ops::ControlFlow;
-use rustc_ast::NestedMetaItem;
+use rustc_ast::MetaItemInner;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
 use rustc_hir::intravisit::FnKind;
@@ -421,7 +421,7 @@ fn check_final_expr<'tcx>(
                     if matches!(Level::from_attr(attr), Some(Level::Expect(_)))
                         && let metas = attr.meta_item_list()
                         && let Some(lst) = metas
-                        && let [NestedMetaItem::MetaItem(meta_item), ..] = lst.as_slice()
+                        && let [MetaItemInner::MetaItem(meta_item), ..] = lst.as_slice()
                         && let [tool, lint_name] = meta_item.path.segments.as_slice()
                         && tool.ident.name == sym::clippy
                         && matches!(
