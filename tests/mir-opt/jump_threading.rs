@@ -2,7 +2,6 @@
 //@ compile-flags: -Zmir-enable-passes=+Inline
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(control_flow_enum)]
 #![feature(try_trait_v2)]
 #![feature(custom_mir, core_intrinsics, rustc_attrs)]
 

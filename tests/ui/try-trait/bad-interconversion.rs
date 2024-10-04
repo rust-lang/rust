@@ -1,5 +1,3 @@
-#![feature(control_flow_enum)]
-
 use std::ops::ControlFlow;
 
 fn result_to_result() -> Result<u64, u8> {

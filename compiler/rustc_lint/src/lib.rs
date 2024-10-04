@@ -32,7 +32,6 @@
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]

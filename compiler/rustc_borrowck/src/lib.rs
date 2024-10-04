@@ -5,7 +5,6 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(file_buffered)]
 #![feature(let_chains)]
 #![feature(never_type)]
