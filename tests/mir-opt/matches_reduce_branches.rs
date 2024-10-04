@@ -23,7 +23,7 @@ fn foo(bar: Option<()>) {
 // Test for #131219.
 fn my_is_some(bar: Option<()>) -> bool {
     // CHECK-LABEL: fn my_is_some(
-    // CHECK: switchInt
+    // CHECK: = Ne
     // CHECK: return
     match bar {
         Some(_) => true,
