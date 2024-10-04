@@ -55,7 +55,10 @@ where
     /// Returns all [`TextRange`]s that correspond to the given span.
     ///
     /// Note this does a linear search through the entire backing vector.
-    pub fn ranges_with_span_exact(&self, span: SpanData<S>) -> impl Iterator<Item = TextRange> + '_
+    pub fn ranges_with_span_exact(
+        &self,
+        span: SpanData<S>,
+    ) -> impl Iterator<Item = (TextRange, S)> + '_
     where
         S: Copy,
     {
@@ -64,14 +67,14 @@ where
                 return None;
             }
             let start = idx.checked_sub(1).map_or(TextSize::new(0), |prev| self.spans[prev].0);
-            Some(TextRange::new(start, end))
+            Some((TextRange::new(start, end), s.ctx))
         })
     }
 
     /// Returns all [`TextRange`]s whose spans contain the given span.
     ///
     /// Note this does a linear search through the entire backing vector.
-    pub fn ranges_with_span(&self, span: SpanData<S>) -> impl Iterator<Item = TextRange> + '_
+    pub fn ranges_with_span(&self, span: SpanData<S>) -> impl Iterator<Item = (TextRange, S)> + '_
     where
         S: Copy,
     {
@@ -83,7 +86,7 @@ where
                 return None;
             }
             let start = idx.checked_sub(1).map_or(TextSize::new(0), |prev| self.spans[prev].0);
-            Some(TextRange::new(start, end))
+            Some((TextRange::new(start, end), s.ctx))
         })
     }
 
