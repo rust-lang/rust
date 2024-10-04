@@ -100,4 +100,4 @@ RUN /scripts/build-gccjit.sh /scripts
 # the local version of the package is different than the one used by the CI.
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
   npm install browser-ui-test@$(head -n 1 /tmp/browser-ui-test.version) --unsafe-perm=true && \
-  python3 ../x.py test tests/rustdoc-gui --stage 2 --test-args "'--no-sandbox --jobs 1'"
+  python3 ../x.py test tests/rustdoc-gui --stage 2 --test-args "'--jobs 1'"
