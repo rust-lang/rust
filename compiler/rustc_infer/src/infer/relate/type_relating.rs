@@ -58,6 +58,7 @@ impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
         define_opaque_types: DefineOpaqueTypes,
         ambient_variance: ty::Variance,
     ) -> TypeRelating<'infcx, 'tcx> {
+        assert!(!infcx.next_trait_solver);
         TypeRelating {
             infcx,
             trace,
@@ -190,9 +191,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
 
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if self.define_opaque_types == DefineOpaqueTypes::Yes
-                    && def_id.is_local()
-                    && !infcx.next_trait_solver() =>
+                if self.define_opaque_types == DefineOpaqueTypes::Yes && def_id.is_local() =>
             {
                 self.register_goals(infcx.handle_opaque_type(
                     a,

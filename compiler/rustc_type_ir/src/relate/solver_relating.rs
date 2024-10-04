@@ -1,5 +1,5 @@
 pub use rustc_type_ir::relate::*;
-use rustc_type_ir::solve::{Goal, NoSolution};
+use rustc_type_ir::solve::Goal;
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 
@@ -13,14 +13,20 @@ pub trait RelateExt: InferCtxtLike {
         lhs: T,
         variance: ty::Variance,
         rhs: T,
-    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+    ) -> Result<
+        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+        TypeError<Self::Interner>,
+    >;
 
     fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
         lhs: T,
         rhs: T,
-    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+    ) -> Result<
+        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+        TypeError<Self::Interner>,
+    >;
 }
 
 impl<Infcx: InferCtxtLike> RelateExt for Infcx {
@@ -30,8 +36,10 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         lhs: T,
         variance: ty::Variance,
         rhs: T,
-    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>
-    {
+    ) -> Result<
+        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+        TypeError<Self::Interner>,
+    > {
         let mut relate =
             SolverRelating::new(self, StructurallyRelateAliases::No, variance, param_env);
         relate.relate(lhs, rhs)?;
@@ -43,8 +51,10 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         param_env: <Self::Interner as Interner>::ParamEnv,
         lhs: T,
         rhs: T,
-    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>
-    {
+    ) -> Result<
+        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+        TypeError<Self::Interner>,
+    > {
         let mut relate =
             SolverRelating::new(self, StructurallyRelateAliases::Yes, ty::Invariant, param_env);
         relate.relate(lhs, rhs)?;
@@ -91,7 +101,7 @@ where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
 {
-    fn new(
+    pub fn new(
         infcx: &'infcx Infcx,
         structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,

@@ -836,7 +836,7 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs)
+        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs)?)
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
