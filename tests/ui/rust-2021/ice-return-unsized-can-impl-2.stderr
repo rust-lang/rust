@@ -1,56 +1,56 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/avoid-ice-on-warning-3.rs:14:19
+  --> $DIR/ice-return-unsized-can-impl-2.rs:11:20
    |
-LL | trait A { fn g(b: B) -> B; }
-   |                   ^
+LL |     fn concrete(b: B) -> B;
+   |                    ^
    |
    = note: `B` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `B`
    |
-LL | trait A { fn g<T: B>(b: T) -> B; }
-   |               ++++++    ~
+LL |     fn concrete<T: B>(b: T) -> B;
+   |                ++++++    ~
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
-LL | trait A { fn g(b: impl B) -> B; }
-   |                   ++++
+LL |     fn concrete(b: impl B) -> B;
+   |                    ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/avoid-ice-on-warning-3.rs:14:25
+  --> $DIR/ice-return-unsized-can-impl-2.rs:11:26
    |
-LL | trait A { fn g(b: B) -> B; }
-   |                         ^
+LL |     fn concrete(b: B) -> B;
+   |                          ^
    |
 help: `B` is dyn-incompatible, use `impl B` to return an opaque type, as long as you return a single underlying type
    |
-LL | trait A { fn g(b: B) -> impl B; }
-   |                         ++++
+LL |     fn concrete(b: B) -> impl B;
+   |                          ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/avoid-ice-on-warning-3.rs:4:19
+  --> $DIR/ice-return-unsized-can-impl-2.rs:6:13
    |
-LL | trait B { fn f(a: A) -> A; }
-   |                   ^
+LL |     fn f(a: A) -> A;
+   |             ^
    |
    = note: `A` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `A`
    |
-LL | trait B { fn f<T: A>(a: T) -> A; }
-   |               ++++++    ~
+LL |     fn f<T: A>(a: T) -> A;
+   |         ++++++    ~
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
-LL | trait B { fn f(a: impl A) -> A; }
-   |                   ++++
+LL |     fn f(a: impl A) -> A;
+   |             ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/avoid-ice-on-warning-3.rs:4:25
+  --> $DIR/ice-return-unsized-can-impl-2.rs:6:19
    |
-LL | trait B { fn f(a: A) -> A; }
-   |                         ^
+LL |     fn f(a: A) -> A;
+   |                   ^
    |
 help: `A` is dyn-incompatible, use `impl A` to return an opaque type, as long as you return a single underlying type
    |
-LL | trait B { fn f(a: A) -> impl A; }
-   |                         ++++
+LL |     fn f(a: A) -> impl A;
+   |                   ++++
 
 error: aborting due to 4 previous errors
 

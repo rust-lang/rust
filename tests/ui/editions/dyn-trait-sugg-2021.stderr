@@ -1,10 +1,10 @@
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/dyn-trait-sugg-2021.rs:10:5
    |
 LL |     Foo::hi(123);
    |     ^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL |     <dyn Foo>::hi(123);
    |     ++++    +

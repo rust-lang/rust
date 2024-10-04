@@ -1,5 +1,5 @@
 error[E0428]: the name `Foo` is defined multiple times
-  --> $DIR/issue-106072.rs:5:1
+  --> $DIR/issue-106072.rs:3:1
    |
 LL | struct Foo;
    | ----------- previous definition of the type `Foo` here
@@ -8,26 +8,7 @@ LL | trait Foo {}
    |
    = note: `Foo` must be defined only once in the type namespace of this module
 
-error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
-  --> $DIR/issue-106072.rs:1:10
-   |
-LL | #[derive(Clone)]
-   |          ^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
-note: required by a bound in `Clone`
-  --> $SRC_DIR/core/src/clone.rs:LL:COL
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0746]: return type cannot have an unboxed trait object
-  --> $DIR/issue-106072.rs:1:10
-   |
-LL | #[derive(Clone)]
-   |          ^^^^^ doesn't have a size known at compile-time
-   |
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/issue-106072.rs:1:10
    |
 LL | #[derive(Clone)]
@@ -35,7 +16,7 @@ LL | #[derive(Clone)]
    |
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0277, E0428, E0746, E0782.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0428, E0782.
+For more information about an error, try `rustc --explain E0428`.

@@ -4,7 +4,8 @@
 //@[new] run-rustfix
 #![deny(bare_trait_objects)]
 fn ord_prefer_dot(s: String) -> Ord {
-    //~^ ERROR the trait `Ord` cannot be made into an object
+    //[new]~^ ERROR expected a type, found a trait
+    //[old]~^^ ERROR the trait `Ord` cannot be made into an object
     //[old]~| ERROR trait objects without an explicit `dyn` are deprecated
     //[old]~| WARNING this is accepted in the current edition (Rust 2015)
     (s.starts_with("."), s)
