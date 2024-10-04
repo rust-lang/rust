@@ -108,7 +108,7 @@ impl<'cx, 'tcx> CertaintyVisitor<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> Visitor<'cx> for CertaintyVisitor<'cx, 'tcx> {
+impl<'cx> Visitor<'cx> for CertaintyVisitor<'cx, '_> {
     fn visit_qpath(&mut self, qpath: &'cx QPath<'_>, hir_id: HirId, _: Span) {
         self.certainty = self.certainty.meet(qpath_certainty(self.cx, qpath, true));
         if self.certainty != Certainty::Uncertain {

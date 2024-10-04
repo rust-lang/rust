@@ -1139,13 +1139,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::TyAlias(..) => "ty",
-                ItemKind::OpaqueTy(opaque) => {
-                    if opaque.in_trait {
-                        "opaque type in trait"
-                    } else {
-                        "opaque type"
-                    }
-                }
+                ItemKind::OpaqueTy(..) => "opaque type",
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
                 ItemKind::Union(..) => "union",

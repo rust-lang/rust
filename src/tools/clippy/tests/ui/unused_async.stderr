@@ -27,7 +27,7 @@ LL |     async fn f3() {}
    = help: consider removing the `async` from this function
 
 error: unused `async` for function with no await statements
-  --> tests/ui/unused_async.rs:58:1
+  --> tests/ui/unused_async.rs:74:1
    |
 LL | / async fn foo() -> i32 {
 LL | |
@@ -38,7 +38,7 @@ LL | | }
    = help: consider removing the `async` from this function
 
 error: unused `async` for function with no await statements
-  --> tests/ui/unused_async.rs:70:5
+  --> tests/ui/unused_async.rs:86:5
    |
 LL | /     async fn unused(&self) -> i32 {
 LL | |

@@ -245,6 +245,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         span, "silent safe transmute error"
                                     );
                                 }
+                                GetSafeTransmuteErrorAndReason::Default => {
+                                    (err_msg, None)
+                                }
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
                                     safe_transmute_explanation,
@@ -2226,6 +2229,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> GetSafeTransmuteErrorAndReason {
         use rustc_transmute::Answer;
 
+        // We don't assemble a transmutability candidate for types that are generic
+        // and we should have ambiguity for types that still have non-region infer.
+        if obligation.predicate.has_non_region_param() || obligation.has_non_region_infer() {
+            return GetSafeTransmuteErrorAndReason::Default;
+        }
+
         // Erase regions because layout code doesn't particularly care about regions.
         let trait_ref =
             self.tcx.erase_regions(self.tcx.instantiate_bound_regions_with_erased(trait_ref));
@@ -2248,6 +2257,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let dst = trait_ref.args.type_at(0);
         let src = trait_ref.args.type_at(1);
+
         let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
 
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
@@ -2630,7 +2640,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         def_id: DefId,
     ) -> ErrorGuaranteed {
         let name = match self.tcx.opaque_type_origin(def_id.expect_local()) {
-            hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
+            hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } => {
                 "opaque type".to_string()
             }
             hir::OpaqueTyOrigin::TyAlias { .. } => {

@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         // That's because although we may have an opaque type on the function,
         // it won't have a hidden type, so proving predicates about it is
         // not really meaningful.
-        if let hir::OpaqueTyOrigin::FnReturn(method_def_id) = opaque.origin
+        if let hir::OpaqueTyOrigin::FnReturn { parent: method_def_id, .. } = opaque.origin
             && let hir::Node::TraitItem(trait_item) = cx.tcx.hir_node_by_def_id(method_def_id)
             && !trait_item.defaultness.has_value()
         {
@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     && cx.tcx.parent(opaque_ty.def_id) == def_id
                     && matches!(
                         opaque.origin,
-                        hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_)
+                        hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. }
                     )
                 {
                     return;
@@ -114,8 +114,10 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // return type is well-formed in traits even when `Self` isn't sized.
                 if let ty::Param(param_ty) = *proj_term.kind()
                     && param_ty.name == kw::SelfUpper
-                    && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(_))
-                    && opaque.in_trait
+                    && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn {
+                        in_trait_or_impl: Some(hir::RpitContext::Trait),
+                        ..
+                    })
                 {
                     return;
                 }

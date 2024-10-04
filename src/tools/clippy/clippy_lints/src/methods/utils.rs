@@ -86,7 +86,7 @@ struct CloneOrCopyVisitor<'cx, 'tcx> {
     references_to_binding: Vec<(Span, String)>,
 }
 
-impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
+impl<'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -123,7 +123,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> CloneOrCopyVisitor<'cx, 'tcx> {
+impl<'tcx> CloneOrCopyVisitor<'_, 'tcx> {
     fn is_binding(&self, expr: &Expr<'tcx>) -> bool {
         self.binding_hir_ids
             .iter()

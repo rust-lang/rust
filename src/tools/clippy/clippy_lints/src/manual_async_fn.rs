@@ -105,7 +105,7 @@ fn future_trait_ref<'tcx>(
     cx: &LateContext<'tcx>,
     ty: &'tcx Ty<'tcx>,
 ) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
-    if let TyKind::OpaqueDef(item_id, bounds, false) = ty.kind
+    if let TyKind::OpaqueDef(item_id, bounds) = ty.kind
         && let item = cx.tcx.hir().item(item_id)
         && let ItemKind::OpaqueTy(opaque) = &item.kind
         && let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {

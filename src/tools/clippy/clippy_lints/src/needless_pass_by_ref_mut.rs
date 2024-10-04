@@ -311,7 +311,7 @@ struct MutablyUsedVariablesCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> MutablyUsedVariablesCtxt<'tcx> {
+impl MutablyUsedVariablesCtxt<'_> {
     fn add_mutably_used_var(&mut self, used_id: HirId) {
         self.mutably_used_vars.insert(used_id);
     }

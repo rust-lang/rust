@@ -1,5 +1,5 @@
 #![warn(clippy::serde_api_misuse)]
-#![allow(dead_code)]
+#![allow(dead_code, clippy::needless_lifetimes)]
 
 extern crate serde;
 

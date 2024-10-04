@@ -1244,6 +1244,14 @@ pub struct Iter<'a, K: 'a> {
     base: base::Iter<'a, K>,
 }
 
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K> Default for Iter<'_, K> {
+    #[inline]
+    fn default() -> Self {
+        Iter { base: Default::default() }
+    }
+}
+
 /// An owning iterator over the items of a `HashSet`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashSet`]
@@ -1263,6 +1271,14 @@ pub struct Iter<'a, K: 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
     base: base::IntoIter<K>,
+}
+
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K> Default for IntoIter<K> {
+    #[inline]
+    fn default() -> Self {
+        IntoIter { base: Default::default() }
+    }
 }
 
 /// A draining iterator over the items of a `HashSet`.

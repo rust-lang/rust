@@ -58,7 +58,7 @@ struct V<'a> {
     results: Vec<LocalUsage>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for V<'a> {
+impl<'tcx> Visitor<'tcx> for V<'_> {
     fn visit_place(&mut self, place: &Place<'tcx>, ctx: PlaceContext, loc: Location) {
         if loc.block == self.location.block && loc.statement_index <= self.location.statement_index {
             return;

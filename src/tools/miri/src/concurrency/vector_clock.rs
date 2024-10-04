@@ -151,7 +151,7 @@ impl VClock {
     /// Load the internal timestamp slice in the vector clock
     #[inline]
     pub(super) fn as_slice(&self) -> &[VTimestamp] {
-        debug_assert!(!self.0.last().is_some_and(|t| t.time() == 0));
+        debug_assert!(self.0.last().is_none_or(|t| t.time() != 0));
         self.0.as_slice()
     }
 

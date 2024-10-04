@@ -226,7 +226,7 @@ struct SliceIndexLintingVisitor<'a, 'tcx> {
     max_suggested_slice: u64,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {

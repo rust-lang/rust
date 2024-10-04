@@ -281,7 +281,7 @@ impl<'a, 'tcx> ImplicitHasherTypeVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'_, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
         if let Some(target) = ImplicitHasherType::new(self.cx, t) {
             self.found.push(target);
@@ -318,7 +318,7 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_body(&mut self, body: &Body<'tcx>) {

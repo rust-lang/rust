@@ -618,11 +618,13 @@ pub(super) fn type_of_opaque(
                 // Opaque types desugared from `impl Trait`.
                 ItemKind::OpaqueTy(&OpaqueTy {
                     origin:
-                        hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner),
-                    in_trait,
+                        hir::OpaqueTyOrigin::FnReturn { parent: owner, in_trait_or_impl }
+                        | hir::OpaqueTyOrigin::AsyncFn { parent: owner, in_trait_or_impl },
                     ..
                 }) => {
-                    if in_trait && !tcx.defaultness(owner).has_value() {
+                    if in_trait_or_impl == Some(hir::RpitContext::Trait)
+                        && !tcx.defaultness(owner).has_value()
+                    {
                         span_bug!(
                             tcx.def_span(def_id),
                             "tried to get type of this RPITIT with no definition"

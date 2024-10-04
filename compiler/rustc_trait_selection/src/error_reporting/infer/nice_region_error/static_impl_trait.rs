@@ -284,7 +284,7 @@ pub fn suggest_new_region_bound(
         }
         match fn_return.kind {
             // FIXME(precise_captures): Suggest adding to `use<...>` list instead.
-            TyKind::OpaqueDef(item_id, _, _) => {
+            TyKind::OpaqueDef(item_id, _) => {
                 let item = tcx.hir().item(item_id);
                 let ItemKind::OpaqueTy(opaque) = &item.kind else {
                     return;

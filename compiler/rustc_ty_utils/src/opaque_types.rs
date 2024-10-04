@@ -141,7 +141,8 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         let origin = self.tcx.opaque_type_origin(alias_ty.def_id.expect_local());
         trace!(?origin);
         match origin {
-            rustc_hir::OpaqueTyOrigin::FnReturn(_) | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {}
+            rustc_hir::OpaqueTyOrigin::FnReturn { .. }
+            | rustc_hir::OpaqueTyOrigin::AsyncFn { .. } => {}
             rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty, .. } => {
                 if !in_assoc_ty && !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
                     return;

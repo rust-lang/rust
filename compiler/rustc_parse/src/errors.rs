@@ -2572,6 +2572,25 @@ pub(crate) struct EnumPatternInsteadOfIdentifier {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_at_dot_dot_in_struct_pattern)]
+pub(crate) struct AtDotDotInStructPattern {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "", style = "verbose", applicability = "machine-applicable")]
+    pub remove: Span,
+    pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_at_in_struct_pattern)]
+#[note]
+#[help]
+pub(crate) struct AtInStructPattern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_dot_dot_dot_for_remaining_fields)]
 pub(crate) struct DotDotDotForRemainingFields {
     #[primary_span]

@@ -446,13 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => bug!("unexpected bad final type in method autoderef"),
                 };
                 self.demand_eqtype(span, ty, Ty::new_error(self.tcx, guar));
-                return Err(MethodError::NoMatch(NoMatchData {
-                    static_candidates: Vec::new(),
-                    unsatisfied_predicates: Vec::new(),
-                    out_of_scope_traits: Vec::new(),
-                    similar_candidate: None,
-                    mode,
-                }));
+                return Err(MethodError::ErrorReported(guar));
             }
         }
 
