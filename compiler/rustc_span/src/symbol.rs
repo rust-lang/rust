@@ -544,6 +544,7 @@ symbols! {
         cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
+        cfg_boolean_literals,
         cfg_doctest,
         cfg_eval,
         cfg_fmt_debug,

@@ -5,7 +5,9 @@ use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
 };
-use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, NodeId};
+use rustc_ast::{
+    self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, NestedMetaItem, NodeId,
+};
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
@@ -449,7 +451,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 }
 
-pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItem> {
+pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a NestedMetaItem> {
     let span = meta_item.span;
     match meta_item.meta_item_list() {
         None => {
@@ -464,7 +466,7 @@ pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a Meta
             sess.dcx().emit_err(InvalidCfg::MultiplePredicates { span: l.span() });
             None
         }
-        Some([single]) => match single.meta_item() {
+        Some([single]) => match single.meta_item_or_bool() {
             Some(meta_item) => Some(meta_item),
             None => {
                 sess.dcx().emit_err(InvalidCfg::PredicateLiteral { span: single.span() });
