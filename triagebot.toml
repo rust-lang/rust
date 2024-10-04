@@ -938,7 +938,6 @@ compiler-team = [
     "@oli-obk",
     "@pnkfelix",
     "@wesleywiser",
-    "@michaelwoerister",
 ]
 compiler-team-contributors = [
     "@TaKO8Ki",
@@ -989,7 +988,6 @@ query-system = [
     "@cjgillot",
 ]
 incremental = [
-    "@michaelwoerister",
     "@wesleywiser",
 ]
 diagnostics = [
@@ -1048,7 +1046,6 @@ ast_lowering = [
     "@spastorino",
 ]
 debuginfo = [
-    "@michaelwoerister",
     "@davidtwco"
 ]
 fallback = [
