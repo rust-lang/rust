@@ -20,7 +20,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::rc::Rc;
 
 use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -420,8 +419,8 @@ fn do_mir_borrowck<'tcx>(
         Some(Box::new(BodyWithBorrowckFacts {
             body: body_owned,
             promoted,
-            borrow_set: Rc::new(borrow_set),
-            region_inference_context: Rc::new(regioncx),
+            borrow_set,
+            region_inference_context: regioncx,
             location_table: polonius_input.as_ref().map(|_| location_table),
             input_facts: polonius_input,
             output_facts,
