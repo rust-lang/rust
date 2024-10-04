@@ -48,7 +48,7 @@ pub use hir::ChangeWithProcMacros;
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
-    salsa::{self, Durability},
+    ra_salsa::{self, Durability},
     AnchoredPath, CrateId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
     DEFAULT_FILE_TEXT_LRU_CAP,
 };
@@ -74,7 +74,7 @@ pub type FxIndexMap<K, V> =
 pub type FilePosition = FilePositionWrapper<FileId>;
 pub type FileRange = FileRangeWrapper<FileId>;
 
-#[salsa::database(
+#[ra_salsa::database(
     base_db::SourceRootDatabaseStorage,
     base_db::SourceDatabaseStorage,
     hir::db::ExpandDatabaseStorage,
@@ -89,7 +89,7 @@ pub struct RootDatabase {
     // `&RootDatabase -> &dyn OtherDatabase` cast will instantiate its drop glue in the vtable,
     // which duplicates `Weak::drop` and `Arc::drop` tens of thousands of times, which makes
     // compile times of all `ide_*` and downstream crates suffer greatly.
-    storage: ManuallyDrop<salsa::Storage<RootDatabase>>,
+    storage: ManuallyDrop<ra_salsa::Storage<RootDatabase>>,
 }
 
 impl Drop for RootDatabase {
@@ -134,7 +134,7 @@ impl FileLoader for RootDatabase {
     }
 }
 
-impl salsa::Database for RootDatabase {}
+impl ra_salsa::Database for RootDatabase {}
 
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
@@ -144,7 +144,7 @@ impl Default for RootDatabase {
 
 impl RootDatabase {
     pub fn new(lru_capacity: Option<u16>) -> RootDatabase {
-        let mut db = RootDatabase { storage: ManuallyDrop::new(salsa::Storage::default()) };
+        let mut db = RootDatabase { storage: ManuallyDrop::new(ra_salsa::Storage::default()) };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_proc_macros_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
@@ -195,13 +195,15 @@ impl RootDatabase {
     }
 }
 
-impl salsa::ParallelDatabase for RootDatabase {
-    fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
-        salsa::Snapshot::new(RootDatabase { storage: ManuallyDrop::new(self.storage.snapshot()) })
+impl ra_salsa::ParallelDatabase for RootDatabase {
+    fn snapshot(&self) -> ra_salsa::Snapshot<RootDatabase> {
+        ra_salsa::Snapshot::new(RootDatabase {
+            storage: ManuallyDrop::new(self.storage.snapshot()),
+        })
     }
 }
 
-#[salsa::query_group(LineIndexDatabaseStorage)]
+#[ra_salsa::query_group(LineIndexDatabaseStorage)]
 pub trait LineIndexDatabase: base_db::SourceDatabase {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }

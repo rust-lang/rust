@@ -30,7 +30,7 @@ use triomphe::Arc;
 
 use std::hash::Hash;
 
-use base_db::{salsa::InternValueTrivial, CrateId};
+use base_db::{ra_salsa::InternValueTrivial, CrateId};
 use either::Either;
 use span::{
     Edition, EditionedFileId, ErasedFileAstId, FileAstId, HirFileIdRepr, Span, SpanAnchor,

@@ -3,7 +3,7 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    salsa::{self, Durability},
+    ra_salsa::{self, Durability},
     AnchoredPath, CrateId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
 use hir_expand::{db::ExpandDatabase, files::FilePosition, InFile};
@@ -18,7 +18,7 @@ use crate::{
     LocalModuleId, Lookup, ModuleDefId, ModuleId,
 };
 
-#[salsa::database(
+#[ra_salsa::database(
     base_db::SourceRootDatabaseStorage,
     base_db::SourceDatabaseStorage,
     hir_expand::db::ExpandDatabaseStorage,
@@ -26,8 +26,8 @@ use crate::{
     crate::db::DefDatabaseStorage
 )]
 pub(crate) struct TestDB {
-    storage: salsa::Storage<TestDB>,
-    events: Mutex<Option<Vec<salsa::Event>>>,
+    storage: ra_salsa::Storage<TestDB>,
+    events: Mutex<Option<Vec<ra_salsa::Event>>>,
 }
 
 impl Default for TestDB {
@@ -51,8 +51,8 @@ impl Upcast<dyn DefDatabase> for TestDB {
     }
 }
 
-impl salsa::Database for TestDB {
-    fn salsa_event(&self, event: salsa::Event) {
+impl ra_salsa::Database for TestDB {
+    fn salsa_event(&self, event: ra_salsa::Event) {
         let mut events = self.events.lock().unwrap();
         if let Some(events) = &mut *events {
             events.push(event);
@@ -215,7 +215,7 @@ impl TestDB {
         None
     }
 
-    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
+    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<ra_salsa::Event> {
         *self.events.lock().unwrap() = Some(Vec::new());
         f();
         self.events.lock().unwrap().take().unwrap()
@@ -228,7 +228,7 @@ impl TestDB {
             .filter_map(|e| match e.kind {
                 // This is pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
-                salsa::EventKind::WillExecute { database_key } => {
+                ra_salsa::EventKind::WillExecute { database_key } => {
                     Some(format!("{:?}", database_key.debug(self)))
                 }
                 _ => None,

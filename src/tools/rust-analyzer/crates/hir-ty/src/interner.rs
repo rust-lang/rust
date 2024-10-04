@@ -8,7 +8,7 @@ use crate::{
     ProgramClauseData, ProgramClauses, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses,
     Substitution, Ty, TyData, TyKind, VariableKind, VariableKinds,
 };
-use base_db::salsa::InternId;
+use base_db::ra_salsa::InternId;
 use chalk_ir::{ProgramClauseImplication, SeparatorTraitRef, Variance};
 use hir_def::TypeAliasId;
 use intern::{impl_internable, Interned};
