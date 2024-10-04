@@ -43,6 +43,11 @@ impl<'tcx> InferCtxt<'tcx> {
         debug_assert!(!b.has_escaping_bound_vars());
 
         match (a.kind(), b.kind()) {
+            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
+                self.set_tainted_by_errors(e);
+                return Ok(Ty::new_error(self.tcx, e));
+            }
+
             // Relate integral variables to other types
             (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
                 self.inner.borrow_mut().int_unification_table().union(a_id, b_id);
