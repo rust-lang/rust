@@ -150,14 +150,6 @@ impl Condition {
     fn matches(&self, value: ScalarInt) -> bool {
         (self.value == value) == (self.polarity == Polarity::Eq)
     }
-
-    fn inv(mut self) -> Self {
-        self.polarity = match self.polarity {
-            Polarity::Eq => Polarity::Ne,
-            Polarity::Ne => Polarity::Eq,
-        };
-        self
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -495,19 +487,20 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     }
                 }
             }
-            // Transfer the conditions on the copy rhs, after inversing polarity.
+            // Transfer the conditions on the copy rhs, after inverting the value of the condition.
             Rvalue::UnaryOp(UnOp::Not, Operand::Move(place) | Operand::Copy(place)) => {
-                if !place.ty(self.body, self.tcx).ty.is_bool() {
-                    // Constructing the conditions by inverting the polarity
-                    // of equality is only correct for bools. That is to say,
-                    // `!a == b` is not `a != b` for integers greater than 1 bit.
-                    return;
-                }
+                let layout = self.ecx.layout_of(place.ty(self.body, self.tcx).ty).unwrap();
                 let Some(conditions) = state.try_get_idx(lhs, &self.map) else { return };
                 let Some(place) = self.map.find(place.as_ref()) else { return };
-                // FIXME: I think This could be generalized to not bool if we
-                // actually perform a logical not on the condition's value.
-                let conds = conditions.map(self.arena, Condition::inv);
+                let conds = conditions.map(self.arena, |mut cond| {
+                    cond.value = self
+                        .ecx
+                        .unary_op(UnOp::Not, &ImmTy::from_scalar_int(cond.value, layout))
+                        .unwrap()
+                        .to_scalar_int()
+                        .unwrap();
+                    cond
+                });
                 state.insert_value_idx(place, conds, &self.map);
             }
             // We expect `lhs ?= A`. We found `lhs = Eq(rhs, B)`.
