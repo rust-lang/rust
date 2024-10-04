@@ -171,7 +171,8 @@ impl<T> [T] {
     /// assert_eq!(None, y.first_mut());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+    #[rustc_const_stable(feature = "const_slice_first_last", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const fn first_mut(&mut self) -> Option<&mut T> {
@@ -213,7 +214,8 @@ impl<T> [T] {
     /// assert_eq!(x, &[3, 4, 5]);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+    #[rustc_const_stable(feature = "const_slice_first_last", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
@@ -255,7 +257,8 @@ impl<T> [T] {
     /// assert_eq!(x, &[4, 5, 3]);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+    #[rustc_const_stable(feature = "const_slice_first_last", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
@@ -297,7 +300,8 @@ impl<T> [T] {
     /// assert_eq!(None, y.last_mut());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+    #[rustc_const_stable(feature = "const_slice_first_last", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const fn last_mut(&mut self) -> Option<&mut T> {
