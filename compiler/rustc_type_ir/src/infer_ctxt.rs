@@ -1,11 +1,20 @@
 use crate::fold::TypeFoldable;
-use crate::relate::Relate;
+use crate::relate::combine::PredicateEmittingRelation;
+use crate::relate::{Relate, RelateResult};
 use crate::solve::{Goal, NoSolution, SolverMode};
 use crate::{self as ty, Interner};
 
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
     fn cx(&self) -> Self::Interner;
+
+    /// Whether the new trait solver is enabled. This only exists because rustc
+    /// shares code between the new and old trait solvers; for all other users,
+    /// this should always be true. If this is unknowingly false and you try to
+    /// use the new trait solver, things will break badly.
+    fn next_trait_solver(&self) -> bool {
+        true
+    }
 
     fn solver_mode(&self) -> SolverMode;
 
@@ -58,6 +67,28 @@ pub trait InferCtxtLike: Sized {
         f: impl FnOnce(T) -> U,
     ) -> U;
 
+    fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid);
+    fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid);
+    fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid);
+    fn equate_effect_vids_raw(&self, a: ty::EffectVid, b: ty::EffectVid);
+
+    fn instantiate_int_var_raw(&self, vid: ty::IntVid, value: ty::IntVarValue);
+    fn instantiate_float_var_raw(&self, vid: ty::FloatVid, value: ty::FloatVarValue);
+    fn instantiate_effect_var_raw(
+        &self,
+        vid: ty::EffectVid,
+        value: <Self::Interner as Interner>::Const,
+    );
+    fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(
+        &self,
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: ty::ConstVid,
+        source_ct: <Self::Interner as Interner>::Const,
+    ) -> RelateResult<Self::Interner, ()>;
+
+    fn set_tainted_by_errors(&self, e: <Self::Interner as Interner>::ErrorGuaranteed);
+
     fn relate<T: Relate<Self::Interner>>(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
@@ -77,6 +108,10 @@ pub trait InferCtxtLike: Sized {
         &self,
         ty: <Self::Interner as Interner>::Ty,
     ) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_const(
+        &self,
+        ty: <Self::Interner as Interner>::Const,
+    ) -> <Self::Interner as Interner>::Const;
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where

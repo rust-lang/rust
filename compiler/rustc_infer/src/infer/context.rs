@@ -1,20 +1,25 @@
 ///! Definition of `InferCtxtLike` from the librarified type layer.
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::{Goal, NoSolution, SolverMode};
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
+use rustc_middle::ty::relate::{Relate, RelateResult};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::DUMMY_SP;
-use rustc_type_ir::InferCtxtLike;
-use rustc_type_ir::relate::Relate;
+use rustc_span::{DUMMY_SP, ErrorGuaranteed};
 
 use super::{BoundRegionConversionTime, InferCtxt, SubregionOrigin};
 
-impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
+impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     type Interner = TyCtxt<'tcx>;
 
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn next_trait_solver(&self) -> bool {
+        self.next_trait_solver
     }
 
     fn solver_mode(&self) -> ty::solve::SolverMode {
@@ -131,6 +136,59 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
         self.enter_forall(value, f)
     }
 
+    fn equate_int_vids_raw(&self, a: rustc_type_ir::IntVid, b: rustc_type_ir::IntVid) {
+        self.inner.borrow_mut().int_unification_table().union(a, b);
+    }
+
+    fn equate_float_vids_raw(&self, a: rustc_type_ir::FloatVid, b: rustc_type_ir::FloatVid) {
+        self.inner.borrow_mut().float_unification_table().union(a, b);
+    }
+
+    fn equate_const_vids_raw(&self, a: rustc_type_ir::ConstVid, b: rustc_type_ir::ConstVid) {
+        self.inner.borrow_mut().const_unification_table().union(a, b);
+    }
+
+    fn equate_effect_vids_raw(&self, a: rustc_type_ir::EffectVid, b: rustc_type_ir::EffectVid) {
+        self.inner.borrow_mut().effect_unification_table().union(a, b);
+    }
+
+    fn instantiate_int_var_raw(
+        &self,
+        vid: rustc_type_ir::IntVid,
+        value: rustc_type_ir::IntVarValue,
+    ) {
+        self.inner.borrow_mut().int_unification_table().union_value(vid, value);
+    }
+
+    fn instantiate_float_var_raw(
+        &self,
+        vid: rustc_type_ir::FloatVid,
+        value: rustc_type_ir::FloatVarValue,
+    ) {
+        self.inner.borrow_mut().float_unification_table().union_value(vid, value);
+    }
+
+    fn instantiate_effect_var_raw(&self, vid: rustc_type_ir::EffectVid, value: ty::Const<'tcx>) {
+        self.inner
+            .borrow_mut()
+            .effect_unification_table()
+            .union_value(vid, EffectVarValue::Known(value));
+    }
+
+    fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(
+        &self,
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: rustc_type_ir::ConstVid,
+        source_ct: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ()> {
+        self.instantiate_const_var(relation, target_is_expected, target_vid, source_ct)
+    }
+
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
+        self.set_tainted_by_errors(e)
+    }
+
     fn relate<T: Relate<TyCtxt<'tcx>>>(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -153,6 +211,9 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
 
     fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.shallow_resolve(ty)
+    }
+    fn shallow_resolve_const(&self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        self.shallow_resolve_const(ct)
     }
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T

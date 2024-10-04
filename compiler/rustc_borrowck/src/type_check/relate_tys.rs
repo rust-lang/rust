@@ -11,6 +11,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::FnMutDelegate;
+use rustc_middle::ty::relate::combine::InferCtxtCombineExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};

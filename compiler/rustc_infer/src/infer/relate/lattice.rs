@@ -18,6 +18,7 @@
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
 use rustc_middle::traits::solve::Goal;
+use rustc_middle::ty::relate::combine::InferCtxtCombineExt;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVar, TypeVisitableExt};
 use rustc_span::Span;

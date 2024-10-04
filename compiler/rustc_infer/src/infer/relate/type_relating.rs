@@ -1,4 +1,5 @@
 use rustc_middle::traits::solve::Goal;
+use rustc_middle::ty::relate::combine::InferCtxtCombineExt;
 use rustc_middle::ty::relate::{
     Relate, RelateResult, TypeRelation, relate_args_invariantly, relate_args_with_variances,
 };

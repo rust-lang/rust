@@ -3,12 +3,10 @@
 //! As well as the implementation of `Relate` for interned things (`Ty`/`Const`/etc).
 
 pub use rustc_middle::ty::relate::RelateResult;
-pub use rustc_next_trait_solver::relate::*;
-
-pub use self::combine::PredicateEmittingRelation;
+pub use rustc_type_ir::relate::combine::PredicateEmittingRelation;
+pub use rustc_type_ir::relate::*;
 
 #[allow(hidden_glob_reexports)]
-pub(super) mod combine;
 mod generalize;
 mod higher_ranked;
 pub(super) mod lattice;
