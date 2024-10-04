@@ -327,8 +327,16 @@ mod c {
             // in https://github.com/rust-lang/compiler-rt/blob/c8fbcb3/cmake/config-ix.cmake#L19.
             cfg.flag_if_supported("-fomit-frame-pointer");
             cfg.define("VISIBILITY_HIDDEN", None);
-            // Avoid implicitly creating references to undefined functions
-            cfg.flag("-Werror=implicit-function-declaration");
+
+            if let "aarch64" | "arm64ec" = target.arch.as_str() {
+                // FIXME(llvm20): Older GCCs on A64 fail to build with
+                // -Werror=implicit-function-declaration due to a compiler-rt bug.
+                // With a newer LLVM we should be able to enable the flag everywhere.
+                // https://github.com/llvm/llvm-project/commit/8aa9d6206ce55bdaaf422839c351fbd63f033b89
+            } else {
+                // Avoid implicitly creating references to undefined functions
+                cfg.flag("-Werror=implicit-function-declaration");
+            }
         }
 
         // int_util.c tries to include stdlib.h if `_WIN32` is defined,
