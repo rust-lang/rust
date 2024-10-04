@@ -65,7 +65,7 @@ LL |     fn parrot() -> &'static mut Trait {
    |                     +++++++
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:56:16
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:55:16
    |
 LL |     fn bar(_: &'a Trait);
    |                ^^ undeclared lifetime
@@ -80,7 +80,7 @@ LL | trait Sing<'a> {
    |           ++++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:66:17
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:65:17
    |
 LL |     fn cat() -> &Trait;
    |                 ^ expected named lifetime parameter
@@ -97,7 +97,7 @@ LL +     fn cat() -> Trait;
    |
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:70:21
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:69:21
    |
 LL |     fn dog<'a>() -> &Trait {
    |                     ^ expected named lifetime parameter
@@ -109,7 +109,7 @@ LL |     fn dog<'a>() -> &'a Trait {
    |                      ++
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:76:21
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:75:21
    |
 LL |     fn kitten() -> &'a Trait {
    |                     ^^ undeclared lifetime
@@ -124,7 +124,7 @@ LL | trait Sing<'a> {
    |           ++++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:87:20
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:86:20
    |
 LL |     fn parrot() -> &mut Trait {
    |                    ^ expected named lifetime parameter
@@ -136,7 +136,7 @@ LL |     fn parrot() -> &'static mut Trait {
    |                     +++++++
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:98:12
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:96:12
    |
 LL | fn bar(_: &'a Trait) {}
    |       -    ^^ undeclared lifetime
@@ -144,7 +144,7 @@ LL | fn bar(_: &'a Trait) {}
    |       help: consider introducing lifetime `'a` here: `<'a>`
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:112:13
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:110:13
    |
 LL | fn cat() -> &Trait {
    |             ^ expected named lifetime parameter
@@ -156,7 +156,7 @@ LL | fn cat() -> &'static Trait {
    |              +++++++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:118:17
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:116:17
    |
 LL | fn dog<'a>() -> &Trait {
    |                 ^ expected named lifetime parameter
@@ -168,7 +168,7 @@ LL | fn dog<'a>() -> &'a Trait {
    |                  ++
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:124:17
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:122:17
    |
 LL | fn kitten() -> &'a Trait {
    |          -      ^^ undeclared lifetime
@@ -176,7 +176,7 @@ LL | fn kitten() -> &'a Trait {
    |          help: consider introducing lifetime `'a` here: `<'a>`
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:135:16
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:133:16
    |
 LL | fn parrot() -> &mut Trait {
    |                ^ expected named lifetime parameter
@@ -187,35 +187,8 @@ help: consider using the `'static` lifetime, but this is uncommon unless you're 
 LL | fn parrot() -> &'static mut Trait {
    |                 +++++++
 
-error[E0515]: cannot return reference to temporary value
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:47:9
-   |
-LL |         &mut Type
-   |         ^^^^^----
-   |         |    |
-   |         |    temporary value created here
-   |         returns a reference to data owned by the current function
-
-error[E0515]: cannot return reference to temporary value
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:90:9
-   |
-LL |         &mut Type
-   |         ^^^^^----
-   |         |    |
-   |         |    temporary value created here
-   |         returns a reference to data owned by the current function
-
-error[E0515]: cannot return reference to temporary value
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:138:5
-   |
-LL |     &mut Type
-   |     ^^^^^----
-   |     |    |
-   |     |    temporary value created here
-   |     returns a reference to data owned by the current function
-
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:53:16
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:52:16
    |
 LL |     fn foo(_: &Trait);
    |                ^^^^^
@@ -233,8 +206,8 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL |     fn foo(_: &dyn Trait);
    |                +++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:56:19
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:55:19
    |
 LL |     fn bar(_: &'a Trait);
    |                   ^^^^^
@@ -252,8 +225,8 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL |     fn bar(_: &'a dyn Trait);
    |                   +++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:60:22
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:59:22
    |
 LL |     fn alice<'a>(_: &Trait);
    |                      ^^^^^
@@ -271,8 +244,8 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL |     fn alice<'a>(_: &dyn Trait);
    |                      +++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:63:23
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:62:23
    |
 LL |     fn bob<'a>(_: &'a Trait);
    |                       ^^^^^
@@ -290,8 +263,8 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL |     fn bob<'a>(_: &'a dyn Trait);
    |                       +++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:66:18
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:65:18
    |
 LL |     fn cat() -> &Trait;
    |                  ^^^^^
@@ -305,8 +278,8 @@ help: alternatively, you can return an owned trait object
 LL |     fn cat() -> Box<dyn Trait>;
    |                 ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:70:22
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:69:22
    |
 LL |     fn dog<'a>() -> &Trait {
    |                      ^^^^^
@@ -320,8 +293,8 @@ help: alternatively, you can return an owned trait object
 LL |     fn dog<'a>() -> Box<dyn Trait> {
    |                     ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:76:24
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:75:24
    |
 LL |     fn kitten() -> &'a Trait {
    |                        ^^^^^
@@ -335,8 +308,8 @@ help: alternatively, you can return an owned trait object
 LL |     fn kitten() -> Box<dyn Trait> {
    |                    ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:82:27
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:81:27
    |
 LL |     fn puppy<'a>() -> &'a Trait {
    |                           ^^^^^
@@ -350,8 +323,8 @@ help: alternatively, you can return an owned trait object
 LL |     fn puppy<'a>() -> Box<dyn Trait> {
    |                       ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:87:25
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:86:25
    |
 LL |     fn parrot() -> &mut Trait {
    |                         ^^^^^
@@ -365,8 +338,8 @@ help: alternatively, you can return an owned trait object
 LL |     fn parrot() -> Box<dyn Trait> {
    |                    ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:95:12
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:93:12
    |
 LL | fn foo(_: &Trait) {}
    |            ^^^^^
@@ -384,8 +357,8 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL | fn foo(_: &dyn Trait) {}
    |            +++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:98:15
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:96:15
    |
 LL | fn bar(_: &'a Trait) {}
    |               ^^^^^
@@ -403,8 +376,8 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL | fn bar(_: &'a dyn Trait) {}
    |               +++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:102:18
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:100:18
    |
 LL | fn alice<'a>(_: &Trait) {}
    |                  ^^^^^
@@ -422,8 +395,8 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL | fn alice<'a>(_: &dyn Trait) {}
    |                  +++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:105:19
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:103:19
    |
 LL | fn bob<'a>(_: &'a Trait) {}
    |                   ^^^^^
@@ -441,8 +414,8 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL | fn bob<'a>(_: &'a dyn Trait) {}
    |                   +++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:112:14
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:110:14
    |
 LL | fn cat() -> &Trait {
    |              ^^^^^
@@ -456,8 +429,8 @@ help: alternatively, you can return an owned trait object
 LL | fn cat() -> Box<dyn Trait> {
    |             ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:118:18
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:116:18
    |
 LL | fn dog<'a>() -> &Trait {
    |                  ^^^^^
@@ -471,8 +444,8 @@ help: alternatively, you can return an owned trait object
 LL | fn dog<'a>() -> Box<dyn Trait> {
    |                 ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:124:20
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:122:20
    |
 LL | fn kitten() -> &'a Trait {
    |                    ^^^^^
@@ -486,8 +459,8 @@ help: alternatively, you can return an owned trait object
 LL | fn kitten() -> Box<dyn Trait> {
    |                ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:130:23
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:128:23
    |
 LL | fn puppy<'a>() -> &'a Trait {
    |                       ^^^^^
@@ -501,8 +474,8 @@ help: alternatively, you can return an owned trait object
 LL | fn puppy<'a>() -> Box<dyn Trait> {
    |                   ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:135:21
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:133:21
    |
 LL | fn parrot() -> &mut Trait {
    |                     ^^^^^
@@ -516,7 +489,7 @@ help: alternatively, you can return an owned trait object
 LL | fn parrot() -> Box<dyn Trait> {
    |                ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:8:16
    |
 LL |     fn foo(_: &Trait) {}
@@ -535,7 +508,7 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL |     fn foo(_: &dyn Trait) {}
    |                +++
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:11:25
    |
 LL |     fn bar(self, _: &'a Trait) {}
@@ -554,7 +527,7 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL |     fn bar(self, _: &'a dyn Trait) {}
    |                         +++
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:15:29
    |
 LL |     fn alice<'a>(&self, _: &Trait) {}
@@ -573,7 +546,7 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL |     fn alice<'a>(&self, _: &dyn Trait) {}
    |                             +++
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:18:23
    |
 LL |     fn bob<'a>(_: &'a Trait) {}
@@ -592,7 +565,7 @@ help: alternatively, use a trait object to accept any type that implements `Trai
 LL |     fn bob<'a>(_: &'a dyn Trait) {}
    |                       +++
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:21:18
    |
 LL |     fn cat() -> &Trait {
@@ -607,7 +580,7 @@ help: alternatively, you can return an owned trait object
 LL |     fn cat() -> Box<dyn Trait> {
    |                 ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:27:22
    |
 LL |     fn dog<'a>() -> &Trait {
@@ -622,7 +595,7 @@ help: alternatively, you can return an owned trait object
 LL |     fn dog<'a>() -> Box<dyn Trait> {
    |                     ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:33:24
    |
 LL |     fn kitten() -> &'a Trait {
@@ -637,7 +610,7 @@ help: alternatively, you can return an owned trait object
 LL |     fn kitten() -> Box<dyn Trait> {
    |                    ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:39:27
    |
 LL |     fn puppy<'a>() -> &'a Trait {
@@ -652,7 +625,7 @@ help: alternatively, you can return an owned trait object
 LL |     fn puppy<'a>() -> Box<dyn Trait> {
    |                       ~~~~~~~~~~~~~~
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:44:25
    |
 LL |     fn parrot() -> &mut Trait {
@@ -667,7 +640,7 @@ help: alternatively, you can return an owned trait object
 LL |     fn parrot() -> Box<dyn Trait> {
    |                    ~~~~~~~~~~~~~~
 
-error: aborting due to 45 previous errors
+error: aborting due to 42 previous errors
 
-Some errors have detailed explanations: E0106, E0261, E0515, E0782.
+Some errors have detailed explanations: E0106, E0261, E0782.
 For more information about an error, try `rustc --explain E0106`.

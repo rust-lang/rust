@@ -36,7 +36,7 @@ LL | fn id<F>(f: Copy) -> usize {
    = note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
 
 error[E0618]: expected function, found `(dyn Copy + 'static)`
-  --> $DIR/avoid-ice-on-warning-2.rs:11:5
+  --> $DIR/avoid-ice-on-warning-2.rs:12:5
    |
 LL | fn id<F>(f: Copy) -> usize {
    |          - `f` has type `(dyn Copy + 'static)`
