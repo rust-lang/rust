@@ -1606,9 +1606,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let func_ty = func.ty(body, self.infcx.tcx);
         if let ty::FnDef(def_id, _) = *func_ty.kind() {
-            // Some of the SIMD intrinsics are special: they need a particular argument to be a constant.
-            // (Eventually this should use const-generics, but those are not up for the task yet:
-            // https://github.com/rust-lang/rust/issues/85229.)
+            // Some of the SIMD intrinsics are special: they need a particular argument to be a
+            // constant. (Eventually this should use const-generics, but those are not up for the
+            // task yet: https://github.com/rust-lang/rust/issues/85229.)
             if let Some(name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract)) =
                 self.tcx().intrinsic(def_id).map(|i| i.name)
             {
@@ -1921,7 +1921,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
                         Operand::Copy(..) | Operand::Constant(..) => {
-                            // These are always okay: direct use of a const, or a value that can evidently be copied.
+                            // These are always okay: direct use of a const, or a value that can
+                            // evidently be copied.
                         }
                         Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.
@@ -2402,9 +2403,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 let dst_tail = self.struct_tail(dst.ty, location);
 
                                 // This checks (lifetime part of) vtable validity for pointer casts,
-                                // which is irrelevant when there are aren't principal traits on both sides (aka only auto traits).
+                                // which is irrelevant when there are aren't principal traits on
+                                // both sides (aka only auto traits).
                                 //
-                                // Note that other checks (such as denying `dyn Send` -> `dyn Debug`) are in `rustc_hir_typeck`.
+                                // Note that other checks (such as denying `dyn Send` -> `dyn
+                                // Debug`) are in `rustc_hir_typeck`.
                                 if let ty::Dynamic(src_tty, ..) = src_tail.kind()
                                     && let ty::Dynamic(dst_tty, ..) = dst_tail.kind()
                                     && src_tty.principal().is_some()
@@ -2427,8 +2430,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         ty::Dyn,
                                     ));
 
-                                    // Replace trait object lifetimes with fresh vars, to allow casts like
-                                    // `*mut dyn FnOnce() + 'a` -> `*mut dyn FnOnce() + 'static`,
+                                    // Replace trait object lifetimes with fresh vars, to allow
+                                    // casts like
+                                    // `*mut dyn FnOnce() + 'a` -> `*mut dyn FnOnce() + 'static`
                                     let src_obj =
                                         freshen_single_trait_object_lifetime(self.infcx, src_obj);
                                     let dst_obj =

@@ -92,6 +92,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 /// Associate some local constants with the `'tcx` lifetime
 struct TyCtxtConsts<'tcx>(PhantomData<&'tcx ()>);
+
 impl<'tcx> TyCtxtConsts<'tcx> {
     const DEREF_PROJECTION: &'tcx [PlaceElem<'tcx>; 1] = &[ProjectionElem::Deref];
 }
@@ -637,7 +638,9 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
                 );
             }
             StatementKind::Intrinsic(box kind) => match kind {
-                NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), state),
+                NonDivergingIntrinsic::Assume(op) => {
+                    self.consume_operand(location, (op, span), state);
+                }
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
@@ -2104,7 +2107,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             | Write(WriteKind::MutableBorrow(BorrowKind::Mut { kind: mut_borrow_kind })) => {
                 let is_local_mutation_allowed = match mut_borrow_kind {
                     // `ClosureCapture` is used for mutable variable with an immutable binding.
-                    // This is only behaviour difference between `ClosureCapture` and mutable borrows.
+                    // This is only behaviour difference between `ClosureCapture` and mutable
+                    // borrows.
                     MutBorrowKind::ClosureCapture => LocalMutationIsAllowed::Yes,
                     MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow => {
                         is_local_mutation_allowed
@@ -2349,23 +2353,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                                 ) => Err(place),
                                 (Mutability::Not, LocalMutationIsAllowed::Yes)
                                 | (Mutability::Mut, _) => {
-                                    // Subtle: this is an upvar
-                                    // reference, so it looks like
-                                    // `self.foo` -- we want to double
-                                    // check that the location `*self`
-                                    // is mutable (i.e., this is not a
-                                    // `Fn` closure). But if that
-                                    // check succeeds, we want to
-                                    // *blame* the mutability on
-                                    // `place` (that is,
-                                    // `self.foo`). This is used to
-                                    // propagate the info about
-                                    // whether mutability declarations
-                                    // are used outwards, so that we register
-                                    // the outer variable as mutable. Otherwise a
-                                    // test like this fails to record the `mut`
-                                    // as needed:
-                                    //
+                                    // Subtle: this is an upvar reference, so it looks like
+                                    // `self.foo` -- we want to double check that the location
+                                    // `*self` is mutable (i.e., this is not a `Fn` closure). But
+                                    // if that check succeeds, we want to *blame* the mutability on
+                                    // `place` (that is, `self.foo`). This is used to propagate the
+                                    // info about whether mutability declarations are used
+                                    // outwards, so that we register the outer variable as mutable.
+                                    // Otherwise a test like this fails to record the `mut` as
+                                    // needed:
                                     // ```
                                     // fn foo<F: FnOnce()>(_f: F) { }
                                     // fn main() {

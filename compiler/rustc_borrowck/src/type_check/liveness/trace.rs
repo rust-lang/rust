@@ -251,7 +251,8 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
                 .collect()
         };
 
-        // FIXME: these locations seem to have a special meaning (e.g. everywhere, at the end, ...), but I don't know which one. Please help me rename it to something descriptive!
+        // FIXME: these locations seem to have a special meaning (e.g. everywhere, at the end,
+        // ...), but I don't know which one. Please help me rename it to something descriptive!
         // Also, if this IntervalSet is used in many places, it maybe should have a newtype'd
         // name with a description of what it means for future mortals passing by.
         let locations = IntervalSet::new(self.cx.elements.num_points());

@@ -1497,6 +1497,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn scc_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
         self.constraint_sccs().annotation(scc).min_universe()
     }
+
     /// Checks the final value for the free region `fr` to see if it
     /// grew too large. In particular, examine what `end(X)` points
     /// wound up in `fr`'s final value; for each `end(X)` where `X !=
@@ -1669,7 +1670,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 placeholder,
             });
 
-            // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
+            // Stop after the first error, it gets too noisy otherwise, and does not provide more
+            // information.
             break;
         }
         debug!("check_bound_universal_region: all bounds satisfied");
@@ -2002,8 +2004,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
         // Instead, we use it to produce an improved `ObligationCauseCode`.
-        // FIXME - determine what we should do if we encounter multiple `ConstraintCategory::Predicate`
-        // constraints. Currently, we just pick the first one.
+        // FIXME - determine what we should do if we encounter multiple
+        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first one.
         let cause_code = path
             .iter()
             .find_map(|constraint| {
