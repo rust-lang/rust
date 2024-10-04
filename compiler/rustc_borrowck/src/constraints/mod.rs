@@ -152,8 +152,8 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
             if let Some(to) = annotation.universe_violation() {
                 outlives_static.insert(scc);
                 self.add_placeholder_violation_constraint(
-                    annotation.representative,
-                    annotation.representative,
+                    annotation.representative_rvid(),
+                    annotation.representative_rvid(),
                     to,
                     fr_static,
                 );
@@ -179,35 +179,22 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
             let annotation = sccs.annotation(scc);
 
             if sccs.scc(fr_static) == scc || outlives_static.contains(&scc) {
-                debug!("{:?} already outlives (or is) static", annotation.representative);
+                debug!("{:?} already outlives (or is) static", annotation.representative_rvid());
                 continue;
             }
 
-            // Unwrap safety: since this is our SCC it must contain us, which is
-            // at worst min AND max, but it has at least one or there is a bug.
-            let min = annotation.min_reachable_placeholder.unwrap();
-            let max = annotation.max_reachable_placeholder.unwrap();
-
-            // Good path: Nothing to see here, at least no other placeholders!
-            if min == max {
-                continue;
-            }
-
-            // Bad path: figure out who we illegally reached.
-            // Note that this will prefer the representative if it is a
-            // placeholder, since the representative has the smallest index!
-            let other_placeholder = if min != rvid { min } else { max };
-
-            debug!(
-                "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
-            );
-            outlives_static.insert(scc);
-            self.add_placeholder_violation_constraint(
-                annotation.representative,
-                rvid,
-                other_placeholder,
-                fr_static,
-            );
+            if let Some(other_placeholder) = annotation.reaches_other_placeholder(rvid) {
+                debug!(
+                    "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
+                );
+                outlives_static.insert(scc);
+                self.add_placeholder_violation_constraint(
+                    annotation.representative_rvid(),
+                    rvid,
+                    other_placeholder,
+                    fr_static,
+                );
+            };
         }
 
         if !outlives_static.is_empty() {

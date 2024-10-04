@@ -1,3 +1,4 @@
+use std::cmp::{max, min};
 use std::collections::VecDeque;
 use std::rc::Rc;
 
@@ -47,111 +48,149 @@ pub(crate) mod values;
 
 pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex, RegionTracker>;
 
-/// A simpler version of `RegionVariableOrigin` without the
-/// metadata.
-#[derive(Copy, Debug, Clone, PartialEq)]
-enum RepresentativeOrigin {
-    Existential,
-    Placeholder,
-    FreeRegion,
+/// The representative region variable for an SCC, tagged by its origin.
+/// We prefer placeholders over existentially quantified variables, otherwise
+/// it's the one with the smallest Region Variable ID.
+#[derive(Copy, Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
+enum Representative {
+    FreeRegion(RegionVid),
+    Placeholder(RegionVid),
+    Existential(RegionVid),
 }
 
-/// A reachable placeholder. Note the lexicographic ordering ensures
-/// that they are ordered by:
-/// A placeholder is larger than no placeholder, then
-/// by universe, then
-/// by region ID.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum ReachablePlaceholder {
-    Nothing,
-    Placeholder { universe: UniverseIndex, rvid: RegionVid },
+impl Representative {
+    fn rvid(&self) -> RegionVid {
+        match self {
+            Representative::FreeRegion(region_vid) => *region_vid,
+            Representative::Placeholder(region_vid) => *region_vid,
+            Representative::Existential(region_vid) => *region_vid,
+        }
+    }
 }
+
+impl scc::Annotation for Representative {
+    fn merge_scc(self, other: Self) -> Self {
+        // Just pick the smallest one. Note that we order by tag first!
+        std::cmp::min(self, other)
+    }
+
+    // For reachability, we do nothing since the representative doesn't change.
+    fn merge_reached(self, _other: Self) -> Self {
+        self
+    }
+}
+
+#[derive(Copy, Debug, Clone)]
+enum PlaceholderReachability {
+    /// This SCC reaches no placeholders.
+    NoPlaceholders,
+    /// This SCC reaches at least one placeholder.
+    Placeholders {
+        /// The largest-universed placeholder we can reach
+        max_universe: (UniverseIndex, RegionVid),
+
+        /// The placeholder with the smallest ID
+        min_placeholder: RegionVid,
+
+        /// The placeholder with the largest ID
+        max_placeholder: RegionVid,
+    },
+}
+impl PlaceholderReachability {
+    fn merge(self, other: PlaceholderReachability) -> PlaceholderReachability {
+        use PlaceholderReachability::*;
+        match (self, other) {
+            (NoPlaceholders, NoPlaceholders) => NoPlaceholders,
+            (NoPlaceholders, p @ Placeholders { .. })
+            | (p @ Placeholders { .. }, NoPlaceholders) => p,
+            (
+                Placeholders {
+                    min_placeholder: min_pl,
+                    max_placeholder: max_pl,
+                    max_universe: max_u,
+                },
+                Placeholders { min_placeholder, max_placeholder, max_universe },
+            ) => Placeholders {
+                min_placeholder: min(min_pl, min_placeholder),
+                max_placeholder: max(max_pl, max_placeholder),
+                max_universe: max(max_u, max_universe),
+            },
+        }
+    }
+
+    /// If we have reached placeholders, determine if they can
+    /// be named from this universe.
+    fn can_be_named_by(&self, from: UniverseIndex) -> bool {
+        if let PlaceholderReachability::Placeholders { max_universe: (max_universe, _), .. } = self
+        {
+            from.can_name(*max_universe)
+        } else {
+            true // No placeholders, no problems.
+        }
+    }
+}
+
 /// An annotation for region graph SCCs that tracks
 /// the values of its elements.
 #[derive(Copy, Debug, Clone)]
 pub struct RegionTracker {
-    /// The largest universe of a placeholder reached from this SCC.
-    /// This includes placeholders within this SCC. Including
-    /// the unverse's associated placeholder region ID.
-    max_universe_placeholder_reached: ReachablePlaceholder,
+    /// The representative Region Variable Id for this SCC.
+    representative: Representative,
 
-    /// The smallest universe index reachable form the nodes of this SCC.
-    min_reachable_universe: (UniverseIndex, RegionVid),
+    /// The smallest universe reachable (and its region)
+    min_universe: (UniverseIndex, RegionVid),
 
-    /// The representative Region Variable Id for this SCC. We prefer
-    /// placeholders over existentially quantified variables, otherwise
-    ///  it's the one with the smallest Region Variable ID.
-    pub(crate) representative: RegionVid,
-
-    /// Where does the representative region variable come from?
-    representative_origin: RepresentativeOrigin,
-
-    /// The smallest reachable placeholder from this SCC (including in it).
-    pub(crate) min_reachable_placeholder: Option<RegionVid>,
-
-    /// The largest reachable placeholder from this SCC (including in it).
-    pub(crate) max_reachable_placeholder: Option<RegionVid>,
+    // Metadata about reachable placeholders
+    reachable_placeholders: PlaceholderReachability,
 }
 
 impl scc::Annotation for RegionTracker {
     fn merge_scc(self, other: Self) -> Self {
-        use RepresentativeOrigin::*;
-
-        let (mut shorter, longer) = match (self.representative_origin, other.representative_origin)
-        {
-            // Prefer any placeholder over any existential
-            (Existential, Placeholder) => (other, self),
-            (Placeholder, Existential) => (self, other),
-
-            // In any other case, pick the one with the smallest id.
-            _ if self.representative <= other.representative => (self, other),
-            _ => (other, self),
-        };
-        shorter.merge_min_max_seen(&longer);
-        shorter
+        Self {
+            reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
+            min_universe: self.min_universe.min(other.min_universe),
+            representative: self.representative.merge_scc(other.representative),
+        }
     }
 
     fn merge_reached(mut self, other: Self) -> Self {
-        self.merge_min_max_seen(&other);
+        self.reachable_placeholders =
+            self.reachable_placeholders.merge(other.reachable_placeholders);
         self
     }
 }
 
 impl RegionTracker {
-    pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
-        use RepresentativeOrigin::*;
-
-        let representative_origin = match definition.origin {
-            NllRegionVariableOrigin::FreeRegion => FreeRegion,
-            NllRegionVariableOrigin::Placeholder(_) => Placeholder,
-            NllRegionVariableOrigin::Existential { .. } => Existential,
+    pub(crate) fn new(representative: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+        let universe_and_rvid = (definition.universe, representative);
+        let (representative, reachable_placeholders) = {
+            match definition.origin {
+                NllRegionVariableOrigin::FreeRegion => (
+                    Representative::FreeRegion(representative),
+                    PlaceholderReachability::NoPlaceholders,
+                ),
+                NllRegionVariableOrigin::Placeholder(_) => (
+                    Representative::Placeholder(representative),
+                    PlaceholderReachability::Placeholders {
+                        max_universe: universe_and_rvid,
+                        min_placeholder: representative,
+                        max_placeholder: representative,
+                    },
+                ),
+                NllRegionVariableOrigin::Existential { .. } => (
+                    Representative::Existential(representative),
+                    PlaceholderReachability::NoPlaceholders,
+                ),
+            }
         };
-
-        let rvid_is_placeholder = representative_origin == Placeholder;
-
-        let max_universe_placeholder_reached = if rvid_is_placeholder {
-            ReachablePlaceholder::Placeholder { universe: definition.universe, rvid }
-        } else {
-            ReachablePlaceholder::Nothing
-        };
-
-        let representative_if_placeholder = if rvid_is_placeholder { Some(rvid) } else { None };
-
-        Self {
-            max_universe_placeholder_reached,
-            min_reachable_universe: (definition.universe, rvid),
-            representative: rvid,
-            representative_origin,
-            min_reachable_placeholder: representative_if_placeholder,
-            max_reachable_placeholder: representative_if_placeholder,
-        }
+        Self { representative, min_universe: universe_and_rvid, reachable_placeholders }
     }
 
     /// If the representative is a placeholder, return it,
     /// otherwise return None.
     pub(crate) fn placeholder_representative(&self) -> Option<RegionVid> {
-        if self.representative_origin == RepresentativeOrigin::Placeholder {
-            Some(self.representative)
+        if let Representative::Placeholder(representative) = self.representative {
+            Some(representative)
         } else {
             None
         }
@@ -159,38 +198,7 @@ impl RegionTracker {
 
     /// The smallest-indexed universe reachable from and/or in this SCC.
     fn min_universe(self) -> UniverseIndex {
-        self.min_reachable_universe.0
-    }
-
-    fn merge_reachable_placeholders(&mut self, other: &Self) {
-        // The largest reachable placeholder, or None if neither reaches any.
-        // This works because None is smaller than any Some.
-        let max_max = self.max_reachable_placeholder.max(other.max_reachable_placeholder);
-
-        // Neither reach a placeholder
-        if max_max.is_none() {
-            return;
-        }
-
-        self.max_reachable_placeholder = max_max;
-
-        // If the smallest one is None, pick the largest Option; the single Some.
-        self.min_reachable_placeholder = self
-            .min_reachable_placeholder
-            .min(other.min_reachable_placeholder)
-            .or_else(|| self.min_reachable_placeholder.max(other.min_reachable_placeholder));
-    }
-
-    fn merge_min_max_seen(&mut self, other: &Self) {
-        self.merge_reachable_placeholders(other);
-
-        self.max_universe_placeholder_reached = std::cmp::max(
-            self.max_universe_placeholder_reached,
-            other.max_universe_placeholder_reached,
-        );
-
-        self.min_reachable_universe =
-            std::cmp::min(self.min_reachable_universe, other.min_reachable_universe);
+        self.min_universe.0
     }
 
     /// Figure out if there is a universe violation going on.
@@ -199,31 +207,65 @@ impl RegionTracker {
     /// (in which case we blame the lower universe's region), or because we reached
     /// a larger universe (in which case we blame the larger universe's region).
     pub(crate) fn universe_violation(&self) -> Option<RegionVid> {
-        let ReachablePlaceholder::Placeholder {
-            universe: max_reached_universe,
-            rvid: large_u_rvid,
-        } = self.max_universe_placeholder_reached
+        let PlaceholderReachability::Placeholders { max_universe: (max_u, max_u_rvid), .. } =
+            self.reachable_placeholders
         else {
             return None;
         };
 
-        if !self.min_universe().cannot_name(max_reached_universe) {
-            return None;
-        };
+        let (min_u, min_u_rvid) = self.min_universe;
 
-        debug!("Universe {max_reached_universe:?} is too large for its SCC!");
-        // We originally had a large enough universe to fit all our reachable
-        // placeholders, but had it lowered because we also reached something
-        // small-universed. In this case, that's to blame!
-        let to_blame = if self.representative == large_u_rvid {
-            debug!("{:?} lowered our universe!", self.min_reachable_universe);
-            self.min_reachable_universe.1
+        if min_u.can_name(max_u) {
+            return None;
+        }
+
+        debug!("Universe {max_u:?} is too large for its SCC!");
+        let to_blame = if self.representative.rvid() == max_u_rvid {
+            // We originally had a large enough universe to fit all our reachable
+            // placeholders, but had it lowered because we also reached something
+            // small-universed. In this case, that's to blame!
+            debug!("{min_u_rvid:?} lowered our universe to {min_u:?}");
+            min_u_rvid
         } else {
             // The problem is that we, who have a small universe, reach a large one.
-            large_u_rvid
+            max_u_rvid
         };
 
         Some(to_blame)
+    }
+
+    /// Determine if this SCC reaches a placeholder that isn't `placeholder_rvid`,
+    /// returning it if that is the case. This prefers the placeholder with the
+    /// smallest region variable ID.
+    pub(crate) fn reaches_other_placeholder(
+        &self,
+        placeholder_rvid: RegionVid,
+    ) -> Option<RegionVid> {
+        match self.reachable_placeholders {
+            PlaceholderReachability::NoPlaceholders => None,
+            PlaceholderReachability::Placeholders { min_placeholder, max_placeholder, .. }
+                if min_placeholder == max_placeholder =>
+            {
+                None
+            }
+            PlaceholderReachability::Placeholders { min_placeholder, max_placeholder, .. }
+                if min_placeholder == placeholder_rvid =>
+            {
+                Some(max_placeholder)
+            }
+            PlaceholderReachability::Placeholders { min_placeholder, .. } => Some(min_placeholder),
+        }
+    }
+
+    /// Determine if the tracked universes of the two SCCs
+    /// are compatible.
+    fn universe_compatible_with(&self, other: RegionTracker) -> bool {
+        self.min_universe().can_name(other.min_universe())
+            || other.reachable_placeholders.can_be_named_by(self.min_universe())
+    }
+
+    pub(crate) fn representative_rvid(&self) -> RegionVid {
+        self.representative.rvid()
     }
 }
 
@@ -862,26 +904,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// in `scc_a`. Used during constraint propagation, and only once
     /// the value of `scc_b` has been computed.
     fn universe_compatible(&self, scc_b: ConstraintSccIndex, scc_a: ConstraintSccIndex) -> bool {
-        let a_annotation = self.constraint_sccs().annotation(scc_a);
-        let b_annotation = self.constraint_sccs().annotation(scc_b);
-        let a_universe = a_annotation.min_universe();
-
-        // If scc_b's declared universe is a subset of
-        // scc_a's declared universe (typically, both are ROOT), then
-        // it cannot contain any problematic universe elements.
-        if a_universe.can_name(b_annotation.min_universe()) {
-            return true;
-        }
-
-        // Otherwise, there can be no placeholder in `b` with a too high
-        // universe index to name from `a`.
-        if let ReachablePlaceholder::Placeholder { universe, .. } =
-            b_annotation.max_universe_placeholder_reached
-        {
-            a_universe.can_name(universe)
-        } else {
-            true
-        }
+        self.constraint_sccs()
+            .annotation(scc_a)
+            .universe_compatible_with(self.constraint_sccs().annotation(scc_b))
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -2217,7 +2242,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// they *must* be equal (though not having the same repr does not
     /// mean they are unequal).
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
-        self.constraint_sccs.annotation(scc).representative
+        self.constraint_sccs.annotation(scc).representative_rvid()
     }
 
     /// Returns true if `r` is `'static`.
