@@ -42,6 +42,9 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-profiler \
       --enable-lld \
       --set target.x86_64-unknown-linux-musl.crt-static=false \
+      --set rust.jemalloc \
+      --set rust.lto=thin \
+      --set rust.codegen-units=1 \
       --build $HOSTS
 
 # Newer binutils broke things on some vms/distros (i.e., linking against
