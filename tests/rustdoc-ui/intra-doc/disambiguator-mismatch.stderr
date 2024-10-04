@@ -74,7 +74,7 @@ error: unresolved link to `m`
   --> $DIR/disambiguator-mismatch.rs:52:14
    |
 LL | /// Link to [m()]
-   |              ^^^ this link resolves to the macro `m`, which is not in the value namespace
+   |              ^^^ this link resolves to the macro `m`, which is not a function
    |
 help: to link to the macro, add an exclamation mark
    |
@@ -142,7 +142,7 @@ error: unresolved link to `std`
   --> $DIR/disambiguator-mismatch.rs:83:14
    |
 LL | /// Link to [fn@std]
-   |              ^^^^^^ this link resolves to the crate `std`, which is not in the value namespace
+   |              ^^^^^^ this link resolves to the crate `std`, which is not a function
    |
 help: to link to the crate, prefix with `mod@`
    |
@@ -164,7 +164,7 @@ error: unresolved link to `S::A`
   --> $DIR/disambiguator-mismatch.rs:93:14
    |
 LL | /// Link to [field@S::A]
-   |              ^^^^^^^^^^ this link resolves to the variant `A`, which is not in the value namespace
+   |              ^^^^^^^^^^ this link resolves to the variant `A`, which is not a field
    |
 help: to link to the variant, prefix with `variant@`
    |
