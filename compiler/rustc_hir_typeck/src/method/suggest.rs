@@ -229,20 +229,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         match error {
-            MethodError::NoMatch(mut no_match_data) => {
-                return self.report_no_match_method_error(
-                    span,
-                    rcvr_ty,
-                    item_name,
-                    call_id,
-                    source,
-                    args,
-                    sugg_span,
-                    &mut no_match_data,
-                    expected,
-                    trait_missing_method,
-                );
-            }
+            MethodError::NoMatch(mut no_match_data) => self.report_no_match_method_error(
+                span,
+                rcvr_ty,
+                item_name,
+                call_id,
+                source,
+                args,
+                sugg_span,
+                &mut no_match_data,
+                expected,
+                trait_missing_method,
+            ),
 
             MethodError::Ambiguity(mut sources) => {
                 let mut err = struct_span_code_err!(
@@ -263,7 +261,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &mut sources,
                     Some(sugg_span),
                 );
-                return err.emit();
+                err.emit()
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
@@ -284,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|| self.tcx.def_span(def_id));
                 err.span_label(sp, format!("private {kind} defined here"));
                 self.suggest_valid_traits(&mut err, item_name, out_of_scope_traits, true);
-                return err.emit();
+                err.emit()
             }
 
             MethodError::IllegalSizedBound { candidates, needs_mut, bound_span, self_expr } => {
@@ -383,8 +381,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                return err.emit();
+                err.emit()
             }
+
+            MethodError::ErrorReported(guar) => guar,
 
             MethodError::BadReturnType => bug!("no return type expectations but got BadReturnType"),
         }

@@ -271,14 +271,18 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         && let Some(name) = cx.tcx.get_diagnostic_name(fun_def_id)
     {
+        // TODO: `ptr_slice_from_raw_parts` and its mutable variant should probably still be linted
+        // conditionally based on how the return value is used, but not universally like the other
+        // functions since there are valid uses for null slice pointers.
+        //
+        // See: https://github.com/rust-lang/rust-clippy/pull/13452/files#r1773772034
+
         // `arg` positions where null would cause U.B.
         let arg_indices: &[_] = match name {
             sym::ptr_read
             | sym::ptr_read_unaligned
             | sym::ptr_read_volatile
             | sym::ptr_replace
-            | sym::ptr_slice_from_raw_parts
-            | sym::ptr_slice_from_raw_parts_mut
             | sym::ptr_write
             | sym::ptr_write_bytes
             | sym::ptr_write_unaligned

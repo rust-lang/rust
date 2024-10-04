@@ -193,13 +193,13 @@ fn bound_to_trait_def_id(bound: &GenericBound<'_>) -> Option<LocalDefId> {
     bound.trait_ref()?.trait_def_id()?.as_local()
 }
 
-impl<'cx, 'tcx> Visitor<'tcx> for TypeWalker<'cx, 'tcx> {
+impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
         if let Some((def_id, _)) = t.peel_refs().as_generic_param() {
             self.ty_params.remove(&def_id);
-        } else if let TyKind::OpaqueDef(id, _, _) = t.kind {
+        } else if let TyKind::OpaqueDef(id, _) = t.kind {
             // Explicitly walk OpaqueDef. Normally `walk_ty` would do the job, but it calls
             // `visit_nested_item`, which checks that `Self::NestedFilter::INTER` is set. We're
             // using `OnlyBodies`, so the check ends up failing and the type isn't fully walked.

@@ -5871,6 +5871,7 @@ Released 2018-09-13
 [`ref_as_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_as_ptr
 [`ref_binding_to_reference`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_binding_to_reference
 [`ref_in_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_in_deref
+[`ref_option`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_option
 [`ref_option_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_option_ref
 [`ref_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_patterns
 [`regex_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#regex_macro

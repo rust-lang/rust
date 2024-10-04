@@ -195,10 +195,11 @@ pub(crate) mod rustc {
     impl<'tcx> From<&LayoutError<'tcx>> for Err {
         fn from(err: &LayoutError<'tcx>) -> Self {
             match err {
-                LayoutError::Unknown(..) | LayoutError::ReferencesError(..) => Self::UnknownLayout,
+                LayoutError::Unknown(..)
+                | LayoutError::ReferencesError(..)
+                | LayoutError::NormalizationFailure(..) => Self::UnknownLayout,
                 LayoutError::SizeOverflow(..) => Self::SizeOverflow,
                 LayoutError::Cycle(err) => Self::TypeError(*err),
-                err => unimplemented!("{:?}", err),
             }
         }
     }

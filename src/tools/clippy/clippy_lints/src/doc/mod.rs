@@ -970,7 +970,7 @@ impl<'a, 'tcx> FindPanicUnwrap<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

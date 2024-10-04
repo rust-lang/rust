@@ -210,11 +210,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(&hir::OpaqueTy {
                 origin:
-                    hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
-                in_trait,
+                    hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, in_trait_or_impl }
+                    | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, in_trait_or_impl },
                 ..
             }) => {
-                if in_trait {
+                if in_trait_or_impl.is_some() {
                     assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn);
                 } else {
                     assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);

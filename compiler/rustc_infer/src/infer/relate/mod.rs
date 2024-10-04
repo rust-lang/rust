@@ -10,8 +10,6 @@ pub use self::combine::{CombineFields, PredicateEmittingRelation};
 #[allow(hidden_glob_reexports)]
 pub(super) mod combine;
 mod generalize;
-mod glb;
 mod higher_ranked;
 mod lattice;
-mod lub;
 mod type_relating;

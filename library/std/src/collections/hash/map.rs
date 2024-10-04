@@ -1438,6 +1438,14 @@ impl<K, V> Clone for Iter<'_, K, V> {
     }
 }
 
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for Iter<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        Iter { base: Default::default() }
+    }
+}
+
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1476,6 +1484,14 @@ impl<'a, K, V> IterMut<'a, K, V> {
     }
 }
 
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for IterMut<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        IterMut { base: Default::default() }
+    }
+}
+
 /// An owning iterator over the entries of a `HashMap`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashMap`]
@@ -1503,6 +1519,14 @@ impl<K, V> IntoIter<K, V> {
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter { base: self.base.rustc_iter() }
+    }
+}
+
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for IntoIter<K, V> {
+    #[inline]
+    fn default() -> Self {
+        IntoIter { base: Default::default() }
     }
 }
 
@@ -1535,6 +1559,14 @@ impl<K, V> Clone for Keys<'_, K, V> {
     #[inline]
     fn clone(&self) -> Self {
         Keys { inner: self.inner.clone() }
+    }
+}
+
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for Keys<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        Keys { inner: Default::default() }
     }
 }
 
@@ -1574,6 +1606,14 @@ impl<K, V> Clone for Values<'_, K, V> {
     #[inline]
     fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
+    }
+}
+
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for Values<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        Values { inner: Default::default() }
     }
 }
 
@@ -1665,6 +1705,14 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
 
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for ValuesMut<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        ValuesMut { inner: Default::default() }
+    }
+}
+
 /// An owning iterator over the keys of a `HashMap`.
 ///
 /// This `struct` is created by the [`into_keys`] method on [`HashMap`].
@@ -1687,6 +1735,14 @@ pub struct IntoKeys<K, V> {
     inner: IntoIter<K, V>,
 }
 
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for IntoKeys<K, V> {
+    #[inline]
+    fn default() -> Self {
+        IntoKeys { inner: Default::default() }
+    }
+}
+
 /// An owning iterator over the values of a `HashMap`.
 ///
 /// This `struct` is created by the [`into_values`] method on [`HashMap`].
@@ -1707,6 +1763,14 @@ pub struct IntoKeys<K, V> {
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 pub struct IntoValues<K, V> {
     inner: IntoIter<K, V>,
+}
+
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for IntoValues<K, V> {
+    #[inline]
+    fn default() -> Self {
+        IntoValues { inner: Default::default() }
+    }
 }
 
 /// A builder for computing where in a HashMap a key-value pair would be stored.

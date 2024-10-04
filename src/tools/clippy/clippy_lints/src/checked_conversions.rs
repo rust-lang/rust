@@ -48,7 +48,7 @@ impl CheckedConversions {
 
 impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
-impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
+impl LateLintPass<'_> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
         if let ExprKind::Binary(op, lhs, rhs) = item.kind
             && let (lt1, gt1, op2) = match op.node {

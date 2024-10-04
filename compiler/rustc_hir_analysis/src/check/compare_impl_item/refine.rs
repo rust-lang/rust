@@ -94,8 +94,8 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         if !tcx.hir().get_if_local(impl_opaque.def_id).is_some_and(|node| {
             matches!(
                 node.expect_item().expect_opaque_ty().origin,
-                hir::OpaqueTyOrigin::AsyncFn(def_id)  | hir::OpaqueTyOrigin::FnReturn(def_id)
-                    if def_id == impl_m.def_id.expect_local()
+                hir::OpaqueTyOrigin::AsyncFn { parent, .. }  | hir::OpaqueTyOrigin::FnReturn { parent, .. }
+                    if parent == impl_m.def_id.expect_local()
             )
         }) {
             report_mismatched_rpitit_signature(

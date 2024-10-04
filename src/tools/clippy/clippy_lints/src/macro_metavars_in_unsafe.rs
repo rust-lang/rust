@@ -149,7 +149,7 @@ fn is_public_macro(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
         && !cx.tcx.is_doc_hidden(def_id)
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for BodyVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for BodyVisitor<'_, 'tcx> {
     fn visit_stmt(&mut self, s: &'tcx Stmt<'tcx>) {
         let from_expn = s.span.from_expansion();
         if from_expn {

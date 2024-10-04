@@ -515,8 +515,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }
             hir::ItemKind::OpaqueTy(&hir::OpaqueTy {
                 origin:
-                    hir::OpaqueTyOrigin::FnReturn(parent)
-                    | hir::OpaqueTyOrigin::AsyncFn(parent)
+                    hir::OpaqueTyOrigin::FnReturn { parent, .. }
+                    | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
                     | hir::OpaqueTyOrigin::TyAlias { parent, .. },
                 generics,
                 ..
@@ -689,7 +689,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 };
                 self.with(scope, |this| this.visit_ty(mt.ty));
             }
-            hir::TyKind::OpaqueDef(item_id, lifetimes, _in_trait) => {
+            hir::TyKind::OpaqueDef(item_id, lifetimes) => {
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`

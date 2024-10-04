@@ -209,7 +209,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
 #[derive(Clone)]
 struct MinifyingSugg<'a>(Sugg<'a>);
 
-impl<'a> Display for MinifyingSugg<'a> {
+impl Display for MinifyingSugg<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }

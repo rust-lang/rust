@@ -186,8 +186,6 @@ pub(crate) fn run(
 
                 let mut collector = CreateRunnableDocTests::new(options, opts);
                 let hir_collector = HirCollector::new(
-                    &compiler.sess,
-                    tcx.hir(),
                     ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
                     enable_per_target_ignores,
                     tcx,
