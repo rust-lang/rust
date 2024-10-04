@@ -6,8 +6,6 @@
 #![feature(const_float_classify)]
 #![feature(f16)]
 #![feature(f128)]
-#![feature(f16_const)]
-#![feature(f128_const)]
 #![allow(unused_macro_rules)]
 
 use std::hint::black_box;
