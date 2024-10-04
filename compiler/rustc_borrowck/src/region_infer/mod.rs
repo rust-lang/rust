@@ -46,13 +46,89 @@ mod reverse_sccs;
 
 pub(crate) mod values;
 
-pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex, RegionTracker>;
+pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex, PlaceholderTracking>;
+
+#[derive(Copy, Clone, Debug)]
+pub enum PlaceholderTracking {
+    Off(Representative),
+    On(RegionTracker),
+}
+
+impl scc::Annotation for PlaceholderTracking {
+    fn merge_scc(self, other: Self) -> Self {
+        use PlaceholderTracking::*;
+
+        match (self, other) {
+            (Off(this), Off(that)) => Off(this.merge_scc(that)),
+            (On(this), On(that)) => On(this.merge_scc(that)),
+            _ => unreachable!(),
+        }
+    }
+
+    fn merge_reached(self, other: Self) -> Self {
+        use PlaceholderTracking::*;
+
+        match (self, other) {
+            (Off(this), Off(that)) => Off(this.merge_reached(that)),
+            (On(this), On(that)) => On(this.merge_reached(that)),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl PlaceholderTracking {
+    pub(crate) fn representative_rvid(&self) -> RegionVid {
+        match self {
+            PlaceholderTracking::Off(r) => r.rvid(),
+            PlaceholderTracking::On(region_tracker) => region_tracker.representative_rvid(),
+        }
+    }
+
+    pub(crate) fn reaches_other_placeholder(&self, other: RegionVid) -> Option<RegionVid> {
+        match self {
+            PlaceholderTracking::Off(_) => None,
+            PlaceholderTracking::On(region_tracker) => {
+                region_tracker.reaches_other_placeholder(other)
+            }
+        }
+    }
+
+    pub(crate) fn universe_violation(&self) -> Option<RegionVid> {
+        match self {
+            PlaceholderTracking::Off(_) => None,
+            PlaceholderTracking::On(region_tracker) => region_tracker.universe_violation(),
+        }
+    }
+
+    fn min_universe(&self) -> UniverseIndex {
+        match self {
+            PlaceholderTracking::Off(_) => UniverseIndex::ROOT, // Not technically correct?
+            PlaceholderTracking::On(region_tracker) => region_tracker.min_universe(),
+        }
+    }
+
+    fn universe_compatible_with(&self, other: PlaceholderTracking) -> bool {
+        use PlaceholderTracking::*;
+        match (self, other) {
+            (Off(_), Off(_)) => true, // Not technically correct?
+            (On(this), On(that)) => this.universe_compatible_with(that),
+            _ => unreachable!(),
+        }
+    }
+
+    fn placeholder_representative(&self) -> Option<RegionVid> {
+        match self {
+            PlaceholderTracking::Off(_) => None,
+            PlaceholderTracking::On(region_tracker) => region_tracker.placeholder_representative(),
+        }
+    }
+}
 
 /// The representative region variable for an SCC, tagged by its origin.
 /// We prefer placeholders over existentially quantified variables, otherwise
 /// it's the one with the smallest Region Variable ID.
 #[derive(Copy, Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
-enum Representative {
+pub enum Representative {
     FreeRegion(RegionVid),
     Placeholder(RegionVid),
     Existential(RegionVid),
@@ -64,6 +140,14 @@ impl Representative {
             Representative::FreeRegion(region_vid) => *region_vid,
             Representative::Placeholder(region_vid) => *region_vid,
             Representative::Existential(region_vid) => *region_vid,
+        }
+    }
+
+    fn new(r: RegionVid, definitions: &IndexVec<RegionVid, RegionDefinition<'_>>) -> Self {
+        match definitions[r].origin {
+            NllRegionVariableOrigin::FreeRegion => Representative::FreeRegion(r),
+            NllRegionVariableOrigin::Placeholder(_) => Representative::Placeholder(r),
+            NllRegionVariableOrigin::Existential { .. } => Representative::Existential(r),
         }
     }
 }
@@ -457,7 +541,10 @@ pub(crate) enum ExtraConstraintInfo {
 }
 
 #[instrument(skip(infcx, sccs), level = "debug")]
-fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
+fn sccs_info<'tcx, A: scc::Annotation>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    sccs: &scc::Sccs<RegionVid, ConstraintSccIndex, A>,
+) {
     use crate::renumber::RegionCtxt;
 
     let var_to_origin = infcx.reg_var_to_origin.borrow();
@@ -544,27 +631,39 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("type tests: {:#?}", type_tests);
 
         // Create a RegionDefinition for each inference variable.
-        let definitions = {
-            let mut definitions: IndexVec<_, _> = var_infos
-                .iter()
-                .map(|info| RegionDefinition::new(info.universe, info.origin))
-                .collect();
+        let (definitions, has_placeholders) = {
+            let mut definitions = IndexVec::with_capacity(var_infos.len());
+            let mut has_placeholders = false;
+
+            for info in var_infos.iter() {
+                let definition = RegionDefinition::new(info.universe, info.origin);
+                has_placeholders |=
+                    matches!(definition.origin, NllRegionVariableOrigin::Placeholder(_));
+                definitions.push(definition);
+            }
 
             // Add external names from universal regions in fun function definitions.
             for (external_name, variable) in universal_regions.named_universal_regions() {
                 debug!("region {:?} has external name {:?}", variable, external_name);
                 definitions[variable].external_name = Some(external_name);
             }
-            definitions
+            (definitions, has_placeholders)
         };
 
-        let constraint_sccs =
-            outlives_constraints.add_outlives_static(&universal_regions, &definitions);
+        let constraint_sccs = if has_placeholders {
+            debug!("Placeholders present; activating placeholder handling logic!");
+            outlives_constraints.add_outlives_static(&universal_regions, &definitions)
+        } else {
+            debug!("No placeholders in MIR body; disabling their validation.");
+            outlives_constraints.compute_sccs(universal_regions.fr_static, &definitions, |r| {
+                PlaceholderTracking::Off(Representative::new(r, &definitions))
+            })
+        };
         let constraints = Frozen::freeze(outlives_constraints);
         let constraint_graph = Frozen::freeze(constraints.graph(definitions.len()));
 
         if cfg!(debug_assertions) {
-            sccs_info(infcx, &constraint_sccs);
+            sccs_info(infcx, &constraint_sccs)
         }
 
         let mut scc_values = RegionValues::new(elements, universal_regions.len());

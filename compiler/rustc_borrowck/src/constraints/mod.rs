@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::Index;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::graph::scc;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::ConstraintCategory;
@@ -9,7 +10,7 @@ use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
-use crate::region_infer::{ConstraintSccs, RegionDefinition, RegionTracker};
+use crate::region_infer::{PlaceholderTracking, RegionDefinition, RegionTracker};
 use crate::type_check::Locations;
 use crate::universal_regions::UniversalRegions;
 
@@ -59,16 +60,15 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
     /// Computes cycles (SCCs) in the graph of regions. In particular,
     /// find all regions R1, R2 such that R1: R2 and R2: R1 and group
     /// them into an SCC, and find the relationships between SCCs.
-    pub(crate) fn compute_sccs(
+    pub(crate) fn compute_sccs<A: scc::Annotation, F: Fn(RegionVid) -> A>(
         &self,
         static_region: RegionVid,
         definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
-    ) -> ConstraintSccs {
+        annotate_region: F,
+    ) -> scc::Sccs<RegionVid, ConstraintSccIndex, A> {
         let constraint_graph = self.graph(definitions.len());
         let region_graph = &constraint_graph.region_graph(self, static_region);
-        ConstraintSccs::new_with_annotation(&region_graph, |r| {
-            RegionTracker::new(r, &definitions[r])
-        })
+        scc::Sccs::new_with_annotation(&region_graph, annotate_region)
     }
 
     /// There is a placeholder violation; add a requirement
@@ -131,9 +131,11 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         &mut self,
         universal_regions: &UniversalRegions<'tcx>,
         definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
-    ) -> ConstraintSccs {
+    ) -> scc::Sccs<RegionVid, ConstraintSccIndex, PlaceholderTracking> {
         let fr_static = universal_regions.fr_static;
-        let sccs = self.compute_sccs(fr_static, definitions);
+        let new_tracker = |r| PlaceholderTracking::On(RegionTracker::new(r, &definitions[r]));
+
+        let sccs = self.compute_sccs(fr_static, definitions, new_tracker);
 
         // Is this SCC already outliving static directly or transitively?
         let mut outlives_static = FxHashSet::default();
@@ -200,7 +202,7 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         if !outlives_static.is_empty() {
             debug!("The following SCCs had :'static constraints added: {:?}", outlives_static);
             // We changed the constraint set and so must recompute SCCs.
-            self.compute_sccs(fr_static, definitions)
+            self.compute_sccs(fr_static, definitions, new_tracker)
         } else {
             // If we didn't add any back-edges; no more work needs doing
             sccs

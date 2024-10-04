@@ -216,14 +216,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     let higher_ranked_region = if let Some(representative) =
                         self.placeholder_representative(scc)
                     {
-                        // FIXME: remove this assertion once the tests pass!
-                        assert!(
-                            self.constraint_sccs
-                                .annotation(scc)
-                                .placeholder_representative()
-                                .is_some_and(|representative| representative == vid)
-                        );
-
                         ty::Region::new_placeholder(tcx, representative)
                     } else {
                         debug!(
