@@ -42,7 +42,7 @@ pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
     pub opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub polonius_input: Option<Box<AllFacts>>,
-    pub polonius_output: Option<Rc<PoloniusOutput>>,
+    pub polonius_output: Option<Box<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
 }
@@ -184,7 +184,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_analysis");
-            Some(Rc::new(Output::compute(all_facts, algorithm, false)))
+            Some(Box::new(Output::compute(all_facts, algorithm, false)))
         } else {
             None
         }

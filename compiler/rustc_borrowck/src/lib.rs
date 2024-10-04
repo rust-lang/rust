@@ -586,7 +586,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     next_region_name: RefCell<usize>,
 
     /// Results of Polonius analysis.
-    polonius_output: Option<Rc<PoloniusOutput>>,
+    polonius_output: Option<Box<PoloniusOutput>>,
 
     diags: diags::BorrowckDiags<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,

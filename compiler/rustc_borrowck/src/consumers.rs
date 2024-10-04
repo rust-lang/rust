@@ -79,7 +79,7 @@ pub struct BodyWithBorrowckFacts<'tcx> {
     pub input_facts: Option<Box<PoloniusInput>>,
     /// Polonius output facts. Populated when using
     /// [`ConsumerOptions::PoloniusOutputFacts`].
-    pub output_facts: Option<Rc<PoloniusOutput>>,
+    pub output_facts: Option<Box<PoloniusOutput>>,
 }
 
 /// This function computes borrowck facts for the given body. The [`ConsumerOptions`]

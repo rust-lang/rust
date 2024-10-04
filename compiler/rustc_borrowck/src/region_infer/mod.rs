@@ -637,7 +637,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'tcx>,
         body: &Body<'tcx>,
-        polonius_output: Option<Rc<PoloniusOutput>>,
+        polonius_output: Option<Box<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
         let mir_def_id = body.source.def_id();
         self.propagate_constraints();
@@ -663,7 +663,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.check_polonius_subset_errors(
                 outlives_requirements.as_mut(),
                 &mut errors_buffer,
-                polonius_output.expect("Polonius output is unavailable despite `-Z polonius`"),
+                polonius_output
+                    .as_ref()
+                    .expect("Polonius output is unavailable despite `-Z polonius`"),
             );
         } else {
             self.check_universal_regions(outlives_requirements.as_mut(), &mut errors_buffer);
@@ -1411,7 +1413,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
-        polonius_output: Rc<PoloniusOutput>,
+        polonius_output: &PoloniusOutput,
     ) {
         debug!(
             "check_polonius_subset_errors: {} subset_errors",
