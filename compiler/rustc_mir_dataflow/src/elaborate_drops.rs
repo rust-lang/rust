@@ -225,7 +225,7 @@ where
     // FIXME: I think we should just control the flags externally,
     // and then we do not need this machinery.
     #[instrument(level = "debug")]
-    pub fn elaborate_drop(&mut self, bb: BasicBlock) {
+    fn elaborate_drop(&mut self, bb: BasicBlock) {
         match self.elaborator.drop_style(self.path, DropFlagMode::Deep) {
             DropStyle::Dead => {
                 self.elaborator

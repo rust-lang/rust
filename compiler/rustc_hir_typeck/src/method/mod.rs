@@ -94,7 +94,7 @@ pub(crate) enum CandidateSource {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Determines whether the type `self_ty` supports a visible method named `method_name` or not.
     #[instrument(level = "debug", skip(self))]
-    pub fn method_exists_for_diagnostic(
+    pub(crate) fn method_exists_for_diagnostic(
         &self,
         method_name: Ident,
         self_ty: Ty<'tcx>,
@@ -178,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `self_expr`:             the self expression (`foo`)
     /// * `args`:                  the expressions of the arguments (`a, b + 1, ...`)
     #[instrument(level = "debug", skip(self))]
-    pub fn lookup_method(
+    pub(crate) fn lookup_method(
         &self,
         self_ty: Ty<'tcx>,
         segment: &'tcx hir::PathSegment<'tcx>,
@@ -281,7 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, call_expr))]
-    pub fn lookup_probe(
+    pub(crate) fn lookup_probe(
         &self,
         method_name: Ident,
         self_ty: Ty<'tcx>,
@@ -498,7 +498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `self_ty_span`           the span for the type being searched within (span of `Foo`)
     /// * `expr_id`:               the [`hir::HirId`] of the expression composing the entire call
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn resolve_fully_qualified_call(
+    pub(crate) fn resolve_fully_qualified_call(
         &self,
         span: Span,
         method_name: Ident,

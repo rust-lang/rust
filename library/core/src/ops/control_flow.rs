@@ -171,14 +171,13 @@ impl<B, C> ControlFlow<B, C> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(control_flow_enum)]
     /// use std::ops::ControlFlow;
     ///
     /// assert_eq!(ControlFlow::<i32, String>::Break(3).break_value(), Some(3));
     /// assert_eq!(ControlFlow::<String, i32>::Continue(3).break_value(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    #[stable(feature = "control_flow_enum", since = "CURRENT_RUSTC_VERSION")]
     pub fn break_value(self) -> Option<B> {
         match self {
             ControlFlow::Continue(..) => None,
@@ -189,11 +188,8 @@ impl<B, C> ControlFlow<B, C> {
     /// Maps `ControlFlow<B, C>` to `ControlFlow<T, C>` by applying a function
     /// to the break value in case it exists.
     #[inline]
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
-    pub fn map_break<T, F>(self, f: F) -> ControlFlow<T, C>
-    where
-        F: FnOnce(B) -> T,
-    {
+    #[stable(feature = "control_flow_enum", since = "CURRENT_RUSTC_VERSION")]
+    pub fn map_break<T>(self, f: impl FnOnce(B) -> T) -> ControlFlow<T, C> {
         match self {
             ControlFlow::Continue(x) => ControlFlow::Continue(x),
             ControlFlow::Break(x) => ControlFlow::Break(f(x)),
@@ -206,14 +202,13 @@ impl<B, C> ControlFlow<B, C> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(control_flow_enum)]
     /// use std::ops::ControlFlow;
     ///
     /// assert_eq!(ControlFlow::<i32, String>::Break(3).continue_value(), None);
     /// assert_eq!(ControlFlow::<String, i32>::Continue(3).continue_value(), Some(3));
     /// ```
     #[inline]
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    #[stable(feature = "control_flow_enum", since = "CURRENT_RUSTC_VERSION")]
     pub fn continue_value(self) -> Option<C> {
         match self {
             ControlFlow::Continue(x) => Some(x),
@@ -224,11 +219,8 @@ impl<B, C> ControlFlow<B, C> {
     /// Maps `ControlFlow<B, C>` to `ControlFlow<B, T>` by applying a function
     /// to the continue value in case it exists.
     #[inline]
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
-    pub fn map_continue<T, F>(self, f: F) -> ControlFlow<B, T>
-    where
-        F: FnOnce(C) -> T,
-    {
+    #[stable(feature = "control_flow_enum", since = "CURRENT_RUSTC_VERSION")]
+    pub fn map_continue<T>(self, f: impl FnOnce(C) -> T) -> ControlFlow<B, T> {
         match self {
             ControlFlow::Continue(x) => ControlFlow::Continue(f(x)),
             ControlFlow::Break(x) => ControlFlow::Break(x),

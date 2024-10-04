@@ -224,7 +224,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
     #[instrument(level = "debug", skip(self, candidate_filter))]
-    pub fn probe_for_return_type_for_diagnostic(
+    pub(crate) fn probe_for_return_type_for_diagnostic(
         &self,
         span: Span,
         mode: Mode,
@@ -267,7 +267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn probe_for_name(
+    pub(crate) fn probe_for_name(
         &self,
         mode: Mode,
         item_name: Ident,

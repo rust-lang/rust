@@ -291,7 +291,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
 ///   the Fn trait that defines the method (for being attached as a secondary type id).
 ///
 #[instrument(level = "trace", skip(tcx))]
-pub fn transform_instance<'tcx>(
+pub(crate) fn transform_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut instance: Instance<'tcx>,
     options: TransformTyOptions,

@@ -628,3 +628,27 @@ pub mod short_docs {
     /// subt_vec_num(x: &[f64], y: f64)
     pub fn subt_vec_num() {}
 }
+
+pub mod long_list {
+    //! bla
+    //!
+    //! * Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque et libero ut leo
+    //!   interdum laoreet vitae a mi. Aliquam erat volutpat. Suspendisse volutpat non quam non
+    //!   commodo.
+    //!
+    //!   Praesent enim neque, imperdiet sed nisl at, lobortis egestas augue. Sed vitae tristique
+    //!   augue. Phasellus vel pretium lectus.
+    //! * Praesent enim neque, imperdiet sed nisl at, lobortis egestas augue. Sed vitae tristique
+    //!   augue. Phasellus vel pretium lectus.
+    //! * Praesent enim neque, imperdiet sed nisl at, lobortis egestas augue. Sed vitae tristique
+    //!   augue. Phasellus vel pretium lectus.
+    //!
+    //! Another list:
+    //!
+    //! * [`TryFromBytes`](#a) indicates that a type may safely be converted from certain byte
+    //!   sequence (conditional on runtime checks)
+    //! * [`FromZeros`](#a) indicates that a sequence of zero bytes represents a valid instance of
+    //!   a type
+    //! * [`FromBytes`](#a) indicates that a type may safely be converted from an arbitrary byte
+    //!   sequence
+}

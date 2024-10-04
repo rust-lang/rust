@@ -182,7 +182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub fn demand_suptype_with_origin(
+    pub(crate) fn demand_suptype_with_origin(
         &'a self,
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
@@ -247,7 +247,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// N.B., this code relies on `self.diverges` to be accurate. In particular, assignments to `!`
     /// will be permitted if the diverges flag is currently "always".
     #[instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
-    pub fn demand_coerce_diag(
+    pub(crate) fn demand_coerce_diag(
         &'a self,
         mut expr: &'tcx hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
