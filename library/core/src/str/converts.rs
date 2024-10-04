@@ -195,7 +195,11 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[inline]
 #[must_use]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_str_from_utf8_unchecked_mut", issue = "91005")]
+#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+#[rustc_const_stable(
+    feature = "const_str_from_utf8_unchecked_mut",
+    since = "CURRENT_RUSTC_VERSION"
+)]
 #[rustc_diagnostic_item = "str_from_utf8_unchecked_mut"]
 pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     // SAFETY: the caller must guarantee that the bytes `v`
