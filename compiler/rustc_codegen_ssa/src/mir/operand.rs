@@ -41,7 +41,7 @@ pub enum OperandValue<V> {
     /// The backend value in this variant must be the *immediate* backend type,
     /// as returned by [`LayoutTypeCodegenMethods::immediate_backend_type`].
     Immediate(V),
-    /// A pair of immediate LLVM values. Used by fat pointers too.
+    /// A pair of immediate LLVM values. Used by wide pointers too.
     ///
     /// An `OperandValue` *must* be this variant for any type for which
     /// [`LayoutTypeCodegenMethods::is_backend_scalar_pair`] returns `true`.

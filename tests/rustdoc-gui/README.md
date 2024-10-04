@@ -23,12 +23,5 @@ $ ./x.py test tests/rustdoc-gui --stage 1 --test-args --no-headless
 
 To see the supported options, use `--help`.
 
-Important to be noted: if the chromium instance crashes when you run it, you might need to
-use `--no-sandbox` to make it work:
-
-```bash
-$ ./x.py test tests/rustdoc-gui --stage 1 --test-args --no-sandbox
-```
-
 [browser-ui-test]: https://github.com/GuillaumeGomez/browser-UI-test/
 [puppeteer]: https://pptr.dev/

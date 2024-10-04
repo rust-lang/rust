@@ -139,7 +139,7 @@ impl DebugContext {
 
             pointer_type_id
         } else {
-            // FIXME implement debuginfo for fat pointers
+            // FIXME implement debuginfo for wide pointers
             self.placeholder_for_type(tcx, type_dbg, ptr_type)
         }
     }

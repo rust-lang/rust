@@ -527,6 +527,16 @@ impl NestedMetaItem {
         }
     }
 
+    /// Returns the `MetaItem` if `self` is a `NestedMetaItem::MetaItem` or if it's
+    /// `NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(_), .. })`.
+    pub fn meta_item_or_bool(&self) -> Option<&NestedMetaItem> {
+        match self {
+            NestedMetaItem::MetaItem(_item) => Some(self),
+            NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(_), .. }) => Some(self),
+            _ => None,
+        }
+    }
+
     /// Returns the `MetaItem` if `self` is a `NestedMetaItem::MetaItem`.
     pub fn meta_item(&self) -> Option<&MetaItem> {
         match self {

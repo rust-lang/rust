@@ -55,7 +55,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// be checked higher up, as is the case with `&expr` and `box expr`), but
     /// is useful in determining the concrete type.
     ///
-    /// The primary use case is where the expected type is a fat pointer,
+    /// The primary use case is where the expected type is a wide pointer,
     /// like `&[isize]`. For example, consider the following statement:
     ///
     ///    let x: &[isize] = &[1, 2, 3];

@@ -49,23 +49,23 @@ pub(crate) fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum FatPtrKind {
+pub(crate) enum WidePtrKind {
     Slice,
     Dyn,
 }
 
 /// Determines if `pointee_ty` is slice-like or trait-object-like, i.e.
-/// if the second field of the fat pointer is a length or a vtable-pointer.
-/// If `pointee_ty` does not require a fat pointer (because it is Sized) then
+/// if the second field of the wide pointer is a length or a vtable-pointer.
+/// If `pointee_ty` does not require a wide pointer (because it is Sized) then
 /// the function returns `None`.
-pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
+pub(crate) fn wide_pointer_kind<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     pointee_ty: Ty<'tcx>,
-) -> Option<FatPtrKind> {
+) -> Option<WidePtrKind> {
     let pointee_tail_ty = cx.tcx.struct_tail_for_codegen(pointee_ty, cx.param_env());
     let layout = cx.layout_of(pointee_tail_ty);
     trace!(
-        "fat_pointer_kind: {:?} has layout {:?} (is_unsized? {})",
+        "wide_pointer_kind: {:?} has layout {:?} (is_unsized? {})",
         pointee_tail_ty,
         layout,
         layout.is_unsized()
@@ -76,8 +76,8 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
     }
 
     match *pointee_tail_ty.kind() {
-        ty::Str | ty::Slice(_) => Some(FatPtrKind::Slice),
-        ty::Dynamic(..) => Some(FatPtrKind::Dyn),
+        ty::Str | ty::Slice(_) => Some(WidePtrKind::Slice),
+        ty::Dynamic(..) => Some(WidePtrKind::Dyn),
         ty::Foreign(_) => {
             // Assert that pointers to foreign types really are thin:
             assert_eq!(
@@ -90,7 +90,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
             // For all other pointee types we should already have returned None
             // at the beginning of the function.
             panic!(
-                "fat_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {pointee_tail_ty:?}"
+                "wide_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {pointee_tail_ty:?}"
             )
         }
     }

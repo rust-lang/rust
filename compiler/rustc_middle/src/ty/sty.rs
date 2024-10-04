@@ -1589,7 +1589,7 @@ impl<'tcx> Ty<'tcx> {
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
     }
 
-    /// Returns the type of metadata for (potentially fat) pointers to this type,
+    /// Returns the type of metadata for (potentially wide) pointers to this type,
     /// or the struct tail if the metadata type cannot be determined.
     pub fn ptr_metadata_ty_or_tail(
         self,
@@ -1648,7 +1648,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    /// Returns the type of metadata for (potentially wide) pointers to this type.
     /// Causes an ICE if the metadata type cannot be determined.
     pub fn ptr_metadata_ty(
         self,
