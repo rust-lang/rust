@@ -961,10 +961,13 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 }
 
 .docblock li {
-	margin-bottom: .8em;
+	margin-bottom: .4em;
 }
-.docblock li p {
-	margin-bottom: .1em;
+.docblock li p:not(:last-child) {
+	/* This margin is voluntarily smaller than `.docblock li` to keep the visual
+	   list element items separated while also having a visual separation (although
+	   smaller) for paragraphs. */
+	margin-bottom: .3em;
 }
 
 /* "where ..." clauses with block display are also smaller */
