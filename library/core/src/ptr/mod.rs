@@ -992,7 +992,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     from_raw_parts_mut(data, len)

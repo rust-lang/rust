@@ -147,7 +147,6 @@
 #![feature(const_replace)]
 #![feature(const_size_of_val)]
 #![feature(const_size_of_val_raw)]
-#![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_from_ref)]
 #![feature(const_slice_split_at_mut)]
 #![feature(const_str_as_mut)]
