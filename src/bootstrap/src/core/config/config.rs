@@ -369,8 +369,8 @@ pub struct Config {
     /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
 
-    /// What custom diff tool to use for displaying compiletest tests.
-    pub display_diff_tool: Option<String>,
+    /// Command for visual diff display, e.g. `diff-tool --color=always`.
+    pub compiletest_diff_tool: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -895,7 +895,7 @@ define_config! {
         android_ndk: Option<PathBuf> = "android-ndk",
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
         jobs: Option<u32> = "jobs",
-        display_diff_tool: Option<String> = "display-diff-tool",
+        compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
     }
 }
 
@@ -1516,7 +1516,7 @@ impl Config {
             android_ndk,
             optimized_compiler_builtins,
             jobs,
-            display_diff_tool,
+            compiletest_diff_tool,
         } = toml.build.unwrap_or_default();
 
         config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
@@ -2163,7 +2163,7 @@ impl Config {
         config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
-        config.display_diff_tool = display_diff_tool;
+        config.compiletest_diff_tool = compiletest_diff_tool;
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
