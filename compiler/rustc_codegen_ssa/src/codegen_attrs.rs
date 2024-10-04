@@ -1,4 +1,4 @@
-use rustc_ast::{MetaItemKind, NestedMetaItem, ast, attr};
+use rustc_ast::{MetaItemInner, MetaItemKind, ast, attr};
 use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_name};
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
@@ -357,7 +357,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::instruction_set => {
                 codegen_fn_attrs.instruction_set =
                     attr.meta_item_list().and_then(|l| match &l[..] {
-                        [NestedMetaItem::MetaItem(set)] => {
+                        [MetaItemInner::MetaItem(set)] => {
                             let segments =
                                 set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
                             match segments.as_slice() {

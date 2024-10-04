@@ -1,7 +1,7 @@
 use super::{Attribute, NON_MINIMAL_CFG};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanRangeExt;
-use rustc_ast::{MetaItemKind, NestedMetaItem};
+use rustc_ast::{MetaItemInner, MetaItemKind};
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;
 use rustc_span::sym;
@@ -14,9 +14,9 @@ pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute) {
     }
 }
 
-fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
+fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[MetaItemInner]) {
     for item in items {
-        if let NestedMetaItem::MetaItem(meta) = item {
+        if let MetaItemInner::MetaItem(meta) = item {
             if !meta.has_name(sym::any) && !meta.has_name(sym::all) {
                 continue;
             }

@@ -1,5 +1,5 @@
 use rustc_ast as ast;
-use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
+use rustc_ast::{GenericParamKind, ItemKind, MetaItemInner, MetaItemKind, StmtKind};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier,
 };
@@ -50,8 +50,8 @@ impl MultiItemModifier for Expander {
                     MetaItemKind::List(list) => {
                         list.iter()
                             .filter_map(|nested_meta| match nested_meta {
-                                NestedMetaItem::MetaItem(meta) => Some(meta),
-                                NestedMetaItem::Lit(lit) => {
+                                MetaItemInner::MetaItem(meta) => Some(meta),
+                                MetaItemInner::Lit(lit) => {
                                     // Reject `#[derive("Debug")]`.
                                     report_unexpected_meta_item_lit(sess, lit);
                                     None

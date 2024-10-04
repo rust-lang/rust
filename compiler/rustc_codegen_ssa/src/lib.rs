@@ -156,7 +156,7 @@ pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
     pub filename: Option<Symbol>,
-    pub cfg: Option<ast::NestedMetaItem>,
+    pub cfg: Option<ast::MetaItemInner>,
     pub verbatim: bool,
     pub dll_imports: Vec<cstore::DllImport>,
 }

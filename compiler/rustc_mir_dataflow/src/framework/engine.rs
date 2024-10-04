@@ -367,7 +367,7 @@ impl RustcMirAttrs {
     fn set_field<T>(
         field: &mut Option<T>,
         tcx: TyCtxt<'_>,
-        attr: &ast::NestedMetaItem,
+        attr: &ast::MetaItemInner,
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {

@@ -11,7 +11,7 @@ use thin_vec::{ThinVec, thin_vec};
 
 use crate::ast::{
     AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem,
+    DelimArgs, Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit,
     NormalAttr, Path, PathSegment, Safety,
 };
 use crate::ptr::P;
@@ -136,7 +136,7 @@ impl Attribute {
         }
     }
 
-    pub fn meta_item_list(&self) -> Option<ThinVec<NestedMetaItem>> {
+    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
             AttrKind::DocComment(..) => None,
@@ -223,7 +223,7 @@ impl AttrItem {
         self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
     }
 
-    fn meta_item_list(&self) -> Option<ThinVec<NestedMetaItem>> {
+    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.args {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
@@ -285,7 +285,7 @@ impl MetaItem {
         matches!(self.kind, MetaItemKind::Word)
     }
 
-    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
+    pub fn meta_item_list(&self) -> Option<&[MetaItemInner]> {
         match &self.kind {
             MetaItemKind::List(l) => Some(&**l),
             _ => None,
@@ -393,11 +393,11 @@ impl MetaItem {
 }
 
 impl MetaItemKind {
-    fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<NestedMetaItem>> {
+    fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<MetaItemInner>> {
         let mut tokens = tokens.trees().peekable();
         let mut result = ThinVec::new();
         while tokens.peek().is_some() {
-            let item = NestedMetaItem::from_tokens(&mut tokens)?;
+            let item = MetaItemInner::from_tokens(&mut tokens)?;
             result.push(item);
             match tokens.next() {
                 None | Some(TokenTree::Token(Token { kind: token::Comma, .. }, _)) => {}
@@ -460,11 +460,11 @@ impl MetaItemKind {
     }
 }
 
-impl NestedMetaItem {
+impl MetaItemInner {
     pub fn span(&self) -> Span {
         match self {
-            NestedMetaItem::MetaItem(item) => item.span,
-            NestedMetaItem::Lit(lit) => lit.span,
+            MetaItemInner::MetaItem(item) => item.span,
+            MetaItemInner::Lit(lit) => lit.span,
         }
     }
 
@@ -488,7 +488,7 @@ impl NestedMetaItem {
     }
 
     /// Gets a list of inner meta items from a list `MetaItem` type.
-    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
+    pub fn meta_item_list(&self) -> Option<&[MetaItemInner]> {
         self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
     }
 
@@ -519,28 +519,28 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.value_str())
     }
 
-    /// Returns the `MetaItemLit` if `self` is a `NestedMetaItem::Literal`s.
+    /// Returns the `MetaItemLit` if `self` is a `MetaItemInner::Literal`s.
     pub fn lit(&self) -> Option<&MetaItemLit> {
         match self {
-            NestedMetaItem::Lit(lit) => Some(lit),
+            MetaItemInner::Lit(lit) => Some(lit),
             _ => None,
         }
     }
 
-    /// Returns the `MetaItem` if `self` is a `NestedMetaItem::MetaItem` or if it's
-    /// `NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(_), .. })`.
-    pub fn meta_item_or_bool(&self) -> Option<&NestedMetaItem> {
+    /// Returns the `MetaItem` if `self` is a `MetaItemInner::MetaItem` or if it's
+    /// `MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(_), .. })`.
+    pub fn meta_item_or_bool(&self) -> Option<&MetaItemInner> {
         match self {
-            NestedMetaItem::MetaItem(_item) => Some(self),
-            NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(_), .. }) => Some(self),
+            MetaItemInner::MetaItem(_item) => Some(self),
+            MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(_), .. }) => Some(self),
             _ => None,
         }
     }
 
-    /// Returns the `MetaItem` if `self` is a `NestedMetaItem::MetaItem`.
+    /// Returns the `MetaItem` if `self` is a `MetaItemInner::MetaItem`.
     pub fn meta_item(&self) -> Option<&MetaItem> {
         match self {
-            NestedMetaItem::MetaItem(item) => Some(item),
+            MetaItemInner::MetaItem(item) => Some(item),
             _ => None,
         }
     }
@@ -550,22 +550,22 @@ impl NestedMetaItem {
         self.meta_item().is_some()
     }
 
-    fn from_tokens<'a, I>(tokens: &mut iter::Peekable<I>) -> Option<NestedMetaItem>
+    fn from_tokens<'a, I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItemInner>
     where
         I: Iterator<Item = &'a TokenTree>,
     {
         match tokens.peek() {
             Some(TokenTree::Token(token, _)) if let Some(lit) = MetaItemLit::from_token(token) => {
                 tokens.next();
-                return Some(NestedMetaItem::Lit(lit));
+                return Some(MetaItemInner::Lit(lit));
             }
             Some(TokenTree::Delimited(.., Delimiter::Invisible, inner_tokens)) => {
                 tokens.next();
-                return NestedMetaItem::from_tokens(&mut inner_tokens.trees().peekable());
+                return MetaItemInner::from_tokens(&mut inner_tokens.trees().peekable());
             }
             _ => {}
         }
-        MetaItem::from_tokens(tokens).map(NestedMetaItem::MetaItem)
+        MetaItem::from_tokens(tokens).map(MetaItemInner::MetaItem)
     }
 }
 
@@ -676,6 +676,6 @@ pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
     find_by_name(attrs, name).is_some()
 }
 
-pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
+pub fn list_contains_name(items: &[MetaItemInner], name: Symbol) -> bool {
     items.iter().any(|item| item.has_name(name))
 }

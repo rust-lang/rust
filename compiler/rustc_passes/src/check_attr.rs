@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
 use rustc_ast::{
-    AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem, ast,
+    AttrKind, AttrStyle, Attribute, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
@@ -742,13 +742,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn doc_attr_str_error(&self, meta: &NestedMetaItem, attr_name: &str) {
+    fn doc_attr_str_error(&self, meta: &MetaItemInner, attr_name: &str) {
         self.dcx().emit_err(errors::DocExpectStr { attr_span: meta.span(), attr_name });
     }
 
     fn check_doc_alias_value(
         &self,
-        meta: &NestedMetaItem,
+        meta: &MetaItemInner,
         doc_alias: Symbol,
         hir_id: HirId,
         target: Target,
@@ -850,7 +850,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_doc_alias(
         &self,
-        meta: &NestedMetaItem,
+        meta: &MetaItemInner,
         hir_id: HirId,
         target: Target,
         aliases: &mut FxHashMap<String, Span>,
@@ -882,7 +882,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_doc_keyword(&self, meta: &NestedMetaItem, hir_id: HirId) {
+    fn check_doc_keyword(&self, meta: &MetaItemInner, hir_id: HirId) {
         let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
         if doc_keyword == kw::Empty {
             self.doc_attr_str_error(meta, "keyword");
@@ -912,7 +912,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_doc_fake_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) {
+    fn check_doc_fake_variadic(&self, meta: &MetaItemInner, hir_id: HirId) {
         let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
@@ -957,7 +957,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_doc_inline(
         &self,
         attr: &Attribute,
-        meta: &NestedMetaItem,
+        meta: &MetaItemInner,
         hir_id: HirId,
         target: Target,
         specified_inline: &mut Option<(bool, Span)>,
@@ -997,7 +997,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_doc_masked(
         &self,
         attr: &Attribute,
-        meta: &NestedMetaItem,
+        meta: &MetaItemInner,
         hir_id: HirId,
         target: Target,
     ) {
@@ -1032,7 +1032,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
     fn check_attr_not_crate_level(
         &self,
-        meta: &NestedMetaItem,
+        meta: &MetaItemInner,
         hir_id: HirId,
         attr_name: &str,
     ) -> bool {
@@ -1047,7 +1047,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_attr_crate_level(
         &self,
         attr: &Attribute,
-        meta: &NestedMetaItem,
+        meta: &MetaItemInner,
         hir_id: HirId,
     ) -> bool {
         if hir_id != CRATE_HIR_ID {
@@ -1071,7 +1071,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that `doc(test(...))` attribute contains only valid attributes. Returns `true` if
     /// valid.
-    fn check_test_attr(&self, meta: &NestedMetaItem, hir_id: HirId) {
+    fn check_test_attr(&self, meta: &MetaItemInner, hir_id: HirId) {
         if let Some(metas) = meta.meta_item_list() {
             for i_meta in metas {
                 match (i_meta.name_or_empty(), i_meta.meta_item()) {
@@ -1108,7 +1108,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Check that the `#![doc(cfg_hide(...))]` attribute only contains a list of attributes.
     ///
-    fn check_doc_cfg_hide(&self, meta: &NestedMetaItem, hir_id: HirId) {
+    fn check_doc_cfg_hide(&self, meta: &MetaItemInner, hir_id: HirId) {
         if meta.meta_item_list().is_none() {
             self.tcx.emit_node_span_lint(
                 INVALID_DOC_ATTRIBUTES,
@@ -1499,8 +1499,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
 
-        if !matches!(&list[..], &[NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Int(..), .. })])
-        {
+        if !matches!(&list[..], &[MetaItemInner::Lit(MetaItemLit { kind: LitKind::Int(..), .. })]) {
             self.tcx
                 .dcx()
                 .emit_err(errors::RustcLayoutScalarValidRangeArg { attr_span: attr.span });
@@ -2073,7 +2072,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 let mut candidates = Vec::new();
 
                 for meta in metas {
-                    let NestedMetaItem::Lit(meta_lit) = meta else {
+                    let MetaItemInner::Lit(meta_lit) = meta else {
                         self.dcx().emit_err(errors::IncorrectMetaItem {
                             span: meta.span(),
                             suggestion: errors::IncorrectMetaItemSuggestion {

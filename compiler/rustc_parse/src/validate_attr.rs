@@ -3,8 +3,8 @@
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
-    self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem, MetaItemKind,
-    NestedMetaItem, Safety,
+    self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind,
+    Safety,
 };
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -143,7 +143,7 @@ pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.
 fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaItemKind) -> bool {
-    let is_one_allowed_subword = |items: &[NestedMetaItem]| match items {
+    let is_one_allowed_subword = |items: &[MetaItemInner]| match items {
         [item] => item.is_word() && template.one_of.iter().any(|&word| item.has_name(word)),
         _ => false,
     };

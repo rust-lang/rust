@@ -243,17 +243,15 @@ fn rewrite_initial_doc_comments(
     Ok((0, None))
 }
 
-impl Rewrite for ast::NestedMetaItem {
+impl Rewrite for ast::MetaItemInner {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         self.rewrite_result(context, shape).ok()
     }
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self {
-            ast::NestedMetaItem::MetaItem(ref meta_item) => {
-                meta_item.rewrite_result(context, shape)
-            }
-            ast::NestedMetaItem::Lit(ref l) => {
+            ast::MetaItemInner::MetaItem(ref meta_item) => meta_item.rewrite_result(context, shape),
+            ast::MetaItemInner::Lit(ref l) => {
                 rewrite_literal(context, l.as_token_lit(), l.span, shape)
             }
         }
@@ -535,7 +533,7 @@ pub(crate) trait MetaVisitor<'ast> {
     fn visit_meta_list(
         &mut self,
         _meta_item: &'ast ast::MetaItem,
-        list: &'ast [ast::NestedMetaItem],
+        list: &'ast [ast::MetaItemInner],
     ) {
         for nm in list {
             self.visit_nested_meta_item(nm);
@@ -551,10 +549,10 @@ pub(crate) trait MetaVisitor<'ast> {
     ) {
     }
 
-    fn visit_nested_meta_item(&mut self, nm: &'ast ast::NestedMetaItem) {
+    fn visit_nested_meta_item(&mut self, nm: &'ast ast::MetaItemInner) {
         match nm {
-            ast::NestedMetaItem::MetaItem(ref meta_item) => self.visit_meta_item(meta_item),
-            ast::NestedMetaItem::Lit(ref lit) => self.visit_meta_item_lit(lit),
+            ast::MetaItemInner::MetaItem(ref meta_item) => self.visit_meta_item(meta_item),
+            ast::MetaItemInner::Lit(ref lit) => self.visit_meta_item_lit(lit),
         }
     }
 

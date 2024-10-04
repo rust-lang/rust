@@ -5,7 +5,7 @@ use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
-use rustc_ast::NestedMetaItem;
+use rustc_ast::MetaItemInner;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
@@ -953,7 +953,7 @@ pub(crate) struct Module {
 }
 
 pub(crate) trait AttributesExt {
-    type AttributeIterator<'a>: Iterator<Item = ast::NestedMetaItem>
+    type AttributeIterator<'a>: Iterator<Item = ast::MetaItemInner>
     where
         Self: 'a;
     type Attributes<'a>: Iterator<Item = &'a ast::Attribute>
@@ -1043,7 +1043,7 @@ pub(crate) trait AttributesExt {
                     let mut meta = attr.meta_item().unwrap().clone();
                     meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                    if let Ok(feat_cfg) = Cfg::parse(&NestedMetaItem::MetaItem(meta)) {
+                    if let Ok(feat_cfg) = Cfg::parse(&MetaItemInner::MetaItem(meta)) {
                         cfg &= feat_cfg;
                     }
                 }
@@ -1055,7 +1055,7 @@ pub(crate) trait AttributesExt {
 }
 
 impl AttributesExt for [ast::Attribute] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
+    type AttributeIterator<'a> = impl Iterator<Item = ast::MetaItemInner> + 'a;
     type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
@@ -1072,7 +1072,7 @@ impl AttributesExt for [ast::Attribute] {
 
 impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
     type AttributeIterator<'a>
-        = impl Iterator<Item = ast::NestedMetaItem> + 'a
+        = impl Iterator<Item = ast::MetaItemInner> + 'a
     where
         Self: 'a;
     type Attributes<'a>
@@ -1106,11 +1106,11 @@ pub(crate) trait NestedAttributesExt {
 
     /// Returns `Some(attr)` if the attribute list contains 'attr'
     /// corresponding to a specific `word`
-    fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem>;
+    fn get_word_attr(self, word: Symbol) -> Option<ast::MetaItemInner>;
 }
 
-impl<I: Iterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
-    fn get_word_attr(mut self, word: Symbol) -> Option<ast::NestedMetaItem> {
+impl<I: Iterator<Item = ast::MetaItemInner>> NestedAttributesExt for I {
+    fn get_word_attr(mut self, word: Symbol) -> Option<ast::MetaItemInner> {
         self.find(|attr| attr.is_word() && attr.has_name(word))
     }
 }
@@ -1157,7 +1157,7 @@ pub(crate) struct Attributes {
 }
 
 impl Attributes {
-    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::NestedMetaItem> + '_ {
+    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> + '_ {
         self.other_attrs.lists(name)
     }
 
