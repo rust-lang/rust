@@ -31,7 +31,7 @@ use rustc_middle::ty::{Const, ImplSubject};
 
 use super::*;
 use crate::infer::relate::type_relating::TypeRelating;
-use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
+use crate::infer::relate::{Relate, TypeRelation};
 
 /// Whether we should define opaque types or just treat them opaquely.
 ///
@@ -114,7 +114,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             define_opaque_types,
-            StructurallyRelateAliases::No,
             ty::Contravariant,
         );
         op.relate(expected, actual)?;
@@ -136,7 +135,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             define_opaque_types,
-            StructurallyRelateAliases::No,
             ty::Covariant,
         );
         op.relate(expected, actual)?;
@@ -177,7 +175,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             trace,
             self.param_env,
             define_opaque_types,
-            StructurallyRelateAliases::No,
             ty::Invariant,
         );
         op.relate(expected, actual)?;

@@ -21,7 +21,6 @@ pub(crate) struct TypeRelating<'infcx, 'tcx> {
     trace: TypeTrace<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     define_opaque_types: DefineOpaqueTypes,
-    structurally_relate_aliases: StructurallyRelateAliases,
 
     // Mutable fields.
     ambient_variance: ty::Variance,
@@ -57,7 +56,6 @@ impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
-        structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,
     ) -> TypeRelating<'infcx, 'tcx> {
         TypeRelating {
@@ -65,7 +63,6 @@ impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
             trace,
             param_env,
             define_opaque_types,
-            structurally_relate_aliases,
             ambient_variance,
             obligations: vec![],
             cache: Default::default(),
@@ -353,7 +350,7 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, 'tcx>
     }
 
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        self.structurally_relate_aliases
+        StructurallyRelateAliases::No
     }
 
     fn register_predicates(
