@@ -97,7 +97,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     /// that we computed for the closure. This has the effect of adding new outlives obligations
     /// to existing region variables in `closure_args`.
     #[instrument(skip(self), level = "debug")]
-    pub fn apply_closure_requirements(
+    pub(crate) fn apply_closure_requirements(
         &mut self,
         closure_requirements: &ClosureRegionRequirements<'tcx>,
         closure_def_id: DefId,

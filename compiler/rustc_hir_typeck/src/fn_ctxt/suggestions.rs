@@ -1462,7 +1462,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn suggest_deref_unwrap_or(
         &self,
         err: &mut Diag<'_>,
-        error_span: Span,
         callee_ty: Option<Ty<'tcx>>,
         call_ident: Option<Ident>,
         expected_ty: Ty<'tcx>,
