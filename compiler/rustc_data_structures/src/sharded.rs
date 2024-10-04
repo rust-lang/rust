@@ -246,7 +246,7 @@ pub trait IntoPointer {
     fn into_pointer(&self) -> *const ();
 }
 
-impl<K: Eq + Hash + Copy + IntoPointer> ShardedHashMap<K, ()> {
+impl<K: Eq + Hash + Copy + IntoPointer> ShardedIndexMap<K, ()> {
     pub fn contains_pointer_to<T: Hash + IntoPointer>(&self, value: &T) -> bool {
         let hash = make_hash(&value);
         let shard = self.lock_shard_by_hash(hash);
