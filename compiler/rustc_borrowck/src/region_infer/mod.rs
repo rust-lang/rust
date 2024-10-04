@@ -407,7 +407,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues,
-        elements: &Rc<DenseLocationMap>,
+        elements: Rc<DenseLocationMap>,
     ) -> Self {
         debug!("universal_regions: {:#?}", universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
@@ -430,7 +430,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let mut scc_values =
-            RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
+            RegionValues::new(elements, universal_regions.len(), placeholder_indices);
 
         for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);

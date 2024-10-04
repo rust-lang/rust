@@ -98,7 +98,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
 
     let universal_regions = Rc::new(universal_regions);
 
-    let elements = &Rc::new(DenseLocationMap::new(body));
+    let elements = Rc::new(DenseLocationMap::new(body));
 
     // Run the MIR type-checker.
     let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
@@ -107,13 +107,13 @@ pub(crate) fn compute_regions<'a, 'tcx>(
             param_env,
             body,
             promoted,
-            &universal_regions,
+            universal_regions.clone(),
             location_table,
             borrow_set,
             &mut all_facts,
             flow_inits,
             move_data,
-            elements,
+            elements.clone(),
             upvars,
         );
 
@@ -165,7 +165,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         universe_causes,
         type_tests,
         liveness_constraints,
-        elements,
+        elements.clone(),
     );
 
     // If requested: dump NLL facts, and run legacy polonius analysis.

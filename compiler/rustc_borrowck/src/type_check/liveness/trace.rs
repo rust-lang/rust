@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::BitSet;
 use rustc_index::interval::IntervalSet;
@@ -40,7 +38,7 @@ use crate::type_check::{NormalizeLocation, TypeChecker};
 pub(super) fn trace<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
-    elements: &Rc<DenseLocationMap>,
+    elements: &DenseLocationMap,
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
