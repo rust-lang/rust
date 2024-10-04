@@ -553,7 +553,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Returns an iterator over all the region indices.
-    pub fn regions(&self) -> impl Iterator<Item = RegionVid> + 'tcx {
+    pub(crate) fn regions(&self) -> impl Iterator<Item = RegionVid> + 'tcx {
         self.definitions.indices()
     }
 
@@ -561,12 +561,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// corresponding index.
     ///
     /// (Panics if `r` is not a registered universal region.)
-    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+    pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.universal_regions.to_region_vid(r)
     }
 
     /// Returns an iterator over all the outlives constraints.
-    pub fn outlives_constraints(&self) -> impl Iterator<Item = OutlivesConstraint<'tcx>> + '_ {
+    pub(crate) fn outlives_constraints(
+        &self,
+    ) -> impl Iterator<Item = OutlivesConstraint<'tcx>> + '_ {
         self.constraints.outlives().iter().copied()
     }
 

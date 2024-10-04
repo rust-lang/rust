@@ -55,7 +55,7 @@ use self::path_utils::*;
 use self::prefixes::PrefixSet;
 use crate::session_diagnostics::VarNeedNotMut;
 
-pub mod borrow_set;
+mod borrow_set;
 mod borrowck_errors;
 mod constraints;
 mod dataflow;
@@ -434,7 +434,7 @@ fn do_mir_borrowck<'tcx>(
     (result, body_with_facts)
 }
 
-pub struct BorrowckInferCtxt<'tcx> {
+pub(crate) struct BorrowckInferCtxt<'tcx> {
     pub(crate) infcx: InferCtxt<'tcx>,
     pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
 }

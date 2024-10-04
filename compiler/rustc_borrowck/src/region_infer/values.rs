@@ -15,7 +15,7 @@ use crate::BorrowIndex;
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
     #[debug_format = "PlaceholderIndex({})"]
-    pub struct PlaceholderIndex {}
+    pub(crate) struct PlaceholderIndex {}
 }
 
 /// An individual element in a region value -- the value of a

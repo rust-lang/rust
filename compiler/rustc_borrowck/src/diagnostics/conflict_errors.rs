@@ -2733,7 +2733,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// cannot borrow `a.u` (via `a.u.z.c`) as immutable because it is also borrowed as
     /// mutable (via `a.u.s.b`) [E0502]
     /// ```
-    pub(crate) fn describe_place_for_conflicting_borrow(
+    fn describe_place_for_conflicting_borrow(
         &self,
         first_borrowed_place: Place<'tcx>,
         second_borrowed_place: Place<'tcx>,
