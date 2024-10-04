@@ -339,7 +339,8 @@ impl str {
     /// assert_eq!("🍔∈🌏", s);
     /// ```
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_str_as_mut", issue = "130086")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+    #[rustc_const_stable(feature = "const_str_as_mut", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline(always)]
     pub const unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
@@ -385,7 +386,8 @@ impl str {
     /// It is your responsibility to make sure that the string slice only gets
     /// modified in a way that it remains valid UTF-8.
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_str_as_mut", issue = "130086")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+    #[rustc_const_stable(feature = "const_str_as_mut", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_never_returns_null_ptr]
     #[must_use]
     #[inline(always)]
