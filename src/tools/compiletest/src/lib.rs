@@ -178,7 +178,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt(
             "",
-            "display-diff-tool",
+            "compiletest-diff-tool",
             "What custom diff tool to use for displaying compiletest tests.",
             "COMMAND",
         );
@@ -370,7 +370,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_runtime: matches.opt_present("profiler-runtime"),
-        diff_command: matches.opt_str("display-diff-tool"),
+        diff_command: matches.opt_str("compiletest-diff-tool"),
     }
 }
 
