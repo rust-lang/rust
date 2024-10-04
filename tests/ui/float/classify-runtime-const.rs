@@ -8,7 +8,6 @@
 
 #![feature(f16_const)]
 #![feature(f128_const)]
-#![feature(const_float_classify)]
 
 use std::num::FpCategory::*;
 

@@ -3,7 +3,6 @@
 
 // This tests the float classification functions, for regular runtime code and for const evaluation.
 
-#![feature(const_float_classify)]
 #![feature(f16)]
 #![feature(f128)]
 #![feature(f16_const)]
