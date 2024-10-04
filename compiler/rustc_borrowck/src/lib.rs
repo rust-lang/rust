@@ -20,7 +20,6 @@ use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -49,10 +48,18 @@ use rustc_span::{Span, Symbol};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
-use self::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
-use self::location::LocationTable;
-use self::path_utils::*;
-use self::prefixes::PrefixSet;
+use crate::borrow_set::{BorrowData, BorrowSet};
+use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
+use crate::dataflow::{BorrowIndex, BorrowckDomain, BorrowckResults, Borrows};
+use crate::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
+use crate::location::LocationTable;
+use crate::nll::PoloniusOutput;
+use crate::path_utils::*;
+use crate::place_ext::PlaceExt;
+use crate::places_conflict::{PlaceConflictBias, places_conflict};
+use crate::prefixes::PrefixSet;
+use crate::region_infer::RegionInferenceContext;
+use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::VarNeedNotMut;
 
 mod borrow_set;
@@ -80,14 +87,6 @@ mod util;
 
 /// A public API provided for the Rust compiler consumers.
 pub mod consumers;
-
-use borrow_set::{BorrowData, BorrowSet};
-use dataflow::{BorrowIndex, BorrowckDomain, BorrowckResults, Borrows};
-use nll::PoloniusOutput;
-use place_ext::PlaceExt;
-use places_conflict::{PlaceConflictBias, places_conflict};
-use region_infer::RegionInferenceContext;
-use renumber::RegionCtxt;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
