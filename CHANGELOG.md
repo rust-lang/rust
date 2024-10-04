@@ -5689,6 +5689,7 @@ Released 2018-09-13
 [`manual_unwrap_or_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_unwrap_or_default
 [`manual_while_let_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_while_let_some
 [`many_single_char_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#many_single_char_names
+[`map_all_any_identity`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_all_any_identity
 [`map_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_clone
 [`map_collect_result_unit`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_collect_result_unit
 [`map_entry`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_entry
