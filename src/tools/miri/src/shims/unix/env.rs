@@ -177,9 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             interp_ok(Scalar::from_i32(0)) // return zero on success
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            interp_ok(Scalar::from_i32(-1))
+            this.set_last_error_and_return_i32(LibcError("EINVAL"))
         }
     }
 
@@ -203,9 +201,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             interp_ok(Scalar::from_i32(0))
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            interp_ok(Scalar::from_i32(-1))
+            this.set_last_error_and_return_i32(LibcError("EINVAL"))
         }
     }
 
@@ -218,7 +214,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`getcwd`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return interp_ok(Pointer::null());
         }
 
@@ -228,10 +224,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if this.write_path_to_c_str(&cwd, buf, size)?.0 {
                     return interp_ok(buf);
                 }
-                let erange = this.eval_libc("ERANGE");
-                this.set_last_error(erange)?;
+                this.set_last_error(LibcError("ERANGE"))?;
             }
-            Err(e) => this.set_last_error_from_io_error(e)?,
+            Err(e) => this.set_last_error(e)?,
         }
 
         interp_ok(Pointer::null())
@@ -245,9 +240,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`chdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
         }
 
         let result = env::set_current_dir(path).map(|()| 0);

@@ -1,5 +1,5 @@
 //@only-target: linux
-// test_epoll_block_then_unblock depends on a deterministic schedule.
+// test_epoll_block_then_unblock and test_epoll_race depend on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 
 use std::convert::TryInto;
@@ -12,6 +12,7 @@ fn main() {
     test_epoll_block_without_notification();
     test_epoll_block_then_unblock();
     test_notification_after_timeout();
+    test_epoll_race();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -136,4 +137,42 @@ fn test_notification_after_timeout() {
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value = fds[0] as u64;
     check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], 10);
+}
+
+// This test shows a data_race before epoll had vector clocks added.
+fn test_epoll_race() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    // Create an eventfd instance.
+    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
+    let fd = unsafe { libc::eventfd(0, flags) };
+
+    // Register eventfd with the epoll instance.
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fd as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev) };
+    assert_eq!(res, 0);
+
+    static mut VAL: u8 = 0;
+    let thread1 = thread::spawn(move || {
+        // Write to the static mut variable.
+        unsafe { VAL = 1 };
+        // Write to the eventfd instance.
+        let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
+        let res = unsafe { libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+        // read returns number of bytes that have been read, which is always 8.
+        assert_eq!(res, 8);
+    });
+    thread::yield_now();
+    // epoll_wait for the event to happen.
+    let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
+    let expected_value = u64::try_from(fd).unwrap();
+    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)], -1);
+    // Read from the static mut variable.
+    #[allow(static_mut_refs)]
+    unsafe {
+        assert_eq!(VAL, 1)
+    };
+    thread1.join().unwrap();
 }

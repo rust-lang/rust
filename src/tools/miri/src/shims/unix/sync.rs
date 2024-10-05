@@ -483,7 +483,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Trying to acquire the same mutex again.
                 match kind {
                     MutexKind::Default =>
-                        throw_ub_format!("trying to acquire already locked default mutex"),
+                        throw_ub_format!(
+                            "trying to acquire default mutex already locked by the current thread"
+                        ),
                     MutexKind::Normal => throw_machine_stop!(TerminationInfo::Deadlock),
                     MutexKind::ErrorCheck => this.eval_libc_i32("EDEADLK"),
                     MutexKind::Recursive => {

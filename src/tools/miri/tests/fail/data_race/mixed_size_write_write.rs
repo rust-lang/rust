@@ -1,6 +1,7 @@
 //@compile-flags: -Zmiri-preemption-rate=0.0 -Zmiri-disable-weak-memory-emulation
 // Avoid accidental synchronization via address reuse inside `thread::spawn`.
 //@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
+//@revisions: fst snd
 
 use std::sync::atomic::{AtomicU8, AtomicU16, Ordering};
 use std::thread;
@@ -21,7 +22,8 @@ fn main() {
             a16.store(1, Ordering::SeqCst);
         });
         s.spawn(|| {
-            a8[0].store(1, Ordering::SeqCst);
+            let idx = if cfg!(fst) { 0 } else { 1 };
+            a8[idx].store(1, Ordering::SeqCst);
             //~^ ERROR: Race condition detected between (1) 2-byte atomic store on thread `unnamed-1` and (2) 1-byte atomic store on thread `unnamed-2`
         });
     });
