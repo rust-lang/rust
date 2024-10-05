@@ -15,10 +15,8 @@ par. If the hook fails then run `./x test tidy --bless` and commit the changes.
 If you decide later that the pre-push behavior is undesirable, you can delete
 the `pre-push` file in `.git/hooks`.
 
-A prebuilt git hook lives at
-[`src/etc/pre-push.sh`](https://github.com/rust-lang/rust/blob/master/src/etc/pre-push.sh)
-which can be copied into your `.git/hooks` folder as `pre-push` (without the
-`.sh` extension!).
+A prebuilt git hook lives at [`src/etc/pre-push.sh`].  It can be copied into
+your `.git/hooks` folder as `pre-push` (without the `.sh` extension!).
 
 You can also install the hook as a step of running `./x setup`!
 
@@ -43,11 +41,16 @@ If you have enough free disk space and you would like to be able to run `x`
 commands while rust-analyzer runs in the background, you can also add
 `--build-dir build-rust-analyzer` to the `overrideCommand` to avoid x locking.
 
+Running `./x setup editor` will prompt you to create a project-local LSP config
+file for one of the supported editors. You can also create the config file as a
+step of running `./x setup`.
+
 ### Visual Studio Code
 
-Running `./x setup vscode` will prompt you to create a `.vscode/settings.json`
-file which will configure Visual Studio code. The recommended `rust-analyzer`
-settings live at [`src/etc/rust_analyzer_settings.json`].
+Selecting `vscode` in `./x setup editor` will prompt you to create a
+`.vscode/settings.json` file which will configure Visual Studio code. The
+recommended `rust-analyzer` settings live at
+[`src/etc/rust_analyzer_settings.json`].
 
 If running `./x check` on save is inconvenient, in VS Code you can use a [Build
 Task] instead:
@@ -83,13 +86,14 @@ here](https://rust-analyzer.github.io/manual.html#nvim-lsp).
 
 1. First install the plugin. This can be done by following the steps in the
    README.
-2. Run `x setup`, which will have a prompt for it to create a
+2. Run `./x setup editor`, and select `vscode` to create a
    `.vscode/settings.json` file. `neoconf` is able to read and update
    rust-analyzer settings automatically when the project is opened when this
    file is detected.
 
-If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
-`.vim/coc-settings.json`, and copy the settings from
+If you're using `coc.nvim`, you can run `./x setup editor` and select `vim` to
+create a `.vim/coc-settings.json`. The settings can be edited with
+`:CocLocalConfig`. The recommended settings live at
 [`src/etc/rust_analyzer_settings.json`].
 
 Another way is without a plugin, and creating your own logic in your
@@ -111,10 +115,10 @@ Emacs provides support for rust-analyzer with project-local configuration
 through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).  
 Steps for setting up Eglot with rust-analyzer can be [found
 here](https://rust-analyzer.github.io/manual.html#eglot).  
-Having set up Emacs & Eglot for Rust development in general, you can use the
-configuration for rustc provided in [`src/etc/rust_analyzer_eglot.el`](
-https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_eglot.el).  
-Simply copy the provided file to `.dir-locals.el` in the project root directory.  
+Having set up Emacs & Eglot for Rust development in general, you can run
+`./x setup editor` and select `emacs`, which will prompt you to create
+`.dir-locals.el` with the recommended configuration for Eglot.
+The recommended settings live at [`src/etc/rust_analyzer_eglot.el`].  
 For more information on project-specific Eglot configuration, consult [the
 manual](https://www.gnu.org/software/emacs/manual/html_node/eglot/Project_002dspecific-configuration.html).
 
@@ -123,14 +127,13 @@ manual](https://www.gnu.org/software/emacs/manual/html_node/eglot/Project_002dsp
 Helix comes with built-in LSP and rust-analyzer support.  
 It can be configured through `languages.toml`, as described
 [here](https://docs.helix-editor.com/languages.html).  
-You can use the configuration for rustc provided in
-[`src/etc/rust_analyzer_helix.toml`](https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_helix.toml).  
-Simply copy the provided file to `.helix/languages.toml` in the project root
-directory.
+You can run `./x setup editor` and select `helix`, which will prompt you to
+create `languages.toml` with the recommended configuration for Helix. The
+recommended settings live at [`src/etc/rust_analyzer_helix.toml`].  
 
 ## Check, check, and check again
 
-When doing simple refactorings, it can be useful to run `./x check`
+When doing simple refactoring, it can be useful to run `./x check`
 continuously. If you set up `rust-analyzer` as described above, this will be
 done for you every time you save a file. Here you are just checking that the
 compiler can **build**, but often that is all you need (e.g., when renaming a
@@ -356,3 +359,6 @@ Adding this to your shell's startup script (e.g. `.bashrc`) will automatically
 load this completion.
 
 [`src/etc/rust_analyzer_settings.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_settings.json
+[`src/etc/rust_analyzer_eglot.el`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_eglot.el
+[`src/etc/rust_analyzer_helix.toml`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_helix.toml
+[`src/etc/pre-push.sh`]: https://github.com/rust-lang/rust/blob/master/src/etc/pre-push.sh
