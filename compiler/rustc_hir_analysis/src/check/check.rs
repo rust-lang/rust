@@ -252,10 +252,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
 /// projections that would result in "inheriting lifetimes".
 fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let item = tcx.hir().expect_item(def_id);
-    let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
-        tcx.dcx().span_bug(item.span, "expected opaque item");
-    };
+    let hir::OpaqueTy { origin, .. } = tcx.hir().expect_opaque_ty(def_id);
 
     // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
     // `async-std` (and `pub async fn` in general).
@@ -265,16 +262,16 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         return;
     }
 
-    let span = tcx.def_span(item.owner_id.def_id);
+    let span = tcx.def_span(def_id);
 
-    if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
+    if tcx.type_of(def_id).instantiate_identity().references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.owner_id.def_id, span).is_err() {
+    if check_opaque_for_cycles(tcx, def_id, span).is_err() {
         return;
     }
 
-    let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, origin);
+    let _ = check_opaque_meets_bounds(tcx, def_id, span, origin);
 }
 
 /// Checks that an opaque type does not contain cycles.
@@ -481,8 +478,7 @@ fn sanity_check_found_hidden_type<'tcx>(
 /// 2. Checking that all lifetimes that are implicitly captured are mentioned.
 /// 3. Asserting that all parameters mentioned in the captures list are invariant.
 fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDefId) {
-    let hir::OpaqueTy { bounds, .. } =
-        *tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
+    let hir::OpaqueTy { bounds, .. } = *tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty();
     let Some(precise_capturing_args) = bounds.iter().find_map(|bound| match *bound {
         hir::GenericBound::Use(bounds, ..) => Some(bounds),
         _ => None,

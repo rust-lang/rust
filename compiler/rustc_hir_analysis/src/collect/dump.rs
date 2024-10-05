@@ -1,4 +1,3 @@
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -10,12 +9,10 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
         return;
     }
 
-    for id in tcx.hir().items() {
-        let DefKind::OpaqueTy = tcx.def_kind(id.owner_id) else { continue };
-
-        let ty = tcx.type_of(id.owner_id).instantiate_identity();
-
-        tcx.dcx().emit_err(crate::errors::TypeOf { span: tcx.def_span(id.owner_id), ty });
+    for id in tcx.hir_crate_items(()).opaques() {
+        let ty = tcx.type_of(id).instantiate_identity();
+        let span = tcx.def_span(id);
+        tcx.dcx().emit_err(crate::errors::TypeOf { span, ty });
     }
 }
 

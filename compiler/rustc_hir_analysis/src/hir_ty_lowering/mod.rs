@@ -2087,43 +2087,36 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
                 self.lower_path(opt_self_ty, path, hir_ty.hir_id, false)
             }
-            &hir::TyKind::OpaqueDef(item_id, lifetimes) => {
-                let opaque_ty = tcx.hir().item(item_id);
+            &hir::TyKind::OpaqueDef(opaque_ty, lifetimes) => {
+                let local_def_id = opaque_ty.def_id;
 
-                match opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(&hir::OpaqueTy { origin, .. }) => {
-                        let local_def_id = item_id.owner_id.def_id;
-                        // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
-                        // generate the def_id of an associated type for the trait and return as
-                        // type a projection.
-                        match origin {
-                            hir::OpaqueTyOrigin::FnReturn {
-                                in_trait_or_impl: Some(hir::RpitContext::Trait),
-                                ..
-                            }
-                            | hir::OpaqueTyOrigin::AsyncFn {
-                                in_trait_or_impl: Some(hir::RpitContext::Trait),
-                                ..
-                            } => self.lower_opaque_ty(
-                                tcx.associated_type_for_impl_trait_in_trait(local_def_id)
-                                    .to_def_id(),
-                                lifetimes,
-                                true,
-                            ),
-                            hir::OpaqueTyOrigin::FnReturn {
-                                in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
-                                ..
-                            }
-                            | hir::OpaqueTyOrigin::AsyncFn {
-                                in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
-                                ..
-                            }
-                            | hir::OpaqueTyOrigin::TyAlias { .. } => {
-                                self.lower_opaque_ty(local_def_id.to_def_id(), lifetimes, false)
-                            }
-                        }
+                // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
+                // generate the def_id of an associated type for the trait and return as
+                // type a projection.
+                match opaque_ty.origin {
+                    hir::OpaqueTyOrigin::FnReturn {
+                        in_trait_or_impl: Some(hir::RpitContext::Trait),
+                        ..
                     }
-                    ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
+                    | hir::OpaqueTyOrigin::AsyncFn {
+                        in_trait_or_impl: Some(hir::RpitContext::Trait),
+                        ..
+                    } => self.lower_opaque_ty(
+                        tcx.associated_type_for_impl_trait_in_trait(local_def_id).to_def_id(),
+                        lifetimes,
+                        true,
+                    ),
+                    hir::OpaqueTyOrigin::FnReturn {
+                        in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+                        ..
+                    }
+                    | hir::OpaqueTyOrigin::AsyncFn {
+                        in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+                        ..
+                    }
+                    | hir::OpaqueTyOrigin::TyAlias { .. } => {
+                        self.lower_opaque_ty(local_def_id.to_def_id(), lifetimes, false)
+                    }
                 }
             }
             // If we encounter a type relative path with RTN generics, then it must have
@@ -2289,7 +2282,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     span_bug!(
                         tcx.def_span(param.def_id),
                         "only expected lifetime for opaque's own generics, got {:?}",
-                        param.kind
+                        param
                     );
                 };
                 let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else {

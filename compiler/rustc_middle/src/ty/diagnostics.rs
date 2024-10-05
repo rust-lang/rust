@@ -507,14 +507,8 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
                     ..
                 },
                 _,
-            ) => {
-                self.0.push(ty);
-            }
-            hir::TyKind::OpaqueDef(item_id, _) => {
-                self.0.push(ty);
-                let item = self.1.item(item_id);
-                hir::intravisit::walk_item(self, item);
-            }
+            )
+            | hir::TyKind::OpaqueDef(..) => self.0.push(ty),
             _ => {}
         }
         hir::intravisit::walk_ty(self, ty);

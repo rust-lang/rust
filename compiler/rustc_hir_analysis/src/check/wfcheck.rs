@@ -185,15 +185,16 @@ where
     }
 }
 
-fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) -> Result<(), ErrorGuaranteed> {
-    let node = tcx.hir_owner_node(def_id);
+fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    let node = tcx.hir_node_by_def_id(def_id);
     let mut res = match node {
-        hir::OwnerNode::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
-        hir::OwnerNode::Item(item) => check_item(tcx, item),
-        hir::OwnerNode::TraitItem(item) => check_trait_item(tcx, item),
-        hir::OwnerNode::ImplItem(item) => check_impl_item(tcx, item),
-        hir::OwnerNode::ForeignItem(item) => check_foreign_item(tcx, item),
-        hir::OwnerNode::Synthetic => unreachable!(),
+        hir::Node::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
+        hir::Node::Item(item) => check_item(tcx, item),
+        hir::Node::TraitItem(item) => check_trait_item(tcx, item),
+        hir::Node::ImplItem(item) => check_impl_item(tcx, item),
+        hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
+        hir::Node::OpaqueTy(_) => Ok(crate::check::check::check_item_type(tcx, def_id)),
+        _ => unreachable!(),
     };
 
     if let Some(generics) = node.generics() {
@@ -201,6 +202,7 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) -> Result<(), ErrorG
             res = res.and(check_param_wf(tcx, param));
         }
     }
+
     res
 }
 
@@ -2172,10 +2174,14 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
 fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), ErrorGuaranteed> {
     let items = tcx.hir_module_items(module);
-    let mut res = items.par_items(|item| tcx.ensure().check_well_formed(item.owner_id));
-    res = res.and(items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
-    res = res.and(items.par_trait_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
-    res = res.and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
+    let mut res = items.par_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id));
+    res =
+        res.and(items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)));
+    res =
+        res.and(items.par_trait_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)));
+    res = res
+        .and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)));
+    res = res.and(items.par_opaques(|item| tcx.ensure().check_well_formed(item)));
     if module == LocalModDefId::CRATE_DEF_ID {
         super::entry::check_for_entry_fn(tcx);
     }
