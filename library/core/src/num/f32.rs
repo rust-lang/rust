@@ -1449,6 +1449,7 @@ impl f32 {
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
     pub const fn abs(self) -> f32 {
+        // SAFETY: this is actually a safe intrinsic
         unsafe { intrinsics::fabsf32(self) }
     }
 
@@ -1509,6 +1510,7 @@ impl f32 {
     #[stable(feature = "copysign", since = "1.35.0")]
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     pub const fn copysign(self, sign: f32) -> f32 {
+        // SAFETY: this is actually a safe intrinsic
         unsafe { intrinsics::copysignf32(self, sign) }
     }
 }

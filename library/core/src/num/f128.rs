@@ -1378,6 +1378,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn copysign(self, sign: f128) -> f128 {
+        // SAFETY: this is actually a safe intrinsic
         unsafe { intrinsics::copysignf128(self, sign) }
     }
 }

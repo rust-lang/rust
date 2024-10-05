@@ -1449,6 +1449,7 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
     pub const fn abs(self) -> f64 {
+        // SAFETY: this is actually a safe intrinsic
         unsafe { intrinsics::fabsf64(self) }
     }
 
@@ -1509,6 +1510,7 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
     pub const fn copysign(self, sign: f64) -> f64 {
+        // SAFETY: this is actually a safe intrinsic
         unsafe { intrinsics::copysignf64(self, sign) }
     }
 }
