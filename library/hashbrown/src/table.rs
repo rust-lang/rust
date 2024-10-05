@@ -1958,7 +1958,7 @@ pub struct Iter<'a, T> {
     marker: PhantomData<&'a T>,
 }
 
-impl<'a, T> Default for Iter<'a, T> {
+impl<T> Default for Iter<'_, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Iter {
@@ -2031,7 +2031,7 @@ pub struct IterMut<'a, T> {
     marker: PhantomData<&'a mut T>,
 }
 
-impl<'a, T> Default for IterMut<'a, T> {
+impl<T> Default for IterMut<'_, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         IterMut {
@@ -2100,7 +2100,7 @@ pub struct IterHash<'a, T> {
     marker: PhantomData<&'a T>,
 }
 
-impl<'a, T> Default for IterHash<'a, T> {
+impl<T> Default for IterHash<'_, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         IterHash {
@@ -2166,7 +2166,7 @@ pub struct IterHashMut<'a, T> {
     marker: PhantomData<&'a mut T>,
 }
 
-impl<'a, T> Default for IterHashMut<'a, T> {
+impl<T> Default for IterHashMut<'_, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         IterHashMut {
