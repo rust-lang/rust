@@ -7,7 +7,7 @@
   in `src/lib.rs`.
 - Write some simple tests in your module (using `#[test]`)
 - Run `cargo test` to make sure it works
-- Run `cargo test --features musl-reference-tests` to compare your
+- Run `cargo test --features libm-test/musl-reference-tests` to compare your
   implementation against musl's
 - Send us a pull request! Make sure to run `cargo fmt` on your code before
   sending the PR. Also include "closes #42" in the PR description to close the
@@ -88,7 +88,7 @@ If you'd like to run tests with randomized inputs that get compared against musl
 itself, you'll need to be on a Linux system and then you can execute:
 
 ```
-cargo test --features musl-reference-tests
+cargo test --features libm-test/musl-reference-tests
 ```
 
 Note that you may need to pass `--release` to Cargo if there are errors related

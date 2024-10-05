@@ -53,8 +53,3 @@ pub fn _eq(a: f64, b: f64) -> Result<(), u64> {
         }
     }
 }
-
-// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
-#[cfg(not(target_arch = "powerpc64"))]
-#[cfg(all(test, feature = "musl-reference-tests"))]
-include!(concat!(env!("OUT_DIR"), "/musl-tests.rs"));

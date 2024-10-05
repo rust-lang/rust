@@ -1,0 +1,18 @@
+[package]
+name = "libm-test"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[features]
+default = []
+
+# Generate tests which are random inputs and the outputs are calculated with
+# musl libc.
+musl-reference-tests = ["rand"]
+
+[dependencies]
+libm = { path = "../.." }
+
+[build-dependencies]
+rand = { version = "0.6.5", optional = true }
