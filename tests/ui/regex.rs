@@ -5,7 +5,7 @@
     clippy::needless_borrow,
     clippy::needless_borrows_for_generic_args
 )]
-#![warn(clippy::invalid_regex, clippy::trivial_regex)]
+#![warn(clippy::invalid_regex, clippy::trivial_regex, clippy::regex_creation_in_loops)]
 
 extern crate regex;
 
@@ -118,7 +118,35 @@ fn trivial_regex() {
     let _ = BRegex::new(r"\b{start}word\b{end}");
 }
 
+fn regex_creation_in_loops() {
+    loop {
+        static STATIC_REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| Regex::new("a.b").unwrap());
+
+        let regex = Regex::new("a.b");
+        //~^ ERROR: compiling a regex in a loop
+        let regex = BRegex::new("a.b");
+        //~^ ERROR: compiling a regex in a loop
+        #[allow(clippy::regex_creation_in_loops)]
+        let allowed_regex = Regex::new("a.b");
+
+        if true {
+            let regex = Regex::new("a.b");
+            //~^ ERROR: compiling a regex in a loop
+        }
+
+        for _ in 0..10 {
+            let nested_regex = Regex::new("a.b");
+            //~^ ERROR: compiling a regex in a loop
+        }
+    }
+
+    for i in 0..10 {
+        let dependant_regex = Regex::new(&format!("{i}"));
+    }
+}
+
 fn main() {
     syntax_error();
     trivial_regex();
+    regex_creation_in_loops();
 }
