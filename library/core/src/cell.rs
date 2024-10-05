@@ -494,8 +494,9 @@ impl<T> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
+    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
     #[rustc_confusables("swap")]
-    pub fn replace(&self, val: T) -> T {
+    pub const fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.
         mem::replace(unsafe { &mut *self.value.get() }, val)
@@ -535,7 +536,8 @@ impl<T: Copy> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self) -> T {
+    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    pub const fn get(&self) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.
         unsafe { *self.value.get() }
@@ -613,7 +615,8 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
-    pub fn get_mut(&mut self) -> &mut T {
+    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    pub const fn get_mut(&mut self) -> &mut T {
         self.value.get_mut()
     }
 
@@ -632,7 +635,8 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "as_cell", since = "1.37.0")]
-    pub fn from_mut(t: &mut T) -> &Cell<T> {
+    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    pub const fn from_mut(t: &mut T) -> &Cell<T> {
         // SAFETY: `&mut` ensures unique access.
         unsafe { &*(t as *mut T as *const Cell<T>) }
     }
@@ -686,7 +690,8 @@ impl<T> Cell<[T]> {
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
     #[stable(feature = "as_cell", since = "1.37.0")]
-    pub fn as_slice_of_cells(&self) -> &[Cell<T>] {
+    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    pub const fn as_slice_of_cells(&self) -> &[Cell<T>] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T]> as *const [Cell<T>]) }
     }
@@ -706,7 +711,8 @@ impl<T, const N: usize> Cell<[T; N]> {
     /// let array_cell: &[Cell<i32>; 3] = cell_array.as_array_of_cells();
     /// ```
     #[unstable(feature = "as_array_of_cells", issue = "88248")]
-    pub fn as_array_of_cells(&self) -> &[Cell<T>; N] {
+    #[rustc_const_unstable(feature = "as_array_of_cells", issue = "88248")]
+    pub const fn as_array_of_cells(&self) -> &[Cell<T>; N] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T; N]> as *const [Cell<T>; N]) }
     }
