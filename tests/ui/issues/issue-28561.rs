@@ -1,4 +1,7 @@
 //@ check-pass
+
+#![allow(leading_zeros_in_decimal_literals)]
+
 #[derive(Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Clone, Copy)]
 struct Array<T> {
     f00: [T; 00],
