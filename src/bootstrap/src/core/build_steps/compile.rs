@@ -9,8 +9,8 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::ffi::OsStr;
-use std::io::BufReader;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::{env, fs, str};
@@ -22,14 +22,14 @@ use crate::core::build_steps::tool::SourceType;
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath, crate_description,
+    crate_description, Builder, Cargo, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath,
 };
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{CLang, Compiler, DependencyType, GitRepo, LLVM_TOOLS, Mode};
+use crate::{CLang, Compiler, DependencyType, GitRepo, Mode, LLVM_TOOLS};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
@@ -1923,9 +1923,18 @@ impl Step for Assemble {
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if (is_dylib(&filename) || is_debug_info(&filename)) && !proc_macros.contains(&filename)
-            {
+
+            let is_proc_macro = proc_macros.contains(&filename);
+            let is_dylib_or_debug = is_dylib(&filename) || is_debug_info(&filename);
+
+            // If we link statically to stdlib, do not copy the libstd dynamic library file
+            let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
+            let can_be_rustc_dynamic_dep =
+                !(is_std && builder.link_std_into_rustc_driver(target_compiler.host));
+
+            if is_dylib_or_debug && can_be_rustc_dynamic_dep && !is_proc_macro {
                 builder.copy_link(&f.path(), &rustc_libdir.join(&filename));
+                println!("[BOOTSTRAP COPY] {filename}");
             }
         }
 
