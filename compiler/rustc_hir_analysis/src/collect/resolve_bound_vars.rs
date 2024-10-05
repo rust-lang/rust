@@ -152,11 +152,14 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
-    /// Resolve the lifetimes in the bounds to the lifetime defs in the generics.
-    /// `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
+    /// Remap lifetimes that appear in opaque types to fresh lifetime parameters. Given:
+    /// `fn foo<'a>() -> impl MyTrait<'a> { ... }`
+    ///
+    /// HIR tells us that `'a` refer to the lifetime bound on `foo`.
+    /// However, typeck and borrowck for opaques are work based on using a new generics type.
     /// `type MyAnonTy<'b> = impl MyTrait<'b>;`
-    ///                 ^                  ^ this gets resolved in the scope of
-    ///                                      the opaque_ty generics
+    ///
+    /// This scope collects the mapping `'a -> 'b`.
     Opaque {
         /// The opaque type we are traversing.
         def_id: LocalDefId,
@@ -547,11 +550,11 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         }
     }
 
-    /// Resolve the lifetimes that are applied to the opaque type.
-    /// These are resolved in the current scope.
-    /// `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
-    /// `fn foo<'a>() -> MyAnonTy<'a> { ... }`
-    ///          ^                 ^this gets resolved in the current scope
+    /// Resolve the lifetimes inside the opaque type, and save them into
+    /// `opaque_captured_lifetimes`.
+    ///
+    /// This method has special handling for opaques that capture all lifetimes,
+    /// like async desugaring.
     #[instrument(level = "debug", skip(self))]
     fn visit_opaque_ty(&mut self, opaque: &'tcx rustc_hir::OpaqueTy<'tcx>) {
         let mut captures = FxIndexMap::default();
@@ -814,9 +817,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     s: self.scope,
                 };
                 self.with(scope, |this| this.visit_ty(mt.ty));
-            }
-            hir::TyKind::OpaqueDef(opaque_ty) => {
-                self.visit_opaque_ty(opaque_ty);
             }
             _ => intravisit::walk_ty(self, ty),
         }
