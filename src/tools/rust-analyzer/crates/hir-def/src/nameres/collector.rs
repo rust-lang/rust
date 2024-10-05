@@ -127,8 +127,11 @@ impl PartialResolvedImport {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum ImportSource {
-    Use { use_tree: Idx<ast::UseTree>, id: UseId, is_prelude: bool, kind: ImportKind },
+struct ImportSource {
+    use_tree: Idx<ast::UseTree>,
+    id: UseId,
+    is_prelude: bool,
+    kind: ImportKind,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -154,7 +157,7 @@ impl Import {
                 path,
                 alias,
                 visibility: visibility.clone(),
-                source: ImportSource::Use { use_tree: idx, id, is_prelude, kind },
+                source: ImportSource { use_tree: idx, id, is_prelude, kind },
             });
         });
     }
@@ -780,35 +783,31 @@ impl DefCollector<'_> {
         let _p = tracing::info_span!("resolve_import", import_path = %import.path.display(self.db.upcast(), Edition::LATEST))
             .entered();
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
-        match import.source {
-            ImportSource::Use { .. } => {
-                let res = self.def_map.resolve_path_fp_with_macro(
-                    self.db,
-                    ResolveMode::Import,
-                    module_id,
-                    &import.path,
-                    BuiltinShadowMode::Module,
-                    None, // An import may resolve to any kind of macro.
-                );
+        let res = self.def_map.resolve_path_fp_with_macro(
+            self.db,
+            ResolveMode::Import,
+            module_id,
+            &import.path,
+            BuiltinShadowMode::Module,
+            None, // An import may resolve to any kind of macro.
+        );
 
-                let def = res.resolved_def;
-                if res.reached_fixedpoint == ReachedFixedPoint::No || def.is_none() {
-                    return PartialResolvedImport::Unresolved;
-                }
+        let def = res.resolved_def;
+        if res.reached_fixedpoint == ReachedFixedPoint::No || def.is_none() {
+            return PartialResolvedImport::Unresolved;
+        }
 
-                if res.from_differing_crate {
-                    return PartialResolvedImport::Resolved(
-                        def.filter_visibility(|v| matches!(v, Visibility::Public)),
-                    );
-                }
+        if res.from_differing_crate {
+            return PartialResolvedImport::Resolved(
+                def.filter_visibility(|v| matches!(v, Visibility::Public)),
+            );
+        }
 
-                // Check whether all namespaces are resolved.
-                if def.is_full() {
-                    PartialResolvedImport::Resolved(def)
-                } else {
-                    PartialResolvedImport::Indeterminate(def)
-                }
-            }
+        // Check whether all namespaces are resolved.
+        if def.is_full() {
+            PartialResolvedImport::Resolved(def)
+        } else {
+            PartialResolvedImport::Indeterminate(def)
         }
     }
 
@@ -824,7 +823,12 @@ impl DefCollector<'_> {
             .unwrap_or(Visibility::Public);
 
         match import.source {
-            ImportSource::Use { kind: ImportKind::Plain | ImportKind::TypeOnly, .. } => {
+            ImportSource {
+                kind: kind @ (ImportKind::Plain | ImportKind::TypeOnly),
+                id,
+                use_tree,
+                ..
+            } => {
                 let name = match &import.alias {
                     Some(ImportAlias::Alias(name)) => Some(name),
                     Some(ImportAlias::Underscore) => None,
@@ -837,24 +841,20 @@ impl DefCollector<'_> {
                     },
                 };
 
-                let imp = match import.source {
-                    ImportSource::Use { kind, id, use_tree, .. } => {
-                        if kind == ImportKind::TypeOnly {
-                            def.values = None;
-                            def.macros = None;
-                        }
-                        ImportType::Import(ImportId { import: id, idx: use_tree })
-                    }
-                };
+                if kind == ImportKind::TypeOnly {
+                    def.values = None;
+                    def.macros = None;
+                }
+                let imp = ImportType::Import(ImportId { import: id, idx: use_tree });
                 tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                 self.update(module_id, &[(name.cloned(), def)], vis, Some(imp));
             }
-            ImportSource::Use { kind: ImportKind::Glob, id, .. } => {
+            ImportSource { kind: ImportKind::Glob, id, is_prelude, .. } => {
                 tracing::debug!("glob import: {:?}", import);
                 match def.take_types() {
                     Some(ModuleDefId::ModuleId(m)) => {
-                        if let ImportSource::Use { id, is_prelude: true, .. } = import.source {
+                        if is_prelude {
                             // Note: This dodgily overrides the injected prelude. The rustc
                             // implementation seems to work the same though.
                             cov_mark::hit!(std_prelude);
@@ -1509,18 +1509,26 @@ impl DefCollector<'_> {
         }
 
         // Emit diagnostics for all remaining unresolved imports.
-        for directive in &self.unresolved_imports {
-            let ImportSource::Use { use_tree, id, is_prelude: _, kind: _ } =
-                directive.import.source;
+        for import in &self.unresolved_imports {
+            let &ImportDirective {
+                module_id,
+                import:
+                    Import {
+                        ref path,
+                        source: ImportSource { use_tree, id, is_prelude: _, kind: _ },
+                        ..
+                    },
+                ..
+            } = import;
             if matches!(
-                (directive.import.path.segments().first(), &directive.import.path.kind),
+                (path.segments().first(), &path.kind),
                 (Some(krate), PathKind::Plain | PathKind::Abs) if self.unresolved_extern_crates.contains(krate)
             ) {
                 continue;
             }
             let item_tree_id = id.lookup(self.db).id;
             self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
-                directive.module_id,
+                module_id,
                 item_tree_id,
                 use_tree,
             ));
