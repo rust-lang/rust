@@ -192,6 +192,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::unwrap_or_else_default", "clippy::unwrap_or_default"),
     #[clippy::version = ""]
     ("clippy::vtable_address_comparisons", "ambiguous_wide_pointer_comparisons"),
+    #[clippy::version = "CURRENT_RUSTC_VERSION"]
+    ("clippy::zero_prefixed_literal", "leading_zeros_in_decimal_literals"),
     #[clippy::version = ""]
     ("clippy::zero_width_space", "clippy::invisible_characters"),
 ]}

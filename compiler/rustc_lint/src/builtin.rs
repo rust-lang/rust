@@ -22,6 +22,7 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
@@ -58,7 +59,7 @@ use crate::lints::{
     BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
     BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel, LeadingZeros,
 };
 use crate::nonstandard_style::{MethodLateContext, method_context};
 use crate::{
@@ -3100,6 +3101,76 @@ impl EarlyLintPass for SpecialModuleName {
                     _ => continue,
                 }
             }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `leading_zeros_in_decimal_literals` lint
+    /// detects decimal integral literals with leading zeros.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// fn is_executable(unix_mode: u32) -> bool {
+    ///     unix_mode & 0111 != 0
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    /// In some languages (including the infamous C language and most of its family),
+    /// a leading zero marks an octal constant. In Rust however, a `0o` prefix is used instead.
+    /// Thus, a leading zero can be confusing for both the writer and a reader.
+    ///
+    /// In Rust:
+    /// ```rust,no_run
+    /// fn main() {
+    ///     let a = 0123;
+    ///     println!("{}", a);
+    /// }
+    /// ```
+    ///
+    /// prints `123`, while in C:
+    ///
+    /// ```c
+    /// #include <stdio.h>
+    ///
+    /// int main() {
+    ///     int a = 0123;
+    ///     printf("%d\n", a);
+    /// }
+    /// ```
+    ///
+    /// prints `83` (as `83 == 0o123` while `123 == 0o173`).
+    pub LEADING_ZEROS_IN_DECIMAL_LITERALS,
+    Warn,
+    "leading `0` in decimal integer literals",
+}
+
+declare_lint_pass!(LeadingZerosInDecimals => [LEADING_ZEROS_IN_DECIMAL_LITERALS]);
+
+impl EarlyLintPass for LeadingZerosInDecimals {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
+        if let ExprKind::Lit(literal) = expr.kind
+            && let Ok(LitKind::Int(Pu128(10..), _)) = LitKind::from_token_lit(literal)
+            && let s = literal.symbol.as_str()
+            && let Some(tail) = s.strip_prefix('0')
+            && !tail.starts_with(['b', 'o', 'x'])
+            && let nonzero_digits = tail.trim_start_matches(['0', '_'])
+            && !nonzero_digits.contains(['8', '9'])
+        {
+            let lit_span = expr.span;
+            let zeros_offset = s.len() - nonzero_digits.len();
+            cx.emit_span_lint(
+                LEADING_ZEROS_IN_DECIMAL_LITERALS,
+                lit_span,
+                LeadingZeros {
+                    remove_zeros: lit_span.with_hi(lit_span.lo() + BytePos(zeros_offset as u32)),
+                    prefix_octal: lit_span.with_hi(lit_span.lo() + BytePos(1)),
+                },
+            );
         }
     }
 }

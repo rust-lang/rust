@@ -1,0 +1,51 @@
+warning: this is a decimal constant
+  --> $DIR/leading-zeros-in-decimal-literals.rs:4:13
+   |
+LL |     let _ = 0111;
+   |             ^^^^
+   |
+   = note: `#[warn(leading_zeros_in_decimal_literals)]` on by default
+help: if you meant to use a decimal constant, remove leading zeros to avoid confusion
+   |
+LL -     let _ = 0111;
+LL +     let _ = 111;
+   |
+help: if you meant to use an octal constant, prefix it with `0o` instead
+   |
+LL |     let _ = 0o111;
+   |              +
+
+warning: this is a decimal constant
+  --> $DIR/leading-zeros-in-decimal-literals.rs:5:13
+   |
+LL |     let _ = 0777;
+   |             ^^^^
+   |
+help: if you meant to use a decimal constant, remove leading zeros to avoid confusion
+   |
+LL -     let _ = 0777;
+LL +     let _ = 777;
+   |
+help: if you meant to use an octal constant, prefix it with `0o` instead
+   |
+LL |     let _ = 0o777;
+   |              +
+
+warning: this is a decimal constant
+  --> $DIR/leading-zeros-in-decimal-literals.rs:6:13
+   |
+LL |     let _ = 0750;
+   |             ^^^^
+   |
+help: if you meant to use a decimal constant, remove leading zeros to avoid confusion
+   |
+LL -     let _ = 0750;
+LL +     let _ = 750;
+   |
+help: if you meant to use an octal constant, prefix it with `0o` instead
+   |
+LL |     let _ = 0o750;
+   |              +
+
+warning: 3 warnings emitted
+
