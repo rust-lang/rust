@@ -220,7 +220,7 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
         ItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
         ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
-        ItemKind::TyAlias(..) | ItemKind::OpaqueTy(_) => (Pat::Str("type"), Pat::Str(";")),
+        ItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
         ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),
         ItemKind::Struct(VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),

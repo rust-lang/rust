@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    Visitor, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
+    Visitor, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_param_bound,
     walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_where_predicate,
 };
 use rustc_hir::{
@@ -420,11 +420,9 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_>) {
         match ty.kind {
-            TyKind::OpaqueDef(item, bounds) => {
-                let map = self.cx.tcx.hir();
-                let item = map.item(item);
+            TyKind::OpaqueDef(opaque, bounds) => {
                 let len = self.lts.len();
-                walk_item(self, item);
+                self.visit_opaque_ty(opaque);
                 self.lts.truncate(len);
                 self.lts.extend(bounds.iter().filter_map(|bound| match bound {
                     GenericArg::Lifetime(&l) => Some(l),
