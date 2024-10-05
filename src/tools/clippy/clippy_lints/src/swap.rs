@@ -6,9 +6,9 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
 use itertools::Itertools;
 
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 
-use crate::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -334,7 +334,7 @@ struct IndexBinding<'a, 'tcx> {
 
 impl<'tcx> IndexBinding<'_, 'tcx> {
     fn snippet_index_bindings(&mut self, exprs: &[&'tcx Expr<'tcx>]) -> String {
-        let mut bindings = FxHashSet::default();
+        let mut bindings = FxIndexSet::default();
         for expr in exprs {
             bindings.insert(self.snippet_index_binding(expr));
         }
