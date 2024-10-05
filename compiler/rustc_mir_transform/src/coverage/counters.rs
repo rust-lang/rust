@@ -104,24 +104,18 @@ impl CoverageCounters {
         BcbCounter::Counter { id }
     }
 
-    /// Creates a new physical counter attached a BCB node.
-    /// The node must not already have a counter.
+    /// Creates a new physical counter for a BCB node.
     fn make_phys_node_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
-        let counter = self.make_counter_inner(CounterIncrementSite::Node { bcb });
-        debug!(?bcb, ?counter, "node gets a physical counter");
-        self.set_bcb_counter(bcb, counter)
+        self.make_counter_inner(CounterIncrementSite::Node { bcb })
     }
 
-    /// Creates a new physical counter attached to a BCB edge.
-    /// The edge must not already have a counter.
+    /// Creates a new physical counter for a BCB edge.
     fn make_phys_edge_counter(
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
     ) -> BcbCounter {
-        let counter = self.make_counter_inner(CounterIncrementSite::Edge { from_bcb, to_bcb });
-        debug!(?from_bcb, ?to_bcb, ?counter, "edge gets a physical counter");
-        self.set_bcb_edge_counter(from_bcb, to_bcb, counter)
+        self.make_counter_inner(CounterIncrementSite::Edge { from_bcb, to_bcb })
     }
 
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
@@ -330,11 +324,21 @@ impl<'a> MakeBcbCounters<'a> {
             return;
         }
 
-        // Determine the set of out-edges that don't yet have edge counters.
+        // When choosing which out-edge should be given a counter expression, ignore edges that
+        // already have counters, or could use the existing counter of their target node.
+        let out_edge_has_counter = |to_bcb| {
+            if self.coverage_counters.bcb_edge_counters.contains_key(&(from_bcb, to_bcb)) {
+                return true;
+            }
+            self.basic_coverage_blocks.sole_predecessor(to_bcb) == Some(from_bcb)
+                && self.coverage_counters.bcb_counters[to_bcb].is_some()
+        };
+
+        // Determine the set of out-edges that could benefit from being given an expression.
         let candidate_successors = self.basic_coverage_blocks.successors[from_bcb]
             .iter()
             .copied()
-            .filter(|&to_bcb| self.edge_has_no_counter(from_bcb, to_bcb))
+            .filter(|&to_bcb| !out_edge_has_counter(to_bcb))
             .collect::<Vec<_>>();
         debug!(?candidate_successors);
 
@@ -371,14 +375,7 @@ impl<'a> MakeBcbCounters<'a> {
         );
 
         debug!("{expression_to_bcb:?} gets an expression: {expression:?}");
-        if let Some(sole_pred) = self.basic_coverage_blocks.sole_predecessor(expression_to_bcb) {
-            // This edge normally wouldn't get its own counter, so attach the expression
-            // to its target node instead, so that `edge_has_no_counter` can see it.
-            assert_eq!(sole_pred, from_bcb);
-            self.coverage_counters.set_bcb_counter(expression_to_bcb, expression);
-        } else {
-            self.coverage_counters.set_bcb_edge_counter(from_bcb, expression_to_bcb, expression);
-        }
+        self.coverage_counters.set_bcb_edge_counter(from_bcb, expression_to_bcb, expression);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -387,6 +384,19 @@ impl<'a> MakeBcbCounters<'a> {
         if let Some(counter_kind) = self.coverage_counters.bcb_counters[bcb] {
             debug!("{bcb:?} already has a counter: {counter_kind:?}");
             return counter_kind;
+        }
+
+        let counter = self.make_node_counter_inner(bcb);
+        self.coverage_counters.set_bcb_counter(bcb, counter)
+    }
+
+    fn make_node_counter_inner(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+        // If the node's sole in-edge already has a counter, use that.
+        if let Some(sole_pred) = self.basic_coverage_blocks.sole_predecessor(bcb)
+            && let Some(&edge_counter) =
+                self.coverage_counters.bcb_edge_counters.get(&(sole_pred, bcb))
+        {
+            return edge_counter;
         }
 
         let predecessors = self.basic_coverage_blocks.predecessors[bcb].as_slice();
@@ -398,7 +408,9 @@ impl<'a> MakeBcbCounters<'a> {
         //   leading to infinite recursion.
         if predecessors.len() <= 1 || predecessors.contains(&bcb) {
             debug!(?bcb, ?predecessors, "node has <=1 predecessors or is its own predecessor");
-            return self.coverage_counters.make_phys_node_counter(bcb);
+            let counter = self.coverage_counters.make_phys_node_counter(bcb);
+            debug!(?bcb, ?counter, "node gets a physical counter");
+            return counter;
         }
 
         // A BCB with multiple incoming edges can compute its count by ensuring that counters
@@ -414,11 +426,28 @@ impl<'a> MakeBcbCounters<'a> {
             .expect("there must be at least one in-edge");
 
         debug!("{bcb:?} gets a new counter (sum of predecessor counters): {sum_of_in_edges:?}");
-        self.coverage_counters.set_bcb_counter(bcb, sum_of_in_edges)
+        sum_of_in_edges
     }
 
     #[instrument(level = "debug", skip(self))]
     fn get_or_make_edge_counter(
+        &mut self,
+        from_bcb: BasicCoverageBlock,
+        to_bcb: BasicCoverageBlock,
+    ) -> BcbCounter {
+        // If the edge already has a counter, return it.
+        if let Some(&counter_kind) =
+            self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
+        {
+            debug!("Edge {from_bcb:?}->{to_bcb:?} already has a counter: {counter_kind:?}");
+            return counter_kind;
+        }
+
+        let counter = self.make_edge_counter_inner(from_bcb, to_bcb);
+        self.coverage_counters.set_bcb_edge_counter(from_bcb, to_bcb, counter)
+    }
+
+    fn make_edge_counter_inner(
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
@@ -439,16 +468,10 @@ impl<'a> MakeBcbCounters<'a> {
             return self.get_or_make_node_counter(from_bcb);
         }
 
-        // If the edge already has a counter, return it.
-        if let Some(&counter_kind) =
-            self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
-        {
-            debug!("Edge {from_bcb:?}->{to_bcb:?} already has a counter: {counter_kind:?}");
-            return counter_kind;
-        }
-
         // Make a new counter to count this edge.
-        self.coverage_counters.make_phys_edge_counter(from_bcb, to_bcb)
+        let counter = self.coverage_counters.make_phys_edge_counter(from_bcb, to_bcb);
+        debug!(?from_bcb, ?to_bcb, ?counter, "edge gets a physical counter");
+        counter
     }
 
     /// Given a set of candidate out-edges (represented by their successor node),
@@ -507,22 +530,5 @@ impl<'a> MakeBcbCounters<'a> {
         }
 
         None
-    }
-
-    #[inline]
-    fn edge_has_no_counter(
-        &self,
-        from_bcb: BasicCoverageBlock,
-        to_bcb: BasicCoverageBlock,
-    ) -> bool {
-        let edge_counter =
-            if let Some(sole_pred) = self.basic_coverage_blocks.sole_predecessor(to_bcb) {
-                assert_eq!(sole_pred, from_bcb);
-                self.coverage_counters.bcb_counters[to_bcb]
-            } else {
-                self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb)).copied()
-            };
-
-        edge_counter.is_none()
     }
 }
