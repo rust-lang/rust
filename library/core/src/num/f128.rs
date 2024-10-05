@@ -1291,7 +1291,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128)] {
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let x = 3.5_f128;
     /// let y = -3.5_f128;
@@ -1323,7 +1323,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let f = 3.5_f128;
     ///
@@ -1360,7 +1360,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let f = 3.5_f128;
     ///
