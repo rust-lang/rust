@@ -339,7 +339,7 @@ fn completion_item(
         something_to_resolve = item.detail.is_some();
         None
     } else {
-        item.detail
+        item.detail.clone()
     };
 
     let documentation = if fields_to_resolve.resolve_documentation {
@@ -370,7 +370,7 @@ fn completion_item(
         } else {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
                 detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: lsp_item.detail.clone(),
+                description: item.detail,
             });
         }
     } else if let Some(label_detail) = item.label_detail {
