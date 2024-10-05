@@ -80,19 +80,20 @@ impl CoverageCounters {
         basic_coverage_blocks: &CoverageGraph,
         bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool,
     ) -> Self {
-        let num_bcbs = basic_coverage_blocks.num_nodes();
+        let mut counters = MakeBcbCounters::new(basic_coverage_blocks);
+        counters.make_bcb_counters(bcb_needs_counter);
 
-        let mut this = Self {
+        counters.coverage_counters
+    }
+
+    fn with_num_bcbs(num_bcbs: usize) -> Self {
+        Self {
             counter_increment_sites: IndexVec::new(),
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
             bcb_edge_counters: FxHashMap::default(),
             expressions: IndexVec::new(),
             expressions_memo: FxHashMap::default(),
-        };
-
-        MakeBcbCounters::new(&mut this, basic_coverage_blocks).make_bcb_counters(bcb_needs_counter);
-
-        this
+        }
     }
 
     /// Shared helper used by [`Self::make_phys_node_counter`] and
@@ -265,16 +266,16 @@ impl CoverageCounters {
 
 /// Helper struct that allows counter creation to inspect the BCB graph.
 struct MakeBcbCounters<'a> {
-    coverage_counters: &'a mut CoverageCounters,
+    coverage_counters: CoverageCounters,
     basic_coverage_blocks: &'a CoverageGraph,
 }
 
 impl<'a> MakeBcbCounters<'a> {
-    fn new(
-        coverage_counters: &'a mut CoverageCounters,
-        basic_coverage_blocks: &'a CoverageGraph,
-    ) -> Self {
-        Self { coverage_counters, basic_coverage_blocks }
+    fn new(basic_coverage_blocks: &'a CoverageGraph) -> Self {
+        Self {
+            coverage_counters: CoverageCounters::with_num_bcbs(basic_coverage_blocks.num_nodes()),
+            basic_coverage_blocks,
+        }
     }
 
     fn make_bcb_counters(&mut self, bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool) {
