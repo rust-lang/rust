@@ -1,7 +1,7 @@
 #![warn(clippy::transmute_float_to_int)]
 #![allow(clippy::missing_transmute_annotations)]
-#![feature(f128, f128_const)]
-#![feature(f16, f16_const)]
+#![feature(f128)]
+#![feature(f16)]
 
 fn float_to_int() {
     let _: u32 = unsafe { 1f32.to_bits() };
