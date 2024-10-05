@@ -55,7 +55,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // behavior.
     reset_sigpipe(sigpipe);
 
-    stack_overflow::init();
+    stack_overflow::protect(true);
     args::init(argc, argv);
 
     // Normally, `thread::spawn` will call `Thread::set_name` but since this thread
@@ -229,11 +229,13 @@ pub(crate) fn on_broken_pipe_flag_used() -> bool {
     ON_BROKEN_PIPE_FLAG_USED.load(crate::sync::atomic::Ordering::Relaxed)
 }
 
-// SAFETY: must be called only once during runtime cleanup.
-// NOTE: this is not guaranteed to run, for example when the program aborts.
-pub unsafe fn cleanup() {
+pub fn thread_cleanup() {
     stack_overflow::cleanup();
 }
+
+// SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
+pub unsafe fn cleanup() {}
 
 #[allow(unused_imports)]
 pub use libc::signal;
