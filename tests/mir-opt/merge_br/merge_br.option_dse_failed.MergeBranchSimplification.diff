@@ -1,0 +1,34 @@
+- // MIR for `option_dse_failed` before MergeBranchSimplification
++ // MIR for `option_dse_failed` after MergeBranchSimplification
+  
+  fn option_dse_failed(_1: Option<i32>, _2: &mut i32) -> Option<i32> {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: std::option::Option<i32>;
+      let mut _3: isize;
+  
+      bb0: {
+          _3 = discriminant(_1);
+          switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = Option::<i32>::None;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          (*_2) = const 1_i32;
+          _0 = copy _1;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          return;
+      }
+  }
+  
