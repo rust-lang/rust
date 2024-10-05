@@ -506,14 +506,17 @@ impl ExternCrateDeclData {
         let crate_id = if name == sym::self_.clone() {
             Some(krate)
         } else {
-            db.crate_def_map(krate)
-                .extern_prelude()
-                .find(|&(prelude_name, ..)| *prelude_name == name)
-                .map(|(_, (root, _))| root.krate())
+            db.crate_graph()[krate].dependencies.iter().find_map(|dep| {
+                if dep.name.symbol() == name.symbol() {
+                    Some(dep.crate_id)
+                } else {
+                    None
+                }
+            })
         };
 
         Arc::new(Self {
-            name: extern_crate.name.clone(),
+            name,
             visibility: item_tree[extern_crate.visibility].clone(),
             alias: extern_crate.alias.clone(),
             crate_id,
