@@ -475,6 +475,10 @@ lint_invalid_reference_casting_note_book = for more information, visit <https://
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
 
+lint_leading_zeros_in_decimal_literals = this is a decimal constant
+    .suggestion_remove_zeros = if you meant to use a decimal constant, remove leading zeros to avoid confusion
+    .suggestion_prefix_octal = if you meant to use an octal constant, prefix it with `0o` instead
+
 lint_legacy_derive_helpers = derive helper attribute is used before it is introduced
     .label = the attribute is introduced here
 
