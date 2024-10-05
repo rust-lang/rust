@@ -734,7 +734,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    #[rustc_const_stable(feature = "const_result", since = "CURRENT_RUSTC_VERSION")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     pub const fn as_mut(&mut self) -> Result<&mut T, &mut E> {
         match *self {
             Ok(ref mut x) => Ok(x),
@@ -1536,7 +1537,8 @@ impl<T, E> Result<&T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_copied", since = "1.59.0")]
-    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    #[rustc_const_stable(feature = "const_result", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn copied(self) -> Result<T, E>
     where
         T: Copy,
@@ -1586,7 +1588,9 @@ impl<T, E> Result<&mut T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_copied", since = "1.59.0")]
-    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    #[rustc_const_stable(feature = "const_result", since = "CURRENT_RUSTC_VERSION")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn copied(self) -> Result<T, E>
     where
         T: Copy,
@@ -1639,7 +1643,8 @@ impl<T, E> Result<Option<T>, E> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    #[rustc_const_stable(feature = "const_result", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn transpose(self) -> Option<Result<T, E>> {
         match self {
             Ok(Some(x)) => Some(Ok(x)),
