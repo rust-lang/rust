@@ -1795,56 +1795,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 
-    /// Returns the absolute value of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::abs`](../../std/primitive.f16.html#method.abs)
-    #[rustc_nounwind]
-    pub fn fabsf16(x: f16) -> f16;
-    /// Returns the absolute value of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::abs`](../../std/primitive.f32.html#method.abs)
-    #[rustc_nounwind]
-    pub fn fabsf32(x: f32) -> f32;
-    /// Returns the absolute value of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::abs`](../../std/primitive.f64.html#method.abs)
-    #[rustc_nounwind]
-    pub fn fabsf64(x: f64) -> f64;
-    /// Returns the absolute value of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::abs`](../../std/primitive.f128.html#method.abs)
-    #[rustc_nounwind]
-    pub fn fabsf128(x: f128) -> f128;
-
-    /// Copies the sign from `y` to `x` for `f16` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
-    #[rustc_nounwind]
-    pub fn copysignf16(x: f16, y: f16) -> f16;
-    /// Copies the sign from `y` to `x` for `f32` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
-    #[rustc_nounwind]
-    pub fn copysignf32(x: f32, y: f32) -> f32;
-    /// Copies the sign from `y` to `x` for `f64` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
-    #[rustc_nounwind]
-    pub fn copysignf64(x: f64, y: f64) -> f64;
-    /// Copies the sign from `y` to `x` for `f128` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
-    #[rustc_nounwind]
-    pub fn copysignf128(x: f128, y: f128) -> f128;
-
     /// Returns the largest integer less than or equal to an `f16`.
     ///
     /// The stabilized version of this intrinsic is
@@ -3536,6 +3486,105 @@ pub const fn maxnumf64(_x: f64, _y: f64) -> f64 {
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn maxnumf128(_x: f128, _y: f128) -> f128 {
+    unimplemented!();
+}
+
+/// Returns the absolute value of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::abs`](../../std/primitive.f16.html#method.abs)
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn fabsf16(_x: f16) -> f16 {
+    unimplemented!();
+}
+
+/// Returns the absolute value of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::abs`](../../std/primitive.f32.html#method.abs)
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn fabsf32(_x: f32) -> f32 {
+    unimplemented!();
+}
+
+/// Returns the absolute value of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::abs`](../../std/primitive.f64.html#method.abs)
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn fabsf64(_x: f64) -> f64 {
+    unimplemented!();
+}
+
+/// Returns the absolute value of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::abs`](../../std/primitive.f128.html#method.abs)
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn fabsf128(_x: f128) -> f128 {
+    unimplemented!();
+}
+
+/// Copies the sign from `y` to `x` for `f16` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn copysignf16(_x: f16, _y: f16) -> f16 {
+    unimplemented!();
+}
+
+/// Copies the sign from `y` to `x` for `f32` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn copysignf32(_x: f32, _y: f32) -> f32 {
+    unimplemented!();
+}
+/// Copies the sign from `y` to `x` for `f64` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn copysignf64(_x: f64, _y: f64) -> f64 {
+    unimplemented!();
+}
+
+/// Copies the sign from `y` to `x` for `f128` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn copysignf128(_x: f128, _y: f128) -> f128 {
     unimplemented!();
 }
 

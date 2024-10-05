@@ -210,8 +210,10 @@ impl f128 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn abs(self) -> Self {
+    pub const fn abs(self) -> Self {
         // FIXME(f16_f128): replace with `intrinsics::fabsf128` when available
         // We don't do this now because LLVM has lowering bugs for f128 math.
         Self::from_bits(self.to_bits() & !(1 << 127))
@@ -240,8 +242,10 @@ impl f128 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn signum(self) -> f128 {
+    pub const fn signum(self) -> f128 {
         if self.is_nan() { Self::NAN } else { 1.0_f128.copysign(self) }
     }
 
@@ -278,8 +282,10 @@ impl f128 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn copysign(self, sign: f128) -> f128 {
+    pub const fn copysign(self, sign: f128) -> f128 {
         unsafe { intrinsics::copysignf128(self, sign) }
     }
 

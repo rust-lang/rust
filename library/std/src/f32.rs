@@ -194,8 +194,9 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn abs(self) -> f32 {
+    pub const fn abs(self) -> f32 {
         unsafe { intrinsics::fabsf32(self) }
     }
 
@@ -218,8 +219,9 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn signum(self) -> f32 {
+    pub const fn signum(self) -> f32 {
         if self.is_nan() { Self::NAN } else { 1.0_f32.copysign(self) }
     }
 
@@ -253,7 +255,8 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "copysign", since = "1.35.0")]
-    pub fn copysign(self, sign: f32) -> f32 {
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    pub const fn copysign(self, sign: f32) -> f32 {
         unsafe { intrinsics::copysignf32(self, sign) }
     }
 
