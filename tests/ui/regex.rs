@@ -120,6 +120,8 @@ fn trivial_regex() {
 
 fn regex_creation_in_loops() {
     loop {
+        static STATIC_REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| Regex::new("a.b").unwrap());
+
         let regex = Regex::new("a.b");
         //~^ ERROR: compiling a regex in a loop
         let regex = BRegex::new("a.b");

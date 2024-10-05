@@ -6,7 +6,7 @@ use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{def_path_def_ids, path_def_id, paths};
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::def_id::DefIdMap;
-use rustc_hir::{BorrowKind, Expr, ExprKind};
+use rustc_hir::{BorrowKind, Expr, ExprKind, OwnerId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
@@ -104,7 +104,7 @@ enum RegexKind {
 #[derive(Default)]
 pub struct Regex {
     definitions: DefIdMap<RegexKind>,
-    loop_stack: Vec<Span>,
+    loop_stack: Vec<(OwnerId, Span)>,
 }
 
 impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX, REGEX_CREATION_IN_LOOPS]);
@@ -135,7 +135,8 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
             && let Some(def_id) = path_def_id(cx, fun)
             && let Some(regex_kind) = self.definitions.get(&def_id)
         {
-            if let Some(&loop_span) = self.loop_stack.last()
+            if let Some(&(loop_item_id, loop_span)) = self.loop_stack.last()
+                && loop_item_id == fun.hir_id.owner
                 && (matches!(arg.kind, ExprKind::Lit(_)) || const_str(cx, arg).is_some())
             {
                 span_lint_and_help(
@@ -154,8 +155,8 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
                 RegexKind::Bytes => check_regex(cx, arg, false),
                 RegexKind::BytesSet => check_set(cx, arg, false),
             }
-        } else if let ExprKind::Loop(_, _, _, span) = expr.kind {
-            self.loop_stack.push(span);
+        } else if let ExprKind::Loop(block, _, _, span) = expr.kind {
+            self.loop_stack.push((block.hir_id.owner, span));
         }
     }
 
