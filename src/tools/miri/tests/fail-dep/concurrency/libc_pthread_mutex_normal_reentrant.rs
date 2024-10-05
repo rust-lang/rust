@@ -10,6 +10,8 @@ fn main() {
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
         assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
+        // A "normal" mutex properly tries to acquire the lock even if its is already held
+        // by the current thread -- and then we deadlock.
         libc::pthread_mutex_lock(&mut mutex as *mut _); //~ ERROR: deadlock: the evaluated program deadlocked
     }
 }

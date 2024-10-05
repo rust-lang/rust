@@ -39,7 +39,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             |ecx| &mut ecx.machine.sync.init_onces,
             |_| interp_ok(Default::default()),
         )?
-        .ok_or_else(|| err_ub_format!("init_once has invalid ID")).into()
+        .ok_or_else(|| err_ub_format!("init_once has invalid ID"))
+        .into()
     }
 
     #[inline]

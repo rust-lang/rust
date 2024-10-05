@@ -1,7 +1,7 @@
 //! Linux `eventfd` implementation.
 use std::cell::{Cell, RefCell};
 use std::io;
-use std::io::{Error, ErrorKind};
+use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
 use crate::shims::unix::fd::FileDescriptionRef;
@@ -66,9 +66,7 @@ impl FileDescription for Event {
         let ty = ecx.machine.layouts.u64;
         // Check the size of slice, and return error only if the size of the slice < 8.
         if len < ty.size.bytes_usize() {
-            ecx.set_last_error_from_io_error(Error::from(ErrorKind::InvalidInput))?;
-            ecx.write_int(-1, dest)?;
-            return interp_ok(());
+            return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
         }
 
         // eventfd read at the size of u64.
@@ -78,9 +76,7 @@ impl FileDescription for Event {
         let counter = self.counter.get();
         if counter == 0 {
             if self.is_nonblock {
-                ecx.set_last_error_from_io_error(Error::from(ErrorKind::WouldBlock))?;
-                ecx.write_int(-1, dest)?;
-                return interp_ok(());
+                return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
             }
 
             throw_unsup_format!("eventfd: blocking is unsupported");
@@ -128,8 +124,7 @@ impl FileDescription for Event {
         let ty = ecx.machine.layouts.u64;
         // Check the size of slice, and return error only if the size of the slice < 8.
         if len < ty.layout.size.bytes_usize() {
-            let result = Err(Error::from(ErrorKind::InvalidInput));
-            return ecx.return_written_byte_count_or_error(result, dest);
+            return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
         }
 
         // Read the user supplied value from the pointer.
@@ -138,8 +133,7 @@ impl FileDescription for Event {
 
         // u64::MAX as input is invalid because the maximum value of counter is u64::MAX - 1.
         if num == u64::MAX {
-            let result = Err(Error::from(ErrorKind::InvalidInput));
-            return ecx.return_written_byte_count_or_error(result, dest);
+            return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
         }
         // If the addition does not let the counter to exceed the maximum value, update the counter.
         // Else, block.
@@ -153,8 +147,7 @@ impl FileDescription for Event {
             }
             None | Some(u64::MAX) =>
                 if self.is_nonblock {
-                    let result = Err(Error::from(ErrorKind::WouldBlock));
-                    return ecx.return_written_byte_count_or_error(result, dest);
+                    return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
                 } else {
                     throw_unsup_format!("eventfd: blocking is unsupported");
                 },

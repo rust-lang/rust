@@ -150,7 +150,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`GetCurrentDirectoryW`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
             return interp_ok(Scalar::from_u32(0));
         }
 
@@ -163,7 +163,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_path_to_wide_str(&cwd, buf, size)?,
                 )));
             }
-            Err(e) => this.set_last_error_from_io_error(e)?,
+            Err(e) => this.set_last_error(e)?,
         }
         interp_ok(Scalar::from_u32(0))
     }
@@ -182,7 +182,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`SetCurrentDirectoryW`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
 
             return interp_ok(this.eval_windows("c", "FALSE"));
         }
@@ -190,7 +190,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match env::set_current_dir(path) {
             Ok(()) => interp_ok(this.eval_windows("c", "TRUE")),
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error(e)?;
                 interp_ok(this.eval_windows("c", "FALSE"))
             }
         }

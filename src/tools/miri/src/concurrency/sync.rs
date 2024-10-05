@@ -307,7 +307,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             |ecx| &mut ecx.machine.sync.mutexes,
             |ecx| initialize_data(ecx).map(|data| Mutex { data, ..Default::default() }),
         )?
-        .ok_or_else(|| err_ub_format!("mutex has invalid ID")).into()
+        .ok_or_else(|| err_ub_format!("mutex has invalid ID"))
+        .into()
     }
 
     /// Retrieve the additional data stored for a mutex.
@@ -334,7 +335,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             |ecx| &mut ecx.machine.sync.rwlocks,
             |ecx| initialize_data(ecx).map(|data| RwLock { data, ..Default::default() }),
         )?
-        .ok_or_else(|| err_ub_format!("rwlock has invalid ID")).into()
+        .ok_or_else(|| err_ub_format!("rwlock has invalid ID"))
+        .into()
     }
 
     /// Retrieve the additional data stored for a rwlock.
@@ -375,7 +377,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             |ecx| &mut ecx.machine.sync.condvars,
             |ecx| initialize_data(ecx).map(|data| Condvar { data, ..Default::default() }),
         )?
-        .ok_or_else(|| err_ub_format!("condvar has invalid ID")).into()
+        .ok_or_else(|| err_ub_format!("condvar has invalid ID"))
+        .into()
     }
 
     /// Retrieve the additional data stored for a condvar.

@@ -4,7 +4,7 @@
 // Two variants: the atomic store matches the size of the first or second atomic load.
 //@revisions: match_first_load match_second_load
 
-use std::sync::atomic::{AtomicU16, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU16, Ordering};
 use std::thread;
 
 fn convert(a: &AtomicU16) -> &[AtomicU8; 2] {

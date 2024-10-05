@@ -22,7 +22,6 @@ mod tests;
 
 pub mod fs;
 pub mod io;
-pub mod lazy_box;
 pub mod process;
 pub mod wstr;
 pub mod wtf8;
