@@ -874,14 +874,18 @@ pub fn block_comments2() {}
 fn test_extern_crate() {
     check_highlighting(
         r#"
-//- /main.rs crate:main deps:std,alloc
+//- /main.rs crate:main deps:std,alloc,test extern-prelude:std,alloc
+extern crate self as this;
 extern crate std;
 extern crate alloc as abc;
 extern crate unresolved as definitely_unresolved;
+extern crate test as opt_in_crate;
 //- /std/lib.rs crate:std
 pub struct S;
 //- /alloc/lib.rs crate:alloc
-pub struct A
+pub struct A;
+//- /test/lib.rs crate:test
+pub struct T;
 "#,
         expect_file!["./test_data/highlight_extern_crate.html"],
         false,
