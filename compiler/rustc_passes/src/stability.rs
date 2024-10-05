@@ -230,8 +230,10 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 &depr.as_ref().map(|(d, _)| d.since)
                 && let Some(stab_since) = stab.stable_since()
             {
-                let &(_, span) =
-                    stab_spans.iter().nth(0).expect("expected one span with a stable attribute");
+                let &(_, span) = stab_spans
+                    .iter()
+                    .find(|(level, _)| level.stable_since() == Some(stab_since))
+                    .expect("stabilization version should have an associated span");
 
                 match stab_since {
                     StableSince::Current => {

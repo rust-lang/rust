@@ -266,13 +266,18 @@ pub fn find_stability(
 ) -> Option<(Stability, StabilitySpans)> {
     let mut level: Option<StabilityLevel> = None;
     let mut stab_spans = StabilitySpans(smallvec![]);
+    let mut features = smallvec![];
     let mut allowed_through_unstable_modules = false;
 
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_allowed_through_unstable_modules => allowed_through_unstable_modules = true,
-            sym::unstable => try_add_unstability(sess, attr, &mut level, &mut stab_spans),
-            sym::stable => try_add_stability(sess, attr, &mut level, &mut stab_spans),
+            sym::unstable => {
+                add_level(sess, attr, &mut level, &mut stab_spans, &mut features, parse_unstability)
+            }
+            sym::stable => {
+                add_level(sess, attr, &mut level, &mut stab_spans, &mut features, parse_stability)
+            }
             _ => {}
         }
     }
@@ -301,15 +306,18 @@ pub fn find_const_stability(
 ) -> Option<(ConstStability, StabilitySpans)> {
     let mut level: Option<StabilityLevel> = None;
     let mut stab_spans = StabilitySpans(smallvec![]);
+    let mut features = smallvec![];
     let mut promotable = false;
 
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_promotable => promotable = true,
             sym::rustc_const_unstable => {
-                try_add_unstability(sess, attr, &mut level, &mut stab_spans)
+                add_level(sess, attr, &mut level, &mut stab_spans, &mut features, parse_unstability)
             }
-            sym::rustc_const_stable => try_add_stability(sess, attr, &mut level, &mut stab_spans),
+            sym::rustc_const_stable => {
+                add_level(sess, attr, &mut level, &mut stab_spans, &mut features, parse_stability)
+            }
             _ => {}
         }
     }
@@ -333,76 +341,63 @@ pub fn find_body_stability(
 ) -> Option<(DefaultBodyStability, StabilitySpans)> {
     let mut level: Option<StabilityLevel> = None;
     let mut stab_spans = StabilitySpans(smallvec![]);
+    let mut features = smallvec![];
 
     for attr in attrs {
         if attr.has_name(sym::rustc_default_body_unstable) {
-            try_add_unstability(sess, attr, &mut level, &mut stab_spans);
+            add_level(sess, attr, &mut level, &mut stab_spans, &mut features, parse_unstability);
         }
     }
 
     Some((DefaultBodyStability { level: level? }, stab_spans))
 }
 
-/// Collects stability info from one `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
-/// attribute, `attr`. Emits an error if the info it collects is inconsistent.
-fn try_add_unstability(
+/// Collects stability info from one stability attribute, `attr`.
+/// Emits an error if multiple stability levels are found for the same feature.
+fn add_level(
     sess: &Session,
     attr: &Attribute,
-    level: &mut Option<StabilityLevel>,
+    total_level: &mut Option<StabilityLevel>,
     stab_spans: &mut StabilitySpans,
+    features: &mut SmallVec<[Symbol; 1]>,
+    parse_level: impl FnOnce(&Session, &Attribute) -> Option<(Symbol, StabilityLevel)>,
 ) {
     use StabilityLevel::*;
 
-    match level {
-        // adding #[unstable] to an item with #[stable] is not permitted
-        Some(Stable { .. }) => {
-            sess.dcx().emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
-        }
-        // if other unstable attributes have been found, attempt to merge them
-        Some(Unstable { unstables, is_soft })
-            if let Some(Unstable { unstables: new_unstable, is_soft: new_soft }) =
-                parse_unstability(sess, attr) =>
-        {
-            // sanity check: is this the only unstable attr of its kind for its feature?
-            // FIXME(dianne): should this have a new error associated with it or is "multiple
-            // stability levels" clear enough, given an update to E0544.md?
-            // should MultipleStabilityLevels have more fields for diagnostics?
-            if unstables.iter().any(|u| new_unstable.iter().any(|v| u.feature == v.feature)) {
-                sess.dcx()
-                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
-                return;
-            }
-            unstables.extend(new_unstable.clone());
+    let Some((feature, feature_level)) = parse_level(sess, attr) else { return };
+
+    // sanity check: is this the only stability level of its kind for its feature?
+    if features.contains(&feature) {
+        sess.dcx()
+            .emit_err(session_diagnostics::MultipleStabilityLevels { feature, span: attr.span });
+    }
+    features.push(feature);
+    stab_spans.0.push((feature_level.clone(), attr.span));
+
+    match (total_level, feature_level) {
+        (level @ None, new_level) => *level = Some(new_level),
+        // if multiple unstable attributes have been found, merge them
+        (
+            Some(Unstable { unstables, is_soft }),
+            Unstable { unstables: new_unstable, is_soft: new_soft },
+        ) => {
+            unstables.extend(new_unstable);
             // Make the unstability soft if any unstable attributes are marked 'soft'; if an
             // unstable item is allowed in stable rust, another attribute shouldn't break that.
             // FIXME(dianne): should there be a check that all unstables are soft if any are?
             *is_soft |= new_soft;
-            stab_spans.0.push((Unstable { unstables: new_unstable, is_soft: new_soft }, attr.span));
         }
-        // if this is the first unstability of its kind on an item, collect it
-        None if let Some(new_level) = parse_unstability(sess, attr) => {
-            *level = Some(new_level.clone());
-            stab_spans.0.push((new_level, attr.span));
+        // an item with some stable and some unstable features is unstable
+        (Some(Unstable { .. }), Stable { .. }) => {}
+        (Some(level @ Stable { .. }), new_level @ Unstable { .. }) => *level = new_level,
+        // if multiple stable attributes have been found, use the most recent stabilization date
+        (
+            Some(Stable { since, allowed_through_unstable_modules }),
+            Stable { since: new_since, allowed_through_unstable_modules: new_allowed },
+        ) => {
+            *since = StableSince::max(*since, new_since);
+            *allowed_through_unstable_modules |= new_allowed;
         }
-        // if there was an error in `parse_unstability`, it's already been emitted; do nothing
-        _ => {}
-    }
-}
-
-/// Collects stability info from a single `stable`/`rustc_const_stable` attribute, `attr`.
-/// Emits an error if the info it collects is inconsistent.
-fn try_add_stability(
-    sess: &Session,
-    attr: &Attribute,
-    level: &mut Option<StabilityLevel>,
-    stab_spans: &mut StabilitySpans,
-) {
-    // at most one #[stable] attribute is permitted, and not when #[unstable] is present
-    if level.is_some() {
-        sess.dcx().emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
-    } else if let Some(new_level) = parse_stability(sess, attr) {
-        *level = Some(new_level.clone());
-        stab_spans.0.push((new_level, attr.span));
     }
 }
 
@@ -424,7 +419,7 @@ fn insert_or_error(sess: &Session, meta: &MetaItem, item: &mut Option<Symbol>) -
 
 /// Read the content of a `stable`/`rustc_const_stable` attribute, and return the feature name and
 /// its stability information.
-fn parse_stability(sess: &Session, attr: &Attribute) -> Option<StabilityLevel> {
+fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, StabilityLevel)> {
     let meta = attr.meta()?;
     let MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else { return None };
 
@@ -478,16 +473,17 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<StabilityLevel> {
     };
 
     match feature {
-        Ok(_feature) => {
-            Some(StabilityLevel::Stable { since, allowed_through_unstable_modules: false })
-        }
+        Ok(feature) => Some((feature, StabilityLevel::Stable {
+            since,
+            allowed_through_unstable_modules: false,
+        })),
         Err(ErrorGuaranteed { .. }) => None,
     }
 }
 
 /// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
-fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<StabilityLevel> {
+fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, StabilityLevel)> {
     let meta = attr.meta()?;
     let MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else { return None };
 
@@ -572,7 +568,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<StabilityLevel>
                 issue: issue_num,
                 implied_by,
             };
-            Some(StabilityLevel::Unstable { unstables: smallvec![unstability], is_soft })
+            Some((feature, StabilityLevel::Unstable { unstables: smallvec![unstability], is_soft }))
         }
         (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
     }
