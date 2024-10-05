@@ -181,5 +181,7 @@ declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
     ("clippy::vtable_address_comparisons", "ambiguous_wide_pointer_comparisons"),
     #[clippy::version = ""]
     ("clippy::reverse_range_loop", "clippy::reversed_empty_ranges"),
+    #[clippy::version = "CURRENT_RUSTC_VERSION"]
+    ("clippy::zero_prefixed_literal", "leading_zeros_in_decimal_literals"),
     // end renamed lints. used by `cargo dev rename_lint`
 ]}

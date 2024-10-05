@@ -5,7 +5,6 @@ mod redundant_at_rest_pattern;
 mod redundant_pattern;
 mod unneeded_field_pattern;
 mod unneeded_wildcard_pattern;
-mod zero_prefixed_literal;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet_opt;
@@ -169,45 +168,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns if an integral constant literal starts with `0`.
-    ///
-    /// ### Why is this bad?
-    /// In some languages (including the infamous C language
-    /// and most of its
-    /// family), this marks an octal constant. In Rust however, this is a decimal
-    /// constant. This could
-    /// be confusing for both the writer and a reader of the constant.
-    ///
-    /// ### Example
-    ///
-    /// In Rust:
-    /// ```no_run
-    /// fn main() {
-    ///     let a = 0123;
-    ///     println!("{}", a);
-    /// }
-    /// ```
-    ///
-    /// prints `123`, while in C:
-    ///
-    /// ```c
-    /// #include <stdio.h>
-    ///
-    /// int main() {
-    ///     int a = 0123;
-    ///     printf("%d\n", a);
-    /// }
-    /// ```
-    ///
-    /// prints `83` (as `83 == 0o123` while `123 == 0o173`).
-    #[clippy::version = "pre 1.29.0"]
-    pub ZERO_PREFIXED_LITERAL,
-    complexity,
-    "integer literals starting with `0`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Warns if a generic shadows a built-in type.
     ///
     /// ### Why is this bad?
@@ -334,7 +294,6 @@ declare_lint_pass!(MiscEarlyLints => [
     MIXED_CASE_HEX_LITERALS,
     UNSEPARATED_LITERAL_SUFFIX,
     SEPARATED_LITERAL_SUFFIX,
-    ZERO_PREFIXED_LITERAL,
     BUILTIN_TYPE_SHADOW,
     REDUNDANT_PATTERN,
     UNNEEDED_WILDCARD_PATTERN,
@@ -409,7 +368,7 @@ impl MiscEarlyLints {
         };
 
         let lit_kind = LitKind::from_token_lit(lit);
-        if let Ok(LitKind::Int(value, lit_int_type)) = lit_kind {
+        if let Ok(LitKind::Int(_value, lit_int_type)) = lit_kind {
             let suffix = match lit_int_type {
                 LitIntType::Signed(ty) => ty.name_str(),
                 LitIntType::Unsigned(ty) => ty.name_str(),
@@ -418,10 +377,6 @@ impl MiscEarlyLints {
             literal_suffix::check(cx, span, &lit_snip, suffix, "integer");
             if lit_snip.starts_with("0x") {
                 mixed_case_hex_literals::check(cx, span, suffix, &lit_snip);
-            } else if lit_snip.starts_with("0b") || lit_snip.starts_with("0o") {
-                // nothing to do
-            } else if value != 0 && lit_snip.starts_with('0') {
-                zero_prefixed_literal::check(cx, span, &lit_snip);
             }
         } else if let Ok(LitKind::Float(_, LitFloatType::Suffixed(float_ty))) = lit_kind {
             let suffix = float_ty.name_str();

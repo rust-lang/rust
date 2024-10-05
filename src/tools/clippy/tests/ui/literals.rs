@@ -2,7 +2,6 @@
 // does not test any rustfixable lints
 
 #![warn(clippy::mixed_case_hex_literals)]
-#![warn(clippy::zero_prefixed_literal)]
 #![warn(clippy::unseparated_literal_suffix)]
 #![warn(clippy::separated_literal_suffix)]
 #![allow(dead_code, overflowing_literals)]
@@ -29,14 +28,10 @@ fn main() {
     let fail_multi_zero = 000_123usize;
     //~^ ERROR: integer type suffix should be separated by an underscore
     //~| NOTE: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
-    //~| ERROR: this is a decimal constant
-    //~| NOTE: `-D clippy::zero-prefixed-literal` implied by `-D warnings`
 
     let ok9 = 0;
     let ok10 = 0_i64;
     //~^ ERROR: integer type suffix should not be separated by an underscore
-    let fail8 = 0123;
-    //~^ ERROR: this is a decimal constant
 
     let ok11 = 0o123;
     let ok12 = 0b10_1010;
@@ -63,14 +58,4 @@ fn main() {
     let fail25 = 0b01_100_101;
     let ok26 = 0x6_A0_BF;
     let ok27 = 0b1_0010_0101;
-}
-
-fn issue9651() {
-    // lint but octal form is not possible here
-    let _ = 08;
-    //~^ ERROR: this is a decimal constant
-    let _ = 09;
-    //~^ ERROR: this is a decimal constant
-    let _ = 089;
-    //~^ ERROR: this is a decimal constant
 }
