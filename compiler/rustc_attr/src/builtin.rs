@@ -271,16 +271,8 @@ pub fn find_stability(
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_allowed_through_unstable_modules => allowed_through_unstable_modules = true,
-            sym::unstable => {
-                if try_add_unstability(sess, attr, &mut level, &mut stab_spans).is_err() {
-                    break;
-                }
-            }
-            sym::stable => {
-                if try_add_stability(sess, attr, &mut level, &mut stab_spans).is_err() {
-                    break;
-                }
-            }
+            sym::unstable => try_add_unstability(sess, attr, &mut level, &mut stab_spans),
+            sym::stable => try_add_stability(sess, attr, &mut level, &mut stab_spans),
             _ => {}
         }
     }
@@ -315,15 +307,9 @@ pub fn find_const_stability(
         match attr.name_or_empty() {
             sym::rustc_promotable => promotable = true,
             sym::rustc_const_unstable => {
-                if try_add_unstability(sess, attr, &mut level, &mut stab_spans).is_err() {
-                    break;
-                }
+                try_add_unstability(sess, attr, &mut level, &mut stab_spans)
             }
-            sym::rustc_const_stable => {
-                if try_add_stability(sess, attr, &mut level, &mut stab_spans).is_err() {
-                    break;
-                }
-            }
+            sym::rustc_const_stable => try_add_stability(sess, attr, &mut level, &mut stab_spans),
             _ => {}
         }
     }
@@ -350,9 +336,7 @@ pub fn find_body_stability(
 
     for attr in attrs {
         if attr.has_name(sym::rustc_default_body_unstable) {
-            if try_add_unstability(sess, attr, &mut level, &mut stab_spans).is_err() {
-                break;
-            }
+            try_add_unstability(sess, attr, &mut level, &mut stab_spans);
         }
     }
 
@@ -366,15 +350,13 @@ fn try_add_unstability(
     attr: &Attribute,
     level: &mut Option<StabilityLevel>,
     stab_spans: &mut StabilitySpans,
-) -> Result<(), ErrorGuaranteed> {
+) {
     use StabilityLevel::*;
 
     match level {
         // adding #[unstable] to an item with #[stable] is not permitted
         Some(Stable { .. }) => {
-            return Err(sess
-                .dcx()
-                .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
+            sess.dcx().emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
         }
         // if other unstable attributes have been found, attempt to merge them
         Some(Unstable { unstables, is_soft })
@@ -386,9 +368,9 @@ fn try_add_unstability(
             // stability levels" clear enough, given an update to E0544.md?
             // should MultipleStabilityLevels have more fields for diagnostics?
             if unstables.iter().any(|u| new_unstable.iter().any(|v| u.feature == v.feature)) {
-                return Err(sess
-                    .dcx()
-                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
+                sess.dcx()
+                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                return;
             }
             unstables.extend(new_unstable.clone());
             // Make the unstability soft if any unstable attributes are marked 'soft'; if an
@@ -405,7 +387,6 @@ fn try_add_unstability(
         // if there was an error in `parse_unstability`, it's already been emitted; do nothing
         _ => {}
     }
-    Ok(())
 }
 
 /// Collects stability info from a single `stable`/`rustc_const_stable` attribute, `attr`.
@@ -415,18 +396,14 @@ fn try_add_stability(
     attr: &Attribute,
     level: &mut Option<StabilityLevel>,
     stab_spans: &mut StabilitySpans,
-) -> Result<(), ErrorGuaranteed> {
+) {
     // at most one #[stable] attribute is permitted, and not when #[unstable] is present
     if level.is_some() {
-        return Err(sess
-            .dcx()
-            .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
-    }
-    if let Some(new_level) = parse_stability(sess, attr) {
+        sess.dcx().emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+    } else if let Some(new_level) = parse_stability(sess, attr) {
         *level = Some(new_level.clone());
         stab_spans.0.push((new_level, attr.span));
     }
-    Ok(())
 }
 
 fn insert_or_error(sess: &Session, meta: &MetaItem, item: &mut Option<Symbol>) -> Option<()> {
