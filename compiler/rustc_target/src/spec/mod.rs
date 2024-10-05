@@ -1841,6 +1841,10 @@ supported_targets! {
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
     ("riscv32imafc-esp-espidf", riscv32imafc_esp_espidf),
 
+    ("riscv32e-unknown-none-elf", riscv32e_unknown_none_elf),
+    ("riscv32em-unknown-none-elf", riscv32em_unknown_none_elf),
+    ("riscv32emc-unknown-none-elf", riscv32emc_unknown_none_elf),
+
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32imafc-unknown-none-elf", riscv32imafc_unknown_none_elf),
     ("riscv32imac-unknown-xous-elf", riscv32imac_unknown_xous_elf),
