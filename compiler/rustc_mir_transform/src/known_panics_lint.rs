@@ -600,13 +600,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             Len(place) => {
-                let len = match self.get_const(place)? {
-                    Value::Immediate(src) => src.len(&self.ecx).discard_err()?,
-                    Value::Aggregate { fields, .. } => fields.len() as u64,
-                    Value::Uninit => match place.ty(self.local_decls(), self.tcx).ty.kind() {
-                        ty::Array(_, n) => n.try_eval_target_usize(self.tcx, self.param_env)?,
-                        _ => return None,
-                    },
+                let len = if let ty::Array(_, n) = place.ty(self.local_decls(), self.tcx).ty.kind()
+                {
+                    n.try_eval_target_usize(self.tcx, self.param_env)?
+                } else {
+                    match self.get_const(place)? {
+                        Value::Immediate(src) => src.len(&self.ecx).discard_err()?,
+                        Value::Aggregate { fields, .. } => fields.len() as u64,
+                        Value::Uninit => return None,
+                    }
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(len, self), layout).into()
             }

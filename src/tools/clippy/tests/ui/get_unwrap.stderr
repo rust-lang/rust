@@ -266,7 +266,7 @@ LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a slice
-  --> tests/ui/get_unwrap.rs:77:24
+  --> tests/ui/get_unwrap.rs:78:24
    |
 LL |         let _x: &i32 = f.get(1 + 2).unwrap();
    |                        ^^^^^^^^^^^^^^^^^^^^^
@@ -277,7 +277,7 @@ LL |         let _x: &i32 = &f[1 + 2];
    |                        ~~~~~~~~~
 
 error: called `.get().unwrap()` on a slice
-  --> tests/ui/get_unwrap.rs:80:18
+  --> tests/ui/get_unwrap.rs:81:18
    |
 LL |         let _x = f.get(1 + 2).unwrap().to_string();
    |                  ^^^^^^^^^^^^^^^^^^^^^
@@ -288,7 +288,7 @@ LL |         let _x = f[1 + 2].to_string();
    |                  ~~~~~~~~
 
 error: called `.get().unwrap()` on a slice
-  --> tests/ui/get_unwrap.rs:83:18
+  --> tests/ui/get_unwrap.rs:84:18
    |
 LL |         let _x = f.get(1 + 2).unwrap().abs();
    |                  ^^^^^^^^^^^^^^^^^^^^^
@@ -299,7 +299,7 @@ LL |         let _x = f[1 + 2].abs();
    |                  ~~~~~~~~
 
 error: called `.get_mut().unwrap()` on a slice
-  --> tests/ui/get_unwrap.rs:100:33
+  --> tests/ui/get_unwrap.rs:101:33
    |
 LL |                         let b = rest.get_mut(linidx(j, k) - linidx(i, k) - 1).unwrap();
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
