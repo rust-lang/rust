@@ -3,19 +3,19 @@
 set -ex
 TARGET=$1
 
-CMD="cargo test --all --target $TARGET"
+cmd="cargo test --all --target $TARGET"
 
 # Needed for no-panic to correct detect a lack of panics
 export RUSTFLAGS="$RUSTFLAGS -Ccodegen-units=1"
 
 # stable by default
-$CMD
-$CMD --release
+$cmd
+$cmd --release
 
 # unstable with a feature
-$CMD --features 'unstable'
-$CMD --release --features 'unstable'
+$cmd --features 'unstable'
+$cmd --release --features 'unstable'
 
 # also run the reference tests
-$CMD --features 'unstable musl-reference-tests'
-$CMD --release --features 'unstable musl-reference-tests'
+$cmd --features 'unstable libm-test/musl-reference-tests'
+$cmd --release --features 'unstable libm-test/musl-reference-tests'
