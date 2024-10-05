@@ -1,9 +1,9 @@
 //@ run-pass
-#![feature(derive_smart_pointer, arbitrary_self_types)]
+#![feature(derive_coerce_pointee, arbitrary_self_types)]
 
-use std::marker::SmartPointer;
+use std::marker::CoercePointee;
 
-#[derive(SmartPointer)]
+#[derive(CoercePointee)]
 #[repr(transparent)]
 struct MyPointer<'a, #[pointee] T: ?Sized> {
     ptr: &'a T,
