@@ -859,14 +859,15 @@ impl Tree {
     ) -> Option<UniIndex> {
         let node = self.nodes.get(idx).unwrap();
 
+        let [child_idx] = node.children[..] else { return None };
+
         // We never want to replace the root node, as it is also kept in `root_ptr_tags`.
-        if node.children.len() != 1 || live.contains(&node.tag) || node.parent.is_none() {
+        if live.contains(&node.tag) || node.parent.is_none() {
             return None;
         }
         // Since protected nodes are never GC'd (see `borrow_tracker::FrameExtra::visit_provenance`),
         // we know that `node` is not protected because otherwise `live` would
         // have contained `node.tag`.
-        let child_idx = node.children[0];
         let child = self.nodes.get(child_idx).unwrap();
         // Check that for that one child, `can_be_replaced_by_child` holds for the permission
         // on all locations.

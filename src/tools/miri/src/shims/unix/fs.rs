@@ -433,18 +433,18 @@ fn maybe_sync_file(
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn open(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
-        if args.len() < 2 {
+        let [path_raw, flag, ..] = args else {
             throw_ub_format!(
                 "incorrect number of arguments for `open`: got {}, expected at least 2",
                 args.len()
             );
-        }
+        };
 
         let this = self.eval_context_mut();
 
-        let path_raw = this.read_pointer(&args[0])?;
+        let path_raw = this.read_pointer(path_raw)?;
         let path = this.read_path_from_c_str(path_raw)?;
-        let flag = this.read_scalar(&args[1])?.to_i32()?;
+        let flag = this.read_scalar(flag)?.to_i32()?;
 
         let mut options = OpenOptions::new();
 

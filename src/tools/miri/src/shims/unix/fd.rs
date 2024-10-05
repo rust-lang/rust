@@ -481,14 +481,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if args.len() < 2 {
+        let [fd_num, cmd, ..] = args else {
             throw_ub_format!(
                 "incorrect number of arguments for fcntl: got {}, expected at least 2",
                 args.len()
             );
-        }
-        let fd_num = this.read_scalar(&args[0])?.to_i32()?;
-        let cmd = this.read_scalar(&args[1])?.to_i32()?;
+        };
+        let fd_num = this.read_scalar(fd_num)?.to_i32()?;
+        let cmd = this.read_scalar(cmd)?.to_i32()?;
 
         // We only support getting the flags for a descriptor.
         if cmd == this.eval_libc_i32("F_GETFD") {
@@ -508,13 +508,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
             // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
             // thus they can share the same implementation here.
-            if args.len() < 3 {
+            let [_, _, start, ..] = args else {
                 throw_ub_format!(
                     "incorrect number of arguments for fcntl with cmd=`F_DUPFD`/`F_DUPFD_CLOEXEC`: got {}, expected at least 3",
                     args.len()
                 );
-            }
-            let start = this.read_scalar(&args[2])?.to_i32()?;
+            };
+            let start = this.read_scalar(start)?.to_i32()?;
 
             match this.machine.fds.get(fd_num) {
                 Some(fd) =>
