@@ -584,6 +584,16 @@ impl<'tcx> Ty<'tcx> {
         Ty::new_ref(tcx, r, ty, hir::Mutability::Not)
     }
 
+    pub fn new_pinned_ref(
+        tcx: TyCtxt<'tcx>,
+        r: Region<'tcx>,
+        ty: Ty<'tcx>,
+        mutbl: ty::Mutability,
+    ) -> Ty<'tcx> {
+        let pin = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, None));
+        Ty::new_adt(tcx, pin, tcx.mk_args(&[Ty::new_ref(tcx, r, ty, mutbl).into()]))
+    }
+
     #[inline]
     pub fn new_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mutbl: ty::Mutability) -> Ty<'tcx> {
         Ty::new(tcx, ty::RawPtr(ty, mutbl))

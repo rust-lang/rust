@@ -86,6 +86,7 @@ mod issue9612 {
         util();
     }
 
+    #[allow(unconditional_panic)]
     fn util() {
         let _a: u8 = 4.try_into().unwrap();
         let _a: u8 = 5.try_into().expect("");

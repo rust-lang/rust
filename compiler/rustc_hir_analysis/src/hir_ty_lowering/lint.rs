@@ -108,17 +108,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
         if let hir::Node::Item(hir::Item {
-            kind:
-                hir::ItemKind::Impl(hir::Impl {
-                    self_ty: impl_self_ty,
-                    of_trait: Some(of_trait_ref),
-                    generics,
-                    ..
-                }),
+            kind: hir::ItemKind::Impl(hir::Impl { self_ty: impl_self_ty, of_trait, generics, .. }),
             ..
         }) = tcx.hir_node_by_def_id(parent_id)
             && self_ty.hir_id == impl_self_ty.hir_id
         {
+            let Some(of_trait_ref) = of_trait else {
+                diag.span_suggestion_verbose(
+                    impl_self_ty.span.shrink_to_hi(),
+                    "you might have intended to implement this trait for a given type",
+                    format!(" for /* Type */"),
+                    Applicability::HasPlaceholders,
+                );
+                return;
+            };
             if !of_trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {
                 return;
             }
