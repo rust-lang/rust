@@ -157,7 +157,6 @@
 #![feature(const_unicode_case_lookup)]
 #![feature(coverage_attribute)]
 #![feature(do_not_recommend)]
-#![feature(duration_consts_float)]
 #![feature(f128_const)]
 #![feature(f16_const)]
 #![feature(internal_impls_macro)]
