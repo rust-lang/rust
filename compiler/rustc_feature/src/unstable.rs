@@ -592,8 +592,6 @@ declare_features! (
     (unstable, simd_ffi, "1.0.0", Some(27731)),
     /// Allows specialization of implementations (RFC 1210).
     (incomplete, specialization, "1.7.0", Some(31844)),
-    /// Allows splitting a slice by another slice
-    (unstable, split_pattern, "CURRENT_RUSTC_VERSION", Some(49036)),
     /// Allows attributes on expressions and non-item statements.
     (unstable, stmt_expr_attributes, "1.6.0", Some(15701)),
     /// Allows lints part of the strict provenance effort.
