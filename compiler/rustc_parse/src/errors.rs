@@ -2608,6 +2608,7 @@ pub(crate) struct ExpectedCommaAfterPatternField {
 
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_expr_in_pat)]
+#[note]
 pub(crate) struct UnexpectedExpressionInPattern {
     /// The unexpected expr's span.
     #[primary_span]
