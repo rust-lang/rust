@@ -13,8 +13,6 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use build_helper::git::warn_old_master_branch;
-
 use crate::Build;
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::builder::Builder;
@@ -381,15 +379,5 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 
     if let Some(ref s) = build.config.ccache {
         cmd_finder.must_have(s);
-    }
-
-    // this warning is useless in CI,
-    // and CI probably won't have the right branches anyway.
-    if !build_helper::ci::CiEnv::is_ci() {
-        if let Err(e) = warn_old_master_branch(&build.config.git_config(), &build.config.src)
-            .map_err(|e| e.to_string())
-        {
-            eprintln!("unable to check if upstream branch is old: {e}");
-        }
     }
 }
