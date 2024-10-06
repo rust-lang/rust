@@ -5,7 +5,7 @@
 
 #![crate_type = "lib"]
 #![feature(naked_functions)]
-use std::arch::asm;
+use std::arch::naked_asm;
 
 // The problem at hand: Rust has adopted a fairly strict meaning for "naked functions",
 // meaning "no prologue whatsoever, no, really, not one instruction."
@@ -17,7 +17,7 @@ use std::arch::asm;
 pub unsafe extern "sysv64" fn will_halt() -> ! {
     // CHECK-NOT: endbr{{32|64}}
     // CHECK: hlt
-    asm!("hlt", options(noreturn))
+    naked_asm!("hlt")
 }
 
 // what about aarch64?

@@ -4,7 +4,7 @@ use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::InlineAsmTemplatePiece;
 use rustc_middle::mir::interpret::{
     AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer, Provenance, alloc_range,
     read_target_uint,
@@ -1024,9 +1024,9 @@ impl<'tcx> TerminatorKind<'tcx> {
                 vec!["real".into(), "unwind".into()]
             }
             FalseUnwind { unwind: _, .. } => vec!["real".into()],
-            InlineAsm { options, ref targets, unwind, .. } => {
+            InlineAsm { asm_macro, options, ref targets, unwind, .. } => {
                 let mut vec = Vec::with_capacity(targets.len() + 1);
-                if !options.contains(InlineAsmOptions::NORETURN) {
+                if !asm_macro.diverges(options) {
                     vec.push("return".into());
                 }
                 vec.resize(targets.len(), "label".into());

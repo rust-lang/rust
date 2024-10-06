@@ -2925,16 +2925,16 @@ declare_lint! {
     /// ```rust
     /// #![feature(asm_experimental_arch, naked_functions)]
     ///
-    /// use std::arch::asm;
+    /// use std::arch::naked_asm;
     ///
     /// #[naked]
     /// pub fn default_abi() -> u32 {
-    ///     unsafe { asm!("", options(noreturn)); }
+    ///     unsafe { naked_asm!(""); }
     /// }
     ///
     /// #[naked]
     /// pub extern "Rust" fn rust_abi() -> u32 {
-    ///     unsafe { asm!("", options(noreturn)); }
+    ///     unsafe { naked_asm!(""); }
     /// }
     /// ```
     ///
