@@ -3418,11 +3418,11 @@ struct TS(usize);
 fn main() {
     let x;
     [x,] = &[1,];
-  //^^^^expected &'? [i32; 1], got [{unknown}; _]
+  //^^^^expected &'? [i32; 1], got [{unknown}]
 
     let x;
     [(x,),] = &[(1,),];
-  //^^^^^^^expected &'? [(i32,); 1], got [{unknown}; _]
+  //^^^^^^^expected &'? [(i32,); 1], got [{unknown}]
 
     let x;
     ((x,),) = &((1,),);

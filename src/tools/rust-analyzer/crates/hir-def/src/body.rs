@@ -10,6 +10,7 @@ use std::ops::{Deref, Index};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
+use either::Either;
 use hir_expand::{name::Name, ExpandError, InFile};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_hash::FxHashMap;
@@ -22,8 +23,8 @@ use crate::{
     db::DefDatabase,
     expander::Expander,
     hir::{
-        dummy_expr_id, Array, AsmOperand, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat,
-        PatId, RecordFieldPat, Statement,
+        dummy_expr_id, Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label,
+        LabelId, Pat, PatId, RecordFieldPat, Statement,
     },
     item_tree::AttrOwner,
     nameres::DefMap,
@@ -68,8 +69,11 @@ pub type LabelSource = InFile<LabelPtr>;
 pub type FieldPtr = AstPtr<ast::RecordExprField>;
 pub type FieldSource = InFile<FieldPtr>;
 
-pub type PatFieldPtr = AstPtr<ast::RecordPatField>;
+pub type PatFieldPtr = AstPtr<Either<ast::RecordExprField, ast::RecordPatField>>;
 pub type PatFieldSource = InFile<PatFieldPtr>;
+
+pub type ExprOrPatPtr = AstPtr<Either<ast::Expr, ast::Pat>>;
+pub type ExprOrPatSource = InFile<ExprOrPatPtr>;
 
 /// An item body together with the mapping from syntax nodes to HIR expression
 /// IDs. This is needed to go from e.g. a position in a file to the HIR
@@ -84,11 +88,13 @@ pub type PatFieldSource = InFile<PatFieldPtr>;
 /// this properly for macros.
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
-    expr_map: FxHashMap<ExprSource, ExprId>,
+    // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
+    // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
+    expr_map: FxHashMap<ExprSource, ExprOrPatId>,
     expr_map_back: ArenaMap<ExprId, ExprSource>,
 
     pat_map: FxHashMap<PatSource, PatId>,
-    pat_map_back: ArenaMap<PatId, PatSource>,
+    pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
@@ -372,7 +378,7 @@ impl Body {
                             if let &Some(expr) = else_branch {
                                 f(expr);
                             }
-                            walk_exprs_in_pat(self, *pat, &mut f);
+                            self.walk_exprs_in_pat(*pat, &mut f);
                         }
                         Statement::Expr { expr: expression, .. } => f(*expression),
                         Statement::Item => (),
@@ -448,18 +454,18 @@ impl Body {
                 }
             },
             &Expr::Assignment { target, value } => {
-                walk_exprs_in_pat(self, target, &mut f);
+                self.walk_exprs_in_pat(target, &mut f);
                 f(value);
             }
         }
+    }
 
-        fn walk_exprs_in_pat(this: &Body, pat_id: PatId, f: &mut impl FnMut(ExprId)) {
-            this.walk_pats(pat_id, &mut |pat| {
-                if let Pat::Expr(expr) | Pat::ConstBlock(expr) = this[pat] {
-                    f(expr);
-                }
-            });
-        }
+    pub fn walk_exprs_in_pat(&self, pat_id: PatId, f: &mut impl FnMut(ExprId)) {
+        self.walk_pats(pat_id, &mut |pat| {
+            if let Pat::Expr(expr) | Pat::ConstBlock(expr) = self[pat] {
+                f(expr);
+            }
+        });
     }
 }
 
@@ -514,11 +520,18 @@ impl Index<BindingId> for Body {
 // FIXME: Change `node_` prefix to something more reasonable.
 // Perhaps `expr_syntax` and `expr_id`?
 impl BodySourceMap {
+    pub fn expr_or_pat_syntax(&self, id: ExprOrPatId) -> Result<ExprOrPatSource, SyntheticSyntax> {
+        match id {
+            ExprOrPatId::ExprId(id) => self.expr_syntax(id).map(|it| it.map(AstPtr::wrap_left)),
+            ExprOrPatId::PatId(id) => self.pat_syntax(id),
+        }
+    }
+
     pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
         self.expr_map_back.get(expr).cloned().ok_or(SyntheticSyntax)
     }
 
-    pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
+    pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprOrPatId> {
         let src = node.map(AstPtr::new);
         self.expr_map.get(&src).cloned()
     }
@@ -534,7 +547,7 @@ impl BodySourceMap {
         self.expansions.iter().map(|(&a, &b)| (a, b))
     }
 
-    pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
+    pub fn pat_syntax(&self, pat: PatId) -> Result<ExprOrPatSource, SyntheticSyntax> {
         self.pat_map_back.get(pat).cloned().ok_or(SyntheticSyntax)
     }
 
@@ -567,7 +580,7 @@ impl BodySourceMap {
         self.pat_field_map_back[&pat]
     }
 
-    pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprId> {
+    pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprOrPatId> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::MacroExpr>).map(AstPtr::upcast);
         self.expr_map.get(&src).copied()
     }
@@ -583,7 +596,11 @@ impl BodySourceMap {
         node: InFile<&ast::FormatArgsExpr>,
     ) -> Option<&[(syntax::TextRange, Name)]> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
-        self.template_map.as_ref()?.0.get(self.expr_map.get(&src)?).map(std::ops::Deref::deref)
+        self.template_map
+            .as_ref()?
+            .0
+            .get(&self.expr_map.get(&src)?.as_expr()?)
+            .map(std::ops::Deref::deref)
     }
 
     pub fn asm_template_args(
@@ -591,8 +608,8 @@ impl BodySourceMap {
         node: InFile<&ast::AsmExpr>,
     ) -> Option<(ExprId, &[Vec<(syntax::TextRange, usize)>])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
-        let expr = self.expr_map.get(&src)?;
-        Some(*expr).zip(self.template_map.as_ref()?.1.get(expr).map(std::ops::Deref::deref))
+        let expr = self.expr_map.get(&src)?.as_expr()?;
+        Some(expr).zip(self.template_map.as_ref()?.1.get(&expr).map(std::ops::Deref::deref))
     }
 
     /// Get a reference to the body source map's diagnostics.

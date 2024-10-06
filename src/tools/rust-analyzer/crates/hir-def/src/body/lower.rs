@@ -424,7 +424,7 @@ impl ExprCollector<'_> {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well for IDE resolution
                 let src = self.expander.in_file(syntax_ptr);
-                self.source_map.expr_map.insert(src, inner);
+                self.source_map.expr_map.insert(src, inner.into());
                 inner
             }
             ast::Expr::ReturnExpr(e) => {
@@ -660,7 +660,7 @@ impl ExprCollector<'_> {
                         // Make the macro-call point to its expanded expression so we can query
                         // semantics on syntax pointers to the macro
                         let src = self.expander.in_file(syntax_ptr);
-                        self.source_map.expr_map.insert(src, id);
+                        self.source_map.expr_map.insert(src, id.into());
                         id
                     }
                     None => self.alloc_expr(Expr::Missing, syntax_ptr),
@@ -686,9 +686,12 @@ impl ExprCollector<'_> {
 
     fn collect_expr_as_pat(&mut self, expr: ast::Expr) -> PatId {
         self.maybe_collect_expr_as_pat(&expr).unwrap_or_else(|| {
-            let syntax_ptr = AstPtr::new(&expr);
+            let src = self.expander.in_file(AstPtr::new(&expr).wrap_left());
             let expr = self.collect_expr(expr);
-            self.alloc_pat_from_expr(Pat::Expr(expr), syntax_ptr)
+            // Do not use `alloc_pat_from_expr()` here, it will override the entry in `expr_map`.
+            let id = self.body.pats.alloc(Pat::Expr(expr));
+            self.source_map.pat_map_back.insert(id, src);
+            id
         })
     }
 
@@ -743,16 +746,12 @@ impl ExprCollector<'_> {
             ast::Expr::MacroExpr(e) => {
                 let e = e.macro_call()?;
                 let macro_ptr = AstPtr::new(&e);
+                let src = self.expander.in_file(AstPtr::new(expr));
                 let id = self.collect_macro_call(e, macro_ptr, true, |this, expansion| {
-                    expansion.map(|it| this.collect_expr_as_pat(it))
+                    this.collect_expr_as_pat_opt(expansion)
                 });
-                match id {
-                    Some(id) => {
-                        // FIXME: Insert pat into source map.
-                        id
-                    }
-                    None => self.alloc_pat_from_expr(Pat::Missing, syntax_ptr),
-                }
+                self.source_map.expr_map.insert(src, id.into());
+                id
             }
             ast::Expr::RecordExpr(e) => {
                 let path =
@@ -767,9 +766,8 @@ impl ExprCollector<'_> {
                         let field_expr = f.expr()?;
                         let pat = self.collect_expr_as_pat(field_expr);
                         let name = f.field_name()?.as_name();
-                        // FIXME: Enable this.
-                        // let src = self.expander.in_file(AstPtr::new(&f));
-                        // self.source_map.pat_field_map_back.insert(pat, src);
+                        let src = self.expander.in_file(AstPtr::new(&f).wrap_left());
+                        self.source_map.pat_field_map_back.insert(pat, src);
                         Some(RecordFieldPat { name, pat })
                     })
                     .collect();
@@ -813,7 +811,10 @@ impl ExprCollector<'_> {
                                 None => Either::Left(this.missing_pat()),
                             },
                         );
-                        // FIXME: Insert pat into source map.
+                        if let Either::Left(pat) = pat {
+                            let src = this.expander.in_file(AstPtr::new(&expr).wrap_left());
+                            this.source_map.pat_map_back.insert(pat, src);
+                        }
                         pat
                     }
                     None => {
@@ -1236,7 +1237,7 @@ impl ExprCollector<'_> {
             // Make the macro-call point to its expanded expression so we can query
             // semantics on syntax pointers to the macro
             let src = self.expander.in_file(syntax_ptr);
-            self.source_map.expr_map.insert(src, tail);
+            self.source_map.expr_map.insert(src, tail.into());
         })
     }
 
@@ -1500,7 +1501,7 @@ impl ExprCollector<'_> {
                         let ast_pat = f.pat()?;
                         let pat = self.collect_pat(ast_pat, binding_list);
                         let name = f.field_name()?.as_name();
-                        let src = self.expander.in_file(AstPtr::new(&f));
+                        let src = self.expander.in_file(AstPtr::new(&f).wrap_right());
                         self.source_map.pat_field_map_back.insert(pat, src);
                         Some(RecordFieldPat { name, pat })
                     })
@@ -2187,7 +2188,7 @@ impl ExprCollector<'_> {
         let src = self.expander.in_file(ptr);
         let id = self.body.exprs.alloc(expr);
         self.source_map.expr_map_back.insert(id, src);
-        self.source_map.expr_map.insert(src, id);
+        self.source_map.expr_map.insert(src, id.into());
         id
     }
     // FIXME: desugared exprs don't have ptr, that's wrong and should be fixed.
@@ -2215,14 +2216,17 @@ impl ExprCollector<'_> {
         binding
     }
 
-    fn alloc_pat_from_expr(&mut self, pat: Pat, _ptr: ExprPtr) -> PatId {
-        // FIXME: Insert into source map.
-        self.body.pats.alloc(pat)
+    fn alloc_pat_from_expr(&mut self, pat: Pat, ptr: ExprPtr) -> PatId {
+        let src = self.expander.in_file(ptr);
+        let id = self.body.pats.alloc(pat);
+        self.source_map.expr_map.insert(src, id.into());
+        self.source_map.pat_map_back.insert(id, src.map(AstPtr::wrap_left));
+        id
     }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let src = self.expander.in_file(ptr);
         let id = self.body.pats.alloc(pat);
-        self.source_map.pat_map_back.insert(id, src);
+        self.source_map.pat_map_back.insert(id, src.map(AstPtr::wrap_right));
         self.source_map.pat_map.insert(src, id);
         id
     }

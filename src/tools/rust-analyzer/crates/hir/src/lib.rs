@@ -1885,7 +1885,7 @@ impl DefWithBody {
 
         let (unafe_exprs, only_lint) = hir_ty::diagnostics::missing_unsafe(db, self.into());
         for expr in unafe_exprs {
-            match source_map.expr_syntax(expr) {
+            match source_map.expr_or_pat_syntax(expr) {
                 Ok(expr) => acc.push(MissingUnsafe { expr, only_lint }.into()),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and elsewhere in this file, the `expr` was
@@ -3481,7 +3481,7 @@ impl Local {
                     LocalSource {
                         local: self,
                         source: src.map(|ast| match ast.to_node(&root) {
-                            ast::Pat::IdentPat(it) => Either::Left(it),
+                            Either::Right(ast::Pat::IdentPat(it)) => Either::Left(it),
                             _ => unreachable!("local with non ident-pattern"),
                         }),
                     }
@@ -3510,7 +3510,7 @@ impl Local {
                     LocalSource {
                         local: self,
                         source: src.map(|ast| match ast.to_node(&root) {
-                            ast::Pat::IdentPat(it) => Either::Left(it),
+                            Either::Right(ast::Pat::IdentPat(it)) => Either::Left(it),
                             _ => unreachable!("local with non ident-pattern"),
                         }),
                     }
@@ -4235,10 +4235,7 @@ impl CaptureUsages {
                 }
                 mir::MirSpan::PatId(pat) => {
                     if let Ok(pat) = source_map.pat_syntax(pat) {
-                        result.push(CaptureUsageSource {
-                            is_ref,
-                            source: pat.map(AstPtr::wrap_right),
-                        });
+                        result.push(CaptureUsageSource { is_ref, source: pat });
                     }
                 }
                 mir::MirSpan::BindingId(binding) => result.extend(
@@ -4246,10 +4243,7 @@ impl CaptureUsages {
                         .patterns_for_binding(binding)
                         .iter()
                         .filter_map(|&pat| source_map.pat_syntax(pat).ok())
-                        .map(|pat| CaptureUsageSource {
-                            is_ref,
-                            source: pat.map(AstPtr::wrap_right),
-                        }),
+                        .map(|pat| CaptureUsageSource { is_ref, source: pat }),
                 ),
                 mir::MirSpan::SelfParam | mir::MirSpan::Unknown => {
                     unreachable!("invalid capture usage span")

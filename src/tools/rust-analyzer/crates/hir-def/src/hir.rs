@@ -48,6 +48,22 @@ pub enum ExprOrPatId {
     ExprId(ExprId),
     PatId(PatId),
 }
+
+impl ExprOrPatId {
+    pub fn as_expr(self) -> Option<ExprId> {
+        match self {
+            Self::ExprId(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_pat(self) -> Option<PatId> {
+        match self {
+            Self::PatId(v) => Some(v),
+            _ => None,
+        }
+    }
+}
 stdx::impl_from!(ExprId, PatId for ExprOrPatId);
 
 #[derive(Debug, Clone, Eq, PartialEq)]

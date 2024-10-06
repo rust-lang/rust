@@ -1,5 +1,6 @@
+use hir::db::ExpandDatabase;
 use ide_db::source_change::SourceChange;
-use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxToken, T};
+use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, T};
 use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
@@ -8,14 +9,27 @@ use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered on mutating an immutable variable.
 pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option<Diagnostic> {
+    let root = ctx.sema.db.parse_or_expand(d.span.file_id);
+    let node = d.span.value.to_node(&root);
+    let mut span = d.span;
+    if let Some(parent) = node.parent() {
+        if ast::BinExpr::can_cast(parent.kind()) {
+            // In case of an assignment, the diagnostic is provided on the variable name.
+            // We want to expand it to include the whole assignment, but only when this
+            // is an ordinary assignment, not a destructuring assignment. So, the direct
+            // parent is an assignment expression.
+            span = d.span.with_value(SyntaxNodePtr::new(&parent));
+        }
+    };
+
     let fixes = (|| {
         if d.local.is_ref(ctx.sema.db) {
             // There is no simple way to add `mut` to `ref x` and `ref mut x`
             return None;
         }
-        let file_id = d.span.file_id.file_id()?;
+        let file_id = span.file_id.file_id()?;
         let mut edit_builder = TextEdit::builder();
-        let use_range = d.span.value.text_range();
+        let use_range = span.value.text_range();
         for source in d.local.sources(ctx.sema.db) {
             let Some(ast) = source.name() else { continue };
             // FIXME: macros
@@ -29,6 +43,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
             use_range,
         )])
     })();
+
     Some(
         Diagnostic::new_with_syntax_node_ptr(
             ctx,
@@ -38,7 +53,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
                 "cannot mutate immutable variable `{}`",
                 d.local.name(ctx.sema.db).display(ctx.sema.db, ctx.edition)
             ),
-            d.span,
+            span,
         )
         .with_fixes(fixes),
     )
@@ -929,7 +944,6 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
 
     #[test]
     fn closure() {
-        // FIXME: Diagnostic spans are inconsistent inside and outside closure
         check_diagnostics(
             r#"
         //- minicore: copy, fn
@@ -942,11 +956,11 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
         fn f() {
             let x = 5;
             let closure1 = || { x = 2; };
-                              //^ 💡 error: cannot mutate immutable variable `x`
+                              //^^^^^ 💡 error: cannot mutate immutable variable `x`
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
             let closure2 = || { x = x; };
-                              //^ 💡 error: cannot mutate immutable variable `x`
+                              //^^^^^ 💡 error: cannot mutate immutable variable `x`
             let closure3 = || {
                 let x = 2;
                 x = 5;
@@ -988,7 +1002,7 @@ fn f() {
             || {
                 let x = 2;
                 || { || { x = 5; } }
-                        //^ 💡 error: cannot mutate immutable variable `x`
+                        //^^^^^ 💡 error: cannot mutate immutable variable `x`
             }
         }
     };

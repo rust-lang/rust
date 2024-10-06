@@ -308,22 +308,27 @@ struct T(S);
 fn regular(a: S) {
     let s;
     S { s, .. } = a;
+    _ = s;
 }
 fn nested(a: S2) {
     let s;
     S2 { s: S { s, .. }, .. } = a;
+    _ = s;
 }
 fn in_tuple(a: (S,)) {
     let s;
     (S { s, .. },) = a;
+    _ = s;
 }
 fn in_array(a: [S;1]) {
     let s;
     [S { s, .. },] = a;
+    _ = s;
 }
 fn in_tuple_struct(a: T) {
     let s;
     T(S { s, .. }) = a;
+    _ = s;
 }
             ",
         );
