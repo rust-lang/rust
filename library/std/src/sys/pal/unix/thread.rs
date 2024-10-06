@@ -117,13 +117,15 @@ impl Thread {
     pub fn set_name(name: &CStr) {
         const PR_SET_NAME: libc::c_int = 15;
         unsafe {
-            libc::prctl(
+            let res = libc::prctl(
                 PR_SET_NAME,
                 name.as_ptr(),
                 0 as libc::c_ulong,
                 0 as libc::c_ulong,
                 0 as libc::c_ulong,
             );
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, 0);
         }
     }
 
