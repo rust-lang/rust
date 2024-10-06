@@ -30,6 +30,7 @@ fn inline_attr<'gcc, 'tcx>(
                 None
             }
         }
+        InlineAttr::Usually => Some(FnAttribute::Inline),
         InlineAttr::None => None,
     }
 }
