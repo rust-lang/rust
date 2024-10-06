@@ -112,7 +112,7 @@ impl<'hir> Visitor<'hir> for LoopVisitor<'hir, '_> {
             ExprKind::Loop(..) => {
                 self.loop_depth += 1;
                 walk_expr(self, ex);
-                self.loop_depth = self.loop_depth.saturating_sub(1);
+                self.loop_depth -= 1;
             },
             _ => {
                 // Calls to a function that never return
