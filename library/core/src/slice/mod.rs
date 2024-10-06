@@ -50,6 +50,8 @@ pub use index::SliceIndex;
 pub use index::{range, try_range};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
+#[unstable(feature = "split_pattern", issue = "49036")]
+pub use iter::SplitPattern;
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use iter::{ArrayChunks, ArrayChunksMut};
 #[stable(feature = "slice_group_by", since = "1.77.0")]
@@ -68,8 +70,6 @@ pub use iter::{RSplit, RSplitMut};
 pub use iter::{RSplitN, RSplitNMut, Split, SplitMut, SplitN, SplitNMut};
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
-#[unstable(feature = "split_pattern", issue = "49036")]
-pub use iter::{SplitPattern};
 #[stable(feature = "from_ref", since = "1.28.0")]
 pub use raw::{from_mut, from_ref};
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
@@ -2486,7 +2486,6 @@ impl<T> [T] {
         Some((&self[..index], &self[index + 1..]))
     }
 
-
     /// Returns `true` if the slice contains an element with the given value.
     ///
     /// This operation is *O*(*n*).
@@ -4045,14 +4044,15 @@ impl<T> [T] {
         unsafe { self.align_to() }
     }
 
-    
     /// Splits a slice by a pattern
     #[unstable(feature = "split_pattern", issue = "49036")]
     #[inline]
-    pub fn split_pattern<'a, 'b>(&'a self, pattern: &'b [T]) -> SplitPattern<'a, 'b, T> where T: PartialEq {
+    pub fn split_pattern<'a, 'b>(&'a self, pattern: &'b [T]) -> SplitPattern<'a, 'b, T>
+    where
+        T: PartialEq,
+    {
         SplitPattern::new(&self, pattern)
     }
-
 
     /// Splits a mutable slice into a mutable prefix, a middle of aligned SIMD types,
     /// and a mutable suffix.
@@ -4773,7 +4773,6 @@ impl [f32] {
         self.sort_unstable_by(f32::total_cmp);
     }
 }
-
 
 #[cfg(not(test))]
 impl [f64] {
