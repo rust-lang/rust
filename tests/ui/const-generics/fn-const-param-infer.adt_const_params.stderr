@@ -13,18 +13,7 @@ LL |     let _ = Checked::<{ generic_arg::<u32> }>;
    = note: expected fn pointer `fn(usize) -> _`
                  found fn item `fn(u32) -> _ {generic_arg::<u32>}`
 
-error[E0282]: type annotations needed
-  --> $DIR/fn-const-param-infer.rs:35:23
-   |
-LL |     let _ = Checked::<generic>;
-   |                       ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `generic`
-   |
-help: consider specifying the generic argument
-   |
-LL |     let _ = Checked::<generic::<T>>;
-   |                              +++++
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0282, E0308, E0741.
-For more information about an error, try `rustc --explain E0282`.
+Some errors have detailed explanations: E0308, E0741.
+For more information about an error, try `rustc --explain E0308`.

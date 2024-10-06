@@ -2038,41 +2038,62 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         match const_arg.kind {
-            hir::ConstArgKind::Path(qpath) => {
-                // FIXME(min_generic_const_args): for now only params are lowered to ConstArgKind::Path
-                self.lower_const_arg_param(qpath, const_arg.hir_id)
-            }
+            hir::ConstArgKind::Path(qpath) => self.lower_const_arg_path(qpath, const_arg.hir_id),
             hir::ConstArgKind::Anon(anon) => Const::from_anon_const(tcx, anon.def_id),
         }
     }
 
-    /// Lower a use of a const param to a [`Const`].
-    ///
-    /// IMPORTANT: `qpath` must be a const param, otherwise this will panic
-    fn lower_const_arg_param(&self, qpath: hir::QPath<'tcx>, hir_id: HirId) -> Const<'tcx> {
+    /// Lower a const path to a [`Const`].
+    fn lower_const_arg_path(&self, qpath: hir::QPath<'tcx>, hir_id: HirId) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let hir::QPath::Resolved(_, &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. }) =
-            qpath
-        else {
-            span_bug!(qpath.span(), "non-param {qpath:?} passed to Const::from_param")
-        };
+        // TODO: handle path args properly
+        match qpath {
+            hir::QPath::Resolved(_, &hir::Path { res: Res::Def(DefKind::ConstParam, did), .. }) => {
+                self.lower_const_arg_param(did, hir_id)
+            }
+            hir::QPath::Resolved(
+                _,
+                &hir::Path { res: Res::Def(DefKind::Fn | DefKind::AssocFn, _), .. },
+            ) => ty::Const::new_error_with_message(
+                tcx,
+                qpath.span(),
+                "fn's cannot be used as const args",
+            ),
+            hir::QPath::Resolved(_, path @ &hir::Path { res: Res::Def(_, did), .. }) => {
+                let (item_segment, _) = path.segments.split_last().unwrap();
+                let args = self.lower_generic_args_of_path_segment(path.span, did, item_segment);
+                ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
+            }
+            // TODO: type-relative paths
+            _ => ty::Const::new_error_with_message(
+                tcx,
+                qpath.span(),
+                "Const::lower_const_arg_path: invalid qpath",
+            ),
+        }
+    }
 
-        match tcx.named_bound_var(hir_id) {
+    /// Lower a const param to a [`Const`]. This is only meant as a helper for [`Self::lower_const_arg_path`].
+    /// FIXME: dedup with lower_const_param
+    fn lower_const_arg_param(&self, param_def_id: DefId, path_hir_id: HirId) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        match tcx.named_bound_var(path_hir_id) {
             Some(rbv::ResolvedArg::EarlyBound(_)) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
-                let item_def_id = tcx.parent(def_id);
+                let item_def_id = tcx.parent(param_def_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.item_name(def_id);
+                let index = generics.param_def_id_to_index[&param_def_id];
+                let name = tcx.item_name(param_def_id);
                 ty::Const::new_param(tcx, ty::ParamConst::new(index, name))
             }
             Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
                 ty::Const::new_bound(tcx, debruijn, ty::BoundVar::from_u32(index))
             }
             Some(rbv::ResolvedArg::Error(guar)) => ty::Const::new_error(tcx, guar),
-            arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", hir_id),
+            arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", path_hir_id),
         }
     }
 
