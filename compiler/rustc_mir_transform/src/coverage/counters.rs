@@ -13,13 +13,13 @@ use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverage
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) enum BcbCounter {
+enum BcbCounter {
     Counter { id: CounterId },
     Expression { id: ExpressionId },
 }
 
 impl BcbCounter {
-    pub(super) fn as_term(&self) -> CovTerm {
+    fn as_term(&self) -> CovTerm {
         match *self {
             BcbCounter::Counter { id, .. } => CovTerm::Counter(id),
             BcbCounter::Expression { id, .. } => CovTerm::Expression(id),
@@ -218,8 +218,8 @@ impl CoverageCounters {
         }
     }
 
-    pub(super) fn bcb_counter(&self, bcb: BasicCoverageBlock) -> Option<BcbCounter> {
-        self.bcb_counters[bcb]
+    pub(super) fn term_for_bcb(&self, bcb: BasicCoverageBlock) -> Option<CovTerm> {
+        self.bcb_counters[bcb].map(|counter| counter.as_term())
     }
 
     /// Returns an iterator over all the nodes/edges in the coverage graph that
