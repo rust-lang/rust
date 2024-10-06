@@ -255,5 +255,67 @@ LL | |     })
    |
    = help: if this is not intended, try adding a `break` or `return` condition in the loop
 
-error: aborting due to 17 previous errors
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:408:5
+   |
+LL | /     'infinite: loop {
+LL | |
+LL | |         loop {
+LL | |             continue 'infinite;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn continue_outer() -> ! {
+   |                     ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:415:5
+   |
+LL | /     loop {
+LL | |
+LL | |         'inner: loop {
+LL | |             loop {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn continue_outer() -> ! {
+   |                     ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:417:9
+   |
+LL | /         'inner: loop {
+LL | |             loop {
+LL | |                 continue 'inner;
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn continue_outer() -> ! {
+   |                     ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:425:5
+   |
+LL | /     loop {
+LL | |
+LL | |         continue;
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn continue_outer() -> ! {
+   |                     ++++
+
+error: aborting due to 21 previous errors
 
