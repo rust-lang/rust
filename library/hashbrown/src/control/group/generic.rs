@@ -1,5 +1,4 @@
-use super::bitmask::BitMask;
-use super::Tag;
+use super::super::{BitMask, Tag};
 use core::{mem, ptr};
 
 // Use the native word size as the group size. Using a 64-bit group size on
@@ -81,8 +80,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
-        // FIXME: use align_offset once it stabilizes
-        debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
+        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         Group(ptr::read(ptr.cast()))
     }
 
@@ -91,8 +89,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
-        // FIXME: use align_offset once it stabilizes
-        debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
+        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         ptr::write(ptr.cast(), self.0);
     }
 

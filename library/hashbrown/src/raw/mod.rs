@@ -1,67 +1,18 @@
 use crate::alloc::alloc::{handle_alloc_error, Layout};
+use crate::control::{BitMaskIter, Group, Tag, TagSliceExt};
 use crate::scopeguard::{guard, ScopeGuard};
+use crate::util::{invalid_mut, likely, unlikely};
 use crate::TryReserveError;
 use core::array;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
+use core::slice;
 use core::{hint, ptr};
-
-cfg_if! {
-    // Use the SSE2 implementation if possible: it allows us to scan 16 buckets
-    // at once instead of 8. We don't bother with AVX since it would require
-    // runtime dispatch and wouldn't gain us much anyways: the probability of
-    // finding a match drops off drastically after the first few buckets.
-    //
-    // I attempted an implementation on ARM using NEON instructions, but it
-    // turns out that most NEON instructions have multi-cycle latency, which in
-    // the end outweighs any gains over the generic implementation.
-    if #[cfg(all(
-        target_feature = "sse2",
-        any(target_arch = "x86", target_arch = "x86_64"),
-        not(miri),
-    ))] {
-        mod sse2;
-        use sse2 as imp;
-    } else if #[cfg(all(
-        target_arch = "aarch64",
-        target_feature = "neon",
-        // NEON intrinsics are currently broken on big-endian targets.
-        // See https://github.com/rust-lang/stdarch/issues/1484.
-        target_endian = "little",
-        not(miri),
-    ))] {
-        mod neon;
-        use neon as imp;
-    } else {
-        mod generic;
-        use generic as imp;
-    }
-}
 
 mod alloc;
 pub(crate) use self::alloc::{do_alloc, Allocator, Global};
-
-mod bitmask;
-
-use self::bitmask::BitMaskIter;
-use self::imp::Group;
-
-// Branch prediction hint. This is currently only available on nightly but it
-// consistently improves performance by 10-15%.
-#[cfg(not(feature = "nightly"))]
-use core::convert::{identity as likely, identity as unlikely};
-#[cfg(feature = "nightly")]
-use core::intrinsics::{likely, unlikely};
-
-// FIXME: use strict provenance functions once they are stable.
-// Implement it with a transmute for now.
-#[inline(always)]
-#[allow(clippy::useless_transmute)] // clippy is wrong, cast and transmute are different here
-fn invalid_mut<T>(addr: usize) -> *mut T {
-    unsafe { core::mem::transmute(addr) }
-}
 
 #[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
@@ -101,56 +52,6 @@ trait SizedTypeProperties: Sized {
 }
 
 impl<T> SizedTypeProperties for T {}
-
-/// Single tag in a control group.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[repr(transparent)]
-pub(crate) struct Tag(u8);
-impl Tag {
-    /// Control tag value for an empty bucket.
-    const EMPTY: Tag = Tag(0b1111_1111);
-
-    /// Control tag value for a deleted bucket.
-    const DELETED: Tag = Tag(0b1000_0000);
-
-    /// Checks whether a control tag represents a full bucket (top bit is clear).
-    #[inline]
-    const fn is_full(self) -> bool {
-        self.0 & 0x80 == 0
-    }
-
-    /// Checks whether a control tag represents a special value (top bit is set).
-    #[inline]
-    const fn is_special(self) -> bool {
-        self.0 & 0x80 != 0
-    }
-
-    /// Checks whether a special control value is EMPTY (just check 1 bit).
-    #[inline]
-    const fn special_is_empty(self) -> bool {
-        debug_assert!(self.is_special());
-        self.0 & 0x01 != 0
-    }
-
-    /// Creates a control tag representing a full bucket with the given hash.
-    #[inline]
-    #[allow(clippy::cast_possible_truncation)]
-    const fn full(hash: u64) -> Tag {
-        // Constant for function that grabs the top 7 bits of the hash.
-        const MIN_HASH_LEN: usize = if mem::size_of::<usize>() < mem::size_of::<u64>() {
-            mem::size_of::<usize>()
-        } else {
-            mem::size_of::<u64>()
-        };
-
-        // Grab the top 7 bits of the hash. While the hash is normally a full 64-bit
-        // value, some hash functions (such as FxHash) produce a usize result
-        // instead, which means that the top 32 bits are 0 on 32-bit platforms.
-        // So we use MIN_HASH_LEN constant to handle this.
-        let top7 = hash >> (MIN_HASH_LEN * 8 - 7);
-        Tag((top7 & 0x7f) as u8) // truncation
-    }
-}
 
 /// Primary hash function, used to select the initial bucket to probe from.
 #[inline]
@@ -1577,13 +1478,12 @@ impl RawTableInner {
                 let buckets =
                     capacity_to_buckets(capacity).ok_or_else(|| fallibility.capacity_overflow())?;
 
-                let result = Self::new_uninitialized(alloc, table_layout, buckets, fallibility)?;
+                let mut result =
+                    Self::new_uninitialized(alloc, table_layout, buckets, fallibility)?;
                 // SAFETY: We checked that the table is allocated and therefore the table already has
                 // `self.bucket_mask + 1 + Group::WIDTH` number of control bytes (see TableLayout::calculate_layout_for)
                 // so writing `self.num_ctrl_bytes() == bucket_mask + 1 + Group::WIDTH` bytes is safe.
-                result
-                    .ctrl(0)
-                    .write_bytes(Tag::EMPTY.0, result.num_ctrl_bytes());
+                result.ctrl_slice().fill_empty();
 
                 Ok(result)
             }
@@ -2576,6 +2476,12 @@ impl RawTableInner {
         self.ctrl.as_ptr().add(index).cast()
     }
 
+    /// Gets the slice of all control bytes.
+    fn ctrl_slice(&mut self) -> &mut [Tag] {
+        // SAFETY: We've intiailized all control bytes, and have the correct number.
+        unsafe { slice::from_raw_parts_mut(self.ctrl.as_ptr().cast(), self.num_ctrl_bytes()) }
+    }
+
     #[inline]
     fn buckets(&self) -> usize {
         self.bucket_mask + 1
@@ -3111,10 +3017,7 @@ impl RawTableInner {
     #[inline]
     fn clear_no_drop(&mut self) {
         if !self.is_empty_singleton() {
-            unsafe {
-                self.ctrl(0)
-                    .write_bytes(Tag::EMPTY.0, self.num_ctrl_bytes());
-            }
+            self.ctrl_slice().fill_empty();
         }
         self.items = 0;
         self.growth_left = bucket_mask_to_capacity(self.bucket_mask);
@@ -3672,7 +3575,7 @@ impl<T> Clone for RawIterRange<T> {
         Self {
             data: self.data.clone(),
             next_ctrl: self.next_ctrl,
-            current_group: self.current_group,
+            current_group: self.current_group.clone(),
             end: self.end,
         }
     }
@@ -4292,7 +4195,7 @@ mod test_map {
         unsafe {
             // SAFETY: The `buckets` is power of two and we're not
             // trying to actually use the returned RawTable.
-            let table =
+            let mut table =
                 RawTable::<(u64, Vec<i32>)>::new_uninitialized(Global, 8, Fallibility::Infallible)
                     .unwrap();
 
@@ -4301,10 +4204,7 @@ mod test_map {
             // SAFETY: We checked that the table is allocated and therefore the table already has
             // `self.bucket_mask + 1 + Group::WIDTH` number of control bytes (see TableLayout::calculate_layout_for)
             // so writing `table.table.num_ctrl_bytes() == bucket_mask + 1 + Group::WIDTH` bytes is safe.
-            table
-                .table
-                .ctrl(0)
-                .write_bytes(Tag::EMPTY.0, table.table.num_ctrl_bytes());
+            table.table.ctrl_slice().fill_empty();
 
             // SAFETY: table.capacity() is guaranteed to be smaller than table.buckets()
             table.table.ctrl(0).write_bytes(0, table.capacity());

@@ -1,4 +1,4 @@
-use super::imp::{
+use super::group::{
     BitMaskWord, NonZeroBitMaskWord, BITMASK_ITER_MASK, BITMASK_MASK, BITMASK_STRIDE,
 };
 
@@ -102,7 +102,7 @@ impl IntoIterator for BitMask {
 
 /// Iterator over the contents of a `BitMask`, returning the indices of set
 /// bits.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct BitMaskIter(pub(crate) BitMask);
 
 impl Iterator for BitMaskIter {

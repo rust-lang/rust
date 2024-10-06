@@ -1,5 +1,4 @@
-use super::bitmask::BitMask;
-use super::Tag;
+use super::super::{BitMask, Tag};
 use core::mem;
 use core::num::NonZeroU16;
 
@@ -58,8 +57,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
-        // FIXME: use align_offset once it stabilizes
-        debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
+        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         Group(x86::_mm_load_si128(ptr.cast()))
     }
 
@@ -68,8 +66,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
-        // FIXME: use align_offset once it stabilizes
-        debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
+        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         x86::_mm_store_si128(ptr.cast(), self.0);
     }
 
