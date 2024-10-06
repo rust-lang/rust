@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::has_repr_attr;
 use rustc_hir::{Item, ItemKind};
+use rustc_hir_analysis::hir_ty_lowering::FeedConstTy;
+use rustc_hir_analysis::lower_const_arg;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{Const, FeedConstTy};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -60,7 +61,7 @@ fn is_struct_with_trailing_zero_sized_array<'tcx>(cx: &LateContext<'tcx>, item: 
         && let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind
 
         // Then check if that array is zero-sized
-        && let length = Const::from_const_arg(cx.tcx, length, FeedConstTy::No)
+        && let length = lower_const_arg(cx.tcx, length, FeedConstTy::No)
         && let length = length.try_eval_target_usize(cx.tcx, cx.param_env)
         && let Some(length) = length
     {

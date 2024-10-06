@@ -212,6 +212,23 @@ impl AssocItemQSelf {
     }
 }
 
+/// In some cases, [`hir::ConstArg`]s that are being used in the type system
+/// through const generics need to have their type "fed" to them
+/// using the query system.
+///
+/// Use this enum with [`Const::from_const_arg`] to instruct it with the
+/// desired behavior.
+#[derive(Debug, Clone, Copy)]
+pub enum FeedConstTy {
+    /// Feed the type.
+    ///
+    /// The `DefId` belongs to the const param that we are supplying
+    /// this (anon) const arg to.
+    Param(DefId),
+    /// Don't feed the type.
+    No,
+}
+
 /// New-typed boolean indicating whether explicit late-bound lifetimes
 /// are present in a set of generic arguments.
 ///
@@ -495,8 +512,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::Param(param.def_id))
-                            .into()
+                        self.lowerer.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
                     }
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
@@ -930,8 +946,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 let term: ty::Term<'_> = match term {
                                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
-                                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No)
-                                            .into()
+                                        self.lower_const_arg(ct, FeedConstTy::No).into()
                                     }
                                 };
                                 // FIXME(#97583): This isn't syntactically well-formed!
@@ -2007,6 +2022,60 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
+    /// Convert a [`hir::ConstArg`] to a [`ty::Const`](Const).
+    #[instrument(skip(self), level = "debug")]
+    pub fn lower_const_arg(
+        &self,
+        const_arg: &hir::ConstArg<'tcx>,
+        feed: FeedConstTy,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        if let FeedConstTy::Param(param_def_id) = feed
+            && let hir::ConstArgKind::Anon(anon) = &const_arg.kind
+        {
+            tcx.feed_anon_const_type(anon.def_id, tcx.type_of(param_def_id));
+        }
+
+        match const_arg.kind {
+            hir::ConstArgKind::Path(qpath) => {
+                // FIXME(min_generic_const_args): for now only params are lowered to ConstArgKind::Path
+                self.lower_const_arg_param(qpath, const_arg.hir_id)
+            }
+            hir::ConstArgKind::Anon(anon) => Const::from_anon_const(tcx, anon.def_id),
+        }
+    }
+
+    /// Lower a use of a const param to a [`Const`].
+    ///
+    /// IMPORTANT: `qpath` must be a const param, otherwise this will panic
+    fn lower_const_arg_param(&self, qpath: hir::QPath<'tcx>, hir_id: HirId) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        let hir::QPath::Resolved(_, &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. }) =
+            qpath
+        else {
+            span_bug!(qpath.span(), "non-param {qpath:?} passed to Const::from_param")
+        };
+
+        match tcx.named_bound_var(hir_id) {
+            Some(rbv::ResolvedArg::EarlyBound(_)) => {
+                // Find the name and index of the const parameter by indexing the generics of
+                // the parent item and construct a `ParamConst`.
+                let item_def_id = tcx.parent(def_id);
+                let generics = tcx.generics_of(item_def_id);
+                let index = generics.param_def_id_to_index[&def_id];
+                let name = tcx.item_name(def_id);
+                ty::Const::new_param(tcx, ty::ParamConst::new(index, name))
+            }
+            Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
+                ty::Const::new_bound(tcx, debruijn, ty::BoundVar::from_u32(index))
+            }
+            Some(rbv::ResolvedArg::Error(guar)) => ty::Const::new_error(tcx, guar),
+            arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", hir_id),
+        }
+    }
+
     fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
         let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
         match idx {
@@ -2146,7 +2215,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let length = match length {
                     hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
                     hir::ArrayLen::Body(constant) => {
-                        ty::Const::from_const_arg(tcx, constant, ty::FeedConstTy::No)
+                        self.lower_const_arg(constant, FeedConstTy::No)
                     }
                 };
 
