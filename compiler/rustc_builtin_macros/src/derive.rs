@@ -49,7 +49,7 @@ impl MultiItemModifier for Expander {
                 let mut resolutions = match &meta_item.kind {
                     MetaItemKind::List(list) => {
                         list.iter()
-                            .filter_map(|nested_meta| match nested_meta {
+                            .filter_map(|meta_item_inner| match meta_item_inner {
                                 MetaItemInner::MetaItem(meta) => Some(meta),
                                 MetaItemInner::Lit(lit) => {
                                     // Reject `#[derive("Debug")]`.

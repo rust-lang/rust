@@ -138,7 +138,7 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::Expr(expr) => is_simple_expr(expr),
             OverflowableItem::MacroArg(MacroArg::Keyword(..)) => true,
             OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_simple_expr(expr),
-            OverflowableItem::MetaItemInner(nested_meta_item) => match nested_meta_item {
+            OverflowableItem::MetaItemInner(meta_item_inner) => match meta_item_inner {
                 ast::MetaItemInner::Lit(..) => true,
                 ast::MetaItemInner::MetaItem(ref meta_item) => {
                     matches!(meta_item.kind, ast::MetaItemKind::Word)
@@ -184,8 +184,7 @@ impl<'a> OverflowableItem<'a> {
                 MacroArg::Item(..) => len == 1,
                 MacroArg::Keyword(..) => false,
             },
-            OverflowableItem::MetaItemInner(nested_meta_item) if len == 1 => match nested_meta_item
-            {
+            OverflowableItem::MetaItemInner(meta_item_inner) if len == 1 => match meta_item_inner {
                 ast::MetaItemInner::Lit(..) => false,
                 ast::MetaItemInner::MetaItem(..) => true,
             },

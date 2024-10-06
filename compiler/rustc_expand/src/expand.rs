@@ -1863,7 +1863,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .iter()
                         .filter(|a| a.has_name(sym::derive))
                         .flat_map(|a| a.meta_item_list().unwrap_or_default())
-                        .filter_map(|nested_meta| match nested_meta {
+                        .filter_map(|meta_item_inner| match meta_item_inner {
                             MetaItemInner::MetaItem(ast::MetaItem {
                                 kind: MetaItemKind::Word,
                                 path,
