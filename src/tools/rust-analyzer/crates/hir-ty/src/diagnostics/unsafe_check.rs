@@ -117,14 +117,14 @@ fn walk_unsafe(
             }
         }
         Expr::Unsafe { .. } => {
-            return expr.walk_child_exprs(|child| {
+            return body.walk_child_exprs(current, |child| {
                 walk_unsafe(db, infer, body, resolver, def, child, true, unsafe_expr_cb);
             });
         }
         _ => {}
     }
 
-    expr.walk_child_exprs(|child| {
+    body.walk_child_exprs(current, |child| {
         walk_unsafe(db, infer, body, resolver, def, child, inside_unsafe_block, unsafe_expr_cb);
     });
 }

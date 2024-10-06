@@ -228,7 +228,7 @@ pub enum InferenceDiagnostic {
         id: ExprOrPatId,
     },
     UnresolvedIdent {
-        expr: ExprId,
+        id: ExprOrPatId,
     },
     // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
@@ -561,6 +561,9 @@ pub(crate) struct InferenceContext<'a> {
     diverges: Diverges,
     breakables: Vec<BreakableContext>,
 
+    /// Whether we are inside the pattern of a destructuring assignment.
+    inside_assignment: bool,
+
     deferred_cast_checks: Vec<CastCheck>,
 
     // fields related to closure capture
@@ -656,6 +659,7 @@ impl<'a> InferenceContext<'a> {
             current_closure: None,
             deferred_closures: FxHashMap::default(),
             closure_dependencies: FxHashMap::default(),
+            inside_assignment: false,
         }
     }
 

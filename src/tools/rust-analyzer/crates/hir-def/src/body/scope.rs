@@ -282,7 +282,7 @@ fn compute_expr_scopes(
             *scope = scopes.new_scope(*scope);
             scopes.add_pat_bindings(body, *scope, pat);
         }
-        e => e.walk_child_exprs(|e| compute_expr_scopes(scopes, e, scope)),
+        _ => body.walk_child_exprs(expr, |e| compute_expr_scopes(scopes, e, scope)),
     };
 }
 

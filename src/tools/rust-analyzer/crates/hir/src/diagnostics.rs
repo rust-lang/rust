@@ -246,7 +246,7 @@ pub struct UnresolvedAssocItem {
 
 #[derive(Debug)]
 pub struct UnresolvedIdent {
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 }
 
 #[derive(Debug)]
@@ -541,6 +541,10 @@ impl AnyDiagnostic {
         let pat_syntax = |pat| {
             source_map.pat_syntax(pat).inspect_err(|_| tracing::error!("synthetic syntax")).ok()
         };
+        let expr_or_pat_syntax = |id| match id {
+            ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(|it| it.map(AstPtr::wrap_left)),
+            ExprOrPatId::PatId(pat) => pat_syntax(pat).map(|it| it.map(AstPtr::wrap_right)),
+        };
         Some(match d {
             &InferenceDiagnostic::NoSuchField { field: expr, private, variant } => {
                 let expr_or_pat = match expr {
@@ -562,10 +566,7 @@ impl AnyDiagnostic {
                 PrivateField { expr, field }.into()
             }
             &InferenceDiagnostic::PrivateAssocItem { id, item } => {
-                let expr_or_pat = match id {
-                    ExprOrPatId::ExprId(expr) => expr_syntax(expr)?.map(AstPtr::wrap_left),
-                    ExprOrPatId::PatId(pat) => pat_syntax(pat)?.map(AstPtr::wrap_right),
-                };
+                let expr_or_pat = expr_or_pat_syntax(id)?;
                 let item = item.into();
                 PrivateAssocItem { expr_or_pat, item }.into()
             }
@@ -609,15 +610,12 @@ impl AnyDiagnostic {
                 .into()
             }
             &InferenceDiagnostic::UnresolvedAssocItem { id } => {
-                let expr_or_pat = match id {
-                    ExprOrPatId::ExprId(expr) => expr_syntax(expr)?.map(AstPtr::wrap_left),
-                    ExprOrPatId::PatId(pat) => pat_syntax(pat)?.map(AstPtr::wrap_right),
-                };
+                let expr_or_pat = expr_or_pat_syntax(id)?;
                 UnresolvedAssocItem { expr_or_pat }.into()
             }
-            &InferenceDiagnostic::UnresolvedIdent { expr } => {
-                let expr = expr_syntax(expr)?;
-                UnresolvedIdent { expr }.into()
+            &InferenceDiagnostic::UnresolvedIdent { id } => {
+                let expr_or_pat = expr_or_pat_syntax(id)?;
+                UnresolvedIdent { expr_or_pat }.into()
             }
             &InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break, bad_value_break } => {
                 let expr = expr_syntax(expr)?;

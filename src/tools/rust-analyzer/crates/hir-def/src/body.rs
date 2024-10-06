@@ -22,7 +22,8 @@ use crate::{
     db::DefDatabase,
     expander::Expander,
     hir::{
-        dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId, RecordFieldPat,
+        dummy_expr_id, Array, AsmOperand, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat,
+        PatId, RecordFieldPat, Statement,
     },
     item_tree::AttrOwner,
     nameres::DefMap,
@@ -286,7 +287,8 @@ impl Body {
             | Pat::Path(..)
             | Pat::ConstBlock(..)
             | Pat::Wild
-            | Pat::Missing => {}
+            | Pat::Missing
+            | Pat::Expr(_) => {}
             &Pat::Bind { subpat, .. } => {
                 if let Some(subpat) = subpat {
                     f(subpat);
@@ -320,6 +322,143 @@ impl Body {
                 it.into_raw() < relative_to.into_raw()
             }
             None => true,
+        }
+    }
+
+    pub fn walk_child_exprs(&self, expr_id: ExprId, mut f: impl FnMut(ExprId)) {
+        let expr = &self[expr_id];
+        match expr {
+            Expr::Continue { .. }
+            | Expr::Const(_)
+            | Expr::Missing
+            | Expr::Path(_)
+            | Expr::OffsetOf(_)
+            | Expr::Literal(_)
+            | Expr::Underscore => {}
+            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
+                AsmOperand::In { expr, .. }
+                | AsmOperand::Out { expr: Some(expr), .. }
+                | AsmOperand::InOut { expr, .. } => f(*expr),
+                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    f(*in_expr);
+                    if let Some(out_expr) = out_expr {
+                        f(*out_expr);
+                    }
+                }
+                AsmOperand::Out { expr: None, .. }
+                | AsmOperand::Const(_)
+                | AsmOperand::Label(_)
+                | AsmOperand::Sym(_) => (),
+            }),
+            Expr::If { condition, then_branch, else_branch } => {
+                f(*condition);
+                f(*then_branch);
+                if let &Some(else_branch) = else_branch {
+                    f(else_branch);
+                }
+            }
+            Expr::Let { expr, .. } => {
+                f(*expr);
+            }
+            Expr::Block { statements, tail, .. }
+            | Expr::Unsafe { statements, tail, .. }
+            | Expr::Async { statements, tail, .. } => {
+                for stmt in statements.iter() {
+                    match stmt {
+                        Statement::Let { initializer, else_branch, pat, .. } => {
+                            if let &Some(expr) = initializer {
+                                f(expr);
+                            }
+                            if let &Some(expr) = else_branch {
+                                f(expr);
+                            }
+                            walk_exprs_in_pat(self, *pat, &mut f);
+                        }
+                        Statement::Expr { expr: expression, .. } => f(*expression),
+                        Statement::Item => (),
+                    }
+                }
+                if let &Some(expr) = tail {
+                    f(expr);
+                }
+            }
+            Expr::Loop { body, .. } => f(*body),
+            Expr::Call { callee, args, .. } => {
+                f(*callee);
+                args.iter().copied().for_each(f);
+            }
+            Expr::MethodCall { receiver, args, .. } => {
+                f(*receiver);
+                args.iter().copied().for_each(f);
+            }
+            Expr::Match { expr, arms } => {
+                f(*expr);
+                arms.iter().map(|arm| arm.expr).for_each(f);
+            }
+            Expr::Break { expr, .. }
+            | Expr::Return { expr }
+            | Expr::Yield { expr }
+            | Expr::Yeet { expr } => {
+                if let &Some(expr) = expr {
+                    f(expr);
+                }
+            }
+            Expr::Become { expr } => f(*expr),
+            Expr::RecordLit { fields, spread, .. } => {
+                for field in fields.iter() {
+                    f(field.expr);
+                }
+                if let &Some(expr) = spread {
+                    f(expr);
+                }
+            }
+            Expr::Closure { body, .. } => {
+                f(*body);
+            }
+            Expr::BinaryOp { lhs, rhs, .. } => {
+                f(*lhs);
+                f(*rhs);
+            }
+            Expr::Range { lhs, rhs, .. } => {
+                if let &Some(lhs) = rhs {
+                    f(lhs);
+                }
+                if let &Some(rhs) = lhs {
+                    f(rhs);
+                }
+            }
+            Expr::Index { base, index, .. } => {
+                f(*base);
+                f(*index);
+            }
+            Expr::Field { expr, .. }
+            | Expr::Await { expr }
+            | Expr::Cast { expr, .. }
+            | Expr::Ref { expr, .. }
+            | Expr::UnaryOp { expr, .. }
+            | Expr::Box { expr } => {
+                f(*expr);
+            }
+            Expr::Tuple { exprs, .. } => exprs.iter().copied().for_each(f),
+            Expr::Array(a) => match a {
+                Array::ElementList { elements, .. } => elements.iter().copied().for_each(f),
+                Array::Repeat { initializer, repeat } => {
+                    f(*initializer);
+                    f(*repeat)
+                }
+            },
+            &Expr::Assignment { target, value } => {
+                walk_exprs_in_pat(self, target, &mut f);
+                f(value);
+            }
+        }
+
+        fn walk_exprs_in_pat(this: &Body, pat_id: PatId, f: &mut impl FnMut(ExprId)) {
+            this.walk_pats(pat_id, &mut |pat| {
+                if let Pat::Expr(expr) | Pat::ConstBlock(expr) = this[pat] {
+                    f(expr);
+                }
+            });
         }
     }
 }
