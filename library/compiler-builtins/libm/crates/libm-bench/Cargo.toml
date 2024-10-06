@@ -7,8 +7,8 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 libm = { path = "../..", default-features = false }
-rand = "0.6.5"
-paste = "0.1.5"
+rand = "0.8.5"
+paste = "1.0.15"
 
 [features]
 default = []

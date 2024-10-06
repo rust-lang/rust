@@ -185,7 +185,7 @@ mod musl_reference_tests {
 
             return match self {
                 Ty::F32 => {
-                    if r.gen_range(0, 20) < 1 {
+                    if r.gen_range(0..20) < 1 {
                         let i = *[f32::NAN, f32::INFINITY, f32::NEG_INFINITY]
                             .choose(r)
                             .unwrap();
@@ -195,7 +195,7 @@ mod musl_reference_tests {
                     }
                 }
                 Ty::F64 => {
-                    if r.gen_range(0, 20) < 1 {
+                    if r.gen_range(0..20) < 1 {
                         let i = *[f64::NAN, f64::INFINITY, f64::NEG_INFINITY]
                             .choose(r)
                             .unwrap();
@@ -205,7 +205,7 @@ mod musl_reference_tests {
                     }
                 }
                 Ty::I32 => {
-                    if r.gen_range(0, 10) < 1 {
+                    if r.gen_range(0..10) < 1 {
                         let i = *[i32::max_value(), 0, i32::min_value()].choose(r).unwrap();
                         i.into()
                     } else {

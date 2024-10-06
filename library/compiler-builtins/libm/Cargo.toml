@@ -34,7 +34,7 @@ default-members = [
 ]
 
 [dev-dependencies]
-no-panic = "0.1.8"
+no-panic = "0.1.30"
 
 
 # This is needed for no-panic to correctly detect the lack of panics
