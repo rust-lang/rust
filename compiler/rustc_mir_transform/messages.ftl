@@ -27,3 +27,8 @@ mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
     .note_ub = creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
     .help = copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+mir_transform_undefined_transmute = pointers cannot be transmuted to integers during const eval
+    .note = at compile-time, pointers do not have an integer value
+    .note2 = avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
+    .help = for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
