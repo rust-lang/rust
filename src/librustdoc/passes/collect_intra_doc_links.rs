@@ -9,7 +9,7 @@ use std::ops::Range;
 
 use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir::def::Namespace::*;
@@ -778,9 +778,9 @@ fn trait_impls_for<'a>(
     cx: &mut DocContext<'a>,
     ty: Ty<'a>,
     module: DefId,
-) -> FxHashSet<(DefId, DefId)> {
+) -> FxIndexSet<(DefId, DefId)> {
     let tcx = cx.tcx;
-    let mut impls = FxHashSet::default();
+    let mut impls = FxIndexSet::default();
 
     for &trait_ in tcx.doc_link_traits_in_scope(module) {
         tcx.for_each_relevant_impl(trait_, ty, |impl_| {

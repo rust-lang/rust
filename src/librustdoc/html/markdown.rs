@@ -38,7 +38,7 @@ use pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter, Options,
     Parser, Tag, TagEnd, html,
 };
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
@@ -651,12 +651,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
 /// references.
 struct Footnotes<'a, I> {
     inner: I,
-    footnotes: FxHashMap<String, (Vec<Event<'a>>, u16)>,
+    footnotes: FxIndexMap<String, (Vec<Event<'a>>, u16)>,
 }
 
 impl<'a, I> Footnotes<'a, I> {
     fn new(iter: I) -> Self {
-        Footnotes { inner: iter, footnotes: FxHashMap::default() }
+        Footnotes { inner: iter, footnotes: FxIndexMap::default() }
     }
 
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
@@ -694,7 +694,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
                 Some(e) => return Some(e),
                 None => {
                     if !self.footnotes.is_empty() {
-                        let mut v: Vec<_> = self.footnotes.drain().map(|(_, x)| x).collect();
+                        let mut v: Vec<_> = self.footnotes.drain(..).map(|(_, x)| x).collect();
                         v.sort_by(|a, b| a.1.cmp(&b.1));
                         let mut ret = String::from("<div class=\"footnotes\"><hr><ol>");
                         for (mut content, id) in v {

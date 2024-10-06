@@ -1,10 +1,9 @@
-use std::collections::hash_map::Entry;
 use std::fs;
 use std::iter::Peekable;
 use std::path::Path;
 use std::str::Chars;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_errors::DiagCtxtHandle;
 
 #[cfg(test)]
@@ -12,8 +11,8 @@ mod tests;
 
 #[derive(Debug)]
 pub(crate) struct CssPath {
-    pub(crate) rules: FxHashMap<String, String>,
-    pub(crate) children: FxHashMap<String, CssPath>,
+    pub(crate) rules: FxIndexMap<String, String>,
+    pub(crate) children: FxIndexMap<String, CssPath>,
 }
 
 /// When encountering a `"` or a `'`, returns the whole string, including the quote characters.
@@ -120,10 +119,10 @@ fn parse_rules(
     content: &str,
     selector: String,
     iter: &mut Peekable<Chars<'_>>,
-    paths: &mut FxHashMap<String, CssPath>,
+    paths: &mut FxIndexMap<String, CssPath>,
 ) -> Result<(), String> {
-    let mut rules = FxHashMap::default();
-    let mut children = FxHashMap::default();
+    let mut rules = FxIndexMap::default();
+    let mut children = FxIndexMap::default();
 
     loop {
         // If the parent isn't a "normal" CSS selector, we only expect sub-selectors and not CSS
@@ -146,10 +145,10 @@ fn parse_rules(
             return Err(format!("Found empty value for rule `{rule}` in selector `{selector}`"));
         }
         match rules.entry(rule) {
-            Entry::Occupied(mut o) => {
+            IndexEntry::Occupied(mut o) => {
                 *o.get_mut() = value;
             }
-            Entry::Vacant(v) => {
+            IndexEntry::Vacant(v) => {
                 v.insert(value);
             }
         }
@@ -159,7 +158,7 @@ fn parse_rules(
     }
 
     match paths.entry(selector) {
-        Entry::Occupied(mut o) => {
+        IndexEntry::Occupied(mut o) => {
             let v = o.get_mut();
             for (key, value) in rules.into_iter() {
                 v.rules.insert(key, value);
@@ -168,7 +167,7 @@ fn parse_rules(
                 v.children.insert(sel, child);
             }
         }
-        Entry::Vacant(v) => {
+        IndexEntry::Vacant(v) => {
             v.insert(CssPath { rules, children });
         }
     }
@@ -178,7 +177,7 @@ fn parse_rules(
 pub(crate) fn parse_selectors(
     content: &str,
     iter: &mut Peekable<Chars<'_>>,
-    paths: &mut FxHashMap<String, CssPath>,
+    paths: &mut FxIndexMap<String, CssPath>,
 ) -> Result<(), String> {
     let mut selector = String::new();
 
@@ -202,17 +201,17 @@ pub(crate) fn parse_selectors(
 
 /// The entry point to parse the CSS rules. Every time we encounter a `{`, we then parse the rules
 /// inside it.
-pub(crate) fn load_css_paths(content: &str) -> Result<FxHashMap<String, CssPath>, String> {
+pub(crate) fn load_css_paths(content: &str) -> Result<FxIndexMap<String, CssPath>, String> {
     let mut iter = content.chars().peekable();
-    let mut paths = FxHashMap::default();
+    let mut paths = FxIndexMap::default();
 
     parse_selectors(content, &mut iter, &mut paths)?;
     Ok(paths)
 }
 
 pub(crate) fn get_differences(
-    origin: &FxHashMap<String, CssPath>,
-    against: &FxHashMap<String, CssPath>,
+    origin: &FxIndexMap<String, CssPath>,
+    against: &FxIndexMap<String, CssPath>,
     v: &mut Vec<String>,
 ) {
     for (selector, entry) in origin.iter() {
@@ -235,7 +234,7 @@ pub(crate) fn get_differences(
 
 pub(crate) fn test_theme_against<P: AsRef<Path>>(
     f: &P,
-    origin: &FxHashMap<String, CssPath>,
+    origin: &FxIndexMap<String, CssPath>,
     dcx: DiagCtxtHandle<'_>,
 ) -> (bool, Vec<String>) {
     let against = match fs::read_to_string(f)
