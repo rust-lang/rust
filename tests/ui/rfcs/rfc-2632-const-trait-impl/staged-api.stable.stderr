@@ -10,16 +10,33 @@ LL | | }
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
 
 error: function has missing const stability attribute
-  --> $DIR/staged-api.rs:43:1
+  --> $DIR/staged-api.rs:47:1
    |
 LL | / pub const fn const_context_not_const_stable() {
 LL | |
 LL | |     Unstable::func();
 LL | |
 ...  |
-LL | |     // ^ fails, because the `foo` feature is not active
+LL | |     // ^ fails, because the `unstable2` feature is not active
 LL | | }
    | |_^
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:34:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(unstable)]
+LL | const fn const_context() {
+   |
 
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
   --> $DIR/staged-api.rs:34:5
@@ -29,21 +46,105 @@ LL |     Unstable::func();
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable
 
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable2)]`
+  --> $DIR/staged-api.rs:39:5
+   |
+LL |     Unstable2::func();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(unstable2)]
+LL | const fn const_context() {
+   |
+
+error: `<staged_api::Unstable2 as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:39:5
+   |
+LL |     Unstable2::func();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable2)]` to the crate attributes to enable
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:49:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | pub const fn const_context_not_const_stable() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(unstable)]
+LL | pub const fn const_context_not_const_stable() {
+   |
+
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:45:5
+  --> $DIR/staged-api.rs:49:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable
 
-error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:55:5
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable2)]`
+  --> $DIR/staged-api.rs:53:5
+   |
+LL |     Unstable2::func();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | pub const fn const_context_not_const_stable() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(unstable2)]
+LL | pub const fn const_context_not_const_stable() {
+   |
+
+error: `<staged_api::Unstable2 as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:53:5
+   |
+LL |     Unstable2::func();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable2)]` to the crate attributes to enable
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:62:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: const-stable functions can only call other const-stable functions
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(unstable)]
+LL | const fn stable_const_context() {
+   |
 
-error: aborting due to 5 previous errors
+error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:62:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+
+error: aborting due to 12 previous errors
 

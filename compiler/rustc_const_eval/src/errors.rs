@@ -44,8 +44,8 @@ pub(crate) struct MutablePtrInFinal {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_in_stable)]
-pub(crate) struct UnstableInStable {
+#[diag(const_eval_unstable_in_stable_exposed)]
+pub(crate) struct UnstableInStableExposed {
     pub gate: String,
     #[primary_span]
     pub span: Span,
@@ -112,6 +112,15 @@ pub(crate) struct UnallowedFnPointerCall {
 #[derive(Diagnostic)]
 #[diag(const_eval_unstable_const_fn)]
 pub(crate) struct UnstableConstFn {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_unmarked_const_fn_exposed)]
+#[help]
+pub(crate) struct UnmarkedConstFnExposed {
     #[primary_span]
     pub span: Span,
     pub def_path: String,

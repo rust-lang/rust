@@ -1911,6 +1911,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// Any questions go to @nagisa.
 #[cfg_attr(not(bootstrap), allow(ptr_to_integer_transmute_in_consts))]
 #[lang = "align_offset"]
+#[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
 pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.

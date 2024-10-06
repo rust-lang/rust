@@ -11,7 +11,7 @@ const fn foo() -> u32 { 42 }
 
 fn meh() -> u32 { 42 }
 
-const fn bar() -> u32 { foo() } //~ ERROR `foo` is not yet stable as a const fn
+const fn bar() -> u32 { foo() } //~ ERROR cannot use `#[feature(foo)]`
 
 fn a() {
     let _: &'static u32 = &foo(); //~ ERROR temporary value dropped while borrowed

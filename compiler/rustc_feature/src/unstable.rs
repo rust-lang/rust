@@ -61,7 +61,7 @@ macro_rules! declare_features {
             pub declared_lib_features: Vec<(Symbol, Span)>,
             /// `declared_lang_features` + `declared_lib_features`.
             pub declared_features: FxHashSet<Symbol>,
-            /// Active state of individual features (unstable only).
+            /// Active state of individual features (unstable lang features only).
             $(
                 $(#[doc = $doc])*
                 pub $feature: bool

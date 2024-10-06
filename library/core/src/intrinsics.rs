@@ -14,9 +14,10 @@
 //! `#[rustc_const_unstable(feature = "const_such_and_such", issue = "01234")]` to the intrinsic declaration.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
-//! the intrinsic's attribute must be `rustc_const_stable`, too. Such a change should not be done
-//! without T-lang consultation, because it bakes a feature into the language that cannot be
-//! replicated in user code without compiler support.
+//! `#[rustc_const_stable_indirect]` needs to be added to the intrinsic (`#[rustc_const_unstable]`
+//! can be removed then). Such a change should not be done without T-lang consultation, because it
+//! may bake a feature into the language that cannot be replicated in user code without compiler
+//! support.
 //!
 //! # Volatiles
 //!
@@ -979,7 +980,8 @@ pub const unsafe fn assume(b: bool) {
 /// any safety invariants.
 ///
 /// This intrinsic does not have a stable counterpart.
-#[rustc_const_unstable(feature = "const_likely", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_likely", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
@@ -999,7 +1001,8 @@ pub const fn likely(b: bool) -> bool {
 /// any safety invariants.
 ///
 /// This intrinsic does not have a stable counterpart.
-#[rustc_const_unstable(feature = "const_likely", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_likely", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
@@ -2949,7 +2952,8 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
 /// assertions are enabled whenever the *user crate* has UB checks enabled. However, if the
 /// user has UB checks disabled, the checks will still get optimized out. This intrinsic is
 /// primarily used by [`ub_checks::assert_unsafe_precondition`].
-#[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ub_checks", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // just for UB checks
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
 #[rustc_intrinsic]

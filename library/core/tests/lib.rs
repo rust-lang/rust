@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(const_likely))]
 #![cfg_attr(bootstrap, feature(const_mut_refs))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 #![cfg_attr(test, feature(cfg_match))]
@@ -23,7 +24,6 @@
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
-#![feature(const_likely)]
 #![feature(const_nonnull_new)]
 #![feature(const_option)]
 #![feature(const_option_ext)]

@@ -16,7 +16,7 @@ macro_rules! try_opt {
     };
 }
 
-#[allow_internal_unstable(const_likely)]
+#[cfg_attr(bootstrap, allow_internal_unstable(const_likely))]
 macro_rules! unlikely {
     ($e: expr) => {
         intrinsics::unlikely($e)
@@ -1416,6 +1416,7 @@ fn from_str_radix_panic_rt(radix: u32) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn from_str_radix_panic(radix: u32) {
     // The only difference between these two functions is their panic message.
     intrinsics::const_eval_select((radix,), from_str_radix_panic_ct, from_str_radix_panic_rt);

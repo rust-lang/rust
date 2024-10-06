@@ -66,7 +66,6 @@ impl Layout {
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
-    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
         if Layout::is_size_align_valid(size, align) {
             // SAFETY: Layout::is_size_align_valid checks the preconditions for this call.
@@ -76,6 +75,7 @@ impl Layout {
         }
     }
 
+    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
     const fn is_size_align_valid(size: usize, align: usize) -> bool {
         let Some(align) = Alignment::new(align) else { return false };
         if size > Self::max_size_for_align(align) {
@@ -85,6 +85,8 @@ impl Layout {
     }
 
     #[inline(always)]
+    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+    #[rustc_allow_const_fn_unstable(unchecked_math)]
     const fn max_size_for_align(align: Alignment) -> usize {
         // (power-of-two implies align != 0.)
 
@@ -127,7 +129,6 @@ impl Layout {
     #[rustc_const_stable(feature = "const_alloc_layout_unchecked", since = "1.36.0")]
     #[must_use]
     #[inline]
-    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -159,7 +160,7 @@ impl Layout {
     #[must_use = "this returns the minimum alignment, \
                   without modifying the layout"]
     #[inline]
-    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(ptr_alignment_type))]
     pub const fn align(&self) -> usize {
         self.align.as_usize()
     }
@@ -301,6 +302,7 @@ impl Layout {
     /// This can return at most `Alignment::MAX` (aka `isize::MAX + 1`)
     /// because the original size is at most `isize::MAX`.
     #[inline]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     const fn size_rounded_up_to_custom_align(&self, align: Alignment) -> usize {
         // SAFETY:
         // Rounded up value is:
@@ -505,6 +507,7 @@ impl Layout {
         return inner(T::LAYOUT, n);
 
         #[inline]
+        #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
         const fn inner(element_layout: Layout, n: usize) -> Result<Layout, LayoutError> {
             let Layout { size: element_size, align } = element_layout;
 

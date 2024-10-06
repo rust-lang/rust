@@ -258,7 +258,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 ..
             }) = const_stab
             {
-                self.index.implications.insert(implied_by, feature);
+                self.index.implications.insert(implied_by, feature.unwrap());
             }
 
             self.index.stab_map.insert(def_id, stab);
@@ -273,6 +273,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 }
             }
         }
+
+        // Every `const fn` that has stability should also have const-stability.
 
         self.recurse_with_stability_attrs(
             depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
@@ -541,7 +543,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
         let is_stable =
             self.tcx.lookup_stability(def_id).is_some_and(|stability| stability.level.is_stable());
-        let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
+        let missing_const_stability_attribute =
+            self.tcx.lookup_const_stability(def_id).is_none_or(|s| s.feature.is_none());
 
         if is_const && is_stable && missing_const_stability_attribute {
             let descr = self.tcx.def_descr(def_id.to_def_id());

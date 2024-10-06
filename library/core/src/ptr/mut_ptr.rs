@@ -74,7 +74,10 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[unstable(feature = "set_ptr_value", issue = "75091")]
-    #[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
+    #[cfg_attr(
+        bootstrap,
+        rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")
+    )]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *mut U
@@ -394,6 +397,7 @@ impl<T: ?Sized> *mut T {
         T: Sized,
     {
         #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_offset_nowrap(this: *const (), count: isize, size: usize) -> bool {
             #[inline]
             fn runtime(this: *const (), count: isize, size: usize) -> bool {
@@ -973,6 +977,7 @@ impl<T: ?Sized> *mut T {
     {
         #[cfg(debug_assertions)]
         #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_add_nowrap(this: *const (), count: usize, size: usize) -> bool {
             #[inline]
             fn runtime(this: *const (), count: usize, size: usize) -> bool {
@@ -1081,6 +1086,7 @@ impl<T: ?Sized> *mut T {
     {
         #[cfg(debug_assertions)]
         #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_sub_nowrap(this: *const (), count: usize, size: usize) -> bool {
             #[inline]
             fn runtime(this: *const (), count: usize, size: usize) -> bool {
@@ -1862,6 +1868,7 @@ impl<T: ?Sized> *mut T {
         }
 
         #[inline]
+        #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
         const fn const_impl(ptr: *mut (), align: usize) -> bool {
             // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
             ptr.align_offset(align) == 0

@@ -27,6 +27,7 @@ use crate::{errors, fluent_generated};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     Allowed,
+    /// `Symbol` is the feature that must be enabled to use this operation.
     Unstable(Symbol),
     Forbidden,
 }
@@ -298,26 +299,29 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 ///
 /// Contains the name of the feature that would allow the use of this function.
 #[derive(Debug)]
-pub(crate) struct FnCallUnstable(pub DefId, pub Option<Symbol>);
+pub(crate) struct FnCallUnstable {
+    pub def_id: DefId,
+    pub feature: Option<Symbol>,
+}
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let FnCallUnstable(def_id, feature) = *self;
-
-        let mut err = ccx
-            .dcx()
-            .create_err(errors::UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
-
-        // FIXME: make this translatable
-        #[allow(rustc::untranslatable_diagnostic)]
-        if ccx.is_const_stable_const_fn() {
-            err.help(fluent_generated::const_eval_const_stable);
-        } else if ccx.tcx.sess.is_nightly_build() {
-            if let Some(feature) = feature {
-                err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
-            }
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        match self.feature {
+            Some(feature) => Status::Unstable(feature),
+            None => Status::Forbidden,
         }
+    }
 
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        let mut err = ccx.dcx().create_err(errors::UnstableConstFn {
+            span,
+            def_path: ccx.tcx.def_path_str(self.def_id),
+        });
+        if let Some(feature) = self.feature {
+            // FIXME: make this translatable
+            #[allow(rustc::untranslatable_diagnostic)]
+            err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
+        }
         err
     }
 }

@@ -16,9 +16,9 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
-use rustc_span::Span;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
 
 use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -92,7 +92,13 @@ impl Stability {
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
-    pub feature: Symbol,
+    /// This can be `None` for functions that are not even const-unstable, but
+    /// are tracked here for the purpose of `safe_to_expose_on_stable`.
+    pub feature: Option<Symbol>,
+    /// A function that is marked as "safe to expose on stable" must not use any unstable const
+    /// language features or intrinsics, and all the functions it calls must also be safe to expose
+    /// on stable. If `level` is `Stable`, this must be `true`.
+    pub safe_to_expose_on_stable: bool,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
 }
@@ -275,10 +281,12 @@ pub fn find_const_stability(
 ) -> Option<(ConstStability, Span)> {
     let mut const_stab: Option<(ConstStability, Span)> = None;
     let mut promotable = false;
+    let mut const_stable_indirect = false;
 
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_promotable => promotable = true,
+            sym::rustc_const_stable_indirect => const_stable_indirect = true,
             sym::rustc_const_unstable => {
                 if const_stab.is_some() {
                     sess.dcx()
@@ -287,8 +295,15 @@ pub fn find_const_stability(
                 }
 
                 if let Some((feature, level)) = parse_unstability(sess, attr) {
-                    const_stab =
-                        Some((ConstStability { level, feature, promotable: false }, attr.span));
+                    const_stab = Some((
+                        ConstStability {
+                            level,
+                            feature: Some(feature),
+                            safe_to_expose_on_stable: false,
+                            promotable: false,
+                        },
+                        attr.span,
+                    ));
                 }
             }
             sym::rustc_const_stable => {
@@ -298,15 +313,22 @@ pub fn find_const_stability(
                     break;
                 }
                 if let Some((feature, level)) = parse_stability(sess, attr) {
-                    const_stab =
-                        Some((ConstStability { level, feature, promotable: false }, attr.span));
+                    const_stab = Some((
+                        ConstStability {
+                            level,
+                            feature: Some(feature),
+                            safe_to_expose_on_stable: true,
+                            promotable: false,
+                        },
+                        attr.span,
+                    ));
                 }
             }
             _ => {}
         }
     }
 
-    // Merge the const-unstable info into the stability info
+    // Merge promotable and not_exposed_on_stable into stability info
     if promotable {
         match &mut const_stab {
             Some((stab, _)) => stab.promotable = promotable,
@@ -314,6 +336,33 @@ pub fn find_const_stability(
                 _ = sess
                     .dcx()
                     .emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp })
+            }
+        }
+    }
+    if const_stable_indirect {
+        match &mut const_stab {
+            Some((stab, _)) => {
+                if stab.is_const_unstable() {
+                    stab.safe_to_expose_on_stable = true;
+                } else {
+                    _ = sess.dcx().emit_err(session_diagnostics::RustcConstStableIndirectPairing {
+                        span: item_sp,
+                    })
+                }
+            }
+            _ => {
+                let c = ConstStability {
+                    feature: None,
+                    safe_to_expose_on_stable: true,
+                    promotable: false,
+                    level: StabilityLevel::Unstable {
+                        reason: UnstableReason::Default,
+                        issue: None,
+                        is_soft: false,
+                        implied_by: None,
+                    },
+                };
+                const_stab = Some((c, DUMMY_SP));
             }
         }
     }
