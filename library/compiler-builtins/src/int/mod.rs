@@ -319,9 +319,7 @@ pub(crate) trait HInt: Int {
     /// around problems with associated type bounds (such as `Int<Othersign: DInt>`) being unstable
     fn zero_widen(self) -> Self::D;
     /// Widens the integer to have double bit width and shifts the integer into the higher bits
-    fn widen_hi(self) -> Self::D {
-        self.widen() << <Self as MinInt>::BITS
-    }
+    fn widen_hi(self) -> Self::D;
     /// Widening multiplication with zero widening. This cannot overflow.
     fn zero_widen_mul(self, rhs: Self) -> Self::D;
     /// Widening multiplication. This cannot overflow.
@@ -363,6 +361,9 @@ macro_rules! impl_h_int {
                 }
                 fn widen_mul(self, rhs: Self) -> Self::D {
                     self.widen().wrapping_mul(rhs.widen())
+                }
+                fn widen_hi(self) -> Self::D {
+                    (self as $X) << <Self as MinInt>::BITS
                 }
             }
         )*

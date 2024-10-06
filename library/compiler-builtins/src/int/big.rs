@@ -222,6 +222,10 @@ impl HInt for u128 {
     fn widen_mul(self, rhs: Self) -> Self::D {
         self.zero_widen_mul(rhs)
     }
+
+    fn widen_hi(self) -> Self::D {
+        self.widen() << <Self as MinInt>::BITS
+    }
 }
 
 impl HInt for i128 {
@@ -246,6 +250,10 @@ impl HInt for i128 {
 
     fn widen_mul(self, rhs: Self) -> Self::D {
         unimplemented!("signed i128 widening multiply is not used")
+    }
+
+    fn widen_hi(self) -> Self::D {
+        self.widen() << <Self as MinInt>::BITS
     }
 }
 
