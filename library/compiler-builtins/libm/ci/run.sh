@@ -1,9 +1,10 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
-set -ex
-TARGET=$1
+set -eux
 
-cmd="cargo test --all --target $TARGET"
+target="$1"
+
+cmd="cargo test --all --target $target"
 
 # Needed for no-panic to correct detect a lack of panics
 export RUSTFLAGS="$RUSTFLAGS -Ccodegen-units=1"
