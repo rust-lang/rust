@@ -7,14 +7,12 @@ LL |     let c1 = || match x { };
    |                       ^ `x` used here but it isn't initialized
 
 error[E0381]: used binding `x` isn't initialized
-  --> $DIR/pattern-matching-should-fail.rs:15:14
+  --> $DIR/pattern-matching-should-fail.rs:15:23
    |
 LL |     let x: !;
    |         - binding declared here but left uninitialized
 LL |     let c2 = || match x { _ => () };
-   |              ^^       - borrow occurs due to use in closure
-   |              |
-   |              `x` used here but it isn't initialized
+   |                       ^ `x` used here but it isn't initialized
 
 error[E0381]: used binding `variant` isn't initialized
   --> $DIR/pattern-matching-should-fail.rs:27:13

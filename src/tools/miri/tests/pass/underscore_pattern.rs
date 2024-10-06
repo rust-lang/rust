@@ -1,5 +1,7 @@
 // Various tests ensuring that underscore patterns really just construct the place, but don't check its contents.
 #![feature(strict_provenance)]
+#![feature(never_type)]
+
 use std::ptr;
 
 fn main() {
@@ -9,6 +11,7 @@ fn main() {
     invalid_let();
     dangling_let_type_annotation();
     invalid_let_type_annotation();
+    never();
 }
 
 fn dangling_match() {
@@ -34,11 +37,23 @@ fn invalid_match() {
             _ => {}
         }
     }
+
+    unsafe {
+        let x: Uninit<!> = Uninit { uninit: () };
+        match x.value {
+            _ => {}
+        }
+    }
 }
 
 fn dangling_let() {
     unsafe {
         let ptr = ptr::without_provenance::<bool>(0x40);
+        let _ = *ptr;
+    }
+
+    unsafe {
+        let ptr = ptr::without_provenance::<!>(0x40);
         let _ = *ptr;
     }
 }
@@ -49,6 +64,12 @@ fn invalid_let() {
         let ptr = ptr::addr_of!(val).cast::<bool>();
         let _ = *ptr;
     }
+
+    unsafe {
+        let val = 3u8;
+        let ptr = ptr::addr_of!(val).cast::<!>();
+        let _ = *ptr;
+    }
 }
 
 // Adding a type annotation used to change how MIR is generated, make sure we cover both cases.
@@ -56,6 +77,11 @@ fn dangling_let_type_annotation() {
     unsafe {
         let ptr = ptr::without_provenance::<bool>(0x40);
         let _: bool = *ptr;
+    }
+
+    unsafe {
+        let ptr = ptr::without_provenance::<!>(0x40);
+        let _: ! = *ptr;
     }
 }
 
@@ -65,7 +91,28 @@ fn invalid_let_type_annotation() {
         let ptr = ptr::addr_of!(val).cast::<bool>();
         let _: bool = *ptr;
     }
+
+    unsafe {
+        let val = 3u8;
+        let ptr = ptr::addr_of!(val).cast::<!>();
+        let _: ! = *ptr;
+    }
 }
 
-// FIXME: we should also test `!`, not just `bool` -- but that s currently buggy:
-// https://github.com/rust-lang/rust/issues/117288
+// Regression test from <https://github.com/rust-lang/rust/issues/117288>.
+fn never() {
+    unsafe {
+        let x = 3u8;
+        let x: *const ! = &x as *const u8 as *const _;
+        let _: ! = *x;
+    }
+
+    // Without a type annotation, make sure we don't implicitly coerce `!` to `()`
+    // when we do the noop `*x` (as that would require a `!` *value*, creating
+    // which is UB).
+    unsafe {
+        let x = 3u8;
+        let x: *const ! = &x as *const u8 as *const _;
+        let _ = *x;
+    }
+}
