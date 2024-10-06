@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::{fmt, fs};
 
 use rinja::Template;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -39,15 +39,15 @@ pub(crate) fn collect_local_sources<'tcx>(
     tcx: TyCtxt<'tcx>,
     src_root: &Path,
     krate: &clean::Crate,
-) -> FxHashMap<PathBuf, String> {
-    let mut lsc = LocalSourcesCollector { tcx, local_sources: FxHashMap::default(), src_root };
+) -> FxIndexMap<PathBuf, String> {
+    let mut lsc = LocalSourcesCollector { tcx, local_sources: FxIndexMap::default(), src_root };
     lsc.visit_crate(krate);
     lsc.local_sources
 }
 
 struct LocalSourcesCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    local_sources: FxHashMap<PathBuf, String>,
+    local_sources: FxIndexMap<PathBuf, String>,
     src_root: &'a Path,
 }
 

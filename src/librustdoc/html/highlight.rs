@@ -8,7 +8,7 @@
 use std::collections::VecDeque;
 use std::fmt::{Display, Write};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
@@ -34,7 +34,7 @@ pub(crate) struct HrefContext<'a, 'tcx> {
 /// Decorations are represented as a map from CSS class to vector of character ranges.
 /// Each range will be wrapped in a span with that class.
 #[derive(Default)]
-pub(crate) struct DecorationInfo(pub(crate) FxHashMap<&'static str, Vec<(u32, u32)>>);
+pub(crate) struct DecorationInfo(pub(crate) FxIndexMap<&'static str, Vec<(u32, u32)>>);
 
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub(crate) enum Tooltip {

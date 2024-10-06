@@ -9,7 +9,7 @@ use rustc_ast::NestedMetaItem;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -114,7 +114,7 @@ impl From<DefId> for ItemId {
 pub(crate) struct Crate {
     pub(crate) module: Item,
     /// Only here so that they can be filtered through the rustdoc passes.
-    pub(crate) external_traits: Box<FxHashMap<DefId, Trait>>,
+    pub(crate) external_traits: Box<FxIndexMap<DefId, Trait>>,
 }
 
 impl Crate {
@@ -1223,7 +1223,7 @@ impl Attributes {
     }
 
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
-        let mut aliases = FxHashSet::default();
+        let mut aliases = FxIndexSet::default();
 
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
             if let Some(values) = attr.meta_item_list() {
@@ -1759,7 +1759,7 @@ pub(crate) enum PrimitiveType {
     Never,
 }
 
-type SimplifiedTypes = FxHashMap<PrimitiveType, ArrayVec<SimplifiedType, 3>>;
+type SimplifiedTypes = FxIndexMap<PrimitiveType, ArrayVec<SimplifiedType, 3>>;
 impl PrimitiveType {
     pub(crate) fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
         use ast::{FloatTy, IntTy, UintTy};
@@ -1927,10 +1927,10 @@ impl PrimitiveType {
     /// In particular, if a crate depends on both `std` and another crate that also defines
     /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
     /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
-    pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxHashMap<PrimitiveType, DefId> {
-        static PRIMITIVE_LOCATIONS: OnceCell<FxHashMap<PrimitiveType, DefId>> = OnceCell::new();
+    pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxIndexMap<PrimitiveType, DefId> {
+        static PRIMITIVE_LOCATIONS: OnceCell<FxIndexMap<PrimitiveType, DefId>> = OnceCell::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {
-            let mut primitive_locations = FxHashMap::default();
+            let mut primitive_locations = FxIndexMap::default();
             // NOTE: technically this misses crates that are only passed with `--extern` and not loaded when checking the crate.
             // This is a degenerate case that I don't plan to support.
             for &crate_num in tcx.crates(()) {
@@ -2460,7 +2460,7 @@ pub(crate) struct Impl {
 }
 
 impl Impl {
-    pub(crate) fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxHashSet<Symbol> {
+    pub(crate) fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxIndexSet<Symbol> {
         self.trait_
             .as_ref()
             .map(|t| t.def_id())

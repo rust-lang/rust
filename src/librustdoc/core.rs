@@ -2,7 +2,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, LazyLock};
 use std::{io, mem};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
@@ -39,7 +39,7 @@ pub(crate) struct DocContext<'tcx> {
     /// Most of this logic is copied from rustc_lint::late.
     pub(crate) param_env: ParamEnv<'tcx>,
     /// Later on moved through `clean::Crate` into `cache`
-    pub(crate) external_traits: FxHashMap<DefId, clean::Trait>,
+    pub(crate) external_traits: FxIndexMap<DefId, clean::Trait>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub(crate) active_extern_traits: DefIdSet,
