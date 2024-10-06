@@ -6,7 +6,10 @@ RUN apt-get update && \
     gcc-mips-linux-gnu libc6-dev-mips-cross \
     binfmt-support qemu-user-static qemu-system-mips
 
-ENV CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_LINKER=mips-linux-gnu-gcc \
+ENV TOOLCHAIN_PREFIX=mips-linux-gnu-
+ENV CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_LINKER="$TOOLCHAIN_PREFIX"gcc \
     CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_RUNNER=qemu-mips-static \
+    AR_mips_unknown_linux_gnu="$TOOLCHAIN_PREFIX"ar \
+    CC_mips_unknown_linux_gnu="$TOOLCHAIN_PREFIX"gcc \
     QEMU_LD_PREFIX=/usr/mips-linux-gnu \
     RUST_TEST_THREADS=1
