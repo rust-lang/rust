@@ -1864,6 +1864,7 @@ symbols! {
         soft,
         specialization,
         speed,
+        split_pattern,
         spotlight,
         sqrtf128,
         sqrtf16,
