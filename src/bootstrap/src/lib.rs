@@ -17,7 +17,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
@@ -470,7 +470,7 @@ impl Build {
             crate::core::metadata::build(&mut build);
         }
 
-        // Make a symbolic link so we can use a consistent directory in the documentation.
+        // Create symbolic link to use host sysroot from a consistent path (e.g., in the rust-analyzer config file).
         let build_triple = build.out.join(build.build);
         t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
@@ -645,28 +645,31 @@ impl Build {
         &self.config.rust_info
     }
 
-    /// Gets the space-separated set of activated features for the standard
-    /// library.
+    /// Gets the space-separated set of activated features for the standard library.
+    /// This can be configured with the `std-features` key in config.toml.
     fn std_features(&self, target: TargetSelection) -> String {
-        let mut features = " panic-unwind".to_string();
+        let mut features: BTreeSet<&str> =
+            self.config.rust_std_features.iter().map(|s| s.as_str()).collect();
 
         match self.config.llvm_libunwind(target) {
-            LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),
-            LlvmLibunwind::System => features.push_str(" system-llvm-libunwind"),
-            LlvmLibunwind::No => {}
-        }
+            LlvmLibunwind::InTree => features.insert("llvm-libunwind"),
+            LlvmLibunwind::System => features.insert("system-llvm-libunwind"),
+            LlvmLibunwind::No => false,
+        };
+
         if self.config.backtrace {
-            features.push_str(" backtrace");
+            features.insert("backtrace");
         }
         if self.config.profiler_enabled(target) {
-            features.push_str(" profiler");
+            features.insert("profiler");
         }
         // Generate memcpy, etc.  FIXME: Remove this once compiler-builtins
         // automatically detects this target.
         if target.contains("zkvm") {
-            features.push_str(" compiler-builtins-mem");
+            features.insert("compiler-builtins-mem");
         }
-        features
+
+        features.into_iter().collect::<Vec<_>>().join(" ")
     }
 
     /// Gets the space-separated set of activated features for the compiler.

@@ -4,7 +4,7 @@
 //! how the build runs.
 
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{self, Display};
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
@@ -287,6 +287,7 @@ pub struct Config {
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
     pub rust_validate_mir_opts: Option<u32>,
+    pub rust_std_features: BTreeSet<String>,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -1152,6 +1153,7 @@ define_config! {
         download_rustc: Option<StringOrBool> = "download-rustc",
         lto: Option<String> = "lto",
         validate_mir_opts: Option<u32> = "validate-mir-opts",
+        std_features: Option<BTreeSet<String>> = "std-features",
     }
 }
 
@@ -1645,6 +1647,7 @@ impl Config {
         let mut optimize = None;
         let mut omit_git_hash = None;
         let mut lld_enabled = None;
+        let mut std_features = None;
 
         let mut is_user_configured_rust_channel = false;
 
@@ -1703,6 +1706,7 @@ impl Config {
                 stack_protector,
                 strip,
                 lld_mode,
+                std_features: std_features_toml,
             } = rust;
 
             is_user_configured_rust_channel = channel.is_some();
@@ -1722,6 +1726,7 @@ impl Config {
             debuginfo_level_tools = debuginfo_level_tools_toml;
             debuginfo_level_tests = debuginfo_level_tests_toml;
             lld_enabled = lld_enabled_toml;
+            std_features = std_features_toml;
 
             optimize = optimize_toml;
             omit_git_hash = omit_git_hash_toml;
@@ -2117,6 +2122,9 @@ impl Config {
                 "Trying to use self-contained lld as a linker, but LLD is not being added to the sysroot. Enable it with rust.lld = true."
             );
         }
+
+        let default_std_features = BTreeSet::from([String::from("panic-unwind")]);
+        config.rust_std_features = std_features.unwrap_or(default_std_features);
 
         let default = debug == Some(true);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
@@ -3016,6 +3024,7 @@ fn check_incompatible_options_for_ci_rustc(
         description,
         incremental,
         default_linker,
+        std_features,
 
         // Rest of the options can simply be ignored.
         debug: _,
@@ -3077,6 +3086,7 @@ fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.default_linker, default_linker);
     err!(current_rust_config.stack_protector, stack_protector);
     err!(current_rust_config.lto, lto);
+    err!(current_rust_config.std_features, std_features);
 
     warn!(current_rust_config.channel, channel);
     warn!(current_rust_config.description, description);
