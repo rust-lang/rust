@@ -195,18 +195,13 @@ installed (`cargo install hyperfine`).
 
 ## Configuring `rust-analyzer`
 
-To configure `rust-analyzer` and the IDE for working on Miri, use one of the provided
-configuration files according to the instructions below.
-
+To configure `rust-analyzer` and the IDE for working on Miri, copy one of the provided
+configuration files according to the instructions below. You can also set up a symbolic
+link to keep the configuration in sync with our recommendations.
 
 ### Visual Studio Code
 
 Copy [`etc/rust_analyzer_vscode.json`] to `.vscode/settings.json` in the project root directory.
-
-> #### Hint
->
-> To keep the `rust-analyzer` configuration up-to-date, make a symbolic link to one 
-> of the provided files depending on the IDE you use.
 
 [`etc/rust_analyzer_vscode.json`]: https://github.com/rust-lang/miri/blob/master/etc/rust_analyzer_vscode.json
 
