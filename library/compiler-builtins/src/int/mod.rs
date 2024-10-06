@@ -313,6 +313,10 @@ pub(crate) trait HInt: Int {
     /// Integer that is double the bit width of the integer this trait is implemented for
     type D: DInt<H = Self> + MinInt;
 
+    // NB: some of the below methods could have default implementations (e.g. `widen_hi`), but for
+    // unknown reasons this can cause infinite recursion when optimizations are disabled. See
+    // <https://github.com/rust-lang/compiler-builtins/pull/707> for context.
+
     /// Widens (using default extension) the integer to have double bit width
     fn widen(self) -> Self::D;
     /// Widens (zero extension only) the integer to have double bit width. This is needed to get
