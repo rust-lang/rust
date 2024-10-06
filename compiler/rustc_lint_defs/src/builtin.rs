@@ -34,7 +34,6 @@ declare_lint_pass! {
         DEAD_CODE,
         DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
         DEPRECATED,
-        DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
         DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
@@ -3142,42 +3141,6 @@ declare_lint! {
     pub LARGE_ASSIGNMENTS,
     Warn,
     "detects large moves or copies",
-}
-
-declare_lint! {
-    /// The `deprecated_cfg_attr_crate_type_name` lint detects uses of the
-    /// `#![cfg_attr(..., crate_type = "...")]` and
-    /// `#![cfg_attr(..., crate_name = "...")]` attributes to conditionally
-    /// specify the crate type and name in the source code.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![cfg_attr(debug_assertions, crate_type = "lib")]
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    ///
-    /// ### Explanation
-    ///
-    /// The `#![crate_type]` and `#![crate_name]` attributes require a hack in
-    /// the compiler to be able to change the used crate type and crate name
-    /// after macros have been expanded. Neither attribute works in combination
-    /// with Cargo as it explicitly passes `--crate-type` and `--crate-name` on
-    /// the commandline. These values must match the value used in the source
-    /// code to prevent an error.
-    ///
-    /// To fix the warning use `--crate-type` on the commandline when running
-    /// rustc instead of `#![cfg_attr(..., crate_type = "...")]` and
-    /// `--crate-name` instead of `#![cfg_attr(..., crate_name = "...")]`.
-    pub DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-    Deny,
-    "detects usage of `#![cfg_attr(..., crate_type/crate_name = \"...\")]`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #91632 <https://github.com/rust-lang/rust/issues/91632>",
-    };
 }
 
 declare_lint! {

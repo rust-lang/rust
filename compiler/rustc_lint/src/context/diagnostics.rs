@@ -400,12 +400,6 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::CfgAttrNoAttributes => {
             lints::CfgAttrNoAttributes.decorate_lint(diag);
         }
-        BuiltinLintDiag::CrateTypeInCfgAttr => {
-            lints::CrateTypeInCfgAttr.decorate_lint(diag);
-        }
-        BuiltinLintDiag::CrateNameInCfgAttr => {
-            lints::CrateNameInCfgAttr.decorate_lint(diag);
-        }
         BuiltinLintDiag::MissingFragmentSpecifier => {
             lints::MissingFragmentSpecifier.decorate_lint(diag);
         }
