@@ -1312,6 +1312,7 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 /// # Example
 ///
 /// ```
+/// #![feature(split_pattern)]
 /// let slice = [10, 10, 40, 33, 30, 10, 40, 20];
 /// let pat = [10, 40];
 /// let mut iter = slice.split_pattern(&pat);
