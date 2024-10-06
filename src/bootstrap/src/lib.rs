@@ -470,7 +470,7 @@ impl Build {
             crate::core::metadata::build(&mut build);
         }
 
-        // Make a symbolic link so we can use a consistent directory in the documentation.
+        // Create symbolic link to use host sysroot from a consistent path (e.g., in the rust-analyzer config file).
         let build_triple = build.out.join(build.build);
         t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
