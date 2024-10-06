@@ -1770,7 +1770,7 @@ const fn len_utf16(code: u32) -> usize {
 /// Panics if the buffer is not large enough.
 /// A buffer of length four is large enough to encode any `char`.
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-#[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0"))]
 #[doc(hidden)]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]

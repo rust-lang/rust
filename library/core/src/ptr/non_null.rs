@@ -1508,7 +1508,6 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_non_null_ptr(self) -> NonNull<T> {
         self.cast()
     }

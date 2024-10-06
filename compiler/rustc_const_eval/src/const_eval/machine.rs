@@ -219,7 +219,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     }
 
     /// "Intercept" a function call, because we have something special to do for it.
-    /// All `#[rustc_do_not_const_check]` functions should be hooked here.
+    /// All `#[rustc_do_not_const_check]` functions MUST be hooked here.
     /// If this returns `Some` function, which may be `instance` or a different function with
     /// compatible arguments, then evaluation should continue with that function.
     /// If this returns `None`, the function call has been handled and the function has returned.

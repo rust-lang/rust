@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(const_likely))]
 #![cfg_attr(bootstrap, feature(strict_provenance))]
 #![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
@@ -22,7 +23,6 @@
 #![feature(const_eval_select)]
 #![feature(const_hash)]
 #![feature(const_heap)]
-#![feature(const_likely)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
 #![feature(const_option_ext)]

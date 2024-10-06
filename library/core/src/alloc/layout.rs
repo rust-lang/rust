@@ -66,7 +66,6 @@ impl Layout {
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
-    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
         if Layout::is_size_align_valid(size, align) {
             // SAFETY: Layout::is_size_align_valid checks the preconditions for this call.
@@ -127,7 +126,6 @@ impl Layout {
     #[rustc_const_stable(feature = "const_alloc_layout_unchecked", since = "1.36.0")]
     #[must_use]
     #[inline]
-    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -159,7 +157,7 @@ impl Layout {
     #[must_use = "this returns the minimum alignment, \
                   without modifying the layout"]
     #[inline]
-    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(ptr_alignment_type))]
     pub const fn align(&self) -> usize {
         self.align.as_usize()
     }

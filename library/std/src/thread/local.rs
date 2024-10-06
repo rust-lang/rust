@@ -237,7 +237,7 @@ impl<T: 'static> LocalKey<T> {
         reason = "recently added to create a key",
         issue = "none"
     )]
-    #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
+    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "thread_local_internals", issue = "none"))]
     pub const unsafe fn new(inner: fn(Option<&mut Option<T>>) -> *const T) -> LocalKey<T> {
         LocalKey { inner }
     }

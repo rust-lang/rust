@@ -16,7 +16,7 @@ macro_rules! try_opt {
     };
 }
 
-#[allow_internal_unstable(const_likely)]
+#[cfg_attr(bootstrap, allow_internal_unstable(const_likely))]
 macro_rules! unlikely {
     ($e: expr) => {
         intrinsics::unlikely($e)
@@ -1397,7 +1397,7 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 #[doc(hidden)]
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
-#[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_from_str", since = "1.82.0"))]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
@@ -1416,6 +1416,7 @@ fn from_str_radix_panic_rt(radix: u32) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn from_str_radix_panic(radix: u32) {
     // The only difference between these two functions is their panic message.
     intrinsics::const_eval_select((radix,), from_str_radix_panic_ct, from_str_radix_panic_rt);

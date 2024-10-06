@@ -31,6 +31,7 @@ where
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
     // FIXME(const-hack): once integer formatting in panics is possible, we
     // should use the same implementation at compiletime and runtime.
@@ -52,6 +53,7 @@ const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
     // FIXME(const-hack): once integer formatting in panics is possible, we
     // should use the same implementation at compiletime and runtime.
@@ -73,6 +75,7 @@ const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn slice_index_order_fail(index: usize, end: usize) -> ! {
     // FIXME(const-hack): once integer formatting in panics is possible, we
     // should use the same implementation at compiletime and runtime.
@@ -310,7 +313,6 @@ unsafe impl<T> SliceIndex<[T]> for usize {
 
 /// Because `IndexRange` guarantees `start <= end`, fewer checks are needed here
 /// than there are for a general `Range<usize>` (which might be `100..3`).
-#[rustc_const_unstable(feature = "const_index_range_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     type Output = [T];
 

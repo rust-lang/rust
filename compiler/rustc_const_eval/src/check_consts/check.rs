@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Deref;
 
+use rustc_attr::{ConstStability, StabilityLevel};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
@@ -28,8 +29,8 @@ use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
-use crate::const_eval::is_unstable_const_fn;
-use crate::errors::UnstableInStable;
+use crate::check_consts::is_safe_to_expose_on_stable_const_fn;
+use crate::errors;
 
 type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
@@ -274,19 +275,22 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     /// context.
     pub fn check_op_spanned<O: NonConstOp<'tcx>>(&mut self, op: O, span: Span) {
         let gate = match op.status_in_item(self.ccx) {
-            Status::Allowed => return,
-
-            Status::Unstable(gate) if self.tcx.features().enabled(gate) => {
-                let unstable_in_stable = self.ccx.is_const_stable_const_fn()
-                    && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate);
-                if unstable_in_stable {
-                    emit_unstable_in_stable_error(self.ccx, span, gate);
+            Status::Unstable { gate, safe_to_expose_on_stable, is_function_call }
+                if self.tcx.features().enabled(gate) =>
+            {
+                // Generally this is allowed since the feature gate is enabled -- except
+                // if this function wants to be safe-to-expose-on-stable.
+                if !safe_to_expose_on_stable
+                    && self.enforce_recursive_const_stability()
+                    && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate)
+                {
+                    emit_unstable_in_stable_exposed_error(self.ccx, span, gate, is_function_call);
                 }
 
                 return;
             }
 
-            Status::Unstable(gate) => Some(gate),
+            Status::Unstable { gate, .. } => Some(gate),
             Status::Forbidden => None,
         };
 
@@ -304,7 +308,13 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 self.error_emitted = Some(reported);
             }
 
-            ops::DiagImportance::Secondary => self.secondary_errors.push(err),
+            ops::DiagImportance::Secondary => {
+                self.secondary_errors.push(err);
+                self.tcx.dcx().span_delayed_bug(
+                    span,
+                    "compilation must fail when there is a secondary const checker error",
+                );
+            }
         }
     }
 
@@ -569,6 +579,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                     ty::FnPtr(..) => {
                         self.check_op(ops::FnCallIndirect);
+                        // We can get here without an error in miri-unleashed mode... might as well
+                        // skip the rest of the checks as well then.
                         return;
                     }
                     _ => {
@@ -612,6 +624,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // checks.
                     // FIXME(effects) we might consider moving const stability checks to typeck as well.
                     if tcx.features().effects() {
+                        // This skips the check below that ensures we only call `const fn`.
                         is_trait = true;
 
                         if let Ok(Some(instance)) =
@@ -637,6 +650,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 sym::const_trait_impl
                             }),
                         });
+                        // If we allowed this, we're in miri-unleashed mode, so we might
+                        // as well skip the remaining checks.
                         return;
                     }
                 }
@@ -650,28 +665,72 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // const-eval of the `begin_panic` fn assumes the argument is `&str`
                 if tcx.is_lang_item(callee, LangItem::BeginPanic) {
                     match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
-                        ty::Ref(_, ty, _) if ty.is_str() => return,
+                        ty::Ref(_, ty, _) if ty.is_str() => {}
                         _ => self.check_op(ops::PanicNonStr),
                     }
+                    // Allow this call, skip all the checks below.
+                    return;
                 }
 
                 // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
                 if tcx.has_attr(callee, sym::rustc_const_panic_str) {
                     match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
-                        {
-                            return;
+                            {}
+                        _ => {
+                            self.check_op(ops::PanicNonStr);
                         }
-                        _ => self.check_op(ops::PanicNonStr),
                     }
+                    // Allow this call, skip all the checks below.
+                    return;
                 }
 
                 // This can be called on stable via the `vec!` macro.
                 if tcx.is_lang_item(callee, LangItem::ExchangeMalloc) {
                     self.check_op(ops::HeapAllocation);
+                    // Allow this call, skip all the checks below.
                     return;
                 }
 
+                // Intrinsics are language primitives, not regular calls, so treat them separately.
+                if let Some(intrinsic) = tcx.intrinsic(callee) {
+                    match tcx.lookup_const_stability(callee) {
+                        None => {
+                            // Non-const intrinsic.
+                            self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
+                        }
+                        Some(ConstStability { feature: None, const_stable_indirect, .. }) => {
+                            // Intrinsic does not need a separate feature gate (we rely on the
+                            // regular stability checker). However, we have to worry about recursive
+                            // const stability.
+                            if !const_stable_indirect && self.enforce_recursive_const_stability() {
+                                self.dcx().emit_err(errors::UnmarkedIntrinsicExposed {
+                                    span: self.span,
+                                    def_path: self.tcx.def_path_str(callee),
+                                });
+                            }
+                        }
+                        Some(ConstStability {
+                            feature: Some(feature),
+                            level: StabilityLevel::Unstable { .. },
+                            const_stable_indirect,
+                            ..
+                        }) => {
+                            self.check_op(ops::IntrinsicUnstable {
+                                name: intrinsic.name,
+                                feature,
+                                const_stable_indirect,
+                            });
+                        }
+                        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
+                            // All good.
+                        }
+                    }
+                    // This completes the checks for intrinsics.
+                    return;
+                }
+
+                // Trait functions are not `const fn` so we have to skip them here.
                 if !tcx.is_const_fn_raw(callee) && !is_trait {
                     self.check_op(ops::FnCallNonConst {
                         caller,
@@ -681,66 +740,68 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         call_source,
                         feature: None,
                     });
+                    // If we allowed this, we're in miri-unleashed mode, so we might
+                    // as well skip the remaining checks.
                     return;
                 }
 
-                // If the `const fn` we are trying to call is not const-stable, ensure that we have
-                // the proper feature gate enabled.
-                if let Some((gate, implied_by)) = is_unstable_const_fn(tcx, callee) {
-                    trace!(?gate, "calling unstable const fn");
-                    if self.span.allows_unstable(gate) {
-                        return;
+                // Finally, stability for regular function calls -- this is the big one.
+                match tcx.lookup_const_stability(callee) {
+                    Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
+                        // All good.
                     }
-                    if let Some(implied_by_gate) = implied_by
-                        && self.span.allows_unstable(implied_by_gate)
-                    {
-                        return;
+                    None | Some(ConstStability { feature: None, .. }) => {
+                        // This doesn't need a separate const-stability check -- const-stability equals
+                        // regular stability, and regular stability is checked separately.
+                        // However, we *do* have to worry about *recursive* const stability.
+                        if self.enforce_recursive_const_stability()
+                            && !is_safe_to_expose_on_stable_const_fn(tcx, callee)
+                        {
+                            self.dcx().emit_err(errors::UnmarkedConstFnExposed {
+                                span: self.span,
+                                def_path: self.tcx.def_path_str(callee),
+                            });
+                        }
                     }
+                    Some(ConstStability {
+                        feature: Some(feature),
+                        level: StabilityLevel::Unstable { implied_by: implied_feature, .. },
+                        ..
+                    }) => {
+                        // An unstable const fn with a feature gate.
+                        let callee_safe_to_expose_on_stable =
+                            is_safe_to_expose_on_stable_const_fn(tcx, callee);
 
-                    // Calling an unstable function *always* requires that the corresponding gate
-                    // (or implied gate) be enabled, even if the function has
-                    // `#[rustc_allow_const_fn_unstable(the_gate)]`.
-                    let gate_enabled = |gate| tcx.features().enabled(gate);
-                    let feature_gate_enabled = gate_enabled(gate);
-                    let implied_gate_enabled = implied_by.is_some_and(gate_enabled);
-                    if !feature_gate_enabled && !implied_gate_enabled {
-                        self.check_op(ops::FnCallUnstable(callee, Some(gate)));
-                        return;
-                    }
+                        // We only honor `span.allows_unstable` aka `#[allow_internal_unstable]` if
+                        // the callee is safe to expose, to avoid bypassing recursive stability.
+                        if (self.span.allows_unstable(feature)
+                            || implied_feature.is_some_and(|f| self.span.allows_unstable(f)))
+                            && callee_safe_to_expose_on_stable
+                        {
+                            return;
+                        }
 
-                    // If this crate is not using stability attributes, or the caller is not claiming to be a
-                    // stable `const fn`, that is all that is required.
-                    if !self.ccx.is_const_stable_const_fn() {
-                        trace!("crate not using stability attributes or caller not stably const");
-                        return;
+                        // We can't use `check_op` to check whether the feature is enabled because
+                        // the logic is a bit different than elsewhere: local functions don't need
+                        // the feature gate, and there might be an "implied" gate that also suffices
+                        // to allow this.
+                        let feature_enabled = callee.is_local()
+                            || tcx.features().enabled(feature)
+                            || implied_feature.is_some_and(|f| tcx.features().enabled(f));
+                        // We do *not* honor this if we are in the "danger zone": we have to enforce
+                        // recursive const-stability and the callee is not safe-to-expose. In that
+                        // case we need `check_op` to do the check.
+                        let danger_zone = !callee_safe_to_expose_on_stable
+                            && self.enforce_recursive_const_stability();
+                        if danger_zone || !feature_enabled {
+                            self.check_op(ops::FnCallUnstable {
+                                def_id: callee,
+                                feature,
+                                safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
+                            });
+                        }
                     }
-
-                    // Otherwise, we are something const-stable calling a const-unstable fn.
-                    if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
-                        trace!("rustc_allow_const_fn_unstable gate enabled");
-                        return;
-                    }
-
-                    self.check_op(ops::FnCallUnstable(callee, Some(gate)));
-                    return;
                 }
-
-                // FIXME(ecstaticmorse); For compatibility, we consider `unstable` callees that
-                // have no `rustc_const_stable` attributes to be const-unstable as well. This
-                // should be fixed later.
-                let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
-                    && tcx.lookup_stability(callee).is_some_and(|s| s.is_unstable());
-                if callee_is_unstable_unmarked {
-                    trace!("callee_is_unstable_unmarked");
-                    // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
-                    // `extern` functions, and these have no way to get marked `const`. So instead we
-                    // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
-                    if self.ccx.is_const_stable_const_fn() || tcx.intrinsic(callee).is_some() {
-                        self.check_op(ops::FnCallUnstable(callee, None));
-                        return;
-                    }
-                }
-                trace!("permitting call");
             }
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
@@ -785,11 +846,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
 
-            TerminatorKind::Yield { .. } => self.check_op(ops::Coroutine(
-                self.tcx
-                    .coroutine_kind(self.body.source.def_id())
-                    .expect("Only expected to have a yield in a coroutine"),
-            )),
+            TerminatorKind::Yield { .. } => {
+                self.check_op(ops::Coroutine(
+                    self.tcx
+                        .coroutine_kind(self.body.source.def_id())
+                        .expect("Only expected to have a yield in a coroutine"),
+                ));
+            }
 
             TerminatorKind::CoroutineDrop => {
                 span_bug!(
@@ -819,8 +882,19 @@ fn is_int_bool_float_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char() || ty.is_floating_point()
 }
 
-fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
+fn emit_unstable_in_stable_exposed_error(
+    ccx: &ConstCx<'_, '_>,
+    span: Span,
+    gate: Symbol,
+    is_function_call: bool,
+) -> ErrorGuaranteed {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.dcx().emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
+    ccx.dcx().emit_err(errors::UnstableInStableExposed {
+        gate: gate.to_string(),
+        span,
+        attr_span,
+        is_function_call,
+        is_function_call2: is_function_call,
+    })
 }

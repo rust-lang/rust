@@ -3,7 +3,6 @@ struct Value;
 
 static settings_dir: String = format!("");
 //~^ ERROR cannot call non-const fn
-//~| ERROR is not yet stable as a const
 
 fn from_string(_: String) -> Value {
     Value

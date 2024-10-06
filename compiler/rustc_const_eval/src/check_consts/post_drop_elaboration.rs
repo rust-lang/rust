@@ -15,7 +15,7 @@ use crate::check_consts::rustc_allow_const_fn_unstable;
 /// elaboration.
 pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
     // Const-stable functions must always use the stable live drop checker...
-    if ccx.is_const_stable_const_fn() {
+    if ccx.enforce_recursive_const_stability() {
         // ...except if they have the feature flag set via `rustc_allow_const_fn_unstable`.
         return rustc_allow_const_fn_unstable(
             ccx.tcx,

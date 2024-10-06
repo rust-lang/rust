@@ -515,7 +515,7 @@ trait StructuralPartialEq {}
 
 const fn drop<T: ~const Destruct>(_: T) {}
 
-#[rustc_const_stable(feature = "const_eval_select", since = "1.0.0")]
+#[rustc_const_stable_indirect]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_intrinsic]
 const fn const_eval_select<ARG: Tuple, F, G, RET>(
