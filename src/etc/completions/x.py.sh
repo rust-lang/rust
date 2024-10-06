@@ -2741,7 +2741,7 @@ _x.py() {
             return 0
             ;;
         x.py__setup)
-            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [<PROFILE>|hook|vscode|link] [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [<PROFILE>|hook|editor|link] [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
