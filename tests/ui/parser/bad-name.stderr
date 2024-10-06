@@ -8,7 +8,9 @@ error: expected a pattern, found an expression
   --> $DIR/bad-name.rs:2:7
    |
 LL |   let x.y::<isize>.z foo;
-   |       ^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+   |       ^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 
 error: expected one of `(`, `.`, `::`, `:`, `;`, `=`, `?`, `|`, or an operator, found `foo`
   --> $DIR/bad-name.rs:2:22
