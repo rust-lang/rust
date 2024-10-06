@@ -240,7 +240,7 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
 
-        match Self::try_from_lit_or_param(tcx, ty, expr) {
+        match Self::try_from_lit(tcx, ty, expr) {
             Some(v) => v,
             None => ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst {
                 def: def.to_def_id(),
@@ -278,11 +278,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[instrument(skip(tcx), level = "debug")]
-    fn try_from_lit_or_param(
-        tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        expr: &'tcx hir::Expr<'tcx>,
-    ) -> Option<Self> {
+    fn try_from_lit(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, expr: &'tcx hir::Expr<'tcx>) -> Option<Self> {
         // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
         let expr = match &expr.kind {
@@ -321,7 +317,7 @@ impl<'tcx> Const<'tcx> {
                 Err(e) => {
                     tcx.dcx().span_delayed_bug(
                         expr.span,
-                        format!("Const::from_anon_const: couldn't lit_to_const {e:?}"),
+                        format!("Const::try_from_lit: couldn't lit_to_const {e:?}"),
                     );
                 }
             }

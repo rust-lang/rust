@@ -2016,13 +2016,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Lower a type from the HIR to our internal notion of a type given some extra data for diagnostics.
-    ///
-    /// Extra diagnostic data:
-    ///
-    /// 1. `borrowed`: Whether trait object types are borrowed like in `&dyn Trait`.
-    ///    Used to avoid emitting redundant errors.
-    /// 2. `in_path`: Whether the type appears inside of a path.
-    ///    Used to provide correct diagnostics for bare trait object types.
     #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let tcx = self.tcx();
