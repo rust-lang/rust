@@ -4,6 +4,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
 use tracing::{debug, debug_span, instrument};
@@ -78,10 +79,10 @@ impl CoverageCounters {
     /// counters or counter expressions for nodes and edges as required.
     pub(super) fn make_bcb_counters(
         basic_coverage_blocks: &CoverageGraph,
-        bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool,
+        bcb_needs_counter: &BitSet<BasicCoverageBlock>,
     ) -> Self {
-        let mut counters = MakeBcbCounters::new(basic_coverage_blocks);
-        counters.make_bcb_counters(bcb_needs_counter);
+        let mut counters = MakeBcbCounters::new(basic_coverage_blocks, bcb_needs_counter);
+        counters.make_bcb_counters();
 
         counters.coverage_counters
     }
@@ -268,17 +269,23 @@ impl CoverageCounters {
 struct MakeBcbCounters<'a> {
     coverage_counters: CoverageCounters,
     basic_coverage_blocks: &'a CoverageGraph,
+    bcb_needs_counter: &'a BitSet<BasicCoverageBlock>,
 }
 
 impl<'a> MakeBcbCounters<'a> {
-    fn new(basic_coverage_blocks: &'a CoverageGraph) -> Self {
+    fn new(
+        basic_coverage_blocks: &'a CoverageGraph,
+        bcb_needs_counter: &'a BitSet<BasicCoverageBlock>,
+    ) -> Self {
+        assert_eq!(basic_coverage_blocks.num_nodes(), bcb_needs_counter.domain_size());
         Self {
             coverage_counters: CoverageCounters::with_num_bcbs(basic_coverage_blocks.num_nodes()),
             basic_coverage_blocks,
+            bcb_needs_counter,
         }
     }
 
-    fn make_bcb_counters(&mut self, bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool) {
+    fn make_bcb_counters(&mut self) {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
 
         // Traverse the coverage graph, ensuring that every node that needs a
@@ -291,7 +298,7 @@ impl<'a> MakeBcbCounters<'a> {
         let mut traversal = TraverseCoverageGraphWithLoops::new(self.basic_coverage_blocks);
         while let Some(bcb) = traversal.next() {
             let _span = debug_span!("traversal", ?bcb).entered();
-            if bcb_needs_counter(bcb) {
+            if self.bcb_needs_counter.contains(bcb) {
                 self.make_node_counter_and_out_edge_counters(&traversal, bcb);
             }
         }
