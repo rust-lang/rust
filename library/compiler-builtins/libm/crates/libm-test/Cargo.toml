@@ -15,4 +15,4 @@ musl-bitwise-tests = ["rand"]
 libm = { path = "../.." }
 
 [build-dependencies]
-rand = { version = "0.6.5", optional = true }
+rand = { version = "0.8.5", optional = true }
