@@ -1415,7 +1415,7 @@ impl String {
 
         // SAFETY: Just reserved capacity for at least the length needed to encode `ch`.
         unsafe {
-            core::char::encode_utf8_raw_unchecked(ch as u32, self.as_mut_ptr().add(self.len()));
+            core::char::encode_utf8_raw_unchecked(ch as u32, self.vec.as_mut_ptr().add(self.len()));
             self.vec.set_len(len + ch_len);
         }
     }
