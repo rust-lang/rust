@@ -112,7 +112,8 @@ through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).
 Steps for setting up Eglot with rust-analyzer can be [found
 here](https://rust-analyzer.github.io/manual.html#eglot).  
 Having set up Emacs & Eglot for Rust development in general, you can use the
-configuration for rustc provided in [`src/etc/rust_analyzer_eglot.el`].  
+configuration for rustc provided in [`src/etc/rust_analyzer_eglot.el`](
+https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_eglot.el).  
 Simply copy the provided file to `.dir-locals.el` in the project root directory.  
 For more information on project-specific Eglot configuration, consult [the
 manual](https://www.gnu.org/software/emacs/manual/html_node/eglot/Project_002dspecific-configuration.html).
@@ -123,7 +124,7 @@ Helix comes with built-in LSP and rust-analyzer support.
 It can be configured through `languages.toml`, as described
 [here](https://docs.helix-editor.com/languages.html).  
 You can use the configuration for rustc provided in
-[`src/etc/rust_analyzer_helix.toml`].  
+[`src/etc/rust_analyzer_helix.toml`](https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_helix.toml).  
 Simply copy the provided file to `.helix/languages.toml` in the project root
 directory.
 
