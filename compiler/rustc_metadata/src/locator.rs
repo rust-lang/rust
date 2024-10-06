@@ -474,9 +474,8 @@ impl<'a> CrateLocator<'a> {
             0 => Ok(None),
             1 => Ok(Some(libraries.into_iter().next().unwrap().1)),
             _ => {
-                let mut libraries: Vec<_> = libraries.into_values().collect();
+                let libraries: Vec<_> = libraries.into_values().collect();
 
-                libraries.sort_by_cached_key(|lib| lib.source.paths().next().unwrap().clone());
                 let candidates = libraries
                     .iter()
                     .map(|lib| lib.source.paths().next().unwrap().clone())
