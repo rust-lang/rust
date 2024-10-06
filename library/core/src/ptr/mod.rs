@@ -645,7 +645,11 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// see the [module documentation][crate::ptr] for details.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")
+)]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
@@ -667,7 +671,11 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")
+)]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn dangling<T>() -> *const T {
     without_provenance(mem::align_of::<T>())
@@ -689,7 +697,11 @@ pub const fn dangling<T>() -> *const T {
 /// see the [module documentation][crate::ptr] for details.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")
+)]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
@@ -711,7 +723,11 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")
+)]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())

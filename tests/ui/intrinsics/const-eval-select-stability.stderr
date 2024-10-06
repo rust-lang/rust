@@ -4,7 +4,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     const_eval_select((), nothing, log);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
 LL | pub const fn hey() {

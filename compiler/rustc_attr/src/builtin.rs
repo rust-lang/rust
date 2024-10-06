@@ -274,10 +274,14 @@ pub fn find_stability(
 
 /// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
 /// attributes in `attrs`. Returns `None` if no stability attributes are found.
+///
+/// `inherited_feature_gate` says which feature gate this function should be under if it doesn't
+/// declare a gate itself, but has `#[rustc_const_stable_indirect]`.
 pub fn find_const_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
+    inherited_feature_gate: Option<Symbol>,
 ) -> Option<(ConstStability, Span)> {
     let mut const_stab: Option<(ConstStability, Span)> = None;
     let mut promotable = false;
@@ -351,8 +355,11 @@ pub fn find_const_stability(
                 }
             }
             _ => {
+                // `#[rustc_const_stable_indirect]` implicitly makes the function unstably const,
+                // inheriting the feature gate from `#[unstable]` if it xists, or without any
+                // feature gate otherwise.
                 let c = ConstStability {
-                    feature: None,
+                    feature: inherited_feature_gate,
                     safe_to_expose_on_stable: true,
                     promotable: false,
                     level: StabilityLevel::Unstable {

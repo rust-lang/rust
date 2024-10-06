@@ -4,7 +4,8 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL | const unsafe fn bar() -> u32 { foo() }
    |                                ^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+   = note: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
 LL | const unsafe fn bar() -> u32 { foo() }
@@ -21,7 +22,8 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL | const unsafe fn bar2() -> u32 { foo2() }
    |                                 ^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+   = note: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
 LL | const unsafe fn bar2() -> u32 { foo2() }
@@ -38,7 +40,8 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL | const unsafe fn bar2_gated() -> u32 { foo2_gated() }
    |                                       ^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this what you probably want to do)
+   = note: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
 LL | const unsafe fn bar2_gated() -> u32 { foo2_gated() }

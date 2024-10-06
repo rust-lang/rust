@@ -302,7 +302,6 @@ impl Layout {
     /// This can return at most `Alignment::MAX` (aka `isize::MAX + 1`)
     /// because the original size is at most `isize::MAX`.
     #[inline]
-    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     const fn size_rounded_up_to_custom_align(&self, align: Alignment) -> usize {
         // SAFETY:
         // Rounded up value is:
@@ -507,7 +506,6 @@ impl Layout {
         return inner(T::LAYOUT, n);
 
         #[inline]
-        #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
         const fn inner(element_layout: Layout, n: usize) -> Result<Layout, LayoutError> {
             let Layout { size: element_size, align } = element_layout;
 

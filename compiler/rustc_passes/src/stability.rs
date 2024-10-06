@@ -162,19 +162,32 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         let stab = attr::find_stability(self.tcx.sess, attrs, item_sp);
-        let const_stab = attr::find_const_stability(self.tcx.sess, attrs, item_sp);
+        let const_stab = attr::find_const_stability(
+            self.tcx.sess,
+            attrs,
+            item_sp,
+            // Compute the feature gate we inherit if this
+            // doesn't have its own feature gate.
+            self.parent_const_stab.and_then(|c| c.feature).or_else(|| {
+                // Infer the const feature gate from the regular feature gate,
+                // but only if that regular gate is unstable.
+                if let Some((s, _)) = stab {
+                    s.is_unstable().then_some(s.feature)
+                } else if inherit_deprecation.yes()
+                    && let Some(parent_stab) = self.parent_stab
+                    && parent_stab.is_unstable()
+                {
+                    Some(parent_stab.feature)
+                } else {
+                    None
+                }
+            }),
+        );
         let body_stab = attr::find_body_stability(self.tcx.sess, attrs);
-        let mut const_span = None;
-
-        let const_stab = const_stab.map(|(const_stab, const_span_node)| {
-            self.index.const_stab_map.insert(def_id, const_stab);
-            const_span = Some(const_span_node);
-            const_stab
-        });
 
         // If the current node is a function, has const stability attributes and if it doesn not have an intrinsic ABI,
         // check if the function/method is const or the parent impl block is const
-        if let (Some(const_span), Some(fn_sig)) = (const_span, fn_sig)
+        if let (Some((_, const_span)), Some(fn_sig)) = (const_stab, fn_sig)
             && fn_sig.header.abi != Abi::RustIntrinsic
             && !fn_sig.header.is_const()
             && (!self.in_trait_impl || !self.tcx.is_const_fn_raw(def_id.to_def_id()))
@@ -183,6 +196,22 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 .dcx()
                 .emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span, const_span });
         }
+
+        // If this is marked const *stable*, it must also be regular-stable.
+        if let Some((const_stab, const_span)) = const_stab
+            && let Some(fn_sig) = fn_sig
+            && const_stab.is_const_stable()
+            && !stab.is_some_and(|(s, _)| s.is_stable())
+        {
+            self.tcx
+                .dcx()
+                .emit_err(errors::ConstStableNotStable { fn_sig_span: fn_sig.span, const_span });
+        }
+
+        let const_stab = const_stab.map(|(const_stab, _span)| {
+            self.index.const_stab_map.insert(def_id, const_stab);
+            const_stab
+        });
 
         // `impl const Trait for Type` items forward their const stability to their
         // immediate children.
@@ -273,8 +302,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 }
             }
         }
-
-        // Every `const fn` that has stability should also have const-stability.
 
         self.recurse_with_stability_attrs(
             depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
@@ -724,7 +751,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
                     let stab = attr::find_stability(self.tcx.sess, attrs, item.span);
-                    let const_stab = attr::find_const_stability(self.tcx.sess, attrs, item.span);
+                    // FIXME: this will give a different result than the normal stability
+                    // computation, since we don't inherit stability from the parent. But that's
+                    // true even for `stab` above so it's probably okay?
+                    let const_stab = attr::find_const_stability(
+                        self.tcx.sess,
+                        attrs,
+                        item.span,
+                        stab.map(|(s, _)| s.feature),
+                    );
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

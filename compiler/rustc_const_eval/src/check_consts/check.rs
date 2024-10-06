@@ -288,7 +288,9 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 if self.is_safe_to_expose_on_stable_const_fn()
                     && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate)
                 {
-                    return Some(emit_unstable_in_stable_exposed_error(self.ccx, span, gate));
+                    return Some(emit_unstable_in_stable_exposed_error(
+                        self.ccx, span, gate, /* is_function_call */ false,
+                    ));
                 }
 
                 return None;
@@ -740,6 +742,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     self.ccx,
                                     self.span,
                                     callee_gate,
+                                    /* is_function_call */ tcx.intrinsic(callee).is_none(),
                                 );
                             }
                         } else {
@@ -873,8 +876,15 @@ fn emit_unstable_in_stable_exposed_error(
     ccx: &ConstCx<'_, '_>,
     span: Span,
     gate: Symbol,
+    is_function_call: bool,
 ) -> ErrorGuaranteed {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.dcx().emit_err(errors::UnstableInStableExposed { gate: gate.to_string(), span, attr_span })
+    ccx.dcx().emit_err(errors::UnstableInStableExposed {
+        gate: gate.to_string(),
+        span,
+        attr_span,
+        is_function_call,
+        is_function_call2: is_function_call,
+    })
 }

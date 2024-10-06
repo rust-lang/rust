@@ -45,16 +45,24 @@ const fn foo2_gated() -> u32 { 42 }
 // can't call non-min_const_fn
 const fn bar2_gated() -> u32 { foo2_gated() } //~ ERROR cannot use `#[feature(foo2)]`
 
-// Functions with the `rustc_const_stable_indirect` attribute
-// are checked like stable functions.
+// Functions without any attribute are checked like stable functions,
+// even if they are in a stable module.
+mod stable {
+    #![stable(feature = "rust1", since = "1.0.0")]
+
+    pub(crate) const fn bar2_gated_stable_indirect() -> u32 { super::foo2_gated() } //~ ERROR cannot use `#[feature(foo2)]`
+}
+// And same for const-unstable functions that are marked as "stable_indirect".
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature="foo", issue = "none")]
 #[rustc_const_stable_indirect]
-const fn bar2_gated_stable_indirect() -> u32 { foo2_gated() } //~ ERROR cannot use `#[feature(foo2)]`
+const fn stable_indirect() -> u32 { foo2_gated() } //~ ERROR cannot use `#[feature(foo2)]`
 
 // These functiuons *can* be called from fully stable functions.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
 const fn bar2_gated_exposed() -> u32 {
-    bar2_gated_stable_indirect()
+    stable::bar2_gated_stable_indirect() + stable_indirect()
 }
 
 fn main() {}
