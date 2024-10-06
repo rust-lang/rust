@@ -121,8 +121,6 @@ where
     value.try_fold_with(&mut FullTypeResolver { infcx })
 }
 
-// N.B. This type is not public because the protocol around checking the
-// `err` field is not enforceable otherwise.
 struct FullTypeResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
