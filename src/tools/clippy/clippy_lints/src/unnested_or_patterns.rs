@@ -234,7 +234,7 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
         // In the case of only two patterns, replacement adds net characters.
         | Ref(_, Mutability::Not)
         // Dealt with elsewhere.
-        | Or(_) | Paren(_) | Deref(_) => false,
+        | Or(_) | Paren(_) | Deref(_) | Guard(..) => false,
         // Transform `box x | ... | box y` into `box (x | y)`.
         //
         // The cases below until `Slice(...)` deal with *singleton* products.

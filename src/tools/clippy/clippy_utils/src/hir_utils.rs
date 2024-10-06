@@ -1088,6 +1088,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_pat(pat);
                 std::mem::discriminant(&mu).hash(&mut self.s);
             },
+            PatKind::Guard(pat, guard) => {
+                self.hash_pat(pat);
+                self.hash_expr(guard);
+            },
             PatKind::Slice(l, m, r) => {
                 for pat in l {
                     self.hash_pat(pat);
