@@ -1,17 +1,36 @@
-error[E0308]: mismatched types
-  --> $DIR/bad-generic-in-copy-impl.rs:3:13
+error: the constant `1` is not of type `usize`
+  --> $DIR/bad-generic-in-copy-impl.rs:3:8
    |
 LL |     x: [u8; SIZE],
-   |             ^^^^ expected `usize`, found `u32`
+   |        ^^^^^^^^^^ expected `usize`, found `u32`
 
-error[E0308]: mismatched types
-  --> $DIR/bad-generic-in-copy-impl.rs:3:13
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/bad-generic-in-copy-impl.rs:1:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^
+LL | pub struct Foo {
+LL |     x: [u8; SIZE],
+   |     ------------- this field does not implement `Copy`
+   |
+note: the `Copy` impl for `[u8; 1]` requires that `the constant `1` has type `usize``
+  --> $DIR/bad-generic-in-copy-impl.rs:3:8
    |
 LL |     x: [u8; SIZE],
-   |             ^^^^ expected `usize`, found `u32`
+   |        ^^^^^^^^^^
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the constant `1` is not of type `usize`
+  --> $DIR/bad-generic-in-copy-impl.rs:3:5
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL | #[derive(Copy, Clone)]
+   |                ----- in this derive macro expansion
+LL | pub struct Foo {
+LL |     x: [u8; SIZE],
+   |     ^^^^^^^^^^^^^ expected `usize`, found `u32`
+   |
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0204`.

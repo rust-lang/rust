@@ -85,36 +85,6 @@ help: if this is a dyn-compatible trait, use `dyn`
 LL |     fn fnc<const N: Trait = u32>(&self) -> dyn Trait {
    |                                            +++
 
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:22
-   |
-LL | trait Trait<const N: Trait = bar> {
-   |                      ^^^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: if this is a dyn-compatible trait, use `dyn`
-   |
-LL | trait Trait<const N: dyn Trait = bar> {
-   |                      +++
-
-error[E0038]: the trait `Trait` cannot be made into an object
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:22
-   |
-LL | trait Trait<const N: Trait = bar> {
-   |                      ^^^^^ `Trait` cannot be made into an object
-   |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:11:8
-   |
-LL | trait Trait<const N: Trait = bar> {
-   |       ----- this trait cannot be made into an object...
-...
-LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
-   |        ^^^ ...because method `fnc` has generic type parameters
-   = help: consider moving `fnc` to another trait
-
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:13
    |
@@ -145,36 +115,6 @@ help: you might have meant to use `Self` to refer to the implementing type
 LL |     fn fnc<const N: Trait = u32>(&self) -> Self {
    |                                            ~~~~
 
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:11:21
-   |
-LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
-   |                     ^^^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: if this is a dyn-compatible trait, use `dyn`
-   |
-LL |     fn fnc<const N: dyn Trait = u32>(&self) -> Trait {
-   |                     +++
-
-error[E0038]: the trait `Trait` cannot be made into an object
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:11:21
-   |
-LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
-   |                     ^^^^^ `Trait` cannot be made into an object
-   |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:11:8
-   |
-LL | trait Trait<const N: Trait = bar> {
-   |       ----- this trait cannot be made into an object...
-...
-LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
-   |        ^^^ ...because method `fnc` has generic type parameters
-   = help: consider moving `fnc` to another trait
-
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:13
    |
@@ -192,7 +132,7 @@ LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
    = help: consider moving `fnc` to another trait
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 11 previous errors; 5 warnings emitted
+error: aborting due to 9 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0038, E0391, E0403, E0423, E0425.
 For more information about an error, try `rustc --explain E0038`.

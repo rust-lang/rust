@@ -2379,14 +2379,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             &anon.value
         };
-        let maybe_res =
-            self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
-        debug!("res={:?}", maybe_res);
-        // FIXME(min_generic_const_args): for now we only lower params to ConstArgKind::Path
-        if let Some(res) = maybe_res
-            && let Res::Def(DefKind::ConstParam, _) = res
-            && let ExprKind::Path(qself, path) = &expr.kind
-        {
+        if let ExprKind::Path(qself, path) = &expr.kind {
             let qpath = self.lower_qpath(
                 expr.id,
                 qself,
