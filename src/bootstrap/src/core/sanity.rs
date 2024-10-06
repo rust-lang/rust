@@ -383,5 +383,13 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
         cmd_finder.must_have(s);
     }
 
-    warn_old_master_branch(&build.config.git_config(), &build.config.src);
+    // this warning is useless in CI,
+    // and CI probably won't have the right branches anyway.
+    if !build_helper::ci::CiEnv::is_ci() {
+        if let Err(e) = warn_old_master_branch(&build.config.git_config(), &build.config.src)
+            .map_err(|e| e.to_string())
+        {
+            eprintln!("unable to check if upstream branch is old: {e}");
+        }
+    }
 }
