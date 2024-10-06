@@ -692,10 +692,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     BindingMode(def_br, Mutability::Mut)
                 } else {
                     // `mut` resets binding mode on edition <= 2021
-                    self.typeck_results
+                    *self
+                        .typeck_results
                         .borrow_mut()
                         .rust_2024_migration_desugared_pats_mut()
-                        .insert(pat_info.top_info.hir_id);
+                        .entry(pat_info.top_info.hir_id)
+                        .or_default() |= pat.span.at_least_rust_2024();
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
@@ -2206,14 +2208,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Reset binding mode on old editions
-
             if pat_info.binding_mode != ByRef::No {
                 pat_info.binding_mode = ByRef::No;
-
-                self.typeck_results
+                *self
+                    .typeck_results
                     .borrow_mut()
                     .rust_2024_migration_desugared_pats_mut()
-                    .insert(pat_info.top_info.hir_id);
+                    .entry(pat_info.top_info.hir_id)
+                    .or_default() |= pat.span.at_least_rust_2024();
             }
         }
 
@@ -2264,6 +2266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (err, err)
             }
         };
+
         self.check_pat(inner, inner_ty, pat_info);
         ref_ty
     }

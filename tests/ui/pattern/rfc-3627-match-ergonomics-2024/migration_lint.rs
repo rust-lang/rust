@@ -2,7 +2,7 @@
 //@ run-rustfix
 //@ rustfix-only-machine-applicable
 //@ aux-build:migration_lint_macros.rs
-#![feature(mut_ref, ref_pat_eat_one_layer_2024)]
+#![feature(mut_ref, min_match_ergonomics_2024)]
 #![allow(incomplete_features, unused)]
 #![deny(rust_2024_incompatible_pat)]
 
@@ -114,14 +114,13 @@ fn main() {
         assert_type_eq(c, &&0u32);
     }
 
-    #[warn(rust_2024_incompatible_pat)]
     match &(Some(0), Some(0)) {
         // The two patterns are the same syntactically, but because they're defined in different
         // editions they don't mean the same thing.
         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
-            //~^ WARN: the semantics of this pattern will change in edition 2024
+            //~^ ERROR: patterns are not allowed to reset the default binding mode
             assert_type_eq(x, 0u32);
-            assert_type_eq(y, &0u32);
+            assert_type_eq(y, 0u32);
         }
         _ => {}
     }

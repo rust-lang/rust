@@ -983,6 +983,8 @@ pub(crate) struct Rust2024IncompatiblePat {
 
 pub(crate) struct Rust2024IncompatiblePatSugg {
     pub(crate) suggestion: Vec<(Span, String)>,
+    /// Whether the incompatibility is a hard error because a relevant span is in edition 2024.
+    pub(crate) is_hard_error: bool,
 }
 
 impl Subdiagnostic for Rust2024IncompatiblePatSugg {

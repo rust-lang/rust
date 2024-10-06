@@ -120,21 +120,13 @@ help: desugar the match ergonomics
 LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
    |            +                         +             +     +++
 
-warning: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:121:9
+error: patterns are not allowed to reset the default binding mode in rust 2024
+  --> $DIR/migration_lint.rs:120:9
    |
 LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/migration_lint.rs:117:12
-   |
-LL |     #[warn(rust_2024_incompatible_pat)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: desugar the match ergonomics
-   |
-LL |         &(Some(mut x), migration_lint_macros::mixed_edition_pat!(ref y)) => {
-   |         +                                                        +++
+   |         -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         help: desugar the match ergonomics: `&`
 
-error: aborting due to 13 previous errors; 1 warning emitted
+error: aborting due to 14 previous errors
 
