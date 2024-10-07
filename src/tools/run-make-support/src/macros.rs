@@ -73,7 +73,7 @@ macro_rules! impl_common_helpers {
             /// Configuration for the child process’s standard input (stdin) handle.
             ///
             /// See [`std::process::Command::stdin`].
-            pub fn stdin<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self {
+            pub fn stdin<T: Into<::std::process::Stdio>>(&mut self, cfg: T) -> &mut Self {
                 self.cmd.stdin(cfg);
                 self
             }
@@ -81,7 +81,7 @@ macro_rules! impl_common_helpers {
             /// Configuration for the child process’s standard output (stdout) handle.
             ///
             /// See [`std::process::Command::stdout`].
-            pub fn stdout<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self {
+            pub fn stdout<T: Into<::std::process::Stdio>>(&mut self, cfg: T) -> &mut Self {
                 self.cmd.stdout(cfg);
                 self
             }
@@ -89,7 +89,7 @@ macro_rules! impl_common_helpers {
             /// Configuration for the child process’s standard error (stderr) handle.
             ///
             /// See [`std::process::Command::stderr`].
-            pub fn stderr<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self {
+            pub fn stderr<T: Into<::std::process::Stdio>>(&mut self, cfg: T) -> &mut Self {
                 self.cmd.stderr(cfg);
                 self
             }
