@@ -749,7 +749,7 @@ impl<'tcx> InferCtxt<'tcx> {
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
-        in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
+        in_regions: Lrc<Vec<ty::Region<'tcx>>>,
     ) {
         self.inner.borrow_mut().unwrap_region_constraints().member_constraint(
             key,

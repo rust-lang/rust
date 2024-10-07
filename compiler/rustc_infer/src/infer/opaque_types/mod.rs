@@ -358,7 +358,15 @@ impl<'tcx> InferCtxt<'tcx> {
         // not currently sound until we have existential regions.
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
-            op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
+            op: |r| {
+                self.member_constraint(
+                    opaque_type_key,
+                    span,
+                    concrete_ty,
+                    r,
+                    choice_regions.clone(),
+                )
+            },
         });
     }
 }
