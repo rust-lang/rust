@@ -75,7 +75,6 @@ impl Layout {
         }
     }
 
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
     const fn is_size_align_valid(size: usize, align: usize) -> bool {
         let Some(align) = Alignment::new(align) else { return false };
         if size > Self::max_size_for_align(align) {
@@ -85,7 +84,6 @@ impl Layout {
     }
 
     #[inline(always)]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
     #[rustc_allow_const_fn_unstable(unchecked_math)]
     const fn max_size_for_align(align: Alignment) -> usize {
         // (power-of-two implies align != 0.)

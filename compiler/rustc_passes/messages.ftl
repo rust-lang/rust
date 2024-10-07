@@ -456,7 +456,6 @@ passes_maybe_string_interpolation = you might have meant to use string interpola
 passes_missing_const_err =
     attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
     .help = make the function or method const
-    .label = attribute specified here
 
 passes_missing_const_stab_attr =
     {$descr} has missing const stability attribute

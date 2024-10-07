@@ -16,9 +16,9 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
+use rustc_span::Span;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
 
 use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -92,13 +92,15 @@ impl Stability {
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
-    /// This can be `None` for functions that are not even const-unstable, but
-    /// are tracked here for the purpose of `safe_to_expose_on_stable`.
+    /// Says whether this function has an explicit `rustc_const_(un)stable` attribute.
+    /// If `false`, the const stability information was inferred from the regular
+    /// stability information.
+    pub has_const_stable_attr: bool,
+    /// This can be `None` for functions that are not const-callable from outside code under any
+    /// feature gate, but are tracked here for the purpose of `safe_to_expose_on_stable`.
     pub feature: Option<Symbol>,
-    /// A function that is marked as "safe to expose on stable" must not use any unstable const
-    /// language features or intrinsics, and all the functions it calls must also be safe to expose
-    /// on stable. If `level` is `Stable`, this must be `true`.
-    pub safe_to_expose_on_stable: bool,
+    /// This is true iff the `const_stable_indirect` attribute is present.
+    pub const_stable_indirect: bool,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
 }
@@ -275,22 +277,21 @@ pub fn find_stability(
 /// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
 /// attributes in `attrs`. Returns `None` if no stability attributes are found.
 ///
-/// `inherited_feature_gate` says which feature gate this function should be under if it doesn't
-/// declare a gate itself, but has `#[rustc_const_stable_indirect]`.
+/// The second component is the `const_stable_indirect` attribute if present, which can be meaningful
+/// even if there is no `rustc_const_stable`/`rustc_const_unstable`.
 pub fn find_const_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-    inherited_feature_gate: Option<Symbol>,
-) -> Option<(ConstStability, Span)> {
+) -> (Option<(ConstStability, Span)>, Option<Span>) {
     let mut const_stab: Option<(ConstStability, Span)> = None;
     let mut promotable = false;
-    let mut const_stable_indirect = false;
+    let mut const_stable_indirect = None;
 
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_promotable => promotable = true,
-            sym::rustc_const_stable_indirect => const_stable_indirect = true,
+            sym::rustc_const_stable_indirect => const_stable_indirect = Some(attr.span),
             sym::rustc_const_unstable => {
                 if const_stab.is_some() {
                     sess.dcx()
@@ -302,8 +303,9 @@ pub fn find_const_stability(
                     const_stab = Some((
                         ConstStability {
                             level,
+                            has_const_stable_attr: true,
                             feature: Some(feature),
-                            safe_to_expose_on_stable: false,
+                            const_stable_indirect: false,
                             promotable: false,
                         },
                         attr.span,
@@ -320,8 +322,9 @@ pub fn find_const_stability(
                     const_stab = Some((
                         ConstStability {
                             level,
+                            has_const_stable_attr: true,
                             feature: Some(feature),
-                            safe_to_expose_on_stable: true,
+                            const_stable_indirect: false,
                             promotable: false,
                         },
                         attr.span,
@@ -343,11 +346,11 @@ pub fn find_const_stability(
             }
         }
     }
-    if const_stable_indirect {
+    if const_stable_indirect.is_some() {
         match &mut const_stab {
             Some((stab, _)) => {
                 if stab.is_const_unstable() {
-                    stab.safe_to_expose_on_stable = true;
+                    stab.const_stable_indirect = true;
                 } else {
                     _ = sess.dcx().emit_err(session_diagnostics::RustcConstStableIndirectPairing {
                         span: item_sp,
@@ -355,26 +358,57 @@ pub fn find_const_stability(
                 }
             }
             _ => {
-                // `#[rustc_const_stable_indirect]` implicitly makes the function unstably const,
-                // inheriting the feature gate from `#[unstable]` if it xists, or without any
-                // feature gate otherwise.
-                let c = ConstStability {
-                    feature: inherited_feature_gate,
-                    safe_to_expose_on_stable: true,
-                    promotable: false,
-                    level: StabilityLevel::Unstable {
-                        reason: UnstableReason::Default,
-                        issue: None,
-                        is_soft: false,
-                        implied_by: None,
-                    },
-                };
-                const_stab = Some((c, DUMMY_SP));
+                // We ignore the `#[rustc_const_stable_indirect]` here, it should be picked up by
+                // the `default_const_unstable` logic.
             }
         }
     }
 
-    const_stab
+    (const_stab, const_stable_indirect)
+}
+
+/// Called for `fn` that don't have a const stability.
+///
+/// `effective_reg_stability` must be the effecive regular stability, i.e. after applying all the
+/// rules about "inherited" stability.
+pub fn default_const_stability(
+    _sess: &Session,
+    is_const_fn: bool,
+    const_stable_indirect: bool,
+    effective_reg_stability: Option<&Stability>,
+) -> Option<ConstStability> {
+    // Intrinsics are *not* `const fn` here, and yet we want to add a default const stability
+    // for them if they are marked `const_stable_indirect`.
+    if (is_const_fn || const_stable_indirect)
+        && let Some(reg_stability) = effective_reg_stability
+        && reg_stability.level.is_unstable()
+    {
+        // This has a feature gate, reuse that for const stability.
+        // We only want to do this if it is an unstable feature gate.
+        Some(ConstStability {
+            feature: Some(reg_stability.feature),
+            has_const_stable_attr: false,
+            const_stable_indirect,
+            promotable: false,
+            level: reg_stability.level,
+        })
+    } else if const_stable_indirect {
+        // Make it const-unstable without a feature gate, to record the `const_stable_indirect`.
+        Some(ConstStability {
+            feature: None,
+            has_const_stable_attr: false,
+            const_stable_indirect,
+            promotable: false,
+            level: StabilityLevel::Unstable {
+                reason: UnstableReason::Default,
+                issue: None,
+                is_soft: false,
+                implied_by: None,
+            },
+        })
+    } else {
+        None
+    }
 }
 
 /// Collects stability info from `rustc_default_body_unstable` attributes in `attrs`.

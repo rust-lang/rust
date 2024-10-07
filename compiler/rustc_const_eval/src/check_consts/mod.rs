@@ -117,18 +117,21 @@ pub fn is_safe_to_expose_on_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> b
                 // Intrinsics default to "not exposed on stable".
                 return false;
             }
-            // We allow calling unmarked local functions *in the current crate*. For the cross-crate
-            // case we require the other crate to explicitly add `#[rustc_const_stable_indirect]` as
-            // a promise that this function is meant to be indirectly const-stable, which will make
-            // `lookup_const_stability` return `Some`.
+            // We allow calling unmarked local functions *in the current crate*. This covers in
+            // particular all `const fn` whose inherited regular stability is `stable`, which means
+            // we don't infer any const stability for them. For the cross-crate case we require the
+            // other crate to explicitly add `#[rustc_const_stable_indirect]` as a promise that this
+            // function is meant to be indirectly const-stable, which will make
+            // `lookup_const_stability` return `Some`. This ensures that the other crate checked
+            // recursive const vailidty on that function, even if the other crate is not using
+            // `staged_api`.
             def_id.is_local()
         }
         Some(stab) => {
-            // `safe_to_expose_on_stable` implies `is_const_stable`.
-            if stab.is_const_stable() {
-                assert!(stab.safe_to_expose_on_stable);
-            }
-            stab.safe_to_expose_on_stable
+            stab.is_const_stable() || stab.const_stable_indirect ||
+                // Non-intrinsic `const fn` without an explicit const stability attribute (i.e.,
+                // with only the implied attribute) are safe to expose on stable.
+                (!stab.has_const_stable_attr && tcx.intrinsic(def_id).is_none())
         }
     }
 }

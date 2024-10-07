@@ -55,7 +55,6 @@ impl Alignment {
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[cfg_attr(bootstrap, rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070"))]
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
     pub const fn new(align: usize) -> Option<Self> {
         if align.is_power_of_two() {
             // SAFETY: Just checked it only has one bit set

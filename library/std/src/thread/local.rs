@@ -238,7 +238,6 @@ impl<T: 'static> LocalKey<T> {
         issue = "none"
     )]
     #[cfg_attr(bootstrap, rustc_const_unstable(feature = "thread_local_internals", issue = "none"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // exposed via macro
     pub const unsafe fn new(inner: fn(Option<&mut Option<T>>) -> *const T) -> LocalKey<T> {
         LocalKey { inner }
     }

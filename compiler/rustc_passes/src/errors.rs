@@ -1535,8 +1535,6 @@ pub(crate) struct MissingConstErr {
     #[primary_span]
     #[help]
     pub fn_sig_span: Span,
-    #[label]
-    pub const_span: Span,
 }
 
 #[derive(Diagnostic)]

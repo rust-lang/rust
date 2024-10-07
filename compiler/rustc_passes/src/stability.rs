@@ -26,7 +26,6 @@ use rustc_session::lint;
 use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPRECATED};
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
-use rustc_target::spec::abi::Abi;
 use tracing::{debug, info};
 
 use crate::errors;
@@ -106,6 +105,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         def_id: LocalDefId,
         item_sp: Span,
         fn_sig: Option<&'tcx hir::FnSig<'tcx>>,
+        is_foreign_item: bool,
         kind: AnnotationKind,
         inherit_deprecation: InheritDeprecation,
         inherit_const_stability: InheritConstStability,
@@ -162,40 +162,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         let stab = attr::find_stability(self.tcx.sess, attrs, item_sp);
-        let const_stab = attr::find_const_stability(
-            self.tcx.sess,
-            attrs,
-            item_sp,
-            // Compute the feature gate we inherit if this
-            // doesn't have its own feature gate.
-            self.parent_const_stab.and_then(|c| c.feature).or_else(|| {
-                // Infer the const feature gate from the regular feature gate,
-                // but only if that regular gate is unstable.
-                if let Some((s, _)) = stab {
-                    s.is_unstable().then_some(s.feature)
-                } else if inherit_deprecation.yes()
-                    && let Some(parent_stab) = self.parent_stab
-                    && parent_stab.is_unstable()
-                {
-                    Some(parent_stab.feature)
-                } else {
-                    None
-                }
-            }),
-        );
+        let (const_stab, const_stable_indirect) =
+            attr::find_const_stability(self.tcx.sess, attrs, item_sp);
         let body_stab = attr::find_body_stability(self.tcx.sess, attrs);
-
-        // If the current node is a function, has const stability attributes and if it doesn not have an intrinsic ABI,
-        // check if the function/method is const or the parent impl block is const
-        if let (Some((_, const_span)), Some(fn_sig)) = (const_stab, fn_sig)
-            && fn_sig.header.abi != Abi::RustIntrinsic
-            && !fn_sig.header.is_const()
-            && (!self.in_trait_impl || !self.tcx.is_const_fn_raw(def_id.to_def_id()))
-        {
-            self.tcx
-                .dcx()
-                .emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span, const_span });
-        }
 
         // If this is marked const *stable*, it must also be regular-stable.
         if let Some((const_stab, const_span)) = const_stab
@@ -219,7 +188,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             debug!("annotate: const_stab not found, parent = {:?}", self.parent_const_stab);
             if let Some(parent) = self.parent_const_stab {
                 if parent.is_const_unstable() {
-                    self.index.const_stab_map.insert(def_id, parent);
+                    let mut inherited = parent;
+                    // We have to manually apply `const_stable_indirect` here... this is such a mess.
+                    if const_stable_indirect.is_some() {
+                        inherited.const_stable_indirect = true;
+                    }
+                    self.index.const_stab_map.insert(def_id, inherited);
                 }
             }
         }
@@ -301,6 +275,34 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                     self.index.stab_map.insert(def_id, stab);
                 }
             }
+        }
+
+        // If a `fn` ends up without const stability annotation, potentially add a default.
+        if let Some(fn_sig) = fn_sig
+            && !self.index.const_stab_map.contains_key(&def_id)
+        {
+            let stab = self.index.stab_map.get(&def_id);
+            if let Some(const_stab) = attr::default_const_stability(
+                self.tcx.sess,
+                fn_sig.header.is_const(),
+                const_stable_indirect.is_some(),
+                stab,
+            ) {
+                self.index.const_stab_map.insert(def_id, const_stab);
+            }
+        }
+
+        // If the current node is a function with const stability attributes (directly given or
+        // implied), check if the function/method is const or the parent impl block is const.
+        if let Some(fn_sig) = fn_sig
+            && !fn_sig.header.is_const()
+            // We have to exclude foreign items as they might be intrinsics. Sadly we can't check
+            // their ABI; `fn_sig.abi` is *not* correct for foreign functions.
+            && !is_foreign_item
+            && self.index.const_stab_map.contains_key(&def_id)
+            && (!self.in_trait_impl || !self.tcx.is_const_fn_raw(def_id.to_def_id()))
+        {
+            self.tcx.dcx().emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span });
         }
 
         self.recurse_with_stability_attrs(
@@ -385,6 +387,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                         ctor_def_id,
                         i.span,
                         None,
+                        /* is_foreign_item */ false,
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
                         InheritConstStability::No,
@@ -403,6 +406,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             i.owner_id.def_id,
             i.span,
             fn_sig,
+            /* is_foreign_item */ false,
             kind,
             InheritDeprecation::Yes,
             const_stab_inherit,
@@ -422,6 +426,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             ti.owner_id.def_id,
             ti.span,
             fn_sig,
+            /* is_foreign_item */ false,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -445,6 +450,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             ii.owner_id.def_id,
             ii.span,
             fn_sig,
+            /* is_foreign_item */ false,
             kind,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -460,6 +466,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             var.def_id,
             var.span,
             None,
+            /* is_foreign_item */ false,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -470,6 +477,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                         ctor_def_id,
                         var.span,
                         None,
+                        /* is_foreign_item */ false,
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
                         InheritConstStability::No,
@@ -488,6 +496,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             s.def_id,
             s.span,
             None,
+            /* is_foreign_item */ false,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -499,10 +508,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
+        let fn_sig = match &i.kind {
+            rustc_hir::ForeignItemKind::Fn(fn_sig, ..) => Some(fn_sig),
+            _ => None,
+        };
         self.annotate(
             i.owner_id.def_id,
             i.span,
-            None,
+            fn_sig,
+            /* is_foreign_item */ true,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -525,6 +539,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             p.def_id,
             p.span,
             None,
+            /* is_foreign_item */ false,
             kind,
             InheritDeprecation::No,
             InheritConstStability::No,
@@ -553,7 +568,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         }
     }
 
-    fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
+    fn check_missing_or_wrong_const_stability(&self, def_id: LocalDefId, span: Span) {
         if !self.tcx.features().staged_api {
             return;
         }
@@ -601,7 +616,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         }
 
         // Ensure stable `const fn` have a const stability attribute.
-        self.check_missing_const_stability(i.owner_id.def_id, i.span);
+        self.check_missing_or_wrong_const_stability(i.owner_id.def_id, i.span);
 
         intravisit::walk_item(self, i)
     }
@@ -615,7 +630,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         let impl_def_id = self.tcx.hir().get_parent_item(ii.hir_id());
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
             self.check_missing_stability(ii.owner_id.def_id, ii.span);
-            self.check_missing_const_stability(ii.owner_id.def_id, ii.span);
+            self.check_missing_or_wrong_const_stability(ii.owner_id.def_id, ii.span);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -684,6 +699,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             CRATE_DEF_ID,
             tcx.hir().span(CRATE_HIR_ID),
             None,
+            /* is_foreign_item */ false,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -751,15 +767,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
                     let stab = attr::find_stability(self.tcx.sess, attrs, item.span);
-                    // FIXME: this will give a different result than the normal stability
-                    // computation, since we don't inherit stability from the parent. But that's
-                    // true even for `stab` above so it's probably okay?
-                    let const_stab = attr::find_const_stability(
-                        self.tcx.sess,
-                        attrs,
-                        item.span,
-                        stab.map(|(s, _)| s.feature),
-                    );
+                    let (const_stab, _) =
+                        attr::find_const_stability(self.tcx.sess, attrs, item.span);
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

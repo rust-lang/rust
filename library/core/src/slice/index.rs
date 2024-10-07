@@ -313,7 +313,6 @@ unsafe impl<T> SliceIndex<[T]> for usize {
 
 /// Because `IndexRange` guarantees `start <= end`, fewer checks are needed here
 /// than there are for a general `Range<usize>` (which might be `100..3`).
-#[rustc_const_unstable(feature = "const_index_range_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     type Output = [T];
 
