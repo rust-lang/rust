@@ -287,6 +287,7 @@ impl SourceFileRange {
         self.sf
             .src
             .as_ref()
+            .map(|src| src.as_str())
             .or_else(|| self.sf.external_src.get().and_then(|src| src.get_source()))
             .and_then(|x| x.get(self.range.clone()))
     }
