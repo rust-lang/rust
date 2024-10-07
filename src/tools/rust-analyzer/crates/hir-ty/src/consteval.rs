@@ -287,7 +287,7 @@ pub(crate) fn const_eval_discriminant_variant(
     }
 
     let repr = db.enum_data(loc.parent).repr;
-    let is_signed = Option::is_none_or(repr.and_then(|repr| repr.int), |int| int.is_signed());
+    let is_signed = repr.and_then(|repr| repr.int).is_none_or(|int| int.is_signed());
 
     let mir_body = db.monomorphized_mir_body(
         def,
