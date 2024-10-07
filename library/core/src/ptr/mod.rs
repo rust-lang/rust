@@ -1432,7 +1432,8 @@ pub const unsafe fn read<T>(src: *const T) -> T {
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         crate::intrinsics::read_via_copy(src)
     }
@@ -1637,7 +1638,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::write_via_move(dst, src)
     }
