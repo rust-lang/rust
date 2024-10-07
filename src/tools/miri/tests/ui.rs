@@ -13,7 +13,7 @@ use ui_test::custom_flags::edition::Edition;
 use ui_test::dependencies::DependencyBuilder;
 use ui_test::per_test_config::TestConfig;
 use ui_test::spanned::Spanned;
-use ui_test::{CommandBuilder, Config, Format, Match, OutputConflictHandling, status_emitter};
+use ui_test::{CommandBuilder, Config, Format, Match, ignore_output_conflict, status_emitter};
 
 #[derive(Copy, Clone, Debug)]
 enum Mode {
@@ -82,7 +82,9 @@ fn build_native_lib() -> PathBuf {
     native_lib_path
 }
 
-struct WithDependencies {}
+struct WithDependencies {
+    bless: bool,
+}
 
 /// Does *not* set any args or env vars, since it is shared between the test runner and
 /// run_dep_mode.
@@ -126,7 +128,7 @@ fn miri_config(
     // keep in sync with `./miri run`
     config.comment_defaults.base().add_custom("edition", Edition("2021".into()));
 
-    if let Some(WithDependencies {}) = with_dependencies {
+    if let Some(WithDependencies { bless }) = with_dependencies {
         config.comment_defaults.base().set_custom("dependencies", DependencyBuilder {
             program: CommandBuilder {
                 // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
@@ -141,6 +143,7 @@ fn miri_config(
             },
             crate_manifest_path: Path::new("test_dependencies").join("Cargo.toml"),
             build_std: None,
+            bless_lockfile: bless,
         });
     }
     config
@@ -157,7 +160,7 @@ fn run_tests(
     let mut args = ui_test::Args::test()?;
     args.bless |= env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
 
-    let with_dependencies = with_dependencies.then_some(WithDependencies {});
+    let with_dependencies = with_dependencies.then_some(WithDependencies { bless: args.bless });
 
     let mut config = miri_config(target, path, mode, with_dependencies);
     config.with_args(&args);
@@ -165,7 +168,7 @@ fn run_tests(
 
     if env::var_os("MIRI_SKIP_UI_CHECKS").is_some() {
         assert!(!args.bless, "cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time");
-        config.output_conflict_handling = OutputConflictHandling::Ignore;
+        config.output_conflict_handling = ignore_output_conflict;
     }
 
     // Add a test env var to do environment communication tests.
@@ -337,7 +340,8 @@ fn main() -> Result<()> {
 }
 
 fn run_dep_mode(target: String, args: impl Iterator<Item = OsString>) -> Result<()> {
-    let mut config = miri_config(&target, "", Mode::RunDep, Some(WithDependencies {}));
+    let mut config =
+        miri_config(&target, "", Mode::RunDep, Some(WithDependencies { bless: false }));
     config.comment_defaults.base().custom.remove("edition"); // `./miri` adds an `--edition` in `args`, so don't set it twice
     config.fill_host_and_target()?;
     config.program.args = args.collect();
