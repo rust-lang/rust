@@ -184,30 +184,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         Ok(InferOk { value: (), obligations: op.into_obligations() })
     }
 
-    /// Equates `expected` and `found` while structurally relating aliases.
-    /// This should only be used inside of the next generation trait solver
-    /// when relating rigid aliases.
-    pub fn eq_structurally_relating_aliases<T>(
-        self,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        assert!(self.infcx.next_trait_solver());
-        let mut op = TypeRelating::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, expected, actual),
-            self.param_env,
-            DefineOpaqueTypes::Yes,
-            StructurallyRelateAliases::Yes,
-            ty::Invariant,
-        );
-        op.relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: op.into_obligations() })
-    }
-
     pub fn relate<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -289,23 +265,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             LatticeOpKind::Lub,
-        );
-        let value = op.relate(expected, actual)?;
-        Ok(InferOk { value, obligations: op.into_obligations() })
-    }
-
-    /// Computes the greatest-lower-bound, or mutual subtype, of two
-    /// values. As with `lub` order doesn't matter, except for error
-    /// cases.
-    pub fn glb<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
-    where
-        T: ToTrace<'tcx>,
-    {
-        let mut op = LatticeOp::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, expected, actual),
-            self.param_env,
-            LatticeOpKind::Glb,
         );
         let value = op.relate(expected, actual)?;
         Ok(InferOk { value, obligations: op.into_obligations() })
