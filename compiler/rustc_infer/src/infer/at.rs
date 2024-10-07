@@ -25,12 +25,13 @@
 //! sometimes useful when the types of `c` and `d` are not traceable
 //! things. (That system should probably be refactored.)
 
+use relate::lattice::{LatticeOp, LatticeOpKind};
 use rustc_middle::bug;
 use rustc_middle::ty::{Const, ImplSubject};
 
 use super::*;
+use crate::infer::relate::type_relating::TypeRelating;
 use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
-use crate::traits::Obligation;
 
 /// Whether we should define opaque types or just treat them opaquely.
 ///
@@ -108,14 +109,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        let mut fields = CombineFields::new(
+        let mut op = TypeRelating::new(
             self.infcx,
             ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             define_opaque_types,
+            StructurallyRelateAliases::No,
+            ty::Contravariant,
         );
-        fields.sup().relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: fields.into_obligations() })
+        op.relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: op.into_obligations() })
     }
 
     /// Makes `expected <: actual`.
@@ -128,14 +131,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        let mut fields = CombineFields::new(
+        let mut op = TypeRelating::new(
             self.infcx,
             ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
             define_opaque_types,
+            StructurallyRelateAliases::No,
+            ty::Covariant,
         );
-        fields.sub().relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: fields.into_obligations() })
+        op.relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: op.into_obligations() })
     }
 
     /// Makes `expected == actual`.
@@ -167,45 +172,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        let mut fields = CombineFields::new(self.infcx, trace, self.param_env, define_opaque_types);
-        fields.equate(StructurallyRelateAliases::No).relate(expected, actual)?;
-        Ok(InferOk {
-            value: (),
-            obligations: fields
-                .goals
-                .into_iter()
-                .map(|goal| {
-                    Obligation::new(
-                        self.infcx.tcx,
-                        fields.trace.cause.clone(),
-                        goal.param_env,
-                        goal.predicate,
-                    )
-                })
-                .collect(),
-        })
-    }
-
-    /// Equates `expected` and `found` while structurally relating aliases.
-    /// This should only be used inside of the next generation trait solver
-    /// when relating rigid aliases.
-    pub fn eq_structurally_relating_aliases<T>(
-        self,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        assert!(self.infcx.next_trait_solver());
-        let mut fields = CombineFields::new(
+        let mut op = TypeRelating::new(
             self.infcx,
-            ToTrace::to_trace(self.cause, expected, actual),
+            trace,
             self.param_env,
-            DefineOpaqueTypes::Yes,
+            define_opaque_types,
+            StructurallyRelateAliases::No,
+            ty::Invariant,
         );
-        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: fields.into_obligations() })
+        op.relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: op.into_obligations() })
     }
 
     pub fn relate<T>(
@@ -242,19 +218,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        let mut fields = CombineFields::new(
+        let mut op = TypeRelating::new(
             self.infcx,
             TypeTrace::dummy(self.cause),
             self.param_env,
             DefineOpaqueTypes::Yes,
-        );
-        fields.sub().relate_with_variance(
+            StructurallyRelateAliases::No,
             variance,
-            ty::VarianceDiagInfo::default(),
-            expected,
-            actual,
-        )?;
-        Ok(fields.goals)
+        );
+        op.relate(expected, actual)?;
+        Ok(op.into_obligations().into_iter().map(|o| o.into()).collect())
     }
 
     /// Used in the new solver since we don't care about tracking an `ObligationCause`.
@@ -266,14 +239,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        let mut fields = CombineFields::new(
+        let mut op = TypeRelating::new(
             self.infcx,
             TypeTrace::dummy(self.cause),
             self.param_env,
             DefineOpaqueTypes::Yes,
+            StructurallyRelateAliases::Yes,
+            ty::Invariant,
         );
-        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
-        Ok(fields.goals)
+        op.relate(expected, actual)?;
+        Ok(op.into_obligations().into_iter().map(|o| o.into()).collect())
     }
 
     /// Computes the least-upper-bound, or mutual supertype, of two
@@ -281,45 +256,18 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
-    pub fn lub<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, T>
+    pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
-        let mut fields = CombineFields::new(
+        let mut op = LatticeOp::new(
             self.infcx,
             ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
-            define_opaque_types,
+            LatticeOpKind::Lub,
         );
-        let value = fields.lub().relate(expected, actual)?;
-        Ok(InferOk { value, obligations: fields.into_obligations() })
-    }
-
-    /// Computes the greatest-lower-bound, or mutual subtype, of two
-    /// values. As with `lub` order doesn't matter, except for error
-    /// cases.
-    pub fn glb<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, T>
-    where
-        T: ToTrace<'tcx>,
-    {
-        let mut fields = CombineFields::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, expected, actual),
-            self.param_env,
-            define_opaque_types,
-        );
-        let value = fields.glb().relate(expected, actual)?;
-        Ok(InferOk { value, obligations: fields.into_obligations() })
+        let value = op.relate(expected, actual)?;
+        Ok(InferOk { value, obligations: op.into_obligations() })
     }
 }
 

@@ -24,8 +24,9 @@ use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use super::StructurallyRelateAliases;
-use super::combine::{CombineFields, PredicateEmittingRelation};
-use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
+use super::combine::PredicateEmittingRelation;
+use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace};
+use crate::traits::{Obligation, PredicateObligation};
 
 #[derive(Clone, Copy)]
 pub(crate) enum LatticeOpKind {
@@ -43,23 +44,34 @@ impl LatticeOpKind {
 }
 
 /// A greatest lower bound" (common subtype) or least upper bound (common supertype).
-pub(crate) struct LatticeOp<'combine, 'infcx, 'tcx> {
-    fields: &'combine mut CombineFields<'infcx, 'tcx>,
+pub(crate) struct LatticeOp<'infcx, 'tcx> {
+    infcx: &'infcx InferCtxt<'tcx>,
+    // Immutable fields
+    trace: TypeTrace<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    // Mutable fields
     kind: LatticeOpKind,
+    obligations: Vec<PredicateObligation<'tcx>>,
 }
 
-impl<'combine, 'infcx, 'tcx> LatticeOp<'combine, 'infcx, 'tcx> {
+impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
     pub(crate) fn new(
-        fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        infcx: &'infcx InferCtxt<'tcx>,
+        trace: TypeTrace<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         kind: LatticeOpKind,
-    ) -> LatticeOp<'combine, 'infcx, 'tcx> {
-        LatticeOp { fields, kind }
+    ) -> LatticeOp<'infcx, 'tcx> {
+        LatticeOp { infcx, trace, param_env, kind, obligations: vec![] }
+    }
+
+    pub(crate) fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+        self.obligations
     }
 }
 
-impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
-        self.fields.tcx()
+        self.infcx.tcx
     }
 
     fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
@@ -70,7 +82,15 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
         b: T,
     ) -> RelateResult<'tcx, T> {
         match variance {
-            ty::Invariant => self.fields.equate(StructurallyRelateAliases::No).relate(a, b),
+            ty::Invariant => {
+                self.obligations.extend(
+                    self.infcx
+                        .at(&self.trace.cause, self.param_env)
+                        .eq_trace(DefineOpaqueTypes::Yes, self.trace.clone(), a, b)?
+                        .into_obligations(),
+                );
+                Ok(a)
+            }
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
             ty::Bivariant => Ok(a),
@@ -90,7 +110,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
             return Ok(a);
         }
 
-        let infcx = self.fields.infcx;
+        let infcx = self.infcx;
 
         let a = infcx.shallow_resolve(a);
         let b = infcx.shallow_resolve(b);
@@ -115,12 +135,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
             // iterate on the subtype obligations that are returned, but I
             // think this suffices. -nmatsakis
             (&ty::Infer(TyVar(..)), _) => {
-                let v = infcx.next_ty_var(self.fields.trace.cause.span);
+                let v = infcx.next_ty_var(self.trace.cause.span);
                 self.relate_bound(v, b, a)?;
                 Ok(v)
             }
             (_, &ty::Infer(TyVar(..))) => {
-                let v = infcx.next_ty_var(self.fields.trace.cause.span);
+                let v = infcx.next_ty_var(self.trace.cause.span);
                 self.relate_bound(v, a, b)?;
                 Ok(v)
             }
@@ -132,9 +152,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
 
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
-                    && def_id.is_local()
-                    && !infcx.next_trait_solver() =>
+                if def_id.is_local() && !infcx.next_trait_solver() =>
             {
                 self.register_goals(infcx.handle_opaque_type(
                     a,
@@ -155,8 +173,8 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
-        let mut inner = self.fields.infcx.inner.borrow_mut();
+        let origin = SubregionOrigin::Subtype(Box::new(self.trace.clone()));
+        let mut inner = self.infcx.inner.borrow_mut();
         let mut constraints = inner.unwrap_region_constraints();
         Ok(match self.kind {
             // GLB(&'static u8, &'a u8) == &RegionLUB('static, 'a) u8 == &'static u8
@@ -173,7 +191,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        self.fields.infcx.super_combine_consts(self, a, b)
+        self.infcx.super_combine_consts(self, a, b)
     }
 
     fn binders<T>(
@@ -202,7 +220,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
     }
 }
 
-impl<'combine, 'infcx, 'tcx> LatticeOp<'combine, 'infcx, 'tcx> {
+impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
     //
@@ -210,24 +228,24 @@ impl<'combine, 'infcx, 'tcx> LatticeOp<'combine, 'infcx, 'tcx> {
     // relates `v` to `a` first, which may help us to avoid unnecessary
     // type variable obligations. See caller for details.
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
-        let mut sub = self.fields.sub();
+        let at = self.infcx.at(&self.trace.cause, self.param_env);
         match self.kind {
             LatticeOpKind::Glb => {
-                sub.relate(v, a)?;
-                sub.relate(v, b)?;
+                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, v, a)?.into_obligations());
+                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, v, b)?.into_obligations());
             }
             LatticeOpKind::Lub => {
-                sub.relate(a, v)?;
-                sub.relate(b, v)?;
+                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, a, v)?.into_obligations());
+                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, b, v)?.into_obligations());
             }
         }
         Ok(())
     }
 }
 
-impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx> {
+impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
     fn span(&self) -> Span {
-        self.fields.trace.span()
+        self.trace.span()
     }
 
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
@@ -235,21 +253,27 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, '_, 'tcx
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.fields.param_env
+        self.param_env
     }
 
     fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
+        preds: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
-        self.fields.register_predicates(obligations);
+        self.obligations.extend(preds.into_iter().map(|pred| {
+            Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, pred)
+        }))
     }
 
-    fn register_goals(
-        &mut self,
-        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) {
-        self.fields.register_obligations(obligations);
+    fn register_goals(&mut self, goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>) {
+        self.obligations.extend(goals.into_iter().map(|goal| {
+            Obligation::new(
+                self.infcx.tcx,
+                self.trace.cause.clone(),
+                goal.param_env,
+                goal.predicate,
+            )
+        }))
     }
 
     fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {

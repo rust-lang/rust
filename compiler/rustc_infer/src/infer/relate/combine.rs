@@ -1,4 +1,4 @@
-//! There are four type combiners: [TypeRelating], `Lub`, and `Glb`,
+//! There are four type combiners: `TypeRelating`, `Lub`, and `Glb`,
 //! and `NllTypeRelating` in rustc_borrowck, which is only used for NLL.
 //!
 //! Each implements the trait [TypeRelation] and contains methods for
@@ -20,56 +20,13 @@
 
 use rustc_middle::bug;
 use rustc_middle::infer::unify_key::EffectVarValue;
-use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, InferConst, IntType, Ty, TyCtxt, TypeVisitableExt, UintType, Upcast};
+use rustc_middle::ty::{self, InferConst, IntType, Ty, TypeVisitableExt, UintType};
 pub use rustc_next_trait_solver::relate::combine::*;
 use tracing::debug;
 
-use super::lattice::{LatticeOp, LatticeOpKind};
-use super::type_relating::TypeRelating;
 use super::{RelateResult, StructurallyRelateAliases};
-use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace, relate};
-use crate::traits::{Obligation, PredicateObligation};
-
-#[derive(Clone)]
-pub(crate) struct CombineFields<'infcx, 'tcx> {
-    pub infcx: &'infcx InferCtxt<'tcx>,
-    // Immutable fields
-    pub trace: TypeTrace<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
-    pub define_opaque_types: DefineOpaqueTypes,
-    // Mutable fields
-    //
-    // Adding any additional field likely requires
-    // changes to the cache of `TypeRelating`.
-    pub goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
-}
-
-impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
-    pub(crate) fn new(
-        infcx: &'infcx InferCtxt<'tcx>,
-        trace: TypeTrace<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        define_opaque_types: DefineOpaqueTypes,
-    ) -> Self {
-        Self { infcx, trace, param_env, define_opaque_types, goals: vec![] }
-    }
-
-    pub(crate) fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
-        self.goals
-            .into_iter()
-            .map(|goal| {
-                Obligation::new(
-                    self.infcx.tcx,
-                    self.trace.cause.clone(),
-                    goal.param_env,
-                    goal.predicate,
-                )
-            })
-            .collect()
-    }
-}
+use crate::infer::{InferCtxt, relate};
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn super_combine_tys<R>(
@@ -279,52 +236,5 @@ impl<'tcx> InferCtxt<'tcx> {
             .effect_unification_table()
             .union_value(vid, EffectVarValue::Known(val));
         val
-    }
-}
-
-impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
-    pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
-    pub(crate) fn equate<'a>(
-        &'a mut self,
-        structurally_relate_aliases: StructurallyRelateAliases,
-    ) -> TypeRelating<'a, 'infcx, 'tcx> {
-        TypeRelating::new(self, structurally_relate_aliases, ty::Invariant)
-    }
-
-    pub(crate) fn sub<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
-        TypeRelating::new(self, StructurallyRelateAliases::No, ty::Covariant)
-    }
-
-    pub(crate) fn sup<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
-        TypeRelating::new(self, StructurallyRelateAliases::No, ty::Contravariant)
-    }
-
-    pub(crate) fn lub<'a>(&'a mut self) -> LatticeOp<'a, 'infcx, 'tcx> {
-        LatticeOp::new(self, LatticeOpKind::Lub)
-    }
-
-    pub(crate) fn glb<'a>(&'a mut self) -> LatticeOp<'a, 'infcx, 'tcx> {
-        LatticeOp::new(self, LatticeOpKind::Glb)
-    }
-
-    pub(crate) fn register_obligations(
-        &mut self,
-        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) {
-        self.goals.extend(obligations);
-    }
-
-    pub(crate) fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
-    ) {
-        self.goals.extend(
-            obligations
-                .into_iter()
-                .map(|to_pred| Goal::new(self.infcx.tcx, self.param_env, to_pred)),
-        )
     }
 }
