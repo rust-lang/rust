@@ -77,7 +77,8 @@ fn walk_unsafe(
 ) {
     let mut mark_unsafe_path = |path, node| {
         let g = resolver.update_to_inner_scope(db.upcast(), def, current);
-        let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path);
+        let hygiene = body.expr_or_pat_path_hygiene(node);
+        let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path, hygiene);
         if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
             let static_data = db.static_data(id);
             if static_data.mutable || (static_data.is_extern && !static_data.has_safe_kw) {

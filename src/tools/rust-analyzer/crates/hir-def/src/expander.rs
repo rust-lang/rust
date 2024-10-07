@@ -49,6 +49,10 @@ impl Expander {
         }
     }
 
+    pub(crate) fn span_map(&self, db: &dyn DefDatabase) -> &SpanMap {
+        self.span_map.get_or_init(|| db.span_map(self.current_file_id))
+    }
+
     pub fn krate(&self) -> CrateId {
         self.module.krate
     }

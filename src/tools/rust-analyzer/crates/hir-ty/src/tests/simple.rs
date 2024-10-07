@@ -3720,3 +3720,20 @@ fn test() -> bool {
         "#]],
     );
 }
+
+#[test]
+fn macro_semitransparent_hygiene() {
+    check_types(
+        r#"
+macro_rules! m {
+    () => { let bar: i32; };
+}
+fn foo() {
+    let bar: bool;
+    m!();
+    bar;
+ // ^^^ bool
+}
+        "#,
+    );
+}

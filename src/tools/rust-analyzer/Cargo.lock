@@ -556,6 +556,7 @@ dependencies = [
  "syntax-bridge",
  "test-fixture",
  "test-utils",
+ "text-size",
  "tracing",
  "triomphe",
  "tt",

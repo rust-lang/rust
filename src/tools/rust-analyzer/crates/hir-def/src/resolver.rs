@@ -10,7 +10,10 @@ use smallvec::{smallvec, SmallVec};
 use triomphe::Arc;
 
 use crate::{
-    body::scope::{ExprScopes, ScopeId},
+    body::{
+        scope::{ExprScopes, ScopeId},
+        HygieneId,
+    },
     builtin_type::BuiltinType,
     data::ExternCrateDeclData,
     db::DefDatabase,
@@ -257,6 +260,7 @@ impl Resolver {
         &self,
         db: &dyn DefDatabase,
         path: &Path,
+        hygiene: HygieneId,
     ) -> Option<ResolveValueResult> {
         let path = match path {
             Path::Normal { mod_path, .. } => mod_path,
@@ -303,11 +307,10 @@ impl Resolver {
             for scope in self.scopes() {
                 match scope {
                     Scope::ExprScope(scope) => {
-                        let entry = scope
-                            .expr_scopes
-                            .entries(scope.scope_id)
-                            .iter()
-                            .find(|entry| entry.name() == first_name);
+                        let entry =
+                            scope.expr_scopes.entries(scope.scope_id).iter().find(|entry| {
+                                entry.name() == first_name && entry.hygiene() == hygiene
+                            });
 
                         if let Some(e) = entry {
                             return Some(ResolveValueResult::ValueNs(
@@ -393,8 +396,9 @@ impl Resolver {
         &self,
         db: &dyn DefDatabase,
         path: &Path,
+        hygiene: HygieneId,
     ) -> Option<ValueNs> {
-        match self.resolve_path_in_value_ns(db, path)? {
+        match self.resolve_path_in_value_ns(db, path, hygiene)? {
             ResolveValueResult::ValueNs(it, _) => Some(it),
             ResolveValueResult::Partial(..) => None,
         }

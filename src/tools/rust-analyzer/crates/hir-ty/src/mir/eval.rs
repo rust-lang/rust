@@ -6,6 +6,7 @@ use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
+    body::HygieneId,
     builtin_type::BuiltinType,
     data::adt::{StructFlags, VariantData},
     lang_item::LangItem,
@@ -2953,6 +2954,7 @@ pub fn render_const_using_debug_impl(
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db.upcast(),
         &hir_def::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
+        HygieneId::ROOT,
     ) else {
         not_supported!("std::fmt::format not found");
     };

@@ -3002,4 +3002,24 @@ use foo::m;
 "#,
         );
     }
+
+    #[test]
+    fn macro_label_hygiene() {
+        check(
+            r#"
+macro_rules! m {
+    ($x:stmt) => {
+        'bar: loop { $x }
+    };
+}
+
+fn foo() {
+    'bar: loop {
+ // ^^^^
+        m!(continue 'bar$0);
+    }
+}
+"#,
+        );
+    }
 }

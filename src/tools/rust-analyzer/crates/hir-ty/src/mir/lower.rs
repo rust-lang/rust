@@ -5,7 +5,7 @@ use std::{fmt::Write, iter, mem};
 use base_db::ra_salsa::Cycle;
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
-    body::Body,
+    body::{Body, HygieneId},
     data::adt::{StructKind, VariantData},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal,
@@ -446,9 +446,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 } else {
                     let resolver_guard =
                         self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr_id);
+                    let hygiene = self.body.expr_path_hygiene(expr_id);
                     let result = self
                         .resolver
-                        .resolve_path_in_value_ns_fully(self.db.upcast(), p)
+                        .resolve_path_in_value_ns_fully(self.db.upcast(), p, hygiene)
                         .ok_or_else(|| {
                             MirLowerError::unresolved_path(self.db, p, self.edition())
                         })?;
@@ -1361,7 +1362,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     || MirLowerError::unresolved_path(self.db, c.as_ref(), edition);
                 let pr = self
                     .resolver
-                    .resolve_path_in_value_ns(self.db.upcast(), c.as_ref())
+                    .resolve_path_in_value_ns(self.db.upcast(), c.as_ref(), HygieneId::ROOT)
                     .ok_or_else(unresolved_name)?;
                 match pr {
                     ResolveValueResult::ValueNs(v, _) => {

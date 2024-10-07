@@ -4,7 +4,7 @@ use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 use triomphe::Arc;
 
 use crate::{
-    body::Body,
+    body::{Body, HygieneId},
     db::DefDatabase,
     hir::{Binding, BindingId, Expr, ExprId, LabelId, Pat, PatId, Statement},
     BlockId, ConstBlockId, DefWithBodyId,
@@ -22,12 +22,17 @@ pub struct ExprScopes {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ScopeEntry {
     name: Name,
+    hygiene: HygieneId,
     binding: BindingId,
 }
 
 impl ScopeEntry {
     pub fn name(&self) -> &Name {
         &self.name
+    }
+
+    pub(crate) fn hygiene(&self) -> HygieneId {
+        self.hygiene
     }
 
     pub fn binding(&self) -> BindingId {
@@ -102,7 +107,7 @@ impl ExprScopes {
         };
         let mut root = scopes.root_scope();
         if let Some(self_param) = body.self_param {
-            scopes.add_bindings(body, root, self_param);
+            scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
         scopes.add_params_bindings(body, root, &body.params);
         compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root, resolve_const_block);
@@ -150,17 +155,23 @@ impl ExprScopes {
         })
     }
 
-    fn add_bindings(&mut self, body: &Body, scope: ScopeId, binding: BindingId) {
+    fn add_bindings(
+        &mut self,
+        body: &Body,
+        scope: ScopeId,
+        binding: BindingId,
+        hygiene: HygieneId,
+    ) {
         let Binding { name, .. } = &body.bindings[binding];
-        let entry = self.scope_entries.alloc(ScopeEntry { name: name.clone(), binding });
+        let entry = self.scope_entries.alloc(ScopeEntry { name: name.clone(), binding, hygiene });
         self.scopes[scope].entries =
             IdxRange::new_inclusive(self.scopes[scope].entries.start()..=entry);
     }
 
     fn add_pat_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
         let pattern = &body[pat];
-        if let Pat::Bind { id, .. } = pattern {
-            self.add_bindings(body, scope, *id);
+        if let Pat::Bind { id, .. } = *pattern {
+            self.add_bindings(body, scope, id, body.binding_hygiene(id));
         }
 
         pattern.walk_child_pats(|pat| self.add_pat_bindings(body, scope, pat));

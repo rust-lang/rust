@@ -33,6 +33,22 @@ use crate::{
     BlockId, DefWithBodyId, HasModule, Lookup,
 };
 
+/// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct HygieneId(span::SyntaxContextId);
+
+impl HygieneId {
+    pub const ROOT: Self = Self(span::SyntaxContextId::ROOT);
+
+    pub fn new(ctx: span::SyntaxContextId) -> Self {
+        Self(ctx)
+    }
+
+    fn is_root(self) -> bool {
+        self.0.is_root()
+    }
+}
+
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
@@ -55,6 +71,22 @@ pub struct Body {
     pub body_expr: ExprId,
     /// Block expressions in this body that may contain inner items.
     block_scopes: Vec<BlockId>,
+
+    /// A map from binding to its hygiene ID.
+    ///
+    /// Bindings that don't come from macro expansion are not allocated to save space, so not all bindings appear here.
+    /// If a binding does not appear here it has `SyntaxContextId::ROOT`.
+    ///
+    /// Note that this may not be the direct `SyntaxContextId` of the binding's expansion, because transparent
+    /// expansions are attributed to their parent expansion (recursively).
+    binding_hygiene: FxHashMap<BindingId, HygieneId>,
+    /// A map from an variable usages to their hygiene ID.
+    ///
+    /// Expressions that can be recorded here are single segment path, although not all single segments path refer
+    /// to variables and have hygiene (some refer to items, we don't know at this stage).
+    expr_hygiene: FxHashMap<ExprId, HygieneId>,
+    /// A map from a destructuring assignment possible variable usages to their hygiene ID.
+    pat_hygiene: FxHashMap<PatId, HygieneId>,
 }
 
 pub type ExprPtr = AstPtr<ast::Expr>;
@@ -107,10 +139,11 @@ pub struct BodySourceMap {
     field_map_back: FxHashMap<ExprId, FieldSource>,
     pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
+    // FIXME: Make this a sane struct.
     template_map: Option<
         Box<(
             // format_args!
-            FxHashMap<ExprId, Vec<(syntax::TextRange, Name)>>,
+            FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
             // asm!
             FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
         )>,
@@ -268,6 +301,9 @@ impl Body {
             pats,
             bindings,
             binding_owners,
+            binding_hygiene,
+            expr_hygiene,
+            pat_hygiene,
         } = self;
         block_scopes.shrink_to_fit();
         exprs.shrink_to_fit();
@@ -275,6 +311,9 @@ impl Body {
         pats.shrink_to_fit();
         bindings.shrink_to_fit();
         binding_owners.shrink_to_fit();
+        binding_hygiene.shrink_to_fit();
+        expr_hygiene.shrink_to_fit();
+        pat_hygiene.shrink_to_fit();
     }
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
@@ -467,6 +506,25 @@ impl Body {
             }
         });
     }
+
+    fn binding_hygiene(&self, binding: BindingId) -> HygieneId {
+        self.binding_hygiene.get(&binding).copied().unwrap_or(HygieneId::ROOT)
+    }
+
+    pub fn expr_path_hygiene(&self, expr: ExprId) -> HygieneId {
+        self.expr_hygiene.get(&expr).copied().unwrap_or(HygieneId::ROOT)
+    }
+
+    pub fn pat_path_hygiene(&self, pat: PatId) -> HygieneId {
+        self.pat_hygiene.get(&pat).copied().unwrap_or(HygieneId::ROOT)
+    }
+
+    pub fn expr_or_pat_path_hygiene(&self, id: ExprOrPatId) -> HygieneId {
+        match id {
+            ExprOrPatId::ExprId(id) => self.expr_path_hygiene(id),
+            ExprOrPatId::PatId(id) => self.pat_path_hygiene(id),
+        }
+    }
 }
 
 impl Default for Body {
@@ -481,6 +539,9 @@ impl Default for Body {
             block_scopes: Default::default(),
             binding_owners: Default::default(),
             self_param: Default::default(),
+            binding_hygiene: Default::default(),
+            expr_hygiene: Default::default(),
+            pat_hygiene: Default::default(),
         }
     }
 }
@@ -594,13 +655,11 @@ impl BodySourceMap {
     pub fn implicit_format_args(
         &self,
         node: InFile<&ast::FormatArgsExpr>,
-    ) -> Option<&[(syntax::TextRange, Name)]> {
+    ) -> Option<(HygieneId, &[(syntax::TextRange, Name)])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
-        self.template_map
-            .as_ref()?
-            .0
-            .get(&self.expr_map.get(&src)?.as_expr()?)
-            .map(std::ops::Deref::deref)
+        let (hygiene, names) =
+            self.template_map.as_ref()?.0.get(&self.expr_map.get(&src)?.as_expr()?)?;
+        Some((*hygiene, &**names))
     }
 
     pub fn asm_template_args(
@@ -648,14 +707,5 @@ impl BodySourceMap {
         expansions.shrink_to_fit();
         diagnostics.shrink_to_fit();
         binding_definitions.shrink_to_fit();
-    }
-
-    pub fn template_map(
-        &self,
-    ) -> Option<&(
-        FxHashMap<Idx<Expr>, Vec<(tt::TextRange, Name)>>,
-        FxHashMap<Idx<Expr>, Vec<Vec<(tt::TextRange, usize)>>>,
-    )> {
-        self.template_map.as_deref()
     }
 }
