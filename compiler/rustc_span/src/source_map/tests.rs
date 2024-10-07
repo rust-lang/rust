@@ -257,7 +257,7 @@ fn t10() {
     );
     imported_src_file.add_external_src(|| Some(unnormalized.to_string()));
     assert_eq!(
-        imported_src_file.external_src.borrow().get_source().unwrap().as_ref(),
+        imported_src_file.external_src.borrow().get_source().unwrap(),
         normalized,
         "imported source file should be normalized"
     );

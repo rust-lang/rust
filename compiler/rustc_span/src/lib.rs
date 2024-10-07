@@ -1380,7 +1380,7 @@ pub enum ExternalSourceKind {
 }
 
 impl ExternalSource {
-    pub fn get_source(&self) -> Option<&Lrc<String>> {
+    pub fn get_source(&self) -> Option<&str> {
         match self {
             ExternalSource::Foreign { kind: ExternalSourceKind::Present(ref src), .. } => Some(src),
             _ => None,
