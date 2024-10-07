@@ -4,15 +4,21 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitSet;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::{
-    BasicBlock, Body, ClearCrossCrate, Local, Location, Place, StatementKind, TerminatorKind,
+    BasicBlock, Body, ClearCrossCrate, Local, Location, Place, ProjectionElem, StatementKind,
+    TerminatorKind, dump_mir,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::move_paths::{MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable};
 use rustc_session::lint;
 use rustc_span::Span;
 use tracing::debug;
+
+fn place_has_common_prefix<'tcx>(left: &Place<'tcx>, right: &Place<'tcx>) -> bool {
+    left.local == right.local
+        && left.projection.iter().zip(right.projection).all(|(left, right)| left == right)
+}
 
 fn drops_reachable_from_location<'tcx>(
     body: &Body<'tcx>,
@@ -42,12 +48,7 @@ fn drops_reachable_from_location<'tcx>(
                         unwind: _,
                         replace: _,
                     } = &terminator.kind
-                    && dropped_place.local == place.local
-                    && dropped_place
-                        .projection
-                        .iter()
-                        .zip(place.projection)
-                        .all(|(dropped, linted)| dropped == linted)
+                    && place_has_common_prefix(dropped_place, place)
                 {
                     reachable.insert(succ);
                     // Now we have discovered a simple control flow path from a future drop point
@@ -114,6 +115,24 @@ fn extract_component_with_significant_dtor<'tcx>(
     (ty_names, ty_spans)
 }
 
+fn place_descendent_of_bids<'tcx>(
+    mut idx: MovePathIndex,
+    move_data: &MoveData<'tcx>,
+    bids: &UnordSet<&Place<'tcx>>,
+) -> bool {
+    loop {
+        let path = &move_data.move_paths[idx];
+        if bids.contains(&path.place) {
+            return true;
+        }
+        if let Some(parent) = path.parent {
+            idx = parent;
+        } else {
+            return false;
+        }
+    }
+}
+
 pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<'tcx>) {
     if matches!(tcx.def_kind(def_id), rustc_hir::def::DefKind::SyntheticCoroutineBody) {
         // A synthetic coroutine has no HIR body and it is enough to just analyse the original body
@@ -144,6 +163,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
         return;
     }
 
+    dump_mir(tcx, false, "lint_tail_expr_drop_order", &0 as _, body, |_, _| Ok(()));
     let param_env = tcx.param_env(def_id);
     let is_closure_like = tcx.is_closure_like(def_id.to_def_id());
     let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
@@ -153,19 +173,27 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     for &(candidate, place) in &backwards_incompatible_drops {
         maybe_init.seek_after_primary_effect(candidate);
         let MaybeReachable::Reachable(maybe_init_in_future) = maybe_init.get() else { continue };
+        debug!(maybe_init_in_future = ?maybe_init_in_future.iter().map(|idx| &move_data.move_paths[idx]).collect::<Vec<_>>());
         let maybe_init_in_future = maybe_init_in_future.clone();
         for block in drops_reachable_from_location(body, candidate.block, place).iter() {
             let data = &body.basic_blocks[block];
+            debug!(?candidate, ?block, "inspect");
             maybe_init.seek_before_primary_effect(Location {
                 block,
                 statement_index: data.statements.len(),
             });
             let MaybeReachable::Reachable(maybe_init_now) = maybe_init.get() else { continue };
             let mut locals_dropped = maybe_init_in_future.clone();
+            debug!(maybe_init_now = ?maybe_init_now.iter().map(|idx| &move_data.move_paths[idx]).collect::<Vec<_>>());
             locals_dropped.subtract(maybe_init_now);
+            debug!(locals_dropped = ?locals_dropped.iter().map(|idx| &move_data.move_paths[idx]).collect::<Vec<_>>());
             for path_idx in locals_dropped.iter() {
                 let move_path = &move_data.move_paths[path_idx];
-                if bid_places.contains(&move_path.place) {
+                if let [.., ProjectionElem::Downcast(_, _)] = **move_path.place.projection {
+                    debug!(?move_path.place, "skip downcast which is not a real place");
+                    continue;
+                }
+                if place_descendent_of_bids(path_idx, &move_data, &bid_places) {
                     continue;
                 }
                 let dropped_local = move_path.place.local;
