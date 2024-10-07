@@ -600,6 +600,24 @@ impl Ipv4Addr {
         self.octets
     }
 
+    /// Creates an `Ipv4Addr` from a four element byte array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_from)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::from_octets([13u8, 12u8, 11u8, 10u8]);
+    /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
+    /// ```
+    #[unstable(feature = "ip_from", issue = "131360")]
+    #[must_use]
+    #[inline]
+    pub const fn from_octets(octets: [u8; 4]) -> Ipv4Addr {
+        Ipv4Addr { octets }
+    }
+
     /// Returns [`true`] for the special 'unspecified' address (`0.0.0.0`).
     ///
     /// This property is defined in _UNIX Network Programming, Second Edition_,
@@ -1400,6 +1418,36 @@ impl Ipv6Addr {
         ]
     }
 
+    /// Creates an `Ipv6Addr` from an eight element 16-bit array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_from)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from_segments([
+    ///     525u16, 524u16, 523u16, 522u16,
+    ///     521u16, 520u16, 519u16, 518u16,
+    /// ]);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x20d, 0x20c,
+    ///         0x20b, 0x20a,
+    ///         0x209, 0x208,
+    ///         0x207, 0x206
+    ///     ),
+    ///     addr
+    /// );
+    /// ```
+    #[unstable(feature = "ip_from", issue = "131360")]
+    #[must_use]
+    #[inline]
+    pub const fn from_segments(segments: [u16; 8]) -> Ipv6Addr {
+        let [a, b, c, d, e, f, g, h] = segments;
+        Ipv6Addr::new(a, b, c, d, e, f, g, h)
+    }
+
     /// Returns [`true`] for the special 'unspecified' address (`::`).
     ///
     /// This property is defined in [IETF RFC 4291].
@@ -1940,6 +1988,35 @@ impl Ipv6Addr {
     #[inline]
     pub const fn octets(&self) -> [u8; 16] {
         self.octets
+    }
+
+    /// Creates an `Ipv6Addr` from a sixteen element byte array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_from)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from_octets([
+    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
+    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
+    /// ]);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x1918, 0x1716,
+    ///         0x1514, 0x1312,
+    ///         0x1110, 0x0f0e,
+    ///         0x0d0c, 0x0b0a
+    ///     ),
+    ///     addr
+    /// );
+    /// ```
+    #[unstable(feature = "ip_from", issue = "131360")]
+    #[must_use]
+    #[inline]
+    pub const fn from_octets(octets: [u8; 16]) -> Ipv6Addr {
+        Ipv6Addr { octets }
     }
 }
 
