@@ -36,7 +36,7 @@ See the [Testing with Docker](docker.md) chapter for more details on how to run
 and debug jobs with Docker.
 
 Note that a Fuchsia checkout is *large* – as of this writing, a checkout and
-build takes 46G of space – and as you might imagine, it takes awhile to
+build takes 46G of space – and as you might imagine, it takes a while to
 complete.
 
 ### Modifying the Fuchsia checkout
@@ -65,11 +65,12 @@ to add this to your `$PATH` for some workflows.
 
 There are a few `fx` subcommands that are relevant, including:
 
-* `fx set` accepts build arguments, writes them to `out/default/args.gn`, and runs GN.
-* `fx build` builds the Fuchsia project using Ninja. It will automatically pick
+- `fx set` accepts build arguments, writes them to `out/default/args.gn`, and
+  runs GN.
+- `fx build` builds the Fuchsia project using Ninja. It will automatically pick
   up changes to build arguments and rerun GN. By default it builds everything,
   but it also accepts target paths to build specific targets (see below).
-* `fx clippy` runs Clippy on specific Rust targets (or all of them). We use this
+- `fx clippy` runs Clippy on specific Rust targets (or all of them). We use this
   in the Rust CI build to avoid running codegen on most Rust targets. Underneath
   it invokes Ninja, just like `fx build`. The clippy results are saved in json
   files inside the build output directory before being printed.
@@ -94,8 +95,8 @@ and can also be used in `fx build`.
 
 #### Modifying compiler flags
 
-You can put custom compiler flags inside a GN `config` that is added to a target.
-As a simple example:
+You can put custom compiler flags inside a GN `config` that is added to a
+target. As a simple example:
 
 ```
 config("everybody_loops") {
@@ -162,6 +163,6 @@ rustc book][platform-support].
 [`//build/config:compiler`]: https://cs.opensource.google/fuchsia/fuchsia/+/main:build/config/BUILD.gn;l=121;drc=c26c473bef93b33117ae417893118907a026fec7
 [build system]: https://fuchsia.dev/fuchsia-src/development/build/build_system
 
-[^loc]: As of June 2024, Fuchsia had about 2 million lines of first-party Rust code
-and a roughly equal amount of third-party code, as counted by tokei (excluding
-comments and blanks).
+[^loc]: As of June 2024, Fuchsia had about 2 million lines of first-party Rust
+code and a roughly equal amount of third-party code, as counted by tokei
+(excluding comments and blanks).

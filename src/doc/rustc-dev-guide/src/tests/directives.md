@@ -2,6 +2,8 @@
 
 <!-- toc -->
 
+> **FIXME(jieyouxu)** completely revise this chapter.
+
 Header commands are special comments that tell compiletest how to build and
 interpret a test.
 They must appear before the Rust source in the test.
