@@ -327,7 +327,6 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
         "tests/mir-opt",
         "tests/pretty",
         "tests/run-make",
-        "tests/run-pass-valgrind",
         "tests/rustdoc",
         "tests/rustdoc-gui",
         "tests/rustdoc-js",
@@ -852,7 +851,6 @@ impl<'a> Builder<'a> {
                 test::Tidy,
                 test::Ui,
                 test::Crashes,
-                test::RunPassValgrind,
                 test::Coverage,
                 test::CoverageMap,
                 test::CoverageRun,
@@ -1687,10 +1685,24 @@ impl<'a> Builder<'a> {
         match mode {
             Mode::Std | Mode::ToolBootstrap | Mode::ToolStd => {}
             Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
-                // Build proc macros both for the host and the target
+                // Build proc macros both for the host and the target unless proc-macros are not
+                // supported by the target.
                 if target != compiler.host && cmd_kind != Kind::Check {
-                    cargo.arg("-Zdual-proc-macros");
-                    rustflags.arg("-Zdual-proc-macros");
+                    let error = command(self.rustc(compiler))
+                        .arg("--target")
+                        .arg(target.rustc_target_arg())
+                        .arg("--print=file-names")
+                        .arg("--crate-type=proc-macro")
+                        .arg("-")
+                        .run_capture(self)
+                        .stderr();
+                    let not_supported = error
+                        .lines()
+                        .any(|line| line.contains("unsupported crate type `proc-macro`"));
+                    if !not_supported {
+                        cargo.arg("-Zdual-proc-macros");
+                        rustflags.arg("-Zdual-proc-macros");
+                    }
                 }
             }
         }

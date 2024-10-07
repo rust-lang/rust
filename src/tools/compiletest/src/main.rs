@@ -18,10 +18,6 @@ fn main() {
 
     let config = Arc::new(parse_config(env::args().collect()));
 
-    if config.valgrind_path.is_none() && config.force_valgrind {
-        panic!("Can't find Valgrind to run Valgrind tests");
-    }
-
     if !config.has_tidy && config.mode == Mode::Rustdoc {
         eprintln!("warning: `tidy` is not installed; diffs will not be generated");
     }

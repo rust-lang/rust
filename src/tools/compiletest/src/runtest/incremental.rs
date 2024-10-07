@@ -1,10 +1,6 @@
 use super::{TestCx, WillExecute};
 use crate::errors;
 
-// FIXME(jieyouxu): `run_rpass_test` got hoisted out of this because apparently valgrind falls back
-// to `run_rpass_test` if valgrind isn't available, which is questionable, but keeping it for
-// refactoring changes to preserve current behavior.
-
 impl TestCx<'_> {
     pub(super) fn run_incremental_test(&self) {
         // Basic plan for a test incremental/foo/bar.rs:
@@ -73,6 +69,30 @@ impl TestCx<'_> {
         }
     }
 
+    fn run_rpass_test(&self) {
+        let emit_metadata = self.should_emit_metadata(self.pass_mode());
+        let should_run = self.run_if_enabled();
+        let proc_res = self.compile_test(should_run, emit_metadata);
+
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        // FIXME(#41968): Move this check to tidy?
+        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
+            self.fatal("run-pass tests with expected warnings should be moved to ui/");
+        }
+
+        if let WillExecute::Disabled = should_run {
+            return;
+        }
+
+        let proc_res = self.exec_compiled_test();
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("test run failed!", &proc_res);
+        }
+    }
+
     fn run_cfail_test(&self) {
         let pm = self.pass_mode();
         let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
@@ -114,12 +134,6 @@ impl TestCx<'_> {
         }
 
         let proc_res = self.exec_compiled_test();
-
-        // The value our Makefile configures valgrind to return on failure
-        const VALGRIND_ERR: i32 = 100;
-        if proc_res.status.code() == Some(VALGRIND_ERR) {
-            self.fatal_proc_rec("run-fail test isn't valgrind-clean!", &proc_res);
-        }
 
         let output_to_check = self.get_output(&proc_res);
         self.check_correct_failure_status(&proc_res);

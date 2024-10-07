@@ -96,7 +96,6 @@ llvm-config = "{llvm_config}"
         "tests/incremental",
         "tests/mir-opt",
         "tests/pretty",
-        "tests/run-pass-valgrind",
         "tests/ui",
         "tests/crashes",
     ];
