@@ -9,7 +9,7 @@ pub fn noop(v: &mut Vec<u8>) {
     // CHECK-NOT: call
     // CHECK: tail call void @llvm.assume
     // CHECK-NOT: grow_one
-    // CHECK-NOT: call
+    // CHECK-NOT: call {{(v(o(i(d( (@(l(l(v(m(\.(a(s(s(u(m([^e]|$)|[^m]|$)|[^u]|$)|[^s]|$)|[^s]|$)|[^a]|$)|[^.]|$)|[^m]|$)|[^v]|$)|[^l]|$)|[^l]|$)|[^@]|$)|[^ ]|$)|[^d]|$)|[^i]|$)|[^o]|$)|[^v]|$)}}
     // CHECK: ret
     if let Some(x) = v.pop() {
         v.push(x)
