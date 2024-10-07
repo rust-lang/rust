@@ -5,12 +5,12 @@
 //@ compile-flags: --target i686-unknown-linux-gnu -O -C no-prepopulate-passes
 //@ needs-llvm-components: x86
 
-//@ revisions:regpram0 regpram1 regpram2 regpram3 regpram4
-//@[regpram0] compile-flags: -Zregparm=0
-//@[regpram1] compile-flags: -Zregparm=1
-//@[regpram2] compile-flags: -Zregparm=2
-//@[regpram3] compile-flags: -Zregparm=3
-//@[regpram4] compile-flags: -Zregparm=4
+//@ revisions:regparm0 regparm1 regparm2 regparm3 regparm4
+//@[regparm0] compile-flags: -Zregparm=0
+//@[regparm1] compile-flags: -Zregparm=1
+//@[regparm2] compile-flags: -Zregparm=2
+//@[regparm3] compile-flags: -Zregparm=3
+//@[regparm4] compile-flags: -Zregparm=4
 
 #![crate_type = "lib"]
 #![no_core]
@@ -71,7 +71,7 @@ pub mod tests {
     // regpram1: @f7(i32 inreg noundef %_1, i32 noundef %_2, i32 noundef %_3, i32 noundef %_4)
     // regpram2: @f7(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 noundef %_3, i32 noundef %_4)
     // regpram3: @f7(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 inreg noundef %_3,
-    // regpram3: i32 noundef %_4)
+    // regpram3-SAME: i32 noundef %_4)
     // regpram4: @f7(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 inreg noundef %_3,
     // regpram4: i32 inreg noundef %_4)
     #[no_mangle]
@@ -86,7 +86,7 @@ pub mod tests {
     // regpram1: @f8(i32 inreg noundef %_1, i32 noundef %_2, ptr {{.*}} %_3, i32 noundef %_4)
     // regpram2: @f8(i32 inreg noundef %_1, i32 inreg noundef %_2, ptr {{.*}} %_3, i32 noundef %_4)
     // regpram3: @f8(i32 inreg noundef %_1, i32 inreg noundef %_2, ptr {{.*}} %_3,
-    // regpram3: i32 inreg noundef %_4)
+    // regpram3-SAME: i32 inreg noundef %_4)
     // regpram4: @f8(i32 inreg noundef %_1, i32 inreg noundef %_2, ptr {{.*}} %_3,
     // regpram4: i32 inreg noundef %_4)
     #[no_mangle]
