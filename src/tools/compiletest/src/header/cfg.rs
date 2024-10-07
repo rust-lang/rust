@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::common::{CompareMode, Config, Debugger, Mode};
+use crate::common::{CompareMode, Config, Debugger};
 use crate::header::IgnoreDecision;
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
@@ -222,7 +222,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
         name: format!("mode-{}", config.mode.to_str()),
         allowed_names: ContainsPrefixed {
             prefix: "mode-",
-            inner: Mode::STR_VARIANTS,
+            inner: ["coverage-run", "coverage-map"],
         },
         message: "when the test mode is {name}",
     }
