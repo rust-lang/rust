@@ -17,7 +17,8 @@ test that makes the life of another contributor as hard as possible.
 >
 > To make the life of another contributor as hard as possible, one might:
 >
-> - Only name the test after an issue, e.g. `issue-123456.rs`.
+> - Name the test after an issue number alone without any other context, e.g.
+>   `issue-123456.rs`.
 > - Have no comments at all on what the test is trying to exercise, no links to
 >   relevant context.
 > - Include a test that is massive (that can otherwise be minimized) and
@@ -40,23 +41,28 @@ related tests.
 
 - Name the test after what it's trying to exercise or prevent regressions of.
 - Keep it concise.
-- Avoid including issue numbers in test names.
+- Avoid using issue numbers alone as test names.
+- Avoid starting the test name with `issue-xxxxx` prefix as it degrades
+  auto-completion.
 
-> **Avoid issue numbers in test names**
+> **Avoid using only issue numbers as test names**
 >
-> Prefer including them as links or `#123456` in test comments instead.
+> Prefer including them as links or `#123456` in test comments instead. Or if it
+> makes sense to include the issue number, also include brief keywords like
+> `macro-external-span-ice-123956.rs`.
 >
 > ```text
 > tests/ui/typeck/issue-123456.rs                              // bad
-> tests/ui/typeck/issue-123456-asm-macro-external-span-ice.rs  // bad
+> tests/ui/typeck/issue-123456-asm-macro-external-span-ice.rs  // bad (for tab completion)
+> tests/ui/typeck/asm-macro-external-span-ice-123456.rs        // good
 > tests/ui/typeck/asm-macro-external-span-ice.rs               // good
 > ```
 >
 > `issue-123456.rs` does not tell you immediately anything about what the test
 > is actually exercising meaning you need to do additional searching. Including
-> the issue number in the test name is really noisy for finding relevant tests
-> by what they're exercising (if you `ls` a test directory and get a bunch of
-> `issue-xxxxx` prefixes). We can link to the issue in a test comment.
+> the issue number in the test name as a prefix makes tab completion less useful
+> (if you `ls` a test directory and get a bunch of `issue-xxxxx` prefixes). We
+> can link to the issue in a test comment.
 >
 > ```rs
 > //! Check that `asm!` macro including nested macros that come from external
