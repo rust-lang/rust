@@ -54,46 +54,23 @@ you made in the beginning. But there are some things to be aware of:
 
 ### Gathering a perf profile from a `perf.rust-lang.org` test
 
-Often we want to analyze a specific test from `perf.rust-lang.org`. To
-do that, the first step is to clone
-[the rustc-perf repository][rustc-perf-gh]:
+Often we want to analyze a specific test from `perf.rust-lang.org`.
+The easiest way to do that is to use the [rustc-perf][rustc-perf]
+benchmarking suite, this approach is described [here](with_rustc_perf.md).
+
+Instead of using the benchmark suite CLI, you can also profile the benchmarks manually. First,
+you need to clone the [rustc-perf][rustc-perf] repository:
 
 ```bash
-git clone https://github.com/rust-lang/rustc-perf
+$ git clone https://github.com/rust-lang/rustc-perf
 ```
 
-[rustc-perf-gh]: https://github.com/rust-lang/rustc-perf
-
-#### Doing it the easy way
-
-Once you've cloned the repo, you can use the `collector` executable to
-do profiling for you! You can find
-[instructions in the rustc-perf readme][rustc-perf-readme].
-
-[rustc-perf-readme]: https://github.com/rust-lang/rustc-perf/blob/master/collector/README.md#profiling
-
-For example, to measure the clap-rs test, you might do:
-
-```bash
-./target/release/collector                                      \
-  --output-repo /path/to/place/output                           \
-  profile perf-record                                           \
-  --rustc /path/to/rustc/executable/from/your/build/directory   \
-  --cargo `which cargo`                                         \
-  --filter clap-rs                                              \
-  --builds Check                                                \
-```
-
-You can also use that same command to use cachegrind or other profiling tools.
-
-#### Doing it the hard way
-
-If you prefer to run things manually, that is also possible. You first
-need to find the source for the test you want. Sources for the tests
+and then find the source code of the test that you want to profile. Sources for the tests
 are found in [the `collector/compile-benchmarks` directory][compile-time dir]
 and [the `collector/runtime-benchmarks` directory][runtime dir]. So let's
 go into the directory of a specific test; we'll use `clap-rs` as an example:
 
+[rustc-perf]: https://github.com/rust-lang/rustc-perf
 [compile-time dir]: https://github.com/rust-lang/rustc-perf/tree/master/collector/compile-benchmarks
 [runtime dir]: https://github.com/rust-lang/rustc-perf/tree/master/collector/runtime-benchmarks
 

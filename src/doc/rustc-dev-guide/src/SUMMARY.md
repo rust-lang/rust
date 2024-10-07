@@ -36,6 +36,7 @@
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with_perf.md)
     - [with Windows Performance Analyzer](./profiling/wpa_profiling.md)
+    - [with the Rust benchmark suite](./profiling/with_rustc_perf.md)
 - [crates.io Dependencies](./crates-io.md)
 
 # Contributing to Rust

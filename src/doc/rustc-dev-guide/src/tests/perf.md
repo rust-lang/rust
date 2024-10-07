@@ -17,6 +17,9 @@ configurations include "fresh builds", builds with incremental compilation, etc.
 The result of a perf run is a comparison between two versions of the compiler
 (by their commit hashes).
 
+You can also use `rustc-perf` to manually benchmark and profile the compiler
+[locally](../profiling/with_rustc_perf.md).
+
 ### Automatic perf runs
 
 After every PR is merged, a suite of benchmarks are run against the compiler.
