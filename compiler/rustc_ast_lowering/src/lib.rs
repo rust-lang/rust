@@ -1865,7 +1865,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
             CoroutineKind::Gen { return_impl_trait_id, .. } => (return_impl_trait_id, None),
             CoroutineKind::AsyncGen { return_impl_trait_id, .. } => {
-                (return_impl_trait_id, Some(self.allow_async_iterator.clone()))
+                (return_impl_trait_id, Some(Lrc::clone(&self.allow_async_iterator)))
             }
         };
 

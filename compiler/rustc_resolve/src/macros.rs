@@ -826,7 +826,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 _ => None,
             },
-            None => self.get_macro(res).map(|macro_data| macro_data.ext.clone()),
+            None => self.get_macro(res).map(|macro_data| Lrc::clone(&macro_data.ext)),
         };
         Ok((ext, res))
     }
