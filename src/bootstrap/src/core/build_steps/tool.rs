@@ -872,8 +872,11 @@ impl Step for LlvmBitcodeLinker {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let bin_name = "llvm-bitcode-linker";
 
-        builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
-        builder.ensure(compile::Rustc::new(self.compiler, self.target));
+        // If enabled, use ci-rustc and skip building the in-tree compiler.
+        if !builder.download_rustc() {
+            builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
+            builder.ensure(compile::Rustc::new(self.compiler, self.target));
+        }
 
         let cargo = prepare_tool_cargo(
             builder,
