@@ -111,8 +111,8 @@ enum EmitTyped<'a> {
 }
 
 impl Translate for JsonEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
+    fn fluent_bundle(&self) -> Option<&FluentBundle> {
+        self.fluent_bundle.as_deref()
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
@@ -172,7 +172,7 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+    fn source_map(&self) -> Option<&SourceMap> {
         Some(&self.sm)
     }
 

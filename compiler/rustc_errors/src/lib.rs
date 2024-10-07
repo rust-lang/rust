@@ -59,7 +59,7 @@ use registry::Registry;
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lock;
 pub use rustc_error_messages::{
     DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
@@ -685,13 +685,13 @@ impl DiagCtxt {
                 unimplemented!("false emitter must only used during `wrap_emitter`")
             }
 
-            fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+            fn source_map(&self) -> Option<&SourceMap> {
                 unimplemented!("false emitter must only used during `wrap_emitter`")
             }
         }
 
         impl translation::Translate for FalseEmitter {
-            fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+            fn fluent_bundle(&self) -> Option<&FluentBundle> {
                 unimplemented!("false emitter must only used during `wrap_emitter`")
             }
 
