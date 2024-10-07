@@ -1650,7 +1650,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,edition2021
-    /// #![feature(min_match_ergonomics_2024)]
     /// #![warn(rust_2024_incompatible_pat)]
     ///
     /// if let Some(&a) = &Some(&0u8) {
@@ -1671,12 +1670,10 @@ declare_lint! {
     pub RUST_2024_INCOMPATIBLE_PAT,
     Allow,
     "detects patterns whose meaning will change in Rust 2024",
-    @feature_gate = min_match_ergonomics_2024;
-    // FIXME uncomment below upon stabilization
-    /*@future_incompatible = FutureIncompatibleInfo {
+    @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
         reference: "123076",
-    };*/
+    };
 }
 
 declare_lint! {

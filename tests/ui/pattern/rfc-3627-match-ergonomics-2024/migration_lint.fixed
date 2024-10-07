@@ -2,7 +2,7 @@
 //@ run-rustfix
 //@ rustfix-only-machine-applicable
 //@ aux-build:migration_lint_macros.rs
-#![feature(mut_ref, min_match_ergonomics_2024)]
+#![feature(mut_ref)]
 #![allow(incomplete_features, unused)]
 #![deny(rust_2024_incompatible_pat)]
 
@@ -24,18 +24,22 @@ fn main() {
 
     let &Foo(mut x) = &Foo(0);
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let &mut Foo(mut x) = &mut Foo(0);
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let &Foo(ref x) = &Foo(0);
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, &0u8);
 
     let &mut Foo(ref x) = &mut Foo(0);
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, &0u8);
 
     let &Foo(x) = &Foo(0);
@@ -52,18 +56,22 @@ fn main() {
 
     let &Foo(&x) = &Foo(&0);
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let &Foo(&mut x) = &Foo(&mut 0);
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let &mut Foo(&x) = &mut Foo(&0);
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let &mut Foo(&mut x) = &mut Foo(&mut 0);
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     if let Some(x) = &&&&&Some(&0u8) {
@@ -72,21 +80,25 @@ fn main() {
 
     if let &&&&&Some(&x) = &&&&&Some(&0u8) {
         //~^ ERROR: the semantics of this pattern will change in edition 2024
+        //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, 0u8);
     }
 
     if let &&&&&Some(&mut x) = &&&&&Some(&mut 0u8) {
         //~^ ERROR: the semantics of this pattern will change in edition 2024
+        //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, 0u8);
     }
 
     if let &&&&&mut Some(&x) = &&&&&mut Some(&0u8) {
         //~^ ERROR: the semantics of this pattern will change in edition 2024
+        //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, 0u8);
     }
 
     if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
         //~^ ERROR: the semantics of this pattern will change in edition 2024
+        //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, &mut 0u8);
     }
 
@@ -98,17 +110,20 @@ fn main() {
 
     let &Struct { ref a, mut b, ref c } = &Struct { a: 0, b: 0, c: 0 };
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, &0u32);
     assert_type_eq(b, 0u32);
 
     let &Struct { a: &a, ref b, ref c } = &Struct { a: &0, b: &0, c: &0 };
     //~^ ERROR: the semantics of this pattern will change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, 0u32);
     assert_type_eq(b, &&0u32);
     assert_type_eq(c, &&0u32);
 
     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
         //~^ ERROR: the semantics of this pattern will change in edition 2024
+        //~| WARN: this changes meaning in Rust 2024
         &(Struct { a: &Some(&0), b: &Some(&0), c: &Some(&0) })
     {
         assert_type_eq(a, &0u32);

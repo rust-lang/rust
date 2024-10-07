@@ -57,7 +57,7 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     if let Some(sugg) = pcx.rust_2024_migration_suggestion {
-        if tcx.features().min_match_ergonomics_2024 && sugg.is_hard_error {
+        if sugg.is_hard_error {
             let mut err = tcx.dcx().struct_span_err(
                 pat.span,
                 "patterns are not allowed to reset the default binding mode in rust 2024",

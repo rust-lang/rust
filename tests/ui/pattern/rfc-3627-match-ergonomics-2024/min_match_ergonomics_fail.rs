@@ -1,9 +1,6 @@
 //@ check-fail
 //@ edition: 2024
 //@ compile-flags: -Zunstable-options
-// gate-test-min_match_ergonomics_2024
-#![feature(min_match_ergonomics_2024)]
-#![allow(incomplete_features)]
 #![deny(rust_2024_incompatible_pat)]
 
 fn main() {}

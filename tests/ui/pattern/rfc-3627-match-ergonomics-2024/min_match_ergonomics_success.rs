@@ -1,6 +1,4 @@
-//@ revisions: normal min_match_ergonomics
 //@ check-pass
-#![cfg_attr(min_match_ergonomics, feature(min_match_ergonomics_2024))]
 #![allow(incomplete_features)]
 
 fn main() {}

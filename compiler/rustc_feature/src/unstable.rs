@@ -516,9 +516,6 @@ declare_features! (
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
-    /// A very restricted form of match ergonomics used over the 2024 edition transition to give
-    /// more time for T-lang to decide the final form of RFC3627.
-    (incomplete, min_match_ergonomics_2024, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.
