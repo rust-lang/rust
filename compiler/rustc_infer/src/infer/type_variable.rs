@@ -20,7 +20,7 @@ impl<'tcx> Rollback<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for TypeVariabl
 }
 
 #[derive(Clone)]
-pub struct TypeVariableStorage<'tcx> {
+pub(crate) struct TypeVariableStorage<'tcx> {
     /// The origins of each type variable.
     values: IndexVec<TyVid, TypeVariableData>,
     /// Two variables are unified in `eq_relations` when we have a
@@ -29,7 +29,7 @@ pub struct TypeVariableStorage<'tcx> {
     eq_relations: ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
 }
 
-pub struct TypeVariableTable<'a, 'tcx> {
+pub(crate) struct TypeVariableTable<'a, 'tcx> {
     storage: &'a mut TypeVariableStorage<'tcx>,
 
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
@@ -50,7 +50,7 @@ pub(crate) struct TypeVariableData {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum TypeVariableValue<'tcx> {
+pub(crate) enum TypeVariableValue<'tcx> {
     Known { value: Ty<'tcx> },
     Unknown { universe: ty::UniverseIndex },
 }
@@ -58,14 +58,14 @@ pub enum TypeVariableValue<'tcx> {
 impl<'tcx> TypeVariableValue<'tcx> {
     /// If this value is known, returns the type it is known to be.
     /// Otherwise, `None`.
-    pub fn known(&self) -> Option<Ty<'tcx>> {
+    pub(crate) fn known(&self) -> Option<Ty<'tcx>> {
         match *self {
             TypeVariableValue::Unknown { .. } => None,
             TypeVariableValue::Known { value } => Some(value),
         }
     }
 
-    pub fn is_unknown(&self) -> bool {
+    pub(crate) fn is_unknown(&self) -> bool {
         match *self {
             TypeVariableValue::Unknown { .. } => true,
             TypeVariableValue::Known { .. } => false,
@@ -74,7 +74,7 @@ impl<'tcx> TypeVariableValue<'tcx> {
 }
 
 impl<'tcx> TypeVariableStorage<'tcx> {
-    pub fn new() -> TypeVariableStorage<'tcx> {
+    pub(crate) fn new() -> TypeVariableStorage<'tcx> {
         TypeVariableStorage {
             values: Default::default(),
             eq_relations: ut::UnificationTableStorage::new(),
@@ -105,14 +105,14 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     ///
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
-    pub fn var_origin(&self, vid: ty::TyVid) -> TypeVariableOrigin {
+    pub(crate) fn var_origin(&self, vid: ty::TyVid) -> TypeVariableOrigin {
         self.storage.values[vid].origin
     }
 
     /// Records that `a == b`, depending on `dir`.
     ///
     /// Precondition: neither `a` nor `b` are known.
-    pub fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
+    pub(crate) fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
         self.eq_relations().union(a, b);
@@ -121,7 +121,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Instantiates `vid` with the type `ty`.
     ///
     /// Precondition: `vid` must not have been previously instantiated.
-    pub fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
+    pub(crate) fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
         let vid = self.root_var(vid);
         debug_assert!(!ty.is_ty_var(), "instantiating ty var with var: {vid:?} {ty:?}");
         debug_assert!(self.probe(vid).is_unknown());
@@ -143,7 +143,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// - `origin`: indicates *why* the type variable was created.
     ///   The code in this module doesn't care, but it can be useful
     ///   for improving error messages.
-    pub fn new_var(
+    pub(crate) fn new_var(
         &mut self,
         universe: ty::UniverseIndex,
         origin: TypeVariableOrigin,
@@ -158,7 +158,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     }
 
     /// Returns the number of type variables created thus far.
-    pub fn num_vars(&self) -> usize {
+    pub(crate) fn num_vars(&self) -> usize {
         self.storage.values.len()
     }
 
@@ -167,33 +167,20 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// will yield the same root variable (per the union-find
     /// algorithm), so `root_var(a) == root_var(b)` implies that `a ==
     /// b` (transitively).
-    pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
+    pub(crate) fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.eq_relations().find(vid).vid
     }
 
     /// Retrieves the type to which `vid` has been instantiated, if
     /// any.
-    pub fn probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
+    pub(crate) fn probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
         self.inlined_probe(vid)
     }
 
     /// An always-inlined variant of `probe`, for very hot call sites.
     #[inline(always)]
-    pub fn inlined_probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
+    pub(crate) fn inlined_probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
         self.eq_relations().inlined_probe_value(vid)
-    }
-
-    /// If `t` is a type-inference variable, and it has been
-    /// instantiated, then return the with which it was
-    /// instantiated. Otherwise, returns `t`.
-    pub fn replace_if_possible(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
-            ty::Infer(ty::TyVar(v)) => match self.probe(v) {
-                TypeVariableValue::Unknown { .. } => t,
-                TypeVariableValue::Known { value } => value,
-            },
-            _ => t,
-        }
     }
 
     #[inline]
@@ -202,7 +189,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     }
 
     /// Returns a range of the type variables created during the snapshot.
-    pub fn vars_since_snapshot(
+    pub(crate) fn vars_since_snapshot(
         &mut self,
         value_count: usize,
     ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
@@ -215,7 +202,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
 
     /// Returns indices of all variables that are not yet
     /// instantiated.
-    pub fn unresolved_variables(&mut self) -> Vec<ty::TyVid> {
+    pub(crate) fn unresolved_variables(&mut self) -> Vec<ty::TyVid> {
         (0..self.num_vars())
             .filter_map(|i| {
                 let vid = ty::TyVid::from_usize(i);

@@ -121,8 +121,6 @@ where
     value.try_fold_with(&mut FullTypeResolver { infcx })
 }
 
-// N.B. This type is not public because the protocol around checking the
-// `err` field is not enforceable otherwise.
 struct FullTypeResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
@@ -138,11 +136,13 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
         if !t.has_infer() {
             Ok(t) // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
+            use super::TyOrConstInferVar::*;
+
             let t = self.infcx.shallow_resolve(t);
             match *t.kind() {
-                ty::Infer(ty::TyVar(vid)) => Err(FixupError::UnresolvedTy(vid)),
-                ty::Infer(ty::IntVar(vid)) => Err(FixupError::UnresolvedIntTy(vid)),
-                ty::Infer(ty::FloatVar(vid)) => Err(FixupError::UnresolvedFloatTy(vid)),
+                ty::Infer(ty::TyVar(vid)) => Err(FixupError { unresolved: Ty(vid) }),
+                ty::Infer(ty::IntVar(vid)) => Err(FixupError { unresolved: TyInt(vid) }),
+                ty::Infer(ty::FloatVar(vid)) => Err(FixupError { unresolved: TyFloat(vid) }),
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }
@@ -171,13 +171,13 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
             let c = self.infcx.shallow_resolve_const(c);
             match c.kind() {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                    return Err(FixupError::UnresolvedConst(vid));
+                    return Err(FixupError { unresolved: super::TyOrConstInferVar::Const(vid) });
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);
                 }
                 ty::ConstKind::Infer(InferConst::EffectVar(evid)) => {
-                    return Err(FixupError::UnresolvedEffect(evid));
+                    return Err(FixupError { unresolved: super::TyOrConstInferVar::Effect(evid) });
                 }
                 _ => {}
             }

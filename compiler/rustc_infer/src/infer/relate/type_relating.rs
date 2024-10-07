@@ -13,7 +13,7 @@ use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases}
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 
 /// Enforce that `a` is equal to or a subtype of `b`.
-pub struct TypeRelating<'combine, 'a, 'tcx> {
+pub(crate) struct TypeRelating<'combine, 'a, 'tcx> {
     // Immutable except for the `InferCtxt` and the
     // resulting nested `goals`.
     fields: &'combine mut CombineFields<'a, 'tcx>,
@@ -49,7 +49,7 @@ pub struct TypeRelating<'combine, 'a, 'tcx> {
 }
 
 impl<'combine, 'infcx, 'tcx> TypeRelating<'combine, 'infcx, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         f: &'combine mut CombineFields<'infcx, 'tcx>,
         structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,
