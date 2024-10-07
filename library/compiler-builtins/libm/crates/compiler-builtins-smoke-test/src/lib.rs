@@ -2,6 +2,8 @@
 //!
 //! This is used to test that we can source import `libm` into the compiler-builtins crate.
 
+#![feature(core_intrinsics)]
+#![allow(internal_features)]
 #![allow(dead_code)]
 #![no_std]
 
