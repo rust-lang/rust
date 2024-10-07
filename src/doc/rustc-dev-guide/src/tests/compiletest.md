@@ -61,7 +61,6 @@ The following test suites are available, with links for more information:
 | [`codegen-units`](#codegen-units-tests)   | Check codegen unit partitioning                                                                                     |
 | [`assembly`](#assembly-tests)             | Check assembly output                                                                                               |
 | [`mir-opt`](#mir-opt-tests)               | Check MIR generation and optimizations                                                                              |
-| [`run-pass-valgrind`](#valgrind-tests)    | Run with Valgrind                                                                                                   |
 | [`coverage`](#coverage-tests)             | Check coverage instrumentation                                                                                      |
 | [`coverage-run-rustdoc`](#coverage-tests) | `coverage` tests that also run instrumented doctests                                                                |
 
@@ -444,21 +443,6 @@ some of the other tests for some examples on how to get started.
 [`tools.mk`]: https://github.com/rust-lang/rust/blob/master/tests/run-make/tools.mk
 [`tests/run-make`]: https://github.com/rust-lang/rust/tree/master/tests/run-make
 [`run_make_support`]: https://github.com/rust-lang/rust/tree/master/src/tools/run-make-support
-
-
-### Valgrind tests
-
-> **TODO**
->
-> Yeet this if we yeet the test suite.
-
-The tests in [`tests/run-pass-valgrind`] are for use with [Valgrind]. These are
-currently vestigial, as Valgrind is no longer used in CI. These may be removed
-in the future.
-
-[Valgrind]: https://valgrind.org/
-[`tests/run-pass-valgrind`]: https://github.com/rust-lang/rust/tree/master/tests/run-pass-valgrind
-
 
 ### Coverage tests
 
