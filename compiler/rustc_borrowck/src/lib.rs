@@ -19,7 +19,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::rc::Rc;
 
 use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -200,8 +199,7 @@ fn do_mir_borrowck<'tcx>(
         .into_results_cursor(body);
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def).is_fn_or_closure();
-    let borrow_set =
-        Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data));
+    let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
 
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
@@ -245,8 +243,6 @@ fn do_mir_borrowck<'tcx>(
     // usage significantly on some benchmarks.
     drop(flow_inits);
 
-    let regioncx = Rc::new(regioncx);
-
     let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set)
         .into_engine(tcx, body)
         .pass_name("borrowck")
@@ -288,10 +284,10 @@ fn do_mir_borrowck<'tcx>(
             access_place_error_reported: Default::default(),
             reservation_error_reported: Default::default(),
             uninitialized_error_reported: Default::default(),
-            regioncx: regioncx.clone(),
+            regioncx: &regioncx,
             used_mut: Default::default(),
             used_mut_upvars: SmallVec::new(),
-            borrow_set: Rc::clone(&borrow_set),
+            borrow_set: &borrow_set,
             upvars: &[],
             local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
             region_names: RefCell::default(),
@@ -329,10 +325,10 @@ fn do_mir_borrowck<'tcx>(
         access_place_error_reported: Default::default(),
         reservation_error_reported: Default::default(),
         uninitialized_error_reported: Default::default(),
-        regioncx: Rc::clone(&regioncx),
+        regioncx: &regioncx,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
-        borrow_set: Rc::clone(&borrow_set),
+        borrow_set: &borrow_set,
         upvars: tcx.closure_captures(def),
         local_names,
         region_names: RefCell::default(),
@@ -569,10 +565,10 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
     /// Region inference context. This contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
-    regioncx: Rc<RegionInferenceContext<'tcx>>,
+    regioncx: &'a RegionInferenceContext<'tcx>,
 
     /// The set of borrows extracted from the MIR
-    borrow_set: Rc<BorrowSet<'tcx>>,
+    borrow_set: &'a BorrowSet<'tcx>,
 
     /// Information about upvars not necessarily preserved in types or MIR
     upvars: &'tcx [&'tcx ty::CapturedPlace<'tcx>],
@@ -588,7 +584,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     next_region_name: RefCell<usize>,
 
     /// Results of Polonius analysis.
-    polonius_output: Option<Rc<PoloniusOutput>>,
+    polonius_output: Option<Box<PoloniusOutput>>,
 
     diags: diags::BorrowckDiags<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
@@ -800,9 +796,8 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
             TerminatorKind::Yield { value: _, resume: _, resume_arg: _, drop: _ } => {
                 if self.movable_coroutine {
                     // Look for any active borrows to locals
-                    let borrow_set = self.borrow_set.clone();
                     for i in state.borrows.iter() {
-                        let borrow = &borrow_set[i];
+                        let borrow = &self.borrow_set[i];
                         self.check_for_local_borrow(borrow, span);
                     }
                 }
@@ -816,9 +811,8 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
                 // Often, the storage will already have been killed by an explicit
                 // StorageDead, but we don't always emit those (notably on unwind paths),
                 // so this "extra check" serves as a kind of backup.
-                let borrow_set = self.borrow_set.clone();
                 for i in state.borrows.iter() {
-                    let borrow = &borrow_set[i];
+                    let borrow = &self.borrow_set[i];
                     self.check_for_invalidation_at_exit(loc, borrow, span);
                 }
             }
@@ -1037,13 +1031,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         state: &BorrowckDomain<'a, 'tcx>,
     ) -> bool {
         let mut error_reported = false;
-        let borrow_set = Rc::clone(&self.borrow_set);
 
         // Use polonius output if it has been enabled.
         let mut polonius_output;
         let borrows_in_scope = if let Some(polonius) = &self.polonius_output {
             let location = self.location_table.start_index(location);
-            polonius_output = BitSet::new_empty(borrow_set.len());
+            polonius_output = BitSet::new_empty(self.borrow_set.len());
             for &idx in polonius.errors_at(location) {
                 polonius_output.insert(idx);
             }
@@ -1057,7 +1050,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             self.infcx.tcx,
             self.body,
             (sd, place_span.0),
-            &borrow_set,
+            self.borrow_set,
             |borrow_index| borrows_in_scope.contains(borrow_index),
             |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
@@ -1580,9 +1573,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // Two-phase borrow support: For each activation that is newly
         // generated at this statement, check if it interferes with
         // another borrow.
-        let borrow_set = self.borrow_set.clone();
-        for &borrow_index in borrow_set.activations_at_location(location) {
-            let borrow = &borrow_set[borrow_index];
+        for &borrow_index in self.borrow_set.activations_at_location(location) {
+            let borrow = &self.borrow_set[borrow_index];
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {

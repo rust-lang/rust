@@ -121,13 +121,13 @@ pub(crate) fn type_check<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
-    universal_regions: &Rc<UniversalRegions<'tcx>>,
+    universal_regions: Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    elements: &Rc<DenseLocationMap>,
+    elements: Rc<DenseLocationMap>,
     upvars: &[&ty::CapturedPlace<'tcx>],
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
@@ -150,14 +150,14 @@ pub(crate) fn type_check<'a, 'tcx>(
         infcx,
         param_env,
         implicit_region_bound,
-        universal_regions,
+        universal_regions.clone(),
         &mut constraints,
     );
 
     debug!(?normalized_inputs_and_output);
 
     let mut borrowck_context = BorrowCheckContext {
-        universal_regions,
+        universal_regions: &universal_regions,
         location_table,
         borrow_set,
         all_facts,
@@ -181,10 +181,10 @@ pub(crate) fn type_check<'a, 'tcx>(
     verifier.visit_body(body);
 
     checker.typeck_mir(body);
-    checker.equate_inputs_and_outputs(body, universal_regions, &normalized_inputs_and_output);
+    checker.equate_inputs_and_outputs(body, &universal_regions, &normalized_inputs_and_output);
     checker.check_signature_annotation(body);
 
-    liveness::generate(&mut checker, body, elements, flow_inits, move_data);
+    liveness::generate(&mut checker, body, &elements, flow_inits, move_data);
 
     translate_outlives_facts(&mut checker);
     let opaque_type_values = infcx.take_opaque_types();
