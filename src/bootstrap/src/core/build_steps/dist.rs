@@ -1627,6 +1627,8 @@ impl Step for Extended {
                     "rust-analyzer-preview".to_string()
                 } else if name == "clippy" {
                     "clippy-preview".to_string()
+                } else if name == "rustfmt" {
+                    "rustfmt-preview".to_string()
                 } else if name == "miri" {
                     "miri-preview".to_string()
                 } else if name == "rustc-codegen-cranelift" {
@@ -1646,7 +1648,7 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-analysis");
             prepare("rust-std");
-            for tool in &["clippy", "rust-analyzer", "rust-docs", "miri"] {
+            for tool in &["clippy", "rustfmt", "rust-analyzer", "rust-docs", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1764,6 +1766,24 @@ impl Step for Extended {
                     .arg(etc.join("msi/remove-duplicates.xsl"))
                     .run(builder);
             }
+            if built_tools.contains("rustfmt") {
+                command(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("rustfmt")
+                    .args(heat_flags)
+                    .arg("-cg")
+                    .arg("RustFmtGroup")
+                    .arg("-dr")
+                    .arg("RustFmt")
+                    .arg("-var")
+                    .arg("var.RustFmtDir")
+                    .arg("-out")
+                    .arg(exe.join("RustFmtGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl"))
+                    .run(builder);
+            }
             if built_tools.contains("miri") {
                 command(&heat)
                     .current_dir(&exe)
@@ -1835,6 +1855,9 @@ impl Step for Extended {
                 if built_tools.contains("clippy") {
                     cmd.arg("-dClippyDir=clippy");
                 }
+                if built_tools.contains("rustfmt") {
+                    cmd.arg("-dRustFmtDir=rustfmt");
+                }
                 if built_tools.contains("rust-docs") {
                     cmd.arg("-dDocsDir=rust-docs");
                 }
@@ -1860,6 +1883,9 @@ impl Step for Extended {
             candle("StdGroup.wxs".as_ref());
             if built_tools.contains("clippy") {
                 candle("ClippyGroup.wxs".as_ref());
+            }
+            if built_tools.contains("rustfmt") {
+                candle("RustFmtGroup.wxs".as_ref());
             }
             if built_tools.contains("miri") {
                 candle("MiriGroup.wxs".as_ref());
@@ -1898,6 +1924,9 @@ impl Step for Extended {
 
             if built_tools.contains("clippy") {
                 cmd.arg("ClippyGroup.wixobj");
+            }
+            if built_tools.contains("rustfmt") {
+                cmd.arg("RustFmtGroup.wixobj");
             }
             if built_tools.contains("miri") {
                 cmd.arg("MiriGroup.wixobj");

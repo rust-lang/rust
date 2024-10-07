@@ -172,6 +172,11 @@
                     <!-- tool-rust-docs-end -->
                     <Directory Id="Cargo" Name="." />
                     <Directory Id="Std" Name="." />
+                    <Directory Id="RustFmt" Name="." />
+                    <Directory Id="RustAnalyzer" Name="." />
+                    <Directory Id="Miri" Name="." />
+                    <Directory Id="Analysis" Name="." />
+                    <Directory Id="Clippy" Name="." />
                 </Directory>
             </Directory>
 
@@ -279,7 +284,41 @@
                  <ComponentRef Id="PathEnvPerMachine" />
                  <ComponentRef Id="PathEnvPerUser" />
         </Feature>
-
+        <Feature Id="RustFmt"
+                 Title="Formatter for rust"
+                 Display="7"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="RustFmtGroup" />
+        </Feature>
+        <Feature Id="Clippy"
+                 Title="Formatter and checker for rust"
+                 Display="8"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="ClippyGroup" />
+        </Feature>
+        <Feature Id="Miri"
+                 Title="Soundness checker for rust"
+                 Display="9"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="MiriGroup" />
+        </Feature>
+        <Feature Id="RustAnalyzer"
+                 Title="Analyzer for rust"
+                 Display="10"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="RustAnalyzerGroup" />
+        </Feature>
+        <Feature Id="Analysis"
+                 Title="Analysis for rust"
+                 Display="11"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="AnalysisGroup" />
+        </Feature>
         <UIRef Id="RustUI" />
     </Product>
 </Wix>
