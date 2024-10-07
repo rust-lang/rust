@@ -14,7 +14,7 @@ use rustc_middle::mir::interpret::{
     UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
 };
 use rustc_middle::ty::{self, Mutability, Ty};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::WrappingRange;
 use rustc_target::abi::call::AdjustForForeignAbiError;
 
@@ -49,7 +49,7 @@ pub(crate) struct UnstableInStableExposed {
     pub gate: String,
     #[primary_span]
     pub span: Span,
-    #[note(const_eval_is_function_call)]
+    #[help(const_eval_is_function_call)]
     pub is_function_call: bool,
     /// Need to duplicate the field so that fluent also provides it as a variable...
     pub is_function_call2: bool,
@@ -122,6 +122,16 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_unstable_intrinsic)]
+#[help]
+pub(crate) struct UnstableIntrinsic {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    pub feature: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_unmarked_const_fn_exposed)]
 #[help]
 pub(crate) struct UnmarkedConstFnExposed {
@@ -163,6 +173,15 @@ pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
     pub def_path_str: String,
+    pub kind: ConstContext,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_non_const_intrinsic)]
+pub(crate) struct NonConstIntrinsic {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
     pub kind: ConstContext,
 }
 

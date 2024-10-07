@@ -3363,6 +3363,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
             bootstrap,
             rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")
         )]
+        #[cfg_attr(
+            not(bootstrap),
+            rustc_const_unstable(feature = "core_intrinsics", issue = "none")
+        )]
         #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
         #[rustc_nounwind]
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
@@ -3468,6 +3472,10 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
         #[cfg_attr(
             bootstrap,
             rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")
+        )]
+        #[cfg_attr(
+            not(bootstrap),
+            rustc_const_unstable(feature = "core_intrinsics", issue = "none")
         )]
         #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
         #[rustc_nounwind]

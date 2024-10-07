@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Deref;
 
+use rustc_attr::{ConstStability, StabilityLevel};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
@@ -267,7 +268,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
-    /// Returns `true` if the operation was allowed.
+    /// Returns `Some` if the operation was rejected.
     pub fn check_op(&mut self, op: impl NonConstOp<'tcx>) -> Option<ErrorGuaranteed> {
         self.check_op_spanned(op, self.span)
     }
@@ -282,10 +283,13 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let gate = match op.status_in_item(self.ccx) {
             Status::Allowed => return None,
 
-            Status::Unstable(gate) if self.tcx.features().declared(gate) => {
+            Status::Unstable { gate, safe_to_expose_on_stable }
+                if self.tcx.features().declared(gate) =>
+            {
                 // Generally this is allowed since the feature gate is active -- except
                 // if this function wants to be safe-to-expose-on-stable
-                if self.is_safe_to_expose_on_stable_const_fn()
+                if !safe_to_expose_on_stable
+                    && self.is_safe_to_expose_on_stable_const_fn()
                     && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate)
                 {
                     return Some(emit_unstable_in_stable_exposed_error(
@@ -296,7 +300,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 return None;
             }
 
-            Status::Unstable(gate) => Some(gate),
+            Status::Unstable { gate, .. } => Some(gate),
             Status::Forbidden => None,
         };
 
@@ -647,23 +651,21 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             callee = def;
                         }
                     } else {
-                        if self
-                            .check_op(ops::FnCallNonConst {
-                                caller,
-                                callee,
-                                args: fn_args,
-                                span: *fn_span,
-                                call_source,
-                                feature: Some(if tcx.features().const_trait_impl {
-                                    sym::effects
-                                } else {
-                                    sym::const_trait_impl
-                                }),
-                            })
-                            .is_some()
-                        {
-                            return;
-                        }
+                        self.check_op(ops::FnCallNonConst {
+                            caller,
+                            callee,
+                            args: fn_args,
+                            span: *fn_span,
+                            call_source,
+                            feature: Some(if tcx.features().const_trait_impl {
+                                sym::effects
+                            } else {
+                                sym::const_trait_impl
+                            }),
+                        });
+                        // If we allowed this, we're in miri-unleashed mode, so we might
+                        // as well skip the remaining checks.
+                        return;
                     }
                 }
 
@@ -704,23 +706,46 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                // Trait functions are not `const fn` so we skip them here... but let's also
-                // make sure that this does not accidentally bypass the check against intrinsics.
-                if !tcx.is_const_fn_raw(callee) && (!is_trait || tcx.intrinsic(callee).is_some()) {
-                    // This also ensures we do not call non-const intrinsics.
-                    if self
-                        .check_op(ops::FnCallNonConst {
-                            caller,
-                            callee,
-                            args: fn_args,
-                            span: *fn_span,
-                            call_source,
-                            feature: None,
-                        })
-                        .is_some()
-                    {
-                        return;
+                // Intrinsics are language primitives, not regular calls, so treat them separately.
+                if let Some(intrinsic) = tcx.intrinsic(callee) {
+                    match tcx.lookup_const_stability(callee) {
+                        None | Some(ConstStability { feature: None, .. }) => {
+                            // Non-const intrinsic.
+                            self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
+                        }
+                        Some(ConstStability {
+                            feature: Some(feature),
+                            level: StabilityLevel::Unstable { .. },
+                            const_stable_indirect,
+                            ..
+                        }) => {
+                            self.check_op(ops::IntrinsicUnstable {
+                                name: intrinsic.name,
+                                feature,
+                                const_stable_indirect,
+                            });
+                        }
+                        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
+                            // All good.
+                        }
                     }
+                    // This completes the checks for intrinsics.
+                    return;
+                }
+
+                // Trait functions are not `const fn` so we have to skip them here.
+                if !tcx.is_const_fn_raw(callee) && !is_trait {
+                    self.check_op(ops::FnCallNonConst {
+                        caller,
+                        callee,
+                        args: fn_args,
+                        span: *fn_span,
+                        call_source,
+                        feature: None,
+                    });
+                    // If we allowed this, we're in miri-unleashed mode, so we might
+                    // as well skip the remaining checks.
+                    return;
                 }
 
                 // If we are a safe-to-expose-on-stable function, we can only call
@@ -742,7 +767,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     self.ccx,
                                     self.span,
                                     callee_gate,
-                                    /* is_function_call */ tcx.intrinsic(callee).is_none(),
+                                    /* is_function_call */ true,
                                 );
                             }
                         } else {

@@ -113,10 +113,6 @@ pub fn is_safe_to_expose_on_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> b
 
     match tcx.lookup_const_stability(def_id) {
         None => {
-            if tcx.intrinsic(def_id).is_some() {
-                // Intrinsics default to "not exposed on stable".
-                return false;
-            }
             // We allow calling unmarked local functions *in the current crate*. This covers in
             // particular all `const fn` whose inherited regular stability is `stable`, which means
             // we don't infer any const stability for them. For the cross-crate case we require the
@@ -128,10 +124,9 @@ pub fn is_safe_to_expose_on_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> b
             def_id.is_local()
         }
         Some(stab) => {
-            stab.is_const_stable() || stab.const_stable_indirect ||
-                // Non-intrinsic `const fn` without an explicit const stability attribute (i.e.,
-                // with only the implied attribute) are safe to expose on stable.
-                (!stab.has_const_stable_attr && tcx.intrinsic(def_id).is_none())
+            // We consider things safe-to-expose if they don't have any explicit const stability attribute,
+            // if they are stable, or if they are marked as `const_stable_indirect`.
+            stab.is_const_stable() || !stab.has_const_stable_attr || stab.const_stable_indirect
         }
     }
 }

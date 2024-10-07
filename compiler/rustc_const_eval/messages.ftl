@@ -237,6 +237,9 @@ const_eval_non_const_fn_call =
 const_eval_non_const_impl =
     impl defined here, but it is not `const`
 
+const_eval_non_const_intrinsic =
+    cannot call non-const intrinsic `{$name}` in {const_eval_const_context}s
+
 const_eval_not_enough_caller_args =
     calling a function with fewer arguments than it requires
 
@@ -404,7 +407,6 @@ const_eval_unreachable_unwind =
 
 const_eval_unsized_local = unsized locals are not supported
 const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
-
 const_eval_unstable_in_stable_exposed =
     const function that might be (indirectly) exposed to stable cannot use `#[feature({$gate})]`
     .is_function_call = mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
@@ -413,6 +415,9 @@ const_eval_unstable_in_stable_exposed =
             *[false] function
         } is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
     .bypass_sugg = otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+
+const_eval_unstable_intrinsic = `{$name}` is not yet stable as a const intrinsic
+    .help = add `#![feature({$feature})]` to the crate attributes to enable
 
 const_eval_unterminated_c_string =
     reading a null-terminated string starting at {$pointer} with no null found before end of allocation

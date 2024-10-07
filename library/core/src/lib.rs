@@ -152,6 +152,7 @@
 #![feature(const_typed_swap)]
 #![feature(const_ub_checks)]
 #![feature(const_unicode_case_lookup)]
+#![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(do_not_recommend)]
 #![feature(duration_consts_float)]

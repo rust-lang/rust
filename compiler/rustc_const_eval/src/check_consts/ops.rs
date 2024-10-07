@@ -27,8 +27,13 @@ use crate::{errors, fluent_generated};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     Allowed,
-    /// `Symbol` is the feature that must be enabled to use this operation.
-    Unstable(Symbol),
+    Unstable {
+        /// The feature that must be enabled to use this operation.
+        gate: Symbol,
+        /// Whether it is allowed to use this operation from stable `const fn`.
+        /// This will usually be `false`.
+        safe_to_expose_on_stable: bool,
+    },
     Forbidden,
 }
 
@@ -307,7 +312,7 @@ pub(crate) struct FnCallUnstable {
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         match self.feature {
-            Some(feature) => Status::Unstable(feature),
+            Some(feature) => Status::Unstable { gate: feature, safe_to_expose_on_stable: false },
             None => Status::Forbidden,
         }
     }
@@ -326,6 +331,47 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     }
 }
 
+/// A call to an intrinsic that is just not const-callable at all.
+#[derive(Debug)]
+pub(crate) struct IntrinsicNonConst {
+    pub name: Symbol,
+}
+
+impl<'tcx> NonConstOp<'tcx> for IntrinsicNonConst {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        ccx.dcx().create_err(errors::NonConstIntrinsic {
+            span,
+            name: self.name,
+            kind: ccx.const_kind(),
+        })
+    }
+}
+
+/// A call to an intrinsic that is just not const-callable at all.
+#[derive(Debug)]
+pub(crate) struct IntrinsicUnstable {
+    pub name: Symbol,
+    pub feature: Symbol,
+    pub const_stable_indirect: bool,
+}
+
+impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        Status::Unstable {
+            gate: self.feature,
+            safe_to_expose_on_stable: self.const_stable_indirect,
+        }
+    }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        ccx.dcx().create_err(errors::UnstableIntrinsic {
+            span,
+            name: self.name,
+            feature: self.feature,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Coroutine(pub hir::CoroutineKind);
 impl<'tcx> NonConstOp<'tcx> for Coroutine {
@@ -335,7 +381,7 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
             hir::CoroutineSource::Block,
         ) = self.0
         {
-            Status::Unstable(sym::const_async_blocks)
+            Status::Unstable { gate: sym::const_async_blocks, safe_to_expose_on_stable: false }
         } else {
             Status::Forbidden
         }

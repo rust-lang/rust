@@ -27,7 +27,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -53,7 +53,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable2::func();
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -79,7 +79,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -105,7 +105,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable2::func();
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -131,7 +131,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
