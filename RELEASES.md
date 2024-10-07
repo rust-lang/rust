@@ -6,12 +6,19 @@ Version 1.82.0 (2024-10-17)
 Language
 --------
 - [Don't make statement nonterminals match pattern nonterminals](https://github.com/rust-lang/rust/pull/120221/)
-- [Implement lint against ambiguous negative literals](https://github.com/rust-lang/rust/pull/121364/)
 - [Patterns matching empty types can now be omitted in common cases](https://github.com/rust-lang/rust/pull/122792)
+- [`addr_of(_mut)!` macros and the newly stabilized `&raw (const|mut)` are now safe to use with all static items](https://github.com/rust-lang/rust/pull/125834)
 - [size_of_val_raw: for length 0 this is safe to call](https://github.com/rust-lang/rust/pull/126152/)
 - [Reorder trait bound modifiers *after* `for<...>` binder in trait bounds](https://github.com/rust-lang/rust/pull/127054/)
 - [Stabilize opaque type precise capturing (RFC 3617)](https://github.com/rust-lang/rust/pull/127672)
+- [Stabilize `&raw const` and `&raw mut` operators (RFC 2582)](https://github.com/rust-lang/rust/pull/127679)
+- [Stabilize unsafe extern blocks (RFC 3484)](https://github.com/rust-lang/rust/pull/127921)
+- [Stabilize nested field access in `offset_of!`](https://github.com/rust-lang/rust/pull/128284)
+- [Do not require `T` to be live when dropping `[T; 0]`](https://github.com/rust-lang/rust/pull/128438)
+- [Stabilize `const` operands in inline assembly](https://github.com/rust-lang/rust/pull/128570)
+- [Stabilize floating-point arithmetic in `const fn`](https://github.com/rust-lang/rust/pull/128596)
 - [Stabilize explicit opt-in to unsafe attributes](https://github.com/rust-lang/rust/pull/128771)
+- [Document NaN bit patterns guarantees](https://github.com/rust-lang/rust/pull/129559)
 
 
 <a id="1.82.0-Compiler"></a>
@@ -19,8 +26,11 @@ Language
 Compiler
 --------
 - [Promote riscv64gc-unknown-linux-musl to tier 2](https://github.com/rust-lang/rust/pull/122049)
+- [Promote Mac Catalyst targets `aarch64-apple-ios-macabi` and `x86_64-apple-ios-macabi` to Tier 2, and ship them with rustup](https://github.com/rust-lang/rust/pull/126450)
 - [Improved diagnostics to explain why a pattern is unreachable](https://github.com/rust-lang/rust/pull/128034)
 - [The compiler now triggers the unreachable code warning properly for async functions that don't return/are `-> !`](https://github.com/rust-lang/rust/pull/128443)
+- [Promote `aarch64-apple-darwin` to Tier 1](https://github.com/rust-lang/rust/pull/128592)
+- [Add Trusty OS target `aarch64-unknown-trusty` and `armv7-unknown-trusty` as tier 3 targets](https://github.com/rust-lang/rust/pull/129490)
 - [Promote `wasm32-wasip2` to Tier 2.](https://github.com/rust-lang/rust/pull/126967/)
 
 
@@ -31,7 +41,6 @@ Libraries
 - [Implement DoubleEnded and ExactSize for Take<Repeat> and Take<RepeatWith>](https://github.com/rust-lang/rust/pull/106943/)
 - [Stabilize Wasm relaxed SIMD](https://github.com/rust-lang/rust/pull/117468/)
 - [Stabilize const `{integer}::from_str_radix` i.e. `const_int_from_str`](https://github.com/rust-lang/rust/pull/124941/)
-- [CommandExt::before_exec: deprecate safety in edition 2024](https://github.com/rust-lang/rust/pull/125970/)
 - [CloneToUninit impls](https://github.com/rust-lang/rust/pull/126877/)
 - [impl `Default` for collection iterators that don't already have it](https://github.com/rust-lang/rust/pull/128261/)
 
@@ -51,13 +60,9 @@ Cargo
 
 Compatibility Notes
 -------------------
-- [`addr_of(_mut)!` macros and the newly stabilized `&raw (const|mut)` are now safe to use with all static items](https://github.com/rust-lang/rust/pull/125834)
  - We now [disallow setting some built-in cfgs via the command-line](https://github.com/rust-lang/rust/pull/126158) with the newly added [`explicit_builtin_cfgs_in_flags`](https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#explicit-builtin-cfgs-in-flags) lint in order to prevent incoherent state, eg. `windows` cfg active but target is Linux based. The appropriate [`rustc` flag](https://doc.rust-lang.org/rustc/command-line-arguments.html) should be used instead.
-- [Stabilize `&raw const` and `&raw mut` operators (RFC 2582)](https://github.com/rust-lang/rust/pull/127679)
-- [Stabilize unsafe extern blocks (RFC 3484)](https://github.com/rust-lang/rust/pull/127921)
 - The standard library has a new implementation of `binary_search` which is significantly improves performance (#128254). However when a sorted slice has multiple values which compare equal, the new implementation may select a different value among the equal ones than the old implementation.
 - [illumos/Solaris now sets `MSG_NOSIGNAL` when writing to sockets](https://github.com/rust-lang/rust/pull/128259). This avoids killing the process with SIGPIPE when writing to a closed socket, which matches the existing behavior on other UNIX targets.
-- [Stabilize offset_of_nested](https://github.com/rust-lang/rust/pull/128284)
 - [Removes a problematic hack that always passed the --whole-archive linker flag for tests, which may cause linker errors for code accidentally relying on it.](https://github.com/rust-lang/rust/pull/128400)
 - The WebAssembly target features `multivalue` and `reference-types` are now
   both enabled by default. These two features both have subtle changes implied
@@ -77,10 +82,6 @@ Compatibility Notes
   default features requires `-Zbuild-std` support from Cargo and more information
   can be found at
   [rust-lang/rust#128511](https://github.com/rust-lang/rust/pull/128511).
-- [Stabilize `const` arguments to inline asm](https://github.com/rust-lang/rust/pull/128570)
-- [Promote aarch64-apple-darwin to Tier 1](https://github.com/rust-lang/rust/pull/128592)
-- [stabilize floating-point arithmetic in `const fn`](https://github.com/rust-lang/rust/pull/128596)
-- [float types: document NaN bit pattern guarantees](https://github.com/rust-lang/rust/pull/129559)
 - [Rust now raises unsafety errors for union patterns in parameter-position](https://github.com/rust-lang/rust/pull/130531)
 
 
