@@ -31,12 +31,9 @@ use crate::session_diagnostics::{
     HigherRankedErrorCause, HigherRankedLifetimeError, HigherRankedSubtypeError,
 };
 
-#[derive(Clone)]
-pub(crate) struct UniverseInfo<'tcx>(UniverseInfoInner<'tcx>);
-
 /// What operation a universe was created for.
 #[derive(Clone)]
-enum UniverseInfoInner<'tcx> {
+pub(crate) enum UniverseInfo<'tcx> {
     /// Relating two types which have binders.
     RelateTys { expected: Ty<'tcx>, found: Ty<'tcx> },
     /// Created from performing a `TypeOp`.
@@ -47,11 +44,11 @@ enum UniverseInfoInner<'tcx> {
 
 impl<'tcx> UniverseInfo<'tcx> {
     pub(crate) fn other() -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::Other)
+        UniverseInfo::Other
     }
 
     pub(crate) fn relate(expected: Ty<'tcx>, found: Ty<'tcx>) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::RelateTys { expected, found })
+        UniverseInfo::RelateTys { expected, found }
     }
 
     pub(crate) fn report_error(
@@ -61,8 +58,8 @@ impl<'tcx> UniverseInfo<'tcx> {
         error_element: RegionElement,
         cause: ObligationCause<'tcx>,
     ) {
-        match self.0 {
-            UniverseInfoInner::RelateTys { expected, found } => {
+        match *self {
+            UniverseInfo::RelateTys { expected, found } => {
                 let err = mbcx.infcx.err_ctxt().report_mismatched_types(
                     &cause,
                     mbcx.param_env,
@@ -72,10 +69,10 @@ impl<'tcx> UniverseInfo<'tcx> {
                 );
                 mbcx.buffer_error(err);
             }
-            UniverseInfoInner::TypeOp(ref type_op_info) => {
+            UniverseInfo::TypeOp(ref type_op_info) => {
                 type_op_info.report_error(mbcx, placeholder, error_element, cause);
             }
-            UniverseInfoInner::Other => {
+            UniverseInfo::Other => {
                 // FIXME: This error message isn't great, but it doesn't show
                 // up in the existing UI tests. Consider investigating this
                 // some more.
@@ -93,19 +90,16 @@ pub(crate) trait ToUniverseInfo<'tcx> {
 
 impl<'tcx> ToUniverseInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(crate::type_check::InstantiateOpaqueType {
+        UniverseInfo::TypeOp(Rc::new(crate::type_check::InstantiateOpaqueType {
             base_universe: Some(base_universe),
             ..self
-        })))
+        }))
     }
 }
 
 impl<'tcx> ToUniverseInfo<'tcx> for CanonicalTypeOpProvePredicateGoal<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(PredicateQuery {
-            canonical_query: self,
-            base_universe,
-        })))
+        UniverseInfo::TypeOp(Rc::new(PredicateQuery { canonical_query: self, base_universe }))
     }
 }
 
@@ -113,19 +107,13 @@ impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx> ToUnivers
     for CanonicalTypeOpNormalizeGoal<'tcx, T>
 {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(NormalizeQuery {
-            canonical_query: self,
-            base_universe,
-        })))
+        UniverseInfo::TypeOp(Rc::new(NormalizeQuery { canonical_query: self, base_universe }))
     }
 }
 
 impl<'tcx> ToUniverseInfo<'tcx> for CanonicalTypeOpAscribeUserTypeGoal<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(AscribeUserTypeQuery {
-            canonical_query: self,
-            base_universe,
-        })))
+        UniverseInfo::TypeOp(Rc::new(AscribeUserTypeQuery { canonical_query: self, base_universe }))
     }
 }
 
@@ -143,7 +131,7 @@ impl<'tcx> ToUniverseInfo<'tcx> for ! {
 }
 
 #[allow(unused_lifetimes)]
-trait TypeOpInfo<'tcx> {
+pub(crate) trait TypeOpInfo<'tcx> {
     /// Returns an error to be reported if rerunning the type op fails to
     /// recover the error's cause.
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx>;
