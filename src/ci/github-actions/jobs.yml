@@ -5,7 +5,7 @@ runners:
     env: { }
 
   - &job-linux-4c
-    os: ubuntu-20.04-4core-16gb
+    os: ubuntu-20.04
     <<: *base-job
 
   - &job-linux-8c
