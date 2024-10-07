@@ -1,6 +1,7 @@
 // skip-filecheck
 //@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
 //@ only-64bit (constants for `None::<&T>` show in the output)
+//@ ignore-debug: precondition checks on ptr::add are under cfg(debug_assertions)
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![crate_type = "lib"]
