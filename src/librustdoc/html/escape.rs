@@ -108,7 +108,7 @@ impl<'a> fmt::Display for EscapeBodyTextWithWbr<'a> {
                 || pk.map_or(true, |(_, t)| t.chars().any(|c| c.is_uppercase()));
             let next_is_underscore = || pk.map_or(true, |(_, t)| t.contains('_'));
             let next_is_colon = || pk.map_or(true, |(_, t)| t.contains(':'));
-            if i - last > 3 && is_uppercase() && !next_is_uppercase() {
+            if i - last > 3 && is_uppercase() && !next_is_uppercase() && !next_is_underscore() {
                 EscapeBodyText(&text[last..i]).fmt(fmt)?;
                 fmt.write_str("<wbr>")?;
                 last = i;
