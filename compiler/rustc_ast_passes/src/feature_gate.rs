@@ -186,9 +186,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
-            for nested_meta in attr.meta_item_list().unwrap_or_default() {
+            for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
                 macro_rules! gate_doc { ($($s:literal { $($name:ident => $feature:ident)* })*) => {
-                    $($(if nested_meta.has_name(sym::$name) {
+                    $($(if meta_item_inner.has_name(sym::$name) {
                         let msg = concat!("`#[doc(", stringify!($name), ")]` is ", $s);
                         gate!(self, $feature, attr.span, msg);
                     })*)*

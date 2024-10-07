@@ -4,7 +4,7 @@ use std::num::NonZero;
 
 use rustc_abi::Align;
 use rustc_ast::{
-    self as ast, Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId,
+    self as ast, Attribute, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NodeId,
     attr,
 };
 use rustc_ast_pretty::pprust;
@@ -534,7 +534,7 @@ pub struct Condition {
 
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(
-    cfg: &ast::NestedMetaItem,
+    cfg: &ast::MetaItemInner,
     sess: &Session,
     lint_node_id: NodeId,
     features: Option<&Features>,
@@ -605,7 +605,7 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
 pub fn eval_condition(
-    cfg: &ast::NestedMetaItem,
+    cfg: &ast::MetaItemInner,
     sess: &Session,
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
@@ -613,8 +613,8 @@ pub fn eval_condition(
     let dcx = sess.dcx();
 
     let cfg = match cfg {
-        ast::NestedMetaItem::MetaItem(meta_item) => meta_item,
-        ast::NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => {
+        ast::MetaItemInner::MetaItem(meta_item) => meta_item,
+        ast::MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => {
             if let Some(features) = features {
                 // we can't use `try_gate_cfg` as symbols don't differentiate between `r#true`
                 // and `true`, and we want to keep the former working without feature gate
@@ -646,12 +646,12 @@ pub fn eval_condition(
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
-                [NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Str(sym, ..), span, .. })] => {
+                [MetaItemInner::Lit(MetaItemLit { kind: LitKind::Str(sym, ..), span, .. })] => {
                     (sym, span)
                 }
                 [
-                    NestedMetaItem::Lit(MetaItemLit { span, .. })
-                    | NestedMetaItem::MetaItem(MetaItem { span, .. }),
+                    MetaItemInner::Lit(MetaItemLit { span, .. })
+                    | MetaItemInner::MetaItem(MetaItem { span, .. }),
                 ] => {
                     dcx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
                     return false;
@@ -729,7 +729,7 @@ pub fn eval_condition(
                         }
 
                         res & eval_condition(
-                            &ast::NestedMetaItem::MetaItem(mi),
+                            &ast::MetaItemInner::MetaItem(mi),
                             sess,
                             features,
                             eval,
@@ -873,7 +873,7 @@ pub fn find_deprecation(
 
                 for meta in list {
                     match meta {
-                        NestedMetaItem::MetaItem(mi) => match mi.name_or_empty() {
+                        MetaItemInner::MetaItem(mi) => match mi.name_or_empty() {
                             sym::since => {
                                 if !get(mi, &mut since) {
                                     continue 'outer;
@@ -912,7 +912,7 @@ pub fn find_deprecation(
                                 continue 'outer;
                             }
                         },
-                        NestedMetaItem::Lit(lit) => {
+                        MetaItemInner::Lit(lit) => {
                             sess.dcx().emit_err(session_diagnostics::UnsupportedLiteral {
                                 span: lit.span,
                                 reason: UnsupportedLiteralReason::DeprecatedKvPair,
@@ -1277,7 +1277,7 @@ pub fn parse_confusables(attr: &Attribute) -> Option<Vec<Symbol>> {
     let mut candidates = Vec::new();
 
     for meta in metas {
-        let NestedMetaItem::Lit(meta_lit) = meta else {
+        let MetaItemInner::Lit(meta_lit) = meta else {
             return None;
         };
         candidates.push(meta_lit.symbol);

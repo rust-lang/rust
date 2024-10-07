@@ -29,7 +29,7 @@ use rustc_span::{DUMMY_SP, FileName, Span};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
-use crate::base::ast::NestedMetaItem;
+use crate::base::ast::MetaItemInner;
 use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
@@ -783,7 +783,7 @@ impl SyntaxExtension {
 
     fn collapse_debuginfo_by_name(attr: &Attribute) -> Result<CollapseMacroDebuginfo, Span> {
         let list = attr.meta_item_list();
-        let Some([NestedMetaItem::MetaItem(item)]) = list.as_deref() else {
+        let Some([MetaItemInner::MetaItem(item)]) = list.as_deref() else {
             return Err(attr.span);
         };
         if !item.is_word() {

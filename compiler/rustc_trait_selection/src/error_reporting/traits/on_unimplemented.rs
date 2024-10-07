@@ -1,7 +1,7 @@
 use std::iter;
 use std::path::PathBuf;
 
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, NestedMetaItem};
+use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItemInner};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
@@ -282,7 +282,7 @@ pub struct OnUnimplementedFormatString {
 
 #[derive(Debug)]
 pub struct OnUnimplementedDirective {
-    pub condition: Option<NestedMetaItem>,
+    pub condition: Option<MetaItemInner>,
     pub subcommands: Vec<OnUnimplementedDirective>,
     pub message: Option<OnUnimplementedFormatString>,
     pub label: Option<OnUnimplementedFormatString>,
@@ -389,7 +389,7 @@ impl<'tcx> OnUnimplementedDirective {
     fn parse(
         tcx: TyCtxt<'tcx>,
         item_def_id: DefId,
-        items: &[NestedMetaItem],
+        items: &[MetaItemInner],
         span: Span,
         is_root: bool,
         is_diagnostic_namespace_variant: bool,

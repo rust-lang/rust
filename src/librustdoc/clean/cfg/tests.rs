@@ -1,5 +1,5 @@
 use rustc_ast::ast::LitIntType;
-use rustc_ast::{MetaItemLit, NestedMetaItem, Path, Safety, StrStyle};
+use rustc_ast::{MetaItemInner, MetaItemLit, Path, Safety, StrStyle};
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{DUMMY_SP, create_default_session_globals_then};
 use thin_vec::thin_vec;
@@ -14,12 +14,12 @@ fn name_value_cfg(name: &str, value: &str) -> Cfg {
     Cfg::Cfg(Symbol::intern(name), Some(Symbol::intern(value)))
 }
 
-fn dummy_lit(symbol: Symbol, kind: LitKind) -> NestedMetaItem {
-    NestedMetaItem::Lit(MetaItemLit { symbol, suffix: None, kind, span: DUMMY_SP })
+fn dummy_lit(symbol: Symbol, kind: LitKind) -> MetaItemInner {
+    MetaItemInner::Lit(MetaItemLit { symbol, suffix: None, kind, span: DUMMY_SP })
 }
 
-fn dummy_meta_item_word(name: &str) -> NestedMetaItem {
-    NestedMetaItem::MetaItem(MetaItem {
+fn dummy_meta_item_word(name: &str) -> MetaItemInner {
+    MetaItemInner::MetaItem(MetaItem {
         unsafety: Safety::Default,
         path: Path::from_ident(Ident::from_str(name)),
         kind: MetaItemKind::Word,
@@ -27,9 +27,9 @@ fn dummy_meta_item_word(name: &str) -> NestedMetaItem {
     })
 }
 
-fn dummy_meta_item_name_value(name: &str, symbol: Symbol, kind: LitKind) -> NestedMetaItem {
+fn dummy_meta_item_name_value(name: &str, symbol: Symbol, kind: LitKind) -> MetaItemInner {
     let lit = MetaItemLit { symbol, suffix: None, kind, span: DUMMY_SP };
-    NestedMetaItem::MetaItem(MetaItem {
+    MetaItemInner::MetaItem(MetaItem {
         unsafety: Safety::Default,
         path: Path::from_ident(Ident::from_str(name)),
         kind: MetaItemKind::NameValue(lit),
@@ -39,7 +39,7 @@ fn dummy_meta_item_name_value(name: &str, symbol: Symbol, kind: LitKind) -> Nest
 
 macro_rules! dummy_meta_item_list {
     ($name:ident, [$($list:ident),* $(,)?]) => {
-        NestedMetaItem::MetaItem(MetaItem {
+        MetaItemInner::MetaItem(MetaItem {
             unsafety: Safety::Default,
             path: Path::from_ident(Ident::from_str(stringify!($name))),
             kind: MetaItemKind::List(thin_vec![
@@ -52,7 +52,7 @@ macro_rules! dummy_meta_item_list {
     };
 
     ($name:ident, [$($list:expr),* $(,)?]) => {
-        NestedMetaItem::MetaItem(MetaItem {
+        MetaItemInner::MetaItem(MetaItem {
             unsafety: Safety::Default,
             path: Path::from_ident(Ident::from_str(stringify!($name))),
             kind: MetaItemKind::List(thin_vec![

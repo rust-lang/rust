@@ -72,7 +72,7 @@ pub struct NativeLib {
     pub name: Symbol,
     /// If packed_bundled_libs enabled, actual filename of library is stored.
     pub filename: Option<Symbol>,
-    pub cfg: Option<ast::NestedMetaItem>,
+    pub cfg: Option<ast::MetaItemInner>,
     pub foreign_module: Option<DefId>,
     pub verbatim: Option<bool>,
     pub dll_imports: Vec<DllImport>,

@@ -199,7 +199,7 @@ impl Spanned for MacroArg {
     }
 }
 
-impl Spanned for ast::NestedMetaItem {
+impl Spanned for ast::MetaItemInner {
     fn span(&self) -> Span {
         self.span()
     }

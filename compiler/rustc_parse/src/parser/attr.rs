@@ -358,7 +358,7 @@ impl<'a> Parser<'a> {
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
     pub fn parse_cfg_attr(
         &mut self,
-    ) -> PResult<'a, (ast::NestedMetaItem, Vec<(ast::AttrItem, Span)>)> {
+    ) -> PResult<'a, (ast::MetaItemInner, Vec<(ast::AttrItem, Span)>)> {
         let cfg_predicate = self.parse_meta_item_inner()?;
         self.expect(&token::Comma)?;
 
@@ -377,7 +377,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `COMMASEP(meta_item_inner)`.
-    pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, ThinVec<ast::NestedMetaItem>> {
+    pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, ThinVec<ast::MetaItemInner>> {
         // Presumably, the majority of the time there will only be one attr.
         let mut nmis = ThinVec::with_capacity(1);
         while self.token != token::Eof {
@@ -454,14 +454,14 @@ impl<'a> Parser<'a> {
     /// ```ebnf
     /// MetaItemInner = UNSUFFIXED_LIT | MetaItem ;
     /// ```
-    pub fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
+    pub fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::MetaItemInner> {
         match self.parse_unsuffixed_meta_item_lit() {
-            Ok(lit) => return Ok(ast::NestedMetaItem::Lit(lit)),
+            Ok(lit) => return Ok(ast::MetaItemInner::Lit(lit)),
             Err(err) => err.cancel(), // we provide a better error below
         }
 
         match self.parse_meta_item(AllowLeadingUnsafe::No) {
-            Ok(mi) => return Ok(ast::NestedMetaItem::MetaItem(mi)),
+            Ok(mi) => return Ok(ast::MetaItemInner::MetaItem(mi)),
             Err(err) => err.cancel(), // we provide a better error below
         }
 

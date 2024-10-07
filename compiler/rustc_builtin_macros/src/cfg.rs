@@ -39,7 +39,7 @@ fn parse_cfg<'a>(
     cx: &ExtCtxt<'a>,
     span: Span,
     tts: TokenStream,
-) -> PResult<'a, ast::NestedMetaItem> {
+) -> PResult<'a, ast::MetaItemInner> {
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
