@@ -13,6 +13,8 @@ use rustc_span::symbol::{Ident, sym};
 use rustc_span::{Span, Symbol};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::errors;
+
 macro_rules! path {
     ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }
 }
@@ -25,6 +27,8 @@ pub(crate) fn expand_deriving_smart_ptr(
     push: &mut dyn FnMut(Annotatable),
     _is_const: bool,
 ) {
+    item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
+
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
         && let ItemKind::Struct(struct_data, g) = &aitem.kind
     {
@@ -393,6 +397,66 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
             }
             rustc_ast::WherePredicate::RegionPredicate(_)
             | rustc_ast::WherePredicate::EqPredicate(_) => {}
+        }
+    }
+}
+
+struct DetectNonGenericPointeeAttr<'a, 'b> {
+    cx: &'a ExtCtxt<'b>,
+}
+
+impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonGenericPointeeAttr<'a, 'b> {
+    fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) -> Self::Result {
+        if attr.has_name(sym::pointee) {
+            self.cx.dcx().emit_err(errors::NonGenericPointee { span: attr.span });
+        }
+    }
+
+    fn visit_generic_param(&mut self, param: &'a rustc_ast::GenericParam) -> Self::Result {
+        let mut error_on_pointee = AlwaysErrorOnGenericParam { cx: self.cx };
+
+        match &param.kind {
+            GenericParamKind::Type { default } => {
+                // The `default` may end up containing a block expression.
+                // The problem is block expressions  may define structs with generics.
+                // A user may attach a #[pointee] attribute to one of these generics
+                // We want to catch that. The simple solution is to just
+                // always raise a `NonGenericPointee` error when this happens.
+                //
+                // This solution does reject valid rust programs but,
+                // such a code would have to, in order:
+                // - Define a smart pointer struct.
+                // - Somewhere in this struct definition use a type with a const generic argument.
+                // - Calculate this const generic in a expression block.
+                // - Define a new smart pointer type in this block.
+                // - Have this smart pointer type have more than 1 generic type.
+                // In this case, the inner smart pointer derive would be complaining that it
+                // needs a pointer attribute. Meanwhile, the outer macro would be complaining
+                // that we attached a #[pointee] to a generic type argument while helpfully
+                // informing the user that #[pointee] can only be attached to generic pointer arguments
+                rustc_ast::visit::visit_opt!(error_on_pointee, visit_ty, default);
+            }
+
+            GenericParamKind::Const { .. } | GenericParamKind::Lifetime => {
+                rustc_ast::visit::walk_generic_param(&mut error_on_pointee, param);
+            }
+        }
+    }
+
+    fn visit_ty(&mut self, t: &'a rustc_ast::Ty) -> Self::Result {
+        let mut error_on_pointee = AlwaysErrorOnGenericParam { cx: self.cx };
+        error_on_pointee.visit_ty(t)
+    }
+}
+
+struct AlwaysErrorOnGenericParam<'a, 'b> {
+    cx: &'a ExtCtxt<'b>,
+}
+
+impl<'a, 'b> rustc_ast::visit::Visitor<'a> for AlwaysErrorOnGenericParam<'a, 'b> {
+    fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) -> Self::Result {
+        if attr.has_name(sym::pointee) {
+            self.cx.dcx().emit_err(errors::NonGenericPointee { span: attr.span });
         }
     }
 }
