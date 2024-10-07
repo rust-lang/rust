@@ -178,7 +178,7 @@ mod test {
     fn test_struct_local() {
         let vi = get_version_info!();
         assert_eq!(vi.major, 0);
-        assert_eq!(vi.minor, 3);
+        assert_eq!(vi.minor, 4);
         assert_eq!(vi.patch, 0);
         assert_eq!(vi.crate_name, "rustc_tools_util");
         // hard to make positive tests for these since they will always change
@@ -189,7 +189,7 @@ mod test {
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        assert_eq!(vi.to_string(), "rustc_tools_util 0.3.0");
+        assert_eq!(vi.to_string(), "rustc_tools_util 0.4.0");
     }
 
     #[test]
@@ -198,7 +198,7 @@ mod test {
         let s = format!("{vi:?}");
         assert_eq!(
             s,
-            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 3, patch: 0 }"
+            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 4, patch: 0 }"
         );
     }
 }
