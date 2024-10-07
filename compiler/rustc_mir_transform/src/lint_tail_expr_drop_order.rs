@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use rustc_data_structures::unord::UnordSet;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitSet;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::{
@@ -13,7 +13,7 @@ use rustc_mir_dataflow::move_paths::{MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable};
 use rustc_session::lint;
 use rustc_span::Span;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 fn place_has_common_prefix<'tcx>(left: &Place<'tcx>, right: &Place<'tcx>) -> bool {
     left.local == right.local
@@ -68,9 +68,10 @@ fn print_ty_without_trimming(ty: Ty<'_>) -> String {
     ty::print::with_no_trimmed_paths!(format!("{}", ty))
 }
 
+#[instrument(level = "debug", skip(tcx, param_env))]
 fn extract_component_with_significant_dtor<'tcx>(
     tcx: TyCtxt<'tcx>,
-    _body_did: DefId,
+    param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> (String, Vec<Span>) {
     let ty_def_span = |ty: Ty<'_>| match ty.kind() {
@@ -104,10 +105,7 @@ fn extract_component_with_significant_dtor<'tcx>(
         // I honestly don't know how to extract the span reliably from a param arbitrarily nested
         ty::Param(_) => None,
     };
-    let Some(adt_def) = ty.ty_adt_def() else {
-        return (print_ty_without_trimming(ty), vec![]);
-    };
-    let Ok(tys) = tcx.adt_significant_drop_tys(adt_def.did()) else {
+    let Ok(tys) = tcx.list_significant_drop_tys(param_env.and(ty)) else {
         return (print_ty_without_trimming(ty), vec![]);
     };
     let ty_names = tys.iter().map(print_ty_without_trimming).join(", ");
@@ -164,7 +162,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     }
 
     dump_mir(tcx, false, "lint_tail_expr_drop_order", &0 as _, body, |_, _| Ok(()));
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
     let is_closure_like = tcx.is_closure_like(def_id.to_def_id());
     let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
     let maybe_init = MaybeInitializedPlaces::new(tcx, body, &move_data);
@@ -216,15 +214,11 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
                     let observer_local_decl = &body.local_decls[move_path.place.local];
                     let (ty_drop_components, ty_spans) = extract_component_with_significant_dtor(
                         tcx,
-                        def_id.to_def_id(),
+                        param_env,
                         linted_local_decl.ty,
                     );
                     let (observer_ty_drop_components, observer_ty_spans) =
-                        extract_component_with_significant_dtor(
-                            tcx,
-                            def_id.to_def_id(),
-                            observer_ty,
-                        );
+                        extract_component_with_significant_dtor(tcx, param_env, observer_ty);
                     debug!(?candidate, ?place, ?move_path.place);
                     tcx.emit_node_span_lint(
                         lint::builtin::TAIL_EXPR_DROP_ORDER,
