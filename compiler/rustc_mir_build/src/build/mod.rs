@@ -791,12 +791,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn finish(self) -> Body<'tcx> {
-        for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
-            if block.terminator.is_none() {
-                span_bug!(self.fn_span, "no terminator on block {:?}", index);
-            }
-        }
-
         let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
@@ -810,6 +804,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None,
         );
         body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
+
+        for (index, block) in body.basic_blocks.iter().enumerate() {
+            if block.terminator.is_none() {
+                use rustc_middle::mir::pretty;
+                let options = pretty::PrettyPrintMirOptions::from_cli(self.tcx);
+                pretty::write_mir_fn(
+                    self.tcx,
+                    &body,
+                    &mut |_, _| Ok(()),
+                    &mut std::io::stdout(),
+                    options,
+                )
+                .unwrap();
+                span_bug!(self.fn_span, "no terminator on block {:?}", index);
+            }
+        }
+
         body
     }
 
