@@ -21,7 +21,23 @@ LL |     let Foo(mut x) = &mut Foo(0);
    |         help: desugar the match ergonomics: `&mut`
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:51:9
+  --> $DIR/migration_lint.rs:33:9
+   |
+LL |     let Foo(ref x) = &Foo(0);
+   |         -^^^^^^^^^
+   |         |
+   |         help: desugar the match ergonomics: `&`
+
+error: the semantics of this pattern will change in edition 2024
+  --> $DIR/migration_lint.rs:37:9
+   |
+LL |     let Foo(ref x) = &mut Foo(0);
+   |         -^^^^^^^^^
+   |         |
+   |         help: desugar the match ergonomics: `&mut`
+
+error: the semantics of this pattern will change in edition 2024
+  --> $DIR/migration_lint.rs:53:9
    |
 LL |     let Foo(&x) = &Foo(&0);
    |         -^^^^^^
@@ -29,7 +45,7 @@ LL |     let Foo(&x) = &Foo(&0);
    |         help: desugar the match ergonomics: `&`
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:55:9
+  --> $DIR/migration_lint.rs:57:9
    |
 LL |     let Foo(&mut x) = &Foo(&mut 0);
    |         -^^^^^^^^^^
@@ -37,7 +53,7 @@ LL |     let Foo(&mut x) = &Foo(&mut 0);
    |         help: desugar the match ergonomics: `&`
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:59:9
+  --> $DIR/migration_lint.rs:61:9
    |
 LL |     let Foo(&x) = &mut Foo(&0);
    |         -^^^^^^
@@ -45,7 +61,7 @@ LL |     let Foo(&x) = &mut Foo(&0);
    |         help: desugar the match ergonomics: `&mut`
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:63:9
+  --> $DIR/migration_lint.rs:65:9
    |
 LL |     let Foo(&mut x) = &mut Foo(&mut 0);
    |         -^^^^^^^^^^
@@ -53,7 +69,7 @@ LL |     let Foo(&mut x) = &mut Foo(&mut 0);
    |         help: desugar the match ergonomics: `&mut`
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:71:12
+  --> $DIR/migration_lint.rs:73:12
    |
 LL |     if let Some(&x) = &&&&&Some(&0u8) {
    |            -^^^^^^^
@@ -61,7 +77,7 @@ LL |     if let Some(&x) = &&&&&Some(&0u8) {
    |            help: desugar the match ergonomics: `&&&&&`
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:76:12
+  --> $DIR/migration_lint.rs:78:12
    |
 LL |     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
    |            -^^^^^^^^^^^
@@ -69,7 +85,7 @@ LL |     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
    |            help: desugar the match ergonomics: `&&&&&`
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:81:12
+  --> $DIR/migration_lint.rs:83:12
    |
 LL |     if let Some(&x) = &&&&&mut Some(&0u8) {
    |            -^^^^^^^
@@ -77,7 +93,7 @@ LL |     if let Some(&x) = &&&&&mut Some(&0u8) {
    |            help: desugar the match ergonomics: `&&&&&mut`
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:86:12
+  --> $DIR/migration_lint.rs:88:12
    |
 LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,7 +104,7 @@ LL |     if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some
    |            ++++                ++++      +++++++
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:97:9
+  --> $DIR/migration_lint.rs:99:9
    |
 LL |     let Struct { a, mut b, c } = &Struct { a: 0, b: 0, c: 0 };
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +115,7 @@ LL |     let &Struct { ref a, mut b, ref c } = &Struct { a: 0, b: 0, c: 0 };
    |         +         +++           +++
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:102:9
+  --> $DIR/migration_lint.rs:104:9
    |
 LL |     let Struct { a: &a, b, ref c } = &Struct { a: &0, b: &0, c: &0 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -110,7 +126,7 @@ LL |     let &Struct { a: &a, ref b, ref c } = &Struct { a: &0, b: &0, c: &0 };
    |         +                +++
 
 error: the semantics of this pattern will change in edition 2024
-  --> $DIR/migration_lint.rs:108:12
+  --> $DIR/migration_lint.rs:110:12
    |
 LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,12 +137,12 @@ LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
    |            +                         +             +     +++
 
 error: patterns are not allowed to reset the default binding mode in rust 2024
-  --> $DIR/migration_lint.rs:120:9
+  --> $DIR/migration_lint.rs:122:9
    |
 LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
    |         -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         help: desugar the match ergonomics: `&`
 
-error: aborting due to 14 previous errors
+error: aborting due to 16 previous errors
 

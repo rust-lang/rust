@@ -34,8 +34,8 @@ test_pat_on_type![Foo { f: (&x,) }: Foo]; //~ ERROR mismatched types
 test_pat_on_type![Foo { f: (&x,) }: &mut Foo]; //~ ERROR mismatched types
 test_pat_on_type![Foo { f: &(x,) }: &Foo]; //~ ERROR patterns are not allowed to reset the default binding mode
 test_pat_on_type![(mut x,): &(T,)]; //~ ERROR patterns are not allowed to reset the default binding mode
-test_pat_on_type![(ref x,): &(T,)];
-test_pat_on_type![(ref mut x,): &mut (T,)];
+test_pat_on_type![(ref x,): &(T,)]; //~ ERROR patterns are not allowed to reset the default binding mode
+test_pat_on_type![(ref mut x,): &mut (T,)]; //~ ERROR patterns are not allowed to reset the default binding mode
 
 fn get<X>() -> X {
     unimplemented!()

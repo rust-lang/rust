@@ -132,6 +132,22 @@ LL | test_pat_on_type![(mut x,): &(T,)];
    |                   help: desugar the match ergonomics: `&`
 
 error: patterns are not allowed to reset the default binding mode in rust 2024
+  --> $DIR/min_match_ergonomics_fail.rs:37:19
+   |
+LL | test_pat_on_type![(ref x,): &(T,)];
+   |                   -^^^^^^^
+   |                   |
+   |                   help: desugar the match ergonomics: `&`
+
+error: patterns are not allowed to reset the default binding mode in rust 2024
+  --> $DIR/min_match_ergonomics_fail.rs:38:19
+   |
+LL | test_pat_on_type![(ref mut x,): &mut (T,)];
+   |                   -^^^^^^^^^^^
+   |                   |
+   |                   help: desugar the match ergonomics: `&mut`
+
+error: patterns are not allowed to reset the default binding mode in rust 2024
   --> $DIR/min_match_ergonomics_fail.rs:47:9
    |
 LL |         (&x,) => x,
@@ -139,6 +155,6 @@ LL |         (&x,) => x,
    |         |
    |         help: desugar the match ergonomics: `&`
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

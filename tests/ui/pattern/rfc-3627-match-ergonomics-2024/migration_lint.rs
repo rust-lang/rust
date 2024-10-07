@@ -31,9 +31,11 @@ fn main() {
     assert_type_eq(x, 0u8);
 
     let Foo(ref x) = &Foo(0);
+    //~^ ERROR: the semantics of this pattern will change in edition 2024
     assert_type_eq(x, &0u8);
 
     let Foo(ref x) = &mut Foo(0);
+    //~^ ERROR: the semantics of this pattern will change in edition 2024
     assert_type_eq(x, &0u8);
 
     let &Foo(x) = &Foo(0);

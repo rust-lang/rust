@@ -691,7 +691,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     BindingMode(def_br, Mutability::Mut)
                 } else {
-                    // `mut` resets binding mode on edition <= 2021
+                    // `mut` resets the binding mode on edition <= 2021
                     *self
                         .typeck_results
                         .borrow_mut()
@@ -702,7 +702,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(_), _) => user_bind_annot,
+            BindingMode(ByRef::Yes(_), _) => {
+                if matches!(def_br, ByRef::Yes(_)) {
+                    // `ref`/`ref mut` overrides the binding mode on edition <= 2021
+                    *self
+                        .typeck_results
+                        .borrow_mut()
+                        .rust_2024_migration_desugared_pats_mut()
+                        .entry(pat_info.top_info.hir_id)
+                        .or_default() |= pat.span.at_least_rust_2024();
+                }
+                user_bind_annot
+            }
         };
 
         if bm.0 == ByRef::Yes(Mutability::Mut)
