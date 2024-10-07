@@ -887,6 +887,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[cfg(debug_assertions)]
         #[inline]
         const fn runtime_add_nowrap(this: *const (), count: usize, size: usize) -> bool {
             #[inline]
@@ -905,6 +906,7 @@ impl<T: ?Sized> *const T {
             intrinsics::const_eval_select((this, count, size), comptime, runtime)
         }
 
+        #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::add requires that the address calculation does not overflow",
@@ -993,6 +995,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[cfg(debug_assertions)]
         #[inline]
         const fn runtime_sub_nowrap(this: *const (), count: usize, size: usize) -> bool {
             #[inline]
@@ -1010,6 +1013,7 @@ impl<T: ?Sized> *const T {
             intrinsics::const_eval_select((this, count, size), comptime, runtime)
         }
 
+        #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::sub requires that the address calculation does not overflow",
