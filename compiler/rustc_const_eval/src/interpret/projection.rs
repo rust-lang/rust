@@ -82,6 +82,10 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         self.offset_with_meta(offset, OffsetMode::Inbounds, MemPlaceMeta::None, layout, ecx)
     }
 
+    /// This does an offset-by-zero, which is effectively a transmute. Note however that
+    /// not all transmutes are supported by all projectables -- specifically, if this is an
+    /// `OpTy` or `ImmTy`, the new layout must have almost the same ABI as the old one
+    /// (only changing the `valid_range` is allowed and turning integers into pointers).
     fn transmute<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         layout: TyAndLayout<'tcx>,
