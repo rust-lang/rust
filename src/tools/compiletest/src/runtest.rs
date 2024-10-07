@@ -2109,6 +2109,10 @@ impl<'test> TestCx<'test> {
             .collect()
     }
 
+    /// This method is used for `//@ check-test-line-numbers-match`.
+    ///
+    /// It checks that doctests line in the displayed doctest "name" matches where they are
+    /// defined in source code.
     fn check_rustdoc_test_option(&self, res: ProcRes) {
         let mut other_files = Vec::new();
         let mut files: HashMap<String, Vec<usize>> = HashMap::new();
