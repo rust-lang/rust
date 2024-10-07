@@ -313,14 +313,23 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
             match m {
                 ProcMacro::Derive(cd) => {
                     cx.resolver.declare_proc_macro(cd.id);
-                    cx.expr_call(span, proc_macro_ty_method_path(cx, custom_derive), thin_vec![
-                        cx.expr_str(span, cd.trait_name),
-                        cx.expr_array_ref(
-                            span,
-                            cd.attrs.iter().map(|&s| cx.expr_str(span, s)).collect::<ThinVec<_>>(),
-                        ),
-                        local_path(cx, cd.function_name),
-                    ])
+                    // The call needs to use `harness_span` so that the const stability checker
+                    // accepts it.
+                    cx.expr_call(
+                        harness_span,
+                        proc_macro_ty_method_path(cx, custom_derive),
+                        thin_vec![
+                            cx.expr_str(span, cd.trait_name),
+                            cx.expr_array_ref(
+                                span,
+                                cd.attrs
+                                    .iter()
+                                    .map(|&s| cx.expr_str(span, s))
+                                    .collect::<ThinVec<_>>(),
+                            ),
+                            local_path(cx, cd.function_name),
+                        ],
+                    )
                 }
                 ProcMacro::Attr(ca) | ProcMacro::Bang(ca) => {
                     cx.resolver.declare_proc_macro(ca.id);
@@ -330,7 +339,9 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                         ProcMacro::Derive(_) => unreachable!(),
                     };
 
-                    cx.expr_call(span, proc_macro_ty_method_path(cx, ident), thin_vec![
+                    // The call needs to use `harness_span` so that the const stability checker
+                    // accepts it.
+                    cx.expr_call(harness_span, proc_macro_ty_method_path(cx, ident), thin_vec![
                         cx.expr_str(span, ca.function_name.name),
                         local_path(cx, ca.function_name),
                     ])
