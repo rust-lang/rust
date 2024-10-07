@@ -1,4 +1,4 @@
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:25:9
    |
 LL |     let Foo(mut x) = &Foo(0);
@@ -14,7 +14,7 @@ note: the lint level is defined here
 LL | #![deny(rust_2024_incompatible_pat)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:30:9
    |
 LL |     let Foo(mut x) = &mut Foo(0);
@@ -25,7 +25,7 @@ LL |     let Foo(mut x) = &mut Foo(0);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:35:9
    |
 LL |     let Foo(ref x) = &Foo(0);
@@ -36,7 +36,7 @@ LL |     let Foo(ref x) = &Foo(0);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:40:9
    |
 LL |     let Foo(ref x) = &mut Foo(0);
@@ -47,7 +47,7 @@ LL |     let Foo(ref x) = &mut Foo(0);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:57:9
    |
 LL |     let Foo(&x) = &Foo(&0);
@@ -58,7 +58,7 @@ LL |     let Foo(&x) = &Foo(&0);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:62:9
    |
 LL |     let Foo(&mut x) = &Foo(&mut 0);
@@ -69,7 +69,7 @@ LL |     let Foo(&mut x) = &Foo(&mut 0);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:67:9
    |
 LL |     let Foo(&x) = &mut Foo(&0);
@@ -80,7 +80,7 @@ LL |     let Foo(&x) = &mut Foo(&0);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:72:9
    |
 LL |     let Foo(&mut x) = &mut Foo(&mut 0);
@@ -91,7 +91,7 @@ LL |     let Foo(&mut x) = &mut Foo(&mut 0);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:81:12
    |
 LL |     if let Some(&x) = &&&&&Some(&0u8) {
@@ -102,7 +102,7 @@ LL |     if let Some(&x) = &&&&&Some(&0u8) {
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:87:12
    |
 LL |     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
@@ -113,7 +113,7 @@ LL |     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:93:12
    |
 LL |     if let Some(&x) = &&&&&mut Some(&0u8) {
@@ -124,7 +124,7 @@ LL |     if let Some(&x) = &&&&&mut Some(&0u8) {
    = warning: this changes meaning in Rust 2024
    = note: for more information, see 123076
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:99:12
    |
 LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
@@ -137,7 +137,7 @@ help: desugar the match ergonomics
 LL |     if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
    |            ++++                ++++      +++++++
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:111:9
    |
 LL |     let Struct { a, mut b, c } = &Struct { a: 0, b: 0, c: 0 };
@@ -150,7 +150,7 @@ help: desugar the match ergonomics
 LL |     let &Struct { ref a, mut b, ref c } = &Struct { a: 0, b: 0, c: 0 };
    |         +         +++           +++
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:117:9
    |
 LL |     let Struct { a: &a, b, ref c } = &Struct { a: &0, b: &0, c: &0 };
@@ -163,7 +163,7 @@ help: desugar the match ergonomics
 LL |     let &Struct { a: &a, ref b, ref c } = &Struct { a: &0, b: &0, c: &0 };
    |         +                +++
 
-error: the semantics of this pattern will change in edition 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:124:12
    |
 LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
@@ -176,7 +176,7 @@ help: desugar the match ergonomics
 LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
    |            +                         +             +     +++
 
-error: patterns are not allowed to reset the default binding mode in rust 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/migration_lint.rs:137:9
    |
 LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {

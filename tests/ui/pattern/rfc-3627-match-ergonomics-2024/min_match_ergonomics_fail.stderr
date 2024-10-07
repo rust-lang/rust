@@ -99,7 +99,7 @@ LL - test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
 LL + test_pat_on_type![Foo { f: (x,) }: &mut Foo];
    |
 
-error: patterns are not allowed to reset the default binding mode in rust 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:25:19
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
@@ -107,7 +107,7 @@ LL | test_pat_on_type![(&x,): &(&T,)];
    |                   |
    |                   help: desugar the match ergonomics: `&`
 
-error: patterns are not allowed to reset the default binding mode in rust 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:28:19
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
@@ -115,7 +115,7 @@ LL | test_pat_on_type![(&mut x,): &(&mut T,)];
    |                   |
    |                   help: desugar the match ergonomics: `&`
 
-error: patterns are not allowed to reset the default binding mode in rust 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:32:19
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
@@ -123,7 +123,7 @@ LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
    |                   |
    |                   help: desugar the match ergonomics: `&`
 
-error: patterns are not allowed to reset the default binding mode in rust 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:33:19
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
@@ -131,7 +131,7 @@ LL | test_pat_on_type![(mut x,): &(T,)];
    |                   |
    |                   help: desugar the match ergonomics: `&`
 
-error: patterns are not allowed to reset the default binding mode in rust 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:34:19
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
@@ -139,7 +139,7 @@ LL | test_pat_on_type![(ref x,): &(T,)];
    |                   |
    |                   help: desugar the match ergonomics: `&`
 
-error: patterns are not allowed to reset the default binding mode in rust 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:35:19
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
@@ -147,7 +147,7 @@ LL | test_pat_on_type![(ref mut x,): &mut (T,)];
    |                   |
    |                   help: desugar the match ergonomics: `&mut`
 
-error: patterns are not allowed to reset the default binding mode in rust 2024
+error: patterns are not allowed to reset the default binding mode in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:44:9
    |
 LL |         (&x,) => x,

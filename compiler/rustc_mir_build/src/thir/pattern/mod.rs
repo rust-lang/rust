@@ -25,6 +25,7 @@ use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
 use crate::errors::*;
+use crate::fluent_generated as fluent;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 struct PatCtxt<'a, 'tcx> {
@@ -58,10 +59,8 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     if let Some(sugg) = pcx.rust_2024_migration_suggestion {
         if sugg.is_hard_error {
-            let mut err = tcx.dcx().struct_span_err(
-                pat.span,
-                "patterns are not allowed to reset the default binding mode in rust 2024",
-            );
+            let mut err =
+                tcx.dcx().struct_span_err(pat.span, fluent::mir_build_rust_2024_incompatible_pat);
             err.subdiagnostic(sugg);
             err.emit();
         } else {
