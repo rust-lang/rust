@@ -49,7 +49,6 @@ pub(crate) struct LatticeOp<'infcx, 'tcx> {
     // Immutable fields
     trace: TypeTrace<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    define_opaque_types: DefineOpaqueTypes,
     // Mutable fields
     kind: LatticeOpKind,
     obligations: Vec<PredicateObligation<'tcx>>,
@@ -60,10 +59,9 @@ impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
         infcx: &'infcx InferCtxt<'tcx>,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        define_opaque_types: DefineOpaqueTypes,
         kind: LatticeOpKind,
     ) -> LatticeOp<'infcx, 'tcx> {
-        LatticeOp { infcx, trace, param_env, define_opaque_types, kind, obligations: vec![] }
+        LatticeOp { infcx, trace, param_env, kind, obligations: vec![] }
     }
 
     pub(crate) fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
@@ -88,7 +86,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
                 self.obligations.extend(
                     self.infcx
                         .at(&self.trace.cause, self.param_env)
-                        .eq_trace(self.define_opaque_types, self.trace.clone(), a, b)?
+                        .eq_trace(DefineOpaqueTypes::Yes, self.trace.clone(), a, b)?
                         .into_obligations(),
                 );
                 Ok(a)
@@ -154,9 +152,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
 
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if self.define_opaque_types == DefineOpaqueTypes::Yes
-                    && def_id.is_local()
-                    && !infcx.next_trait_solver() =>
+                if def_id.is_local() && !infcx.next_trait_solver() =>
             {
                 self.register_goals(infcx.handle_opaque_type(
                     a,
@@ -235,12 +231,12 @@ impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
         let at = self.infcx.at(&self.trace.cause, self.param_env);
         match self.kind {
             LatticeOpKind::Glb => {
-                self.obligations.extend(at.sub(self.define_opaque_types, v, a)?.into_obligations());
-                self.obligations.extend(at.sub(self.define_opaque_types, v, b)?.into_obligations());
+                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, v, a)?.into_obligations());
+                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, v, b)?.into_obligations());
             }
             LatticeOpKind::Lub => {
-                self.obligations.extend(at.sub(self.define_opaque_types, a, v)?.into_obligations());
-                self.obligations.extend(at.sub(self.define_opaque_types, b, v)?.into_obligations());
+                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, a, v)?.into_obligations());
+                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, b, v)?.into_obligations());
             }
         }
         Ok(())

@@ -141,7 +141,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let at = self.at(&self.cause, self.fcx.param_env);
 
             let res = if self.use_lub {
-                at.lub(DefineOpaqueTypes::Yes, b, a)
+                at.lub(b, a)
             } else {
                 at.sup(DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
@@ -1190,13 +1190,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
-                        match self.commit_if_ok(|_| {
-                            self.at(cause, self.param_env).lub(
-                                DefineOpaqueTypes::Yes,
-                                prev_ty,
-                                new_ty,
-                            )
-                        }) {
+                        match self
+                            .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
+                        {
                             // We have a LUB of prev_ty and new_ty, just return it.
                             Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
                             Err(_) => {
@@ -1239,7 +1235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
                 .at(cause, self.param_env)
-                .lub(DefineOpaqueTypes::Yes, a_sig, b_sig)
+                .lub(a_sig, b_sig)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
 
             // Reify both sides and return the reified fn pointer type.
@@ -1330,9 +1326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 return Err(self
-                    .commit_if_ok(|_| {
-                        self.at(cause, self.param_env).lub(DefineOpaqueTypes::Yes, prev_ty, new_ty)
-                    })
+                    .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
                     .unwrap_err());
             }
         }
@@ -1344,13 +1338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Err(e)
                 } else {
                     Err(self
-                        .commit_if_ok(|_| {
-                            self.at(cause, self.param_env).lub(
-                                DefineOpaqueTypes::Yes,
-                                prev_ty,
-                                new_ty,
-                            )
-                        })
+                        .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
                         .unwrap_err())
                 }
             }

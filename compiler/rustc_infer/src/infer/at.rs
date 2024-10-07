@@ -280,12 +280,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
-    pub fn lub<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, T>
+    pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
@@ -293,7 +288,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.infcx,
             ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
-            define_opaque_types,
             LatticeOpKind::Lub,
         );
         let value = op.relate(expected, actual)?;
@@ -303,12 +297,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// Computes the greatest-lower-bound, or mutual subtype, of two
     /// values. As with `lub` order doesn't matter, except for error
     /// cases.
-    pub fn glb<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, T>
+    pub fn glb<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
@@ -316,7 +305,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.infcx,
             ToTrace::to_trace(self.cause, expected, actual),
             self.param_env,
-            define_opaque_types,
             LatticeOpKind::Glb,
         );
         let value = op.relate(expected, actual)?;
