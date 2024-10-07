@@ -105,9 +105,11 @@ async function getDebugConfiguration(
         const commandCCpp: string = createCommandLink("ms-vscode.cpptools");
         const commandCodeLLDB: string = createCommandLink("vadimcn.vscode-lldb");
         const commandNativeDebug: string = createCommandLink("webfreak.debug");
+        const commandLLDBDap: string = createCommandLink("llvm-vs-code-extensions.lldb-dap");
 
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
+                `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
                 `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
                 `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
         );
@@ -220,10 +222,21 @@ type DebugConfigProvider<Type extends string, DebugConfig extends BaseDebugConfi
 
 type KnownEnginesType = (typeof knownEngines)[keyof typeof knownEngines];
 const knownEngines: {
+    "llvm-vs-code-extensions.lldb-dap": DebugConfigProvider<"lldb-dap", LldbDapDebugConfig>;
     "vadimcn.vscode-lldb": DebugConfigProvider<"lldb", CodeLldbDebugConfig>;
     "ms-vscode.cpptools": DebugConfigProvider<"cppvsdbg" | "cppdbg", CCppDebugConfig>;
     "webfreak.debug": DebugConfigProvider<"gdb", NativeDebugConfig>;
 } = {
+    "llvm-vs-code-extensions.lldb-dap":{
+        type: "lldb-dap",
+        executableProperty: "program",
+        environmentProperty: (env) => ["env", env],
+        runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
+            "args",
+            runnableArgs.executableArgs,
+        ],
+
+},
     "vadimcn.vscode-lldb": {
         type: "lldb",
         executableProperty: "program",
@@ -335,6 +348,13 @@ type CCppDebugConfig = {
         MIMode: "lldb";
     };
 } & BaseDebugConfig<"cppvsdbg" | "cppdbg">;
+
+type LldbDapDebugConfig = {
+    program: string;
+    args: string[];
+    env: Record<string, string>;
+} & BaseDebugConfig<"lldb-dap">;
+
 
 type CodeLldbDebugConfig = {
     program: string;
