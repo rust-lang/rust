@@ -3042,7 +3042,7 @@ impl<K: Debug, V: Debug, S, A: Allocator> Debug for OccupiedError<'_, K, V, S, A
     }
 }
 
-impl<'a, K: Debug, V: Debug, S, A: Allocator> fmt::Display for OccupiedError<'a, K, V, S, A> {
+impl<K: Debug, V: Debug, S, A: Allocator> fmt::Display for OccupiedError<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -3153,7 +3153,7 @@ impl<K, V, S, A: Allocator> IntoIterator for HashMap<K, V, S, A> {
     }
 }
 
-impl<'a, K, V> Default for Iter<'a, K, V> {
+impl<K, V> Default for Iter<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self {
@@ -3201,7 +3201,7 @@ impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
 
 impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
-impl<'a, K, V> Default for IterMut<'a, K, V> {
+impl<K, V> Default for IterMut<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self {
@@ -3300,7 +3300,7 @@ impl<K: Debug, V: Debug, A: Allocator> fmt::Debug for IntoIter<K, V, A> {
     }
 }
 
-impl<'a, K, V> Default for Keys<'a, K, V> {
+impl<K, V> Default for Keys<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self {
@@ -3340,7 +3340,7 @@ impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
 }
 impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
-impl<'a, K, V> Default for Values<'a, K, V> {
+impl<K, V> Default for Values<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self {
@@ -3380,7 +3380,7 @@ impl<K, V> ExactSizeIterator for Values<'_, K, V> {
 }
 impl<K, V> FusedIterator for Values<'_, K, V> {}
 
-impl<'a, K, V> Default for ValuesMut<'a, K, V> {
+impl<K, V> Default for ValuesMut<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self {
@@ -3428,7 +3428,7 @@ impl<K, V: Debug> fmt::Debug for ValuesMut<'_, K, V> {
     }
 }
 
-impl<'a, K, V, A: Allocator> Iterator for Drain<'a, K, V, A> {
+impl<K, V, A: Allocator> Iterator for Drain<'_, K, V, A> {
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
