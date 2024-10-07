@@ -20,9 +20,9 @@ use tracing::*;
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
     DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode, Pretty, RunMake,
-    RunPassValgrind, Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR,
-    UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path,
-    incremental_dir, output_base_dir, output_base_name, output_testname_unique,
+    Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
+    UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
+    output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
@@ -49,7 +49,6 @@ mod run_make;
 mod rustdoc;
 mod rustdoc_json;
 mod ui;
-mod valgrind;
 // tidy-alphabet-end
 
 #[cfg(test)]
@@ -253,7 +252,6 @@ impl<'test> TestCx<'test> {
             self.fatal("cannot use should-ice in a test that is not cfail");
         }
         match self.config.mode {
-            RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
             DebugInfo => self.run_debuginfo_test(),
             Codegen => self.run_codegen_test(),
@@ -1500,8 +1498,7 @@ impl<'test> TestCx<'test> {
             Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            RunPassValgrind | Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake
-            | CodegenUnits | JsDocTest => {
+            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | JsDocTest => {
                 // do not use JSON output
             }
         }
@@ -2652,33 +2649,6 @@ impl<'test> TestCx<'test> {
 
         if self.config.verbose {
             println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
-        }
-    }
-
-    // FIXME(jieyouxu): `run_rpass_test` is hoisted out here and not in incremental because
-    // apparently valgrind test falls back to `run_rpass_test` if valgrind isn't available, which
-    // seems highly questionable to me.
-    fn run_rpass_test(&self) {
-        let emit_metadata = self.should_emit_metadata(self.pass_mode());
-        let should_run = self.run_if_enabled();
-        let proc_res = self.compile_test(should_run, emit_metadata);
-
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("compilation failed!", &proc_res);
-        }
-
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("run-pass tests with expected warnings should be moved to ui/");
-        }
-
-        if let WillExecute::Disabled = should_run {
-            return;
-        }
-
-        let proc_res = self.exec_compiled_test();
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("test run failed!", &proc_res);
         }
     }
 
