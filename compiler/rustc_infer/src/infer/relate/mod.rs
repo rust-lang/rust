@@ -11,5 +11,5 @@ pub use self::combine::PredicateEmittingRelation;
 pub(super) mod combine;
 mod generalize;
 mod higher_ranked;
-mod lattice;
-mod type_relating;
+pub(super) mod lattice;
+pub(super) mod type_relating;
