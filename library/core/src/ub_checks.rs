@@ -116,8 +116,8 @@ pub(crate) const fn check_language_ub() -> bool {
 /// for `assert_unsafe_precondition!` with `check_language_ub`, in which case the
 /// check is anyway not executed in `const`.
 #[inline]
-pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize) -> bool {
-    !ptr.is_null() && ptr.is_aligned_to(align)
+pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize, is_zst: bool) -> bool {
+    if is_zst { ptr.is_aligned_to(align) } else { !ptr.is_null() && ptr.is_aligned_to(align) }
 }
 
 #[inline]
