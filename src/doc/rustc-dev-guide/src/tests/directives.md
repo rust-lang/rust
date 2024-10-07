@@ -1,17 +1,16 @@
-# Test headers
+# Compiletest directives
 
 <!-- toc -->
 
 > **FIXME(jieyouxu)** completely revise this chapter.
 
-Header commands are special comments that tell compiletest how to build and
-interpret a test.
-They must appear before the Rust source in the test.
-They may also appear in `rmake.rs` or legacy Makefiles for
-[run-make tests](compiletest.md#run-make-tests).
+Directives are special comments that tell compiletest how to build and interpret
+a test. They must appear before the Rust source in the test. They may also
+appear in `rmake.rs` or legacy Makefiles for [run-make
+tests](compiletest.md#run-make-tests).
 
-They are normally put after the short comment that explains the point of this test.
-Compiletest test suites use `//@` to signal that a comment is a header.
+They are normally put after the short comment that explains the point of this
+test. Compiletest test suites use `//@` to signal that a comment is a directive.
 For example, this test uses the `//@ compile-flags` command to specify a custom
 flag to give to rustc when the test is compiled:
 
@@ -26,250 +25,242 @@ fn main() {
 }
 ```
 
-Header commands can be standalone (like `//@ run-pass`) or take a value (like
-`//@ compile-flags: -C overflow-checks=off`).
+Directives can be standalone (like `//@ run-pass`) or take a value (like `//@
+compile-flags: -C overflow-checks=off`).
 
-Header commands are written with one header per line: you cannot write multiple
-headers on the same line. For example, if you write `//@ only-x86 only-windows`
-then `only-windows` is interpreted as a comment, not a separate directive.
+Directives are written one directive per line: you cannot write multiple
+directives on the same line. For example, if you write `//@ only-x86
+only-windows` then `only-windows` is interpreted as a comment, not a separate
+directive.
 
-## Header commands
+## Listing of compiletest directives
 
-The following is a list of header commands.
-Commands are linked to sections that describe the command in more detail if available.
-This list may not be exhaustive.
-Header commands can generally be found by browsing the `TestProps` structure
-found in [`header.rs`] from the compiletest source.
+The following is a list of compiletest directives. Directives are linked to
+sections that describe the command in more detail if available. This list may
+not be exhaustive. Directives can generally be found by browsing the
+`TestProps` structure found in [`header.rs`] from the compiletest source.
 
 [`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
 
-* [Controlling pass/fail expectations](ui.md#controlling-passfail-expectations)
-    * `check-pass` — building (no codegen) should pass
-    * `build-pass` — building should pass
-    * `run-pass` — running the test should pass
-    * `check-fail` — building (no codegen) should fail (the default if no header)
-    * `build-fail` — building should fail
-    * `run-fail` — running should fail
-    * `ignore-pass` — ignores the `--pass` flag
-    * `check-run-results` — checks run-pass/fail-pass output
-* [UI](ui.md) headers
-    * [`normalize-X`](ui.md#normalization) — normalize compiler output
-    * [`run-rustfix`](ui.md#rustfix-tests) — checks diagnostic suggestions
-    * [`rustfix-only-machine-applicable`](ui.md#rustfix-tests) — checks only
-      machine applicable suggestions
-    * [`stderr-per-bitwidth`](ui.md#output-comparison) — separate output per bit width
-    * [`dont-check-compiler-stderr`](ui.md#output-comparison) — don't validate stderr
-    * [`dont-check-compiler-stdout`](ui.md#output-comparison) — don't validate stdout
-    * [`compare-output-lines-by-subset`](ui.md#output-comparison) — checks output by
-      line subset
-* [Building auxiliary crates](compiletest.md#building-auxiliary-crates)
-    * `aux-build`
-    * `aux-crate`
-    * `aux-bin`
-    * `aux-codegen-backend`
-* [Pretty-printer](compiletest.md#pretty-printer-tests) headers
-    * `pretty-compare-only`
-    * `pretty-expanded`
-    * `pretty-mode`
-    * `pp-exact`
-* [Ignoring tests](#ignoring-tests)
-    * `ignore-X`
-    * `only-X`
-    * `needs-X`
-    * `no-system-llvm`
-    * `min-llvm-version`
-    * `min-system-llvm-version`
-    * `ignore-llvm-version`
-* [Environment variable headers](#environment-variable-headers)
-    * `rustc-env`
-    * `exec-env`
-    * `unset-exec-env`
-    * `unset-rustc-env`
-* [Miscellaneous headers](#miscellaneous-headers)
-    * `compile-flags` — adds compiler flags
-    * `run-flags` — adds flags to executable tests
-    * `edition` — sets the edition
-    * `failure-status` — expected exit code
-    * `should-fail` — testing compiletest itself
-    * `gate-test-X` — feature gate testing
-    * [`error-pattern`](ui.md#error-pattern) — errors not on a line
-    * `incremental` — incremental tests not in the incremental test-suite
-    * `no-prefer-dynamic` — don't use `-C prefer-dynamic`, don't build as a dylib
-    * `no-auto-check-cfg` — disable auto check-cfg (only for `--check-cfg` tests)
-    * `force-host` — build only for the host target
-    * [`revisions`](compiletest.md#revisions) — compile multiple times
-    * [`unused-revision-names`](compiletest.md#ignoring-unused-revision-names) -
-      suppress tidy checks for mentioning unknown revision names
-    * [`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects output pattern
-    * [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should ICE
-    * [`known-bug`](ui.md#known-bugs) — indicates that the test is
-      for a known bug that has not yet been fixed
-* [Assembly](compiletest.md#assembly-tests) headers
-    * `assembly-output` — the type of assembly output to check
-* [Tool-specific headers](#tool-specific-headers)
-    * `filecheck-flags` - passes extra flags to the `FileCheck` tool
-    * `llvm-cov-flags` - passes extra flags to the `llvm-cov` tool
+### Assembly
 
+<!-- date-check: Oct 2024 -->
 
-### Ignoring tests
+| Directive         | Explanation                   | Supported test suites | Possible values                        |
+|-------------------|-------------------------------|-----------------------|----------------------------------------|
+| `assembly-output` | Assembly output kind to check | `assembly`            | `emit-asm`, `bpf-linker`, `ptx-linker` |
 
-These header commands are used to ignore the test in some situations,
-which means the test won't be compiled or run.
+### Auxiliary builds
 
-* `ignore-X` where `X` is a target detail or stage will ignore the
-  test accordingly (see below)
-* `only-X` is like `ignore-X`, but will *only* run the test on that
-  target or stage
-* `ignore-test` always ignores the test.
-  This can be used to temporarily disable a test if it is currently not working,
-  but you want to keep it in tree to re-enable it later.
+| Directive             | Explanation                                                                                           | Supported test suites | Possible values                               |
+|-----------------------|-------------------------------------------------------------------------------------------------------|-----------------------|-----------------------------------------------|
+| `aux-bin`             | Build a aux binary, made available in `auxiliary/bin` relative to test directory                      | All except `run-make` | Path to auxiliary `.rs` file                  |
+| `aux-build`           | Build a separate crate from the named source file                                                     | All except `run-make` | Path to auxiliary `.rs` file                  |
+| `aux-crate`           | Like `aux-build` but makes available as extern prelude                                                | All except `run-make` | `<extern_prelude_name>=<path/to/aux/file.rs>` |
+| `aux-codegen-backend` | Similar to `aux-build` but pass the compiled dylib to `-Zcodegen-backend` when building the main file | `ui-fulldeps`         | Path to codegen backend file                  |
+| `build_aux_docs`      | Build docs for auxiliaries as well                                                                    | All except `run-make` | N/A                                           |
+
+### Controlling outcome expectations
+
+See [Controlling pass/fail
+expectations](ui.md#controlling-passfail-expectations).
+
+| Directive                   | Explanation                                 | Supported test suites                            | Possible values |
+|-----------------------------|---------------------------------------------|--------------------------------------------------|-----------------|
+| `check-pass`                | Building (no codegen) should pass           | `ui`, `crashes`, `incremental`[^inc1]            | N/A             |
+| `check-fail`                | Building (no codegen) should fail           | `ui`, `crashes`                                  | N/A             |
+| `build-pass`                | Building should pass                        | `ui`, `crashes`, `codegen`, `incremental`[^inc1] | N/A             |
+| `build-fail`                | Building should fail                        | `ui`, `crashes`                                  | N/A             |
+| `run-pass`                  | Running the test binary should pass         | `ui`, `crashes`, `incremental`[^inc1]            | N/A             |
+| `run-fail`                  | Running the test binary should fail         | `ui`, `crashes`                                  | N/A             |
+| `ignore-pass`               | Ignore `--pass` flag                        | `ui`, `crashes`, `codegen`, `incremental`[^inc1] | N/A             |
+| `dont-check-failure-status` | Don't check exact failure status (i.e. `1`) | `ui`, `incremental`                              | N/A             |
+| `failure-status`            | Check                                       | `ui`, `crashes`                                  | Any `u16`       |
+| `should-ice`                | Check failure status is `101`               | `coverage`, `incremental`                        | N/A             |
+| `should-fail`               | Compiletest self-test                       | All                                              | N/A             |
+
+### Controlling output snapshots and normalizations
+
+See [Normalization](ui.md#normalization), [Output
+comparison](ui.md#output-comparison) and [Rustfix tests](ui.md#rustfix-tests)
+for more details.
+
+| Directive                         | Explanation                                                                                                              | Supported test suites                               | Possible values                                                                         |
+|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|-----------------------------------------------------------------------------------------|
+| `check-run-results`               | Check run test binary `run-{pass,fail}` output snapshot                                                                  | `ui`, `crashes`, `incremental`[^inc1] if `run-pass` | N/A                                                                                     |
+| `error-pattern`                   | Check that output contains a regex pattern                                                                               | `ui`, `crashes`, `incremental`[^inc1] if `run-pass` | Regex                                                                                   |
+| `check-stdout`                    | Check `stdout` against `error-pattern`s from running test binary[^check_stdout]                                          | `ui`, `crashes`, `incremental`[^inc1]               | N/A                                                                                     |
+| `compare-output-lines-by-subset`  | Check output contains the contents of the snapshot by lines opposed to checking for strict equality                      | `ui`, `coverage`                                    | N/A                                                                                     |
+| `normalize-stderr-32bit`          | Normalize actual stderr (for 32-bit platforms) with a rule `"<raw>" -> "<normalized>"` before comparing against snapshot | `ui`, `incremental`[^inc1]                          | `"<RAW>" -> "<NORMALIZED>"`, `<RAW>`/`<NORMALIZED>` is regex capture and replace syntax |
+| `normalize-stderr-64bit`          | Normalize actual stderr (for 64-bit platforms) with a rule `"<raw>" -> "<normalized>"` before comparing against snapshot | `ui`, `incremental`[^inc1]                          | `"<RAW>" -> "<NORMALIZED>"`, `<RAW>`/`<NORMALIZED>` is regex capture and replace syntax |
+| `normalize-stderr-test`           | Normalize actual stderr with a rule `"<raw>" -> "<normalized>"` before comparing against snapshot                        | `ui`, `incremental`[^inc1]                          | `"<RAW>" -> "<NORMALIZED>"`, `<RAW>`/`<NORMALIZED>` is regex capture and replace syntax |
+| `normalize-stdout-test`           | Normalize actual stdout with a rule `"<raw>" -> "<normalized>"` before comparing against snapshot                        | `ui`, `incremental`[^inc1]                          | `"<RAW>" -> "<NORMALIZED>"`, `<RAW>`/`<NORMALIZED>` is regex capture and replace syntax |
+| `dont-check-compiler-stderr`      | Don't check actual compiler stderr vs stderr snapshot                                                                    | `ui`                                                | N/A                                                                                     |
+| `dont-check-compiler-stdout`      | Don't check actual compiler stdout vs stdout snapshot                                                                    | `ui`                                                | N/A                                                                                     |
+| `run-rustfix`                     | Apply all suggestions via `rustfix`, snapshot fixed output, and check fixed output builds                                | `ui`                                                | N/A                                                                                     |
+| `rustfix-only-machine-applicable` | `run-rustfix` but only machine-applicable suggestions                                                                    | `ui`                                                | N/A                                                                                     |
+| `exec-env`                        | Env var to set when executing a test                                                                                     | `ui`, `crashes`                                     | `<KEY>=<VALUE>`                                                                         |
+| `unset-exec-env`                  | Env var to unset when executing a test                                                                                   | `ui`, `crashes`                                     | Any env var name                                                                        |
+| `stderr-per-bitwidth`             | Generate a stderr snapshot for each bitwidth                                                                             | `ui`                                                | N/A                                                                                     |
+| `forbid-output`                   | A pattern which must not appear in `cfail` output                                                                        | `incremental`                                       | Regex pattern                                                                           |
+| `run-flags`                       | Flags passed to the test executable                                                                                      | `ui`                                                | Arbitrary flags                                                                         |
+| `known-bug`                       | No error annotation needed due to known bug                                                                              | `ui`, `crashes`, `incremental`                      | Issue number `#123456`                                                                  |
+
+[^check_stdout]: presently <!-- date-check: Oct 2024 --> this has a weird quirk
+    where the test binary's stdout and stderr gets concatenated and then
+    `error-pattern`s are matched on this combined output, which is ??? slightly
+    questionable to say the least.
+
+### Controlling when tests are run
+
+These directives are used to ignore the test in some situations, which
+means the test won't be compiled or run.
+
+* `ignore-X` where `X` is a target detail or stage will ignore the test
+  accordingly (see below)
+* `only-X` is like `ignore-X`, but will *only* run the test on that target or
+  stage
+* `ignore-test` always ignores the test. This can be used to temporarily disable
+  a test if it is currently not working, but you want to keep it in tree to
+  re-enable it later.
 
 Some examples of `X` in `ignore-X` or `only-X`:
 
-* A full target triple: `aarch64-apple-ios`
-* Architecture: `aarch64`, `arm`, `asmjs`, `mips`, `wasm32`, `x86_64`,
-  `x86`, ...
-* OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`,
-  `windows`, ...
-* Environment (fourth word of the target triple): `gnu`, `msvc`,
-  `musl`
-* WASM: `wasm32-bare` matches `wasm32-unknown-unknown`.
-  `emscripten` also matches that target as well as the emscripten targets.
-* Pointer width: `32bit`, `64bit`
-* Endianness: `endian-big`
-* Stage: `stage0`, `stage1`, `stage2`
-* Channel: `stable`, `beta`
-* When cross compiling: `cross-compile`
-* When [remote testing] is used: `remote`
-* When debug-assertions are enabled: `debug`
-* When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
-* Specific [compare modes]: `compare-mode-polonius`,
-  `compare-mode-chalk`, `compare-mode-split-dwarf`,
-  `compare-mode-split-dwarf-single`
+- A full target triple: `aarch64-apple-ios`
+- Architecture: `aarch64`, `arm`, `mips`, `wasm32`, `x86_64`, `x86`,
+  ...
+- OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`, `windows`,
+  ...
+- Environment (fourth word of the target triple): `gnu`, `msvc`, `musl`
+- WASM: `wasm32-bare` matches `wasm32-unknown-unknown`. `emscripten` also
+  matches that target as well as the emscripten targets.
+- Pointer width: `32bit`, `64bit`
+- Endianness: `endian-big`
+- Stage: `stage0`, `stage1`, `stage2`
+- Channel: `stable`, `beta`
+- When cross compiling: `cross-compile`
+- When [remote testing] is used: `remote`
+- When debug-assertions are enabled: `debug`
+- When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
+- When particular debugger versions are matched: `ignore-gdb-version`
+- Specific [compare modes]: `compare-mode-polonius`, `compare-mode-chalk`,
+  `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
 
-The following header commands will check rustc build settings and target settings:
+The following directives will check rustc build settings and target
+settings:
 
-* `needs-asm-support` — ignores if it is running on a target that doesn't have
+- `needs-asm-support` — ignores if it is running on a target that doesn't have
   stable support for `asm!`
-* `needs-profiler-support` — ignores if profiler support was not enabled for
-  the target (`profiler = true` in rustc's `config.toml`)
-* `needs-sanitizer-support` — ignores if the sanitizer support was not enabled
+- `needs-profiler-support` — ignores if profiler support was not enabled for the
+  target (`profiler = true` in rustc's `config.toml`)
+- `needs-sanitizer-support` — ignores if the sanitizer support was not enabled
   for the target (`sanitizers = true` in rustc's `config.toml`)
-* `needs-sanitizer-{address,hwaddress,leak,memory,thread}` — ignores
-  if the corresponding sanitizer is not enabled for the target
-  (AddressSanitizer, hardware-assisted AddressSanitizer, LeakSanitizer,
-  MemorySanitizer or ThreadSanitizer respectively)
-* `needs-run-enabled` — ignores if it is a test that gets executed, and
-  running has been disabled. Running tests can be disabled with the `x test
-  --run=never` flag, or running on fuchsia.
-* `needs-unwind` — ignores if the target does not support unwinding
-* `needs-rust-lld` — ignores if the rust lld support is not enabled
-  (`rust.lld = true` in `config.toml`)
-* `needs-threads` — ignores if the target does not have threading support
-* `needs-symlink` — ignores if the target does not support symlinks. This can be the case on Windows
-  if the developer did not enable privileged symlink permissions.
+- `needs-sanitizer-{address,hwaddress,leak,memory,thread}` — ignores if the
+  corresponding sanitizer is not enabled for the target (AddressSanitizer,
+  hardware-assisted AddressSanitizer, LeakSanitizer, MemorySanitizer or
+  ThreadSanitizer respectively)
+- `needs-run-enabled` — ignores if it is a test that gets executed, and running
+  has been disabled. Running tests can be disabled with the `x test --run=never`
+  flag, or running on fuchsia.
+- `needs-unwind` — ignores if the target does not support unwinding
+- `needs-rust-lld` — ignores if the rust lld support is not enabled (`rust.lld =
+  true` in `config.toml`)
+- `needs-threads` — ignores if the target does not have threading support
+- `needs-symlink` — ignores if the target does not support symlinks. This can be
+  the case on Windows if the developer did not enable privileged symlink
+  permissions.
 
-The following header commands will check LLVM support:
+The following directives will check LLVM support:
 
-* `no-system-llvm` — ignores if the system llvm is used
-* `min-llvm-version: 13.0` — ignored if the LLVM version is less than the given value
-* `min-system-llvm-version: 12.0` — ignored if using a system LLVM and its
+- `no-system-llvm` — ignores if the system llvm is used
+- `min-llvm-version: 13.0` — ignored if the LLVM version is less than the given
+  value
+- `min-system-llvm-version: 12.0` — ignored if using a system LLVM and its
   version is less than the given value
-* `ignore-llvm-version: 9.0` — ignores a specific LLVM version
-* `ignore-llvm-version: 7.0 - 9.9.9` — ignores LLVM versions in a range (inclusive)
-* `needs-llvm-components: powerpc` — ignores if the specific LLVM component was not built.
-  Note: The test will fail on CI (when `COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS` is set) if the component does not exist.
-* `needs-forced-clang-based-tests` —
-  test is ignored unless the environment variable `RUSTBUILD_FORCE_CLANG_BASED_TESTS`
-  is set, which enables building clang alongside LLVM
-  - This is only set in one CI job ([`x86_64-gnu-debug`]), which only runs a tiny
-    subset of `run-make` tests. Other tests with this header will not run at all,
-    which is usually not what you want.
+- `ignore-llvm-version: 9.0` — ignores a specific LLVM version
+- `ignore-llvm-version: 7.0 - 9.9.9` — ignores LLVM versions in a range
+  (inclusive)
+- `needs-llvm-components: powerpc` — ignores if the specific LLVM component was
+  not built. Note: The test will fail on CI (when
+  `COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS` is set) if the component does not
+  exist.
+- `needs-forced-clang-based-tests` — test is ignored unless the environment
+  variable `RUSTBUILD_FORCE_CLANG_BASED_TESTS` is set, which enables building
+  clang alongside LLVM
+  - This is only set in one CI job ([`x86_64-gnu-debug`]), which only runs a
+    tiny subset of `run-make` tests. Other tests with this directive will not
+    run at all, which is usually not what you want.
 
-See also [Debuginfo tests](compiletest.md#debuginfo-tests) for headers for
+See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for
 ignoring debuggers.
 
 [remote testing]: running.md#running-tests-on-a-remote-machine
 [compare modes]: ui.md#compare-modes
 [`x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/ab3dba92db355b8d97db915a2dca161a117e959c/src/ci/docker/host-x86_64/x86_64-gnu-debug/Dockerfile#L32
 
-### Environment variable headers
+### Affecting how tests are built
 
-The following headers affect environment variables.
+| Directive           | Explanation                                                                                  | Supported test suites     | Possible values                                                              |
+|---------------------|----------------------------------------------------------------------------------------------|---------------------------|------------------------------------------------------------------------------|
+| `compile-flags`     | Flags passed to `rustc` when building the test or aux file                                   | All except for `run-make` | Any valid `rustc` flags, e.g. `-Awarnings -Dfoo`. Cannot be `-Cincremental`. |
+| `edition`           | Alias for `compile-flags: --edition=xxx`                                                     | All except for `run-make` | Any valid `--edition` value                                                  |
+| `rustc-env`         | Env var to set when running `rustc`                                                          | All except for `run-make` | `<KEY>=<VALUE>`                                                              |
+| `unset-rustc-env`   | Env var to unset when running `rustc`                                                        | All except for `run-make` | Any env var name                                                             |
+| `incremental`       | Proper incremental support for tests outside of incremental test suite                       | `ui`, `crashes`           | N/A                                                                          |
+| `no-prefer-dynamic` | Don't use `-C prefer-dynamic`, don't build as a dylib via a `--crate-type=dylib` preset flag | `ui`, `crashes`           | N/A                                                                          |
 
-* `rustc-env` is an environment variable to set when running `rustc` of the
-  form `KEY=VALUE`.
-* `exec-env` is an environment variable to set when executing a test of the
-  form `KEY=VALUE`.
-* `unset-exec-env` specifies an environment variable to unset when executing a
-  test.
-* `unset-rustc-env` specifies an environment variable to unset when running
-  `rustc`.
+<div class="warning">
+Tests (outside of `run-make`) that want to use incremental tests not in the
+incremental test-suite must not pass `-C incremental` via `compile-flags`, and
+must instead use the `//@ incremental` directive.
 
-### Miscellaneous headers
+Consider writing the test as a proper incremental test instead.
+</div>
 
-The following headers are generally available, and not specific to particular
-test suites.
+### Rustdoc
 
-* `compile-flags` passes extra command-line args to the compiler,
-  e.g. `//@ compile-flags: -g` which forces debuginfo to be enabled.
-* `run-flags` passes extra args to the test if the test is to be executed.
-* `edition` controls the edition the test should be compiled with
-  (defaults to 2015). Example usage: `//@ edition:2018`.
-* `failure-status` specifies the numeric exit code that should be expected for
-  tests that expect an error.
-  If this is not set, the default is 1.
-* `should-fail` indicates that the test should fail; used for "meta
-  testing", where we test the compiletest program itself to check that
-  it will generate errors in appropriate scenarios. This header is
-  ignored for pretty-printer tests.
-* `gate-test-X` where `X` is a feature marks the test as "gate test"
-  for feature X.
-  Such tests are supposed to ensure that the compiler errors when usage of a
-  gated feature is attempted without the proper `#![feature(X)]` tag.
-  Each unstable lang feature is required to have a gate test.
-  This header is actually checked by [tidy](intro.md#tidy), it is not checked
-  by compiletest.
-* `error-pattern` checks the diagnostics just like the `ERROR` annotation
-  without specifying error line. This is useful when the error doesn't give
-  any span. See [`error-pattern`](ui.md#error-pattern).
-* `incremental` runs the test with the `-C incremental` flag and an empty
-  incremental directory. This should be avoided when possible; you should use
-  an *incremental mode* test instead. Incremental mode tests support running
-  the compiler multiple times and verifying that it can load the generated
-  incremental cache. This flag is for specialized circumstances, like checking
-  the interaction of codegen unit partitioning with generating an incremental
-  cache.
-* `no-prefer-dynamic` will force an auxiliary crate to be built as an rlib
-  instead of a dylib. When specified in a test, it will remove the use of `-C
-  prefer-dynamic`. This can be useful in a variety of circumstances. For
-  example, it can prevent a proc-macro from being built with the wrong crate
-  type. Or if your test is specifically targeting behavior of other crate
-  types, it can be used to prevent building with the wrong crate type.
-* `force-host` will force the test to build for the host platform instead of
-  the target. This is useful primarily for auxiliary proc-macros, which need
-  to be loaded by the host compiler.
+| Directive   | Explanation                                                  | Supported test suites                    | Possible values           |
+|-------------|--------------------------------------------------------------|------------------------------------------|---------------------------|
+| `doc-flags` | Flags passed to `rustdoc` when building the test or aux file | `rustdoc`, `js-doc-test`, `rustdoc-json` | Any valid `rustdoc` flags |
 
+> **FIXME(rustdoc)**: what does `check-test-line-numbers-match` do?
+>
+> Asked in
+> <https://rust-lang.zulipchat.com/#narrow/stream/266220-t-rustdoc/topic/What.20is.20the.20.60check-test-line-numbers-match.60.20directive.3F>.
 
-### Tool-specific headers
+### Pretty printing
 
-The following headers affect how certain command-line tools are invoked,
-in test suites that use those tools:
+See [Pretty-printer](compiletest.md#pretty-printer-tests).
 
-* `filecheck-flags` adds extra flags when running LLVM's `FileCheck` tool.
+#### Misc directives
+
+- `no-auto-check-cfg` — disable auto check-cfg (only for `--check-cfg` tests)
+- [`revisions`](compiletest.md#revisions) — compile multiple times
+- [`unused-revision-names`](compiletest.md#ignoring-unused-revision-names) -
+      suppress tidy checks for mentioning unknown revision names
+-[`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects
+      output pattern
+- [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should
+      ICE
+
+### Tool-specific directives
+
+The following directives affect how certain command-line tools are invoked, in
+test suites that use those tools:
+
+- `filecheck-flags` adds extra flags when running LLVM's `FileCheck` tool.
   - Used by [codegen tests](compiletest.md#codegen-tests),
   [assembly tests](compiletest.md#assembly-tests), and
   [MIR-opt tests](compiletest.md#mir-opt-tests).
-* `llvm-cov-flags` adds extra flags when running LLVM's `llvm-cov` tool.
+- `llvm-cov-flags` adds extra flags when running LLVM's `llvm-cov` tool.
   - Used by [coverage tests](compiletest.md#coverage-tests) in `coverage-run` mode.
 
 
 ## Substitutions
 
-Headers values support substituting a few variables which will be replaced
-with their corresponding value.
-For example, if you need to pass a compiler flag with a path to a specific
-file, something like the following could work:
+Directive values support substituting a few variables which will be replaced
+with their corresponding value. For example, if you need to pass a compiler flag
+with a path to a specific file, something like the following could work:
 
 ```rust,ignore
 //@ compile-flags: --remap-path-prefix={{src-base}}=/the/src
@@ -287,7 +278,8 @@ described below:
 - `{{build-base}}`: The base directory where the test's output goes. This is
   equivalent to `$TEST_BUILD_DIR` for [output normalization].
   - Example: `/path/to/rust/build/x86_64-unknown-linux-gnu/test/ui`
-- `{{rust-src-base}}`: The sysroot directory where libstd/libcore/... are located
+- `{{rust-src-base}}`: The sysroot directory where libstd/libcore/... are
+  located
 - `{{sysroot-base}}`: Path of the sysroot directory used to build the test.
   - Mainly intended for `ui-fulldeps` tests that run the compiler via API.
 - `{{target-linker}}`: Linker that would be passed to `-Clinker` for this test,
@@ -296,53 +288,52 @@ described below:
 - `{{target}}`: The target the test is compiling for
   - Example: `x86_64-unknown-linux-gnu`
 
-See [`tests/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/argfile/commandline-argfile.rs)
+See
+[`tests/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/argfile/commandline-argfile.rs)
 for an example of a test that uses this substitution.
 
 [output normalization]: ui.md#normalization
 
 
-## Adding a new header command
+## Adding a directive
 
-One would add a new header command if there is a need to define some test
-property or behavior on an individual, test-by-test basis.
-A header command property serves as the header command's backing store (holds
-the command's current value) at runtime.
+One would add a new directive if there is a need to define some test property or
+behavior on an individual, test-by-test basis. A directive property serves as
+the directive's backing store (holds the command's current value) at runtime.
 
-To add a new header command property:
+To add a new directive property:
 
-  1. Look for the `pub struct TestProps` declaration in
-     [`src/tools/compiletest/src/header.rs`] and add the new public property to
-     the end of the declaration.
-  2. Look for the `impl TestProps` implementation block immediately following
-     the struct declaration and initialize the new property to its default
-     value.
+1. Look for the `pub struct TestProps` declaration in
+   [`src/tools/compiletest/src/header.rs`] and add the new public property to
+   the end of the declaration.
+2. Look for the `impl TestProps` implementation block immediately following the
+   struct declaration and initialize the new property to its default value.
 
-### Adding a new header command parser
+### Adding a new directive parser
 
 When `compiletest` encounters a test file, it parses the file a line at a time
 by calling every parser defined in the `Config` struct's implementation block,
-also in [`src/tools/compiletest/src/header.rs`] (note that the `Config`
-struct's declaration block is found in [`src/tools/compiletest/src/common.rs`]).
+also in [`src/tools/compiletest/src/header.rs`] (note that the `Config` struct's
+declaration block is found in [`src/tools/compiletest/src/common.rs`]).
 `TestProps`'s `load_from()` method will try passing the current line of text to
 each parser, which, in turn typically checks to see if the line begins with a
-particular commented (`//@`) header command such as `//@ must-compile-successfully`
+particular commented (`//@`) directive such as `//@ must-compile-successfully`
 or `//@ failure-status`. Whitespace after the comment marker is optional.
 
-Parsers will override a given header command property's default value merely by
-being specified in the test file as a header command or by having a parameter
-value specified in the test file, depending on the header command.
+Parsers will override a given directive property's default value merely by being
+specified in the test file as a directive or by having a parameter value
+specified in the test file, depending on the directive.
 
-Parsers defined in `impl Config` are typically named `parse_<header_command>`
-(note kebab-case `<header-command>` transformed to snake-case
-`<header_command>`). `impl Config` also defines several 'low-level' parsers
+Parsers defined in `impl Config` are typically named `parse_<directive-name>`
+(note kebab-case `<directive-command>` transformed to snake-case
+`<directive_command>`). `impl Config` also defines several 'low-level' parsers
 which make it simple to parse common patterns like simple presence or not
-(`parse_name_directive()`), header-command:parameter(s)
+(`parse_name_directive()`), `directive:parameter(s)`
 (`parse_name_value_directive()`), optional parsing only if a particular `cfg`
 attribute is defined (`has_cfg_prefix()`) and many more. The low-level parsers
 are found near the end of the `impl Config` block; be sure to look through them
-and their associated parsers immediately above to see how they are used to
-avoid writing additional parsing code unnecessarily.
+and their associated parsers immediately above to see how they are used to avoid
+writing additional parsing code unnecessarily.
 
 As a concrete example, here is the implementation for the
 `parse_failure_status()` parser, in [`src/tools/compiletest/src/header.rs`]:
@@ -389,17 +380,17 @@ As a concrete example, here is the implementation for the
 
 ### Implementing the behavior change
 
-When a test invokes a particular header command, it is expected that some
-behavior will change as a result. What behavior, obviously, will depend on the
-purpose of the header command. In the case of `failure-status`, the behavior
-that changes is that `compiletest` expects the failure code defined by the
-header command invoked in the test, rather than the default value.
+When a test invokes a particular directive, it is expected that some behavior
+will change as a result. What behavior, obviously, will depend on the purpose of
+the directive. In the case of `failure-status`, the behavior that changes is
+that `compiletest` expects the failure code defined by the directive invoked in
+the test, rather than the default value.
 
-Although specific to `failure-status` (as every header command will have a
-different implementation in order to invoke behavior change) perhaps it is
-helpful to see the behavior change implementation of one case, simply as an
-example. To implement `failure-status`, the `check_correct_failure_status()`
-function found in the `TestCx` implementation block, located in
+Although specific to `failure-status` (as every directive will have a different
+implementation in order to invoke behavior change) perhaps it is helpful to see
+the behavior change implementation of one case, simply as an example. To
+implement `failure-status`, the `check_correct_failure_status()` function found
+in the `TestCx` implementation block, located in
 [`src/tools/compiletest/src/runtest.rs`], was modified as per below:
 
 ```diff
@@ -439,11 +430,11 @@ function found in the `TestCx` implementation block, located in
      }
 ```
 
-Note the use of `self.props.failure_status` to access the header command
-property. In tests which do not specify the failure status header command,
+Note the use of `self.props.failure_status` to access the directive property. In
+tests which do not specify the failure status directive,
 `self.props.failure_status` will evaluate to the default value of 101 at the
-time of this writing. But for a test which specifies a header command of, for
-example, `// failure-status: 1`, `self.props.failure_status` will evaluate to
+time of this writing. But for a test which specifies a directive of, for
+example, `//@ failure-status: 1`, `self.props.failure_status` will evaluate to
 1, as `parse_failure_status()` will have overridden the `TestProps` default
 value, for that test specifically.
 

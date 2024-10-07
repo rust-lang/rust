@@ -480,6 +480,9 @@ Each mode also has an alias to run the coverage tests in just that mode:
 ./x test coverage-map -- tests/coverage/if.rs # runs the specified test in "coverage-map" mode only
 ```
 
+If a test cannot be exercised in a particular coverage mode for some reason, you
+can use e.g. `ignore-mode-coverage-map`.
+
 #### `coverage-map` suite
 
 In `coverage-map` mode, these tests verify the mappings between source code
