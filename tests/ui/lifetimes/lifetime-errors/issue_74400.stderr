@@ -42,23 +42,19 @@ help: consider adding an explicit lifetime bound
 LL | fn g<T: 'static>(data: &[T]) {
    |       +++++++++
 
-error: implementation of `Fn` is not general enough
+error: higher-ranked subtype error
   --> $DIR/issue_74400.rs:12:5
    |
 LL |     f(data, identity)
-   |     ^^^^^^^^^^^^^^^^^ implementation of `Fn` is not general enough
-   |
-   = note: `fn(&'2 T) -> &'2 T {identity::<&'2 T>}` must implement `Fn<(&'1 T,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `Fn<(&'2 T,)>`, for some specific lifetime `'2`
+   |     ^^^^^^^^^^^^^^^^^
 
-error: implementation of `FnOnce` is not general enough
+error: higher-ranked subtype error
   --> $DIR/issue_74400.rs:12:5
    |
 LL |     f(data, identity)
-   |     ^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `fn(&'2 T) -> &'2 T {identity::<&'2 T>}` must implement `FnOnce<(&'1 T,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 T,)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors
 

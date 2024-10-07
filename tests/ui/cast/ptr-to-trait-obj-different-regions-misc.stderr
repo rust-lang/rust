@@ -73,14 +73,11 @@ help: to declare that the trait object captures data from argument `x`, you can 
 LL | fn change_lt_hr<'a>(x: *mut dyn Trait<'a>) -> *mut dyn for<'b> Trait<'b> + 'a {
    |                                                                          ++++
 
-error[E0308]: mismatched types
+error: higher-ranked subtype error
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:19:5
    |
 LL |     x as _
-   |     ^^^^^^ one type is more general than the other
-   |
-   = note: expected trait object `dyn for<'b> Trait<'b>`
-              found trait object `dyn Trait<'_>`
+   |     ^^^^^^
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
@@ -164,4 +161,3 @@ LL |     require_static(ptr as _)
 
 error: aborting due to 11 previous errors
 
-For more information about this error, try `rustc --explain E0308`.

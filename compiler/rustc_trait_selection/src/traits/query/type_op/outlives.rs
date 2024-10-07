@@ -1,6 +1,7 @@
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_middle::traits::query::{DropckOutlivesResult, NoSolution};
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
+use rustc_span::Span;
 
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
 use crate::traits::ObligationCtxt;
@@ -47,6 +48,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
+        _span: Span,
     ) -> Result<Self::QueryResponse, NoSolution> {
         compute_dropck_outlives_inner(ocx, key.param_env.and(key.value.dropped_ty))
     }

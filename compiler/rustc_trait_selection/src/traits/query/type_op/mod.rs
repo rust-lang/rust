@@ -92,6 +92,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
+        span: Span,
     ) -> Result<Self::QueryResponse, NoSolution>;
 
     fn fully_perform_into(
@@ -149,10 +150,14 @@ where
         // probably worthwhile just keeping this run-locally logic, since we
         // probably don't gain much from caching here given the new solver does
         // caching internally.
-        if infcx.next_trait_solver() {
+        if infcx.next_trait_solver() || true {
+            if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &self) {
+                return Ok(TypeOpOutput { output: result, constraints: None, error_info: None });
+            }
+
             return Ok(scrape_region_constraints(
                 infcx,
-                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self),
+                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self, span),
                 "query type op",
                 span,
             )?

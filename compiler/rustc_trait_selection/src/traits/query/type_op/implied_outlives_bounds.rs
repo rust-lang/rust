@@ -5,8 +5,8 @@ use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFolder, TypeVisitableExt};
-use rustc_span::DUMMY_SP;
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::{DUMMY_SP, Span};
 use rustc_type_ir::outlives::{Component, push_outlives_components};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
@@ -58,6 +58,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
+        _span: Span,
     ) -> Result<Self::QueryResponse, NoSolution> {
         if ocx.infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat {
             compute_implied_outlives_bounds_inner(ocx, key.param_env, key.value.ty)
