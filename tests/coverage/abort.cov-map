@@ -34,6 +34,7 @@ Number of file 0 mappings: 13
 - Code(Expression(9, Add)) at (prev + 1, 9) to (start + 0, 23)
     = (c1 + c2)
 - Code(Counter(3)) at (prev + 2, 5) to (start + 1, 2)
+Highest counter ID seen: c5
 
 Function name: abort::might_abort
 Raw bytes (21): 0x[01, 01, 01, 01, 05, 03, 01, 03, 01, 01, 14, 05, 02, 09, 01, 24, 02, 02, 0c, 03, 02]
@@ -46,4 +47,5 @@ Number of file 0 mappings: 3
 - Code(Counter(1)) at (prev + 2, 9) to (start + 1, 36)
 - Code(Expression(0, Sub)) at (prev + 2, 12) to (start + 3, 2)
     = (c0 - c1)
+Highest counter ID seen: c1
 
