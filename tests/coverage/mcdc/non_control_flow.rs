@@ -1,6 +1,6 @@
 #![feature(coverage_attribute)]
 //@ edition: 2021
-//@ ignore-llvm-version: 19 - 99
+//@ ignore-test (needs #126733 for LLVM 19 support)
 //@ compile-flags: -Zcoverage-options=mcdc
 //@ llvm-cov-flags: --show-branches=count --show-mcdc
 
