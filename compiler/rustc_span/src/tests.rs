@@ -3,9 +3,13 @@ use super::*;
 #[test]
 fn test_lookup_line() {
     let source = "abcdefghijklm\nabcdefghij\n...".to_owned();
-    let mut sf =
-        SourceFile::new(FileName::Anon(Hash64::ZERO), source, SourceFileHashAlgorithm::Sha256)
-            .unwrap();
+    let mut sf = SourceFile::new(
+        FileName::Anon(Hash64::ZERO),
+        source,
+        SourceFileHashAlgorithm::Sha256,
+        Some(SourceFileHashAlgorithm::Sha256),
+    )
+    .unwrap();
     sf.start_pos = BytePos(3);
     assert_eq!(sf.lines(), &[RelativeBytePos(0), RelativeBytePos(14), RelativeBytePos(25)]);
 

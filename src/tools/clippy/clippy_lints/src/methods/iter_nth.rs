@@ -3,8 +3,8 @@ use clippy_utils::ty::get_type_diagnostic_name;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 
 use super::ITER_NTH;
 

@@ -2,7 +2,9 @@ error: expected a pattern, found an expression
   --> $DIR/pat-lt-bracket-6.rs:5:14
    |
 LL |     let Test(&desc[..]) = x;
-   |              ^^^^^^^^^ arbitrary expressions are not allowed in patterns
+   |              ^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 
 error[E0308]: mismatched types
   --> $DIR/pat-lt-bracket-6.rs:10:30

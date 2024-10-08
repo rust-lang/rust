@@ -12,7 +12,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use {rustc_ast as ast, rustc_hir as hir};
 
 declare_clippy_lint! {
@@ -270,7 +270,7 @@ struct LintCollector<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for LintCollector<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn visit_path(&mut self, path: &Path<'_>, _: HirId) {

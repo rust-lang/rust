@@ -4,7 +4,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::MANUAL_IS_VARIANT_AND;
 

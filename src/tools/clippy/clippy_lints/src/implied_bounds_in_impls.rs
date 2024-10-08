@@ -3,7 +3,7 @@ use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    AssocItemConstraint, GenericArg, GenericBound, GenericBounds, ItemKind, PredicateOrigin, TraitBoundModifier,
+    AssocItemConstraint, GenericArg, GenericBound, GenericBounds, PredicateOrigin, TraitBoundModifier,
     TyKind, WherePredicate,
 };
 use rustc_hir_analysis::lower_ty;
@@ -342,11 +342,8 @@ impl<'tcx> LateLintPass<'tcx> for ImpliedBoundsInImpls {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &rustc_hir::Ty<'_>) {
-        if let TyKind::OpaqueDef(item_id, ..) = ty.kind
-            && let item = cx.tcx.hir().item(item_id)
-            && let ItemKind::OpaqueTy(opaque_ty) = item.kind
-        {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &rustc_hir::Ty<'tcx>) {
+        if let TyKind::OpaqueDef(opaque_ty, ..) = ty.kind {
             check(cx, opaque_ty.bounds);
         }
     }

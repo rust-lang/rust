@@ -11,7 +11,7 @@ use crate::BorrowckInferCtxt;
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
 #[instrument(skip(infcx, body, promoted), level = "debug")]
-pub fn renumber_mir<'tcx>(
+pub(crate) fn renumber_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexSlice<Promoted, Body<'tcx>>,

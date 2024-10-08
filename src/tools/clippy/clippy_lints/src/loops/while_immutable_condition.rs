@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::usage::mutated_variables;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Expr, ExprKind, HirIdSet, QPath};
 use rustc_lint::LateContext;
 use std::ops::ControlFlow;
@@ -84,7 +84,7 @@ struct VarCollectorVisitor<'a, 'tcx> {
     skip: bool,
 }
 
-impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
+impl<'tcx> VarCollectorVisitor<'_, 'tcx> {
     fn insert_def_id(&mut self, ex: &'tcx Expr<'_>) {
         if let ExprKind::Path(ref qpath) = ex.kind
             && let QPath::Resolved(None, _) = *qpath
@@ -103,7 +103,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for VarCollectorVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         match ex.kind {
             ExprKind::Path(_) => self.insert_def_id(ex),

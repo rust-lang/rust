@@ -357,7 +357,7 @@ fn fn_abi_of_instance<'tcx>(
     )
 }
 
-// Handle safe Rust thin and fat pointers.
+// Handle safe Rust thin and wide pointers.
 fn adjust_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
     attrs: &mut ArgAttributes,
@@ -810,7 +810,7 @@ fn make_thin_self_ptr<'tcx>(
     layout: TyAndLayout<'tcx>,
 ) -> TyAndLayout<'tcx> {
     let tcx = cx.tcx();
-    let fat_pointer_ty = if layout.is_unsized() {
+    let wide_pointer_ty = if layout.is_unsized() {
         // unsized `self` is passed as a pointer to `self`
         // FIXME (mikeyhew) change this to use &own if it is ever added to the language
         Ty::new_mut_ptr(tcx, layout.ty)
@@ -825,15 +825,15 @@ fn make_thin_self_ptr<'tcx>(
         // elsewhere in the compiler as a method on a `dyn Trait`.
         // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
         // get a built-in pointer type
-        let mut fat_pointer_layout = layout;
-        while !fat_pointer_layout.ty.is_unsafe_ptr() && !fat_pointer_layout.ty.is_ref() {
-            fat_pointer_layout = fat_pointer_layout
+        let mut wide_pointer_layout = layout;
+        while !wide_pointer_layout.ty.is_unsafe_ptr() && !wide_pointer_layout.ty.is_ref() {
+            wide_pointer_layout = wide_pointer_layout
                 .non_1zst_field(cx)
                 .expect("not exactly one non-1-ZST field in a `DispatchFromDyn` type")
                 .1
         }
 
-        fat_pointer_layout.ty
+        wide_pointer_layout.ty
     };
 
     // we now have a type like `*mut RcBox<dyn Trait>`
@@ -842,7 +842,7 @@ fn make_thin_self_ptr<'tcx>(
     let unit_ptr_ty = Ty::new_mut_ptr(tcx, tcx.types.unit);
 
     TyAndLayout {
-        ty: fat_pointer_ty,
+        ty: wide_pointer_ty,
 
         // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing the `Result`
         // should always work because the type is always `*mut ()`.

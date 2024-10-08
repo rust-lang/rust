@@ -103,7 +103,7 @@ use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{self, Abi, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
+use rustc_target::abi::{self, Abi, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
@@ -393,7 +393,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             Repeat(..) => return None,
 
             Constant { ref value, disambiguator: _ } => {
-                self.ecx.eval_mir_constant(value, DUMMY_SP, None).ok()?
+                self.ecx.eval_mir_constant(value, DUMMY_SP, None).discard_err()?
             }
             Aggregate(kind, variant, ref fields) => {
                 let fields = fields
@@ -419,29 +419,32 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     ImmTy::uninit(ty).into()
                 } else if matches!(kind, AggregateTy::RawPtr { .. }) {
                     // Pointers don't have fields, so don't `project_field` them.
-                    let data = self.ecx.read_pointer(fields[0]).ok()?;
+                    let data = self.ecx.read_pointer(fields[0]).discard_err()?;
                     let meta = if fields[1].layout.is_zst() {
                         MemPlaceMeta::None
                     } else {
-                        MemPlaceMeta::Meta(self.ecx.read_scalar(fields[1]).ok()?)
+                        MemPlaceMeta::Meta(self.ecx.read_scalar(fields[1]).discard_err()?)
                     };
                     let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
                     ImmTy::from_immediate(ptr_imm, ty).into()
                 } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
-                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
+                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
                     let variant_dest = if let Some(variant) = variant {
-                        self.ecx.project_downcast(&dest, variant).ok()?
+                        self.ecx.project_downcast(&dest, variant).discard_err()?
                     } else {
                         dest.clone()
                     };
                     for (field_index, op) in fields.into_iter().enumerate() {
-                        let field_dest = self.ecx.project_field(&variant_dest, field_index).ok()?;
-                        self.ecx.copy_op(op, &field_dest).ok()?;
+                        let field_dest =
+                            self.ecx.project_field(&variant_dest, field_index).discard_err()?;
+                        self.ecx.copy_op(op, &field_dest).discard_err()?;
                     }
-                    self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
+                    self.ecx
+                        .write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest)
+                        .discard_err()?;
                     self.ecx
                         .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
-                        .ok()?;
+                        .discard_err()?;
                     dest.into()
                 } else {
                     return None;
@@ -467,7 +470,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // This should have been replaced by a `ConstantIndex` earlier.
                     ProjectionElem::Index(_) => return None,
                 };
-                self.ecx.project(value, elem).ok()?
+                self.ecx.project(value, elem).discard_err()?
             }
             Address { place, kind, provenance: _ } => {
                 if !place.is_indirect_first_projection() {
@@ -475,14 +478,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 let local = self.locals[place.local]?;
                 let pointer = self.evaluated[local].as_ref()?;
-                let mut mplace = self.ecx.deref_pointer(pointer).ok()?;
+                let mut mplace = self.ecx.deref_pointer(pointer).discard_err()?;
                 for proj in place.projection.iter().skip(1) {
                     // We have no call stack to associate a local with a value, so we cannot
                     // interpret indexing.
                     if matches!(proj, ProjectionElem::Index(_)) {
                         return None;
                     }
-                    mplace = self.ecx.project(&mplace, proj).ok()?;
+                    mplace = self.ecx.project(&mplace, proj).discard_err()?;
                 }
                 let pointer = mplace.to_ref(&self.ecx);
                 let ty = match kind {
@@ -500,15 +503,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             Discriminant(base) => {
                 let base = self.evaluated[base].as_ref()?;
-                let variant = self.ecx.read_discriminant(base).ok()?;
+                let variant = self.ecx.read_discriminant(base).discard_err()?;
                 let discr_value =
-                    self.ecx.discriminant_for_variant(base.layout.ty, variant).ok()?;
+                    self.ecx.discriminant_for_variant(base.layout.ty, variant).discard_err()?;
                 discr_value.into()
             }
             Len(slice) => {
                 let slice = self.evaluated[slice].as_ref()?;
                 let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
-                let len = slice.len(&self.ecx).ok()?;
+                let len = slice.len(&self.ecx).discard_err()?;
                 let imm = ImmTy::from_uint(len, usize_layout);
                 imm.into()
             }
@@ -535,67 +538,83 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             UnaryOp(un_op, operand) => {
                 let operand = self.evaluated[operand].as_ref()?;
-                let operand = self.ecx.read_immediate(operand).ok()?;
-                let val = self.ecx.unary_op(un_op, &operand).ok()?;
+                let operand = self.ecx.read_immediate(operand).discard_err()?;
+                let val = self.ecx.unary_op(un_op, &operand).discard_err()?;
                 val.into()
             }
             BinaryOp(bin_op, lhs, rhs) => {
                 let lhs = self.evaluated[lhs].as_ref()?;
-                let lhs = self.ecx.read_immediate(lhs).ok()?;
+                let lhs = self.ecx.read_immediate(lhs).discard_err()?;
                 let rhs = self.evaluated[rhs].as_ref()?;
-                let rhs = self.ecx.read_immediate(rhs).ok()?;
-                let val = self.ecx.binary_op(bin_op, &lhs, &rhs).ok()?;
+                let rhs = self.ecx.read_immediate(rhs).discard_err()?;
+                let val = self.ecx.binary_op(bin_op, &lhs, &rhs).discard_err()?;
                 val.into()
             }
             Cast { kind, value, from: _, to } => match kind {
                 CastKind::IntToInt | CastKind::IntToFloat => {
                     let value = self.evaluated[value].as_ref()?;
-                    let value = self.ecx.read_immediate(value).ok()?;
+                    let value = self.ecx.read_immediate(value).discard_err()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let res = self.ecx.int_to_int_or_float(&value, to).ok()?;
+                    let res = self.ecx.int_to_int_or_float(&value, to).discard_err()?;
                     res.into()
                 }
                 CastKind::FloatToFloat | CastKind::FloatToInt => {
                     let value = self.evaluated[value].as_ref()?;
-                    let value = self.ecx.read_immediate(value).ok()?;
+                    let value = self.ecx.read_immediate(value).discard_err()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let res = self.ecx.float_to_float_or_int(&value, to).ok()?;
+                    let res = self.ecx.float_to_float_or_int(&value, to).discard_err()?;
                     res.into()
                 }
                 CastKind::Transmute => {
                     let value = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    // `offset` for immediates only supports scalar/scalar-pair ABIs,
-                    // so bail out if the target is not one.
+                    // `offset` for immediates generally only supports projections that match the
+                    // type of the immediate. However, as a HACK, we exploit that it can also do
+                    // limited transmutes: it only works between types with the same layout, and
+                    // cannot transmute pointers to integers.
                     if value.as_mplace_or_imm().is_right() {
-                        match (value.layout.abi, to.abi) {
-                            (Abi::Scalar(..), Abi::Scalar(..)) => {}
-                            (Abi::ScalarPair(..), Abi::ScalarPair(..)) => {}
-                            _ => return None,
+                        let can_transmute = match (value.layout.abi, to.abi) {
+                            (Abi::Scalar(s1), Abi::Scalar(s2)) => {
+                                s1.size(&self.ecx) == s2.size(&self.ecx)
+                                    && !matches!(s1.primitive(), Primitive::Pointer(..))
+                            }
+                            (Abi::ScalarPair(a1, b1), Abi::ScalarPair(a2, b2)) => {
+                                a1.size(&self.ecx) == a2.size(&self.ecx) &&
+                                b1.size(&self.ecx) == b2.size(&self.ecx) &&
+                                // The alignment of the second component determines its offset, so that also needs to match.
+                                b1.align(&self.ecx) == b2.align(&self.ecx) &&
+                                // None of the inputs may be a pointer.
+                                !matches!(a1.primitive(), Primitive::Pointer(..))
+                                    && !matches!(b1.primitive(), Primitive::Pointer(..))
+                            }
+                            _ => false,
+                        };
+                        if !can_transmute {
+                            return None;
                         }
                     }
-                    value.offset(Size::ZERO, to, &self.ecx).ok()?
+                    value.offset(Size::ZERO, to, &self.ecx).discard_err()?
                 }
                 CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let dest = self.ecx.allocate(to, MemoryKind::Stack).ok()?;
-                    self.ecx.unsize_into(src, to, &dest.clone().into()).ok()?;
+                    let dest = self.ecx.allocate(to, MemoryKind::Stack).discard_err()?;
+                    self.ecx.unsize_into(src, to, &dest.clone().into()).discard_err()?;
                     self.ecx
                         .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
-                        .ok()?;
+                        .discard_err()?;
                     dest.into()
                 }
                 CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
                     let src = self.evaluated[value].as_ref()?;
-                    let src = self.ecx.read_immediate(src).ok()?;
+                    let src = self.ecx.read_immediate(src).discard_err()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
+                    let ret = self.ecx.ptr_to_ptr(&src, to).discard_err()?;
                     ret.into()
                 }
                 CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer, _) => {
                     let src = self.evaluated[value].as_ref()?;
-                    let src = self.ecx.read_immediate(src).ok()?;
+                    let src = self.ecx.read_immediate(src).discard_err()?;
                     let to = self.ecx.layout_of(to).ok()?;
                     ImmTy::from_immediate(*src, to).into()
                 }
@@ -708,7 +727,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 && let Some(idx) = self.locals[idx_local]
             {
                 if let Some(offset) = self.evaluated[idx].as_ref()
-                    && let Ok(offset) = self.ecx.read_target_usize(offset)
+                    && let Some(offset) = self.ecx.read_target_usize(offset).discard_err()
                     && let Some(min_length) = offset.checked_add(1)
                 {
                     projection.to_mut()[i] =
@@ -868,7 +887,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             && let DefKind::Enum = self.tcx.def_kind(enum_did)
         {
             let enum_ty = self.tcx.type_of(enum_did).instantiate(self.tcx, enum_args);
-            let discr = self.ecx.discriminant_for_variant(enum_ty, variant).ok()?;
+            let discr = self.ecx.discriminant_for_variant(enum_ty, variant).discard_err()?;
             return Some(self.insert_scalar(discr.to_scalar(), discr.layout.ty));
         }
 
@@ -1134,7 +1153,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (UnOp::PtrMetadata, Value::Aggregate(AggregateTy::RawPtr { .. }, _, fields)) => {
                 return Some(fields[1]);
             }
-            // We have an unsizing cast, which assigns the length to fat pointer metadata.
+            // We have an unsizing cast, which assigns the length to wide pointer metadata.
             (
                 UnOp::PtrMetadata,
                 Value::Cast {
@@ -1223,8 +1242,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let as_bits = |value| {
             let constant = self.evaluated[value].as_ref()?;
             if layout.abi.is_scalar() {
-                let scalar = self.ecx.read_scalar(constant).ok()?;
-                scalar.to_bits(constant.layout.size).ok()
+                let scalar = self.ecx.read_scalar(constant).discard_err()?;
+                scalar.to_bits(constant.layout.size).discard_err()
             } else {
                 // `constant` is a wide pointer. Do not evaluate to bits.
                 None
@@ -1418,7 +1437,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let mut inner = self.simplify_place_value(place, location)?;
 
-        // The length information is stored in the fat pointer.
+        // The length information is stored in the wide pointer.
         // Reborrowing copies length information from one pointer to the other.
         while let Value::Address { place: borrowed, .. } = self.get(inner)
             && let [PlaceElem::Deref] = borrowed.projection[..]
@@ -1427,7 +1446,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             inner = borrowed;
         }
 
-        // We have an unsizing cast, which assigns the length to fat pointer metadata.
+        // We have an unsizing cast, which assigns the length to wide pointer metadata.
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
             && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
             && let Some(from) = from.builtin_deref(true)
@@ -1484,7 +1503,7 @@ fn op_to_prop_const<'tcx>(
 
     // If this constant has scalar ABI, return it as a `ConstValue::Scalar`.
     if let Abi::Scalar(abi::Scalar::Initialized { .. }) = op.layout.abi
-        && let Ok(scalar) = ecx.read_scalar(op)
+        && let Some(scalar) = ecx.read_scalar(op).discard_err()
     {
         if !scalar.try_to_scalar_int().is_ok() {
             // Check that we do not leak a pointer.
@@ -1498,12 +1517,12 @@ fn op_to_prop_const<'tcx>(
     // If this constant is already represented as an `Allocation`,
     // try putting it into global memory to return it.
     if let Either::Left(mplace) = op.as_mplace_or_imm() {
-        let (size, _align) = ecx.size_and_align_of_mplace(&mplace).ok()??;
+        let (size, _align) = ecx.size_and_align_of_mplace(&mplace).discard_err()??;
 
         // Do not try interning a value that contains provenance.
         // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.
         // FIXME: remove this hack once that issue is fixed.
-        let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).ok()??;
+        let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).discard_err()??;
         if alloc_ref.has_provenance() {
             return None;
         }
@@ -1511,7 +1530,7 @@ fn op_to_prop_const<'tcx>(
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
         let (prov, offset) = pointer.into_parts();
         let alloc_id = prov.alloc_id();
-        intern_const_alloc_for_constprop(ecx, alloc_id).ok()?;
+        intern_const_alloc_for_constprop(ecx, alloc_id).discard_err()?;
 
         // `alloc_id` may point to a static. Codegen will choke on an `Indirect` with anything
         // by `GlobalAlloc::Memory`, so do fall through to copying if needed.
@@ -1526,7 +1545,8 @@ fn op_to_prop_const<'tcx>(
     }
 
     // Everything failed: create a new allocation to hold the data.
-    let alloc_id = ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).ok()?;
+    let alloc_id =
+        ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).discard_err()?;
     let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
 
     // Check that we do not leak a pointer.

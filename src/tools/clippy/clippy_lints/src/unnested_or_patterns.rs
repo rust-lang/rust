@@ -1,14 +1,14 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_path};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::over;
+use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::PatKind::*;
-use rustc_ast::{self as ast, Mutability, Pat, PatKind, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -16,7 +16,7 @@ use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
 use std::cell::Cell;
 use std::mem;
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -275,12 +275,15 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
             |k, ps1, idx| matches!(
                 k,
                 TupleStruct(qself2, path2, ps2)
-                    if eq_maybe_qself(qself1, qself2) && eq_path(path1, path2) && eq_pre_post(ps1, ps2, idx)
+                    if eq_maybe_qself(qself1.as_ref(), qself2.as_ref())
+                       && eq_path(path1, path2) && eq_pre_post(ps1, ps2, idx)
             ),
             |k| always_pat!(k, TupleStruct(_, _, ps) => ps),
         ),
         // Transform a record pattern `S { fp_0, ..., fp_n }`.
-        Struct(qself1, path1, fps1, rest1) => extend_with_struct_pat(qself1, path1, fps1, *rest1, start, alternatives),
+        Struct(qself1, path1, fps1, rest1) => {
+            extend_with_struct_pat(qself1.as_ref(), path1, fps1, *rest1, start, alternatives)
+        },
     };
 
     alternatives[focus_idx].kind = focus_kind;
@@ -292,7 +295,7 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
 /// So when we fixate on some `ident_k: pat_k`, we try to find `ident_k` in the other pattern
 /// and check that all `fp_i` where `i ∈ ((0...n) \ k)` between two patterns are equal.
 fn extend_with_struct_pat(
-    qself1: &Option<P<ast::QSelf>>,
+    qself1: Option<&P<ast::QSelf>>,
     path1: &ast::Path,
     fps1: &mut [ast::PatField],
     rest1: ast::PatFieldsRest,
@@ -307,7 +310,7 @@ fn extend_with_struct_pat(
             |k| {
                 matches!(k, Struct(qself2, path2, fps2, rest2)
                 if rest1 == *rest2 // If one struct pattern has `..` so must the other.
-                && eq_maybe_qself(qself1, qself2)
+                && eq_maybe_qself(qself1, qself2.as_ref())
                 && eq_path(path1, path2)
                 && fps1.len() == fps2.len()
                 && fps1.iter().enumerate().all(|(idx_1, fp1)| {

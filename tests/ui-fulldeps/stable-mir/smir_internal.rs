@@ -10,7 +10,6 @@
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
-#![feature(control_flow_enum)]
 
 #[macro_use]
 extern crate rustc_smir;

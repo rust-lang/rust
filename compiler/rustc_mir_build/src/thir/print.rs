@@ -818,9 +818,11 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     }
 
     fn print_inline_asm_expr(&mut self, expr: &InlineAsmExpr<'tcx>, depth_lvl: usize) {
-        let InlineAsmExpr { template, operands, options, line_spans } = expr;
+        let InlineAsmExpr { asm_macro, template, operands, options, line_spans } = expr;
 
         print_indented!(self, "InlineAsmExpr {", depth_lvl);
+
+        print_indented!(self, format!("asm_macro: {:?}", asm_macro), depth_lvl + 1);
 
         print_indented!(self, "template: [", depth_lvl + 1);
         for template_piece in template.iter() {

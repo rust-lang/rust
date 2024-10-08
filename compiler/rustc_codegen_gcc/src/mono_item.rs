@@ -37,7 +37,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
         let global = self.define_global(symbol_name, gcc_type, is_tls, attrs.link_section);
         #[cfg(feature = "master")]
-        global.add_string_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
+        global.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
 
         // TODO(antoyo): set linkage.
         self.instances.borrow_mut().insert(instance, global);

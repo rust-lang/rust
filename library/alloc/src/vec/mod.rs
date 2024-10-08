@@ -1240,7 +1240,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
+    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    pub const fn capacity(&self) -> usize {
         self.buf.capacity()
     }
 
@@ -1548,8 +1549,22 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_slice")]
-    pub fn as_slice(&self) -> &[T] {
-        self
+    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    pub const fn as_slice(&self) -> &[T] {
+        // SAFETY: `slice::from_raw_parts` requires pointee is a contiguous, aligned buffer of size
+        // `len` containing properly-initialized `T`s. Data must not be mutated for the returned
+        // lifetime. Further, `len * mem::size_of::<T>` <= `ISIZE::MAX`, and allocation does not
+        // "wrap" through overflowing memory addresses.
+        //
+        // * Vec API guarantees that self.buf:
+        //      * contains only properly-initialized items within 0..len
+        //      * is aligned, contiguous, and valid for `len` reads
+        //      * obeys size and address-wrapping constraints
+        //
+        // * We only construct `&mut` references to `self.buf` through `&mut self` methods; borrow-
+        //   check ensures that it is not possible to mutably alias `self.buf` within the
+        //   returned lifetime.
+        unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
     }
 
     /// Extracts a mutable slice of the entire vector.
@@ -1566,8 +1581,22 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_mut_slice")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        self
+    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
+        // SAFETY: `slice::from_raw_parts_mut` requires pointee is a contiguous, aligned buffer of
+        // size `len` containing properly-initialized `T`s. Data must not be accessed through any
+        // other pointer for the returned lifetime. Further, `len * mem::size_of::<T>` <=
+        // `ISIZE::MAX` and allocation does not "wrap" through overflowing memory addresses.
+        //
+        // * Vec API guarantees that self.buf:
+        //      * contains only properly-initialized items within 0..len
+        //      * is aligned, contiguous, and valid for `len` reads
+        //      * obeys size and address-wrapping constraints
+        //
+        // * We only construct references to `self.buf` through `&self` and `&mut self` methods;
+        //   borrow-check ensures that it is not possible to construct a reference to `self.buf`
+        //   within the returned lifetime.
+        unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
     }
 
     /// Returns a raw pointer to the vector's buffer, or a dangling raw pointer
@@ -1624,9 +1653,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
+    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     #[rustc_never_returns_null_ptr]
     #[inline]
-    pub fn as_ptr(&self) -> *const T {
+    pub const fn as_ptr(&self) -> *const T {
         // We shadow the slice method of the same name to avoid going through
         // `deref`, which creates an intermediate reference.
         self.buf.ptr()
@@ -1685,9 +1715,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
+    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     #[rustc_never_returns_null_ptr]
     #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
+    pub const fn as_mut_ptr(&mut self) -> *mut T {
         // We shadow the slice method of the same name to avoid going through
         // `deref_mut`, which creates an intermediate reference.
         self.buf.ptr()
@@ -2628,8 +2659,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     #[rustc_confusables("length", "size")]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 
@@ -2646,7 +2678,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "vec_is_empty")]
-    pub fn is_empty(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
@@ -3197,7 +3230,7 @@ impl<T, A: Allocator> ops::Deref for Vec<T, A> {
 
     #[inline]
     fn deref(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
+        self.as_slice()
     }
 }
 
@@ -3205,7 +3238,7 @@ impl<T, A: Allocator> ops::Deref for Vec<T, A> {
 impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
     #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
+        self.as_mut_slice()
     }
 }
 

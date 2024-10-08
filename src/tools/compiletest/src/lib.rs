@@ -53,8 +53,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
         .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
         .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
-        .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
-        .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
@@ -65,7 +63,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
+            "pretty | debug-info | codegen | rustdoc \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
             | js-doc-test | mir-opt | assembly | crashes",
         )
@@ -83,6 +81,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
+        .optflag("", "has-enzyme", "run tests that require enzyme")
         .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
         .optmulti(
             "",
@@ -233,6 +232,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         // Avoid spawning an external command when we know tidy won't be used.
         false
     };
+    let has_enzyme = matches.opt_present("has-enzyme");
     let filters = if mode == Mode::RunMake {
         matches
             .free
@@ -267,8 +267,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
         jsondoclint_path: matches.opt_str("jsondoclint-path"),
-        valgrind_path: matches.opt_str("valgrind-path"),
-        force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
@@ -331,6 +329,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             .map(|s| s.parse().expect("invalid --compare-mode provided")),
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_tidy,
+        has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition"),

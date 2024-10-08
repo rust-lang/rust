@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.82"
+version = "0.1.83"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -31,7 +31,7 @@ anstream = "0.6.0"
 
 [dev-dependencies]
 cargo_metadata = "0.18.1"
-ui_test = "0.25"
+ui_test = "0.26.4"
 regex = "1.5.5"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.122"

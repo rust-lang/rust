@@ -74,7 +74,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
         }));
     }
 
-    Crate { module, external_traits: cx.external_traits.clone() }
+    Crate { module, external_traits: Box::new(mem::take(&mut cx.external_traits)) }
 }
 
 pub(crate) fn clean_middle_generic_args<'tcx>(

@@ -4,8 +4,8 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::Display;
 use std::ptr;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
+use std::sync::atomic::AtomicUsize;
 
 const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ ERROR: interior mutable
 const CELL: Cell<usize> = Cell::new(6); //~ ERROR: interior mutable

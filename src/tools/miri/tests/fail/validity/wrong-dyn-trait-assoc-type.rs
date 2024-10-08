@@ -5,7 +5,9 @@ trait Trait {
 
 impl<T: Copy> Trait for T {
     type Assoc = T;
-    fn foo(&self) -> T { *self }
+    fn foo(&self) -> T {
+        *self
+    }
 }
 
 fn main() {

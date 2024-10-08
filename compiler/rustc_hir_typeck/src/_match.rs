@@ -15,7 +15,7 @@ use crate::{Diverges, Expectation, FnCtxt, Needs};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug", ret)]
-    pub fn check_match(
+    pub(crate) fn check_match(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         scrut: &'tcx hir::Expr<'tcx>,
@@ -602,7 +602,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map(|(k, _)| (k.def_id, k.args))?,
             _ => return None,
         };
-        let hir::OpaqueTyOrigin::FnReturn(parent_def_id) = self.tcx.opaque_type_origin(def_id)
+        let hir::OpaqueTyOrigin::FnReturn { parent: parent_def_id, .. } =
+            self.tcx.opaque_type_origin(def_id)
         else {
             return None;
         };

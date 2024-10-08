@@ -1,5 +1,5 @@
 use expect_test::expect_file;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::create_default_session_globals_then;
 
 use super::{DecorationInfo, write_code};
@@ -73,7 +73,7 @@ fn test_decorations() {
 let y = 2;
 let z = 3;
 let a = 4;";
-        let mut decorations = FxHashMap::default();
+        let mut decorations = FxIndexMap::default();
         decorations.insert("example", vec![(0, 10), (11, 21)]);
         decorations.insert("example2", vec![(22, 32)]);
 

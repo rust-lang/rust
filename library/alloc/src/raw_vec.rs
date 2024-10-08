@@ -280,7 +280,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// `Unique::dangling()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
     /// be careful.
     #[inline]
-    pub fn ptr(&self) -> *mut T {
+    pub const fn ptr(&self) -> *mut T {
         self.inner.ptr()
     }
 
@@ -293,7 +293,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline]
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         self.inner.capacity(size_of::<T>())
     }
 
@@ -488,17 +488,17 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
-    fn ptr<T>(&self) -> *mut T {
+    const fn ptr<T>(&self) -> *mut T {
         self.non_null::<T>().as_ptr()
     }
 
     #[inline]
-    fn non_null<T>(&self) -> NonNull<T> {
-        self.ptr.cast().into()
+    const fn non_null<T>(&self) -> NonNull<T> {
+        self.ptr.cast().as_non_null_ptr()
     }
 
     #[inline]
-    fn capacity(&self, elem_size: usize) -> usize {
+    const fn capacity(&self, elem_size: usize) -> usize {
         if elem_size == 0 { usize::MAX } else { self.cap.0 }
     }
 

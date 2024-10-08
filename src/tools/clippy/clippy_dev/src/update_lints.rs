@@ -1,7 +1,7 @@
 use crate::clippy_project_root;
 use aho_corasick::AhoCorasickBuilder;
 use itertools::Itertools;
-use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
+use rustc_lexer::{LiteralKind, TokenKind, tokenize, unescape};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt::{self, Write};
@@ -1048,23 +1048,17 @@ mod tests {
             Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
         ];
         let mut expected: HashMap<String, Vec<Lint>> = HashMap::new();
-        expected.insert(
-            "group1".to_string(),
-            vec![
-                Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
-                Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
-            ],
-        );
-        expected.insert(
-            "group2".to_string(),
-            vec![Lint::new(
-                "should_assert_eq2",
-                "group2",
-                "\"abc\"",
-                "module_name",
-                Range::default(),
-            )],
-        );
+        expected.insert("group1".to_string(), vec![
+            Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
+            Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
+        ]);
+        expected.insert("group2".to_string(), vec![Lint::new(
+            "should_assert_eq2",
+            "group2",
+            "\"abc\"",
+            "module_name",
+            Range::default(),
+        )]);
         assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
     }
 }

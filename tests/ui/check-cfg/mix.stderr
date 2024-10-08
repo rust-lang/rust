@@ -251,7 +251,7 @@ warning: unexpected `cfg` condition value: `zebra`
 LL |     cfg!(target_feature = "zebra");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_feature` are: `10e60`, `2e3`, `3e3r1`, `3e3r2`, `3e3r3`, `3e7`, `7e10`, `a`, `aclass`, `adx`, `aes`, `altivec`, `alu32`, `amx-bf16`, `amx-complex`, `amx-fp16`, `amx-int8`, `amx-tile`, `atomics`, `avx`, `avx2`, `avx512bf16`, `avx512bitalg`, `avx512bw`, `avx512cd`, `avx512dq`, `avx512f`, `avx512fp16`, `avx512ifma`, `avx512vbmi`, `avx512vbmi2`, `avx512vl`, `avx512vnni`, `avx512vp2intersect`, and `avx512vpopcntdq` and 239 more
+   = note: expected values for `target_feature` are: `10e60`, `2e3`, `3e3r1`, `3e3r2`, `3e3r3`, `3e7`, `7e10`, `a`, `aclass`, `adx`, `aes`, `altivec`, `alu32`, `amx-bf16`, `amx-complex`, `amx-fp16`, `amx-int8`, `amx-tile`, `atomics`, `avx`, `avx2`, `avx512bf16`, `avx512bitalg`, `avx512bw`, `avx512cd`, `avx512dq`, `avx512f`, `avx512fp16`, `avx512ifma`, `avx512vbmi`, `avx512vbmi2`, `avx512vl`, `avx512vnni`, `avx512vp2intersect`, and `avx512vpopcntdq` and 244 more
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: 27 warnings emitted

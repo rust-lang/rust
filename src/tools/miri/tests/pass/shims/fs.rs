@@ -4,7 +4,7 @@
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs::{
     File, OpenOptions, canonicalize, create_dir, read_dir, remove_dir, remove_dir_all, remove_file,
@@ -262,7 +262,7 @@ fn test_directory() {
     create_dir(&dir_1).unwrap();
     // Test that read_dir metadata calls succeed
     assert_eq!(
-        HashMap::from([
+        BTreeMap::from([
             (OsString::from("test_file_1"), true),
             (OsString::from("test_file_2"), true),
             (OsString::from("test_dir_1"), false)
@@ -273,7 +273,7 @@ fn test_directory() {
                 let e = e.unwrap();
                 (e.file_name(), e.metadata().unwrap().is_file())
             })
-            .collect::<HashMap<_, _>>()
+            .collect::<BTreeMap<_, _>>()
     );
     // Deleting the directory should fail, since it is not empty.
     assert_eq!(ErrorKind::DirectoryNotEmpty, remove_dir(&dir_path).unwrap_err().kind());

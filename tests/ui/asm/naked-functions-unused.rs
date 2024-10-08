@@ -17,7 +17,9 @@ pub mod normal {
     pub extern "C" fn function(a: usize, b: usize) -> usize {
         //~^ ERROR unused variable: `a`
         //~| ERROR unused variable: `b`
-        unsafe { asm!("", options(noreturn)); }
+        unsafe {
+            asm!("", options(noreturn));
+        }
     }
 
     pub struct Normal;
@@ -26,13 +28,17 @@ pub mod normal {
         pub extern "C" fn associated(a: usize, b: usize) -> usize {
             //~^ ERROR unused variable: `a`
             //~| ERROR unused variable: `b`
-            unsafe { asm!("", options(noreturn)); }
+            unsafe {
+                asm!("", options(noreturn));
+            }
         }
 
         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
             //~^ ERROR unused variable: `a`
             //~| ERROR unused variable: `b`
-            unsafe { asm!("", options(noreturn)); }
+            unsafe {
+                asm!("", options(noreturn));
+            }
         }
     }
 
@@ -40,23 +46,29 @@ pub mod normal {
         extern "C" fn trait_associated(a: usize, b: usize) -> usize {
             //~^ ERROR unused variable: `a`
             //~| ERROR unused variable: `b`
-            unsafe { asm!("", options(noreturn)); }
+            unsafe {
+                asm!("", options(noreturn));
+            }
         }
 
         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
             //~^ ERROR unused variable: `a`
             //~| ERROR unused variable: `b`
-            unsafe { asm!("", options(noreturn)); }
+            unsafe {
+                asm!("", options(noreturn));
+            }
         }
     }
 }
 
 pub mod naked {
-    use std::arch::asm;
+    use std::arch::naked_asm;
 
     #[naked]
     pub extern "C" fn function(a: usize, b: usize) -> usize {
-        unsafe { asm!("", options(noreturn)); }
+        unsafe {
+            naked_asm!("");
+        }
     }
 
     pub struct Naked;
@@ -64,24 +76,32 @@ pub mod naked {
     impl Naked {
         #[naked]
         pub extern "C" fn associated(a: usize, b: usize) -> usize {
-            unsafe { asm!("", options(noreturn)); }
+            unsafe {
+                naked_asm!("");
+            }
         }
 
         #[naked]
         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
-            unsafe { asm!("", options(noreturn)); }
+            unsafe {
+                naked_asm!("");
+            }
         }
     }
 
     impl super::Trait for Naked {
         #[naked]
         extern "C" fn trait_associated(a: usize, b: usize) -> usize {
-            unsafe { asm!("", options(noreturn)); }
+            unsafe {
+                naked_asm!("");
+            }
         }
 
         #[naked]
         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
-            unsafe { asm!("", options(noreturn)); }
+            unsafe {
+                naked_asm!("");
+            }
         }
     }
 }

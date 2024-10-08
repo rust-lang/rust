@@ -1,7 +1,7 @@
 use std::mem;
 use std::ops::ControlFlow;
 
-use clippy_utils::comparisons::{normalize_comparison, Rel};
+use clippy_utils::comparisons::{Rel, normalize_comparison};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr_without_closures;
@@ -14,7 +14,7 @@ use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

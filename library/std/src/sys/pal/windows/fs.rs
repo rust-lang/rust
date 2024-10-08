@@ -1,5 +1,3 @@
-use core::ptr::addr_of;
-
 use super::api::{self, WinError};
 use super::{IoResult, to_u16s};
 use crate::borrow::Cow;
@@ -325,7 +323,7 @@ impl File {
                     let result = c::SetFileInformationByHandle(
                         handle.as_raw_handle(),
                         c::FileEndOfFileInfo,
-                        ptr::addr_of!(eof).cast::<c_void>(),
+                        (&raw const eof).cast::<c_void>(),
                         mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
                     );
                     if result == 0 {
@@ -364,7 +362,7 @@ impl File {
                 cvt(c::GetFileInformationByHandleEx(
                     self.handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
-                    ptr::addr_of_mut!(attr_tag).cast(),
+                    (&raw mut attr_tag).cast(),
                     mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
@@ -396,7 +394,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             let mut attr = FileAttr {
@@ -428,7 +426,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileStandardInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             attr.file_size = info.AllocationSize as u64;
@@ -438,7 +436,7 @@ impl File {
                 cvt(c::GetFileInformationByHandleEx(
                     self.handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
-                    ptr::addr_of_mut!(attr_tag).cast(),
+                    (&raw mut attr_tag).cast(),
                     mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
@@ -545,22 +543,20 @@ impl File {
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
-                    let info: *mut c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                        ptr::addr_of_mut!((*buf).rest).cast();
+                    let info: *mut c::SYMBOLIC_LINK_REPARSE_BUFFER = (&raw mut (*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
+                        (&raw mut (*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0,
                     )
                 }
                 c::IO_REPARSE_TAG_MOUNT_POINT => {
-                    let info: *mut c::MOUNT_POINT_REPARSE_BUFFER =
-                        ptr::addr_of_mut!((*buf).rest).cast();
+                    let info: *mut c::MOUNT_POINT_REPARSE_BUFFER = (&raw mut (*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
+                        (&raw mut (*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         false,
@@ -643,7 +639,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             Ok(info)
@@ -790,11 +786,11 @@ impl<'a> Iterator for DirBuffIter<'a> {
             // it does not seem that reality is so kind, and assuming this
             // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
             // presumably, this can be blamed on buggy filesystem drivers, but who knows.
-            let next_entry = ptr::addr_of!((*info).NextEntryOffset).read_unaligned() as usize;
-            let length = ptr::addr_of!((*info).FileNameLength).read_unaligned() as usize;
-            let attrs = ptr::addr_of!((*info).FileAttributes).read_unaligned();
+            let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
+            let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
+            let attrs = (&raw const (*info).FileAttributes).read_unaligned();
             let name = from_maybe_unaligned(
-                ptr::addr_of!((*info).FileName).cast::<u16>(),
+                (&raw const (*info).FileName).cast::<u16>(),
                 length / size_of::<u16>(),
             );
             let is_directory = (attrs & c::FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -1326,7 +1322,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             pfrom.as_ptr(),
             pto.as_ptr(),
             Some(callback),
-            core::ptr::addr_of_mut!(size) as *mut _,
+            (&raw mut size) as *mut _,
             ptr::null_mut(),
             0,
         )
@@ -1405,7 +1401,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
         cvt(c::DeviceIoControl(
             d.as_raw_handle(),
             c::FSCTL_SET_REPARSE_POINT,
-            addr_of!(header).cast::<c_void>(),
+            (&raw const header).cast::<c_void>(),
             data_len as u32 + 8,
             ptr::null_mut(),
             0,

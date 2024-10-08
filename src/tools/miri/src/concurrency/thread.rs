@@ -7,7 +7,6 @@ use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
 use either::Either;
-
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
@@ -623,7 +622,7 @@ impl<'tcx> ThreadManager<'tcx> {
         }
 
         self.threads[id].join_status = ThreadJoinStatus::Detached;
-        Ok(())
+        interp_ok(())
     }
 
     /// Mark that the active thread tries to join the thread with `joined_thread_id`.
@@ -658,7 +657,7 @@ impl<'tcx> ThreadManager<'tcx> {
                         if let Some(data_race) = &mut this.machine.data_race {
                             data_race.thread_joined(&this.machine.threads, joined_thread_id);
                         }
-                        Ok(())
+                        interp_ok(())
                     }
                 ),
             );
@@ -668,7 +667,7 @@ impl<'tcx> ThreadManager<'tcx> {
                 data_race.thread_joined(self, joined_thread_id);
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Mark that the active thread tries to exclusively join the thread with `joined_thread_id`.
@@ -755,7 +754,7 @@ impl<'tcx> ThreadManager<'tcx> {
         // This thread and the program can keep going.
         if self.threads[self.active_thread].state.is_enabled() && !self.yield_active_thread {
             // The currently active thread is still enabled, just continue with it.
-            return Ok(SchedulingAction::ExecuteStep);
+            return interp_ok(SchedulingAction::ExecuteStep);
         }
         // The active thread yielded or got terminated. Let's see if there are any timeouts to take
         // care of. We do this *before* running any other thread, to ensure that timeouts "in the
@@ -765,7 +764,7 @@ impl<'tcx> ThreadManager<'tcx> {
         // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
         let potential_sleep_time = self.next_callback_wait_time(clock);
         if potential_sleep_time == Some(Duration::ZERO) {
-            return Ok(SchedulingAction::ExecuteTimeoutCallback);
+            return interp_ok(SchedulingAction::ExecuteTimeoutCallback);
         }
         // No callbacks immediately scheduled, pick a regular thread to execute.
         // The active thread blocked or yielded. So we go search for another enabled thread.
@@ -794,7 +793,7 @@ impl<'tcx> ThreadManager<'tcx> {
         }
         self.yield_active_thread = false;
         if self.threads[self.active_thread].state.is_enabled() {
-            return Ok(SchedulingAction::ExecuteStep);
+            return interp_ok(SchedulingAction::ExecuteStep);
         }
         // We have not found a thread to execute.
         if self.threads.iter().all(|thread| thread.state.is_terminated()) {
@@ -803,7 +802,7 @@ impl<'tcx> ThreadManager<'tcx> {
             // All threads are currently blocked, but we have unexecuted
             // timeout_callbacks, which may unblock some of the threads. Hence,
             // sleep until the first callback.
-            Ok(SchedulingAction::Sleep(sleep_time))
+            interp_ok(SchedulingAction::Sleep(sleep_time))
         } else {
             throw_machine_stop!(TerminationInfo::Deadlock);
         }
@@ -849,7 +848,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // https://github.com/rust-lang/miri/issues/1763). In this case,
         // just do nothing, which effectively just returns to the
         // scheduler.
-        return Ok(());
+        interp_ok(())
     }
 
     #[inline]
@@ -862,7 +861,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             .expect("`on_stack_empty` not set up, or already running");
         let res = callback(this)?;
         this.active_thread_mut().on_stack_empty = Some(callback);
-        Ok(res)
+        interp_ok(res)
     }
 }
 
@@ -880,7 +879,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let Some(old_alloc) = this.machine.threads.get_thread_local_alloc_id(def_id) {
             // We already have a thread-specific allocation id for this
             // thread-local static.
-            Ok(old_alloc)
+            interp_ok(old_alloc)
         } else {
             // We need to allocate a thread-specific allocation id for this
             // thread-local static.
@@ -893,7 +892,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut alloc = alloc.inner().adjust_from_tcx(
                 &this.tcx,
                 |bytes, align| {
-                    Ok(MiriAllocBytes::from_bytes(std::borrow::Cow::Borrowed(bytes), align))
+                    interp_ok(MiriAllocBytes::from_bytes(std::borrow::Cow::Borrowed(bytes), align))
                 },
                 |ptr| this.global_root_pointer(ptr),
             )?;
@@ -902,7 +901,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Create a fresh allocation with this content.
             let ptr = this.insert_allocation(alloc, MiriMemoryKind::Tls.into())?;
             this.machine.threads.set_thread_local_alloc(def_id, ptr);
-            Ok(ptr)
+            interp_ok(ptr)
         }
     }
 
@@ -965,7 +964,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Restore the old active thread frame.
         this.machine.threads.set_active_thread_id(old_thread_id);
 
-        Ok(new_thread_id)
+        interp_ok(new_thread_id)
     }
 
     /// Handles thread termination of the active thread: wakes up threads joining on this one,
@@ -1023,7 +1022,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.unblock_thread(thread, unblock_reason)?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Block the current thread, with an optional timeout.
@@ -1079,7 +1078,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let old_thread = this.machine.threads.set_active_thread_id(thread);
         callback.unblock(this)?;
         this.machine.threads.set_active_thread_id(old_thread);
-        Ok(())
+        interp_ok(())
     }
 
     #[inline]
@@ -1096,7 +1095,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn join_thread(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.machine.threads.join_thread(joined_thread_id, this.machine.data_race.as_mut())?;
-        Ok(())
+        interp_ok(())
     }
 
     #[inline]
@@ -1105,7 +1104,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.machine
             .threads
             .join_thread_exclusive(joined_thread_id, this.machine.data_race.as_mut())?;
-        Ok(())
+        interp_ok(())
     }
 
     #[inline]

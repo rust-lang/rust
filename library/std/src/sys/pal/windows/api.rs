@@ -30,7 +30,6 @@
 //! should go in sys/pal/windows/mod.rs rather than here. See `IoResult` as an example.
 
 use core::ffi::c_void;
-use core::ptr::addr_of;
 
 use super::c;
 
@@ -186,7 +185,7 @@ unsafe trait SizedSetFileInformation: Sized {
 unsafe impl<T: SizedSetFileInformation> SetFileInformation for T {
     const CLASS: i32 = T::CLASS;
     fn as_ptr(&self) -> *const c_void {
-        addr_of!(*self).cast::<c_void>()
+        (&raw const *self).cast::<c_void>()
     }
     fn size(&self) -> u32 {
         win32_size_of::<Self>()

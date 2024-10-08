@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
@@ -8,14 +8,14 @@ use clippy_utils::{is_expn_of, is_lint_allowed, path_to_local};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -226,7 +226,7 @@ struct SliceIndexLintingVisitor<'a, 'tcx> {
     max_suggested_slice: u64,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {

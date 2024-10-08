@@ -2,7 +2,8 @@
     dead_code,
     clippy::missing_safety_doc,
     clippy::extra_unused_lifetimes,
-    clippy::extra_unused_type_parameters
+    clippy::extra_unused_type_parameters,
+    clippy::needless_lifetimes
 )]
 #![warn(clippy::new_without_default)]
 

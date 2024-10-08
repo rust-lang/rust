@@ -3,13 +3,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::get_field_by_name;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
-use clippy_utils::{expr_use_ctxt, is_diag_item_method, is_diag_trait_item, path_to_local_id, ExprUseNode};
+use clippy_utils::{ExprUseNode, expr_use_ctxt, is_diag_item_method, is_diag_trait_item, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, BorrowKind, ByRef, ClosureKind, Expr, ExprKind, Mutability, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use super::MANUAL_INSPECT;
 

@@ -12,7 +12,8 @@
 
 #![allow(dead_code)]
 
-use std::{hash::Hash, mem};
+use std::hash::Hash;
+use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
 

@@ -371,6 +371,8 @@ declare_features! (
     (unstable, async_for_loop, "1.77.0", Some(118898)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
+    /// Allows the use of `#[cfg(<true/false>)]`.
+    (unstable, cfg_boolean_literals, "CURRENT_RUSTC_VERSION", Some(131204)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
@@ -407,8 +409,6 @@ declare_features! (
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Be more precise when looking for live drops in a const context.
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
-    /// Allows creating pointers and references to `static` items in constants.
-    (unstable, const_refs_to_static, "1.78.0", Some(119618)),
     /// Allows `impl const Trait for T` syntax.
     (unstable, const_trait_impl, "1.42.0", Some(67792)),
     /// Allows the `?` operator in const contexts.
@@ -452,8 +452,6 @@ declare_features! (
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
-    /// Uses 2024 rules for matching `expr` fragments in macros. Also enables `expr_2021` fragment.
-    (incomplete, expr_fragment_specifier_2024, "1.80.0", Some(123742)),
     /// Allows using `efiapi`, `sysv64` and `win64` as calling convention
     /// for functions with varargs.
     (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
@@ -548,9 +546,12 @@ declare_features! (
     (unstable, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554)),
     /// Allows `for<T>` binders in where-clauses
     (incomplete, non_lifetime_binders, "1.69.0", Some(108185)),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not object safe.
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible[^1].
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
+    ///
+    /// [^1]: Formerly known as "object safe".
+    // FIXME(dyn_compat_renaming): Rename feature.
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561)),
     /// Allows using enums in offset_of!
     (unstable, offset_of_enum, "1.75.0", Some(120141)),

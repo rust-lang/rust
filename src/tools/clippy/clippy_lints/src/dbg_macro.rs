@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_test;
-use clippy_utils::macros::{macro_backtrace, MacroCall};
+use clippy_utils::macros::{MacroCall, macro_backtrace};
 use clippy_utils::source::snippet_with_applicability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -9,7 +9,7 @@ use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span, SyntaxContext};
+use rustc_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
     /// ### What it does

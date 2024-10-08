@@ -3,8 +3,8 @@ use std::env;
 use std::num::ParseIntError;
 
 use crate::spec::{
-    Cc, DebuginfoKind, FramePointer, LinkArgs, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType,
-    StaticCow, Target, TargetOptions, add_link_args, add_link_args_iter, cvs,
+    Cc, DebuginfoKind, FramePointer, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType, StaticCow,
+    Target, TargetOptions, cvs,
 };
 
 #[cfg(test)]
@@ -35,25 +35,6 @@ impl Arch {
             Arm64_32 => "arm64_32",
             I386 => "i386",
             I686 => "i686",
-            X86_64 => "x86_64",
-            X86_64h => "x86_64h",
-        }
-    }
-
-    /// The architecture name to forward to the linker.
-    fn ld_arch(self) -> &'static str {
-        // Supported architecture names can be found in the source:
-        // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
-        match self {
-            Armv7k => "armv7k",
-            Armv7s => "armv7s",
-            Arm64 => "arm64",
-            Arm64e => "arm64e",
-            Arm64_32 => "arm64_32",
-            // ld64 doesn't understand i686, so fall back to i386 instead
-            //
-            // Same story when linking with cc, since that ends up invoking ld64.
-            I386 | I686 => "i386",
             X86_64 => "x86_64",
             X86_64h => "x86_64h",
         }
@@ -116,104 +97,6 @@ impl TargetAbi {
     }
 }
 
-fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
-    // From the man page for ld64 (`man ld`):
-    // > The linker accepts universal (multiple-architecture) input files,
-    // > but always creates a "thin" (single-architecture), standard Mach-O
-    // > output file. The architecture for the output file is specified using
-    // > the -arch option.
-    //
-    // The linker has heuristics to determine the desired architecture, but to
-    // be safe, and to avoid a warning, we set the architecture explicitly.
-    let mut args =
-        TargetOptions::link_args(LinkerFlavor::Darwin(Cc::No, Lld::No), &["-arch", arch.ld_arch()]);
-
-    // From the man page for ld64 (`man ld`):
-    // > This is set to indicate the platform, oldest supported version of
-    // > that platform that output is to be used on, and the SDK that the
-    // > output was built against. platform [...] may be one of the following
-    // > strings:
-    // > - macos
-    // > - ios
-    // > - tvos
-    // > - watchos
-    // > - bridgeos
-    // > - visionos
-    // > - xros
-    // > - mac-catalyst
-    // > - ios-simulator
-    // > - tvos-simulator
-    // > - watchos-simulator
-    // > - visionos-simulator
-    // > - xros-simulator
-    // > - driverkit
-    //
-    // Like with `-arch`, the linker can figure out the platform versions
-    // itself from the binaries being linked, but to be safe, we specify the
-    // desired versions here explicitly.
-    let platform_name: StaticCow<str> = match abi {
-        TargetAbi::Normal => os.into(),
-        TargetAbi::Simulator => format!("{os}-simulator").into(),
-        TargetAbi::MacCatalyst => "mac-catalyst".into(),
-    };
-    let min_version: StaticCow<str> = {
-        let (major, minor, patch) = deployment_target(os, arch, abi);
-        format!("{major}.{minor}.{patch}").into()
-    };
-    // Lie about the SDK version, we don't know it here
-    let sdk_version = min_version.clone();
-    add_link_args_iter(
-        &mut args,
-        LinkerFlavor::Darwin(Cc::No, Lld::No),
-        ["-platform_version".into(), platform_name, min_version, sdk_version].into_iter(),
-    );
-
-    // We need to communicate four things to the C compiler to be able to link:
-    // - The architecture.
-    // - The operating system (and that it's an Apple platform).
-    // - The deployment target.
-    // - The environment / ABI.
-    //
-    // We'd like to use `-target` everywhere, since that can uniquely
-    // communicate all of these, but that doesn't work on GCC, and since we
-    // don't know whether the `cc` compiler is Clang, GCC, or something else,
-    // we fall back to other options that also work on GCC when compiling for
-    // macOS.
-    //
-    // Targets other than macOS are ill-supported by GCC (it doesn't even
-    // support e.g. `-miphoneos-version-min`), so in those cases we can fairly
-    // safely use `-target`. See also the following, where it is made explicit
-    // that the recommendation by LLVM developers is to use `-target`:
-    // <https://github.com/llvm/llvm-project/issues/88271>
-    if os == "macos" {
-        // `-arch` communicates the architecture.
-        //
-        // CC forwards the `-arch` to the linker, so we use the same value
-        // here intentionally.
-        add_link_args(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), &[
-            "-arch",
-            arch.ld_arch(),
-        ]);
-        // The presence of `-mmacosx-version-min` makes CC default to macOS,
-        // and it sets the deployment target.
-        let (major, minor, patch) = deployment_target(os, arch, abi);
-        let opt = format!("-mmacosx-version-min={major}.{minor}.{patch}").into();
-        add_link_args_iter(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), [opt].into_iter());
-        // macOS has no environment, so with these two, we've told CC all the
-        // desired parameters.
-        //
-        // We avoid `-m32`/`-m64`, as this is already encoded by `-arch`.
-    } else {
-        add_link_args_iter(
-            &mut args,
-            LinkerFlavor::Darwin(Cc::Yes, Lld::No),
-            ["-target".into(), llvm_target(os, arch, abi)].into_iter(),
-        );
-    }
-
-    args
-}
-
 /// Get the base target options, LLVM target and `target_arch` from the three
 /// things that uniquely identify Rust's Apple targets: The OS, the
 /// architecture, and the ABI.
@@ -232,7 +115,6 @@ pub(crate) fn base(
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
-        pre_link_args: pre_link_args(os, arch, abi),
         families: cvs!["unix"],
         is_like_osx: true,
         // LLVM notes that macOS 10.11+ and iOS 9+ default
@@ -274,23 +156,6 @@ pub(crate) fn base(
         ..Default::default()
     };
     (opts, llvm_target(os, arch, abi), arch.target_arch())
-}
-
-pub fn sdk_version(platform: u32) -> Option<(u16, u8)> {
-    // NOTE: These values are from an arbitrary point in time but shouldn't make it into the final
-    // binary since the final link command will have the current SDK version passed to it.
-    match platform {
-        object::macho::PLATFORM_MACOS => Some((13, 1)),
-        object::macho::PLATFORM_IOS
-        | object::macho::PLATFORM_IOSSIMULATOR
-        | object::macho::PLATFORM_TVOS
-        | object::macho::PLATFORM_TVOSSIMULATOR
-        | object::macho::PLATFORM_MACCATALYST => Some((16, 2)),
-        object::macho::PLATFORM_WATCHOS | object::macho::PLATFORM_WATCHOSSIMULATOR => Some((9, 1)),
-        // FIXME: Upgrade to `object-rs` 0.33+ implementation with visionOS platform definition
-        11 | 12 => Some((1, 0)),
-        _ => None,
-    }
 }
 
 pub fn platform(target: &Target) -> Option<u32> {

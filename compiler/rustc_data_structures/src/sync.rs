@@ -437,7 +437,7 @@ impl<T> RwLock<T> {
     #[inline(always)]
     pub fn leak(&self) -> &T {
         let guard = self.read();
-        let ret = unsafe { &*std::ptr::addr_of!(*guard) };
+        let ret = unsafe { &*(&raw const *guard) };
         std::mem::forget(guard);
         ret
     }

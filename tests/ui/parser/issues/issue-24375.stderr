@@ -2,8 +2,9 @@ error: expected a pattern, found an expression
   --> $DIR/issue-24375.rs:6:9
    |
 LL |         tmp[0] => {}
-   |         ^^^^^^ arbitrary expressions are not allowed in patterns
+   |         ^^^^^^ not a pattern
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == tmp[0] => {}

@@ -4,6 +4,7 @@ use std::io;
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
+use crate::concurrency::VClock;
 use crate::shims::unix::fd::{FdId, FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::*;
 use crate::*;
@@ -19,7 +20,7 @@ struct Epoll {
     /// and file descriptor value.
     // This is an Rc because EpollInterest need to hold a reference to update
     // it.
-    ready_list: Rc<RefCell<BTreeMap<(FdId, i32), EpollEventInstance>>>,
+    ready_list: Rc<ReadyList>,
     /// A list of thread ids blocked on this epoll instance.
     thread_id: RefCell<Vec<ThreadId>>,
 }
@@ -63,7 +64,7 @@ pub struct EpollEventInterest {
     /// <https://man7.org/linux/man-pages/man3/epoll_event.3type.html>
     data: u64,
     /// Ready list of the epoll instance under which this EpollEventInterest is registered.
-    ready_list: Rc<RefCell<BTreeMap<(FdId, i32), EpollEventInstance>>>,
+    ready_list: Rc<ReadyList>,
     /// The epoll file description that this EpollEventInterest is registered under.
     weak_epfd: WeakFileDescriptionRef,
 }
@@ -86,6 +87,12 @@ pub struct EpollReadyEvents {
     pub epollhup: bool,
     /// Error condition happened on the associated file descriptor.
     pub epollerr: bool,
+}
+
+#[derive(Debug, Default)]
+struct ReadyList {
+    mapping: RefCell<BTreeMap<(FdId, i32), EpollEventInstance>>,
+    clock: RefCell<VClock>,
 }
 
 impl EpollReadyEvents {
@@ -127,7 +134,7 @@ impl EpollReadyEvents {
 }
 
 impl Epoll {
-    fn get_ready_list(&self) -> Rc<RefCell<BTreeMap<(FdId, i32), EpollEventInstance>>> {
+    fn get_ready_list(&self) -> Rc<ReadyList> {
         Rc::clone(&self.ready_list)
     }
 }
@@ -142,7 +149,7 @@ impl FileDescription for Epoll {
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
-        Ok(Ok(()))
+        interp_ok(Ok(()))
     }
 }
 
@@ -207,11 +214,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        let mut epoll_instance = Epoll::default();
-        epoll_instance.ready_list = Rc::new(RefCell::new(BTreeMap::new()));
-
         let fd = this.machine.fds.insert_new(Epoll::default());
-        Ok(Scalar::from_i32(fd))
+        interp_ok(Scalar::from_i32(fd))
     }
 
     /// This function performs control operations on the `Epoll` instance referred to by the file
@@ -261,14 +265,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Throw EINVAL if epfd and fd have the same value.
         if epfd_value == fd {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            return Ok(Scalar::from_i32(-1));
+            this.set_last_error(LibcError("EINVAL"))?;
+            return interp_ok(Scalar::from_i32(-1));
         }
 
         // Check if epfd is a valid epoll file descriptor.
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            return Ok(Scalar::from_i32(this.fd_not_found()?));
+            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
         };
         let epoll_file_description = epfd
             .downcast::<Epoll>()
@@ -278,7 +281,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ready_list = &epoll_file_description.ready_list;
 
         let Some(fd_ref) = this.machine.fds.get(fd) else {
-            return Ok(Scalar::from_i32(this.fd_not_found()?));
+            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
         };
         let id = fd_ref.get_id();
 
@@ -330,13 +333,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if interest_list.contains_key(&epoll_key) {
                     let eexist = this.eval_libc("EEXIST");
                     this.set_last_error(eexist)?;
-                    return Ok(Scalar::from_i32(-1));
+                    return interp_ok(Scalar::from_i32(-1));
                 }
             } else {
                 if !interest_list.contains_key(&epoll_key) {
                     let enoent = this.eval_libc("ENOENT");
                     this.set_last_error(enoent)?;
-                    return Ok(Scalar::from_i32(-1));
+                    return interp_ok(Scalar::from_i32(-1));
                 }
             }
 
@@ -364,7 +367,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Notification will be returned for current epfd if there is event in the file
             // descriptor we registered.
             check_and_update_one_event_interest(&fd_ref, interest, id, this)?;
-            return Ok(Scalar::from_i32(0));
+            return interp_ok(Scalar::from_i32(0));
         } else if op == epoll_ctl_del {
             let epoll_key = (id, fd);
 
@@ -372,13 +375,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let Some(epoll_interest) = interest_list.remove(&epoll_key) else {
                 let enoent = this.eval_libc("ENOENT");
                 this.set_last_error(enoent)?;
-                return Ok(Scalar::from_i32(-1));
+                return interp_ok(Scalar::from_i32(-1));
             };
             // All related Weak<EpollEventInterest> will fail to upgrade after the drop.
             drop(epoll_interest);
 
             // Remove related epoll_interest from ready list.
-            ready_list.borrow_mut().remove(&epoll_key);
+            ready_list.mapping.borrow_mut().remove(&epoll_key);
 
             // Remove dangling EpollEventInterest from its global table.
             // .unwrap() below should succeed because the file description id must have registered
@@ -390,9 +393,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .unwrap()
                 .retain(|event| event.upgrade().is_some());
 
-            return Ok(Scalar::from_i32(0));
+            return interp_ok(Scalar::from_i32(0));
         }
-        Ok(Scalar::from_i32(-1))
+        interp_ok(Scalar::from_i32(-1))
     }
 
     /// The `epoll_wait()` system call waits for events on the `Epoll`
@@ -401,19 +404,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// list about file descriptors in the interest list that have some
     /// events available. Up to `maxevents` are returned by `epoll_wait()`.
     /// The `maxevents` argument must be greater than zero.
-
+    ///
     /// The `timeout` argument specifies the number of milliseconds that
     /// `epoll_wait()` will block. Time is measured against the
     /// CLOCK_MONOTONIC clock. If the timeout is zero, the function will not block,
     /// while if the timeout is -1, the function will block
     /// until at least one event has been retrieved (or an error
     /// occurred).
-
+    ///
     /// A call to `epoll_wait()` will block until either:
     /// • a file descriptor delivers an event;
     /// • the call is interrupted by a signal handler; or
     /// • the timeout expires.
-
+    ///
     /// Note that the timeout interval will be rounded up to the system
     /// clock granularity, and kernel scheduling delays mean that the
     /// blocking interval may overrun by a small amount. Specifying a
@@ -443,10 +446,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout = this.read_scalar(timeout)?.to_i32()?;
 
         if epfd_value <= 0 || maxevents <= 0 {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
+            this.set_last_error(LibcError("EINVAL"))?;
             this.write_int(-1, dest)?;
-            return Ok(());
+            return interp_ok(());
         }
 
         // This needs to come after the maxevents value check, or else maxevents.try_into().unwrap()
@@ -459,7 +461,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
             let result_value: i32 = this.fd_not_found()?;
             this.write_int(result_value, dest)?;
-            return Ok(());
+            return interp_ok(());
         };
         // Create a weak ref of epfd and pass it to callback so we will make sure that epfd
         // is not close after the thread unblocks.
@@ -473,8 +475,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let epoll_file_description = epfd
                 .downcast::<Epoll>()
                 .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
-            let binding = epoll_file_description.get_ready_list();
-            ready_list_empty = binding.borrow_mut().is_empty();
+            ready_list_empty = epoll_file_description.ready_list.mapping.borrow().is_empty();
             thread_ids = epoll_file_description.thread_id.borrow_mut();
         }
         if timeout == 0 || !ready_list_empty {
@@ -508,7 +509,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     @unblock = |this| {
                         blocking_epoll_callback(epfd_value, weak_epfd, &dest, &event, this)?;
-                        Ok(())
+                        interp_ok(())
                     }
                     @timeout = |this| {
                         // No notification after blocking timeout.
@@ -521,12 +522,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             .thread_id.borrow_mut()
                             .retain(|&id| id != this.active_thread());
                         this.write_int(0, &dest)?;
-                        Ok(())
+                        interp_ok(())
                     }
                 ),
             );
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// For a specific file description, get its ready events and update the corresponding ready
@@ -563,9 +564,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // holds a strong ref to epoll_interest.
                         let epfd = epoll_interest.borrow().weak_epfd.upgrade().unwrap();
                         // FIXME: We can randomly pick a thread to unblock.
-                        if let Some(thread_id) =
-                            epfd.downcast::<Epoll>().unwrap().thread_id.borrow_mut().pop()
-                        {
+
+                        let epoll = epfd.downcast::<Epoll>().unwrap();
+
+                        // Synchronize running thread to the epoll ready list.
+                        if let Some(clock) = &this.release_clock() {
+                            epoll.ready_list.clock.borrow_mut().join(clock);
+                        }
+
+                        if let Some(thread_id) = epoll.thread_id.borrow_mut().pop() {
                             waiter.push(thread_id);
                         };
                     }
@@ -577,7 +584,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         for thread_id in waiter {
             this.unblock_thread(thread_id, BlockReason::Epoll)?;
         }
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -596,7 +603,7 @@ fn ready_list_next(
             return Some(epoll_event_instance);
         }
     }
-    return None;
+    None
 }
 
 /// This helper function checks whether an epoll notification should be triggered for a specific
@@ -619,13 +626,14 @@ fn check_and_update_one_event_interest<'tcx>(
     // insert an epoll_return to the ready list.
     if flags != 0 {
         let epoll_key = (id, epoll_event_interest.fd_num);
-        let ready_list = &mut epoll_event_interest.ready_list.borrow_mut();
+        let ready_list = &mut epoll_event_interest.ready_list.mapping.borrow_mut();
         let event_instance = EpollEventInstance::new(flags, epoll_event_interest.data);
         // Triggers the notification by inserting it to the ready list.
         ready_list.insert(epoll_key, event_instance);
-        return Ok(true);
+        interp_ok(true)
+    } else {
+        interp_ok(false)
     }
-    return Ok(false);
 }
 
 /// Callback function after epoll_wait unblocks
@@ -645,7 +653,11 @@ fn blocking_epoll_callback<'tcx>(
         .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
 
     let ready_list = epoll_file_description.get_ready_list();
-    let mut ready_list = ready_list.borrow_mut();
+
+    // Synchronize waking thread from the epoll ready list.
+    ecx.acquire_clock(&ready_list.clock.borrow());
+
+    let mut ready_list = ready_list.mapping.borrow_mut();
     let mut num_of_events: i32 = 0;
     let mut array_iter = ecx.project_array_fields(events)?;
 
@@ -664,5 +676,5 @@ fn blocking_epoll_callback<'tcx>(
         }
     }
     ecx.write_int(num_of_events, dest)?;
-    Ok(())
+    interp_ok(())
 }

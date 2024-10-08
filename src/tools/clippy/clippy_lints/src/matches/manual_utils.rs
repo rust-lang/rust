@@ -4,16 +4,16 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
 use clippy_utils::{
-    can_move_expr_to_closure, is_else_clause, is_lint_allowed, is_res_lang_ctor, path_res, path_to_local_id,
-    peel_blocks, peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
+    CaptureKind, can_move_expr_to_closure, is_else_clause, is_lint_allowed, is_res_lang_ctor, path_res,
+    path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
 };
 use rustc_ast::util::parser::PREC_UNAMBIGUOUS;
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
+use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
-use rustc_span::{sym, SyntaxContext};
+use rustc_span::{SyntaxContext, sym};
 
 #[expect(clippy::too_many_arguments)]
 #[expect(clippy::too_many_lines)]

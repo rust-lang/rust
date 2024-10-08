@@ -24,25 +24,42 @@
 //!
 //! ## Memory model for atomic accesses
 //!
-//! Rust atomics currently follow the same rules as [C++20 atomics][cpp], specifically `atomic_ref`.
-//! Basically, creating a *shared reference* to one of the Rust atomic types corresponds to creating
-//! an `atomic_ref` in C++; the `atomic_ref` is destroyed when the lifetime of the shared reference
-//! ends. A Rust atomic type that is exclusively owned or behind a mutable reference does *not*
-//! correspond to an “atomic object” in C++, since the underlying primitive can be mutably accessed,
-//! for example with `get_mut`, to perform non-atomic operations.
+//! Rust atomics currently follow the same rules as [C++20 atomics][cpp], specifically the rules
+//! from the [`intro.races`][cpp-intro.races] section, without the "consume" memory ordering. Since
+//! C++ uses an object-based memory model whereas Rust is access-based, a bit of translation work
+//! has to be done to apply the C++ rules to Rust: whenever C++ talks about "the value of an
+//! object", we understand that to mean the resulting bytes obtained when doing a read. When the C++
+//! standard talks about "the value of an atomic object", this refers to the result of doing an
+//! atomic load (via the operations provided in this module). A "modification of an atomic object"
+//! refers to an atomic store.
+//!
+//! The end result is *almost* equivalent to saying that creating a *shared reference* to one of the
+//! Rust atomic types corresponds to creating an `atomic_ref` in C++, with the `atomic_ref` being
+//! destroyed when the lifetime of the shared reference ends. The main difference is that Rust
+//! permits concurrent atomic and non-atomic reads to the same memory as those cause no issue in the
+//! C++ memory model, they are just forbidden in C++ because memory is partitioned into "atomic
+//! objects" and "non-atomic objects" (with `atomic_ref` temporarily converting a non-atomic object
+//! into an atomic object).
+//!
+//! The most important aspect of this model is that *data races* are undefined behavior. A data race
+//! is defined as conflicting non-synchronized accesses where at least one of the accesses is
+//! non-atomic. Here, accesses are *conflicting* if they affect overlapping regions of memory and at
+//! least one of them is a write. They are *non-synchronized* if neither of them *happens-before*
+//! the other, according to the happens-before order of the memory model.
+//!
+//! The other possible cause of undefined behavior in the memory model are mixed-size accesses: Rust
+//! inherits the C++ limitation that non-synchronized conflicting atomic accesses may not partially
+//! overlap. In other words, every pair of non-synchronized atomic accesses must be either disjoint,
+//! access the exact same memory (including using the same access size), or both be reads.
+//!
+//! Each atomic access takes an [`Ordering`] which defines how the operation interacts with the
+//! happens-before order. These orderings behave the same as the corresponding [C++20 atomic
+//! orderings][cpp_memory_order]. For more information, see the [nomicon].
 //!
 //! [cpp]: https://en.cppreference.com/w/cpp/atomic
-//!
-//! Each method takes an [`Ordering`] which represents the strength of
-//! the memory barrier for that operation. These orderings are the
-//! same as the [C++20 atomic orderings][1]. For more information see the [nomicon][2].
-//!
-//! [1]: https://en.cppreference.com/w/cpp/atomic/memory_order
-//! [2]: ../../../nomicon/atomics.html
-//!
-//! Since C++ does not support mixing atomic and non-atomic accesses, or non-synchronized
-//! different-sized accesses to the same data, Rust does not support those operations either.
-//! Note that both of those restrictions only apply if the accesses are non-synchronized.
+//! [cpp-intro.races]: https://timsong-cpp.github.io/cppwp/n4868/intro.multithread#intro.races
+//! [cpp_memory_order]: https://en.cppreference.com/w/cpp/atomic/memory_order
+//! [nomicon]: ../../../nomicon/atomics.html
 //!
 //! ```rust,no_run undefined_behavior
 //! use std::sync::atomic::{AtomicU16, AtomicU8, Ordering};
@@ -52,27 +69,29 @@
 //! let atomic = AtomicU16::new(0);
 //!
 //! thread::scope(|s| {
-//!     // This is UB: mixing atomic and non-atomic accesses
-//!     s.spawn(|| atomic.store(1, Ordering::Relaxed));
-//!     s.spawn(|| unsafe { atomic.as_ptr().write(2) });
+//!     // This is UB: conflicting non-synchronized accesses, at least one of which is non-atomic.
+//!     s.spawn(|| atomic.store(1, Ordering::Relaxed)); // atomic store
+//!     s.spawn(|| unsafe { atomic.as_ptr().write(2) }); // non-atomic write
 //! });
 //!
 //! thread::scope(|s| {
-//!     // This is UB: even reads are not allowed to be mixed
-//!     s.spawn(|| atomic.load(Ordering::Relaxed));
-//!     s.spawn(|| unsafe { atomic.as_ptr().read() });
+//!     // This is fine: the accesses do not conflict (as none of them performs any modification).
+//!     // In C++ this would be disallowed since creating an `atomic_ref` precludes
+//!     // further non-atomic accesses, but Rust does not have that limitation.
+//!     s.spawn(|| atomic.load(Ordering::Relaxed)); // atomic load
+//!     s.spawn(|| unsafe { atomic.as_ptr().read() }); // non-atomic read
 //! });
 //!
 //! thread::scope(|s| {
-//!     // This is fine, `join` synchronizes the code in a way such that atomic
-//!     // and non-atomic accesses can't happen "at the same time"
-//!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed));
-//!     handle.join().unwrap();
-//!     s.spawn(|| unsafe { atomic.as_ptr().write(2) });
+//!     // This is fine: `join` synchronizes the code in a way such that the atomic
+//!     // store happens-before the non-atomic write.
+//!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed)); // atomic store
+//!     handle.join().unwrap(); // synchronize
+//!     s.spawn(|| unsafe { atomic.as_ptr().write(2) }); // non-atomic write
 //! });
 //!
 //! thread::scope(|s| {
-//!     // This is UB: using different-sized atomic accesses to the same data
+//!     // This is UB: non-synchronized conflicting differently-sized atomic accesses.
 //!     s.spawn(|| atomic.store(1, Ordering::Relaxed));
 //!     s.spawn(|| unsafe {
 //!         let differently_sized = transmute::<&AtomicU16, &AtomicU8>(&atomic);
@@ -81,8 +100,8 @@
 //! });
 //!
 //! thread::scope(|s| {
-//!     // This is fine, `join` synchronizes the code in a way such that
-//!     // differently-sized accesses can't happen "at the same time"
+//!     // This is fine: `join` synchronizes the code in a way such that
+//!     // the 1-byte store happens-before the 2-byte store.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed));
 //!     handle.join().unwrap();
 //!     s.spawn(|| unsafe {
@@ -137,7 +156,7 @@
 //!
 //! # Atomic accesses to read-only memory
 //!
-//! In general, *all* atomic accesses on read-only memory are Undefined Behavior. For instance, attempting
+//! In general, *all* atomic accesses on read-only memory are undefined behavior. For instance, attempting
 //! to do a `compare_exchange` that will definitely fail (making it conceptually a read-only
 //! operation) can still cause a segmentation fault if the underlying memory page is mapped read-only. Since
 //! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
@@ -153,7 +172,7 @@
 //!
 //! As an exception from the general rule stated above, "sufficiently small" atomic loads with
 //! `Ordering::Relaxed` are implemented in a way that works on read-only memory, and are hence not
-//! Undefined Behavior. The exact size limit for what makes a load "sufficiently small" varies
+//! undefined behavior. The exact size limit for what makes a load "sufficiently small" varies
 //! depending on the target:
 //!
 //! | `target_arch` | Size limit |
@@ -577,7 +596,7 @@ impl AtomicBool {
     #[stable(feature = "atomic_access", since = "1.15.0")]
     #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
     pub const fn into_inner(self) -> bool {
-        self.v.primitive_into_inner() != 0
+        self.v.into_inner() != 0
     }
 
     /// Loads a value from the bool.
@@ -1394,7 +1413,7 @@ impl<T> AtomicPtr<T> {
     #[stable(feature = "atomic_access", since = "1.15.0")]
     #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
     pub const fn into_inner(self) -> *mut T {
-        self.p.primitive_into_inner()
+        self.p.into_inner()
     }
 
     /// Loads a value from the pointer.
@@ -2389,7 +2408,7 @@ macro_rules! atomic_int {
             #[$stable_access]
             #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
             pub const fn into_inner(self) -> $int_type {
-                self.v.primitive_into_inner()
+                self.v.into_inner()
             }
 
             /// Loads a value from the atomic integer.

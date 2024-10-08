@@ -1,3 +1,4 @@
+//@ known-bug: unknown
 // Ensure that we print unsatisfied always-const trait bounds as `const Trait` in diagnostics.
 //@ compile-flags: -Znext-solver
 
@@ -18,8 +19,7 @@ impl Trait for Ty {
 }
 
 fn main() {
-    // FIXME(effects): improve diagnostics on this
-    require::<Ty>(); //~ ERROR the trait bound `Trait::{synthetic#0}: const Compat` is not satisfied
+    require::<Ty>();
 }
 
 struct Container<const N: u32>;
@@ -27,9 +27,7 @@ struct Container<const N: u32>;
 // FIXME(effects): Somehow emit `the trait bound `T: const Trait` is not satisfied` here instead
 //                 and suggest changing `Trait` to `const Trait`.
 fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
-//~^ ERROR mismatched types
 
 // FIXME(effects): Instead of suggesting `+ const Trait`, suggest
 //                 changing `~const Trait` to `const Trait`.
 const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
-//~^ ERROR mismatched types

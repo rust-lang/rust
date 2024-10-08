@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::visitors::{for_each_expr, Descend, Visitable};
+use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use core::ops::ControlFlow::Continue;
 use hir::def::{DefKind, Res};
 use hir::{BlockCheckMode, ExprKind, QPath, Safety, UnOp};
@@ -153,19 +153,16 @@ fn collect_unsafe_exprs<'tcx>(
             ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _) => {
                 if matches!(
                     lhs.kind,
-                    ExprKind::Path(QPath::Resolved(
-                        _,
-                        hir::Path {
-                            res: Res::Def(
-                                DefKind::Static {
-                                    mutability: Mutability::Mut,
-                                    ..
-                                },
-                                _
-                            ),
-                            ..
-                        }
-                    ))
+                    ExprKind::Path(QPath::Resolved(_, hir::Path {
+                        res: Res::Def(
+                            DefKind::Static {
+                                mutability: Mutability::Mut,
+                                ..
+                            },
+                            _
+                        ),
+                        ..
+                    }))
                 ) {
                     unsafe_ops.push(("modification of a mutable static occurs here", expr.span));
                     collect_unsafe_exprs(cx, rhs, unsafe_ops);

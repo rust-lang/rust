@@ -4,13 +4,13 @@ use clippy_utils::{expr_or_init, get_attr, path_to_local, peel_hir_expr_unary};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{self as hir, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, sym};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -249,7 +249,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> StmtsChecker<'ap, 'lc, 'others, 'stmt, 'tcx
     }
 }
 
-impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'others, 'stmt, 'tcx> {
+impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
     fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) {
         self.ap.curr_block_hir_id = block.hir_id;
         self.ap.curr_block_span = block.span;

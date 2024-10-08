@@ -1,14 +1,13 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use crate::machine::SIGRTMAX;
-use crate::machine::SIGRTMIN;
-use crate::shims::unix::*;
-use crate::*;
 use self::shims::unix::linux::epoll::EvalContextExt as _;
 use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use self::shims::unix::linux::mem::EvalContextExt as _;
 use self::shims::unix::linux::sync::futex;
+use crate::machine::{SIGRTMAX, SIGRTMIN};
+use crate::shims::unix::*;
+use crate::*;
 
 pub fn is_dyn_sym(name: &str) -> bool {
     matches!(name, "statx")
@@ -123,19 +122,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     id if id == sys_getrandom => {
                         // Used by getrandom 0.1
                         // The first argument is the syscall id, so skip over it.
-                        if args.len() < 4 {
+                        let [_, ptr, len, flags, ..] = args else {
                             throw_ub_format!(
                                 "incorrect number of arguments for `getrandom` syscall: got {}, expected at least 4",
                                 args.len()
                             );
-                        }
+                        };
 
-                        let ptr = this.read_pointer(&args[1])?;
-                        let len = this.read_target_usize(&args[2])?;
+                        let ptr = this.read_pointer(ptr)?;
+                        let len = this.read_target_usize(len)?;
                         // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
                         // neither of which have any effect on our current PRNG.
                         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-                        let _flags = this.read_scalar(&args[3])?.to_i32();
+                        let _flags = this.read_scalar(flags)?.to_i32()?;
 
                         this.gen_random(ptr, len)?;
                         this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
@@ -148,7 +147,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.handle_unsupported_foreign_item(format!(
                             "can't execute syscall with ID {id}"
                         ))?;
-                        return Ok(EmulateItemResult::AlreadyJumped);
+                        return interp_ok(EmulateItemResult::AlreadyJumped);
                     }
                 }
             }
@@ -191,9 +190,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
 
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         };
 
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

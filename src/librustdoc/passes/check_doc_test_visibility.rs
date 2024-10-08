@@ -34,7 +34,7 @@ pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -
     krate
 }
 
-impl<'a, 'tcx> DocVisitor for DocTestVisibilityLinter<'a, 'tcx> {
+impl<'a, 'tcx> DocVisitor<'_> for DocTestVisibilityLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         look_for_tests(self.cx, &item.doc_value(), item);
 

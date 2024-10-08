@@ -3144,7 +3144,7 @@ unsafe impl CloneToUninit for Path {
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: Path is just a wrapper around OsStr
-        unsafe { self.inner.clone_to_uninit(core::ptr::addr_of_mut!((*dst).inner)) }
+        unsafe { self.inner.clone_to_uninit(&raw mut (*dst).inner) }
     }
 }
 

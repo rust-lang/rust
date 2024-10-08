@@ -282,7 +282,7 @@ impl f16 {
     // concerns about portability, so this implementation is for
     // private use internally.
     #[inline]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub(crate) const fn abs_private(self) -> f16 {
         // SAFETY: This transmutation is fine just like in `to_bits`/`from_bits`.
         unsafe { mem::transmute::<u16, f16>(mem::transmute::<f16, u16>(self) & !Self::SIGN_MASK) }
@@ -310,7 +310,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn is_infinite(self) -> bool {
         (self == f16::INFINITY) | (self == f16::NEG_INFINITY)
     }
@@ -336,7 +336,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
@@ -368,7 +368,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
     }
@@ -398,7 +398,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
     }
@@ -422,7 +422,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn classify(self) -> FpCategory {
         let b = self.to_bits();
         match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
@@ -896,7 +896,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_bits(self) -> u16 {
         // SAFETY: `u16` is a plain old datatype so we can always transmute to it.
@@ -944,7 +944,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn from_bits(v: u16) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u16` is a plain old datatype so we can always transmute from it.
@@ -970,7 +970,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_be_bytes(self) -> [u8; 2] {
         self.to_bits().to_be_bytes()
@@ -995,7 +995,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_le_bytes(self) -> [u8; 2] {
         self.to_bits().to_le_bytes()
@@ -1033,7 +1033,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_ne_bytes(self) -> [u8; 2] {
         self.to_bits().to_ne_bytes()
@@ -1057,7 +1057,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn from_be_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_be_bytes(bytes))
     }
@@ -1080,7 +1080,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn from_le_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_le_bytes(bytes))
     }
@@ -1114,7 +1114,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn from_ne_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_ne_bytes(bytes))
     }

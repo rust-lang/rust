@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet_with_context, SpanRangeExt};
-use clippy_utils::sugg::{has_enclosing_paren, Sugg};
-use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
+use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::sugg::{Sugg, has_enclosing_paren};
+use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, is_trait_method, peel_ref_operators};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -185,6 +185,19 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             );
         }
 
+        if let ExprKind::MethodCall(method, lhs_expr, [rhs_expr], _) = expr.kind
+            && is_trait_method(cx, expr, sym::PartialEq)
+            && !expr.span.from_expansion()
+        {
+            check_empty_expr(
+                cx,
+                expr.span,
+                lhs_expr,
+                peel_ref_operators(cx, rhs_expr),
+                (method.ident.name == sym::ne).then_some("!").unwrap_or_default(),
+            );
+        }
+
         if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind
             && !expr.span.from_expansion()
         {
@@ -295,12 +308,8 @@ enum LenOutput {
 
 fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
     if let ty::Alias(_, alias_ty) = ty.kind()
-        && let Some(Node::Item(item)) = cx.tcx.hir().get_if_local(alias_ty.def_id)
-        && let Item {
-            kind: ItemKind::OpaqueTy(opaque),
-            ..
-        } = item
-        && let OpaqueTyOrigin::AsyncFn(_) = opaque.origin
+        && let Some(Node::OpaqueTy(opaque)) = cx.tcx.hir().get_if_local(alias_ty.def_id)
+        && let OpaqueTyOrigin::AsyncFn { .. } = opaque.origin
         && let [GenericBound::Trait(trait_ref, _)] = &opaque.bounds
         && let Some(segment) = trait_ref.trait_ref.path.segments.last()
         && let Some(generic_args) = segment.args
@@ -447,7 +456,7 @@ fn check_for_is_empty(
     let is_empty = cx
         .tcx
         .inherent_impls(impl_ty)
-        .into_iter()
+        .iter()
         .flat_map(|&id| cx.tcx.associated_items(id).filter_by_name_unhygienic(is_empty))
         .find(|item| item.kind == AssocKind::Fn);
 
@@ -615,7 +624,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Checks the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext<'_>, id: DefId) -> bool {
         let is_empty = sym!(is_empty);
-        cx.tcx.inherent_impls(id).into_iter().any(|imp| {
+        cx.tcx.inherent_impls(id).iter().any(|imp| {
             cx.tcx
                 .associated_items(*imp)
                 .filter_by_name_unhygienic(is_empty)

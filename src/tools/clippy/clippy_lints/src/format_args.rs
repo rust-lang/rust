@@ -1,11 +1,12 @@
 use arrayvec::ArrayVec;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::{
-    find_format_arg_expr, format_arg_removal_span, format_placeholder_format_span, is_assert_macro, is_format_macro,
-    is_panic, matching_root_macro_call, root_macro_call_first_node, FormatArgsStorage, FormatParamUsage, MacroCall,
+    FormatArgsStorage, FormatParamUsage, MacroCall, find_format_arg_expr, format_arg_removal_span,
+    format_placeholder_format_span, is_assert_macro, is_format_macro, is_panic, matching_root_macro_call,
+    root_macro_call_first_node,
 };
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
@@ -18,11 +19,11 @@ use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition::Edition2021;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -218,7 +219,7 @@ struct FormatArgsExpr<'a, 'tcx> {
     ignore_mixed: bool,
 }
 
-impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
+impl FormatArgsExpr<'_, '_> {
     fn check_templates(&self) {
         for piece in &self.format_args.template {
             if let FormatArgsPiece::Placeholder(placeholder) = piece

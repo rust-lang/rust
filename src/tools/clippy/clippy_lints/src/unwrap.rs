@@ -3,7 +3,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{higher, path_to_local};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
+use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, PathSegment, UnOp};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
@@ -13,7 +13,7 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -235,7 +235,7 @@ impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
     fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
-impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
+impl<'tcx> UnwrappableVariablesVisitor<'_, 'tcx> {
     fn visit_branch(
         &mut self,
         if_expr: &'tcx Expr<'_>,
@@ -288,7 +288,7 @@ fn consume_option_as_ref<'tcx>(expr: &'tcx Expr<'tcx>) -> (&'tcx Expr<'tcx>, Opt
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

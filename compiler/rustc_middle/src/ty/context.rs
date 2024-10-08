@@ -56,7 +56,7 @@ use rustc_type_ir::lang_items::TraitSolverLangItem;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::solve::SolverMode;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo, search_graph};
-use tracing::{debug, instrument};
+use tracing::{debug, trace};
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
@@ -527,8 +527,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_is_alias(trait_def_id)
     }
 
-    fn trait_is_object_safe(self, trait_def_id: DefId) -> bool {
-        self.is_object_safe(trait_def_id)
+    fn trait_is_dyn_compatible(self, trait_def_id: DefId) -> bool {
+        self.is_dyn_compatible(trait_def_id)
     }
 
     fn trait_is_fundamental(self, def_id: DefId) -> bool {
@@ -622,11 +622,13 @@ bidirectional_lang_item_map! {
     Destruct,
     DiscriminantKind,
     DynMetadata,
+    EffectsCompat,
     EffectsIntersection,
     EffectsIntersectionOutput,
     EffectsMaybe,
     EffectsNoRuntime,
     EffectsRuntime,
+    EffectsTyCompat,
     Fn,
     FnMut,
     FnOnce,
@@ -1449,9 +1451,8 @@ impl<'tcx> TyCtxt<'tcx> {
             debug!("layout_scalar_valid_range: attr={:?}", attr);
             if let Some(
                 &[
-                    ast::NestedMetaItem::Lit(ast::MetaItemLit {
-                        kind: ast::LitKind::Int(a, _),
-                        ..
+                    ast::MetaItemInner::Lit(ast::MetaItemLit {
+                        kind: ast::LitKind::Int(a, _), ..
                     }),
                 ],
             ) = attr.meta_item_list().as_deref()
@@ -2071,9 +2072,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the origin of the opaque type `def_id`.
-    #[instrument(skip(self), level = "trace", ret)]
+    #[track_caller]
     pub fn opaque_type_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin {
-        self.hir().expect_item(def_id).expect_opaque_ty().origin
+        let origin = self.hir().expect_opaque_ty(def_id).origin;
+        trace!("opaque_type_origin({def_id:?}) => {origin:?}");
+        origin
     }
 }
 
@@ -2992,7 +2995,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn named_bound_var(self, id: HirId) -> Option<resolve_bound_vars::ResolvedArg> {
         debug!(?id, "named_region");
-        self.named_variable_map(id.owner).and_then(|map| map.get(&id.local_id).cloned())
+        self.named_variable_map(id.owner).get(&id.local_id).cloned()
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
@@ -3001,12 +3004,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
         self.mk_bound_variable_kinds(
-            &self
-                .late_bound_vars_map(id.owner)
-                .and_then(|map| map.get(&id.local_id).cloned())
-                .unwrap_or_else(|| {
-                    bug!("No bound vars found for {}", self.hir().node_to_string(id))
-                }),
+            &self.late_bound_vars_map(id.owner).get(&id.local_id).cloned().unwrap_or_else(|| {
+                bug!("No bound vars found for {}", self.hir().node_to_string(id))
+            }),
         )
     }
 
@@ -3029,8 +3029,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         loop {
             let parent = self.local_parent(opaque_lifetime_param_def_id);
-            let hir::OpaqueTy { lifetime_mapping, .. } =
-                self.hir_node_by_def_id(parent).expect_item().expect_opaque_ty();
+            let hir::OpaqueTy { lifetime_mapping, .. } = self.hir().expect_opaque_ty(parent);
 
             let Some((lifetime, _)) = lifetime_mapping
                 .iter()

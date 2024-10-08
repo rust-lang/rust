@@ -266,7 +266,7 @@ where
     A::Domain: DebugWithContext<A>,
 {
     use std::fs;
-    use std::io::{self, Write};
+    use std::io::Write;
 
     let def_id = body.source.def_id();
     let Ok(attrs) = RustcMirAttrs::parse(tcx, def_id) else {
@@ -281,12 +281,11 @@ where
                 if let Some(parent) = path.parent() {
                     fs::create_dir_all(parent)?;
                 }
-                let f = fs::File::create(&path)?;
-                io::BufWriter::new(f)
+                fs::File::create_buffered(&path)?
             }
 
             None if dump_enabled(tcx, A::NAME, def_id) => {
-                create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
+                create_dump_file(tcx, "dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
             }
 
             _ => return (Ok(()), results),
@@ -368,7 +367,7 @@ impl RustcMirAttrs {
     fn set_field<T>(
         field: &mut Option<T>,
         tcx: TyCtxt<'_>,
-        attr: &ast::NestedMetaItem,
+        attr: &ast::MetaItemInner,
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {

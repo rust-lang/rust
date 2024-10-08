@@ -6,6 +6,11 @@
 /// Test direct calls of getrandom 0.1 and 0.2.
 fn main() {
     let mut data = vec![0; 16];
+
+    // Old Solaris had a different return type for `getrandom`, and old versions of the getrandom crate
+    // used that signature, which Miri is not happy about.
+    #[cfg(not(target_os = "solaris"))]
     getrandom_01::getrandom(&mut data).unwrap();
+
     getrandom_02::getrandom(&mut data).unwrap();
 }

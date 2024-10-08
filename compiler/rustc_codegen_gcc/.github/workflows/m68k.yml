@@ -36,7 +36,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -85,14 +85,14 @@ jobs:
     - name: Build sample project with target defined as JSON spec
       run: |
         ./y.sh prepare --only-libcore --cross
-        ./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        ./y.sh build --sysroot --features compiler_builtins/no-f16-f128 --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
         ./y.sh cargo build --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
         ./y.sh clean all
 
     - name: Build
       run: |
         ./y.sh prepare --only-libcore --cross
-        ./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu
+        ./y.sh build --sysroot --features compiler_builtins/no-f16-f128 --target-triple m68k-unknown-linux-gnu
         CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test
         ./y.sh clean all
 
@@ -107,4 +107,4 @@ jobs:
 
     - name: Run tests
       run: |
-        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --release --clean --build-sysroot --sysroot-features compiler_builtins/no-f16-f128 ${{ matrix.commands }}

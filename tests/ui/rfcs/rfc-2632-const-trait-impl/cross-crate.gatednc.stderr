@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `cross_crate::MyTrait::{synthetic#0}: ~const Compat` is not satisfied
+error[E0277]: the trait bound `cross_crate::NonConst: ~const cross_crate::MyTrait` is not satisfied
   --> $DIR/cross-crate.rs:19:14
    |
 LL |     NonConst.func();
-   |              ^^^^ the trait `~const Compat` is not implemented for `cross_crate::MyTrait::{synthetic#0}`
+   |              ^^^^ the trait `cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
    |
 note: required by a bound in `func`
   --> $DIR/auxiliary/cross-crate.rs:5:1
@@ -12,6 +12,10 @@ LL | #[const_trait]
 ...
 LL |     fn func(self);
    |        ---- required by a bound in this associated function
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | const fn const_context() where cross_crate::NonConst: cross_crate::MyTrait {
+   |                          +++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

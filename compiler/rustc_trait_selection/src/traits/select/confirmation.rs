@@ -30,7 +30,7 @@ use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::{
     ImplDerivedCause, ImplSource, ImplSourceUserDefinedData, Normalized, Obligation,
     ObligationCause, PolyTraitObligation, PredicateObligation, Selection, SelectionError,
-    SignatureMismatch, TraitNotObjectSafe, TraitObligation, Unimplemented,
+    SignatureMismatch, TraitDynIncompatible, TraitObligation, Unimplemented,
 };
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -630,7 +630,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.cause.span,
                     "GATs in trait object shouldn't have been considered",
                 );
-                return Err(SelectionError::TraitNotObjectSafe(trait_predicate.trait_ref.def_id));
+                return Err(SelectionError::TraitDynIncompatible(trait_predicate.trait_ref.def_id));
             }
 
             // This maybe belongs in wf, but that can't (doesn't) handle
@@ -1187,11 +1187,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
             }
 
-            // `T` -> `Trait`
+            // `T` -> `dyn Trait`
             (_, &ty::Dynamic(data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
-                if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
-                    return Err(TraitNotObjectSafe(did));
+                if let Some(did) = object_dids.find(|did| !tcx.is_dyn_compatible(*did)) {
+                    return Err(TraitDynIncompatible(did));
                 }
 
                 let predicate_to_obligation = |predicate| {

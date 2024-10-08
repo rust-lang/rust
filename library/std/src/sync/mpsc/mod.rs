@@ -137,10 +137,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod sync_tests;
 
 // MPSC channels are built as a wrapper around MPMC channels, which

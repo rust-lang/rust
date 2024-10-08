@@ -666,6 +666,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             },
 
             InlineAsm {
+                asm_macro: _,
                 template: _,
                 ref operands,
                 options: _,

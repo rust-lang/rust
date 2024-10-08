@@ -212,6 +212,16 @@ jobs:
         # erroring about invalid credentials instead.
         if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
 
+      - name: upload job metrics to DataDog
+        if: needs.calculate_matrix.outputs.run_type != 'pr'
+        env:
+          DATADOG_SITE: datadoghq.com
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DD_GITHUB_JOB_NAME: ${{ matrix.name }}
+        run: |
+          npm install -g @datadog/datadog-ci@^2.x.x
+          python3 src/ci/scripts/upload-build-metrics.py build/cpu-usage.csv
+
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
   outcome:

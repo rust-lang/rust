@@ -365,4 +365,28 @@ fn conjunctive_blocks() -> String {
     return { "a".to_string() } + "b" + { "c" };
 }
 
+fn issue12907() -> String {
+    return "".split("").next().unwrap().to_string();
+}
+
 fn main() {}
+
+fn a(x: Option<u8>) -> Option<u8> {
+    match x {
+        Some(_) => None,
+        None => {
+            #[expect(clippy::needless_return, reason = "Use early return for errors.")]
+            return None;
+        },
+    }
+}
+
+fn b(x: Option<u8>) -> Option<u8> {
+    match x {
+        Some(_) => None,
+        None => {
+            #[expect(clippy::needless_return)]
+            return None;
+        },
+    }
+}

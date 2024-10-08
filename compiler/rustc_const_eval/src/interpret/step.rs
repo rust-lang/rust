@@ -14,7 +14,7 @@ use tracing::{info, instrument, trace};
 
 use super::{
     FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
-    Projectable, Scalar, throw_ub,
+    Projectable, Scalar, interp_ok, throw_ub,
 };
 use crate::util;
 
@@ -36,7 +36,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[inline(always)]
     pub fn step(&mut self) -> InterpResult<'tcx, bool> {
         if self.stack().is_empty() {
-            return Ok(false);
+            return interp_ok(false);
         }
 
         let Either::Left(loc) = self.frame().loc else {
@@ -44,7 +44,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Just go on unwinding.
             trace!("unwinding: skipping frame");
             self.return_from_current_stack_frame(/* unwinding */ true)?;
-            return Ok(true);
+            return interp_ok(true);
         };
         let basic_block = &self.body().basic_blocks[loc.block];
 
@@ -55,7 +55,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             assert_eq!(old_frames, self.frame_idx());
             // Advance the program counter.
             self.frame_mut().loc.as_mut().left().unwrap().statement_index += 1;
-            return Ok(true);
+            return interp_ok(true);
         }
 
         M::before_terminator(self)?;
@@ -67,7 +67,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 info!("// executing {:?}", loc.block);
             }
         }
-        Ok(true)
+        interp_ok(true)
     }
 
     /// Runs the interpretation logic for the given `mir::Statement` at the current frame and
@@ -145,7 +145,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Nop => {}
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Evaluate an assignment statement.
@@ -277,7 +277,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         trace!("{:?}", self.dump_place(&dest));
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Writes the aggregate to the destination.
@@ -313,7 +313,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr_imm = Immediate::new_pointer_with_meta(data, meta, self);
                 let ptr = ImmTy::from_immediate(ptr_imm, dest.layout);
                 self.copy_op(&ptr, dest)?;
-                return Ok(());
+                return interp_ok(());
             }
             _ => (FIRST_VARIANT, dest.clone(), None),
         };
@@ -365,7 +365,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             )?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Evaluate the arguments of a function call
@@ -373,7 +373,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         op: &mir::Operand<'tcx>,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
-        Ok(match op {
+        interp_ok(match op {
             mir::Operand::Copy(_) | mir::Operand::Constant(_) => {
                 // Make a regular copy.
                 let op = self.eval_operand(op, None)?;
@@ -442,7 +442,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         };
 
-        Ok(EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location })
+        interp_ok(EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location })
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
@@ -537,7 +537,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // generic. In order to make sure that generic and non-generic code behaves
                     // roughly the same (and in keeping with Mir semantics) we do nothing here.
                     self.go_to_block(target);
-                    return Ok(());
+                    return interp_ok(());
                 }
                 trace!("TerminatorKind::drop: {:?}, type {}", place, place.layout.ty);
                 self.init_drop_in_place_call(&place, instance, target, unwind)?;
@@ -566,7 +566,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // By definition, a Resume terminator means
                 // that we're unwinding
                 self.return_from_current_stack_frame(/* unwinding */ true)?;
-                return Ok(());
+                return interp_ok(());
             }
 
             // It is UB to ever encounter this.
@@ -584,6 +584,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
-        Ok(())
+        interp_ok(())
     }
 }

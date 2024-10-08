@@ -7,7 +7,7 @@ LL | trait B { fn f(a: A) -> A; }
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
    = note: `#[warn(bare_trait_objects)]` on by default
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | trait B { fn f(a: dyn A) -> A; }
    |                   +++
@@ -20,7 +20,7 @@ LL | trait B { fn f(a: A) -> A; }
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | trait B { fn f(a: A) -> dyn A; }
    |                         +++
@@ -33,7 +33,7 @@ LL | trait A { fn g(b: B) -> B; }
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | trait A { fn g(b: dyn B) -> B; }
    |                   +++
@@ -46,7 +46,7 @@ LL | trait A { fn g(b: B) -> B; }
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | trait A { fn g(b: B) -> dyn B; }
    |                         +++
@@ -60,7 +60,7 @@ LL | trait B { fn f(a: A) -> A; }
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | trait B { fn f(a: dyn A) -> A; }
    |                   +++
@@ -71,7 +71,7 @@ error[E0038]: the trait `A` cannot be made into an object
 LL | trait B { fn f(a: A) -> A; }
    |                   ^ `A` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/avoid-ice-on-warning-3.rs:12:14
    |
 LL | trait A { fn g(b: B) -> B; }
@@ -96,7 +96,7 @@ LL | trait A { fn g(b: B) -> B; }
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | trait A { fn g(b: dyn B) -> B; }
    |                   +++
@@ -107,7 +107,7 @@ error[E0038]: the trait `B` cannot be made into an object
 LL | trait A { fn g(b: B) -> B; }
    |                   ^ `B` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/avoid-ice-on-warning-3.rs:4:14
    |
 LL | trait B { fn f(a: A) -> A; }

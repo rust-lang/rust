@@ -1,6 +1,6 @@
 //@ known-bug: #103507
 
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_vec_string_slice)]
 
 struct Foo<'a> {
     bar: &'a mut Vec<usize>,

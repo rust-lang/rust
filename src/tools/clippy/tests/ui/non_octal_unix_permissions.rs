@@ -1,4 +1,4 @@
-//@ignore-target-windows
+//@ignore-target: windows
 
 #![warn(clippy::non_octal_unix_permissions)]
 use std::fs::{DirBuilder, File, OpenOptions, Permissions};

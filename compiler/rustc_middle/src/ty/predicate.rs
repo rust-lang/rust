@@ -36,7 +36,7 @@ pub type PolyProjectionPredicate<'tcx> = ty::Binder<'tcx, ProjectionPredicate<'t
 
 /// A statement that can be proven by a trait solver. This includes things that may
 /// show up in where clauses, such as trait predicates and projection predicates,
-/// and also things that are emitted as part of type checking such as `ObjectSafe`
+/// and also things that are emitted as part of type checking such as `DynCompatible`
 /// predicate which is emitted when a type is coerced to a trait object.
 ///
 /// Use this rather than `PredicateKind`, whenever possible.
@@ -147,7 +147,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
             | PredicateKind::Clause(ClauseKind::Projection(_))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::ObjectSafe(_)
+            | PredicateKind::DynCompatible(_)
             | PredicateKind::Subtype(_)
             | PredicateKind::Coerce(_)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
@@ -179,6 +179,10 @@ pub struct Clause<'tcx>(
 );
 
 impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
+    fn as_predicate(self) -> Predicate<'tcx> {
+        self.as_predicate()
+    }
+
     fn instantiate_supertrait(self, tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> Self {
         self.instantiate_supertrait(tcx, trait_ref)
     }
@@ -647,7 +651,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
             | PredicateKind::Clause(ClauseKind::WellFormed(..))
-            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::DynCompatible(..)
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
@@ -667,7 +671,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
             | PredicateKind::Clause(ClauseKind::WellFormed(..))
-            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::DynCompatible(..)
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)

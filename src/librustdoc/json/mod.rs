@@ -286,7 +286,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
             self.serialize_and_write(
                 output_crate,
-                BufWriter::new(try_err!(File::create(&p), p)),
+                try_err!(File::create_buffered(&p), p),
                 &p.display().to_string(),
             )
         } else {

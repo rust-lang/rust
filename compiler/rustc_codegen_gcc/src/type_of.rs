@@ -207,7 +207,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         // layout.
         if let Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
-            // can be either fat or thin (data pointers of fat pointers).
+            // can be either wide or thin (data pointers of wide pointers).
             if let Some(&ty) = cx.scalar_types.borrow().get(&self.ty) {
                 return ty;
             }

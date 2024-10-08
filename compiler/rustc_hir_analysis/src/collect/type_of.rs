@@ -529,10 +529,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_adt(tcx, def, args)
             }
-            ItemKind::OpaqueTy(..) => tcx.type_of_opaque(def_id).map_or_else(
-                |CyclePlaceholder(guar)| Ty::new_error(tcx, guar),
-                |ty| ty.instantiate_identity(),
-            ),
             ItemKind::Trait(..)
             | ItemKind::TraitAlias(..)
             | ItemKind::Macro(..)
@@ -544,6 +540,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 span_bug!(item.span, "compute_type_of_item: unexpected item type: {:?}", item.kind);
             }
         },
+
+        Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).map_or_else(
+            |CyclePlaceholder(guar)| Ty::new_error(tcx, guar),
+            |ty| ty.instantiate_identity(),
+        ),
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
@@ -603,40 +604,25 @@ pub(super) fn type_of_opaque(
     def_id: DefId,
 ) -> Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     if let Some(def_id) = def_id.as_local() {
-        use rustc_hir::*;
-
-        Ok(ty::EarlyBinder::bind(match tcx.hir_node_by_def_id(def_id) {
-            Node::Item(item) => match item.kind {
-                ItemKind::OpaqueTy(OpaqueTy {
-                    origin: hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. },
-                    ..
-                }) => opaque::find_opaque_ty_constraints_for_tait(tcx, def_id),
-                ItemKind::OpaqueTy(OpaqueTy {
-                    origin: hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: true, .. },
-                    ..
-                }) => opaque::find_opaque_ty_constraints_for_impl_trait_in_assoc_type(tcx, def_id),
-                // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(&OpaqueTy {
-                    origin:
-                        hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner),
-                    in_trait,
-                    ..
-                }) => {
-                    if in_trait && !tcx.defaultness(owner).has_value() {
-                        span_bug!(
-                            tcx.def_span(def_id),
-                            "tried to get type of this RPITIT with no definition"
-                        );
-                    }
-                    opaque::find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
+        Ok(ty::EarlyBinder::bind(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
+            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
+                opaque::find_opaque_ty_constraints_for_tait(tcx, def_id)
+            }
+            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: true, .. } => {
+                opaque::find_opaque_ty_constraints_for_impl_trait_in_assoc_type(tcx, def_id)
+            }
+            // Opaque types desugared from `impl Trait`.
+            hir::OpaqueTyOrigin::FnReturn { parent: owner, in_trait_or_impl }
+            | hir::OpaqueTyOrigin::AsyncFn { parent: owner, in_trait_or_impl } => {
+                if in_trait_or_impl == Some(hir::RpitContext::Trait)
+                    && !tcx.defaultness(owner).has_value()
+                {
+                    span_bug!(
+                        tcx.def_span(def_id),
+                        "tried to get type of this RPITIT with no definition"
+                    );
                 }
-                _ => {
-                    span_bug!(item.span, "type_of_opaque: unexpected item type: {:?}", item.kind);
-                }
-            },
-
-            x => {
-                bug!("unexpected sort of node in type_of_opaque(): {:?}", x);
+                opaque::find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
             }
         }))
     } else {

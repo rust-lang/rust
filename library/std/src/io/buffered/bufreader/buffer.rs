@@ -10,7 +10,7 @@
 //! without encountering any runtime bounds checks.
 
 use crate::cmp;
-use crate::io::{self, BorrowedBuf, Read};
+use crate::io::{self, BorrowedBuf, ErrorKind, Read};
 use crate::mem::MaybeUninit;
 
 pub struct Buffer {
@@ -34,6 +34,16 @@ impl Buffer {
     pub fn with_capacity(capacity: usize) -> Self {
         let buf = Box::new_uninit_slice(capacity);
         Self { buf, pos: 0, filled: 0, initialized: 0 }
+    }
+
+    #[inline]
+    pub fn try_with_capacity(capacity: usize) -> io::Result<Self> {
+        match Box::try_new_uninit_slice(capacity) {
+            Ok(buf) => Ok(Self { buf, pos: 0, filled: 0, initialized: 0 }),
+            Err(_) => {
+                Err(io::const_io_error!(ErrorKind::OutOfMemory, "failed to allocate read buffer"))
+            }
+        }
     }
 
     #[inline]
@@ -133,11 +143,13 @@ impl Buffer {
                 buf.set_init(self.initialized);
             }
 
-            reader.read_buf(buf.unfilled())?;
+            let result = reader.read_buf(buf.unfilled());
 
             self.pos = 0;
             self.filled = buf.len();
             self.initialized = buf.init_len();
+
+            result?;
         }
         Ok(self.buffer())
     }

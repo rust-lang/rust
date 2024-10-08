@@ -1,18 +1,18 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::is_doc_hidden;
-use clippy_utils::source::SpanRangeExt;
-use rustc_ast::ast::{self, VisibilityKind};
+use clippy_utils::source::snippet_indent;
+use itertools::Itertools;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{self as hir, Expr, ExprKind, QPath};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_hir::{Expr, ExprKind, Item, ItemKind, QPath, TyKind, VariantData};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{sym, Span};
+use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -62,29 +62,13 @@ declare_clippy_lint! {
     "manual implementations of the non-exhaustive pattern can be simplified using #[non_exhaustive]"
 }
 
-#[expect(clippy::module_name_repetitions)]
-pub struct ManualNonExhaustiveStruct {
+pub struct ManualNonExhaustive {
     msrv: Msrv,
-}
-
-impl ManualNonExhaustiveStruct {
-    pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
-    }
-}
-
-impl_lint_pass!(ManualNonExhaustiveStruct => [MANUAL_NON_EXHAUSTIVE]);
-
-#[expect(clippy::module_name_repetitions)]
-pub struct ManualNonExhaustiveEnum {
-    msrv: Msrv,
-    constructed_enum_variants: FxHashSet<(DefId, DefId)>,
+    constructed_enum_variants: FxHashSet<LocalDefId>,
     potential_enums: Vec<(LocalDefId, LocalDefId, Span, Span)>,
 }
 
-impl ManualNonExhaustiveEnum {
+impl ManualNonExhaustive {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             msrv: conf.msrv.clone(),
@@ -94,96 +78,78 @@ impl ManualNonExhaustiveEnum {
     }
 }
 
-impl_lint_pass!(ManualNonExhaustiveEnum => [MANUAL_NON_EXHAUSTIVE]);
+impl_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
 
-impl EarlyLintPass for ManualNonExhaustiveStruct {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Struct(variant_data, _) = &item.kind
-            && let (fields, delimiter) = match variant_data {
-                ast::VariantData::Struct { fields, .. } => (&**fields, '{'),
-                ast::VariantData::Tuple(fields, _) => (&**fields, '('),
-                ast::VariantData::Unit(_) => return,
-            }
-            && fields.len() > 1
-            && self.msrv.meets(msrvs::NON_EXHAUSTIVE)
-        {
-            let mut iter = fields.iter().filter_map(|f| match f.vis.kind {
-                VisibilityKind::Public => None,
-                VisibilityKind::Inherited => Some(Ok(f)),
-                VisibilityKind::Restricted { .. } => Some(Err(())),
-            });
-            if let Some(Ok(field)) = iter.next()
-                && iter.next().is_none()
-                && field.ty.kind.is_unit()
-            {
-                span_lint_and_then(
-                    cx,
-                    MANUAL_NON_EXHAUSTIVE,
-                    item.span,
-                    "this seems like a manual implementation of the non-exhaustive pattern",
-                    |diag| {
-                        if !item.attrs.iter().any(|attr| attr.has_name(sym::non_exhaustive))
-                            && let header_span = cx.sess().source_map().span_until_char(item.span, delimiter)
-                            && let Some(snippet) = header_span.get_source_text(cx)
-                        {
-                            diag.span_suggestion(
-                                header_span,
-                                "add the attribute",
-                                format!("#[non_exhaustive] {snippet}"),
-                                Applicability::Unspecified,
-                            );
-                        }
-                        diag.span_help(field.span, "remove this field");
-                    },
-                );
-            }
-        }
-    }
-
-    extract_msrv_attr!(EarlyContext);
-}
-
-impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
-    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !self.msrv.meets(msrvs::NON_EXHAUSTIVE) {
+impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        if !self.msrv.meets(msrvs::NON_EXHAUSTIVE) || !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             return;
         }
 
-        if let hir::ItemKind::Enum(def, _) = &item.kind
-            && def.variants.len() > 1
-        {
-            let mut iter = def.variants.iter().filter_map(|v| {
-                (matches!(v.data, hir::VariantData::Unit(_, _))
-                    && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id))
-                    && !attr::contains_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive))
-                .then_some((v.def_id, v.span))
-            });
-            if let Some((id, span)) = iter.next()
-                && iter.next().is_none()
-            {
-                self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
-            }
+        match item.kind {
+            ItemKind::Enum(def, _) if def.variants.len() > 1 => {
+                let iter = def.variants.iter().filter_map(|v| {
+                    (matches!(v.data, VariantData::Unit(_, _)) && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id)))
+                        .then_some((v.def_id, v.span))
+                });
+                if let Ok((id, span)) = iter.exactly_one()
+                    && !attr::contains_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive)
+                {
+                    self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
+                }
+            },
+            ItemKind::Struct(variant_data, _) => {
+                let fields = variant_data.fields();
+                let private_fields = fields
+                    .iter()
+                    .filter(|field| !cx.effective_visibilities.is_exported(field.def_id));
+                if fields.len() > 1
+                    && let Ok(field) = private_fields.exactly_one()
+                    && let TyKind::Tup([]) = field.ty.kind
+                {
+                    span_lint_and_then(
+                        cx,
+                        MANUAL_NON_EXHAUSTIVE,
+                        item.span,
+                        "this seems like a manual implementation of the non-exhaustive pattern",
+                        |diag| {
+                            if let Some(non_exhaustive) =
+                                attr::find_by_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive)
+                            {
+                                diag.span_note(non_exhaustive.span, "the struct is already non-exhaustive");
+                            } else {
+                                let indent = snippet_indent(cx, item.span).unwrap_or_default();
+                                diag.span_suggestion_verbose(
+                                    item.span.shrink_to_lo(),
+                                    "use the `#[non_exhaustive]` attribute instead",
+                                    format!("#[non_exhaustive]\n{indent}"),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            diag.span_help(field.span, "remove this field");
+                        },
+                    );
+                }
+            },
+            _ => {},
         }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Path(QPath::Resolved(None, p)) = &e.kind
-            && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), id) = p.res
+            && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), ctor_id) = p.res
+            && let Some(local_ctor) = ctor_id.as_local()
         {
-            let variant_id = cx.tcx.parent(id);
-            let enum_id = cx.tcx.parent(variant_id);
-
-            self.constructed_enum_variants.insert((enum_id, variant_id));
+            let variant_id = cx.tcx.local_parent(local_ctor);
+            self.constructed_enum_variants.insert(variant_id);
         }
     }
 
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
-        for &(enum_id, _, enum_span, variant_span) in
-            self.potential_enums.iter().filter(|&&(enum_id, variant_id, _, _)| {
-                !self
-                    .constructed_enum_variants
-                    .contains(&(enum_id.to_def_id(), variant_id.to_def_id()))
-            })
+        for &(enum_id, _, enum_span, variant_span) in self
+            .potential_enums
+            .iter()
+            .filter(|(_, variant_id, _, _)| !self.constructed_enum_variants.contains(variant_id))
         {
             let hir_id = cx.tcx.local_def_id_to_hir_id(enum_id);
             span_lint_hir_and_then(
@@ -193,15 +159,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                 enum_span,
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
-                    let header_span = cx.sess().source_map().span_until_char(enum_span, '{');
-                    if let Some(snippet) = header_span.get_source_text(cx) {
-                        diag.span_suggestion(
-                            header_span,
-                            "add the attribute",
-                            format!("#[non_exhaustive] {snippet}"),
-                            Applicability::Unspecified,
-                        );
-                    }
+                    let indent = snippet_indent(cx, enum_span).unwrap_or_default();
+                    diag.span_suggestion_verbose(
+                        enum_span.shrink_to_lo(),
+                        "use the `#[non_exhaustive]` attribute instead",
+                        format!("#[non_exhaustive]\n{indent}"),
+                        Applicability::MaybeIncorrect,
+                    );
                     diag.span_help(variant_span, "remove this variant");
                 },
             );

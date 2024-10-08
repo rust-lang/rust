@@ -468,6 +468,20 @@ pub(crate) struct GlobDelegationOutsideImpls {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_crate_name_in_cfg_attr)]
+pub(crate) struct CrateNameInCfgAttr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_crate_type_in_cfg_attr)]
+pub(crate) struct CrateTypeInCfgAttr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_glob_delegation_traitless_qpath)]
 pub(crate) struct GlobDelegationTraitlessQpath {
     #[primary_span]

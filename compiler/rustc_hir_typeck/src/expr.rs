@@ -1,3 +1,6 @@
+// ignore-tidy-filelength
+// FIXME: we should move the field error reporting code somewhere else.
+
 //! Type checking expressions.
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
@@ -62,7 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
-        if ty.is_never() {
+        if ty.is_never() && self.expr_guaranteed_to_constitute_read_for_never(expr) {
             if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
                 let reported = self.dcx().span_delayed_bug(
                     expr.span,
@@ -238,8 +241,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
         }
 
-        // Any expression that produces a value of type `!` must have diverged
-        if ty.is_never() {
+        // Any expression that produces a value of type `!` must have diverged,
+        // unless it's a place expression that isn't being read from, in which case
+        // diverging would be unsound since we may never actually read the `!`.
+        // e.g. `let _ = *never_ptr;` with `never_ptr: *const !`.
+        if ty.is_never() && self.expr_guaranteed_to_constitute_read_for_never(expr) {
             self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
         }
 
@@ -255,6 +261,185 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("... {:?}, expected is {:?}", ty, expected);
 
         ty
+    }
+
+    /// Whether this expression constitutes a read of value of the type that
+    /// it evaluates to.
+    ///
+    /// This is used to determine if we should consider the block to diverge
+    /// if the expression evaluates to `!`, and if we should insert a `NeverToAny`
+    /// coercion for values of type `!`.
+    ///
+    /// This function generally returns `false` if the expression is a place
+    /// expression and the *parent* expression is the scrutinee of a match or
+    /// the pointee of an `&` addr-of expression, since both of those parent
+    /// expressions take a *place* and not a value.
+    pub(super) fn expr_guaranteed_to_constitute_read_for_never(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> bool {
+        // We only care about place exprs. Anything else returns an immediate
+        // which would constitute a read. We don't care about distinguishing
+        // "syntactic" place exprs since if the base of a field projection is
+        // not a place then it would've been UB to read from it anyways since
+        // that constitutes a read.
+        if !expr.is_syntactic_place_expr() {
+            return true;
+        }
+
+        let parent_node = self.tcx.parent_hir_node(expr.hir_id);
+        match parent_node {
+            hir::Node::Expr(parent_expr) => {
+                match parent_expr.kind {
+                    // Addr-of, field projections, and LHS of assignment don't constitute reads.
+                    // Assignment does call `drop_in_place`, though, but its safety
+                    // requirements are not the same.
+                    ExprKind::AddrOf(..) | hir::ExprKind::Field(..) => false,
+                    ExprKind::Assign(lhs, _, _) => {
+                        // Only the LHS does not constitute a read
+                        expr.hir_id != lhs.hir_id
+                    }
+
+                    // See note on `PatKind::Or` below for why this is `all`.
+                    ExprKind::Match(scrutinee, arms, _) => {
+                        assert_eq!(scrutinee.hir_id, expr.hir_id);
+                        arms.iter()
+                            .all(|arm| self.pat_guaranteed_to_constitute_read_for_never(arm.pat))
+                    }
+                    ExprKind::Let(hir::LetExpr { init, pat, .. }) => {
+                        assert_eq!(init.hir_id, expr.hir_id);
+                        self.pat_guaranteed_to_constitute_read_for_never(*pat)
+                    }
+
+                    // Any expression child of these expressions constitute reads.
+                    ExprKind::Array(_)
+                    | ExprKind::Call(_, _)
+                    | ExprKind::MethodCall(_, _, _, _)
+                    | ExprKind::Tup(_)
+                    | ExprKind::Binary(_, _, _)
+                    | ExprKind::Unary(_, _)
+                    | ExprKind::Cast(_, _)
+                    | ExprKind::Type(_, _)
+                    | ExprKind::DropTemps(_)
+                    | ExprKind::If(_, _, _)
+                    | ExprKind::Closure(_)
+                    | ExprKind::Block(_, _)
+                    | ExprKind::AssignOp(_, _, _)
+                    | ExprKind::Index(_, _, _)
+                    | ExprKind::Break(_, _)
+                    | ExprKind::Ret(_)
+                    | ExprKind::Become(_)
+                    | ExprKind::InlineAsm(_)
+                    | ExprKind::Struct(_, _, _)
+                    | ExprKind::Repeat(_, _)
+                    | ExprKind::Yield(_, _) => true,
+
+                    // These expressions have no (direct) sub-exprs.
+                    ExprKind::ConstBlock(_)
+                    | ExprKind::Loop(_, _, _, _)
+                    | ExprKind::Lit(_)
+                    | ExprKind::Path(_)
+                    | ExprKind::Continue(_)
+                    | ExprKind::OffsetOf(_, _)
+                    | ExprKind::Err(_) => unreachable!("no sub-expr expected for {:?}", expr.kind),
+                }
+            }
+
+            // If we have a subpattern that performs a read, we want to consider this
+            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+            hir::Node::LetStmt(hir::LetStmt { init: Some(target), pat, .. }) => {
+                assert_eq!(target.hir_id, expr.hir_id);
+                self.pat_guaranteed_to_constitute_read_for_never(*pat)
+            }
+
+            // These nodes (if they have a sub-expr) do constitute a read.
+            hir::Node::Block(_)
+            | hir::Node::Arm(_)
+            | hir::Node::ExprField(_)
+            | hir::Node::AnonConst(_)
+            | hir::Node::ConstBlock(_)
+            | hir::Node::ConstArg(_)
+            | hir::Node::Stmt(_)
+            | hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
+                ..
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Const(..), ..
+            })
+            | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => true,
+
+            // These nodes do not have direct sub-exprs.
+            hir::Node::Param(_)
+            | hir::Node::Item(_)
+            | hir::Node::ForeignItem(_)
+            | hir::Node::TraitItem(_)
+            | hir::Node::ImplItem(_)
+            | hir::Node::Variant(_)
+            | hir::Node::Field(_)
+            | hir::Node::PathSegment(_)
+            | hir::Node::Ty(_)
+            | hir::Node::AssocItemConstraint(_)
+            | hir::Node::TraitRef(_)
+            | hir::Node::Pat(_)
+            | hir::Node::PatField(_)
+            | hir::Node::LetStmt(_)
+            | hir::Node::Synthetic
+            | hir::Node::Err(_)
+            | hir::Node::Ctor(_)
+            | hir::Node::Lifetime(_)
+            | hir::Node::GenericParam(_)
+            | hir::Node::Crate(_)
+            | hir::Node::Infer(_)
+            | hir::Node::WhereBoundPredicate(_)
+            | hir::Node::ArrayLenInfer(_)
+            | hir::Node::PreciseCapturingNonLifetimeArg(_)
+            | hir::Node::OpaqueTy(_) => {
+                unreachable!("no sub-expr expected for {parent_node:?}")
+            }
+        }
+    }
+
+    /// Whether this pattern constitutes a read of value of the scrutinee that
+    /// it is matching against. This is used to determine whether we should
+    /// perform `NeverToAny` coercions.
+    ///
+    /// See above for the nuances of what happens when this returns true.
+    pub(super) fn pat_guaranteed_to_constitute_read_for_never(&self, pat: &hir::Pat<'_>) -> bool {
+        match pat.kind {
+            // Does not constitute a read.
+            hir::PatKind::Wild => false,
+
+            // This is unnecessarily restrictive when the pattern that doesn't
+            // constitute a read is unreachable.
+            //
+            // For example `match *never_ptr { value => {}, _ => {} }` or
+            // `match *never_ptr { _ if false => {}, value => {} }`.
+            //
+            // It is however fine to be restrictive here; only returning `true`
+            // can lead to unsoundness.
+            hir::PatKind::Or(subpats) => {
+                subpats.iter().all(|pat| self.pat_guaranteed_to_constitute_read_for_never(pat))
+            }
+
+            // Does constitute a read, since it is equivalent to a discriminant read.
+            hir::PatKind::Never => true,
+
+            // All of these constitute a read, or match on something that isn't `!`,
+            // which would require a `NeverToAny` coercion.
+            hir::PatKind::Binding(_, _, _, _)
+            | hir::PatKind::Struct(_, _, _)
+            | hir::PatKind::TupleStruct(_, _, _)
+            | hir::PatKind::Path(_)
+            | hir::PatKind::Tuple(_, _)
+            | hir::PatKind::Box(_)
+            | hir::PatKind::Ref(_, _)
+            | hir::PatKind::Deref(_)
+            | hir::PatKind::Lit(_)
+            | hir::PatKind::Range(_, _, _)
+            | hir::PatKind::Slice(_, _, _)
+            | hir::PatKind::Err(_) => true,
+        }
     }
 
     #[instrument(skip(self, expr), level = "debug")]
@@ -413,7 +598,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty, _) => {
                     if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
-                        // For example, dereferences of a fat pointer and
+                        // For example, dereferences of a wide pointer and
                         // the last field of a struct can be unsized.
                         ExpectHasType(*ty)
                     } else {
@@ -3322,7 +3507,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>) -> Ty<'tcx> {
-        let mut diverge = asm.options.contains(ast::InlineAsmOptions::NORETURN);
+        let mut diverge = asm.asm_macro.diverges(asm.options);
 
         for (op, _op_sp) in asm.operands {
             match op {

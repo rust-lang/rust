@@ -1,5 +1,6 @@
-use crate::*;
 use rustc_target::spec::abi::Abi;
+
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -26,7 +27,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.machine.layouts.mut_raw_ptr,
         )?;
 
-        Ok(())
+        interp_ok(())
     }
 
     fn pthread_join(&mut self, thread: &OpTy<'tcx>, retval: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
@@ -40,7 +41,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
         this.join_thread_exclusive(thread_id.try_into().expect("thread ID should fit in u32"))?;
 
-        Ok(())
+        interp_ok(())
     }
 
     fn pthread_detach(&mut self, thread: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
@@ -52,14 +53,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             /*allow_terminated_joined*/ false,
         )?;
 
-        Ok(())
+        interp_ok(())
     }
 
     fn pthread_self(&mut self) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let thread_id = this.active_thread();
-        Ok(Scalar::from_uint(thread_id.to_u32(), this.libc_ty_layout("pthread_t").size))
+        interp_ok(Scalar::from_uint(thread_id.to_u32(), this.libc_ty_layout("pthread_t").size))
     }
 
     /// Set the name of the current thread. `max_name_len` is the maximal length of the name
@@ -80,12 +81,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Comparing with `>=` to account for null terminator.
         if name.len() >= max_name_len {
-            return Ok(this.eval_libc("ERANGE"));
+            return interp_ok(this.eval_libc("ERANGE"));
         }
 
         this.set_thread_name(thread, name);
 
-        Ok(Scalar::from_u32(0))
+        interp_ok(Scalar::from_u32(0))
     }
 
     fn pthread_getname_np(
@@ -105,7 +106,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let name = this.get_thread_name(thread).unwrap_or(b"<unnamed>").to_owned();
         let (success, _written) = this.write_c_str(&name, name_out, len)?;
 
-        Ok(if success { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") })
+        interp_ok(if success { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") })
     }
 
     fn sched_yield(&mut self) -> InterpResult<'tcx, ()> {
@@ -113,6 +114,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.yield_active_thread();
 
-        Ok(())
+        interp_ok(())
     }
 }

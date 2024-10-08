@@ -9,7 +9,7 @@ use rustc_middle::ty::{
 };
 use tracing::debug;
 
-use super::{InterpCx, MPlaceTy, MemoryKind, throw_inval};
+use super::{InterpCx, MPlaceTy, MemoryKind, interp_ok, throw_inval};
 use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationResult};
 
 /// Checks whether a type contains generic parameters which must be instantiated.
@@ -23,7 +23,7 @@ where
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
     if !ty.has_param() {
-        return Ok(());
+        return interp_ok(());
     }
 
     struct FoundParam;
@@ -78,7 +78,7 @@ where
     if matches!(ty.visit_with(&mut vis), ControlFlow::Break(FoundParam)) {
         throw_inval!(TooGeneric);
     } else {
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -103,5 +103,5 @@ pub(crate) fn create_static_alloc<'tcx>(
     assert_eq!(ecx.machine.static_root_ids, None);
     ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
     assert!(ecx.memory.alloc_map.insert(alloc_id, (MemoryKind::Stack, alloc)).is_none());
-    Ok(ecx.ptr_to_mplace(Pointer::from(alloc_id).into(), layout))
+    interp_ok(ecx.ptr_to_mplace(Pointer::from(alloc_id).into(), layout))
 }

@@ -304,7 +304,7 @@ pub struct RegionVariableInfo {
     pub universe: ty::UniverseIndex,
 }
 
-pub struct RegionSnapshot {
+pub(crate) struct RegionSnapshot {
     any_unifications: bool,
 }
 
@@ -522,7 +522,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         member_region: ty::Region<'tcx>,
-        choice_regions: &Lrc<Vec<ty::Region<'tcx>>>,
+        choice_regions: Lrc<Vec<ty::Region<'tcx>>>,
     ) {
         debug!("member_constraint({:?} in {:#?})", member_region, choice_regions);
 
@@ -535,7 +535,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             definition_span,
             hidden_ty,
             member_region,
-            choice_regions: choice_regions.clone(),
+            choice_regions,
         });
     }
 

@@ -6,7 +6,6 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
-use rustc_parse::parser::attr::AllowLeadingUnsafe;
 use rustc_span::Span;
 use {rustc_ast as ast, rustc_attr as attr};
 
@@ -36,14 +35,18 @@ pub(crate) fn expand_cfg(
     })
 }
 
-fn parse_cfg<'a>(cx: &ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
+fn parse_cfg<'a>(
+    cx: &ExtCtxt<'a>,
+    span: Span,
+    tts: TokenStream,
+) -> PResult<'a, ast::MetaItemInner> {
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
         return Err(cx.dcx().create_err(errors::RequiresCfgPattern { span }));
     }
 
-    let cfg = p.parse_meta_item(AllowLeadingUnsafe::Yes)?;
+    let cfg = p.parse_meta_item_inner()?;
 
     let _ = p.eat(&token::Comma);
 

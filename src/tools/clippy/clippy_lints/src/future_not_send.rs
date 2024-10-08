@@ -8,7 +8,7 @@ use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, AliasTy, ClauseKind, PredicateKind};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCtxt};
 

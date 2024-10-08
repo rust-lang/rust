@@ -4,12 +4,12 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_type_diagnostic_name, make_normalized_projection, make_projection};
 use clippy_utils::{
-    can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local, path_to_local_id,
-    CaptureKind,
+    CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local,
+    path_to_local_id,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{
     BindingMode, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Mutability, Node, PatKind, Stmt, StmtKind,
 };
@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, AssocKind, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
@@ -441,7 +441,7 @@ struct UsedCountVisitor<'a, 'tcx> {
     count: usize,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for UsedCountVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

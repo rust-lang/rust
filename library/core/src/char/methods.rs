@@ -69,7 +69,7 @@ impl char {
     /// assert_eq!(char::from_u32(value_at_max + 1), None);
     /// ```
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
-    pub const MAX: char = '\u{10ffff}';
+    pub const MAX: char = '\u{10FFFF}';
 
     /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
     /// decoding error.
@@ -606,6 +606,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
+    #[must_use]
     pub const fn len_utf8(self) -> usize {
         len_utf8(self as u32)
     }
@@ -637,6 +638,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
+    #[must_use]
     pub const fn len_utf16(self) -> usize {
         len_utf16(self as u32)
     }
@@ -1738,6 +1740,7 @@ impl EscapeDebugExtArgs {
 }
 
 #[inline]
+#[must_use]
 const fn len_utf8(code: u32) -> usize {
     match code {
         ..MAX_ONE_B => 1,
@@ -1748,6 +1751,7 @@ const fn len_utf8(code: u32) -> usize {
 }
 
 #[inline]
+#[must_use]
 const fn len_utf16(code: u32) -> usize {
     if (code & 0xFFFF) == code { 1 } else { 2 }
 }
@@ -1837,7 +1841,6 @@ pub const fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
         }
         (2, [a, b, ..]) => {
             code -= 0x1_0000;
-
             *a = (code >> 10) as u16 | 0xD800;
             *b = (code & 0x3FF) as u16 | 0xDC00;
         }

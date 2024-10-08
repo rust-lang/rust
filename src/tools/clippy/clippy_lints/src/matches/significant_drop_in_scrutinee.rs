@@ -8,7 +8,7 @@ use clippy_utils::{get_attr, is_lint_allowed};
 use itertools::Itertools;
 use rustc_ast::Mutability;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{GenericArgKind, Region, RegionKind, Ty, TyCtxt, TypeVisitable, TypeVisitor};
@@ -424,7 +424,7 @@ fn ty_has_erased_regions(ty: Ty<'_>) -> bool {
     ty.visit_with(&mut V).is_break()
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SigDropHelper<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         // We've emitted a lint on some neighborhood expression. That lint will suggest to move out the
         // _parent_ expression (not the expression itself). Since we decide to move out the parent
@@ -495,7 +495,7 @@ fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &[&'tcx Expr
     helper.found_sig_drop_spans
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ArmSigDropHelper<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ArmSigDropHelper<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if self.sig_drop_checker.is_sig_drop_expr(ex) {
             self.found_sig_drop_spans.insert(ex.span);

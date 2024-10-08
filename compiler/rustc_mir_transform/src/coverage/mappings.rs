@@ -1,10 +1,11 @@
 use std::collections::BTreeSet;
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, ConditionInfo, CoverageInfoHi, CoverageKind,
+    BlockMarkerId, BranchSpan, ConditionId, ConditionInfo, CoverageInfoHi, CoverageKind,
 };
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
@@ -14,6 +15,7 @@ use crate::coverage::ExtractedHirInfo;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
 use crate::coverage::spans::extract_refined_covspans;
 use crate::coverage::unexpand::unexpand_into_body_span;
+use crate::errors::MCDCExceedsTestVectorLimit;
 
 /// Associates an ordinary executable code span with its corresponding BCB.
 #[derive(Debug)]
@@ -38,10 +40,11 @@ pub(super) struct MCDCBranch {
     pub(super) span: Span,
     pub(super) true_bcb: BasicCoverageBlock,
     pub(super) false_bcb: BasicCoverageBlock,
-    /// If `None`, this actually represents a normal branch mapping inserted
-    /// for code that was too complex for MC/DC.
-    pub(super) condition_info: Option<ConditionInfo>,
-    pub(super) decision_depth: u16,
+    pub(super) condition_info: ConditionInfo,
+    // Offset added to test vector idx if this branch is evaluated to true.
+    pub(super) true_index: usize,
+    // Offset added to test vector idx if this branch is evaluated to false.
+    pub(super) false_index: usize,
 }
 
 /// Associates an MC/DC decision with its join BCBs.
@@ -49,10 +52,14 @@ pub(super) struct MCDCBranch {
 pub(super) struct MCDCDecision {
     pub(super) span: Span,
     pub(super) end_bcbs: BTreeSet<BasicCoverageBlock>,
-    pub(super) bitmap_idx: u32,
-    pub(super) num_conditions: u16,
+    pub(super) bitmap_idx: usize,
+    pub(super) num_test_vectors: usize,
     pub(super) decision_depth: u16,
 }
+
+// LLVM uses `i32` to index the bitmap. Thus `i32::MAX` is the hard limit for number of all test vectors
+// in a function.
+const MCDC_MAX_BITMAP_SIZE: usize = i32::MAX as usize;
 
 #[derive(Default)]
 pub(super) struct ExtractedMappings {
@@ -62,9 +69,9 @@ pub(super) struct ExtractedMappings {
     pub(super) num_bcbs: usize,
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
-    pub(super) mcdc_bitmap_bytes: u32,
-    pub(super) mcdc_branches: Vec<MCDCBranch>,
-    pub(super) mcdc_decisions: Vec<MCDCDecision>,
+    pub(super) mcdc_bitmap_bits: usize,
+    pub(super) mcdc_degraded_branches: Vec<MCDCBranch>,
+    pub(super) mcdc_mappings: Vec<(MCDCDecision, Vec<MCDCBranch>)>,
 }
 
 /// Extracts coverage-relevant spans from MIR, and associates them with
@@ -77,9 +84,9 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
 ) -> ExtractedMappings {
     let mut code_mappings = vec![];
     let mut branch_pairs = vec![];
-    let mut mcdc_bitmap_bytes = 0;
-    let mut mcdc_branches = vec![];
-    let mut mcdc_decisions = vec![];
+    let mut mcdc_bitmap_bits = 0;
+    let mut mcdc_degraded_branches = vec![];
+    let mut mcdc_mappings = vec![];
 
     if hir_info.is_async_fn || tcx.sess.coverage_no_mir_spans() {
         // An async function desugars into a function that returns a future,
@@ -102,20 +109,21 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
 
     extract_mcdc_mappings(
         mir_body,
+        tcx,
         hir_info.body_span,
         basic_coverage_blocks,
-        &mut mcdc_bitmap_bytes,
-        &mut mcdc_branches,
-        &mut mcdc_decisions,
+        &mut mcdc_bitmap_bits,
+        &mut mcdc_degraded_branches,
+        &mut mcdc_mappings,
     );
 
     ExtractedMappings {
         num_bcbs: basic_coverage_blocks.num_nodes(),
         code_mappings,
         branch_pairs,
-        mcdc_bitmap_bytes,
-        mcdc_branches,
-        mcdc_decisions,
+        mcdc_bitmap_bits,
+        mcdc_degraded_branches,
+        mcdc_mappings,
     }
 }
 
@@ -126,9 +134,9 @@ impl ExtractedMappings {
             num_bcbs,
             code_mappings,
             branch_pairs,
-            mcdc_bitmap_bytes: _,
-            mcdc_branches,
-            mcdc_decisions,
+            mcdc_bitmap_bits: _,
+            mcdc_degraded_branches,
+            mcdc_mappings,
         } = self;
 
         // Identify which BCBs have one or more mappings.
@@ -144,7 +152,10 @@ impl ExtractedMappings {
             insert(true_bcb);
             insert(false_bcb);
         }
-        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_branches {
+        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_degraded_branches
+            .iter()
+            .chain(mcdc_mappings.iter().map(|(_, branches)| branches.into_iter()).flatten())
+        {
             insert(true_bcb);
             insert(false_bcb);
         }
@@ -152,8 +163,8 @@ impl ExtractedMappings {
         // MC/DC decisions refer to BCBs, but don't require those BCBs to have counters.
         if bcbs_with_counter_mappings.is_empty() {
             debug_assert!(
-                mcdc_decisions.is_empty(),
-                "A function with no counter mappings shouldn't have any decisions: {mcdc_decisions:?}",
+                mcdc_mappings.is_empty(),
+                "A function with no counter mappings shouldn't have any decisions: {mcdc_mappings:?}",
             );
         }
 
@@ -230,11 +241,12 @@ pub(super) fn extract_branch_pairs(
 
 pub(super) fn extract_mcdc_mappings(
     mir_body: &mir::Body<'_>,
+    tcx: TyCtxt<'_>,
     body_span: Span,
     basic_coverage_blocks: &CoverageGraph,
-    mcdc_bitmap_bytes: &mut u32,
-    mcdc_branches: &mut impl Extend<MCDCBranch>,
-    mcdc_decisions: &mut impl Extend<MCDCDecision>,
+    mcdc_bitmap_bits: &mut usize,
+    mcdc_degraded_branches: &mut impl Extend<MCDCBranch>,
+    mcdc_mappings: &mut impl Extend<(MCDCDecision, Vec<MCDCBranch>)>,
 ) {
     let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return };
 
@@ -257,43 +269,146 @@ pub(super) fn extract_mcdc_mappings(
             Some((span, true_bcb, false_bcb))
         };
 
-    mcdc_branches.extend(coverage_info_hi.mcdc_branch_spans.iter().filter_map(
-        |&mir::coverage::MCDCBranchSpan {
-             span: raw_span,
-             condition_info,
-             true_marker,
-             false_marker,
-             decision_depth,
-         }| {
-            let (span, true_bcb, false_bcb) =
-                check_branch_bcb(raw_span, true_marker, false_marker)?;
-            Some(MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth })
-        },
-    ));
+    let to_mcdc_branch = |&mir::coverage::MCDCBranchSpan {
+                              span: raw_span,
+                              condition_info,
+                              true_marker,
+                              false_marker,
+                          }| {
+        let (span, true_bcb, false_bcb) = check_branch_bcb(raw_span, true_marker, false_marker)?;
+        Some(MCDCBranch {
+            span,
+            true_bcb,
+            false_bcb,
+            condition_info,
+            true_index: usize::MAX,
+            false_index: usize::MAX,
+        })
+    };
 
-    mcdc_decisions.extend(coverage_info_hi.mcdc_decision_spans.iter().filter_map(
-        |decision: &mir::coverage::MCDCDecisionSpan| {
-            let span = unexpand_into_body_span(decision.span, body_span)?;
+    let mut get_bitmap_idx = |num_test_vectors: usize| -> Option<usize> {
+        let bitmap_idx = *mcdc_bitmap_bits;
+        let next_bitmap_bits = bitmap_idx.saturating_add(num_test_vectors);
+        (next_bitmap_bits <= MCDC_MAX_BITMAP_SIZE).then(|| {
+            *mcdc_bitmap_bits = next_bitmap_bits;
+            bitmap_idx
+        })
+    };
+    mcdc_degraded_branches
+        .extend(coverage_info_hi.mcdc_degraded_branch_spans.iter().filter_map(to_mcdc_branch));
 
-            let end_bcbs = decision
-                .end_markers
-                .iter()
-                .map(|&marker| bcb_from_marker(marker))
-                .collect::<Option<_>>()?;
+    mcdc_mappings.extend(coverage_info_hi.mcdc_spans.iter().filter_map(|(decision, branches)| {
+        if branches.len() == 0 {
+            return None;
+        }
+        let decision_span = unexpand_into_body_span(decision.span, body_span)?;
 
-            // Each decision containing N conditions needs 2^N bits of space in
-            // the bitmap, rounded up to a whole number of bytes.
-            // The decision's "bitmap index" points to its first byte in the bitmap.
-            let bitmap_idx = *mcdc_bitmap_bytes;
-            *mcdc_bitmap_bytes += (1_u32 << decision.num_conditions).div_ceil(8);
-
-            Some(MCDCDecision {
+        let end_bcbs = decision
+            .end_markers
+            .iter()
+            .map(|&marker| bcb_from_marker(marker))
+            .collect::<Option<_>>()?;
+        let mut branch_mappings: Vec<_> = branches.into_iter().filter_map(to_mcdc_branch).collect();
+        if branch_mappings.len() != branches.len() {
+            mcdc_degraded_branches.extend(branch_mappings);
+            return None;
+        }
+        let num_test_vectors = calc_test_vectors_index(&mut branch_mappings);
+        let Some(bitmap_idx) = get_bitmap_idx(num_test_vectors) else {
+            tcx.dcx().emit_warn(MCDCExceedsTestVectorLimit {
+                span: decision_span,
+                max_num_test_vectors: MCDC_MAX_BITMAP_SIZE,
+            });
+            mcdc_degraded_branches.extend(branch_mappings);
+            return None;
+        };
+        // LLVM requires span of the decision contains all spans of its conditions.
+        // Usually the decision span meets the requirement well but in cases like macros it may not.
+        let span = branch_mappings
+            .iter()
+            .map(|branch| branch.span)
+            .reduce(|lhs, rhs| lhs.to(rhs))
+            .map(
+                |joint_span| {
+                    if decision_span.contains(joint_span) { decision_span } else { joint_span }
+                },
+            )
+            .expect("branch mappings are ensured to be non-empty as checked above");
+        Some((
+            MCDCDecision {
                 span,
                 end_bcbs,
                 bitmap_idx,
-                num_conditions: decision.num_conditions as u16,
+                num_test_vectors,
                 decision_depth: decision.decision_depth,
-            })
-        },
-    ));
+            },
+            branch_mappings,
+        ))
+    }));
+}
+
+// LLVM checks the executed test vector by accumulating indices of tested branches.
+// We calculate number of all possible test vectors of the decision and assign indices
+// to branches here.
+// See [the rfc](https://discourse.llvm.org/t/rfc-coverage-new-algorithm-and-file-format-for-mc-dc/76798/)
+// for more details about the algorithm.
+// This function is mostly like [`TVIdxBuilder::TvIdxBuilder`](https://github.com/llvm/llvm-project/blob/d594d9f7f4dc6eb748b3261917db689fdc348b96/llvm/lib/ProfileData/Coverage/CoverageMapping.cpp#L226)
+fn calc_test_vectors_index(conditions: &mut Vec<MCDCBranch>) -> usize {
+    let mut indegree_stats = IndexVec::<ConditionId, usize>::from_elem_n(0, conditions.len());
+    // `num_paths` is `width` described at the llvm rfc, which indicates how many paths reaching the condition node.
+    let mut num_paths_stats = IndexVec::<ConditionId, usize>::from_elem_n(0, conditions.len());
+    let mut next_conditions = conditions
+        .iter_mut()
+        .map(|branch| {
+            let ConditionInfo { condition_id, true_next_id, false_next_id } = branch.condition_info;
+            [true_next_id, false_next_id]
+                .into_iter()
+                .filter_map(std::convert::identity)
+                .for_each(|next_id| indegree_stats[next_id] += 1);
+            (condition_id, branch)
+        })
+        .collect::<FxIndexMap<_, _>>();
+
+    let mut queue = std::collections::VecDeque::from_iter(
+        next_conditions.swap_remove(&ConditionId::START).into_iter(),
+    );
+    num_paths_stats[ConditionId::START] = 1;
+    let mut decision_end_nodes = Vec::new();
+    while let Some(branch) = queue.pop_front() {
+        let ConditionInfo { condition_id, true_next_id, false_next_id } = branch.condition_info;
+        let (false_index, true_index) = (&mut branch.false_index, &mut branch.true_index);
+        let this_paths_count = num_paths_stats[condition_id];
+        // Note. First check the false next to ensure conditions are touched in same order with llvm-cov.
+        for (next, index) in [(false_next_id, false_index), (true_next_id, true_index)] {
+            if let Some(next_id) = next {
+                let next_paths_count = &mut num_paths_stats[next_id];
+                *index = *next_paths_count;
+                *next_paths_count = next_paths_count.saturating_add(this_paths_count);
+                let next_indegree = &mut indegree_stats[next_id];
+                *next_indegree -= 1;
+                if *next_indegree == 0 {
+                    queue.push_back(next_conditions.swap_remove(&next_id).expect(
+                        "conditions with non-zero indegree before must be in next_conditions",
+                    ));
+                }
+            } else {
+                decision_end_nodes.push((this_paths_count, condition_id, index));
+            }
+        }
+    }
+    assert!(next_conditions.is_empty(), "the decision tree has untouched nodes");
+    let mut cur_idx = 0;
+    // LLVM hopes the end nodes are sorted in descending order by `num_paths` so that it can
+    // optimize bitmap size for decisions in tree form such as `a && b && c && d && ...`.
+    decision_end_nodes.sort_by_key(|(num_paths, _, _)| usize::MAX - *num_paths);
+    for (num_paths, condition_id, index) in decision_end_nodes {
+        assert_eq!(
+            num_paths, num_paths_stats[condition_id],
+            "end nodes should not be updated since they were visited"
+        );
+        assert_eq!(*index, usize::MAX, "end nodes should not be assigned index before");
+        *index = cur_idx;
+        cur_idx += num_paths;
+    }
+    cur_idx
 }

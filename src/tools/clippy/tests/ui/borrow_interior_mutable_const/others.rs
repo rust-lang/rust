@@ -5,8 +5,8 @@
 use std::borrow::Cow;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt::Display;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Once;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const ATOMIC: AtomicUsize = AtomicUsize::new(5);
 const CELL: Cell<usize> = Cell::new(6);

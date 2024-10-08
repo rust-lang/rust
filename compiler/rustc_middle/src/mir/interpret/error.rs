@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::backtrace::Backtrace;
 use std::borrow::Cow;
-use std::fmt;
+use std::{convert, fmt, mem, ops};
 
 use either::Either;
 use rustc_ast_ir::Mutability;
@@ -104,6 +104,10 @@ rustc_data_structures::static_assert_size!(InterpErrorInfo<'_>, 8);
 /// These should always be constructed by calling `.into()` on
 /// an `InterpError`. In `rustc_mir::interpret`, we have `throw_err_*`
 /// macros for this.
+///
+/// Interpreter errors must *not* be silently discarded (that will lead to a panic). Instead,
+/// explicitly call `discard_err` if this is really the right thing to do. Note that if
+/// this happens during const-eval or in Miri, it could lead to a UB error being lost!
 #[derive(Debug)]
 pub struct InterpErrorInfo<'tcx>(Box<InterpErrorInfoInner<'tcx>>);
 
@@ -156,8 +160,11 @@ impl<'tcx> InterpErrorInfo<'tcx> {
     }
 
     pub fn into_kind(self) -> InterpError<'tcx> {
-        let InterpErrorInfo(box InterpErrorInfoInner { kind, .. }) = self;
-        kind
+        self.0.kind
+    }
+
+    pub fn from_parts(kind: InterpError<'tcx>, backtrace: InterpErrorBacktrace) -> Self {
+        Self(Box::new(InterpErrorInfoInner { kind, backtrace }))
     }
 
     #[inline]
@@ -599,8 +606,6 @@ pub enum InterpError<'tcx> {
     MachineStop(Box<dyn MachineStopType>),
 }
 
-pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
-
 impl InterpError<'_> {
     /// Some errors do string formatting even if the error is never printed.
     /// To avoid performance issues, there are places where we want to be sure to never raise these formatting errors,
@@ -727,4 +732,183 @@ macro_rules! throw_exhaust {
 #[macro_export]
 macro_rules! throw_machine_stop {
     ($($tt:tt)*) => { do yeet $crate::err_machine_stop!($($tt)*) };
+}
+
+/// Guard type that panics on drop.
+#[derive(Debug)]
+struct Guard;
+
+impl Drop for Guard {
+    fn drop(&mut self) {
+        // We silence the guard if we are already panicking, to avoid double-panics.
+        if !std::thread::panicking() {
+            panic!(
+                "an interpreter error got improperly discarded; use `discard_err()` if this is intentional"
+            );
+        }
+    }
+}
+
+/// The result type used by the interpreter. This is a newtype around `Result`
+/// to block access to operations like `ok()` that discard UB errors.
+///
+/// We also make things panic if this type is ever implicitly dropped.
+#[derive(Debug)]
+pub struct InterpResult_<'tcx, T> {
+    res: Result<T, InterpErrorInfo<'tcx>>,
+    guard: Guard,
+}
+
+// Type alias to be able to set a default type argument.
+pub type InterpResult<'tcx, T = ()> = InterpResult_<'tcx, T>;
+
+impl<'tcx, T> ops::Try for InterpResult_<'tcx, T> {
+    type Output = T;
+    type Residual = InterpResult_<'tcx, convert::Infallible>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        InterpResult_::new(Ok(output))
+    }
+
+    #[inline]
+    fn branch(self) -> ops::ControlFlow<Self::Residual, Self::Output> {
+        match self.disarm() {
+            Ok(v) => ops::ControlFlow::Continue(v),
+            Err(e) => ops::ControlFlow::Break(InterpResult_::new(Err(e))),
+        }
+    }
+}
+
+impl<'tcx, T> ops::FromResidual for InterpResult_<'tcx, T> {
+    #[inline]
+    #[track_caller]
+    fn from_residual(residual: InterpResult_<'tcx, convert::Infallible>) -> Self {
+        match residual.disarm() {
+            Err(e) => Self::new(Err(e)),
+        }
+    }
+}
+
+// Allow `yeet`ing `InterpError` in functions returning `InterpResult_`.
+impl<'tcx, T> ops::FromResidual<ops::Yeet<InterpError<'tcx>>> for InterpResult_<'tcx, T> {
+    #[inline]
+    fn from_residual(ops::Yeet(e): ops::Yeet<InterpError<'tcx>>) -> Self {
+        Self::new(Err(e.into()))
+    }
+}
+
+// Allow `?` on `Result<_, InterpError>` in functions returning `InterpResult_`.
+// This is useful e.g. for `option.ok_or_else(|| err_ub!(...))`.
+impl<'tcx, T, E: Into<InterpErrorInfo<'tcx>>> ops::FromResidual<Result<convert::Infallible, E>>
+    for InterpResult_<'tcx, T>
+{
+    #[inline]
+    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
+        match residual {
+            Err(e) => Self::new(Err(e.into())),
+        }
+    }
+}
+
+impl<'tcx, T, E: Into<InterpErrorInfo<'tcx>>> From<Result<T, E>> for InterpResult<'tcx, T> {
+    #[inline]
+    fn from(value: Result<T, E>) -> Self {
+        Self::new(value.map_err(|e| e.into()))
+    }
+}
+
+impl<'tcx, T, V: FromIterator<T>> FromIterator<InterpResult<'tcx, T>> for InterpResult<'tcx, V> {
+    fn from_iter<I: IntoIterator<Item = InterpResult<'tcx, T>>>(iter: I) -> Self {
+        Self::new(iter.into_iter().map(|x| x.disarm()).collect())
+    }
+}
+
+impl<'tcx, T> InterpResult_<'tcx, T> {
+    #[inline(always)]
+    fn new(res: Result<T, InterpErrorInfo<'tcx>>) -> Self {
+        Self { res, guard: Guard }
+    }
+
+    #[inline(always)]
+    fn disarm(self) -> Result<T, InterpErrorInfo<'tcx>> {
+        mem::forget(self.guard);
+        self.res
+    }
+
+    /// Discard the error information in this result. Only use this if ignoring Undefined Behavior is okay!
+    #[inline]
+    pub fn discard_err(self) -> Option<T> {
+        self.disarm().ok()
+    }
+
+    /// Look at the `Result` wrapped inside of this.
+    /// Must only be used to report the error!
+    #[inline]
+    pub fn report_err(self) -> Result<T, InterpErrorInfo<'tcx>> {
+        self.disarm()
+    }
+
+    #[inline]
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> InterpResult<'tcx, U> {
+        InterpResult_::new(self.disarm().map(f))
+    }
+
+    #[inline]
+    pub fn map_err(
+        self,
+        f: impl FnOnce(InterpErrorInfo<'tcx>) -> InterpErrorInfo<'tcx>,
+    ) -> InterpResult<'tcx, T> {
+        InterpResult_::new(self.disarm().map_err(f))
+    }
+
+    #[inline]
+    pub fn inspect_err(self, f: impl FnOnce(&InterpErrorInfo<'tcx>)) -> InterpResult<'tcx, T> {
+        InterpResult_::new(self.disarm().inspect_err(f))
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn unwrap(self) -> T {
+        self.disarm().unwrap()
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn unwrap_or_else(self, f: impl FnOnce(InterpErrorInfo<'tcx>) -> T) -> T {
+        self.disarm().unwrap_or_else(f)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn expect(self, msg: &str) -> T {
+        self.disarm().expect(msg)
+    }
+
+    #[inline]
+    pub fn and_then<U>(self, f: impl FnOnce(T) -> InterpResult<'tcx, U>) -> InterpResult<'tcx, U> {
+        InterpResult_::new(self.disarm().and_then(|t| f(t).disarm()))
+    }
+
+    /// Returns success if both `self` and `other` succeed, while ensuring we don't
+    /// accidentally drop an error.
+    ///
+    /// If both are an error, `self` will be reported.
+    #[inline]
+    pub fn and<U>(self, other: InterpResult<'tcx, U>) -> InterpResult<'tcx, (T, U)> {
+        match self.disarm() {
+            Ok(t) => interp_ok((t, other?)),
+            Err(e) => {
+                // Discard the other error.
+                drop(other.disarm());
+                // Return `self`.
+                InterpResult_::new(Err(e))
+            }
+        }
+    }
+}
+
+#[inline(always)]
+pub fn interp_ok<'tcx, T>(x: T) -> InterpResult<'tcx, T> {
+    InterpResult_::new(Ok(x))
 }

@@ -51,7 +51,7 @@ declare_lint! {
     /// intent.
     pub LET_UNDERSCORE_DROP,
     Allow,
-    "non-binding let on a type that implements `Drop`"
+    "non-binding let on a type that has a destructor"
 }
 
 declare_lint! {

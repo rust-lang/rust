@@ -1,24 +1,24 @@
 #![allow(clippy::float_cmp)]
 
 use crate::macros::HirNode;
-use crate::source::{walk_span_to_context, SpanRangeExt};
+use crate::source::{SpanRangeExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 
-use rustc_apfloat::ieee::{Half, Quad};
 use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
-use rustc_middle::mir::interpret::{alloc_range, Scalar};
 use rustc_middle::mir::ConstValue;
+use rustc_middle::mir::interpret::{Scalar, alloc_range};
 use rustc_middle::ty::{self, FloatTy, IntTy, ParamEnv, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, SyntaxContext};
+use rustc_span::{SyntaxContext, sym};
 use rustc_target::abi::Size;
 use std::cell::Cell;
 use std::cmp::Ordering;
@@ -118,7 +118,7 @@ impl IntTypeBounds for IntTy {
     }
 }
 
-impl<'tcx> PartialEq for Constant<'tcx> {
+impl PartialEq for Constant<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Str(ls), Self::Str(rs)) => ls == rs,
@@ -147,7 +147,7 @@ impl<'tcx> PartialEq for Constant<'tcx> {
     }
 }
 
-impl<'tcx> Hash for Constant<'tcx> {
+impl Hash for Constant<'_> {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -203,7 +203,7 @@ impl<'tcx> Hash for Constant<'tcx> {
     }
 }
 
-impl<'tcx> Constant<'tcx> {
+impl Constant<'_> {
     pub fn partial_cmp(tcx: TyCtxt<'_>, cmp_type: Ty<'_>, left: &Self, right: &Self) -> Option<Ordering> {
         match (left, right) {
             (Self::Str(ls), Self::Str(rs)) => Some(ls.cmp(rs)),
@@ -581,7 +581,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     }
 
     fn constant_negate(&self, o: &Constant<'tcx>, ty: Ty<'_>) -> Option<Constant<'tcx>> {
-        use self::Constant::{Int, F32, F64};
+        use self::Constant::{F32, F64, Int};
         match *o {
             Int(value) => {
                 let ty::Int(ity) = *ty.kind() else { return None };
@@ -870,10 +870,10 @@ pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::Const<'tcx>) -> Option
                 let range = alloc_range(offset + size * idx, size);
                 let val = alloc.read_scalar(&tcx, range, /* read_provenance */ false).ok()?;
                 res.push(match flt {
-                    FloatTy::F16 => Constant::F16(f16::from_bits(val.to_u16().ok()?)),
-                    FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().ok()?)),
-                    FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().ok()?)),
-                    FloatTy::F128 => Constant::F128(f128::from_bits(val.to_u128().ok()?)),
+                    FloatTy::F16 => Constant::F16(f16::from_bits(val.to_u16().discard_err()?)),
+                    FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().discard_err()?)),
+                    FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().discard_err()?)),
+                    FloatTy::F128 => Constant::F128(f128::from_bits(val.to_u128().discard_err()?)),
                 });
             }
             Some(Constant::Vec(res))
@@ -903,7 +903,7 @@ fn mir_is_empty<'tcx>(tcx: TyCtxt<'tcx>, result: mir::Const<'tcx>) -> Option<boo
                         .read_scalar(&tcx, alloc_range(offset + ptr_size, ptr_size), false)
                         .ok()?
                         .to_target_usize(&tcx)
-                        .ok()?;
+                        .discard_err()?;
                     Some(len == 0)
                 } else {
                     None

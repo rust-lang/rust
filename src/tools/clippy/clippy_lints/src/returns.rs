@@ -1,16 +1,16 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::source::{snippet_with_context, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::visitors::{Descend, for_each_expr, for_each_unconsumed_temporary};
 use clippy_utils::{
     binary_expr_needs_parentheses, fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor, path_res,
     path_to_local_id, span_contains_cfg, span_find_starting_semi,
 };
 use core::ops::ControlFlow;
-use rustc_ast::NestedMetaItem;
+use rustc_ast::MetaItemInner;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::FnKind;
 use rustc_hir::LangItem::ResultErr;
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, Body, Expr, ExprKind, FnDecl, HirId, ItemKind, LangItem, MatchSource, Node, OwnerNode, PatKind, QPath, Stmt,
     StmtKind,
@@ -21,7 +21,7 @@ use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, sym};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -140,7 +140,7 @@ enum RetReplacement<'tcx> {
     Expr(Cow<'tcx, str>, Applicability),
 }
 
-impl<'tcx> RetReplacement<'tcx> {
+impl RetReplacement<'_> {
     fn sugg_help(&self) -> &'static str {
         match self {
             Self::Empty | Self::Expr(..) => "remove `return`",
@@ -158,7 +158,7 @@ impl<'tcx> RetReplacement<'tcx> {
     }
 }
 
-impl<'tcx> Display for RetReplacement<'tcx> {
+impl Display for RetReplacement<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Empty => write!(f, ""),
@@ -389,10 +389,24 @@ fn check_final_expr<'tcx>(
                 }
             };
 
-            let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
-            if borrows {
-                return;
+            if let Some(inner) = inner {
+                if for_each_unconsumed_temporary(cx, inner, |temporary_ty| {
+                    if temporary_ty.has_significant_drop(cx.tcx, cx.param_env)
+                        && temporary_ty
+                            .walk()
+                            .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
+                    {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                })
+                .is_break()
+                {
+                    return;
+                }
             }
+
             if ret_span.from_expansion() {
                 return;
             }
@@ -407,7 +421,7 @@ fn check_final_expr<'tcx>(
                     if matches!(Level::from_attr(attr), Some(Level::Expect(_)))
                         && let metas = attr.meta_item_list()
                         && let Some(lst) = metas
-                        && let [NestedMetaItem::MetaItem(meta_item)] = lst.as_slice()
+                        && let [MetaItemInner::MetaItem(meta_item), ..] = lst.as_slice()
                         && let [tool, lint_name] = meta_item.path.segments.as_slice()
                         && tool.ident.name == sym::clippy
                         && matches!(

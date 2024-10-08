@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use rustc_ast::InlineAsmOptions;
+use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
@@ -384,6 +384,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::InlineAsm(box InlineAsmExpr {
+                asm_macro,
                 template,
                 ref operands,
                 options,
@@ -392,11 +393,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 use rustc_middle::{mir, thir};
 
                 let destination_block = this.cfg.start_new_block();
-                let mut targets = if options.contains(InlineAsmOptions::NORETURN) {
-                    vec![]
-                } else {
-                    vec![destination_block]
-                };
+                let mut targets =
+                    if asm_macro.diverges(options) { vec![] } else { vec![destination_block] };
 
                 let operands = operands
                     .into_iter()
@@ -474,7 +472,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
                 }
 
+                let asm_macro = match asm_macro {
+                    AsmMacro::Asm => InlineAsmMacro::Asm,
+                    AsmMacro::GlobalAsm => {
+                        span_bug!(expr_span, "unexpected global_asm! in inline asm")
+                    }
+                    AsmMacro::NakedAsm => InlineAsmMacro::NakedAsm,
+                };
+
                 this.cfg.terminate(block, source_info, TerminatorKind::InlineAsm {
+                    asm_macro,
                     template,
                     operands,
                     options,

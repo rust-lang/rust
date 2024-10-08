@@ -27,6 +27,7 @@ fn bind_error() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn socket_smoke_test_ip4() {
     each_ip(&mut |server_ip, client_ip| {
         let (tx1, rx1) = channel();
@@ -69,6 +70,7 @@ fn socket_peer() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn udp_clone_smoke() {
     each_ip(&mut |addr1, addr2| {
         let sock1 = t!(UdpSocket::bind(&addr1));
@@ -98,6 +100,7 @@ fn udp_clone_smoke() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn udp_clone_two_read() {
     each_ip(&mut |addr1, addr2| {
         let sock1 = t!(UdpSocket::bind(&addr1));
@@ -130,6 +133,7 @@ fn udp_clone_two_read() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn udp_clone_two_write() {
     each_ip(&mut |addr1, addr2| {
         let sock1 = t!(UdpSocket::bind(&addr1));
@@ -183,6 +187,7 @@ fn debug() {
     any(target_os = "netbsd", target_os = "openbsd", target_os = "vxworks", target_os = "nto"),
     ignore
 )]
+#[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 #[test]
 fn timeouts() {
     let addr = next_test_ip4();
@@ -208,6 +213,7 @@ fn timeouts() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 fn test_read_timeout() {
     let addr = next_test_ip4();
 
@@ -232,6 +238,7 @@ fn test_read_timeout() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 fn test_read_with_timeout() {
     let addr = next_test_ip4();
 
@@ -291,6 +298,7 @@ fn connect_send_recv() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore)] // peek not supported
 fn connect_send_peek_recv() {
     each_ip(&mut |addr, _| {
         let socket = t!(UdpSocket::bind(&addr));
@@ -313,6 +321,7 @@ fn connect_send_peek_recv() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore)] // peek_from not supported
 fn peek_from() {
     each_ip(&mut |addr, _| {
         let socket = t!(UdpSocket::bind(&addr));

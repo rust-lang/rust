@@ -14,7 +14,9 @@ pub fn u64_opt_as_slice(o: &Option<u64>) -> &[u64] {
     // CHECK-NOT: br
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
-    // CHECK: %[[LEN:.+]] = load i64,{{.+}} !range ![[META_U64:.+]], !noundef
+    // CHECK: %[[LEN:.+]] = load i64
+    // CHECK-SAME: !range ![[META_U64:[0-9]+]],
+    // CHECK-SAME: !noundef
     // CHECK-NOT: select
     // CHECK-NOT: br
     // CHECK-NOT: switch
@@ -51,7 +53,9 @@ pub fn u8_opt_as_slice(o: &Option<u8>) -> &[u8] {
     // CHECK-NOT: br
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
-    // CHECK: %[[TAG:.+]] = load i8,{{.+}} !range ![[META_U8:.+]], !noundef
+    // CHECK: %[[TAG:.+]] = load i8
+    // CHECK-SAME: !range ![[META_U8:[0-9]+]],
+    // CHECK-SAME: !noundef
     // CHECK: %[[LEN:.+]] = zext{{.*}} i8 %[[TAG]] to i64
     // CHECK-NOT: select
     // CHECK-NOT: br

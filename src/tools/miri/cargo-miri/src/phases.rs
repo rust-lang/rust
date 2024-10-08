@@ -8,7 +8,8 @@ use std::{env, thread};
 
 use rustc_version::VersionMeta;
 
-use crate::{setup::*, util::*};
+use crate::setup::*;
+use crate::util::*;
 
 const CARGO_MIRI_HELP: &str = r"Runs binary crates and tests in Miri
 
@@ -666,6 +667,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
         match phase {
             RunnerPhase::Rustdoc => {
                 cmd.stdin(std::process::Stdio::piped());
+                // the warning is wrong, we have a `wait` inside the `scope` closure.
                 let mut child = cmd.spawn().expect("failed to spawn process");
                 let child_stdin = child.stdin.take().unwrap();
                 // Write stdin in a background thread, as it may block.

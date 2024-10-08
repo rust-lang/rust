@@ -9,7 +9,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_span::symbol::sym;
 
-use super::{utils, REDUNDANT_ALLOCATION};
+use super::{REDUNDANT_ALLOCATION, utils};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath: &QPath<'tcx>, def_id: DefId) -> bool {
     let mut applicability = Applicability::MaybeIncorrect;

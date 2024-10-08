@@ -1420,7 +1420,7 @@ pub struct GenericPredicates {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum PredicateKind {
     Clause(ClauseKind),
-    ObjectSafe(TraitDef),
+    DynCompatible(TraitDef),
     SubType(SubtypePredicate),
     Coerce(CoercePredicate),
     ConstEquate(TyConst, TyConst),

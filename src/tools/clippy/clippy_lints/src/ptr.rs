@@ -1,13 +1,11 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::ty::expr_sig;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local};
 use hir::LifetimeName;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::{HirId, HirIdMap};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingMode, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg, ImplItemKind,
     ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, Safety, TraitFn, TraitItem, TraitItemKind, TyKind,
@@ -19,7 +17,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -34,7 +32,7 @@ declare_clippy_lint! {
     /// with the appropriate `.to_owned()`/`to_string()` calls.
     ///
     /// ### Why is this bad?
-    /// Requiring the argument to be of the specific size
+    /// Requiring the argument to be of the specific type
     /// makes the function less useful for no benefit; slices in the form of `&[T]`
     /// or `&str` usually suffice and can be obtained from other types, too.
     ///
@@ -273,14 +271,18 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         && let Some(name) = cx.tcx.get_diagnostic_name(fun_def_id)
     {
+        // TODO: `ptr_slice_from_raw_parts` and its mutable variant should probably still be linted
+        // conditionally based on how the return value is used, but not universally like the other
+        // functions since there are valid uses for null slice pointers.
+        //
+        // See: https://github.com/rust-lang/rust-clippy/pull/13452/files#r1773772034
+
         // `arg` positions where null would cause U.B.
         let arg_indices: &[_] = match name {
             sym::ptr_read
             | sym::ptr_read_unaligned
             | sym::ptr_read_volatile
             | sym::ptr_replace
-            | sym::ptr_slice_from_raw_parts
-            | sym::ptr_slice_from_raw_parts_mut
             | sym::ptr_write
             | sym::ptr_write_bytes
             | sym::ptr_write_unaligned
@@ -323,7 +325,6 @@ struct PtrArg<'tcx> {
     idx: usize,
     emission_id: HirId,
     span: Span,
-    ty_did: DefId,
     ty_name: Symbol,
     method_renames: &'static [(&'static str, &'static str)],
     ref_prefix: RefPrefix,
@@ -411,7 +412,6 @@ impl<'tcx> DerefTy<'tcx> {
     }
 }
 
-#[expect(clippy::too_many_lines)]
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
@@ -514,7 +514,6 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                     idx: i,
                     emission_id,
                     span: hir_ty.span,
-                    ty_did: adt.did(),
                     ty_name: name.ident.name,
                     method_renames,
                     ref_prefix: RefPrefix { lt: *lt, mutability },
@@ -610,65 +609,50 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
                         set_skip_flag();
                     }
                 },
-                Some((Node::Expr(e), child_id)) => match e.kind {
-                    ExprKind::Call(f, expr_args) => {
-                        let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
-                        if expr_sig(self.cx, f).and_then(|sig| sig.input(i)).map_or(true, |ty| {
-                            match *ty.skip_binder().peel_refs().kind() {
-                                ty::Dynamic(preds, _, _) => !matches_preds(self.cx, args.deref_ty.ty(self.cx), preds),
-                                ty::Param(_) => true,
-                                ty::Adt(def, _) => def.did() == args.ty_did,
-                                _ => false,
-                            }
-                        }) {
-                            // Passed to a function taking the non-dereferenced type.
-                            set_skip_flag();
-                        }
-                    },
-                    ExprKind::MethodCall(name, self_arg, expr_args, _) => {
-                        let i = iter::once(self_arg)
-                            .chain(expr_args.iter())
-                            .position(|arg| arg.hir_id == child_id)
-                            .unwrap_or(0);
-                        if i == 0 {
-                            // Check if the method can be renamed.
-                            let name = name.ident.as_str();
-                            if let Some((_, replacement)) = args.method_renames.iter().find(|&&(x, _)| x == name) {
-                                result.replacements.push(PtrArgReplacement {
-                                    expr_span: e.span,
-                                    self_span: self_arg.span,
-                                    replacement,
-                                });
-                                return;
-                            }
-                        }
+                Some((Node::Expr(use_expr), child_id)) => {
+                    if let ExprKind::Index(e, ..) = use_expr.kind
+                        && e.hir_id == child_id
+                    {
+                        // Indexing works with both owned and its dereferenced type
+                        return;
+                    }
 
-                        let Some(id) = self.cx.typeck_results().type_dependent_def_id(e.hir_id) else {
-                            set_skip_flag();
+                    if let ExprKind::MethodCall(name, receiver, ..) = use_expr.kind
+                        && receiver.hir_id == child_id
+                    {
+                        let name = name.ident.as_str();
+
+                        // Check if the method can be renamed.
+                        if let Some((_, replacement)) = args.method_renames.iter().find(|&&(x, _)| x == name) {
+                            result.replacements.push(PtrArgReplacement {
+                                expr_span: use_expr.span,
+                                self_span: receiver.span,
+                                replacement,
+                            });
                             return;
-                        };
-
-                        match *self.cx.tcx.fn_sig(id).instantiate_identity().skip_binder().inputs()[i]
-                            .peel_refs()
-                            .kind()
-                        {
-                            ty::Dynamic(preds, _, _) if !matches_preds(self.cx, args.deref_ty.ty(self.cx), preds) => {
-                                set_skip_flag();
-                            },
-                            ty::Param(_) => {
-                                set_skip_flag();
-                            },
-                            // If the types match check for methods which exist on both types. e.g. `Vec::len` and
-                            // `slice::len`
-                            ty::Adt(def, _) if def.did() == args.ty_did && !is_allowed_vec_method(self.cx, e) => {
-                                set_skip_flag();
-                            },
-                            _ => (),
                         }
-                    },
-                    // Indexing is fine for currently supported types.
-                    ExprKind::Index(e, _, _) if e.hir_id == child_id => (),
-                    _ => set_skip_flag(),
+
+                        // Some methods exist on both `[T]` and `Vec<T>`, such as `len`, where the receiver type
+                        // doesn't coerce to a slice and our adjusted type check below isn't enough,
+                        // but it would still be valid to call with a slice
+                        if is_allowed_vec_method(self.cx, use_expr) {
+                            return;
+                        }
+                    }
+
+                    let deref_ty = args.deref_ty.ty(self.cx);
+                    let adjusted_ty = self.cx.typeck_results().expr_ty_adjusted(e).peel_refs();
+                    if adjusted_ty == deref_ty {
+                        return;
+                    }
+
+                    if let ty::Dynamic(preds, ..) = adjusted_ty.kind()
+                        && matches_preds(self.cx, deref_ty, preds)
+                    {
+                        return;
+                    }
+
+                    set_skip_flag();
                 },
                 _ => set_skip_flag(),
             }

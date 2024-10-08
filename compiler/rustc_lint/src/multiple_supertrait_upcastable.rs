@@ -4,7 +4,7 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
-    /// The `multiple_supertrait_upcastable` lint detects when an object-safe trait has multiple
+    /// The `multiple_supertrait_upcastable` lint detects when a dyn-compatible trait has multiple
     /// supertraits.
     ///
     /// ### Example
@@ -28,7 +28,7 @@ declare_lint! {
     /// additional overhead is justified.
     pub MULTIPLE_SUPERTRAIT_UPCASTABLE,
     Allow,
-    "detect when an object-safe trait has multiple supertraits",
+    "detect when a dyn-compatible trait has multiple supertraits",
     @feature_gate = multiple_supertrait_upcastable;
 }
 
@@ -37,10 +37,10 @@ declare_lint_pass!(MultipleSupertraitUpcastable => [MULTIPLE_SUPERTRAIT_UPCASTAB
 impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let def_id = item.owner_id.to_def_id();
-        // NOTE(nbdd0121): use `object_safety_violations` instead of `is_object_safe` because
+        // NOTE(nbdd0121): use `object_safety_violations` instead of `is_dyn_compatible` because
         // the latter will report `where_clause_object_safety` lint.
         if let hir::ItemKind::Trait(_, _, _, _, _) = item.kind
-            && cx.tcx.is_object_safe(def_id)
+            && cx.tcx.is_dyn_compatible(def_id)
         {
             let direct_super_traits_iter = cx
                 .tcx

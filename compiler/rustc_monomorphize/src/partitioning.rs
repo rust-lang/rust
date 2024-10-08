@@ -95,7 +95,7 @@
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -904,26 +904,22 @@ fn mono_item_visibility<'tcx>(
 }
 
 fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibility {
-    if !tcx.sess.default_hidden_visibility() {
-        return Visibility::Default;
-    }
+    let export_level = if is_generic {
+        // Generic functions never have export-level C.
+        SymbolExportLevel::Rust
+    } else {
+        match tcx.reachable_non_generics(id.krate).get(&id) {
+            Some(SymbolExportInfo { level: SymbolExportLevel::C, .. }) => SymbolExportLevel::C,
+            _ => SymbolExportLevel::Rust,
+        }
+    };
+    match export_level {
+        // C-export level items remain at `Default` to allow C code to
+        // access and interpose them.
+        SymbolExportLevel::C => Visibility::Default,
 
-    // Generic functions never have export-level C.
-    if is_generic {
-        return Visibility::Hidden;
-    }
-
-    // Things with export level C don't get instantiated in
-    // downstream crates.
-    if !id.is_local() {
-        return Visibility::Hidden;
-    }
-
-    // C-export level items remain at `Default`, all other internal
-    // items become `Hidden`.
-    match tcx.reachable_non_generics(id.krate).get(&id) {
-        Some(SymbolExportInfo { level: SymbolExportLevel::C, .. }) => Visibility::Default,
-        _ => Visibility::Hidden,
+        // For all other symbols, `default_visibility` determines which visibility to use.
+        SymbolExportLevel::Rust => tcx.sess.default_visibility().into(),
     }
 }
 
@@ -1243,8 +1239,7 @@ fn dump_mono_items_stats<'tcx>(
     let ext = format.extension();
     let filename = format!("{crate_name}.mono_items.{ext}");
     let output_path = output_directory.join(&filename);
-    let file = File::create(&output_path)?;
-    let mut file = BufWriter::new(file);
+    let mut file = File::create_buffered(&output_path)?;
 
     // Gather instantiated mono items grouped by def_id
     let mut items_per_def_id: FxIndexMap<_, Vec<_>> = Default::default();

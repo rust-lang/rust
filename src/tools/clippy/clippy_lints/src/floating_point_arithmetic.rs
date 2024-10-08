@@ -1,4 +1,4 @@
-use clippy_utils::consts::Constant::{Int, F32, F64};
+use clippy_utils::consts::Constant::{F32, F64, Int};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{

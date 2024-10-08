@@ -150,4 +150,36 @@ fn main() {
             vec.set_len(10);
         }
     }
+
+    fn nested_union<T>() {
+        let mut vec: Vec<UnsafeCell<MaybeUninit<T>>> = Vec::with_capacity(1);
+        unsafe {
+            vec.set_len(1);
+        }
+    }
+
+    struct Recursive<T>(*const Recursive<T>, MaybeUninit<T>);
+    fn recursive_union<T>() {
+        // Make sure we don't stack overflow on recursive types.
+        // The pointer acts as the base case because it can't be uninit regardless of its pointee.
+
+        let mut vec: Vec<Recursive<T>> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe {
+            vec.set_len(1);
+        }
+    }
+
+    #[repr(u8)]
+    enum Enum<T> {
+        Variant(T),
+    }
+    fn union_in_enum<T>() {
+        // Enums can have a discriminant that can't be uninit, so this should still warn
+        let mut vec: Vec<Enum<T>> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe {
+            vec.set_len(1);
+        }
+    }
 }

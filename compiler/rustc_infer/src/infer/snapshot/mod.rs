@@ -5,7 +5,7 @@ use tracing::{debug, instrument};
 use super::InferCtxt;
 use super::region_constraints::RegionSnapshot;
 
-mod fudge;
+pub(crate) mod fudge;
 pub(crate) mod undo_log;
 
 use undo_log::{Snapshot, UndoLog};

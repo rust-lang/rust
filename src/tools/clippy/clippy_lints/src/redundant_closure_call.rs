@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
 use rustc_hir::{
-    intravisit as hir_visit, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, Node,
+    ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, Node, intravisit as hir_visit,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
@@ -228,7 +228,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 path: &'tcx hir::Path<'tcx>,
                 count: usize,
             }
-            impl<'a, 'tcx> Visitor<'tcx> for ClosureUsageCount<'a, 'tcx> {
+            impl<'tcx> Visitor<'tcx> for ClosureUsageCount<'_, 'tcx> {
                 type NestedFilter = nested_filter::OnlyBodies;
 
                 fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
