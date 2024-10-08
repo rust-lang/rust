@@ -26,7 +26,7 @@ use rustc_session::config::{
 };
 use rustc_span::InnerSpan;
 use rustc_span::symbol::sym;
-use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
+use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsDialect, TlsModel};
 use tracing::debug;
 
 use crate::back::lto::ThinBuffer;
@@ -230,6 +230,8 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
+    let enable_tlsdesc = matches!(sess.tls_dialect(), TlsDialect::Desc);
+
     // copy the exe path, followed by path all into one buffer
     // null terminating them so we can use them as null terminated strings
     let args_cstr_buff = {
@@ -302,6 +304,7 @@ pub(crate) fn target_machine_factory(
             &output_obj_file,
             &debuginfo_compression,
             use_emulated_tls,
+            enable_tlsdesc,
             &args_cstr_buff,
         )
     })

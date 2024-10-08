@@ -32,7 +32,7 @@ use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
-    TargetTriple, TlsModel,
+    TargetTriple, TlsDialect, TlsModel,
 };
 
 use crate::code_stats::CodeStats;
@@ -765,6 +765,10 @@ impl Session {
 
     pub fn tls_model(&self) -> TlsModel {
         self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
+    }
+
+    pub fn tls_dialect(&self) -> TlsDialect {
+        self.opts.unstable_opts.tls_dialect.unwrap_or(self.target.tls_dialect)
     }
 
     pub fn direct_access_external_data(&self) -> Option<bool> {

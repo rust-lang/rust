@@ -397,7 +397,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
-    const char *DebugInfoCompression, bool UseEmulatedTls,
+    const char *DebugInfoCompression, bool UseEmulatedTls, bool EnableTLSDESC,
     const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
 
   auto OptLevel = fromRust(RustOptLevel);
@@ -456,6 +456,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
 #if LLVM_VERSION_GE(19, 0)
   Options.MCOptions.X86RelaxRelocations = RelaxELFRelocations;
+  Options.EnableTLSDESC = EnableTLSDESC;
 #else
   Options.RelaxELFRelocations = RelaxELFRelocations;
 #endif
