@@ -568,9 +568,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         let epoll = epfd.downcast::<Epoll>().unwrap();
 
                         // Synchronize running thread to the epoll ready list.
-                        if let Some(clock) = &this.release_clock() {
+                        this.release_clock(|clock| {
                             epoll.ready_list.clock.borrow_mut().join(clock);
-                        }
+                        });
 
                         if let Some(thread_id) = epoll.thread_id.borrow_mut().pop() {
                             waiter.push(thread_id);
