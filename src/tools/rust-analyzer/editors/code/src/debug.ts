@@ -230,7 +230,7 @@ const knownEngines: {
     "llvm-vs-code-extensions.lldb-dap":{
         type: "lldb-dap",
         executableProperty: "program",
-        environmentProperty: (env) => ["env", env],
+        environmentProperty: (env) => ["env", Object.entries(env).map(([k,v])=>`${k}=${v}`)],
         runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
             "args",
             runnableArgs.executableArgs,
@@ -352,7 +352,8 @@ type CCppDebugConfig = {
 type LldbDapDebugConfig = {
     program: string;
     args: string[];
-    env: Record<string, string>;
+    env: string[];
+    sourceMap: [string,string][];
 } & BaseDebugConfig<"lldb-dap">;
 
 
