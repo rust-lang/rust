@@ -6,6 +6,7 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
+import { execSync } from 'node:child_process'
 import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
 import type { Config } from "./config";
 
@@ -109,9 +110,9 @@ async function getDebugConfiguration(
 
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
-                `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
-                `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
-                `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
+            `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
+            `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
+            `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
         );
         return;
     }
@@ -129,7 +130,7 @@ async function getDebugConfiguration(
         !isMultiFolderWorkspace || !runnableArgs.workspaceRoot
             ? firstWorkspace
             : workspaceFolders.find((w) => runnableArgs.workspaceRoot?.includes(w.uri.fsPath)) ||
-              firstWorkspace;
+            firstWorkspace;
 
     const workspace = unwrapUndefinable(maybeWorkspace);
     let wsFolder = path.normalize(workspace.uri.fsPath);
@@ -227,16 +228,25 @@ const knownEngines: {
     "ms-vscode.cpptools": DebugConfigProvider<"cppvsdbg" | "cppdbg", CCppDebugConfig>;
     "webfreak.debug": DebugConfigProvider<"gdb", NativeDebugConfig>;
 } = {
-    "llvm-vs-code-extensions.lldb-dap":{
+    "llvm-vs-code-extensions.lldb-dap": {
         type: "lldb-dap",
         executableProperty: "program",
-        environmentProperty: (env) => ["env", Object.entries(env).map(([k,v])=>`${k}=${v}`)],
+        environmentProperty: (env) => ["env", Object.entries(env).map(([k, v]) => `${k}=${v}`)],
         runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
             "args",
             runnableArgs.executableArgs,
         ],
+        additional: {
+            "sourceMap": [
+                [
+                    `/rustc/${/commit-hash:\s(.*)$/m.exec(execSync("rustc -V -v", {}).toString())?.[1]
+                    }/library`,
+                    "${config:rust-analyzer.cargo.sysroot}/lib/rustlib/src/rust/library"
 
-},
+                ]
+            ]
+        }
+    },
     "vadimcn.vscode-lldb": {
         type: "lldb",
         executableProperty: "program",
@@ -353,7 +363,7 @@ type LldbDapDebugConfig = {
     program: string;
     args: string[];
     env: string[];
-    sourceMap: [string,string][];
+    sourceMap: [string, string][];
 } & BaseDebugConfig<"lldb-dap">;
 
 
