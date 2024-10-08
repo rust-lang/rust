@@ -7,9 +7,9 @@ use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
-use tracing::{debug, debug_span, instrument};
+use tracing::{debug, instrument};
 
-use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverageGraphWithLoops};
+use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
@@ -290,24 +290,9 @@ impl<'a> MakeBcbCounters<'a> {
 
         // Traverse the coverage graph, ensuring that every node that needs a
         // coverage counter has one.
-        //
-        // The traversal tries to ensure that, when a loop is encountered, all
-        // nodes within the loop are visited before visiting any nodes outside
-        // the loop. It also keeps track of which loop(s) the traversal is
-        // currently inside.
-        let mut traversal = TraverseCoverageGraphWithLoops::new(self.basic_coverage_blocks);
-        while let Some(bcb) = traversal.next() {
-            let _span = debug_span!("traversal", ?bcb).entered();
-            if self.bcb_needs_counter.contains(bcb) {
-                self.make_node_counter_and_out_edge_counters(bcb);
-            }
+        for bcb in self.bcb_needs_counter.iter() {
+            self.make_node_counter_and_out_edge_counters(bcb);
         }
-
-        assert!(
-            traversal.is_complete(),
-            "`TraverseCoverageGraphWithLoops` missed some `BasicCoverageBlock`s: {:?}",
-            traversal.unvisited(),
-        );
     }
 
     /// Make sure the given node has a node counter, and then make sure each of
