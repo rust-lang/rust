@@ -189,6 +189,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             && let Some(fn_sig) = fn_sig
             && const_stab.is_const_stable()
             && !stab.is_some_and(|(s, _)| s.is_stable())
+            // FIXME: we skip this check targets until
+            // <https://github.com/rust-lang/stdarch/pull/1654> propagates.
+            && false
         {
             self.tcx
                 .dcx()
