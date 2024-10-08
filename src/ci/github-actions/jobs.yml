@@ -85,6 +85,9 @@ envs:
 # it in each job definition.
 pr:
   - image: mingw-check
+    env:
+      # We are adding (temporarily) a dummy commit on the compiler
+      READ_ONLY_SRC: "0"
     <<: *job-linux-4c
   - image: mingw-check-tidy
     continue_on_error: true
@@ -207,6 +210,8 @@ auto:
     <<: *job-linux-8c
 
   - image: mingw-check
+    env:
+      READ_ONLY_SRC: 0
     <<: *job-linux-4c
 
   - image: test-various

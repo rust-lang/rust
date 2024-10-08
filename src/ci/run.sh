@@ -52,6 +52,13 @@ if [ "$CI" != "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set change-id=99999999"
 fi
 
+# If runner uses an incompatible option and `FORCE_CI_RUSTC` is not defined,
+# switch to in-tree rustc.
+if [ "$FORCE_CI_RUSTC" == "" ]; then
+    echo "debug: `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` configured."
+    DISABLE_CI_RUSTC_IF_INCOMPATIBLE=1
+fi
+
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf || \
   isCiBranch automation/bors/try; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
@@ -169,9 +176,15 @@ else
   if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-unchanged"
   else
+    # CI rustc requires CI LLVM to be enabled (see https://github.com/rust-lang/rust/issues/123586).
+    NO_DOWNLOAD_CI_RUSTC=1
     # When building for CI we want to use the static C++ Standard library
     # included with LLVM, since a dynamic libstdcpp may not be available.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
+  fi
+
+  if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
   fi
 fi
 
