@@ -325,7 +325,7 @@ impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
     }
 }
 
-impl<'a, S: Encoder, T: Encodable<S>> Encodable<S> for Cow<'a, [T]>
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for Cow<'_, [T]>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
@@ -345,14 +345,14 @@ where
     }
 }
 
-impl<'a, S: Encoder> Encodable<S> for Cow<'a, str> {
+impl<S: Encoder> Encodable<S> for Cow<'_, str> {
     fn encode(&self, s: &mut S) {
         let val: &str = self;
         val.encode(s)
     }
 }
 
-impl<'a, D: Decoder> Decodable<D> for Cow<'a, str> {
+impl<D: Decoder> Decodable<D> for Cow<'_, str> {
     fn decode(d: &mut D) -> Cow<'static, str> {
         let v: String = Decodable::decode(d);
         Cow::Owned(v)
