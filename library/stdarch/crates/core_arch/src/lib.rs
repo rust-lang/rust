@@ -36,7 +36,8 @@
     asm_experimental_arch,
     sha512_sm_x86,
     x86_amx_intrinsics,
-    f16
+    f16,
+    rustc_allow_const_fn_unstable
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]
@@ -71,6 +72,10 @@
         stdarch_powerpc_feature_detection,
         stdarch_loongarch_feature_detection
     )
+)]
+#![cfg_attr(
+    any(target_arch = "wasm32", target_arch = "wasm64", doc),
+    feature(wasm_simd_const_internals)
 )]
 
 #[cfg(test)]

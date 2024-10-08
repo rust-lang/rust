@@ -51,7 +51,8 @@ macro_rules! conversions {
         $(
             impl $ty {
                 #[inline(always)]
-                #[rustc_const_stable(feature = "wasm_simd_const", since = "1.56.0")]
+                // FIXME remove next line when const-stability v2 migration is done
+                #[rustc_const_unstable(feature = "wasm_simd_const_internals", issue = "none")]
                 pub(crate) const fn v128(self) -> v128 {
                     unsafe { mem::transmute(self) }
                 }
@@ -664,6 +665,7 @@ pub unsafe fn v128_store64_lane<const L: usize>(v: v128, m: *mut u64) {
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn i8x16(
     a0: i8,
     a1: i8,
@@ -696,6 +698,7 @@ pub const fn i8x16(
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn u8x16(
     a0: u8,
     a1: u8,
@@ -742,6 +745,7 @@ pub const fn u8x16(
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn i16x8(a0: i16, a1: i16, a2: i16, a3: i16, a4: i16, a5: i16, a6: i16, a7: i16) -> v128 {
     simd::i16x8::new(a0, a1, a2, a3, a4, a5, a6, a7).v128()
 }
@@ -754,6 +758,7 @@ pub const fn i16x8(a0: i16, a1: i16, a2: i16, a3: i16, a4: i16, a5: i16, a6: i16
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn u16x8(a0: u16, a1: u16, a2: u16, a3: u16, a4: u16, a5: u16, a6: u16, a7: u16) -> v128 {
     simd::u16x8::new(a0, a1, a2, a3, a4, a5, a6, a7).v128()
 }
@@ -767,6 +772,7 @@ pub const fn u16x8(a0: u16, a1: u16, a2: u16, a3: u16, a4: u16, a5: u16, a6: u16
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn i32x4(a0: i32, a1: i32, a2: i32, a3: i32) -> v128 {
     simd::i32x4::new(a0, a1, a2, a3).v128()
 }
@@ -779,6 +785,7 @@ pub const fn i32x4(a0: i32, a1: i32, a2: i32, a3: i32) -> v128 {
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn u32x4(a0: u32, a1: u32, a2: u32, a3: u32) -> v128 {
     simd::u32x4::new(a0, a1, a2, a3).v128()
 }
@@ -792,6 +799,7 @@ pub const fn u32x4(a0: u32, a1: u32, a2: u32, a3: u32) -> v128 {
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn i64x2(a0: i64, a1: i64) -> v128 {
     simd::i64x2::new(a0, a1).v128()
 }
@@ -804,6 +812,7 @@ pub const fn i64x2(a0: i64, a1: i64) -> v128 {
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn u64x2(a0: u64, a1: u64) -> v128 {
     simd::u64x2::new(a0, a1).v128()
 }
@@ -817,6 +826,7 @@ pub const fn u64x2(a0: u64, a1: u64) -> v128 {
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd_const", since = "1.56.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn f32x4(a0: f32, a1: f32, a2: f32, a3: f32) -> v128 {
     simd::f32x4::new(a0, a1, a2, a3).v128()
 }
@@ -830,6 +840,7 @@ pub const fn f32x4(a0: f32, a1: f32, a2: f32, a3: f32) -> v128 {
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd_const", since = "1.56.0")]
+#[rustc_allow_const_fn_unstable(wasm_simd_const_internals)] // FIXME remove when const-stability v2 migration is done
 pub const fn f64x2(a0: f64, a1: f64) -> v128 {
     simd::f64x2::new(a0, a1).v128()
 }
