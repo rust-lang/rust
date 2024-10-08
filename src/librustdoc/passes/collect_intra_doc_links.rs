@@ -1073,7 +1073,7 @@ impl LinkCollector<'_, '_> {
                     // valid omission. See https://github.com/rust-lang/rust/pull/80660#discussion_r551585677
                     // for discussion on the matter.
                     let kind = self.cx.tcx.def_kind(id);
-                    self.verify_disambiguator(path_str, kind, id, disambiguator, item, &diag_info)?;
+                    self.verify_disambiguator(path_str, kind, id, disambiguator, &diag_info)?;
                 } else {
                     match disambiguator {
                         Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
@@ -1102,7 +1102,6 @@ impl LinkCollector<'_, '_> {
                     kind_for_dis,
                     id_for_dis,
                     disambiguator,
-                    item,
                     &diag_info,
                 )?;
 
@@ -1123,7 +1122,6 @@ impl LinkCollector<'_, '_> {
         kind: DefKind,
         id: DefId,
         disambiguator: Option<Disambiguator>,
-        item: &Item,
         diag_info: &DiagnosticInfo<'_>,
     ) -> Option<()> {
         debug!("intra-doc link to {path_str} resolved to {:?}", (kind, id));
@@ -1150,7 +1148,7 @@ impl LinkCollector<'_, '_> {
 
         // item can be non-local e.g. when using `#[rustc_doc_primitive = "pointer"]`
         if let Some((src_id, dst_id)) = id.as_local().and_then(|dst_id| {
-            item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
+            diag_info.item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
         }) {
             if self.cx.tcx.effective_visibilities(()).is_exported(src_id)
                 && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
