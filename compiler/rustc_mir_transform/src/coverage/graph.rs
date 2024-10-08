@@ -438,16 +438,6 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
         Self { basic_coverage_blocks, backedges, context_stack, visited }
     }
 
-    /// For each loop on the loop context stack (top-down), yields a list of BCBs
-    /// within that loop that have an outgoing edge back to the loop header.
-    pub(crate) fn reloop_bcbs_per_loop(&self) -> impl Iterator<Item = &[BasicCoverageBlock]> {
-        self.context_stack
-            .iter()
-            .rev()
-            .filter_map(|context| context.loop_header)
-            .map(|header_bcb| self.backedges[header_bcb].as_slice())
-    }
-
     pub(crate) fn next(&mut self) -> Option<BasicCoverageBlock> {
         debug!(
             "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",

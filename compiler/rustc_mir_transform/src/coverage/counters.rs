@@ -299,7 +299,7 @@ impl<'a> MakeBcbCounters<'a> {
         while let Some(bcb) = traversal.next() {
             let _span = debug_span!("traversal", ?bcb).entered();
             if self.bcb_needs_counter.contains(bcb) {
-                self.make_node_counter_and_out_edge_counters(&traversal, bcb);
+                self.make_node_counter_and_out_edge_counters(bcb);
             }
         }
 
@@ -312,12 +312,8 @@ impl<'a> MakeBcbCounters<'a> {
 
     /// Make sure the given node has a node counter, and then make sure each of
     /// its out-edges has an edge counter (if appropriate).
-    #[instrument(level = "debug", skip(self, traversal))]
-    fn make_node_counter_and_out_edge_counters(
-        &mut self,
-        traversal: &TraverseCoverageGraphWithLoops<'_>,
-        from_bcb: BasicCoverageBlock,
-    ) {
+    #[instrument(level = "debug", skip(self))]
+    fn make_node_counter_and_out_edge_counters(&mut self, from_bcb: BasicCoverageBlock) {
         // First, ensure that this node has a counter of some kind.
         // We might also use that counter to compute one of the out-edge counters.
         let node_counter = self.get_or_make_node_counter(from_bcb);
@@ -340,8 +336,7 @@ impl<'a> MakeBcbCounters<'a> {
 
         // If there are out-edges without counters, choose one to be given an expression
         // (computed from this node and the other out-edges) instead of a physical counter.
-        let Some(expression_to_bcb) =
-            self.choose_out_edge_for_expression(traversal, &candidate_successors)
+        let Some(expression_to_bcb) = self.choose_out_edge_for_expression(&candidate_successors)
         else {
             return;
         };
@@ -455,58 +450,14 @@ impl<'a> MakeBcbCounters<'a> {
     /// choose one to be given a counter expression instead of a physical counter.
     fn choose_out_edge_for_expression(
         &self,
-        traversal: &TraverseCoverageGraphWithLoops<'_>,
         candidate_successors: &[BasicCoverageBlock],
     ) -> Option<BasicCoverageBlock> {
-        // Try to find a candidate that leads back to the top of a loop,
-        // because reloop edges tend to be executed more times than loop-exit edges.
-        if let Some(reloop_target) = self.find_good_reloop_edge(traversal, &candidate_successors) {
-            debug!("Selecting reloop target {reloop_target:?} to get an expression");
-            return Some(reloop_target);
-        }
-
-        // We couldn't identify a "good" edge, so just choose an arbitrary one.
+        // For now, just choose an arbitrary edge.
+        // FIXME(Zalathar): This was greatly simplified to make other refactoring
+        // easier, but eventually it might be good to make this smarter again.
         let arbitrary_target = candidate_successors.first().copied()?;
         debug!(?arbitrary_target, "selecting arbitrary out-edge to get an expression");
         Some(arbitrary_target)
-    }
-
-    /// Given a set of candidate out-edges (represented by their successor node),
-    /// tries to find one that leads back to the top of a loop.
-    ///
-    /// Reloop edges are good candidates for counter expressions, because they
-    /// will tend to be executed more times than a loop-exit edge, so it's nice
-    /// for them to be able to avoid a physical counter increment.
-    fn find_good_reloop_edge(
-        &self,
-        traversal: &TraverseCoverageGraphWithLoops<'_>,
-        candidate_successors: &[BasicCoverageBlock],
-    ) -> Option<BasicCoverageBlock> {
-        // If there are no candidates, avoid iterating over the loop stack.
-        if candidate_successors.is_empty() {
-            return None;
-        }
-
-        // Consider each loop on the current traversal context stack, top-down.
-        for reloop_bcbs in traversal.reloop_bcbs_per_loop() {
-            // Try to find a candidate edge that doesn't exit this loop.
-            for &target_bcb in candidate_successors {
-                // An edge is a reloop edge if its target dominates any BCB that has
-                // an edge back to the loop header. (Otherwise it's an exit edge.)
-                let is_reloop_edge = reloop_bcbs.iter().any(|&reloop_bcb| {
-                    self.basic_coverage_blocks.dominates(target_bcb, reloop_bcb)
-                });
-                if is_reloop_edge {
-                    // We found a good out-edge to be given an expression.
-                    return Some(target_bcb);
-                }
-            }
-
-            // All of the candidate edges exit this loop, so keep looking
-            // for a good reloop edge for one of the outer loops.
-        }
-
-        None
     }
 
     #[inline]
