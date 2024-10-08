@@ -1,5 +1,9 @@
+//! This ensures that when an epoll_wait wakes up and there are multiple events,
+//! and we only read one of them, we do not synchronize with the other events
+//! and therefore still report a data race for things that need to see the second event
+//! to be considered synchronized.
 //@only-target: linux
-// ensure single way to order the thread tests
+// ensure deterministic schedule
 //@compile-flags: -Zmiri-preemption-rate=0
 
 use std::convert::TryInto;
@@ -30,7 +34,7 @@ fn check_epoll_wait<const N: usize>(epfd: i32, expected_notifications: &[(u32, u
     }
 }
 
-fn common_setup() -> (i32, [i32; 2], [i32; 2]) {
+fn main() {
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
     assert_ne!(epfd, -1);
@@ -59,17 +63,6 @@ fn common_setup() -> (i32, [i32; 2], [i32; 2]) {
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds_b[1], &mut ev) };
     assert_eq!(res, 0);
 
-    (epfd, fds_a, fds_b)
-}
-
-// Test that the clock sync that happens through an epoll_wait only synchronizes with the clock(s)
-// that were reported. It is possible more events had become ready but the epoll_wait didn't
-// provide room for them all.
-//
-// Well before the fix, this fails to report UB.
-fn main() {
-    let (epfd, fds_a, fds_b) = common_setup();
-
     static mut VAL_ONE: u8 = 40; // This one will be read soundly.
     static mut VAL_TWO: u8 = 50; // This one will be read unsoundly.
     let thread1 = spawn(move || {
@@ -91,13 +84,13 @@ fn main() {
     let expected_value = u64::try_from(fds_a[1]).unwrap();
     check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)]);
 
-    #[allow(static_mut_refs)]
+    // Since we only received one event, we have synchronized with
+    // the write to VAL_ONE but not with the one to VAL_TWO.
     unsafe {
-        assert_eq!(VAL_ONE, 41) // This one is not UB
+        assert_eq!({ VAL_ONE }, 41) // This one is not UB
     };
-    #[allow(static_mut_refs)]
     unsafe {
-        assert_eq!(VAL_TWO, 51) // This one should be UB but isn't (yet).
+        assert_eq!({ VAL_TWO }, 51) //~ERROR: Data race detected
     };
 
     thread1.join().unwrap();
