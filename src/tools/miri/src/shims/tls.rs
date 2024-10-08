@@ -68,14 +68,14 @@ impl<'tcx> TlsData<'tcx> {
         if max_size.bits() < 128 && new_key >= (1u128 << max_size.bits()) {
             throw_unsup_format!("we ran out of TLS key space");
         }
-        Ok(new_key)
+        interp_ok(new_key)
     }
 
     pub fn delete_tls_key(&mut self, key: TlsKey) -> InterpResult<'tcx> {
         match self.keys.remove(&key) {
             Some(_) => {
                 trace!("TLS key {} removed", key);
-                Ok(())
+                interp_ok(())
             }
             None => throw_ub_format!("removing a nonexistent TLS key: {}", key),
         }
@@ -91,7 +91,7 @@ impl<'tcx> TlsData<'tcx> {
             Some(TlsEntry { data, .. }) => {
                 let value = data.get(&thread_id).copied();
                 trace!("TLS key {} for thread {:?} loaded: {:?}", key, thread_id, value);
-                Ok(value.unwrap_or_else(|| Scalar::null_ptr(cx)))
+                interp_ok(value.unwrap_or_else(|| Scalar::null_ptr(cx)))
             }
             None => throw_ub_format!("loading from a non-existing TLS key: {}", key),
         }
@@ -113,7 +113,7 @@ impl<'tcx> TlsData<'tcx> {
                     trace!("TLS key {} for thread {:?} removed", key, thread_id);
                     data.remove(&thread_id);
                 }
-                Ok(())
+                interp_ok(())
             }
             None => throw_ub_format!("storing to a non-existing TLS key: {}", key),
         }
@@ -128,7 +128,7 @@ impl<'tcx> TlsData<'tcx> {
         data: Scalar,
     ) -> InterpResult<'tcx> {
         self.macos_thread_dtors.entry(thread).or_default().push((dtor, data));
-        Ok(())
+        interp_ok(())
     }
 
     /// Returns a dtor, its argument and its index, if one is supposed to run.
@@ -261,7 +261,7 @@ impl<'tcx> TlsDtorsState<'tcx> {
                 }
                 MacOsDtors => {
                     match this.schedule_macos_tls_dtor()? {
-                        Poll::Pending => return Ok(Poll::Pending),
+                        Poll::Pending => return interp_ok(Poll::Pending),
                         // After all macOS destructors are run, the system switches
                         // to destroying the pthread destructors.
                         Poll::Ready(()) => break 'new_state PthreadDtors(Default::default()),
@@ -269,14 +269,14 @@ impl<'tcx> TlsDtorsState<'tcx> {
                 }
                 PthreadDtors(state) => {
                     match this.schedule_next_pthread_tls_dtor(state)? {
-                        Poll::Pending => return Ok(Poll::Pending), // just keep going
+                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
                         Poll::Ready(()) => break 'new_state Done,
                     }
                 }
                 WindowsDtors(dtors) => {
                     if let Some(dtor) = dtors.pop() {
                         this.schedule_windows_tls_dtor(dtor)?;
-                        return Ok(Poll::Pending); // we stay in this state (but `dtors` got shorter)
+                        return interp_ok(Poll::Pending); // we stay in this state (but `dtors` got shorter)
                     } else {
                         // No more destructors to run.
                         break 'new_state Done;
@@ -284,13 +284,13 @@ impl<'tcx> TlsDtorsState<'tcx> {
                 }
                 Done => {
                     this.machine.tls.delete_all_thread_tls(this.active_thread());
-                    return Ok(Poll::Ready(()));
+                    return interp_ok(Poll::Ready(()));
                 }
             }
         };
 
         self.0 = new_state;
-        Ok(Poll::Pending)
+        interp_ok(Poll::Pending)
     }
 }
 
@@ -303,7 +303,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Windows has a special magic linker section that is run on certain events.
         // We don't support most of that, but just enough to make thread-local dtors in `std` work.
-        Ok(this.lookup_link_section(".CRT$XLB")?)
+        interp_ok(this.lookup_link_section(".CRT$XLB")?)
     }
 
     fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx>) -> InterpResult<'tcx> {
@@ -328,7 +328,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None,
             StackPopCleanup::Root { cleanup: true },
         )?;
-        Ok(())
+        interp_ok(())
     }
 
     /// Schedule the macOS thread local storage destructors to be executed.
@@ -350,10 +350,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 StackPopCleanup::Root { cleanup: true },
             )?;
 
-            return Ok(Poll::Pending);
+            return interp_ok(Poll::Pending);
         }
 
-        Ok(Poll::Ready(()))
+        interp_ok(Poll::Ready(()))
     }
 
     /// Schedule a pthread TLS destructor. Returns `true` if found
@@ -387,9 +387,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 StackPopCleanup::Root { cleanup: true },
             )?;
 
-            return Ok(Poll::Pending);
+            return interp_ok(Poll::Pending);
         }
 
-        Ok(Poll::Ready(()))
+        interp_ok(Poll::Ready(()))
     }
 }

@@ -1,3 +1,12 @@
+error[E0307]: invalid `self` parameter type: `Bar`
+  --> $DIR/arbitrary-self-opaque.rs:8:18
+   |
+LL |     fn foo(self: Bar) {}
+   |                  ^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
 error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
   --> $DIR/arbitrary-self-opaque.rs:8:8
    |
@@ -18,15 +27,6 @@ LL | type Bar = impl Sized;
    |            ^^^^^^^^^^
    |
    = note: `Bar` must be used in combination with a concrete type within the same module
-
-error[E0307]: invalid `self` parameter type: `Bar`
-  --> $DIR/arbitrary-self-opaque.rs:8:18
-   |
-LL |     fn foo(self: Bar) {}
-   |                  ^^^
-   |
-   = note: type of `self` must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error: aborting due to 3 previous errors
 

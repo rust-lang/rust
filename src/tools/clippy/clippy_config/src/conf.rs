@@ -1,6 +1,6 @@
+use crate::ClippyConfiguration;
 use crate::msrvs::Msrv;
 use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename};
-use crate::ClippyConfiguration;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::edit_distance::edit_distance;
@@ -378,6 +378,7 @@ define_Conf! {
         rc_buffer,
         rc_mutex,
         redundant_allocation,
+        ref_option,
         single_call_fn,
         trivially_copy_pass_by_ref,
         unnecessary_box_returns,
@@ -563,6 +564,7 @@ define_Conf! {
         uninlined_format_args,
         unnecessary_lazy_evaluations,
         unnested_or_patterns,
+        unused_trait_names,
         use_self,
     )]
     msrv: Msrv = Msrv::empty(),
@@ -864,7 +866,7 @@ fn calculate_dimensions(fields: &[&str]) -> (usize, Vec<usize>) {
             cmp::max(1, terminal_width / (SEPARATOR_WIDTH + max_field_width))
         });
 
-    let rows = (fields.len() + (columns - 1)) / columns;
+    let rows = fields.len().div_ceil(columns);
 
     let column_widths = (0..columns)
         .map(|column| {

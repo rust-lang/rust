@@ -329,8 +329,8 @@ fn check_opaque_type_well_formed<'tcx>(
 ) -> Result<Ty<'tcx>, ErrorGuaranteed> {
     // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
     // on stable and we'd break that.
-    let opaque_ty_hir = tcx.hir().expect_item(def_id);
-    let OpaqueTyOrigin::TyAlias { .. } = opaque_ty_hir.expect_opaque_ty().origin else {
+    let opaque_ty_hir = tcx.hir().expect_opaque_ty(def_id);
+    let OpaqueTyOrigin::TyAlias { .. } = opaque_ty_hir.origin else {
         return Ok(definition_ty);
     };
     let param_env = tcx.param_env(def_id);
@@ -503,8 +503,8 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
         let &Self { tcx, def_id, .. } = self;
         let origin = tcx.opaque_type_origin(def_id);
         let parent = match origin {
-            hir::OpaqueTyOrigin::FnReturn(parent)
-            | hir::OpaqueTyOrigin::AsyncFn(parent)
+            hir::OpaqueTyOrigin::FnReturn { parent, .. }
+            | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
             | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
         };
         let param_env = tcx.param_env(parent);

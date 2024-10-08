@@ -5,13 +5,11 @@
 pub use rustc_middle::ty::relate::RelateResult;
 pub use rustc_next_trait_solver::relate::*;
 
-pub use self::combine::{CombineFields, PredicateEmittingRelation};
+pub use self::combine::PredicateEmittingRelation;
 
 #[allow(hidden_glob_reexports)]
 pub(super) mod combine;
 mod generalize;
-mod glb;
 mod higher_ranked;
-mod lattice;
-mod lub;
-mod type_relating;
+pub(super) mod lattice;
+pub(super) mod type_relating;

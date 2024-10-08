@@ -14,22 +14,22 @@ impl RwLock {
 
     #[inline]
     pub fn read(&self) {
-        unsafe { self.inner.lock() };
+        self.inner.lock()
     }
 
     #[inline]
     pub fn try_read(&self) -> bool {
-        unsafe { self.inner.try_lock() }
+        self.inner.try_lock()
     }
 
     #[inline]
     pub fn write(&self) {
-        unsafe { self.inner.lock() };
+        self.inner.lock()
     }
 
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        unsafe { self.inner.try_lock() }
+        self.inner.try_lock()
     }
 
     #[inline]

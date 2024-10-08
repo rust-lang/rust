@@ -11,7 +11,6 @@ use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
@@ -1889,7 +1888,7 @@ impl SharedEmitter {
 }
 
 impl Translate for SharedEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+    fn fluent_bundle(&self) -> Option<&FluentBundle> {
         None
     }
 
@@ -1924,7 +1923,7 @@ impl Emitter for SharedEmitter {
         );
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+    fn source_map(&self) -> Option<&SourceMap> {
         None
     }
 }

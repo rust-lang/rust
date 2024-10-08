@@ -1,9 +1,11 @@
-use crate::*;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{BytePos, Loc, Symbol, hygiene};
-use rustc_target::{abi::Size, spec::abi::Abi};
+use rustc_target::abi::Size;
+use rustc_target::spec::abi::Abi;
+
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -105,7 +107,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),
         };
 
-        Ok(())
+        interp_ok(())
     }
 
     fn resolve_frame_pointer(
@@ -133,7 +135,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let name = fn_instance.to_string();
         let filename = lo.file.name.prefer_remapped_unconditionaly().to_string();
 
-        Ok((fn_instance, lo, name, filename))
+        interp_ok((fn_instance, lo, name, filename))
     }
 
     fn handle_miri_resolve_frame(
@@ -211,7 +213,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.write_pointer(fn_ptr, &this.project_field(dest, 4)?)?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn handle_miri_resolve_frame_names(
@@ -235,6 +237,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_bytes_ptr(this.read_pointer(name_ptr)?, name.bytes())?;
         this.write_bytes_ptr(this.read_pointer(filename_ptr)?, filename.bytes())?;
 
-        Ok(())
+        interp_ok(())
     }
 }

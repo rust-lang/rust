@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
@@ -8,13 +8,13 @@ use clippy_utils::{eq_expr_value, higher};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::iter;
 
 declare_clippy_lint! {
@@ -203,7 +203,7 @@ fn find_stripping<'tcx>(
         results: Vec<Span>,
     }
 
-    impl<'a, 'tcx> Visitor<'tcx> for StrippingFinder<'a, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for StrippingFinder<'_, 'tcx> {
         fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
             if is_ref_str(self.cx, ex)
                 && let unref = peel_ref(ex)

@@ -916,8 +916,8 @@ pub enum InvalidMonomorphization<'tcx> {
         ret_ty: Ty<'tcx>,
     },
 
-    #[diag(codegen_ssa_invalid_monomorphization_cast_fat_pointer, code = E0511)]
-    CastFatPointer {
+    #[diag(codegen_ssa_invalid_monomorphization_cast_wide_pointer, code = E0511)]
+    CastWidePointer {
         #[primary_span]
         span: Span,
         name: Symbol,

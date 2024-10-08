@@ -1,15 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{position_before_rarrow, snippet_block, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, position_before_rarrow, snippet_block};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl,
-    FnRetTy, GenericArg, GenericBound, ImplItem, Item, ItemKind, LifetimeName, Node, TraitRef, Ty, TyKind,
+    FnRetTy, GenericArg, GenericBound, ImplItem, Item, LifetimeName, Node, TraitRef, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -105,9 +105,7 @@ fn future_trait_ref<'tcx>(
     cx: &LateContext<'tcx>,
     ty: &'tcx Ty<'tcx>,
 ) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
-    if let TyKind::OpaqueDef(item_id, bounds, false) = ty.kind
-        && let item = cx.tcx.hir().item(item_id)
-        && let ItemKind::OpaqueTy(opaque) = &item.kind
+    if let TyKind::OpaqueDef(opaque, bounds) = ty.kind
         && let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
             if let GenericBound::Trait(poly, _) = bound {
                 Some(&poly.trait_ref)

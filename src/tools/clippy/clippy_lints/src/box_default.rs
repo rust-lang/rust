@@ -4,7 +4,7 @@ use clippy_utils::ty::expr_sig;
 use clippy_utils::{is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{Block, Expr, ExprKind, LetStmt, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -91,7 +91,7 @@ fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>)
 #[derive(Default)]
 struct InferVisitor(bool);
 
-impl<'tcx> Visitor<'tcx> for InferVisitor {
+impl Visitor<'_> for InferVisitor {
     fn visit_ty(&mut self, t: &Ty<'_>) {
         self.0 |= matches!(t.kind, TyKind::Infer | TyKind::OpaqueDef(..) | TyKind::TraitObject(..));
         if !self.0 {

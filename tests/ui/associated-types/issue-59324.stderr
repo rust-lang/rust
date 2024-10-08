@@ -79,10 +79,10 @@ LL | pub trait Foo: NotFoo {
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `(dyn ThriftService<(), AssocType = _> + 'static)` cannot be known at compilation time
-  --> $DIR/issue-59324.rs:23:20
+  --> $DIR/issue-59324.rs:23:29
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
-   |                    ^^^^^^^ doesn't have a size known at compile-time
+   |                             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn ThriftService<(), AssocType = _> + 'static)`
    = help: unsized fn params are gated as an unstable feature

@@ -1,4 +1,4 @@
-use crate::visitors::{for_each_expr, for_each_expr_without_closures, Descend, Visitable};
+use crate::visitors::{Descend, Visitable, for_each_expr, for_each_expr_without_closures};
 use crate::{self as utils, get_enclosing_loop_or_multi_call_closure};
 use core::ops::ControlFlow;
 use hir::def::Res;
@@ -46,8 +46,8 @@ struct MutVarsDelegate {
     skip: bool,
 }
 
-impl<'tcx> MutVarsDelegate {
-    fn update(&mut self, cat: &PlaceWithHirId<'tcx>) {
+impl MutVarsDelegate {
+    fn update(&mut self, cat: &PlaceWithHirId<'_>) {
         match cat.place.base {
             PlaceBase::Local(id) => {
                 self.used_mutably.insert(id);
@@ -122,7 +122,7 @@ impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
         finder.usage_found
     }
 }
-impl<'a, 'tcx> Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for BindingUsageFinder<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {

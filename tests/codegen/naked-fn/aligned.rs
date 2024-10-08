@@ -4,7 +4,7 @@
 
 #![crate_type = "lib"]
 #![feature(naked_functions, fn_align)]
-use std::arch::asm;
+use std::arch::naked_asm;
 
 // CHECK: Function Attrs: naked
 // CHECK-NEXT: define{{.*}}void @naked_empty()
@@ -16,5 +16,5 @@ pub unsafe extern "C" fn naked_empty() {
     // CHECK-NEXT: start:
     // CHECK-NEXT: call void asm
     // CHECK-NEXT: unreachable
-    asm!("ret", options(noreturn));
+    naked_asm!("ret");
 }

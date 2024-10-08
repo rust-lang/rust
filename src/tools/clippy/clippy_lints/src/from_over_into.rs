@@ -1,11 +1,11 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::path_def_id;
 use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_path, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_path};
 use rustc_hir::{
     FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemKind, ImplItemRef, Item, ItemKind, PatKind, Path,
     PathSegment, Ty, TyKind,
@@ -126,7 +126,7 @@ struct SelfFinder<'a, 'tcx> {
     invalid: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
     type NestedFilter = OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {

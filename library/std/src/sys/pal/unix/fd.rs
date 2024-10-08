@@ -98,7 +98,12 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))]
+    #[cfg(not(any(
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nuttx"
+    )))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::readv(
@@ -110,14 +115,24 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nuttx"
+    ))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        cfg!(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))
+        cfg!(not(any(
+            target_os = "espidf",
+            target_os = "horizon",
+            target_os = "vita",
+            target_os = "nuttx"
+        )))
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -297,7 +312,12 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))]
+    #[cfg(not(any(
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nuttx"
+    )))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::writev(
@@ -309,14 +329,24 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nuttx"
+    ))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        cfg!(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))
+        cfg!(not(any(
+            target_os = "espidf",
+            target_os = "horizon",
+            target_os = "vita",
+            target_os = "nuttx"
+        )))
     }
 
     #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]

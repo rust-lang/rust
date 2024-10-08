@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/unsized-function-parameter.rs:5:9
+  --> $DIR/unsized-function-parameter.rs:5:14
    |
 LL | fn foo1(bar: str) {}
-   |         ^^^ doesn't have a size known at compile-time
+   |              ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = help: unsized fn params are gated as an unstable feature
@@ -12,10 +12,10 @@ LL | fn foo1(bar: &str) {}
    |              +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/unsized-function-parameter.rs:11:9
+  --> $DIR/unsized-function-parameter.rs:11:15
    |
 LL | fn foo2(_bar: str) {}
-   |         ^^^^ doesn't have a size known at compile-time
+   |               ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = help: unsized fn params are gated as an unstable feature
@@ -25,10 +25,10 @@ LL | fn foo2(_bar: &str) {}
    |               +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/unsized-function-parameter.rs:17:9
+  --> $DIR/unsized-function-parameter.rs:17:12
    |
 LL | fn foo3(_: str) {}
-   |         ^ doesn't have a size known at compile-time
+   |            ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = help: unsized fn params are gated as an unstable feature

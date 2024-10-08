@@ -732,12 +732,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   PTO.SLPVectorization = SLPVectorize;
   PTO.MergeFunctions = MergeFunctions;
 
-  // FIXME: We may want to expose this as an option.
-  bool DebugPassManager = false;
-
   PassInstrumentationCallbacks PIC;
-  StandardInstrumentations SI(TheModule->getContext(), DebugPassManager);
-  SI.registerCallbacks(PIC);
 
   if (LlvmSelfProfiler) {
     LLVMSelfProfileInitializeCallbacks(PIC, LlvmSelfProfiler,
@@ -783,6 +778,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
   ModuleAnalysisManager MAM;
+
+  // FIXME: We may want to expose this as an option.
+  bool DebugPassManager = false;
+
+  StandardInstrumentations SI(TheModule->getContext(), DebugPassManager);
+  SI.registerCallbacks(PIC, &MAM);
 
   if (LLVMPluginsLen) {
     auto PluginsStr = StringRef(LLVMPlugins, LLVMPluginsLen);

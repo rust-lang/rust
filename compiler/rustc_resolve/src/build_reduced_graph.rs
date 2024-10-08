@@ -1072,13 +1072,13 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                             import_all = Some(meta.span);
                             break;
                         }
-                        MetaItemKind::List(nested_metas) => {
-                            for nested_meta in nested_metas {
-                                match nested_meta.ident() {
-                                    Some(ident) if nested_meta.is_word() => {
+                        MetaItemKind::List(meta_item_inners) => {
+                            for meta_item_inner in meta_item_inners {
+                                match meta_item_inner.ident() {
+                                    Some(ident) if meta_item_inner.is_word() => {
                                         single_imports.push(ident)
                                     }
-                                    _ => ill_formed(nested_meta.span()),
+                                    _ => ill_formed(meta_item_inner.span()),
                                 }
                             }
                         }
@@ -1198,8 +1198,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         } else if attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
             return Some((MacroKind::Attr, item.ident, item.span));
         } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
-            if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
-                if let Some(ident) = nested_meta.ident() {
+            if let Some(meta_item_inner) =
+                attr.meta_item_list().and_then(|list| list.get(0).cloned())
+            {
+                if let Some(ident) = meta_item_inner.ident() {
                     return Some((MacroKind::Derive, ident, ident.span));
                 }
             }

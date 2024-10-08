@@ -6,6 +6,7 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
@@ -155,7 +156,7 @@ pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
     pub filename: Option<Symbol>,
-    pub cfg: Option<ast::MetaItem>,
+    pub cfg: Option<ast::MetaItemInner>,
     pub verbatim: bool,
     pub dll_imports: Vec<cstore::DllImport>,
 }

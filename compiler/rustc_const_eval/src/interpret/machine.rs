@@ -20,7 +20,8 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use super::{
     AllocBytes, AllocId, AllocKind, AllocRange, Allocation, CTFE_ALLOC_SALT, ConstAllocation,
     CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, MemoryKind,
-    Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, throw_unsup, throw_unsup_format,
+    Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, interp_ok, throw_unsup,
+    throw_unsup_format,
 };
 
 /// Data returned by [`Machine::after_stack_pop`], and consumed by
@@ -185,7 +186,7 @@ pub trait Machine<'tcx>: Sized {
         ecx: &InterpCx<'tcx, Self>,
         instance: ty::InstanceKind<'tcx>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        Ok(ecx.tcx.instance_mir(instance))
+        interp_ok(ecx.tcx.instance_mir(instance))
     }
 
     /// Entry point to all function calls.
@@ -280,7 +281,7 @@ pub trait Machine<'tcx>: Sized {
     /// Called before a basic block terminator is executed.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Determines the result of a `NullaryOp::UbChecks` invocation.
@@ -290,7 +291,7 @@ pub trait Machine<'tcx>: Sized {
     /// You can use this to detect long or endlessly running programs.
     #[inline]
     fn increment_const_eval_counter(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Called before a global allocation is accessed.
@@ -304,7 +305,7 @@ pub trait Machine<'tcx>: Sized {
         _static_def_id: Option<DefId>,
         _is_write: bool,
     ) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Return the `AllocId` for the given thread-local static in the current thread.
@@ -394,7 +395,7 @@ pub trait Machine<'tcx>: Sized {
     ///
     /// This should take care of jumping to the next block (one of `targets`) when asm goto
     /// is triggered, `targets[0]` when the assembly falls through, or diverge in case of
-    /// `InlineAsmOptions::NORETURN` being set.
+    /// naked_asm! or `InlineAsmOptions::NORETURN` being set.
     fn eval_inline_asm(
         _ecx: &mut InterpCx<'tcx, Self>,
         _template: &'tcx [InlineAsmTemplatePiece],
@@ -422,7 +423,7 @@ pub trait Machine<'tcx>: Sized {
         _prov: (AllocId, Self::ProvenanceExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Hook for performing extra checks on any memory read access,
@@ -433,7 +434,7 @@ pub trait Machine<'tcx>: Sized {
     /// Used to prevent statics from self-initializing by reading from their own memory
     /// as it is being initialized.
     fn before_alloc_read(_ecx: &InterpCx<'tcx, Self>, _alloc_id: AllocId) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Hook for performing extra checks on a memory write access.
@@ -446,7 +447,7 @@ pub trait Machine<'tcx>: Sized {
         _prov: (AllocId, Self::ProvenanceExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Hook for performing extra operations on a memory deallocation.
@@ -460,7 +461,7 @@ pub trait Machine<'tcx>: Sized {
         _align: Align,
         _kind: MemoryKind<Self::MemoryKind>,
     ) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Executes a retagging operation for a single pointer.
@@ -471,7 +472,7 @@ pub trait Machine<'tcx>: Sized {
         _kind: mir::RetagKind,
         val: &ImmTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
-        Ok(val.clone())
+        interp_ok(val.clone())
     }
 
     /// Executes a retagging operation on a compound value.
@@ -482,7 +483,7 @@ pub trait Machine<'tcx>: Sized {
         _kind: mir::RetagKind,
         _place: &PlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Called on places used for in-place function argument and return value handling.
@@ -516,7 +517,7 @@ pub trait Machine<'tcx>: Sized {
 
     /// Called immediately after a stack frame got pushed and its locals got initialized.
     fn after_stack_push(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Called just before the return value is copied to the caller-provided return place.
@@ -524,7 +525,7 @@ pub trait Machine<'tcx>: Sized {
         _ecx: &InterpCx<'tcx, Self>,
         _frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
     ) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Called immediately after a stack frame got popped, but before jumping back to the caller.
@@ -537,14 +538,14 @@ pub trait Machine<'tcx>: Sized {
     ) -> InterpResult<'tcx, ReturnAction> {
         // By default, we do not support unwinding from panics
         assert!(!unwinding);
-        Ok(ReturnAction::Normal)
+        interp_ok(ReturnAction::Normal)
     }
 
     /// Called immediately after an "immediate" local variable is read
     /// (i.e., this is called for reads that do not end up accessing addressable memory).
     #[inline(always)]
     fn after_local_read(_ecx: &InterpCx<'tcx, Self>, _local: mir::Local) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Called immediately after an "immediate" local variable is assigned a new value
@@ -556,7 +557,7 @@ pub trait Machine<'tcx>: Sized {
         _local: mir::Local,
         _storage_live: bool,
     ) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Called immediately after actual memory was allocated for a local
@@ -567,7 +568,7 @@ pub trait Machine<'tcx>: Sized {
         _local: mir::Local,
         _mplace: &MPlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {
-        Ok(())
+        interp_ok(())
     }
 
     /// Evaluate the given constant. The `eval` function will do all the required evaluation,
@@ -645,7 +646,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     ) -> InterpResult<$tcx> {
         // For now we don't do any checking here. We can't use `tcx.sess` because that can differ
         // between crates, and we need to ensure that const-eval always behaves the same.
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -665,7 +666,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     fn ub_checks(_ecx: &InterpCx<$tcx, Self>) -> InterpResult<$tcx, bool> {
         // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
         // unsound differences in evaluating the same constant at different instantiation sites.
-        Ok(true)
+        interp_ok(true)
     }
 
     #[inline(always)]
@@ -675,7 +676,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         alloc: &'b Allocation,
     ) -> InterpResult<$tcx, Cow<'b, Allocation<Self::Provenance>>> {
         // Overwrite default implementation: no need to adjust anything.
-        Ok(Cow::Borrowed(alloc))
+        interp_ok(Cow::Borrowed(alloc))
     }
 
     fn init_alloc_extra(
@@ -685,7 +686,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         _size: Size,
         _align: Align,
     ) -> InterpResult<$tcx, Self::AllocExtra> {
-        Ok(())
+        interp_ok(())
     }
 
     fn extern_static_pointer(
@@ -693,7 +694,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         def_id: DefId,
     ) -> InterpResult<$tcx, Pointer> {
         // Use the `AllocId` associated with the `DefId`. Any actual *access* will fail.
-        Ok(Pointer::new(ecx.tcx.reserve_and_set_static_alloc(def_id).into(), Size::ZERO))
+        interp_ok(Pointer::new(ecx.tcx.reserve_and_set_static_alloc(def_id).into(), Size::ZERO))
     }
 
     #[inline(always)]
@@ -702,7 +703,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         ptr: Pointer<CtfeProvenance>,
         _kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> InterpResult<$tcx, Pointer<CtfeProvenance>> {
-        Ok(ptr)
+        interp_ok(ptr)
     }
 
     #[inline(always)]
@@ -713,7 +714,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
         // This is correct because no pointers can ever be exposed in compile-time evaluation.
-        Ok(Pointer::from_addr_invalid(addr))
+        interp_ok(Pointer::from_addr_invalid(addr))
     }
 
     #[inline(always)]

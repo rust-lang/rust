@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::path_to_local_id;
-use clippy_utils::source::{snippet, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
@@ -9,7 +9,7 @@ use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, PatKind, QPa
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -60,7 +60,7 @@ struct PathbufPushSearcher<'tcx> {
     err_span: Span,
 }
 
-impl<'tcx> PathbufPushSearcher<'tcx> {
+impl PathbufPushSearcher<'_> {
     /// Try to generate a suggestion with `PathBuf::from`.
     /// Returns `None` if the suggestion would be invalid.
     fn gen_pathbuf_from(&self, cx: &LateContext<'_>) -> Option<String> {

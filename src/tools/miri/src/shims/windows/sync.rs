@@ -24,7 +24,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
-        Ok(match this.init_once_status(id) {
+        interp_ok(match this.init_once_status(id) {
             InitOnceStatus::Uninitialized => {
                 this.init_once_begin(id);
                 this.write_scalar(this.eval_windows("c", "TRUE"), pending_place)?;
@@ -70,7 +70,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if this.init_once_try_begin(id, &pending_place, dest)? {
             // Done!
-            return Ok(());
+            return interp_ok(());
         }
 
         // We have to block, and then try again when we are woken up.
@@ -86,11 +86,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @unblock = |this| {
                     let ret = this.init_once_try_begin(id, &pending_place, &dest)?;
                     assert!(ret, "we were woken up but init_once_try_begin still failed");
-                    Ok(())
+                    interp_ok(())
                 }
             ),
         );
-        return Ok(());
+        interp_ok(())
     }
 
     fn InitOnceComplete(
@@ -130,7 +130,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.init_once_fail(id)?;
         }
 
-        Ok(this.eval_windows("c", "TRUE"))
+        interp_ok(this.eval_windows("c", "TRUE"))
     }
 
     fn WaitOnAddress(
@@ -154,7 +154,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let invalid_param = this.eval_windows("c", "ERROR_INVALID_PARAMETER");
             this.set_last_error(invalid_param)?;
             this.write_scalar(Scalar::from_i32(0), dest)?;
-            return Ok(());
+            return interp_ok(());
         };
         let size = Size::from_bytes(size);
 
@@ -188,7 +188,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.write_scalar(Scalar::from_i32(1), dest)?;
 
-        Ok(())
+        interp_ok(())
     }
 
     fn WakeByAddressSingle(&mut self, ptr_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
@@ -202,7 +202,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let addr = ptr.addr().bytes();
         this.futex_wake(addr, u32::MAX)?;
 
-        Ok(())
+        interp_ok(())
     }
     fn WakeByAddressAll(&mut self, ptr_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -215,6 +215,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let addr = ptr.addr().bytes();
         while this.futex_wake(addr, u32::MAX)? {}
 
-        Ok(())
+        interp_ok(())
     }
 }

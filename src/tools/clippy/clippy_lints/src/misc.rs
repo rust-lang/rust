@@ -2,11 +2,12 @@ use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir, span_lint_hir
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    fulfill_or_allowed, get_parent_expr, in_automatically_derived, is_lint_allowed, iter_input_pats, last_path_segment,
-    SpanlessEq,
+    SpanlessEq, fulfill_or_allowed, get_parent_expr, in_automatically_derived, is_lint_allowed, iter_input_pats,
+    last_path_segment,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     BinOpKind, BindingMode, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, QPath, Stmt, StmtKind,
@@ -14,8 +15,8 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 
 use crate::ref_patterns::REF_PATTERNS;
 
@@ -82,6 +83,45 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for the use of item with a single leading
+    /// underscore.
+    ///
+    /// ### Why is this bad?
+    /// A single leading underscore is usually used to indicate
+    /// that a item will not be used. Using such a item breaks this
+    /// expectation.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn _foo() {}
+    ///
+    /// struct _FooStruct {}
+    ///
+    /// fn main() {
+    ///     _foo();
+    ///     let _ = _FooStruct{};
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// fn foo() {}
+    ///
+    /// struct FooStruct {}
+    ///
+    /// fn main() {
+    ///     foo();
+    ///     let _ = FooStruct{};
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub USED_UNDERSCORE_ITEMS,
+    pedantic,
+    "using a item which is prefixed with an underscore"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for the use of short circuit boolean conditions as
     /// a
     /// statement.
@@ -104,6 +144,7 @@ declare_clippy_lint! {
 declare_lint_pass!(LintPass => [
     TOPLEVEL_REF_ARG,
     USED_UNDERSCORE_BINDING,
+    USED_UNDERSCORE_ITEMS,
     SHORT_CIRCUIT_STATEMENT,
 ]);
 
@@ -205,51 +246,104 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
         {
             return;
         }
-        let (definition_hir_id, ident) = match expr.kind {
-            ExprKind::Path(ref qpath) => {
-                if let QPath::Resolved(None, path) = qpath
-                    && let Res::Local(id) = path.res
-                    && is_used(cx, expr)
-                {
-                    (id, last_path_segment(qpath).ident)
-                } else {
-                    return;
-                }
-            },
-            ExprKind::Field(recv, ident) => {
-                if let Some(adt_def) = cx.typeck_results().expr_ty_adjusted(recv).ty_adt_def()
-                    && let Some(field) = adt_def.all_fields().find(|field| field.name == ident.name)
-                    && let Some(local_did) = field.did.as_local()
-                    && !cx.tcx.type_of(field.did).skip_binder().is_phantom_data()
-                {
-                    (cx.tcx.local_def_id_to_hir_id(local_did), ident)
-                } else {
-                    return;
-                }
-            },
-            _ => return,
-        };
 
-        let name = ident.name.as_str();
-        if name.starts_with('_')
-            && !name.starts_with("__")
-            && let definition_span = cx.tcx.hir().span(definition_hir_id)
-            && !definition_span.from_expansion()
-            && !fulfill_or_allowed(cx, USED_UNDERSCORE_BINDING, [expr.hir_id, definition_hir_id])
-        {
-            span_lint_and_then(
-                cx,
-                USED_UNDERSCORE_BINDING,
-                expr.span,
-                format!(
-                    "used binding `{name}` which is prefixed with an underscore. A leading \
-                     underscore signals that a binding will not be used"
-                ),
-                |diag| {
-                    diag.span_note(definition_span, format!("`{name}` is defined here"));
-                },
-            );
-        }
+        used_underscore_binding(cx, expr);
+        used_underscore_items(cx, expr);
+    }
+}
+
+fn used_underscore_items<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    let (def_id, ident) = match expr.kind {
+        ExprKind::Call(func, ..) => {
+            if let ExprKind::Path(QPath::Resolved(.., path)) = func.kind
+                && let Some(last_segment) = path.segments.last()
+                && let Res::Def(_, def_id) = last_segment.res
+            {
+                (def_id, last_segment.ident)
+            } else {
+                return;
+            }
+        },
+        ExprKind::MethodCall(path, ..) => {
+            if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+                (def_id, path.ident)
+            } else {
+                return;
+            }
+        },
+        ExprKind::Struct(QPath::Resolved(_, path), ..) => {
+            if let Some(last_segment) = path.segments.last()
+                && let Res::Def(_, def_id) = last_segment.res
+            {
+                (def_id, last_segment.ident)
+            } else {
+                return;
+            }
+        },
+        _ => return,
+    };
+
+    let name = ident.name.as_str();
+    let definition_span = cx.tcx.def_span(def_id);
+    if name.starts_with('_')
+        && !name.starts_with("__")
+        && !definition_span.from_expansion()
+        && def_id.krate == LOCAL_CRATE
+    {
+        span_lint_and_then(
+            cx,
+            USED_UNDERSCORE_ITEMS,
+            expr.span,
+            "used underscore-prefixed item".to_string(),
+            |diag| {
+                diag.span_note(definition_span, "item is defined here".to_string());
+            },
+        );
+    }
+}
+
+fn used_underscore_binding<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    let (definition_hir_id, ident) = match expr.kind {
+        ExprKind::Path(ref qpath) => {
+            if let QPath::Resolved(None, path) = qpath
+                && let Res::Local(id) = path.res
+                && is_used(cx, expr)
+            {
+                (id, last_path_segment(qpath).ident)
+            } else {
+                return;
+            }
+        },
+        ExprKind::Field(recv, ident) => {
+            if let Some(adt_def) = cx.typeck_results().expr_ty_adjusted(recv).ty_adt_def()
+                && let Some(field) = adt_def.all_fields().find(|field| field.name == ident.name)
+                && let Some(local_did) = field.did.as_local()
+                && !cx.tcx.type_of(field.did).skip_binder().is_phantom_data()
+            {
+                (cx.tcx.local_def_id_to_hir_id(local_did), ident)
+            } else {
+                return;
+            }
+        },
+        _ => return,
+    };
+
+    let name = ident.name.as_str();
+    if name.starts_with('_')
+        && !name.starts_with("__")
+        && let definition_span = cx.tcx.hir().span(definition_hir_id)
+        && !definition_span.from_expansion()
+        && !fulfill_or_allowed(cx, USED_UNDERSCORE_BINDING, [expr.hir_id, definition_hir_id])
+    {
+        span_lint_and_then(
+            cx,
+            USED_UNDERSCORE_BINDING,
+            expr.span,
+            "used underscore-prefixed binding".to_string(),
+            |diag| {
+                diag.span_note(definition_span, "binding is defined here".to_string());
+            },
+        );
     }
 }
 

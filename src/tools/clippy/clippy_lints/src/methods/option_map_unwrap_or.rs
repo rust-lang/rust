@@ -5,11 +5,11 @@ use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{walk_path, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_path};
 use rustc_hir::{ExprKind, HirId, Node, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::ops::ControlFlow;
 
 use super::MAP_UNWRAP_OR;
@@ -130,7 +130,7 @@ struct UnwrapVisitor<'a, 'tcx> {
     identifiers: FxHashSet<HirId>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for UnwrapVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn visit_path(&mut self, path: &Path<'tcx>, _: HirId) {
@@ -154,7 +154,7 @@ struct ReferenceVisitor<'a, 'tcx> {
     unwrap_or_span: Span,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ReferenceVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
     type Result = ControlFlow<()>;
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'_>) -> ControlFlow<()> {

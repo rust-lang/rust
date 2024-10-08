@@ -20,9 +20,9 @@ use tracing::*;
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
     DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode, Pretty, RunMake,
-    RunPassValgrind, Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR,
-    UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path,
-    incremental_dir, output_base_dir, output_base_name, output_testname_unique,
+    Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
+    UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
+    output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
@@ -39,7 +39,7 @@ mod assembly;
 mod codegen;
 mod codegen_units;
 mod coverage;
-mod crash;
+mod crashes;
 mod debuginfo;
 mod incremental;
 mod js_doc;
@@ -49,7 +49,6 @@ mod run_make;
 mod rustdoc;
 mod rustdoc_json;
 mod ui;
-mod valgrind;
 // tidy-alphabet-end
 
 #[cfg(test)]
@@ -253,7 +252,6 @@ impl<'test> TestCx<'test> {
             self.fatal("cannot use should-ice in a test that is not cfail");
         }
         match self.config.mode {
-            RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
             DebugInfo => self.run_debuginfo_test(),
             Codegen => self.run_codegen_test(),
@@ -1500,8 +1498,7 @@ impl<'test> TestCx<'test> {
             Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            RunPassValgrind | Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake
-            | CodegenUnits | JsDocTest => {
+            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | JsDocTest => {
                 // do not use JSON output
             }
         }
@@ -2109,6 +2106,10 @@ impl<'test> TestCx<'test> {
             .collect()
     }
 
+    /// This method is used for `//@ check-test-line-numbers-match`.
+    ///
+    /// It checks that doctests line in the displayed doctest "name" matches where they are
+    /// defined in source code.
     fn check_rustdoc_test_option(&self, res: ProcRes) {
         let mut other_files = Vec::new();
         let mut files: HashMap<String, Vec<usize>> = HashMap::new();
@@ -2294,12 +2295,18 @@ impl<'test> TestCx<'test> {
         }
 
         let base_dir = Path::new("/rustc/FAKE_PREFIX");
-        // Paths into the libstd/libcore
+        // Fake paths into the libstd/libcore
         normalize_path(&base_dir.join("library"), "$SRC_DIR");
         // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
         // `rustc_macros`
         // eg. /home/user/rust/compiler
         normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
+
+        // Real paths into the libstd/libcore
+        let rust_src_dir = &self.config.sysroot_base.join("lib/rustlib/src/rust");
+        rust_src_dir.try_exists().expect(&*format!("{} should exists", rust_src_dir.display()));
+        let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
+        normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
@@ -2309,9 +2316,6 @@ impl<'test> TestCx<'test> {
         normalize_path(test_build_dir, "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
         normalize_path(parent_build_dir, "$BUILD_DIR");
-
-        // Paths into lib directory.
-        normalize_path(&parent_build_dir.parent().unwrap().join("lib"), "$LIB_DIR");
 
         if json {
             // escaped newlines in json strings should be readable
@@ -2645,33 +2649,6 @@ impl<'test> TestCx<'test> {
 
         if self.config.verbose {
             println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
-        }
-    }
-
-    // FIXME(jieyouxu): `run_rpass_test` is hoisted out here and not in incremental because
-    // apparently valgrind test falls back to `run_rpass_test` if valgrind isn't available, which
-    // seems highly questionable to me.
-    fn run_rpass_test(&self) {
-        let emit_metadata = self.should_emit_metadata(self.pass_mode());
-        let should_run = self.run_if_enabled();
-        let proc_res = self.compile_test(should_run, emit_metadata);
-
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("compilation failed!", &proc_res);
-        }
-
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("run-pass tests with expected warnings should be moved to ui/");
-        }
-
-        if let WillExecute::Disabled = should_run {
-            return;
-        }
-
-        let proc_res = self.exec_compiled_test();
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("test run failed!", &proc_res);
         }
     }
 

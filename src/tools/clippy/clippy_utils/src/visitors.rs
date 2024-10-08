@@ -1,10 +1,10 @@
 use crate::ty::needs_ordered_drop;
 use crate::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
-use rustc_ast::visit::{try_visit, VisitorResult};
+use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::intravisit::{self, walk_block, walk_expr, Visitor};
+use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
     AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, LetExpr, Pat, QPath,
     Safety, Stmt, UnOp, UnsafeSource,
@@ -552,7 +552,7 @@ pub fn for_each_local_use_after_expr<'tcx, B>(
         res: ControlFlow<B>,
         f: F,
     }
-    impl<'cx, 'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'cx, 'tcx, F, B> {
+    impl<'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'_, 'tcx, F, B> {
         type NestedFilter = nested_filter::OnlyBodies;
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()
@@ -734,7 +734,7 @@ pub fn for_each_local_assignment<'tcx, B>(
         res: ControlFlow<B>,
         f: F,
     }
-    impl<'cx, 'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'cx, 'tcx, F, B> {
+    impl<'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'_, 'tcx, F, B> {
         type NestedFilter = nested_filter::OnlyBodies;
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()

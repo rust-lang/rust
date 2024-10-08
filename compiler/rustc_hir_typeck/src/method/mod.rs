@@ -18,8 +18,8 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::symbol::Ident;
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
 use tracing::{debug, instrument};
@@ -46,17 +46,17 @@ pub(crate) struct MethodCallee<'tcx> {
 
 #[derive(Debug)]
 pub(crate) enum MethodError<'tcx> {
-    // Did not find an applicable method, but we did find various near-misses that may work.
+    /// Did not find an applicable method, but we did find various near-misses that may work.
     NoMatch(NoMatchData<'tcx>),
 
-    // Multiple methods might apply.
+    /// Multiple methods might apply.
     Ambiguity(Vec<CandidateSource>),
 
-    // Found an applicable method, but it is not visible. The third argument contains a list of
-    // not-in-scope traits which may work.
+    /// Found an applicable method, but it is not visible. The third argument contains a list of
+    /// not-in-scope traits which may work.
     PrivateMatch(DefKind, DefId, Vec<DefId>),
 
-    // Found a `Self: Sized` bound where `Self` is a trait object.
+    /// Found a `Self: Sized` bound where `Self` is a trait object.
     IllegalSizedBound {
         candidates: Vec<DefId>,
         needs_mut: bool,
@@ -64,8 +64,11 @@ pub(crate) enum MethodError<'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
     },
 
-    // Found a match, but the return type is wrong
+    /// Found a match, but the return type is wrong
     BadReturnType,
+
+    /// Error has already been emitted, no need to emit another one.
+    ErrorReported(ErrorGuaranteed),
 }
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
@@ -91,7 +94,7 @@ pub(crate) enum CandidateSource {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Determines whether the type `self_ty` supports a visible method named `method_name` or not.
     #[instrument(level = "debug", skip(self))]
-    pub fn method_exists_for_diagnostic(
+    pub(crate) fn method_exists_for_diagnostic(
         &self,
         method_name: Ident,
         self_ty: Ty<'tcx>,
@@ -120,6 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(PrivateMatch(..)) => false,
             Err(IllegalSizedBound { .. }) => true,
             Err(BadReturnType) => false,
+            Err(ErrorReported(_)) => false,
         }
     }
 
@@ -174,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `self_expr`:             the self expression (`foo`)
     /// * `args`:                  the expressions of the arguments (`a, b + 1, ...`)
     #[instrument(level = "debug", skip(self))]
-    pub fn lookup_method(
+    pub(crate) fn lookup_method(
         &self,
         self_ty: Ty<'tcx>,
         segment: &'tcx hir::PathSegment<'tcx>,
@@ -277,7 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, call_expr))]
-    pub fn lookup_probe(
+    pub(crate) fn lookup_probe(
         &self,
         method_name: Ident,
         self_ty: Ty<'tcx>,
@@ -494,7 +498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `self_ty_span`           the span for the type being searched within (span of `Foo`)
     /// * `expr_id`:               the [`hir::HirId`] of the expression composing the entire call
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn resolve_fully_qualified_call(
+    pub(crate) fn resolve_fully_qualified_call(
         &self,
         span: Span,
         method_name: Ident,

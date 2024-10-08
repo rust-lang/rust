@@ -1,4 +1,3 @@
-use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
 use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
@@ -13,12 +12,9 @@ use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
-const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
-    `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
-    `item` and `vis`";
-pub(crate) const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
-    `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
-    `meta`, `tt`, `item` and `vis`";
+pub(crate) const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
+    `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
+    `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility";
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
@@ -92,39 +88,13 @@ pub(super) fn parse(
                                     };
                                     let kind = NonterminalKind::from_symbol(fragment.name, edition)
                                         .unwrap_or_else(|| {
-                                            let help = match fragment.name {
-                                                sym::expr_2021 => {
-                                                    format!(
-                                                        "fragment specifier `expr_2021` \
-                                                         requires Rust 2021 or later\n\
-                                                         {VALID_FRAGMENT_NAMES_MSG}"
-                                                    )
-                                                }
-                                                _ if edition().at_least_rust_2021()
-                                                    && features.expr_fragment_specifier_2024 =>
-                                                {
-                                                    VALID_FRAGMENT_NAMES_MSG_2021.into()
-                                                }
-                                                _ => VALID_FRAGMENT_NAMES_MSG.into(),
-                                            };
                                             sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
                                                 span,
                                                 fragment,
-                                                help,
+                                                help: VALID_FRAGMENT_NAMES_MSG.into(),
                                             });
                                             NonterminalKind::Ident
                                         });
-                                    if kind == NonterminalKind::Expr(Expr2021 { inferred: false })
-                                        && !features.expr_fragment_specifier_2024
-                                    {
-                                        rustc_session::parse::feature_err(
-                                            sess,
-                                            sym::expr_fragment_specifier_2024,
-                                            span,
-                                            "fragment specifier `expr_2021` is unstable",
-                                        )
-                                        .emit();
-                                    }
                                     result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
                                     continue;
                                 }

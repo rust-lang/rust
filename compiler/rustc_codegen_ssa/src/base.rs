@@ -27,6 +27,9 @@ use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
+use rustc_trait_selection::infer::at::ToTrace;
+use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
 
 use crate::assert_module_sources::CguReuse;
@@ -37,6 +40,7 @@ use crate::back::write::{
     submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
 };
 use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
+use crate::meth::load_vtable;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
@@ -100,6 +104,54 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx.sext(cmp, ret_ty)
 }
 
+/// Codegen takes advantage of the additional assumption, where if the
+/// principal trait def id of what's being casted doesn't change,
+/// then we don't need to adjust the vtable at all. This
+/// corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
+/// requires that `A = B`; we don't allow *upcasting* objects
+/// between the same trait with different args. If we, for
+/// some reason, were to relax the `Unsize` trait, it could become
+/// unsound, so let's validate here that the trait refs are subtypes.
+pub fn validate_trivial_unsize<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    source_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    target_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+) -> bool {
+    match (source_data.principal(), target_data.principal()) {
+        (Some(hr_source_principal), Some(hr_target_principal)) => {
+            let infcx = tcx.infer_ctxt().build();
+            let universe = infcx.universe();
+            let ocx = ObligationCtxt::new(&infcx);
+            infcx.enter_forall(hr_target_principal, |target_principal| {
+                let source_principal = infcx.instantiate_binder_with_fresh_vars(
+                    DUMMY_SP,
+                    BoundRegionConversionTime::HigherRankedType,
+                    hr_source_principal,
+                );
+                let Ok(()) = ocx.eq_trace(
+                    &ObligationCause::dummy(),
+                    ty::ParamEnv::reveal_all(),
+                    ToTrace::to_trace(
+                        &ObligationCause::dummy(),
+                        hr_target_principal,
+                        hr_source_principal,
+                    ),
+                    target_principal,
+                    source_principal,
+                ) else {
+                    return false;
+                };
+                if !ocx.select_all_or_error().is_empty() {
+                    return false;
+                }
+                infcx.leak_check(universe, None).is_ok()
+            })
+        }
+        (None, None) => true,
+        _ => false,
+    }
+}
+
 /// Retrieves the information we are losing (making dynamic) in an unsizing
 /// adjustment.
 ///
@@ -124,8 +176,24 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
-                // A NOP cast that doesn't actually change anything, should be allowed even with
-                // invalid vtables.
+                // Codegen takes advantage of the additional assumption, where if the
+                // principal trait def id of what's being casted doesn't change,
+                // then we don't need to adjust the vtable at all. This
+                // corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
+                // requires that `A = B`; we don't allow *upcasting* objects
+                // between the same trait with different args. If we, for
+                // some reason, were to relax the `Unsize` trait, it could become
+                // unsound, so let's assert here that the trait refs are *equal*.
+                debug_assert!(
+                    validate_trivial_unsize(cx.tcx(), data_a, data_b),
+                    "NOP unsize vtable changed principal trait ref: {data_a} -> {data_b}"
+                );
+
+                // A NOP cast that doesn't actually change anything, let's avoid any
+                // unnecessary work. This relies on the assumption that if the principal
+                // traits are equal, then the associated type bounds (`dyn Trait<Assoc=T>`)
+                // are also equal, which is ensured by the fact that normalization is
+                // a function and we do not allow overlapping impls.
                 return old_info;
             }
 
@@ -135,14 +203,8 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_size = bx.data_layout().pointer_size;
-                let ptr_align = bx.data_layout().pointer_align.abi;
                 let vtable_byte_offset = u64::try_from(entry_idx).unwrap() * ptr_size.bytes();
-                let gep = bx.inbounds_ptradd(old_info, bx.const_usize(vtable_byte_offset));
-                let new_vptr = bx.load(bx.type_ptr(), gep, ptr_align);
-                bx.nonnull_metadata(new_vptr);
-                // VTable loads are invariant.
-                bx.set_invariant_load(new_vptr);
-                new_vptr
+                load_vtable(bx, old_info, bx.type_ptr(), vtable_byte_offset, source, true)
             } else {
                 old_info
             }

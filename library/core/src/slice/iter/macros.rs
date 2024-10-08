@@ -14,11 +14,11 @@ macro_rules! if_zst {
         if T::IS_ZST {
             // SAFETY: for ZSTs, the pointer is storing a provenance-free length,
             // so consuming and updating it as a `usize` is fine.
-            let $len = unsafe { &mut *ptr::addr_of_mut!($this.end_or_len).cast::<usize>() };
+            let $len = unsafe { &mut *(&raw mut $this.end_or_len).cast::<usize>() };
             $zst_body
         } else {
             // SAFETY: for non-ZSTs, the type invariant ensures it cannot be null
-            let $end = unsafe { &mut *ptr::addr_of_mut!($this.end_or_len).cast::<NonNull<T>>() };
+            let $end = unsafe { &mut *(&raw mut $this.end_or_len).cast::<NonNull<T>>() };
             $other_body
         }
     }};
@@ -30,7 +30,7 @@ macro_rules! if_zst {
             $zst_body
         } else {
             // SAFETY: for non-ZSTs, the type invariant ensures it cannot be null
-            let $end = unsafe { *ptr::addr_of!($this.end_or_len).cast::<NonNull<T>>() };
+            let $end = unsafe { *(&raw const $this.end_or_len).cast::<NonNull<T>>() };
             $other_body
         }
     }};

@@ -25,6 +25,7 @@ Session.vim
 .favorites.json
 .settings/
 .vs/
+.dir-locals.el
 
 ## Tool
 .valgrindrc
@@ -84,5 +85,14 @@ package.json
 
 ## Rustdoc GUI tests
 tests/rustdoc-gui/src/**.lock
+
+## direnv
+.envrc
+.direnv/
+
+## nix
+flake.nix
+flake.lock
+default.nix
 
 # Before adding new lines, see the comment at the top.

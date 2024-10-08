@@ -117,13 +117,15 @@ impl Thread {
     pub fn set_name(name: &CStr) {
         const PR_SET_NAME: libc::c_int = 15;
         unsafe {
-            libc::prctl(
+            let res = libc::prctl(
                 PR_SET_NAME,
                 name.as_ptr(),
                 0 as libc::c_ulong,
                 0 as libc::c_ulong,
                 0 as libc::c_ulong,
             );
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -140,7 +142,12 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "dragonfly",
+        target_os = "openbsd",
+        target_os = "nuttx"
+    ))]
     pub fn set_name(name: &CStr) {
         unsafe {
             libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr());
@@ -253,7 +260,7 @@ impl Thread {
                     tv_nsec: nsecs,
                 };
                 secs -= ts.tv_sec as u64;
-                let ts_ptr = core::ptr::addr_of_mut!(ts);
+                let ts_ptr = &raw mut ts;
                 if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
                     assert_eq!(os::errno(), libc::EINTR);
                     secs += ts.tv_sec as u64;
@@ -442,8 +449,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                     libc::sysctl(
                         mib.as_mut_ptr(),
                         2,
-                        core::ptr::addr_of_mut!(cpus) as *mut _,
-                        core::ptr::addr_of_mut!(cpus_size) as *mut _,
+                        (&raw mut cpus) as *mut _,
+                        (&raw mut cpus_size) as *mut _,
                         ptr::null_mut(),
                         0,
                     )
@@ -517,7 +524,7 @@ mod cgroups {
     use crate::borrow::Cow;
     use crate::ffi::OsString;
     use crate::fs::{File, exists};
-    use crate::io::{BufRead, BufReader, Read};
+    use crate::io::{BufRead, Read};
     use crate::os::unix::ffi::OsStringExt;
     use crate::path::{Path, PathBuf};
     use crate::str::from_utf8;
@@ -690,7 +697,7 @@ mod cgroups {
     /// If the cgroupfs is a bind mount then `group_path` is adjusted to skip
     /// over the already-included prefix
     fn find_mountpoint(group_path: &Path) -> Option<(Cow<'static, str>, &Path)> {
-        let mut reader = BufReader::new(File::open("/proc/self/mountinfo").ok()?);
+        let mut reader = File::open_buffered("/proc/self/mountinfo").ok()?;
         let mut line = String::with_capacity(256);
         loop {
             line.clear();
@@ -747,12 +754,15 @@ unsafe fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 }
 
 // No point in looking up __pthread_get_minstack() on non-glibc platforms.
-#[cfg(all(not(all(target_os = "linux", target_env = "gnu")), not(target_os = "netbsd")))]
+#[cfg(all(
+    not(all(target_os = "linux", target_env = "gnu")),
+    not(any(target_os = "netbsd", target_os = "nuttx"))
+))]
 unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     libc::PTHREAD_STACK_MIN
 }
 
-#[cfg(target_os = "netbsd")]
+#[cfg(any(target_os = "netbsd", target_os = "nuttx"))]
 unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     static STACK: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
 

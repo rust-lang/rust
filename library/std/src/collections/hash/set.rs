@@ -724,38 +724,6 @@ where
         self.base.get_or_insert(value)
     }
 
-    /// Inserts an owned copy of the given `value` into the set if it is not
-    /// present, then returns a reference to the value in the set.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(hash_set_entry)]
-    ///
-    /// use std::collections::HashSet;
-    ///
-    /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
-    ///     .iter().map(|&pet| pet.to_owned()).collect();
-    ///
-    /// assert_eq!(set.len(), 3);
-    /// for &pet in &["cat", "dog", "fish"] {
-    ///     let value = set.get_or_insert_owned(pet);
-    ///     assert_eq!(value, pet);
-    /// }
-    /// assert_eq!(set.len(), 4); // a new "fish" was inserted
-    /// ```
-    #[inline]
-    #[unstable(feature = "hash_set_entry", issue = "60896")]
-    pub fn get_or_insert_owned<Q: ?Sized>(&mut self, value: &Q) -> &T
-    where
-        T: Borrow<Q>,
-        Q: Hash + Eq + ToOwned<Owned = T>,
-    {
-        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
-        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.base.get_or_insert_owned(value)
-    }
-
     /// Inserts a value computed from `f` into the set if the given `value` is
     /// not present, then returns a reference to the value in the set.
     ///
@@ -1276,6 +1244,14 @@ pub struct Iter<'a, K: 'a> {
     base: base::Iter<'a, K>,
 }
 
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K> Default for Iter<'_, K> {
+    #[inline]
+    fn default() -> Self {
+        Iter { base: Default::default() }
+    }
+}
+
 /// An owning iterator over the items of a `HashSet`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashSet`]
@@ -1295,6 +1271,14 @@ pub struct Iter<'a, K: 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
     base: base::IntoIter<K>,
+}
+
+#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+impl<K> Default for IntoIter<K> {
+    #[inline]
+    fn default() -> Self {
+        IntoIter { base: Default::default() }
+    }
 }
 
 /// A draining iterator over the items of a `HashSet`.

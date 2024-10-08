@@ -1,4 +1,4 @@
-warning: unnecessary associated type bound for not object safe associated type
+warning: unnecessary associated type bound for dyn-incompatible associated type
   --> $DIR/pretty.rs:41:35
    |
 LL | fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x }
@@ -107,17 +107,6 @@ LL | fn dyn_fixed_generic1(x: &dyn for<'a> FixedGeneric1<'a>) { x }
               found reference `&dyn for<'a> FixedGeneric1<'a>`
 
 error[E0308]: mismatched types
-  --> $DIR/pretty.rs:35:60
-   |
-LL | fn dyn_fixed_generic2(x: &dyn for<'a> FixedGeneric2<'a>) { x }
-   |                                                         -  ^ expected `()`, found `&dyn FixedGeneric2<'a>`
-   |                                                         |
-   |                                                         help: try adding a return type: `-> &dyn for<'a> FixedGeneric2<'a>`
-   |
-   = note: expected unit type `()`
-              found reference `&dyn for<'a> FixedGeneric2<'a>`
-
-error[E0308]: mismatched types
   --> $DIR/pretty.rs:36:79
    |
 LL | fn dyn_fixed_generic_multi(x: &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>) { x }
@@ -172,6 +161,6 @@ LL | fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x }
    = note: expected unit type `()`
               found reference `&dyn HasGat<u8, Assoc<bool> = ()>`
 
-error: aborting due to 15 previous errors; 1 warning emitted
+error: aborting due to 14 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0308`.

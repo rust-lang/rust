@@ -1,5 +1,4 @@
 //@ check-fail
-//@ known-bug: #104034
 
 #![feature(exhaustive_patterns, never_type)]
 
@@ -17,5 +16,8 @@ fn foo() -> Either<(), !> {
 }
 
 fn main() {
+    // We can't treat this a irrefutable, because `Either::B` could become
+    // inhabited in the future because it's private.
     let Either::A(()) = foo();
+    //~^ error refutable pattern in local binding
 }

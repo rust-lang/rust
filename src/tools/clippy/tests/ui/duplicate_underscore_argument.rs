@@ -1,5 +1,4 @@
 #![warn(clippy::duplicate_underscore_argument)]
-#[allow(dead_code, unused)]
 
 fn join_the_dark_side(darth: i32, _darth: i32) {}
 //~^ ERROR: `darth` already exists, having another argument having almost the same name ma

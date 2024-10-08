@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::ast::{
-    self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
+    self, Attribute, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path, Visibility,
     VisibilityKind,
 };
 use rustc_ast::ptr;
@@ -257,10 +257,10 @@ fn is_skip(meta_item: &MetaItem) -> bool {
 }
 
 #[inline]
-fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
+fn is_skip_nested(meta_item: &MetaItemInner) -> bool {
     match meta_item {
-        NestedMetaItem::MetaItem(ref mi) => is_skip(mi),
-        NestedMetaItem::Lit(_) => false,
+        MetaItemInner::MetaItem(ref mi) => is_skip(mi),
+        MetaItemInner::Lit(_) => false,
     }
 }
 

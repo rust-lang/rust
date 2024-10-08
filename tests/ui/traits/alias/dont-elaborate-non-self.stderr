@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `(dyn Fn() -> Fut + 'static)` cannot be known at compilation time
-  --> $DIR/dont-elaborate-non-self.rs:7:11
+  --> $DIR/dont-elaborate-non-self.rs:7:14
    |
 LL | fn f<Fut>(a: dyn F<Fut>) {}
-   |           ^ doesn't have a size known at compile-time
+   |              ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Fn() -> Fut + 'static)`
    = help: unsized fn params are gated as an unstable feature

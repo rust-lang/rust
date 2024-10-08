@@ -1,17 +1,15 @@
 use std::ffi::OsStr;
-use std::io;
-use std::iter;
 use std::path::{self, Path, PathBuf};
-use std::str;
+use std::{io, iter, str};
 
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
+use self::shims::windows::handle::{Handle, PseudoHandle};
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::windows::*;
 use crate::*;
-use self::shims::windows::handle::{Handle, PseudoHandle};
 
 pub fn is_dyn_sym(name: &str) -> bool {
     // std does dynamic detection for these symbols
@@ -23,8 +21,8 @@ pub fn is_dyn_sym(name: &str) -> bool {
 
 #[cfg(windows)]
 fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
-    // We are on Windows so we can simply lte the host do this.
-    return Ok(path::absolute(path));
+    // We are on Windows so we can simply let the host do this.
+    interp_ok(path::absolute(path))
 }
 
 #[cfg(unix)]
@@ -35,7 +33,7 @@ fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
     // If it starts with `//` (these were backslashes but are already converted)
     // then this is a magic special path, we just leave it unchanged.
     if bytes.get(0).copied() == Some(b'/') && bytes.get(1).copied() == Some(b'/') {
-        return Ok(Ok(path.into()));
+        return interp_ok(Ok(path.into()));
     };
     // Special treatment for Windows' magic filenames: they are treated as being relative to `\\.\`.
     let magic_filenames = &[
@@ -45,7 +43,7 @@ fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
     if magic_filenames.iter().any(|m| m.as_bytes() == bytes) {
         let mut result: Vec<u8> = br"//./".into();
         result.extend(bytes);
-        return Ok(Ok(bytes_to_os_str(&result)?.into()));
+        return interp_ok(Ok(bytes_to_os_str(&result)?.into()));
     }
     // Otherwise we try to do something kind of close to what Windows does, but this is probably not
     // right in all cases. We iterate over the components between `/`, and remove trailing `.`,
@@ -73,7 +71,7 @@ fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
         }
     }
     // Let the host `absolute` function do working-dir handling
-    Ok(path::absolute(bytes_to_os_str(&result)?))
+    interp_ok(path::absolute(bytes_to_os_str(&result)?))
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -229,7 +227,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let filename = this.read_path_from_wide_str(filename)?;
                 let result = match win_absolute(&filename)? {
                     Err(err) => {
-                        this.set_last_error_from_io_error(err)?;
+                        this.set_last_error(err)?;
                         Scalar::from_u32(0) // return zero upon failure
                     }
                     Ok(abs_filename) => {
@@ -771,12 +769,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This function looks and behaves excatly like miri_start_unwind.
                 let [payload] = this.check_shim(abi, Abi::C { unwind: true }, link_name, args)?;
                 this.handle_miri_start_unwind(payload)?;
-                return Ok(EmulateItemResult::NeedsUnwind);
+                return interp_ok(EmulateItemResult::NeedsUnwind);
             }
 
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
 
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

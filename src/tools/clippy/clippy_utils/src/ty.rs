@@ -12,8 +12,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, Safety, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
-use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::ConstValue;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
@@ -22,7 +22,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
@@ -606,10 +606,13 @@ fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
         ty::Tuple(types) => types.iter().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
         // Unions are always fine right now.
         // This includes MaybeUninit, the main way people use uninitialized memory.
-        // For ADTs, we could look at all fields just like for tuples, but that's potentially
-        // exponential, so let's avoid doing that for now. Code doing that is sketchy enough to
-        // just use an `#[allow()]`.
-        ty::Adt(adt, _) => adt.is_union(),
+        ty::Adt(adt, _) if adt.is_union() => true,
+        // Types (e.g. `UnsafeCell<MaybeUninit<T>>`) that recursively contain only types that can be uninit
+        // can themselves be uninit too.
+        // This purposefully ignores enums as they may have a discriminant that can't be uninit.
+        ty::Adt(adt, args) if adt.is_struct() => adt
+            .all_fields()
+            .all(|field| is_uninit_value_valid_for_ty(cx, field.ty(cx.tcx, args))),
         // For the rest, conservatively assume that they cannot be uninit.
         _ => false,
     }
@@ -1316,7 +1319,7 @@ pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl 
 /// If you need this, you should wrap this call in `clippy_utils::ty::deref_chain().any(...)`.
 pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<&'a AssocItem> {
     if let Some(ty_did) = ty.ty_adt_def().map(AdtDef::did) {
-        cx.tcx.inherent_impls(ty_did).into_iter().find_map(|&did| {
+        cx.tcx.inherent_impls(ty_did).iter().find_map(|&did| {
             cx.tcx
                 .associated_items(did)
                 .filter_by_name_unhygienic(method_name)

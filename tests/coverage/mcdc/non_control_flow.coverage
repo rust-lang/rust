@@ -1,6 +1,6 @@
    LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
-   LL|       |//@ ignore-llvm-version: 19 - 99
+   LL|       |//@ min-llvm-version: 19
    LL|       |//@ compile-flags: -Zcoverage-options=mcdc
    LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
    LL|       |
@@ -83,11 +83,11 @@
   |
   |     C1, C2, C3    Result
   |  1 { F,  F,  -  = F      }
-  |  2 { T,  -,  -  = T      }
-  |  3 { F,  T,  T  = T      }
+  |  2 { F,  T,  T  = T      }
+  |  3 { T,  -,  -  = T      }
   |
-  |  C1-Pair: covered: (1,2)
-  |  C2-Pair: covered: (1,3)
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (1,2)
   |  C3-Pair: not covered
   |  MC/DC Coverage for Decision: 66.67%
   |

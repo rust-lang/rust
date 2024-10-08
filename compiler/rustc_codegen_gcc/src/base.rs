@@ -128,8 +128,19 @@ pub fn compile_codegen_unit(
         // NOTE: Rust relies on LLVM doing wrapping on overflow.
         context.add_command_line_option("-fwrapv");
 
+        if let Some(model) = tcx.sess.code_model() {
+            use rustc_target::spec::CodeModel;
+
+            context.add_command_line_option(match model {
+                CodeModel::Tiny => "-mcmodel=tiny",
+                CodeModel::Small => "-mcmodel=small",
+                CodeModel::Kernel => "-mcmodel=kernel",
+                CodeModel::Medium => "-mcmodel=medium",
+                CodeModel::Large => "-mcmodel=large",
+            });
+        }
+
         if tcx.sess.relocation_model() == rustc_target::spec::RelocModel::Static {
-            context.add_command_line_option("-mcmodel=kernel");
             context.add_command_line_option("-fno-pie");
         }
 

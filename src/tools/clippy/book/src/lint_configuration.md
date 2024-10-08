@@ -353,6 +353,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 * [`rc_buffer`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_buffer)
 * [`rc_mutex`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_mutex)
 * [`redundant_allocation`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation)
+* [`ref_option`](https://rust-lang.github.io/rust-clippy/master/index.html#ref_option)
 * [`single_call_fn`](https://rust-lang.github.io/rust-clippy/master/index.html#single_call_fn)
 * [`trivially_copy_pass_by_ref`](https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref)
 * [`unnecessary_box_returns`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_box_returns)
@@ -727,6 +728,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`uninlined_format_args`](https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args)
 * [`unnecessary_lazy_evaluations`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_lazy_evaluations)
 * [`unnested_or_patterns`](https://rust-lang.github.io/rust-clippy/master/index.html#unnested_or_patterns)
+* [`unused_trait_names`](https://rust-lang.github.io/rust-clippy/master/index.html#unused_trait_names)
 * [`use_self`](https://rust-lang.github.io/rust-clippy/master/index.html#use_self)
 
 

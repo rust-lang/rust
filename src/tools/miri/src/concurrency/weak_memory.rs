@@ -76,20 +76,15 @@
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L295)
 // and here.
 
-use std::{
-    cell::{Ref, RefCell},
-    collections::VecDeque,
-};
+use std::cell::{Ref, RefCell};
+use std::collections::VecDeque;
 
 use rustc_data_structures::fx::FxHashMap;
 
+use super::data_race::{GlobalState as DataRaceState, ThreadClockSet};
+use super::range_object_map::{AccessType, RangeObjectMap};
+use super::vector_clock::{VClock, VTimestamp, VectorIdx};
 use crate::*;
-
-use super::{
-    data_race::{GlobalState as DataRaceState, ThreadClockSet},
-    range_object_map::{AccessType, RangeObjectMap},
-    vector_clock::{VClock, VTimestamp, VectorIdx},
-};
 
 pub type AllocState = StoreBufferAlloc;
 
@@ -200,10 +195,10 @@ impl StoreBufferAlloc {
             AccessType::PerfectlyOverlapping(pos) => pos,
             // If there is nothing here yet, that means there wasn't an atomic write yet so
             // we can't return anything outdated.
-            _ => return Ok(None),
+            _ => return interp_ok(None),
         };
         let store_buffer = Ref::map(self.store_buffers.borrow(), |buffer| &buffer[pos]);
-        Ok(Some(store_buffer))
+        interp_ok(Some(store_buffer))
     }
 
     /// Gets a mutable store buffer associated with an atomic object in this allocation,
@@ -228,7 +223,7 @@ impl StoreBufferAlloc {
                 pos_range.start
             }
         };
-        Ok(&mut buffers[pos])
+        interp_ok(&mut buffers[pos])
     }
 }
 
@@ -289,7 +284,7 @@ impl<'tcx> StoreBuffer {
 
         let (index, clocks) = global.active_thread_state(thread_mgr);
         let loaded = store_elem.load_impl(index, &clocks, is_seqcst);
-        Ok((loaded, recency))
+        interp_ok((loaded, recency))
     }
 
     fn buffered_write(
@@ -302,7 +297,7 @@ impl<'tcx> StoreBuffer {
         let (index, clocks) = global.active_thread_state(thread_mgr);
 
         self.store_impl(val, index, &clocks.clock, is_seqcst);
-        Ok(())
+        interp_ok(())
     }
 
     #[allow(clippy::if_same_then_else, clippy::needless_bool)]
@@ -475,7 +470,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             buffer.read_from_last_store(global, threads, atomic == AtomicRwOrd::SeqCst);
             buffer.buffered_write(new_val, global, threads, atomic == AtomicRwOrd::SeqCst)?;
         }
-        Ok(())
+        interp_ok(())
     }
 
     fn buffered_atomic_read(
@@ -513,14 +508,14 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         });
                     }
 
-                    return Ok(loaded);
+                    return interp_ok(loaded);
                 }
             }
         }
 
         // Race detector or weak memory disabled, simply read the latest value
         validate()?;
-        Ok(Some(latest_in_mo))
+        interp_ok(Some(latest_in_mo))
     }
 
     /// Add the given write to the store buffer. (Does not change machine memory.)
@@ -551,7 +546,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Caller should've written to dest with the vanilla scalar write, we do nothing here
-        Ok(())
+        interp_ok(())
     }
 
     /// Caller should never need to consult the store buffer for the latest value.
@@ -575,7 +570,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     alloc_buffers.get_store_buffer(alloc_range(base_offset, size))?
                 else {
                     // No store buffer, nothing to do.
-                    return Ok(());
+                    return interp_ok(());
                 };
                 buffer.read_from_last_store(
                     global,
@@ -584,6 +579,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 );
             }
         }
-        Ok(())
+        interp_ok(())
     }
 }

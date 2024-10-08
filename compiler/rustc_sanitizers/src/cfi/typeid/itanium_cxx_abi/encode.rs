@@ -315,7 +315,7 @@ fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>,
 /// Encodes a ty:Ty using the Itanium C++ ABI with vendor extended type qualifiers and types for
 /// Rust types that are not used at the FFI boundary.
 #[instrument(level = "trace", skip(tcx, dict))]
-pub fn encode_ty<'tcx>(
+pub(crate) fn encode_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,

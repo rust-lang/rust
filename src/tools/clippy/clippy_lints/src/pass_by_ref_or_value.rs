@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, RegionKind, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
@@ -110,7 +110,7 @@ pub struct PassByRefOrValue {
     avoid_breaking_exported_api: bool,
 }
 
-impl<'tcx> PassByRefOrValue {
+impl PassByRefOrValue {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         let ref_min_size = conf.trivial_copy_size_limit.unwrap_or_else(|| {
             let bit_width = u64::from(tcx.sess.target.pointer_width);
@@ -130,7 +130,7 @@ impl<'tcx> PassByRefOrValue {
         }
     }
 
-    fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
+    fn check_poly_fn(&mut self, cx: &LateContext<'_>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
         if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;
         }

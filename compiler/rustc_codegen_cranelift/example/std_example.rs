@@ -168,7 +168,7 @@ fn main() {
 
     foo(I64X2([0, 0]));
 
-    transmute_fat_pointer();
+    transmute_wide_pointer();
 
     rust_call_abi();
 
@@ -192,7 +192,7 @@ type TwoPtrs = i64;
 #[cfg(target_pointer_width = "64")]
 type TwoPtrs = i128;
 
-fn transmute_fat_pointer() -> TwoPtrs {
+fn transmute_wide_pointer() -> TwoPtrs {
     unsafe { transmute::<_, TwoPtrs>("true !") }
 }
 

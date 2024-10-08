@@ -3,7 +3,7 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 
-use super::{utils, CAST_POSSIBLE_WRAP};
+use super::{CAST_POSSIBLE_WRAP, utils};
 
 // this should be kept in sync with the allowed bit widths of `usize` and `isize`
 const ALLOWED_POINTER_SIZES: [u64; 3] = [16, 32, 64];

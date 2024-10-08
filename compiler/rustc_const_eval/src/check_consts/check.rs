@@ -317,7 +317,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         {
             self.error_emitted = Some(guar);
         }
-        self.check_op_spanned(ops::StaticAccess, span)
     }
 
     /// Returns whether this place can possibly escape the evaluation of the current const/static

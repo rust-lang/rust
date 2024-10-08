@@ -1,3 +1,11 @@
+error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
+  --> $DIR/unsatisfied-const-trait-bound.rs:5:39
+   |
+LL | #![feature(const_trait_impl, effects, generic_const_exprs)]
+   |                                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove one of these features
+
 error[E0308]: mismatched types
   --> $DIR/unsatisfied-const-trait-bound.rs:29:37
    |
@@ -8,7 +16,7 @@ LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
               found constant `true`
 
 error[E0308]: mismatched types
-  --> $DIR/unsatisfied-const-trait-bound.rs:34:50
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:50
    |
 LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
    |                                                  ^^^^^^^^^ expected `false`, found `host`
@@ -16,19 +24,23 @@ LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
    = note: expected constant `false`
               found constant `host`
 
-error[E0277]: the trait bound `Trait::{synthetic#0}: const Compat` is not satisfied
+error[E0277]: the trait bound `Ty: const Trait` is not satisfied
   --> $DIR/unsatisfied-const-trait-bound.rs:22:15
    |
 LL |     require::<Ty>();
-   |               ^^ the trait `const Compat` is not implemented for `Trait::{synthetic#0}`
+   |               ^^ the trait `Trait` is not implemented for `Ty`
    |
 note: required by a bound in `require`
-  --> $DIR/unsatisfied-const-trait-bound.rs:7:15
+  --> $DIR/unsatisfied-const-trait-bound.rs:8:15
    |
 LL | fn require<T: const Trait>() {}
    |               ^^^^^^^^^^^ required by this bound in `require`
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn main() where Ty: Trait {
+   |           +++++++++++++++
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

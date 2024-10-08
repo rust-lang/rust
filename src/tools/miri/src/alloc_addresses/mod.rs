@@ -7,14 +7,13 @@ use std::cell::RefCell;
 use std::cmp::max;
 
 use rand::Rng;
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
 
-use crate::{concurrency::VClock, *};
-
 use self::reuse_pool::ReusePool;
+use crate::concurrency::VClock;
+use crate::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ProvenanceMode {
@@ -201,7 +200,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 AllocKind::Dead => unreachable!(),
             };
             // Ensure this pointer's provenance is exposed, so that it can be used by FFI code.
-            return Ok(base_ptr.expose_provenance().try_into().unwrap());
+            return interp_ok(base_ptr.expose_provenance().try_into().unwrap());
         }
         // We are not in native lib mode, so we control the addresses ourselves.
         if let Some((reuse_addr, clock)) =
@@ -210,7 +209,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if let Some(clock) = clock {
                 ecx.acquire_clock(&clock);
             }
-            Ok(reuse_addr)
+            interp_ok(reuse_addr)
         } else {
             // We have to pick a fresh address.
             // Leave some space to the previous allocation, to give it some chance to be less aligned.
@@ -235,7 +234,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 throw_exhaust!(AddressSpaceFull);
             }
 
-            Ok(base_addr)
+            interp_ok(base_addr)
         }
     }
 
@@ -249,7 +248,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let global_state = &mut *global_state;
 
         match global_state.base_addr.get(&alloc_id) {
-            Some(&addr) => Ok(addr),
+            Some(&addr) => interp_ok(addr),
             None => {
                 // First time we're looking for the absolute address of this allocation.
                 let base_addr =
@@ -275,7 +274,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 global_state.int_to_ptr_map.insert(pos, (base_addr, alloc_id));
 
-                Ok(base_addr)
+                interp_ok(base_addr)
             }
         }
     }
@@ -288,12 +287,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let global_state = ecx.machine.alloc_addresses.get_mut();
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Strict {
-            return Ok(());
+            return interp_ok(());
         }
         // Exposing a dead alloc is a no-op, because it's not possible to get a dead allocation
         // via int2ptr.
         if !ecx.is_alloc_live(alloc_id) {
-            return Ok(());
+            return interp_ok(());
         }
         trace!("Exposing allocation id {alloc_id:?}");
         let global_state = ecx.machine.alloc_addresses.get_mut();
@@ -301,7 +300,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.expose_tag(alloc_id, tag)?;
         }
-        Ok(())
+        interp_ok(())
     }
 
     fn ptr_from_addr_cast(&self, addr: u64) -> InterpResult<'tcx, Pointer> {
@@ -338,7 +337,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // cast is fairly irrelevant. Instead we generate this as a "wildcard" pointer, such that
         // *every time the pointer is used*, we do an `AllocId` lookup to find the (exposed)
         // allocation it might be referencing.
-        Ok(Pointer::new(Some(Provenance::Wildcard), Size::from_bytes(addr)))
+        interp_ok(Pointer::new(Some(Provenance::Wildcard), Size::from_bytes(addr)))
     }
 
     /// Convert a relative (tcx) pointer to a Miri pointer.
@@ -360,7 +359,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Size::from_bytes(base_addr),
         );
         // Add offset with the right kind of pointer-overflowing arithmetic.
-        Ok(base_ptr.wrapping_offset(offset, ecx))
+        interp_ok(base_ptr.wrapping_offset(offset, ecx))
     }
 
     // This returns some prepared `MiriAllocBytes`, either because `addr_from_alloc_id` reserved
@@ -391,9 +390,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             assert_eq!(prepared_alloc_bytes.len(), bytes.len());
             // Copy allocation contents into prepared memory.
             prepared_alloc_bytes.copy_from_slice(bytes);
-            Ok(prepared_alloc_bytes)
+            interp_ok(prepared_alloc_bytes)
         } else {
-            Ok(MiriAllocBytes::from_bytes(std::borrow::Cow::Borrowed(bytes), align))
+            interp_ok(MiriAllocBytes::from_bytes(std::borrow::Cow::Borrowed(bytes), align))
         }
     }
 

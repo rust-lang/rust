@@ -1,3 +1,11 @@
+error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
+  --> $DIR/unify-op-with-fn-call.rs:3:12
+   |
+LL | #![feature(generic_const_exprs, adt_const_params, const_trait_impl, effects)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove one of these features
+
 error: const `impl` for trait `Add` which is not marked with `#[const_trait]`
   --> $DIR/unify-op-with-fn-call.rs:10:12
    |
@@ -67,7 +75,7 @@ error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#0}`
 LL |     bar2::<{ std::ops::Add::add(N, N) }>();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo2<N>::{constant#0}`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0284, E0741.
 For more information about an error, try `rustc --explain E0284`.

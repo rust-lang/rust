@@ -169,6 +169,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                 }
             }
             TerminatorKind::InlineAsm {
+                asm_macro: _,
                 template: _,
                 operands,
                 options: _,

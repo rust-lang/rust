@@ -426,8 +426,8 @@ mod imp {
             match sysctlbyname.get() {
                 Some(fcn) if unsafe {
                     fcn(oid.as_ptr(),
-                        ptr::addr_of_mut!(guard).cast(),
-                        ptr::addr_of_mut!(size),
+                        (&raw mut guard).cast(),
+                        &raw mut size,
                         ptr::null_mut(),
                         0) == 0
                 } => guard,

@@ -291,7 +291,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
 ///   the Fn trait that defines the method (for being attached as a secondary type id).
 ///
 #[instrument(level = "trace", skip(tcx))]
-pub fn transform_instance<'tcx>(
+pub(crate) fn transform_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut instance: Instance<'tcx>,
     options: TransformTyOptions,
@@ -475,7 +475,7 @@ fn implemented_method<'tcx>(
     } else {
         return None;
     };
-    let vtable_possible =
-        traits::is_vtable_safe_method(tcx, trait_id, trait_method) && tcx.is_object_safe(trait_id);
+    let vtable_possible = traits::is_vtable_safe_method(tcx, trait_id, trait_method)
+        && tcx.is_dyn_compatible(trait_id);
     vtable_possible.then_some((trait_ref, method_id, ancestor))
 }

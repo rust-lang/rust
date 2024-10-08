@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::collections::BTreeMap;
 
 declare_clippy_lint! {
@@ -81,7 +81,7 @@ impl MacroUseImports {
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
+impl LateLintPass<'_> for MacroUseImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if cx.sess().opts.edition >= Edition::Edition2018
             && let hir::ItemKind::Use(path, _kind) = &item.kind

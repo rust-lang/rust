@@ -128,8 +128,7 @@ pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
 }
 
 pub fn copy_to_stdout(from: &Path) -> io::Result<()> {
-    let file = fs::File::open(from)?;
-    let mut reader = io::BufReader::new(file);
+    let mut reader = fs::File::open_buffered(from)?;
     let mut stdout = io::stdout();
     io::copy(&mut reader, &mut stdout)?;
     Ok(())

@@ -605,6 +605,25 @@ impl CallSource {
     }
 }
 
+#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(TypeFoldable, TypeVisitable)]
+/// The macro that an inline assembly block was created by
+pub enum InlineAsmMacro {
+    /// The `asm!` macro
+    Asm,
+    /// The `naked_asm!` macro
+    NakedAsm,
+}
+
+impl InlineAsmMacro {
+    pub const fn diverges(self, options: InlineAsmOptions) -> bool {
+        match self {
+            InlineAsmMacro::Asm => options.contains(InlineAsmOptions::NORETURN),
+            InlineAsmMacro::NakedAsm => true,
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Terminators
 
@@ -859,6 +878,9 @@ pub enum TerminatorKind<'tcx> {
     /// Block ends with an inline assembly block. This is a terminator since
     /// inline assembly is allowed to diverge.
     InlineAsm {
+        /// Macro used to create this inline asm: one of `asm!` or `naked_asm!`
+        asm_macro: InlineAsmMacro,
+
         /// The template for the inline assembly, with placeholders.
         template: &'tcx [InlineAsmTemplatePiece],
 
@@ -874,7 +896,7 @@ pub enum TerminatorKind<'tcx> {
 
         /// Valid targets for the inline assembly.
         /// The first element is the fallthrough destination, unless
-        /// InlineAsmOptions::NORETURN is set.
+        /// asm_macro == InlineAsmMacro::NakedAsm or InlineAsmOptions::NORETURN is set.
         targets: Box<[BasicBlock]>,
 
         /// Action to be taken if the inline assembly unwinds. This is present
@@ -1135,8 +1157,10 @@ pub enum ProjectionElem<V, T> {
     ConstantIndex {
         /// index or -index (in Python terms), depending on from_end
         offset: u64,
-        /// The thing being indexed must be at least this long. For arrays this
-        /// is always the exact length.
+        /// The thing being indexed must be at least this long -- otherwise, the
+        /// projection is UB.
+        ///
+        /// For arrays this is always the exact length.
         min_length: u64,
         /// Counting backwards from end? This is always false when indexing an
         /// array.

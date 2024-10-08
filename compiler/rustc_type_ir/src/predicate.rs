@@ -668,8 +668,8 @@ impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
     }
 }
 
-/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
-/// proven by actually normalizing `alias`.
+/// Used by the new solver to normalize an alias. This always expects the `term` to
+/// be an unconstrained inference variable which is used as the output.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
@@ -753,5 +753,12 @@ impl fmt::Display for BoundConstness {
             Self::Const => f.write_str("const"),
             Self::ConstIfConst => f.write_str("~const"),
         }
+    }
+}
+
+impl<I> Lift<I> for BoundConstness {
+    type Lifted = BoundConstness;
+    fn lift_to_interner(self, _: I) -> Option<Self::Lifted> {
+        Some(self)
     }
 }

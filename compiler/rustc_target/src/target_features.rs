@@ -352,11 +352,13 @@ const HEXAGON_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const POWERPC_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
+    ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     ("power10-vector", Unstable(sym::powerpc_target_feature), &["power9-vector"]),
     ("power8-altivec", Unstable(sym::powerpc_target_feature), &["altivec"]),
     ("power8-vector", Unstable(sym::powerpc_target_feature), &["vsx", "power8-altivec"]),
     ("power9-altivec", Unstable(sym::powerpc_target_feature), &["power8-altivec"]),
     ("power9-vector", Unstable(sym::powerpc_target_feature), &["power8-vector", "power9-altivec"]),
+    ("quadword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     ("vsx", Unstable(sym::powerpc_target_feature), &["altivec"]),
     // tidy-alphabetical-end
 ];
@@ -371,7 +373,7 @@ const MIPS_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 
 const RISCV_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
-    ("a", Stable, &[]),
+    ("a", Stable, &["zaamo", "zalrsc"]),
     ("c", Stable, &[]),
     ("d", Unstable(sym::riscv_target_feature), &["f"]),
     ("e", Unstable(sym::riscv_target_feature), &[]),
@@ -380,6 +382,9 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("relax", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &[]),
+    ("zaamo", Unstable(sym::riscv_target_feature), &[]),
+    ("zabha", Unstable(sym::riscv_target_feature), &["zaamo"]),
+    ("zalrsc", Unstable(sym::riscv_target_feature), &[]),
     ("zba", Stable, &[]),
     ("zbb", Stable, &[]),
     ("zbc", Stable, &[]),

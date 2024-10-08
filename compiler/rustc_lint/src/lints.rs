@@ -1703,7 +1703,7 @@ pub(crate) enum InvalidNanComparisons {
     #[diag(lint_invalid_nan_comparisons_eq_ne)]
     EqNe {
         #[subdiagnostic]
-        suggestion: Option<InvalidNanComparisonsSuggestion>,
+        suggestion: InvalidNanComparisonsSuggestion,
     },
     #[diag(lint_invalid_nan_comparisons_lt_le_gt_ge)]
     LtLeGtGe,
@@ -2440,14 +2440,6 @@ pub(crate) struct DuplicateMacroAttribute;
 #[derive(LintDiagnostic)]
 #[diag(lint_cfg_attr_no_attributes)]
 pub(crate) struct CfgAttrNoAttributes;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_crate_type_in_cfg_attr_deprecated)]
-pub(crate) struct CrateTypeInCfgAttr;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_crate_name_in_cfg_attr_deprecated)]
-pub(crate) struct CrateNameInCfgAttr;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_missing_fragment_specifier)]

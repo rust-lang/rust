@@ -2,7 +2,7 @@
 
 use std::alloc as colla;
 use std::option::Option as Maybe;
-use std::process::{exit as goodbye, Child as Kid};
+use std::process::{Child as Kid, exit as goodbye};
 use std::thread::sleep as thread_sleep;
 #[rustfmt::skip]
 use std::{

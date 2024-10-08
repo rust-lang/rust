@@ -7,7 +7,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, ExistentialPredicate, Ty};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 /// Checks if the given type is `dyn Any`, or a trait object that has `Any` as a supertrait.
 /// Only in those cases will its vtable have a `type_id` method that returns the implementor's

@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_type_ir::fold::TypeFoldable;
 pub use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 
@@ -110,7 +110,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn collect_constrained_late_bound_regions<T>(
         self,
         value: Binder<'tcx, T>,
-    ) -> FxHashSet<ty::BoundRegionKind>
+    ) -> FxIndexSet<ty::BoundRegionKind>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -121,7 +121,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn collect_referenced_late_bound_regions<T>(
         self,
         value: Binder<'tcx, T>,
-    ) -> FxHashSet<ty::BoundRegionKind>
+    ) -> FxIndexSet<ty::BoundRegionKind>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -132,7 +132,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         just_constrained: bool,
-    ) -> FxHashSet<ty::BoundRegionKind>
+    ) -> FxIndexSet<ty::BoundRegionKind>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -148,7 +148,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// into a hash set.
 struct LateBoundRegionsCollector {
     current_index: ty::DebruijnIndex,
-    regions: FxHashSet<ty::BoundRegionKind>,
+    regions: FxIndexSet<ty::BoundRegionKind>,
 
     /// `true` if we only want regions that are known to be
     /// "constrained" when you equate this type with another type. In

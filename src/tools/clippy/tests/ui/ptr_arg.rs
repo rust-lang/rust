@@ -309,3 +309,25 @@ mod issue_11181 {
         extern "C" fn allowed(_v: &Vec<u32>) {}
     }
 }
+
+mod issue_13308 {
+    use std::ops::Deref;
+
+    fn repro(source: &str, destination: &mut String) {
+        source.clone_into(destination);
+    }
+    fn repro2(source: &str, destination: &mut String) {
+        ToOwned::clone_into(source, destination);
+    }
+
+    fn h1(_: &<String as Deref>::Target) {}
+    fn h2<T: Deref>(_: T, _: &T::Target) {}
+
+    // Other cases that are still ok to lint and ideally shouldn't regress
+    fn good(v1: &String, v2: &String) {
+        //~^ ERROR: writing `&String` instead of `&str`
+        //~^^ ERROR: writing `&String` instead of `&str`
+        h1(v1);
+        h2(String::new(), v2);
+    }
+}

@@ -24,8 +24,8 @@ error[E0038]: the trait `Trait` cannot be made into an object
 LL | trait Trait<const N: Trait = bar> {
    |                      ^^^^^ `Trait` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/not_wf_param_in_rpitit.rs:11:14
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/not_wf_param_in_rpitit.rs:10:14
    |
 LL | trait Trait<const N: Trait = bar> {
    |       ----- this trait cannot be made into an object...
@@ -47,8 +47,8 @@ error[E0038]: the trait `Trait` cannot be made into an object
 LL | trait Trait<const N: Trait = bar> {
    |             ^^^^^^^^^^^^^^^^^^^^ `Trait` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/not_wf_param_in_rpitit.rs:11:14
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/not_wf_param_in_rpitit.rs:10:14
    |
 LL | trait Trait<const N: Trait = bar> {
    |       ----- this trait cannot be made into an object...
@@ -64,22 +64,14 @@ help: alternatively, consider constraining `a` so it does not apply to trait obj
 LL |     async fn a() where Self: Sized {}
    |                  +++++++++++++++++
 
-error: `(dyn Trait<{const error}> + 'static)` is forbidden as the type of a const generic parameter
-  --> $DIR/not_wf_param_in_rpitit.rs:3:22
-   |
-LL | trait Trait<const N: Trait = bar> {
-   |                      ^^^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/not_wf_param_in_rpitit.rs:3:13
    |
 LL | trait Trait<const N: Trait = bar> {
    |             ^^^^^^^^^^^^^^^^^^^^ `Trait` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/not_wf_param_in_rpitit.rs:11:14
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/not_wf_param_in_rpitit.rs:10:14
    |
 LL | trait Trait<const N: Trait = bar> {
    |       ----- this trait cannot be made into an object...
@@ -107,7 +99,7 @@ help: add `dyn` keyword before this trait
 LL | trait Trait<const N: dyn Trait = bar> {
    |                      +++
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0038, E0391, E0425, E0782.
 For more information about an error, try `rustc --explain E0038`.

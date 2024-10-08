@@ -1,3 +1,11 @@
+error: `Foo` is forbidden as the type of a const generic parameter
+  --> $DIR/opaque_types.rs:7:17
+   |
+LL | fn foo<const C: Foo>() {}
+   |                 ^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
 error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
   --> $DIR/opaque_types.rs:7:4
    |
@@ -67,14 +75,6 @@ note: cycle used when checking that `Foo::{opaque#0}` is well-formed
 LL | type Foo = impl Sized;
    |            ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-
-error: `Foo` is forbidden as the type of a const generic parameter
-  --> $DIR/opaque_types.rs:7:17
-   |
-LL | fn foo<const C: Foo>() {}
-   |                 ^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
 
 error[E0391]: cycle detected when computing type of opaque `Foo::{opaque#0}`
   --> $DIR/opaque_types.rs:3:12

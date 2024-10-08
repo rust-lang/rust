@@ -4,7 +4,8 @@
 #![allow(
     clippy::partialeq_ne_impl,
     clippy::default_constructed_unit_structs,
-    clippy::only_used_in_recursion
+    clippy::only_used_in_recursion,
+    clippy::needless_lifetimes
 )]
 
 enum Foo {

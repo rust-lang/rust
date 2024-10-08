@@ -2,7 +2,8 @@
 // This test is the result of minimizing the `emplacable` crate to reproduce
 // <https://github.com/rust-lang/miri/issues/3541>.
 
-use std::{ops::FnMut, ptr::Pointee};
+use std::ops::FnMut;
+use std::ptr::Pointee;
 
 pub type EmplacerFn<'a, T> = dyn for<'b> FnMut(<T as Pointee>::Metadata) + 'a;
 

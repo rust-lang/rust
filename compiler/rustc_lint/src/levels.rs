@@ -669,7 +669,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
                 let sp = li.span();
                 let meta_item = match li {
-                    ast::NestedMetaItem::MetaItem(meta_item) if meta_item.is_word() => meta_item,
+                    ast::MetaItemInner::MetaItem(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
                         let sub = if let Some(item) = li.meta_item()
                             && let ast::MetaItemKind::NameValue(_) = item.kind

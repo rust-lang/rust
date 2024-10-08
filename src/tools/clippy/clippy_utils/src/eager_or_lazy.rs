@@ -14,12 +14,12 @@ use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use std::{cmp, ops};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -118,7 +118,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
         eagerness: EagernessSuggestion,
     }
 
-    impl<'cx, 'tcx> Visitor<'tcx> for V<'cx, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             use EagernessSuggestion::{ForceNoChange, Lazy, NoChange};
             if self.eagerness == ForceNoChange {

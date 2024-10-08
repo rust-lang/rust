@@ -1,7 +1,7 @@
 use rustc_ast::Attribute;
 use rustc_attr::parse_version;
 use rustc_session::{RustcVersion, Session};
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use serde::Deserialize;
 use std::fmt;
 
@@ -19,10 +19,12 @@ macro_rules! msrv_aliases {
 msrv_aliases! {
     1,83,0 { CONST_EXTERN_FN }
     1,83,0 { CONST_FLOAT_BITS_CONV }
+    1,82,0 { IS_NONE_OR }
     1,81,0 { LINT_REASONS_STABILIZATION }
     1,80,0 { BOX_INTO_ITER}
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
+    1,73,0 { MANUAL_DIV_CEIL }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
     1,70,0 { OPTION_RESULT_IS_VARIANT_AND, BINARY_HEAP_RETAIN }
     1,68,0 { PATH_MAIN_SEPARATOR_STR }
@@ -38,7 +40,7 @@ msrv_aliases! {
     1,52,0 { STR_SPLIT_ONCE, REM_EUCLID_CONST }
     1,51,0 { BORROW_AS_PTR, SEEK_FROM_CURRENT, UNSIGNED_ABS }
     1,50,0 { BOOL_THEN, CLAMP }
-    1,47,0 { TAU, IS_ASCII_DIGIT_CONST, ARRAY_IMPL_ANY_LEN }
+    1,47,0 { TAU, IS_ASCII_DIGIT_CONST, ARRAY_IMPL_ANY_LEN, SATURATING_SUB_CONST }
     1,46,0 { CONST_IF_MATCH }
     1,45,0 { STR_STRIP_PREFIX }
     1,43,0 { LOG2_10, LOG10_2, NUMERIC_ASSOCIATED_CONSTANTS }
@@ -50,6 +52,7 @@ msrv_aliases! {
     1,36,0 { ITERATOR_COPIED }
     1,35,0 { OPTION_COPIED, RANGE_CONTAINS }
     1,34,0 { TRY_FROM }
+    1,33,0 { UNDERSCORE_IMPORTS }
     1,30,0 { ITERATOR_FIND_MAP, TOOL_ATTRIBUTES }
     1,29,0 { ITER_FLATTEN }
     1,28,0 { FROM_BOOL }

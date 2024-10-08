@@ -2,13 +2,13 @@ use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, walk_local, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr, walk_local};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, LetStmt, Mutability, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 
 #[derive(Debug, PartialEq, Eq)]
 enum IncrementVisitorVarState {
@@ -44,7 +44,7 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for IncrementVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // If node is a variable
         if let Some(def_id) = path_to_local(expr) {
@@ -138,7 +138,7 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for InitializeVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_local(&mut self, l: &'tcx LetStmt<'_>) {

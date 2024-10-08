@@ -2,6 +2,7 @@ mod impl_trait_in_params;
 mod misnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
+mod ref_option;
 mod renamed_function_params;
 mod result;
 mod too_many_arguments;
@@ -14,8 +15,8 @@ use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::{DefIdSet, LocalDefId};
 use rustc_span::Span;
+use rustc_span::def_id::{DefIdSet, LocalDefId};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -399,6 +400,53 @@ declare_clippy_lint! {
     "renamed function parameters in trait implementation"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns when a function signature uses `&Option<T>` instead of `Option<&T>`.
+    ///
+    /// ### Why is this bad?
+    /// More flexibility, better memory optimization, and more idiomatic Rust code.
+    ///
+    /// `&Option<T>` in a function signature breaks encapsulation because the caller must own T
+    /// and move it into an Option to call with it. When returned, the owner must internally store
+    /// it as `Option<T>` in order to return it.
+    /// At a lower level, `&Option<T>` points to memory with the `presence` bit flag plus the `T` value,
+    /// whereas `Option<&T>` is usually [optimized](https://doc.rust-lang.org/1.81.0/std/option/index.html#representation)
+    /// to a single pointer, so it may be more optimal.
+    ///
+    /// See this [YouTube video](https://www.youtube.com/watch?v=6c7pZYP_iIE) by
+    /// Logan Smith for an in-depth explanation of why this is important.
+    ///
+    /// ### Known problems
+    /// This lint recommends changing the function signatures, but it cannot
+    /// automatically change the function calls or the function implementations.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // caller uses  foo(&opt)
+    /// fn foo(a: &Option<String>) {}
+    /// # struct Unit {}
+    /// # impl Unit {
+    /// fn bar(&self) -> &Option<String> { &None }
+    /// # }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// // caller should use  `foo1(opt.as_ref())`
+    /// fn foo1(a: Option<&String>) {}
+    /// // better yet, use string slice  `foo2(opt.as_deref())`
+    /// fn foo2(a: Option<&str>) {}
+    /// # struct Unit {}
+    /// # impl Unit {
+    /// fn bar(&self) -> Option<&String> { None }
+    /// # }
+    /// ```
+    #[clippy::version = "1.82.0"]
+    pub REF_OPTION,
+    pedantic,
+    "function signature uses `&Option<T>` instead of `Option<&T>`"
+}
+
 pub struct Functions {
     too_many_arguments_threshold: u64,
     too_many_lines_threshold: u64,
@@ -437,6 +485,7 @@ impl_lint_pass!(Functions => [
     MISNAMED_GETTERS,
     IMPL_TRAIT_IN_PARAMS,
     RENAMED_FUNCTION_PARAMS,
+    REF_OPTION,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -455,6 +504,16 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, def_id);
         misnamed_getters::check_fn(cx, kind, decl, body, span);
         impl_trait_in_params::check_fn(cx, &kind, body, hir_id);
+        ref_option::check_fn(
+            cx,
+            kind,
+            decl,
+            span,
+            hir_id,
+            def_id,
+            body,
+            self.avoid_breaking_exported_api,
+        );
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
@@ -475,5 +534,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         must_use::check_trait_item(cx, item);
         result::check_trait_item(cx, item, self.large_error_threshold);
         impl_trait_in_params::check_trait_item(cx, item, self.avoid_breaking_exported_api);
+        ref_option::check_trait_item(cx, item, self.avoid_breaking_exported_api);
     }
 }

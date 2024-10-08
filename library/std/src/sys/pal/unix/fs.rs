@@ -479,6 +479,7 @@ impl FileAttr {
         target_os = "vita",
         target_os = "hurd",
         target_os = "rtems",
+        target_os = "nuttx",
     )))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -501,7 +502,7 @@ impl FileAttr {
         SystemTime::new(self.stat.st_mtime as i64, 0)
     }
 
-    #[cfg(any(target_os = "horizon", target_os = "hurd"))]
+    #[cfg(any(target_os = "horizon", target_os = "hurd", target_os = "nuttx"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtim.tv_sec as i64, self.stat.st_mtim.tv_nsec as i64)
     }
@@ -513,6 +514,7 @@ impl FileAttr {
         target_os = "vita",
         target_os = "hurd",
         target_os = "rtems",
+        target_os = "nuttx",
     )))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -535,7 +537,7 @@ impl FileAttr {
         SystemTime::new(self.stat.st_atime as i64, 0)
     }
 
-    #[cfg(any(target_os = "horizon", target_os = "hurd"))]
+    #[cfg(any(target_os = "horizon", target_os = "hurd", target_os = "nuttx"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_atim.tv_sec as i64, self.stat.st_atim.tv_nsec as i64)
     }
@@ -738,7 +740,7 @@ impl Iterator for ReadDir {
                 //
                 // Like for uninitialized contents, converting entry_ptr to `&dirent64`
                 // would not be legal. However, unique to dirent64 is that we don't even
-                // get to use `addr_of!((*entry_ptr).d_name)` because that operation
+                // get to use `&raw const (*entry_ptr).d_name` because that operation
                 // requires the full extent of *entry_ptr to be in bounds of the same
                 // allocation, which is not necessarily the case here.
                 //
@@ -752,7 +754,7 @@ impl Iterator for ReadDir {
                         } else {
                             #[allow(deref_nullptr)]
                             {
-                                ptr::addr_of!((*ptr::null::<dirent64>()).$field)
+                                &raw const (*ptr::null::<dirent64>()).$field
                             }
                         }
                     }};
@@ -866,6 +868,7 @@ impl Drop for Dir {
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "rtems",
+            target_os = "nuttx",
         )))]
         {
             let fd = unsafe { libc::dirfd(self.0) };
@@ -998,6 +1001,13 @@ impl DirEntry {
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_fileno as u64
+    }
+
+    #[cfg(target_os = "nuttx")]
+    pub fn ino(&self) -> u64 {
+        // Leave this 0 for now, as NuttX does not provide an inode number
+        // in its directory entries.
+        0
     }
 
     #[cfg(any(
@@ -1327,7 +1337,8 @@ impl File {
             target_os = "redox",
             target_os = "espidf",
             target_os = "horizon",
-            target_os = "vxworks"
+            target_os = "vxworks",
+            target_os = "nuttx",
         )))]
         let to_timespec = |time: Option<SystemTime>| match time {
             Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
@@ -1342,7 +1353,7 @@ impl File {
             None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };
         cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "vxworks"))] {
+            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "vxworks", target_os = "nuttx"))] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
@@ -1374,7 +1385,7 @@ impl File {
                 }
                 cvt(unsafe { libc::fsetattrlist(
                     self.as_raw_fd(),
-                    core::ptr::addr_of!(attrlist).cast::<libc::c_void>().cast_mut(),
+                    (&raw const attrlist).cast::<libc::c_void>().cast_mut(),
                     buf.as_ptr().cast::<libc::c_void>().cast_mut(),
                     num_times * mem::size_of::<libc::timespec>(),
                     0
@@ -1933,7 +1944,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         libc::copyfile_state_get(
             state.0,
             libc::COPYFILE_STATE_COPIED as u32,
-            core::ptr::addr_of_mut!(bytes_copied) as *mut libc::c_void,
+            (&raw mut bytes_copied) as *mut libc::c_void,
         )
     })?;
     Ok(bytes_copied as u64)

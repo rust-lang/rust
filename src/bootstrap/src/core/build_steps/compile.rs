@@ -1205,7 +1205,8 @@ pub fn rustc_cargo_env(
     // busting caches (e.g. like #71152).
     if builder.config.llvm_enabled(target) {
         let building_is_expensive =
-            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target).should_build();
+            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
+                .should_build();
         // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
         let can_skip_build = builder.kind == Kind::Check && builder.top_stage == stage;
         let should_skip_build = building_is_expensive && can_skip_build;
@@ -1922,8 +1923,24 @@ impl Step for Assemble {
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if (is_dylib(&filename) || is_debug_info(&filename)) && !proc_macros.contains(&filename)
+
+            let is_proc_macro = proc_macros.contains(&filename);
+            let is_dylib_or_debug = is_dylib(&filename) || is_debug_info(&filename);
+
+            // If we link statically to stdlib, do not copy the libstd dynamic library file
+            // FIXME: Also do this for Windows once incremental post-optimization stage0 tests
+            // work without std.dll (see https://github.com/rust-lang/rust/pull/131188).
+            let can_be_rustc_dynamic_dep = if builder
+                .link_std_into_rustc_driver(target_compiler.host)
+                && !target_compiler.host.is_windows()
             {
+                let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
+                !is_std
+            } else {
+                true
+            };
+
+            if is_dylib_or_debug && can_be_rustc_dynamic_dep && !is_proc_macro {
                 builder.copy_link(&f.path(), &rustc_libdir.join(&filename));
             }
         }

@@ -2006,10 +2006,10 @@ impl<'a> State<'a> {
         self.print_attribute_inline(attr, false)
     }
 
-    fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
+    fn print_meta_list_item(&mut self, item: &ast::MetaItemInner) {
         match item {
-            ast::NestedMetaItem::MetaItem(mi) => self.print_meta_item(mi),
-            ast::NestedMetaItem::Lit(lit) => self.print_meta_item_lit(lit),
+            ast::MetaItemInner::MetaItem(mi) => self.print_meta_item(mi),
+            ast::MetaItemInner::Lit(lit) => self.print_meta_item_lit(lit),
         }
     }
 
@@ -2054,7 +2054,7 @@ impl<'a> State<'a> {
         Self::to_string(|s| s.print_path_segment(p, false))
     }
 
-    pub(crate) fn meta_list_item_to_string(&self, li: &ast::NestedMetaItem) -> String {
+    pub(crate) fn meta_list_item_to_string(&self, li: &ast::MetaItemInner) -> String {
         Self::to_string(|s| s.print_meta_list_item(li))
     }
 

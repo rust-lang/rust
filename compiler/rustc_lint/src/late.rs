@@ -18,7 +18,7 @@ use std::any::Any;
 use std::cell::Cell;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::{Lrc, join};
+use rustc_data_structures::sync::join;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::{HirId, intravisit as hir_visit};
@@ -36,8 +36,7 @@ use crate::{LateContext, LateLintPass, LintStore};
 ///
 /// This function exists because [`Session::lint_store`] is type-erased.
 pub fn unerased_lint_store(sess: &Session) -> &LintStore {
-    let store: &Lrc<_> = sess.lint_store.as_ref().unwrap();
-    let store: &dyn Any = &**store;
+    let store: &dyn Any = sess.lint_store.as_deref().unwrap();
     store.downcast_ref().unwrap()
 }
 

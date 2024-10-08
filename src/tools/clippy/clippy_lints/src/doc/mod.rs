@@ -23,15 +23,16 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
-    add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, span_of_fragments,
-    DocFragment,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range,
+    span_of_fragments,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::ops::Range;
 use url::Url;
 
+mod empty_line_after;
 mod link_with_quotes;
 mod markdown;
 mod missing_headers;
@@ -449,13 +450,88 @@ declare_clippy_lint! {
     /// /// and probably spanning a many rows.
     /// struct Foo {}
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.82.0"]
     pub TOO_LONG_FIRST_DOC_PARAGRAPH,
     style,
     "ensure that the first line of a documentation paragraph isn't too long"
 }
 
-#[derive(Clone)]
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for empty lines after outer attributes
+    ///
+    /// ### Why is this bad?
+    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
+    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
+    /// should be removed
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[allow(dead_code)]
+    ///
+    /// fn not_quite_good_code() {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// // Good (as inner attribute)
+    /// #![allow(dead_code)]
+    ///
+    /// fn this_is_fine() {}
+    ///
+    /// // or
+    ///
+    /// // Good (as outer attribute)
+    /// #[allow(dead_code)]
+    /// fn this_is_fine_too() {}
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub EMPTY_LINE_AFTER_OUTER_ATTR,
+    suspicious,
+    "empty line after outer attribute"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for empty lines after doc comments.
+    ///
+    /// ### Why is this bad?
+    /// The doc comment may have meant to be an inner doc comment, regular
+    /// comment or applied to some old code that is now commented out. If it was
+    /// intended to be a doc comment, then the empty line should be removed.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// /// Some doc comment with a blank line after it.
+    ///
+    /// fn f() {}
+    ///
+    /// /// Docs for `old_code`
+    /// // fn old_code() {}
+    ///
+    /// fn new_code() {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// //! Convert it to an inner doc comment
+    ///
+    /// // Or a regular comment
+    ///
+    /// /// Or remove the empty line
+    /// fn f() {}
+    ///
+    /// // /// Docs for `old_code`
+    /// // fn old_code() {}
+    ///
+    /// fn new_code() {}
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub EMPTY_LINE_AFTER_DOC_COMMENTS,
+    suspicious,
+    "empty line after doc comments"
+}
+
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
     check_private_items: bool,
@@ -482,6 +558,8 @@ impl_lint_pass!(Documentation => [
     SUSPICIOUS_DOC_COMMENTS,
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
+    EMPTY_LINE_AFTER_OUTER_ATTR,
+    EMPTY_LINE_AFTER_DOC_COMMENTS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
 ]);
 
@@ -612,11 +690,9 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
-    if is_doc_hidden(attrs) {
+    if suspicious_doc_comments::check(cx, attrs) || empty_line_after::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }
-
-    suspicious_doc_comments::check(cx, attrs);
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
@@ -816,7 +892,6 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         range.end..next_range.start,
                         Span::new(span.hi(), next_span.lo(), span.ctxt(), span.parent()),
                         &containers[..],
-                        span,
                     );
                 }
             },
@@ -895,7 +970,7 @@ impl<'a, 'tcx> FindPanicUnwrap<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

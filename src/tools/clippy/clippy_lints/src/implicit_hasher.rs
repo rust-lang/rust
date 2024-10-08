@@ -3,18 +3,18 @@ use std::collections::BTreeMap;
 
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_body, walk_expr, walk_inf, walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_body, walk_expr, walk_inf, walk_ty};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{snippet, IntoSpan, SpanRangeExt};
+use clippy_utils::source::{IntoSpan, SpanRangeExt, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
 
 declare_clippy_lint! {
@@ -281,7 +281,7 @@ impl<'a, 'tcx> ImplicitHasherTypeVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'_, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
         if let Some(target) = ImplicitHasherType::new(self.cx, t) {
             self.found.push(target);
@@ -318,7 +318,7 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_body(&mut self, body: &Body<'tcx>) {

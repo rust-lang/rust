@@ -217,7 +217,7 @@ pub fn early_report_macro_deprecation(
         suggestion_span: span,
         note: depr.note,
         path,
-        since_kind: deprecated_since_kind(is_in_effect, depr.since.clone()),
+        since_kind: deprecated_since_kind(is_in_effect, depr.since),
     };
     lint_buffer.buffer_lint(deprecation_lint(is_in_effect), node_id, span, diag);
 }

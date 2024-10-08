@@ -1425,8 +1425,7 @@ extern "rust-intrinsic" {
     ///
     /// If the computed offset is non-zero, then both the starting and resulting pointer must be
     /// either in bounds or at the end of an allocated object. If either pointer is out
-    /// of bounds or arithmetic overflow occurs then any further use of the returned value will
-    /// result in undefined behavior.
+    /// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -2659,12 +2658,17 @@ extern "rust-intrinsic" {
     ///
     /// `catch_fn` must not unwind.
     ///
-    /// The third argument is a function called if an unwind occurs (both Rust unwinds and foreign
-    /// unwinds). This function takes the data pointer and a pointer to the target-specific
-    /// exception object that was caught. For more information, see the compiler's source as well as
-    /// std's `catch_unwind` implementation.
+    /// The third argument is a function called if an unwind occurs (both Rust `panic` and foreign
+    /// unwinds). This function takes the data pointer and a pointer to the target- and
+    /// runtime-specific exception object that was caught.
     ///
-    /// The stable version of this intrinsic is `std::panic::catch_unwind`.
+    /// Note that in the case of a foreign unwinding operation, the exception object data may not be
+    /// safely usable from Rust, and should not be directly exposed via the standard library. To
+    /// prevent unsafe access, the library implementation may either abort the process or present an
+    /// opaque error type to the user.
+    ///
+    /// For more information, see the compiler's source, as well as the documentation for the stable
+    /// version of this intrinsic, `std::panic::catch_unwind`.
     #[rustc_nounwind]
     pub fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
 
@@ -3160,7 +3164,7 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128 {
 /// change the possible layouts of pointers.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(_data: D, _meta: M) -> P {
@@ -3185,7 +3189,7 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 /// This is used to implement functions like `ptr::metadata`.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *const P) -> M {

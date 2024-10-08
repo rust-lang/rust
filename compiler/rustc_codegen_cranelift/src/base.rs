@@ -8,6 +8,7 @@ use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::InlineAsmMacro;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
@@ -57,6 +58,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
         match &mir.basic_blocks[START_BLOCK].terminator().kind {
             TerminatorKind::InlineAsm {
+                asm_macro: InlineAsmMacro::NakedAsm,
                 template,
                 operands,
                 options,
@@ -498,6 +500,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 "tail calls are not yet supported in `rustc_codegen_cranelift` backend"
             ),
             TerminatorKind::InlineAsm {
+                asm_macro: _,
                 template,
                 operands,
                 options,
@@ -713,17 +716,17 @@ fn codegen_stmt<'tcx>(
                     let from_ty = operand.layout().ty;
                     let to_ty = fx.monomorphize(to_ty);
 
-                    fn is_fat_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
+                    fn is_wide_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
                         ty.builtin_deref(true)
                             .is_some_and(|pointee_ty| has_ptr_meta(fx.tcx, pointee_ty))
                     }
 
-                    if is_fat_ptr(fx, from_ty) {
-                        if is_fat_ptr(fx, to_ty) {
-                            // fat-ptr -> fat-ptr
+                    if is_wide_ptr(fx, from_ty) {
+                        if is_wide_ptr(fx, to_ty) {
+                            // wide-ptr -> wide-ptr
                             lval.write_cvalue(fx, operand.cast_pointer_to(dest_layout));
                         } else {
-                            // fat-ptr -> thin-ptr
+                            // wide-ptr -> thin-ptr
                             let (ptr, _extra) = operand.load_scalar_pair(fx);
                             lval.write_cvalue(fx, CValue::by_val(ptr, dest_layout))
                         }

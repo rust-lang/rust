@@ -17,15 +17,16 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
 use crate::errors::{
-    self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
-    DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
-    ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
-    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
-    ParenRangeSuggestion, PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern,
-    SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
-    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedExpressionInPatternSugg,
-    UnexpectedLifetimeInPattern, UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
-    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
+    self, AmbiguousRangePattern, AtDotDotInStructPattern, AtInStructPattern,
+    DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed, DotDotDotRestPattern,
+    EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt, ExpectedCommaAfterPatternField,
+    GenericArgsInPatRequireTurbofishSyntax, InclusiveRangeExtraEquals, InclusiveRangeMatchArrow,
+    InclusiveRangeNoEnd, InvalidMutInPattern, ParenRangeSuggestion, PatternOnWrongSideOfAt,
+    RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder, TopLevelOrPatternNotAllowed,
+    TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed, UnexpectedExpressionInPattern,
+    UnexpectedExpressionInPatternSugg, UnexpectedLifetimeInPattern, UnexpectedParenInRangePat,
+    UnexpectedParenInRangePatSugg, UnexpectedVertVertBeforeFunctionParam,
+    UnexpectedVertVertInPattern, WrapInParens,
 };
 use crate::parser::expr::{DestructuredFloat, could_be_unclosed_char_literal};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
@@ -1433,7 +1434,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the fields of a struct-like pattern.
     fn parse_pat_fields(&mut self) -> PResult<'a, (ThinVec<PatField>, PatFieldsRest)> {
-        let mut fields = ThinVec::new();
+        let mut fields: ThinVec<PatField> = ThinVec::new();
         let mut etc = PatFieldsRest::None;
         let mut ate_comma = true;
         let mut delayed_err: Option<Diag<'a>> = None;
@@ -1454,12 +1455,22 @@ impl<'a> Parser<'a> {
 
             // check that a comma comes after every field
             if !ate_comma {
-                let mut err =
-                    self.dcx().create_err(ExpectedCommaAfterPatternField { span: self.token.span });
+                let err = if self.token == token::At {
+                    let prev_field = fields
+                        .last()
+                        .expect("Unreachable on first iteration, not empty otherwise")
+                        .ident;
+                    self.report_misplaced_at_in_struct_pat(prev_field)
+                } else {
+                    let mut err = self
+                        .dcx()
+                        .create_err(ExpectedCommaAfterPatternField { span: self.token.span });
+                    self.recover_misplaced_pattern_modifiers(&fields, &mut err);
+                    err
+                };
                 if let Some(delayed) = delayed_err {
                     delayed.emit();
                 }
-                self.recover_misplaced_pattern_modifiers(&fields, &mut err);
                 return Err(err);
             }
             ate_comma = false;
@@ -1592,6 +1603,23 @@ impl<'a> Parser<'a> {
             err.emit();
         }
         Ok((fields, etc))
+    }
+
+    #[deny(rustc::untranslatable_diagnostic)]
+    fn report_misplaced_at_in_struct_pat(&self, prev_field: Ident) -> Diag<'a> {
+        debug_assert_eq!(self.token, token::At);
+        let span = prev_field.span.to(self.token.span);
+        if let Some(dot_dot_span) =
+            self.look_ahead(1, |t| if t == &token::DotDot { Some(t.span) } else { None })
+        {
+            self.dcx().create_err(AtDotDotInStructPattern {
+                span: span.to(dot_dot_span),
+                remove: span.until(dot_dot_span),
+                ident: prev_field,
+            })
+        } else {
+            self.dcx().create_err(AtInStructPattern { span: span })
+        }
     }
 
     /// If the user writes `S { ref field: name }` instead of `S { field: ref name }`, we suggest

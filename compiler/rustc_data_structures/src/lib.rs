@@ -23,6 +23,7 @@
 #![feature(cfg_match)]
 #![feature(core_intrinsics)]
 #![feature(extend_one)]
+#![feature(file_buffered)]
 #![feature(hash_raw_entry)]
 #![feature(macro_metavar_expr)]
 #![feature(map_try_insert)]

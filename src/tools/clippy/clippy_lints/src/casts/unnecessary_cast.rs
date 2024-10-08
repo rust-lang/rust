@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
-use clippy_utils::source::{snippet_opt, SpanRangeExt};
-use clippy_utils::visitors::{for_each_expr_without_closures, Visitable};
+use clippy_utils::source::{SpanRangeExt, snippet_opt};
+use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;

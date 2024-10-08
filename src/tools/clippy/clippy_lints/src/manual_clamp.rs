@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
@@ -7,8 +7,8 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{
-    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt, MaybePath,
+    MaybePath, eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id,
+    peel_blocks, peel_blocks_with_stmt,
 };
 use itertools::Itertools;
 use rustc_errors::{Applicability, Diag};
@@ -17,8 +17,8 @@ use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegme
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 use std::cmp::Ordering;
 use std::ops::Deref;
 
@@ -741,7 +741,7 @@ enum MaybeBorrowedStmtKind<'a> {
     Owned(StmtKind<'a>),
 }
 
-impl<'a> Clone for MaybeBorrowedStmtKind<'a> {
+impl Clone for MaybeBorrowedStmtKind<'_> {
     fn clone(&self) -> Self {
         match self {
             Self::Borrowed(t) => Self::Borrowed(t),

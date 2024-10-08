@@ -31,19 +31,19 @@ Number of file 0 mappings: 6
 - Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
 
 Function name: closure_macro_async::test::{closure#0}::{closure#0}
-Raw bytes (35): 0x[01, 01, 03, 01, 05, 05, 0b, 09, 00, 05, 01, 15, 1c, 03, 21, 05, 04, 11, 01, 27, 02, 03, 11, 00, 16, 00, 00, 17, 00, 1e, 07, 02, 09, 00, 0a]
+Raw bytes (35): 0x[01, 01, 03, 01, 05, 05, 0b, 09, 0d, 05, 01, 15, 1c, 03, 21, 05, 04, 11, 01, 27, 02, 03, 11, 00, 16, 0d, 00, 17, 00, 1e, 07, 02, 09, 00, 0a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 3
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(2, Add)
-- expression 2 operands: lhs = Counter(2), rhs = Zero
+- expression 2 operands: lhs = Counter(2), rhs = Counter(3)
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 21, 28) to (start + 3, 33)
 - Code(Counter(1)) at (prev + 4, 17) to (start + 1, 39)
 - Code(Expression(0, Sub)) at (prev + 3, 17) to (start + 0, 22)
     = (c0 - c1)
-- Code(Zero) at (prev + 0, 23) to (start + 0, 30)
+- Code(Counter(3)) at (prev + 0, 23) to (start + 0, 30)
 - Code(Expression(1, Add)) at (prev + 2, 9) to (start + 0, 10)
-    = (c1 + (c2 + Zero))
+    = (c1 + (c2 + c3))
 

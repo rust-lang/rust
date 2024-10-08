@@ -164,7 +164,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .unwrap_or(&[])
                     .iter()
                     .filter_map(|attr| {
-                        Cfg::parse(attr.meta_item()?)
+                        Cfg::parse(attr)
                             .map_err(|e| self.cx.sess().dcx().span_err(e.span, e.msg))
                             .ok()
                     })
@@ -505,20 +505,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)
             | hir::ItemKind::TyAlias(..)
-            | hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::TyAlias { .. },
-                ..
-            })
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => {
                 self.add_to_current_mod(item, renamed, import_id);
-            }
-            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::AsyncFn(_) | hir::OpaqueTyOrigin::FnReturn(_),
-                ..
-            }) => {
-                // return-position impl traits are never nameable, and should never be documented.
             }
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and

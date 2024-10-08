@@ -74,6 +74,14 @@ impl<R: Read> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
+    pub(crate) fn try_new_buffer() -> io::Result<Buffer> {
+        Buffer::try_with_capacity(DEFAULT_BUF_SIZE)
+    }
+
+    pub(crate) fn with_buffer(inner: R, buf: Buffer) -> Self {
+        Self { inner, buf }
+    }
+
     /// Creates a new `BufReader<R>` with the specified buffer capacity.
     ///
     /// # Examples
@@ -349,7 +357,7 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
         let prev = cursor.written();
 
         let mut rem = self.fill_buf()?;
-        rem.read_buf(cursor.reborrow())?;
+        rem.read_buf(cursor.reborrow())?; // actually never fails
 
         self.consume(cursor.written() - prev); //slice impl of read_buf known to never unfill buf
 

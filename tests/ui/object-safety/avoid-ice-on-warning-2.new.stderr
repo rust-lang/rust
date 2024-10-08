@@ -5,7 +5,7 @@ LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^ `Copy` cannot be made into an object
    |
    = note: the trait cannot be made into an object because it requires `Self: Sized`
-   = note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+   = note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
 
 error[E0618]: expected function, found `(dyn Copy + 'static)`
   --> $DIR/avoid-ice-on-warning-2.rs:11:5
@@ -19,10 +19,10 @@ LL |     f()
    |     call expression requires function
 
 error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
-  --> $DIR/avoid-ice-on-warning-2.rs:4:10
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
    |
 LL | fn id<F>(f: Copy) -> usize {
-   |          ^ doesn't have a size known at compile-time
+   |             ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
    = help: unsized fn params are gated as an unstable feature

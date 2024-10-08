@@ -81,7 +81,7 @@ help: dereference the expression
 LL |     let y: u32 = *x as u32;
    |                  +
 
-error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
+error[E0607]: cannot cast thin pointer `*const u8` to wide pointer `*const [u8]`
   --> $DIR/error-festival.rs:41:5
    |
 LL |     v as *const [u8];

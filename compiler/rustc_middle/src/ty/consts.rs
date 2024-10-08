@@ -519,7 +519,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     pub fn try_to_bool(self) -> Option<bool> {
-        self.try_to_scalar()?.to_bool().ok()
+        self.try_to_valtree()?.try_to_scalar_int()?.try_to_bool().ok()
     }
 
     #[inline]
