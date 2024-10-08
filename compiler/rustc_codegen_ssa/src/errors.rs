@@ -1101,3 +1101,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_aix_strip_not_used)]
+pub(crate) struct AixStripNotUsed;
