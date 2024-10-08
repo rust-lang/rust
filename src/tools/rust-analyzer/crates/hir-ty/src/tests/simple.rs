@@ -634,7 +634,7 @@ impl E {
             149..150 '1': isize
             184..230 '{     ...     }': ()
             194..202 'Self::V1': E
-            212..220 'Self::V2': V2(u32) -> E
+            212..220 'Self::V2': fn V2(u32) -> E
             212..223 'Self::V2(1)': E
             221..222 '1': u32
         "#]],
@@ -1283,10 +1283,10 @@ fn infer_tuple_struct_generics() {
             92..93 'A': fn A<u128>(u128) -> A<u128>
             92..101 'A(42u128)': A<u128>
             94..100 '42u128': u128
-            107..111 'Some': Some<&'static str>(&'static str) -> Option<&'static str>
+            107..111 'Some': fn Some<&'static str>(&'static str) -> Option<&'static str>
             107..116 'Some("x")': Option<&'static str>
             112..115 '"x"': &'static str
-            122..134 'Option::Some': Some<&'static str>(&'static str) -> Option<&'static str>
+            122..134 'Option::Some': fn Some<&'static str>(&'static str) -> Option<&'static str>
             122..139 'Option...e("x")': Option<&'static str>
             135..138 '"x"': &'static str
             145..149 'None': Option<{unknown}>
@@ -1572,7 +1572,7 @@ fn infer_type_alias() {
             204..207 'z.y': i8
             298..362 '{     ... &e; }': ()
             308..309 'e': Enum
-            312..325 'm::Alias::Foo': Foo(u8) -> Enum
+            312..325 'm::Alias::Foo': fn Foo(u8) -> Enum
             312..328 'm::Ali...Foo(0)': Enum
             326..327 '0': u8
             338..354 'm::Ali...Foo(x)': Enum
@@ -2191,10 +2191,10 @@ fn main() {
             103..231 '{     ... }); }': ()
             109..161 'async ...     }': impl Future<Output = Result<(), ()>>
             125..139 'return Err(())': !
-            132..135 'Err': Err<(), ()>(()) -> Result<(), ()>
+            132..135 'Err': fn Err<(), ()>(()) -> Result<(), ()>
             132..139 'Err(())': Result<(), ()>
             136..138 '()': ()
-            149..151 'Ok': Ok<(), ()>(()) -> Result<(), ()>
+            149..151 'Ok': fn Ok<(), ()>(()) -> Result<(), ()>
             149..155 'Ok(())': Result<(), ()>
             152..154 '()': ()
             167..171 'test': fn test<(), (), impl FnMut() -> impl Future<Output = Result<(), ()>>, impl Future<Output = Result<(), ()>>>(impl FnMut() -> impl Future<Output = Result<(), ()>>)
@@ -2202,10 +2202,10 @@ fn main() {
             172..227 '|| asy...     }': impl FnMut() -> impl Future<Output = Result<(), ()>>
             175..227 'async ...     }': impl Future<Output = Result<(), ()>>
             191..205 'return Err(())': !
-            198..201 'Err': Err<(), ()>(()) -> Result<(), ()>
+            198..201 'Err': fn Err<(), ()>(()) -> Result<(), ()>
             198..205 'Err(())': Result<(), ()>
             202..204 '()': ()
-            215..217 'Ok': Ok<(), ()>(()) -> Result<(), ()>
+            215..217 'Ok': fn Ok<(), ()>(()) -> Result<(), ()>
             215..221 'Ok(())': Result<(), ()>
             218..220 '()': ()
         "#]],
@@ -2234,7 +2234,7 @@ fn infer_generic_from_later_assignment() {
             94..127 '{     ...     }': ()
             104..107 'end': Option<bool>
             104..120 'end = ...(true)': ()
-            110..114 'Some': Some<bool>(bool) -> Option<bool>
+            110..114 'Some': fn Some<bool>(bool) -> Option<bool>
             110..120 'Some(true)': Option<bool>
             115..119 'true': bool
         "#]],
@@ -2269,7 +2269,7 @@ fn infer_loop_break_with_val() {
             111..121 'break None': !
             117..121 'None': Option<bool>
             142..158 'break ...(true)': !
-            148..152 'Some': Some<bool>(bool) -> Option<bool>
+            148..152 'Some': fn Some<bool>(bool) -> Option<bool>
             148..158 'Some(true)': Option<bool>
             153..157 'true': bool
         "#]],
@@ -2516,7 +2516,7 @@ fn generic_default_in_struct_literal() {
             254..281 'OtherT...1i32 }': OtherThing<i32>
             275..279 '1i32': i32
             291..292 'b': OtherThing<i32>
-            295..310 'OtherThing::Two': Two<i32>(i32) -> OtherThing<i32>
+            295..310 'OtherThing::Two': fn Two<i32>(i32) -> OtherThing<i32>
             295..316 'OtherT...(1i32)': OtherThing<i32>
             311..315 '1i32': i32
         "#]],
@@ -3028,7 +3028,7 @@ fn f() {
         expect![[r#"
             72..166 '{     ...   } }': ()
             78..164 'match ...     }': ()
-            84..92 'Foo::Bar': Bar(i32) -> Foo
+            84..92 'Foo::Bar': fn Bar(i32) -> Foo
             84..95 'Foo::Bar(3)': Foo
             93..94 '3': i32
             106..119 'Qux::Bar(bar)': Foo

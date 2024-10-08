@@ -1269,10 +1269,10 @@ fn bar() {
             226..229 'foo': fn foo<i32>([R<(), i32>; 2]) -> i32
             226..250 'foo([R...B(7)])': i32
             230..249 '[R::A(...:B(7)]': [R<(), i32>; 2]
-            231..235 'R::A': A<(), i32>(()) -> R<(), i32>
+            231..235 'R::A': fn A<(), i32>(()) -> R<(), i32>
             231..239 'R::A(())': R<(), i32>
             236..238 '()': ()
-            241..245 'R::B': B<(), i32>(i32) -> R<(), i32>
+            241..245 'R::B': fn B<(), i32>(i32) -> R<(), i32>
             241..248 'R::B(7)': R<(), i32>
             246..247 '7': i32
         "#]],
@@ -2046,7 +2046,7 @@ fn test() {
             118..120 '{}': ()
             136..255 '{     ... 1); }': ()
             146..147 'x': Option<u32>
-            150..162 'Option::Some': Some<u32>(u32) -> Option<u32>
+            150..162 'Option::Some': fn Some<u32>(u32) -> Option<u32>
             150..168 'Option...(1u32)': Option<u32>
             163..167 '1u32': u32
             174..175 'x': Option<u32>
@@ -2846,7 +2846,7 @@ fn main() {
             1036..1041 'x > 0': bool
             1040..1041 '0': i32
             1042..1060 '{ Some...u32) }': Option<u32>
-            1044..1048 'Some': Some<u32>(u32) -> Option<u32>
+            1044..1048 'Some': fn Some<u32>(u32) -> Option<u32>
             1044..1058 'Some(x as u32)': Option<u32>
             1049..1050 'x': i32
             1049..1057 'x as u32': u32
@@ -2984,7 +2984,7 @@ fn test() {
             191..201 'bar.test()': bool
             207..213 'Struct': fn Struct(usize) -> Struct
             207..220 'Struct.test()': bool
-            226..239 'Enum::Variant': Variant(usize) -> Enum
+            226..239 'Enum::Variant': fn Variant(usize) -> Enum
             226..246 'Enum::...test()': bool
         "#]],
     );

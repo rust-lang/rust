@@ -1014,29 +1014,22 @@ impl HirDisplay for Ty {
                     f.write_str("\" ")?;
                 }
 
+                write!(f, "fn ")?;
+                f.start_location_link(def.into());
                 match def {
-                    CallableDefId::FunctionId(ff) => {
-                        write!(f, "fn ")?;
-                        f.start_location_link(def.into());
-                        write!(
-                            f,
-                            "{}",
-                            db.function_data(ff).name.display(f.db.upcast(), f.edition())
-                        )?
-                    }
+                    CallableDefId::FunctionId(ff) => write!(
+                        f,
+                        "{}",
+                        db.function_data(ff).name.display(f.db.upcast(), f.edition())
+                    )?,
                     CallableDefId::StructId(s) => {
-                        write!(f, "fn ")?;
-                        f.start_location_link(def.into());
                         write!(f, "{}", db.struct_data(s).name.display(f.db.upcast(), f.edition()))?
                     }
-                    CallableDefId::EnumVariantId(e) => {
-                        f.start_location_link(def.into());
-                        write!(
-                            f,
-                            "{}",
-                            db.enum_variant_data(e).name.display(f.db.upcast(), f.edition())
-                        )?
-                    }
+                    CallableDefId::EnumVariantId(e) => write!(
+                        f,
+                        "{}",
+                        db.enum_variant_data(e).name.display(f.db.upcast(), f.edition())
+                    )?,
                 };
                 f.end_location_link();
 
