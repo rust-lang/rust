@@ -680,12 +680,14 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
         for (mut self_chunk, other_chunk) in self.chunks.iter_mut().zip(other.chunks.iter()) {
             match (&mut self_chunk, &other_chunk) {
                 (Zeros(..), _) | (_, Zeros(..)) => {}
-                (Ones(self_chunk_domain_size), Ones(other_chunk_domain_size)) => {
+                (
+                    Ones(self_chunk_domain_size) | Mixed(self_chunk_domain_size, _, _),
+                    Ones(other_chunk_domain_size),
+                ) => {
                     debug_assert_eq!(self_chunk_domain_size, other_chunk_domain_size);
                     changed = true;
                     *self_chunk = Zeros(*self_chunk_domain_size);
                 }
-                (_, Ones(_)) => {}
                 (
                     Ones(self_chunk_domain_size),
                     Mixed(other_chunk_domain_size, other_chunk_count, other_chunk_words),

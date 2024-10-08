@@ -264,7 +264,6 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::def_id::DefId,
-    ::rustc_hir::hir_id::ItemLocalId,
     ::rustc_hir::Safety,
     ::rustc_target::spec::abi::Abi,
     crate::ty::ClosureKind,

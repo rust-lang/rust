@@ -178,9 +178,10 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     (lint::Level::Allow, _)
                 )
             {
-                // Note: we are unconditionally adding this information so that we can run
-                // migration for Edition lower than 2024.
-                // For future scope changes, we need to extend the mapping with edition information.
+                // If this temporary scope will be changing once the codebase adopts Rust 2024,
+                // and we are linting about possible semantic changes that would result,
+                // then record this node-id in the field `backwards_incompatible_scope`
+                // for future reference.
                 visitor
                     .scope_tree
                     .backwards_incompatible_scope

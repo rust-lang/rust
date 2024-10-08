@@ -441,7 +441,11 @@ pub enum StatementKind<'tcx> {
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 
-    /// Marker statement for backward-incompatible drops in incoming future editions
+    /// Marker statement for backward-incompatible drops in incoming future editions.
+    /// This is semantically equivalent to `Nop`, so codegen and MIRI should interpret this
+    /// statement as such.
+    /// The only use case of this statement is for linting in MIR to detect temporary lifetime
+    /// changes.
     BackwardIncompatibleDropHint {
         /// Place to drop
         place: Box<Place<'tcx>>,

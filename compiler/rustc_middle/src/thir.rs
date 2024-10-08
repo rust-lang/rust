@@ -259,7 +259,8 @@ pub struct TempLifetime {
     /// Lifetime for temporaries as expected.
     /// This should be `None` in a constant context.
     pub temp_lifetime: Option<region::Scope>,
-    /// Backward-incompatible lifetime for future editions
+    /// If `Some(lt)`, indicates that the lifetime of this temporary will change to `lt` in a future edition.
+    /// If `None`, then no changes are expected, or lints are disabled.
     pub backwards_incompatible: Option<region::Scope>,
 }
 

@@ -53,6 +53,10 @@ impl RvalueScopes {
                 | ScopeData::Arguments
                 | ScopeData::IfThen
                 | ScopeData::Remainder(_) => {
+                    // If we haven't already passed through a backwards-incompatible node,
+                    // then check if we are passing through one now and record it if so.
+                    // This is for now only working for cases where a temporary lifetime is
+                    // *shortened*.
                     if backwards_incompatible.is_none() {
                         backwards_incompatible = region_scope_tree
                             .backwards_incompatible_scope
