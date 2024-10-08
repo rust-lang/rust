@@ -331,7 +331,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// A specialized version of `self.reserve(len, 1)` which requires the
     /// caller to ensure `len == self.capacity()`.
     #[cfg(not(no_global_oom_handling))]
-    #[inline(never)]
+    #[inline]
     pub fn grow_one(&mut self) {
         self.inner.grow_one(T::LAYOUT)
     }
@@ -549,7 +549,7 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[cfg(not(no_global_oom_handling))]
-    #[inline]
+    #[inline(never)]
     fn grow_one(&mut self, elem_layout: Layout) {
         if let Err(err) = self.grow_amortized(self.cap.0, 1, elem_layout) {
             handle_error(err);
