@@ -802,7 +802,6 @@ ui/consts/issue-70942-trait-vs-impl-mismatch.rs
 ui/consts/issue-73976-monomorphic.rs
 ui/consts/issue-73976-polymorphic.rs
 ui/consts/issue-76064.rs
-ui/consts/issue-77062-large-zst-array.rs
 ui/consts/issue-78655.rs
 ui/consts/issue-79137-monomorphic.rs
 ui/consts/issue-79137-toogeneric.rs
