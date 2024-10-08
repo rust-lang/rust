@@ -1087,7 +1087,8 @@ fn link_natively(
     let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
-        let stripcmd = "/usr/bin/strip";
+        // `llvm-strip` is a symlink to `llvm-objcopy`, so use that (shipped with toolchain)
+        let stripcmd = "rust-objcopy";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
                 strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-S"))
@@ -1147,6 +1148,13 @@ fn strip_symbols_with_external_utility(
     if let Some(option) = option {
         cmd.arg(option);
     }
+
+    let mut new_path = sess.get_tools_search_paths(false);
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
+    }
+    cmd.env("PATH", env::join_paths(new_path).unwrap());
+
     let prog = cmd.arg(out_filename).output();
     match prog {
         Ok(prog) => {
