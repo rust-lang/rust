@@ -84,8 +84,23 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - image: mingw-check
-    <<: *job-linux-4c
+  # This target only needs to support 11.0 and up as nothing else supports the hardware
+  - image: aarch64-apple
+    env:
+      SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      USE_XCODE_CLANG: 1
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
+    <<: *job-macos-m1
   - image: mingw-check-tidy
     continue_on_error: true
     <<: *job-linux-4c
