@@ -99,9 +99,9 @@ impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
         let (representative_is_placeholder, representative_is_existential) = match definition.origin
         {
-            rustc_infer::infer::NllRegionVariableOrigin::FreeRegion => (false, false),
-            rustc_infer::infer::NllRegionVariableOrigin::Placeholder(_) => (true, false),
-            rustc_infer::infer::NllRegionVariableOrigin::Existential { .. } => (false, true),
+            NllRegionVariableOrigin::FreeRegion => (false, false),
+            NllRegionVariableOrigin::Placeholder(_) => (true, false),
+            NllRegionVariableOrigin::Existential { .. } => (false, true),
         };
 
         let placeholder_universe =
