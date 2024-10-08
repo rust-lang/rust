@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             && !in_external_macro(cx.sess(), expr.span)
             && (
                 matches!(cx.tcx.constness(cx.tcx.hir().enclosing_body_owner(expr.hir_id)), Constness::NotConst)
-                    || cx.tcx.features().declared(sym!(const_float_classify))
+                    || cx.tcx.features().enabled(sym!(const_float_classify))
             )
             && let [first, second, const_1, const_2] = exprs
             && let ecx = ConstEvalCtxt::new(cx)

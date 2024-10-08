@@ -119,7 +119,7 @@ pub(super) fn parse(
     result
 }
 
-/// Asks for the `macro_metavar_expr` feature if it is not already declared
+/// Asks for the `macro_metavar_expr` feature if it is not enabled
 fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, span: Span) {
     if !features.macro_metavar_expr {
         let msg = "meta-variable expressions are unstable";
