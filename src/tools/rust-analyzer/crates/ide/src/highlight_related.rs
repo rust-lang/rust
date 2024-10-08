@@ -513,16 +513,23 @@ pub(crate) fn highlight_yield_points(
             match anc {
                 ast::Fn(fn_) => hl(sema, fn_.async_token(), fn_.body().map(ast::Expr::BlockExpr)),
                 ast::BlockExpr(block_expr) => {
-                    if block_expr.async_token().is_none() {
+                    let Some(async_token) = block_expr.async_token() else {
                         continue;
-                    }
+                    };
 
                     // Async blocks act similar to closures. So we want to
-                    // highlight their exit points too.
-                    let exit_points = hl_exit_points(sema, block_expr.async_token(), block_expr.clone().into());
-                    merge_map(&mut res, exit_points);
+                    // highlight their exit points too, but only if we are on
+                    // the async token.
+                    if async_token == token {
+                        let exit_points = hl_exit_points(
+                            sema,
+                            Some(async_token.clone()),
+                            block_expr.clone().into(),
+                        );
+                        merge_map(&mut res, exit_points);
+                    }
 
-                    hl(sema, block_expr.async_token(), Some(block_expr.into()))
+                    hl(sema, Some(async_token), Some(block_expr.into()))
                 },
                 ast::ClosureExpr(closure) => hl(sema, closure.async_token(), closure.body()),
                 _ => continue,
@@ -949,7 +956,6 @@ async fn foo() {
     (async {
   // ^^^^^
         (async { 0.await }).await$0
-     // ^^^^^^^^^^^^^^^^^^^^^^^^^
                          // ^^^^^
     }).await;
 }
