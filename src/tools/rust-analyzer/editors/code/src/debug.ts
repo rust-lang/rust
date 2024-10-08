@@ -6,7 +6,7 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
-import { execSync } from 'node:child_process'
+import { execSync } from 'node:child_process';
 import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
 import type { Config } from "./config";
 
