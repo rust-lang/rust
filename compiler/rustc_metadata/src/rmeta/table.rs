@@ -54,6 +54,12 @@ impl IsDefault for UnusedGenericParams {
     }
 }
 
+impl IsDefault for MirFlags {
+    fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
 /// Unchecked invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
@@ -276,6 +282,21 @@ impl FixedSizeEncoding for AttrFlags {
     #[inline]
     fn from_bytes(b: &[u8; 1]) -> Self {
         AttrFlags::from_bits_truncate(b[0])
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 1]) {
+        debug_assert!(!self.is_default());
+        b[0] = self.bits();
+    }
+}
+
+impl FixedSizeEncoding for MirFlags {
+    type ByteArray = [u8; 1];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 1]) -> Self {
+        MirFlags::from_bits_truncate(b[0])
     }
 
     #[inline]

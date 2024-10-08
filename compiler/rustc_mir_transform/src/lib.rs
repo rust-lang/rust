@@ -27,8 +27,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
-    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
-    SourceInfo, Statement, StatementKind, TerminatorKind,
+    MirFlags, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
+    START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
@@ -136,6 +136,7 @@ pub fn provide(providers: &mut Providers) {
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
+        mir_flags,
         ..providers.queries
     };
 }
@@ -333,9 +334,6 @@ fn mir_promoted(
         _ => ConstQualifs::default(),
     };
 
-    // the `has_ffi_unwind_calls` query uses the raw mir, so make sure it is run.
-    tcx.ensure_with_value().has_ffi_unwind_calls(def);
-
     // the `by_move_body` query uses the raw mir, so make sure it is run.
     if tcx.needs_coroutine_by_move_body_def_id(def.to_def_id()) {
         tcx.ensure_with_value().coroutine_by_move_body_def_id(def);
@@ -361,6 +359,33 @@ fn mir_promoted(
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
+}
+
+fn mir_flags<'tcx>(tcx: TyCtxt<'tcx>, local_def_id: LocalDefId) -> MirFlags {
+    let mut flags = MirFlags::default();
+    // Only perform check on functions because constants cannot call FFI functions.
+    let kind = tcx.def_kind(local_def_id);
+    if !kind.is_fn_like() {
+        return flags;
+    }
+
+    if !tcx.mir_keys(()).contains(&local_def_id) {
+        return flags;
+    }
+
+    let body = &*tcx.mir_promoted(local_def_id).0.borrow();
+
+    if is_nounwind(body) {
+        flags.insert(MirFlags::IS_NOUNWIND);
+    }
+    if ffi_unwind_calls::has_ffi_unwind_calls(tcx, body) {
+        flags.insert(MirFlags::HAS_FFI_UNWIND_CALLS);
+    }
+    flags
+}
+
+fn is_nounwind<'tcx>(body: &Body<'tcx>) -> bool {
+    body.basic_blocks.iter().all(|block| block.terminator().unwind().is_none())
 }
 
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
@@ -411,6 +436,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         if pm::should_run_pass(tcx, &inline::Inline) {
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
         }
+        tcx.ensure_with_value().mir_flags(def);
     }
 
     let (body, _) = tcx.mir_promoted(def);

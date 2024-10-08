@@ -13,7 +13,7 @@
           StorageLive(_3);
           _3 = move _1;
           _4 = copy (((_3.0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>).0: *const [i32]);
-          _2 = callee(move (*_4)) -> [return: bb1, unwind: bb3];
+          _2 = callee(move (*_4)) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {

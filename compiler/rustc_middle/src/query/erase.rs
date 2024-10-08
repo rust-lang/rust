@@ -289,6 +289,7 @@ trivial! {
     rustc_middle::middle::resolve_bound_vars::ResolvedArg,
     rustc_middle::middle::stability::DeprecationEntry,
     rustc_middle::mir::ConstQualifs,
+    rustc_middle::mir::MirFlags,
     rustc_middle::mir::interpret::AllocId,
     rustc_middle::mir::interpret::CtfeProvenance,
     rustc_middle::mir::interpret::ErrorHandled,
