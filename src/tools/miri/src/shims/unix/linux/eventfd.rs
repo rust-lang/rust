@@ -140,9 +140,9 @@ impl FileDescription for Event {
         match self.counter.get().checked_add(num) {
             Some(new_count @ 0..=MAX_COUNTER) => {
                 // Future `read` calls will synchronize with this write, so update the FD clock.
-                if let Some(clock) = &ecx.release_clock() {
+                ecx.release_clock(|clock| {
                     self.clock.borrow_mut().join(clock);
-                }
+                });
                 self.counter.set(new_count);
             }
             None | Some(u64::MAX) =>

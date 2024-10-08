@@ -93,7 +93,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Each complete happens-before the end of the wait
         if let Some(data_race) = &this.machine.data_race {
-            init_once.clock.clone_from(&data_race.release_clock(&this.machine.threads));
+            data_race
+                .release_clock(&this.machine.threads, |clock| init_once.clock.clone_from(clock));
         }
 
         // Wake up everyone.
@@ -119,7 +120,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Each complete happens-before the end of the wait
         if let Some(data_race) = &this.machine.data_race {
-            init_once.clock.clone_from(&data_race.release_clock(&this.machine.threads));
+            data_race
+                .release_clock(&this.machine.threads, |clock| init_once.clock.clone_from(clock));
         }
 
         // Wake up one waiting thread, so they can go ahead and try to init this.

@@ -234,9 +234,9 @@ impl FileDescription for AnonSocket {
             }
         }
         // Remember this clock so `read` can synchronize with us.
-        if let Some(clock) = &ecx.release_clock() {
+        ecx.release_clock(|clock| {
             writebuf.clock.join(clock);
-        }
+        });
         // Do full write / partial write based on the space available.
         let actual_write_size = len.min(available_space);
         let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;

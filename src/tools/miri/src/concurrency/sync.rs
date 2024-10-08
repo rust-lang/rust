@@ -444,7 +444,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The mutex is completely unlocked. Try transferring ownership
                 // to another thread.
                 if let Some(data_race) = &this.machine.data_race {
-                    mutex.clock.clone_from(&data_race.release_clock(&this.machine.threads));
+                    data_race.release_clock(&this.machine.threads, |clock| {
+                        mutex.clock.clone_from(clock)
+                    });
                 }
                 if let Some(thread) = this.machine.sync.mutexes[id].queue.pop_front() {
                     this.unblock_thread(thread, BlockReason::Mutex(id))?;
@@ -553,7 +555,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         if let Some(data_race) = &this.machine.data_race {
             // Add this to the shared-release clock of all concurrent readers.
-            rwlock.clock_current_readers.join(&data_race.release_clock(&this.machine.threads));
+            data_race.release_clock(&this.machine.threads, |clock| {
+                rwlock.clock_current_readers.join(clock)
+            });
         }
 
         // The thread was a reader. If the lock is not held any more, give it to a writer.
@@ -632,7 +636,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             trace!("rwlock_writer_unlock: {:?} unlocked by {:?}", id, thread);
             // Record release clock for next lock holder.
             if let Some(data_race) = &this.machine.data_race {
-                rwlock.clock_unlocked.clone_from(&*data_race.release_clock(&this.machine.threads));
+                data_race.release_clock(&this.machine.threads, |clock| {
+                    rwlock.clock_unlocked.clone_from(clock)
+                });
             }
             // The thread was a writer.
             //
@@ -764,7 +770,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Each condvar signal happens-before the end of the condvar wake
         if let Some(data_race) = data_race {
-            condvar.clock.clone_from(&*data_race.release_clock(&this.machine.threads));
+            data_race.release_clock(&this.machine.threads, |clock| condvar.clock.clone_from(clock));
         }
         let Some(waiter) = condvar.waiters.pop_front() else {
             return interp_ok(false);
@@ -837,7 +843,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Each futex-wake happens-before the end of the futex wait
         if let Some(data_race) = data_race {
-            futex.clock.clone_from(&*data_race.release_clock(&this.machine.threads));
+            data_race.release_clock(&this.machine.threads, |clock| futex.clock.clone_from(clock));
         }
 
         // Wake up the first thread in the queue that matches any of the bits in the bitset.
