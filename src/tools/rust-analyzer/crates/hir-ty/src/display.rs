@@ -1008,7 +1008,7 @@ impl HirDisplay for Ty {
                 if let Safety::Unsafe = sig.safety {
                     write!(f, "unsafe ")?;
                 }
-                if !matches!(sig.abi, FnAbi::Rust) {
+                if !matches!(sig.abi, FnAbi::Rust | FnAbi::RustCall) {
                     f.write_str("extern \"")?;
                     f.write_str(sig.abi.as_str())?;
                     f.write_str("\" ")?;
@@ -1025,6 +1025,7 @@ impl HirDisplay for Ty {
                         )?
                     }
                     CallableDefId::StructId(s) => {
+                        write!(f, "fn ")?;
                         f.start_location_link(def.into());
                         write!(f, "{}", db.struct_data(s).name.display(f.db.upcast(), f.edition()))?
                     }
