@@ -395,6 +395,36 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[inline]
+        const fn runtime_offset_nowrap(this: *const (), count: isize, size: usize) -> bool {
+            #[inline]
+            fn runtime(this: *const (), count: isize, size: usize) -> bool {
+                // We know `size <= isize::MAX` so the `as` cast here is not lossy.
+                let Some(byte_offset) = count.checked_mul(size as isize) else {
+                    return false;
+                };
+                let (_, overflow) = this.addr().overflowing_add_signed(byte_offset);
+                !overflow
+            }
+
+            const fn comptime(_: *const (), _: isize, _: usize) -> bool {
+                true
+            }
+
+            // We can use const_eval_select here because this is only for UB checks.
+            intrinsics::const_eval_select((this, count, size), comptime, runtime)
+        }
+
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::offset requires the address calculation to not overflow",
+            (
+                this: *const () = self as *const (),
+                count: isize = count,
+                size: usize = size_of::<T>(),
+            ) => runtime_offset_nowrap(this, count, size)
+        );
+
         // SAFETY: the caller must uphold the safety contract for `offset`.
         unsafe { intrinsics::offset(self, count) }
     }
@@ -726,7 +756,6 @@ impl<T: ?Sized> *const T {
                 true
             }
 
-            #[allow(unused_unsafe)]
             intrinsics::const_eval_select((this, origin), comptime, runtime)
         }
 
@@ -858,6 +887,36 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[cfg(debug_assertions)]
+        #[inline]
+        const fn runtime_add_nowrap(this: *const (), count: usize, size: usize) -> bool {
+            #[inline]
+            fn runtime(this: *const (), count: usize, size: usize) -> bool {
+                let Some(byte_offset) = count.checked_mul(size) else {
+                    return false;
+                };
+                let (_, overflow) = this.addr().overflowing_add(byte_offset);
+                byte_offset <= (isize::MAX as usize) && !overflow
+            }
+
+            const fn comptime(_: *const (), _: usize, _: usize) -> bool {
+                true
+            }
+
+            intrinsics::const_eval_select((this, count, size), comptime, runtime)
+        }
+
+        #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::add requires that the address calculation does not overflow",
+            (
+                this: *const () = self as *const (),
+                count: usize = count,
+                size: usize = size_of::<T>(),
+            ) => runtime_add_nowrap(this, count, size)
+        );
+
         // SAFETY: the caller must uphold the safety contract for `offset`.
         unsafe { intrinsics::offset(self, count) }
     }
@@ -936,6 +995,35 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[cfg(debug_assertions)]
+        #[inline]
+        const fn runtime_sub_nowrap(this: *const (), count: usize, size: usize) -> bool {
+            #[inline]
+            fn runtime(this: *const (), count: usize, size: usize) -> bool {
+                let Some(byte_offset) = count.checked_mul(size) else {
+                    return false;
+                };
+                byte_offset <= (isize::MAX as usize) && this.addr() >= byte_offset
+            }
+
+            const fn comptime(_: *const (), _: usize, _: usize) -> bool {
+                true
+            }
+
+            intrinsics::const_eval_select((this, count, size), comptime, runtime)
+        }
+
+        #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::sub requires that the address calculation does not overflow",
+            (
+                this: *const () = self as *const (),
+                count: usize = count,
+                size: usize = size_of::<T>(),
+            ) => runtime_sub_nowrap(this, count, size)
+        );
+
         if T::IS_ZST {
             // Pointer arithmetic does nothing when the pointee is a ZST.
             self
@@ -943,7 +1031,7 @@ impl<T: ?Sized> *const T {
             // SAFETY: the caller must uphold the safety contract for `offset`.
             // Because the pointee is *not* a ZST, that means that `count` is
             // at most `isize::MAX`, and thus the negation cannot overflow.
-            unsafe { self.offset((count as isize).unchecked_neg()) }
+            unsafe { intrinsics::offset(self, intrinsics::unchecked_sub(0, count as isize)) }
         }
     }
 
