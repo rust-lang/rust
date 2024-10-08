@@ -858,7 +858,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     #[track_caller]
     fn check_gated_lint(&self, lint_id: LintId, span: Span, lint_from_cli: bool) -> bool {
         let feature = if let Some(feature) = lint_id.lint.feature_gate
-            && !self.features.active(feature)
+            && !self.features.enabled(feature)
         {
             // Lint is behind a feature that is not enabled; eventually return false.
             feature
