@@ -986,7 +986,10 @@ pub const unsafe fn assume(b: bool) {
 /// any safety invariants.
 ///
 /// This intrinsic does not have a stable counterpart.
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_likely", issue = "none"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_likely", since = "CURRENT_RUSTC_VERSION")
+)]
 #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
@@ -1007,7 +1010,10 @@ pub const fn likely(b: bool) -> bool {
 /// any safety invariants.
 ///
 /// This intrinsic does not have a stable counterpart.
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_likely", issue = "none"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_likely", since = "CURRENT_RUSTC_VERSION")
+)]
 #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]

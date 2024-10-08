@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(const_likely))]
 #![cfg_attr(bootstrap, feature(strict_provenance))]
 #![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
