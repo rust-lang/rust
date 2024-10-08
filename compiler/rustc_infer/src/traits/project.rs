@@ -92,38 +92,31 @@ pub enum ProjectionCacheEntry<'tcx> {
     Error,
     NormalizedTerm {
         ty: NormalizedTerm<'tcx>,
-        /// If we were able to successfully evaluate the
-        /// corresponding cache entry key during predicate
-        /// evaluation, then this field stores the final
-        /// result obtained from evaluating all of the projection
-        /// sub-obligations. During evaluation, we will skip
-        /// evaluating the cached sub-obligations in `ty`
-        /// if this field is set. Evaluation only
-        /// cares about the final result, so we don't
-        /// care about any region constraint side-effects
-        /// produced by evaluating the sub-obligations.
-        ///
-        /// Additionally, we will clear out the sub-obligations
-        /// entirely if we ever evaluate the cache entry (along
-        /// with all its sub obligations) to `EvaluatedToOk`.
-        /// This affects all users of the cache, not just evaluation.
-        /// Since a result of `EvaluatedToOk` means that there were
-        /// no region obligations that need to be tracked, it's
-        /// fine to forget about the sub-obligations - they
-        /// don't provide any additional information. However,
-        /// we do *not* discard any obligations when we see
-        /// `EvaluatedToOkModuloRegions` - we don't know
-        /// which sub-obligations may introduce region constraints,
-        /// so we keep them all to be safe.
-        ///
-        /// When we are not performing evaluation
-        /// (e.g. in `FulfillmentContext`), we ignore this field,
-        /// and always re-process the cached sub-obligations
-        /// (which may have been cleared out - see the above
-        /// paragraph).
-        /// This ensures that we do not lose any regions
-        /// constraints that arise from processing the
+        /// If we were able to successfully evaluate the corresponding cache
+        /// entry key during predicate evaluation, then this field stores the
+        /// final result obtained from evaluating all of the projection
+        /// sub-obligations. During evaluation, we will skip evaluating the
+        /// cached sub-obligations in `ty` if this field is set. Evaluation
+        /// only cares about the final result, so we don't care about any
+        /// region constraint side-effects produced by evaluating the
         /// sub-obligations.
+        ///
+        /// Additionally, we will clear out the sub-obligations entirely if we
+        /// ever evaluate the cache entry (along with all its sub obligations)
+        /// to `EvaluatedToOk`. This affects all users of the cache, not just
+        /// evaluation. Since a result of `EvaluatedToOk` means that there were
+        /// no region obligations that need to be tracked, it's fine to forget
+        /// about the sub-obligations - they don't provide any additional
+        /// information. However, we do *not* discard any obligations when we
+        /// see `EvaluatedToOkModuloRegions` - we don't know which
+        /// sub-obligations may introduce region constraints, so we keep them
+        /// all to be safe.
+        ///
+        /// When we are not performing evaluation (e.g. in
+        /// `FulfillmentContext`), we ignore this field, and always re-process
+        /// the cached sub-obligations (which may have been cleared out - see
+        /// the above paragraph). This ensures that we do not lose any regions
+        /// constraints that arise from processing the sub-obligations.
         complete: Option<EvaluationResult>,
     },
 }

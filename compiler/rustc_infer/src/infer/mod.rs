@@ -18,7 +18,7 @@ pub use relate::combine::PredicateEmittingRelation;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -50,6 +50,7 @@ use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
+use crate::infer::region_constraints::UndoLog;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
 
 pub mod at;
@@ -67,6 +68,13 @@ pub mod resolve;
 pub(crate) mod snapshot;
 mod type_variable;
 
+/// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
+/// around `Vec<PredicateObligation<'tcx>>`, but it has one important property:
+/// because `InferOk` is marked with `#[must_use]`, if you have a method
+/// `InferCtxt::f` that returns `InferResult<'tcx, ()>` and you call it with
+/// `infcx.f()?;` you'll get a warning about the obligations being discarded
+/// without use, which is probably unintentional and has been a source of bugs
+/// in the past.
 #[must_use]
 #[derive(Debug)]
 pub struct InferOk<'tcx, T> {
@@ -163,12 +171,12 @@ impl<'tcx> InferCtxtInner<'tcx> {
             undo_log: InferCtxtUndoLogs::default(),
 
             projection_cache: Default::default(),
-            type_variable_storage: type_variable::TypeVariableStorage::new(),
-            const_unification_storage: ut::UnificationTableStorage::new(),
-            int_unification_storage: ut::UnificationTableStorage::new(),
-            float_unification_storage: ut::UnificationTableStorage::new(),
-            effect_unification_storage: ut::UnificationTableStorage::new(),
-            region_constraint_storage: Some(RegionConstraintStorage::new()),
+            type_variable_storage: Default::default(),
+            const_unification_storage: Default::default(),
+            int_unification_storage: Default::default(),
+            float_unification_storage: Default::default(),
+            effect_unification_storage: Default::default(),
+            region_constraint_storage: Some(Default::default()),
             region_obligations: vec![],
             opaque_type_storage: Default::default(),
         }
@@ -1004,8 +1012,8 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(effect_vid)).into()
     }
 
-    /// Given a set of generics defined on a type or impl, returns the generic parameters mapping each
-    /// type/region parameter to a fresh inference variable.
+    /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
+    /// each type/region parameter to a fresh inference variable.
     pub fn fresh_args_for_item(&self, span: Span, def_id: DefId) -> GenericArgsRef<'tcx> {
         GenericArgs::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
     }
@@ -1036,18 +1044,14 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Clone the list of variable regions. This is used only during NLL processing
     /// to put the set of region variables into the NLL region context.
     pub fn get_region_var_origins(&self) -> VarInfos {
-        let mut inner = self.inner.borrow_mut();
-        let (var_infos, data) = inner
-            .region_constraint_storage
-            // We clone instead of taking because borrowck still wants to use
-            // the inference context after calling this for diagnostics
-            // and the new trait solver.
-            .clone()
-            .expect("regions already resolved")
-            .with_log(&mut inner.undo_log)
-            .into_infos_and_data();
-        assert!(data.is_empty());
-        var_infos
+        let inner = self.inner.borrow();
+        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
+        let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
+        assert!(storage.data.is_empty());
+        // We clone instead of taking because borrowck still wants to use the
+        // inference context after calling this for diagnostics and the new
+        // trait solver.
+        storage.var_infos.clone()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1383,10 +1387,10 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// The constant can be located on a trait like `<A as B>::C`, in which case the given
     /// generic parameters and environment are used to resolve the constant. Alternatively if the
-    /// constant has generic parameters in scope the instantiations are used to evaluate the value of
-    /// the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
-    /// constant `bar::<T>()` requires a instantiation for `T`, if the instantiation for `T` is still
-    /// too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
+    /// constant has generic parameters in scope the instantiations are used to evaluate the value
+    /// of the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
+    /// constant `bar::<T>()` requires a instantiation for `T`, if the instantiation for `T` is
+    /// still too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
     /// returned.
     ///
     /// This handles inferences variables within both `param_env` and `args` by

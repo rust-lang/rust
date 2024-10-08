@@ -619,17 +619,6 @@ fn test_unknown_directive_check() {
 }
 
 #[test]
-fn test_known_legacy_directive_check() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
-        Path::new("a.rs"),
-        include_bytes!("./test-auxillary/known_legacy_directive.rs"),
-    );
-    assert!(poisoned);
-}
-
-#[test]
 fn test_known_directive_check_no_error() {
     let mut poisoned = false;
     run_path(

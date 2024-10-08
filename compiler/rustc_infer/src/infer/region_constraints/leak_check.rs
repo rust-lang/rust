@@ -55,8 +55,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// * what placeholder they must outlive transitively
     ///   * if they must also be equal to a placeholder, report an error because `P1: P2`
     /// * minimum universe U of all SCCs they must outlive
-    ///   * if they must also be equal to a placeholder P, and U cannot name P, report an error, as that
-    ///     indicates `P: R` and `R` is in an incompatible universe
+    ///   * if they must also be equal to a placeholder P, and U cannot name P, report an error, as
+    ///     that indicates `P: R` and `R` is in an incompatible universe
     ///
     /// To improve performance and for the old trait solver caching to be sound, this takes
     /// an optional snapshot in which case we only look at region constraints added in that
@@ -73,7 +73,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// * R: P1, R: P2, as above
     #[instrument(level = "debug", skip(self, tcx, only_consider_snapshot), ret)]
     pub fn leak_check(
-        &mut self,
+        self,
         tcx: TyCtxt<'tcx>,
         outer_universe: ty::UniverseIndex,
         max_universe: ty::UniverseIndex,
@@ -83,7 +83,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             return Ok(());
         }
 
-        let mini_graph = &MiniGraph::new(tcx, self, only_consider_snapshot);
+        let mini_graph = MiniGraph::new(tcx, &self, only_consider_snapshot);
 
         let mut leak_check = LeakCheck::new(tcx, outer_universe, max_universe, mini_graph, self);
         leak_check.assign_placeholder_values()?;
@@ -92,11 +92,11 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 }
 
-struct LeakCheck<'a, 'b, 'tcx> {
+struct LeakCheck<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     outer_universe: ty::UniverseIndex,
-    mini_graph: &'a MiniGraph<'tcx>,
-    rcc: &'a mut RegionConstraintCollector<'b, 'tcx>,
+    mini_graph: MiniGraph<'tcx>,
+    rcc: RegionConstraintCollector<'a, 'tcx>,
 
     // Initially, for each SCC S, stores a placeholder `P` such that `S = P`
     // must hold.
@@ -115,26 +115,27 @@ struct LeakCheck<'a, 'b, 'tcx> {
     // either the placeholder `P1` or the empty region in that same universe.
     //
     // To detect errors, we look for an SCC S where the values in
-    // `scc_values[S]` (if any) cannot be stored into `scc_universes[S]`.
+    // `scc_placeholders[S]` (if any) cannot be stored into `scc_universes[S]`.
     scc_universes: IndexVec<LeakCheckScc, SccUniverse<'tcx>>,
 }
 
-impl<'a, 'b, 'tcx> LeakCheck<'a, 'b, 'tcx> {
+impl<'a, 'tcx> LeakCheck<'a, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         outer_universe: ty::UniverseIndex,
         max_universe: ty::UniverseIndex,
-        mini_graph: &'a MiniGraph<'tcx>,
-        rcc: &'a mut RegionConstraintCollector<'b, 'tcx>,
+        mini_graph: MiniGraph<'tcx>,
+        rcc: RegionConstraintCollector<'a, 'tcx>,
     ) -> Self {
         let dummy_scc_universe = SccUniverse { universe: max_universe, region: None };
+        let num_sccs = mini_graph.sccs.num_sccs();
         Self {
             tcx,
             outer_universe,
             mini_graph,
             rcc,
-            scc_placeholders: IndexVec::from_elem_n(None, mini_graph.sccs.num_sccs()),
-            scc_universes: IndexVec::from_elem_n(dummy_scc_universe, mini_graph.sccs.num_sccs()),
+            scc_placeholders: IndexVec::from_elem_n(None, num_sccs),
+            scc_universes: IndexVec::from_elem_n(dummy_scc_universe, num_sccs),
         }
     }
 
@@ -156,30 +157,19 @@ impl<'a, 'b, 'tcx> LeakCheck<'a, 'b, 'tcx> {
             // Detect those SCCs that directly contain a placeholder
             if let ty::RePlaceholder(placeholder) = **region {
                 if self.outer_universe.cannot_name(placeholder.universe) {
-                    self.assign_scc_value(scc, placeholder)?;
+                    // Update `scc_placeholders` to account for the fact that `P: S` must hold.
+                    match self.scc_placeholders[scc] {
+                        Some(p) => {
+                            assert_ne!(p, placeholder);
+                            return Err(self.placeholder_error(p, placeholder));
+                        }
+                        None => {
+                            self.scc_placeholders[scc] = Some(placeholder);
+                        }
+                    }
                 }
             }
         }
-
-        Ok(())
-    }
-
-    // assign_scc_value(S, P): Update `scc_values` to account for the fact that `P: S` must hold.
-    // This may create an error.
-    fn assign_scc_value(
-        &mut self,
-        scc: LeakCheckScc,
-        placeholder: ty::PlaceholderRegion,
-    ) -> RelateResult<'tcx, ()> {
-        match self.scc_placeholders[scc] {
-            Some(p) => {
-                assert_ne!(p, placeholder);
-                return Err(self.placeholder_error(p, placeholder));
-            }
-            None => {
-                self.scc_placeholders[scc] = Some(placeholder);
-            }
-        };
 
         Ok(())
     }
@@ -216,8 +206,8 @@ impl<'a, 'b, 'tcx> LeakCheck<'a, 'b, 'tcx> {
             // Walk over each `scc2` such that `scc1: scc2` and compute:
             //
             // * `scc1_universe`: the minimum universe of `scc2` and the constituents of `scc1`
-            // * `succ_bound`: placeholder `P` that the successors must outlive, if any (if there are multiple,
-            //   we pick one arbitrarily)
+            // * `succ_bound`: placeholder `P` that the successors must outlive, if any (if there
+            //   are multiple, we pick one arbitrarily)
             let mut scc1_universe = self.scc_universes[scc1];
             let mut succ_bound = None;
             for &scc2 in self.mini_graph.sccs.successors(scc1) {
@@ -260,7 +250,8 @@ impl<'a, 'b, 'tcx> LeakCheck<'a, 'b, 'tcx> {
                 self.scc_placeholders[scc1] = succ_bound;
             }
 
-            // At this point, `scc_placeholder[scc1]` stores some placeholder that `scc1` must outlive (if any).
+            // At this point, `scc_placeholder[scc1]` stores some placeholder that `scc1` must
+            // outlive (if any).
         }
         Ok(())
     }
