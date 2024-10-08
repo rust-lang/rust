@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{
-    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, PAuthKey, PacRet,
+    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
@@ -376,6 +376,18 @@ pub(crate) unsafe fn create_module<'ll>(
                 1,
             )
         }
+    }
+
+    match sess.opts.unstable_opts.function_return {
+        FunctionReturn::Keep => {}
+        FunctionReturn::ThunkExtern => unsafe {
+            llvm::LLVMRustAddModuleFlagU32(
+                llmod,
+                llvm::LLVMModFlagBehavior::Override,
+                c"function_return_thunk_extern".as_ptr(),
+                1,
+            )
+        },
     }
 
     match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
