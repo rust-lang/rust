@@ -33,7 +33,7 @@ use vfs::{AbsPath, AbsPathBuf, ChangeKind};
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
     flycheck::{FlycheckConfig, FlycheckHandle},
-    global_state::{FetchWorkspaceRequest, GlobalState},
+    global_state::{FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState},
     lsp_ext,
     main_loop::{DiscoverProjectParam, Task},
     op_queue::Cause,
@@ -448,15 +448,15 @@ impl GlobalState {
         let _p = tracing::info_span!("GlobalState::switch_workspaces").entered();
         tracing::info!(%cause, "will switch workspaces");
 
-        let Some((workspaces, force_reload_crate_graph)) =
+        let Some(FetchWorkspaceResponse { workspaces, force_crate_graph_reload }) =
             self.fetch_workspaces_queue.last_op_result()
         else {
             return;
         };
 
-        info!(%cause, ?force_reload_crate_graph);
+        info!(%cause, ?force_crate_graph_reload);
         if self.fetch_workspace_error().is_err() && !self.workspaces.is_empty() {
-            if *force_reload_crate_graph {
+            if *force_crate_graph_reload {
                 self.recreate_crate_graph(cause);
             }
             // It only makes sense to switch to a partially broken workspace
@@ -474,8 +474,12 @@ impl GlobalState {
                 .all(|(l, r)| l.eq_ignore_build_data(r));
 
         if same_workspaces {
-            let (workspaces, build_scripts) = self.fetch_build_data_queue.last_op_result();
-            if Arc::ptr_eq(workspaces, &self.workspaces) {
+            let (workspaces, build_scripts) = match self.fetch_build_data_queue.last_op_result() {
+                Some((workspaces, build_scripts)) => (workspaces.clone(), build_scripts.as_slice()),
+                None => (Default::default(), Default::default()),
+            };
+
+            if Arc::ptr_eq(&workspaces, &self.workspaces) {
                 info!("set build scripts to workspaces");
 
                 let workspaces = workspaces
@@ -492,7 +496,7 @@ impl GlobalState {
                 self.workspaces = Arc::new(workspaces);
             } else {
                 info!("build scripts do not match the version of the active workspace");
-                if *force_reload_crate_graph {
+                if *force_crate_graph_reload {
                     self.recreate_crate_graph(cause);
                 }
 
@@ -739,22 +743,18 @@ impl GlobalState {
     pub(super) fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        let Some((last_op_result, _)) = self.fetch_workspaces_queue.last_op_result() else {
+        let Some(FetchWorkspaceResponse { workspaces, .. }) =
+            self.fetch_workspaces_queue.last_op_result()
+        else {
             return Ok(());
         };
 
-        if !self.discover_workspace_queue.op_in_progress() {
-            if last_op_result.is_empty() {
-                stdx::format_to!(buf, "rust-analyzer failed to discover workspace");
-            } else {
-                for ws in last_op_result {
-                    if let Err(err) = ws {
-                        stdx::format_to!(
-                            buf,
-                            "rust-analyzer failed to load workspace: {:#}\n",
-                            err
-                        );
-                    }
+        if workspaces.is_empty() && self.config.discover_workspace_config().is_none() {
+            stdx::format_to!(buf, "rust-analyzer failed to fetch workspace");
+        } else {
+            for ws in workspaces {
+                if let Err(err) = ws {
+                    stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
                 }
             }
         }
@@ -769,7 +769,11 @@ impl GlobalState {
     pub(super) fn fetch_build_data_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        for ws in &self.fetch_build_data_queue.last_op_result().1 {
+        let Some((_, ws)) = &self.fetch_build_data_queue.last_op_result() else {
+            return Ok(());
+        };
+
+        for ws in ws {
             match ws {
                 Ok(data) => {
                     if let Some(stderr) = data.error() {

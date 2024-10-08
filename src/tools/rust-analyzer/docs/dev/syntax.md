@@ -378,7 +378,7 @@ impl AstNode for AssocItem {
 }
 ```
 
-Shared AST substructures are modeled via (object safe) traits:
+Shared AST substructures are modeled via (dynamically compatible) traits:
 
 ```rust
 trait HasVisibility: AstNode {

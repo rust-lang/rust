@@ -229,10 +229,10 @@ fn foo() {
         check_diagnostics(
             r#"
 struct non_camel_case_name {}
-    // ^^^^^^^^^^^^^^^^^^^ 💡 warn: Structure `non_camel_case_name` should have CamelCase name, e.g. `NonCamelCaseName`
+    // ^^^^^^^^^^^^^^^^^^^ 💡 warn: Structure `non_camel_case_name` should have UpperCamelCase name, e.g. `NonCamelCaseName`
 
 struct SCREAMING_CASE {}
-    // ^^^^^^^^^^^^^^ 💡 warn: Structure `SCREAMING_CASE` should have CamelCase name, e.g. `ScreamingCase`
+    // ^^^^^^^^^^^^^^ 💡 warn: Structure `SCREAMING_CASE` should have UpperCamelCase name, e.g. `ScreamingCase`
 "#,
         );
     }
@@ -261,10 +261,10 @@ struct SomeStruct { SomeField: u8 }
         check_diagnostics(
             r#"
 enum some_enum { Val(u8) }
-  // ^^^^^^^^^ 💡 warn: Enum `some_enum` should have CamelCase name, e.g. `SomeEnum`
+  // ^^^^^^^^^ 💡 warn: Enum `some_enum` should have UpperCamelCase name, e.g. `SomeEnum`
 
 enum SOME_ENUM {}
-  // ^^^^^^^^^ 💡 warn: Enum `SOME_ENUM` should have CamelCase name, e.g. `SomeEnum`
+  // ^^^^^^^^^ 💡 warn: Enum `SOME_ENUM` should have UpperCamelCase name, e.g. `SomeEnum`
 "#,
         );
     }
@@ -283,7 +283,7 @@ enum AABB {}
         check_diagnostics(
             r#"
 enum SomeEnum { SOME_VARIANT(u8) }
-             // ^^^^^^^^^^^^ 💡 warn: Variant `SOME_VARIANT` should have CamelCase name, e.g. `SomeVariant`
+             // ^^^^^^^^^^^^ 💡 warn: Variant `SOME_VARIANT` should have UpperCamelCase name, e.g. `SomeVariant`
 "#,
         );
     }
@@ -313,7 +313,7 @@ static some_weird_const: u8 = 10;
         check_diagnostics(
             r#"
 struct someStruct;
-    // ^^^^^^^^^^ 💡 warn: Structure `someStruct` should have CamelCase name, e.g. `SomeStruct`
+    // ^^^^^^^^^^ 💡 warn: Structure `someStruct` should have UpperCamelCase name, e.g. `SomeStruct`
 
 impl someStruct {
     fn SomeFunc(&self) {
@@ -530,11 +530,11 @@ extern {
         check_diagnostics(
             r#"
 trait BAD_TRAIT {
-   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have UpperCamelCase name, e.g. `BadTrait`
     const bad_const: u8;
        // ^^^^^^^^^ 💡 warn: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
     type BAD_TYPE;
-      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have UpperCamelCase name, e.g. `BadType`
     fn BAD_FUNCTION();
     // ^^^^^^^^^^^^ 💡 warn: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
     fn BadFunction();
@@ -552,11 +552,11 @@ trait BAD_TRAIT {
         check_diagnostics_with_disabled(
             r#"
 trait BAD_TRAIT {
-   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have UpperCamelCase name, e.g. `BadTrait`
     const bad_const: u8;
        // ^^^^^^^^^ 💡 warn: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
     type BAD_TYPE;
-      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have UpperCamelCase name, e.g. `BadType`
     fn BAD_FUNCTION(BAD_PARAM: u8);
     // ^^^^^^^^^^^^ 💡 warn: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
                  // ^^^^^^^^^ 💡 warn: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
@@ -664,7 +664,7 @@ mod CheckNonstandardStyle {
 mod CheckBadStyle {
   //^^^^^^^^^^^^^ 💡 error: Module `CheckBadStyle` should have snake_case name, e.g. `check_bad_style`
     struct fooo;
-         //^^^^ 💡 error: Structure `fooo` should have CamelCase name, e.g. `Fooo`
+         //^^^^ 💡 error: Structure `fooo` should have UpperCamelCase name, e.g. `Fooo`
 }
 
 mod F {
@@ -676,7 +676,7 @@ mod F {
 
 #[deny(non_snake_case, non_camel_case_types)]
 pub struct some_type {
-         //^^^^^^^^^ 💡 error: Structure `some_type` should have CamelCase name, e.g. `SomeType`
+         //^^^^^^^^^ 💡 error: Structure `some_type` should have UpperCamelCase name, e.g. `SomeType`
     SOME_FIELD: u8,
   //^^^^^^^^^^ 💡 error: Field `SOME_FIELD` should have snake_case name, e.g. `some_field`
     SomeField: u16,
@@ -693,11 +693,11 @@ pub static SomeStatic: u8 = 10;
 
 #[deny(non_snake_case, non_camel_case_types, non_upper_case_globals)]
 trait BAD_TRAIT {
-   // ^^^^^^^^^ 💡 error: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+   // ^^^^^^^^^ 💡 error: Trait `BAD_TRAIT` should have UpperCamelCase name, e.g. `BadTrait`
     const bad_const: u8;
        // ^^^^^^^^^ 💡 error: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
     type BAD_TYPE;
-      // ^^^^^^^^ 💡 error: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+      // ^^^^^^^^ 💡 error: Type alias `BAD_TYPE` should have UpperCamelCase name, e.g. `BadType`
     fn BAD_FUNCTION(BAD_PARAM: u8);
     // ^^^^^^^^^^^^ 💡 error: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
                  // ^^^^^^^^^ 💡 error: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
@@ -952,7 +952,7 @@ fn foo() {
     let FOO;
     #[allow(non_snake_case)]
     struct qux;
-        // ^^^ 💡 warn: Structure `qux` should have CamelCase name, e.g. `Qux`
+        // ^^^ 💡 warn: Structure `qux` should have UpperCamelCase name, e.g. `Qux`
 
     fn BAZ() {
     // ^^^ 💡 error: Function `BAZ` should have snake_case name, e.g. `baz`

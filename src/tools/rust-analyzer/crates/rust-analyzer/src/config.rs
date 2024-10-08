@@ -12,10 +12,10 @@ use std::{
 use cfg::{CfgAtom, CfgDiff};
 use hir::Symbol;
 use ide::{
-    AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
-    GenericParameterHints, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
-    InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig,
-    MemoryLayoutHoverRenderKind, Snippet, SnippetScope, SourceRootId,
+    AssistConfig, CallableSnippets, CompletionConfig, CompletionFieldsToResolve, DiagnosticsConfig,
+    ExprFillDefaultMode, GenericParameterHints, HighlightConfig, HighlightRelatedConfig,
+    HoverConfig, HoverDocFormat, InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig,
+    MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, Snippet, SnippetScope, SourceRootId,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -574,6 +574,9 @@ config_data! {
         /// set to a path relative to the workspace to use that path.
         cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
 
+        /// Set `cfg(test)` for local crates. Defaults to true.
+        cfg_setTest: bool = true,
+
         /// Run the check command for diagnostics on save.
         checkOnSave | checkOnSave_enable: bool                         = true,
 
@@ -695,7 +698,6 @@ config_data! {
         workspace_symbol_search_limit: usize = 128,
         /// Workspace symbol search scope.
         workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = WorkspaceSymbolSearchScopeDef::Workspace,
-
     }
 }
 
@@ -1391,6 +1393,7 @@ impl Config {
     }
 
     pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig {
+        let client_capability_fields = self.completion_resolve_support_properties();
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable(source_root).to_owned(),
             enable_imports_on_the_fly: self.completion_autoimport_enable(source_root).to_owned()
@@ -1415,6 +1418,15 @@ impl Config {
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
             term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
+            fields_to_resolve: CompletionFieldsToResolve {
+                resolve_label_details: client_capability_fields.contains("labelDetails"),
+                resolve_tags: client_capability_fields.contains("tags"),
+                resolve_detail: client_capability_fields.contains("detail"),
+                resolve_documentation: client_capability_fields.contains("documentation"),
+                resolve_filter_text: client_capability_fields.contains("filterText"),
+                resolve_text_edit: client_capability_fields.contains("textEdit"),
+                resolve_command: client_capability_fields.contains("command"),
+            },
         }
     }
 
@@ -1859,7 +1871,12 @@ impl Config {
             extra_args: self.cargo_extraArgs(source_root).clone(),
             extra_env: self.cargo_extraEnv(source_root).clone(),
             target_dir: self.target_dir_from_config(source_root),
+            set_test: *self.cfg_setTest(source_root),
         }
+    }
+
+    pub fn cfg_set_test(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.cfg_setTest(source_root)
     }
 
     pub(crate) fn completion_snippets_default() -> FxHashMap<String, SnippetDef> {

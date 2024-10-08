@@ -27,12 +27,12 @@ pub(crate) type Cause = String;
 pub(crate) struct OpQueue<Args = (), Output = ()> {
     op_requested: Option<(Cause, Args)>,
     op_in_progress: bool,
-    last_op_result: Output,
+    last_op_result: Option<Output>,
 }
 
-impl<Args, Output: Default> Default for OpQueue<Args, Output> {
+impl<Args, Output> Default for OpQueue<Args, Output> {
     fn default() -> Self {
-        Self { op_requested: None, op_in_progress: false, last_op_result: Default::default() }
+        Self { op_requested: None, op_in_progress: false, last_op_result: None }
     }
 }
 
@@ -56,12 +56,12 @@ impl<Args, Output> OpQueue<Args, Output> {
     pub(crate) fn op_completed(&mut self, result: Output) {
         assert!(self.op_in_progress);
         self.op_in_progress = false;
-        self.last_op_result = result;
+        self.last_op_result = Some(result);
     }
 
     /// Get the result of the last operation.
-    pub(crate) fn last_op_result(&self) -> &Output {
-        &self.last_op_result
+    pub(crate) fn last_op_result(&self) -> Option<&Output> {
+        self.last_op_result.as_ref()
     }
 
     // Is there an operation that has started, but hasn't yet finished?

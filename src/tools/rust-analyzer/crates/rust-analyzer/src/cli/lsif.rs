@@ -277,6 +277,7 @@ impl flags::Lsif {
         let cargo_config = &CargoConfig {
             sysroot: Some(RustLibSource::Discover),
             all_targets: true,
+            set_test: true,
             ..Default::default()
         };
         let no_progress = &|_| ();

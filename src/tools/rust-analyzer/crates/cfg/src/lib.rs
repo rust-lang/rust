@@ -49,6 +49,10 @@ impl CfgOptions {
         cfg.fold(&|atom| self.enabled.contains(atom))
     }
 
+    pub fn check_atom(&self, cfg: &CfgAtom) -> bool {
+        self.enabled.contains(cfg)
+    }
+
     pub fn insert_atom(&mut self, key: Symbol) {
         self.enabled.insert(CfgAtom::Flag(key));
     }

@@ -103,6 +103,7 @@ impl Project<'_> {
                 filter: std::env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
                 chalk_filter: std::env::var("CHALK_DEBUG").ok(),
                 profile_filter: std::env::var("RA_PROFILE").ok(),
+                json_profile_filter: std::env::var("RA_PROFILE_JSON").ok(),
             };
         });
 
