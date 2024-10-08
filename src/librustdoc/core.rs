@@ -30,6 +30,7 @@ use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::Condition::*;
+use crate::passes::collect_intra_doc_links::LinkCollector;
 use crate::passes::{self};
 
 pub(crate) struct DocContext<'tcx> {
@@ -440,6 +441,10 @@ pub(crate) fn run_global_ctxt(
         }
     }
 
+    let (mut krate, LinkCollector { visited_links, ambiguous_links, .. }) =
+        tcx.sess.time("collect_intra_doc_links", || {
+            passes::collect_intra_doc_links::collect_intra_doc_links(krate, &mut ctxt)
+        });
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
     if let Some(guar) = tcx.dcx().has_errors() {
@@ -447,6 +452,9 @@ pub(crate) fn run_global_ctxt(
     }
 
     krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
+
+    let mut collector = LinkCollector { cx: &mut ctxt, visited_links, ambiguous_links };
+    collector.resolve_ambiguities();
 
     Ok((krate, ctxt.render_options, ctxt.cache))
 }
