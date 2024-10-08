@@ -1,6 +1,6 @@
 #![feature(coverage_attribute)]
 //@ edition: 2021
-//@ ignore-llvm-version: 19 - 99
+//@ min-llvm-version: 19
 //@ compile-flags: -Zcoverage-options=mcdc
 //@ llvm-cov-flags: --show-branches=count --show-mcdc
 
@@ -48,7 +48,7 @@ fn mcdc_check_tree_decision(a: bool, b: bool, c: bool) {
 
 fn mcdc_check_not_tree_decision(a: bool, b: bool, c: bool) {
     // Contradict to `mcdc_check_tree_decision`,
-    // 100% branch coverage of this expression does not mean indicates 100% mcdc coverage.
+    // 100% branch coverage of this expression does not indicate 100% mcdc coverage.
     if (a || b) && c {
         say("pass");
     } else {

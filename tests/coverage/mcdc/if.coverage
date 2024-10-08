@@ -1,6 +1,6 @@
    LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
-   LL|       |//@ ignore-llvm-version: 19 - 99
+   LL|       |//@ min-llvm-version: 19
    LL|       |//@ compile-flags: -Zcoverage-options=mcdc
    LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
    LL|       |
@@ -145,12 +145,12 @@
   |     C1, C2, C3    Result
   |  1 { F,  -,  -  = F      }
   |  2 { T,  F,  F  = F      }
-  |  3 { T,  T,  -  = T      }
-  |  4 { T,  F,  T  = T      }
+  |  3 { T,  F,  T  = T      }
+  |  4 { T,  T,  -  = T      }
   |
   |  C1-Pair: covered: (1,3)
-  |  C2-Pair: covered: (2,3)
-  |  C3-Pair: covered: (2,4)
+  |  C2-Pair: covered: (2,4)
+  |  C3-Pair: covered: (2,3)
   |  MC/DC Coverage for Decision: 100.00%
   |
   ------------------
@@ -162,7 +162,7 @@
    LL|       |
    LL|      4|fn mcdc_check_not_tree_decision(a: bool, b: bool, c: bool) {
    LL|      4|    // Contradict to `mcdc_check_tree_decision`,
-   LL|      4|    // 100% branch coverage of this expression does not mean indicates 100% mcdc coverage.
+   LL|      4|    // 100% branch coverage of this expression does not indicate 100% mcdc coverage.
    LL|      4|    if (a || b) && c {
                            ^1
   ------------------
@@ -181,12 +181,12 @@
   |
   |     C1, C2, C3    Result
   |  1 { T,  -,  F  = F      }
-  |  2 { T,  -,  T  = T      }
-  |  3 { F,  T,  T  = T      }
+  |  2 { F,  T,  T  = T      }
+  |  3 { T,  -,  T  = T      }
   |
   |  C1-Pair: not covered
   |  C2-Pair: not covered
-  |  C3-Pair: covered: (1,2)
+  |  C3-Pair: covered: (1,3)
   |  MC/DC Coverage for Decision: 33.33%
   |
   ------------------

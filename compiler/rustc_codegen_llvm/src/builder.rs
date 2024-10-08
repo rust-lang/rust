@@ -1679,16 +1679,21 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         &mut self,
         fn_name: &'ll Value,
         hash: &'ll Value,
-        bitmap_bytes: &'ll Value,
+        bitmap_bits: &'ll Value,
     ) {
-        debug!("mcdc_parameters() with args ({:?}, {:?}, {:?})", fn_name, hash, bitmap_bytes);
+        debug!("mcdc_parameters() with args ({:?}, {:?}, {:?})", fn_name, hash, bitmap_bits);
+
+        assert!(
+            crate::llvm_util::get_version() >= (19, 0, 0),
+            "MCDC intrinsics require LLVM 19 or later"
+        );
 
         let llfn = unsafe { llvm::LLVMRustGetInstrProfMCDCParametersIntrinsic(self.cx().llmod) };
         let llty = self.cx.type_func(
             &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32()],
             self.cx.type_void(),
         );
-        let args = &[fn_name, hash, bitmap_bytes];
+        let args = &[fn_name, hash, bitmap_bits];
         let args = self.check_call("call", llty, llfn, args);
 
         unsafe {
@@ -1708,28 +1713,25 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         &mut self,
         fn_name: &'ll Value,
         hash: &'ll Value,
-        bitmap_bytes: &'ll Value,
         bitmap_index: &'ll Value,
         mcdc_temp: &'ll Value,
     ) {
         debug!(
-            "mcdc_tvbitmap_update() with args ({:?}, {:?}, {:?}, {:?}, {:?})",
-            fn_name, hash, bitmap_bytes, bitmap_index, mcdc_temp
+            "mcdc_tvbitmap_update() with args ({:?}, {:?}, {:?}, {:?})",
+            fn_name, hash, bitmap_index, mcdc_temp
+        );
+        assert!(
+            crate::llvm_util::get_version() >= (19, 0, 0),
+            "MCDC intrinsics require LLVM 19 or later"
         );
 
         let llfn =
             unsafe { llvm::LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(self.cx().llmod) };
         let llty = self.cx.type_func(
-            &[
-                self.cx.type_ptr(),
-                self.cx.type_i64(),
-                self.cx.type_i32(),
-                self.cx.type_i32(),
-                self.cx.type_ptr(),
-            ],
+            &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32(), self.cx.type_ptr()],
             self.cx.type_void(),
         );
-        let args = &[fn_name, hash, bitmap_bytes, bitmap_index, mcdc_temp];
+        let args = &[fn_name, hash, bitmap_index, mcdc_temp];
         let args = self.check_call("call", llty, llfn, args);
         unsafe {
             let _ = llvm::LLVMRustBuildCall(
@@ -1745,41 +1747,15 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         self.store(self.const_i32(0), mcdc_temp, self.tcx.data_layout.i32_align.abi);
     }
 
-    pub(crate) fn mcdc_condbitmap_update(
-        &mut self,
-        fn_name: &'ll Value,
-        hash: &'ll Value,
-        cond_loc: &'ll Value,
-        mcdc_temp: &'ll Value,
-        bool_value: &'ll Value,
-    ) {
-        debug!(
-            "mcdc_condbitmap_update() with args ({:?}, {:?}, {:?}, {:?}, {:?})",
-            fn_name, hash, cond_loc, mcdc_temp, bool_value
+    pub(crate) fn mcdc_condbitmap_update(&mut self, cond_index: &'ll Value, mcdc_temp: &'ll Value) {
+        debug!("mcdc_condbitmap_update() with args ({:?}, {:?})", cond_index, mcdc_temp);
+        assert!(
+            crate::llvm_util::get_version() >= (19, 0, 0),
+            "MCDC intrinsics require LLVM 19 or later"
         );
-        let llfn = unsafe { llvm::LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(self.cx().llmod) };
-        let llty = self.cx.type_func(
-            &[
-                self.cx.type_ptr(),
-                self.cx.type_i64(),
-                self.cx.type_i32(),
-                self.cx.type_ptr(),
-                self.cx.type_i1(),
-            ],
-            self.cx.type_void(),
-        );
-        let args = &[fn_name, hash, cond_loc, mcdc_temp, bool_value];
-        self.check_call("call", llty, llfn, args);
-        unsafe {
-            let _ = llvm::LLVMRustBuildCall(
-                self.llbuilder,
-                llty,
-                llfn,
-                args.as_ptr() as *const &llvm::Value,
-                args.len() as c_uint,
-                [].as_ptr(),
-                0 as c_uint,
-            );
-        }
+        let align = self.tcx.data_layout.i32_align.abi;
+        let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align);
+        let new_tv_index = self.add(current_tv_index, cond_index);
+        self.store(new_tv_index, mcdc_temp, align);
     }
 }

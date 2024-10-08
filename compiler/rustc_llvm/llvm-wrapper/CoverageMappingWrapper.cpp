@@ -88,38 +88,7 @@ struct LLVMRustMCDCParameters {
   LLVMRustMCDCBranchParameters BranchParameters;
 };
 
-// LLVM representations for `MCDCParameters` evolved from LLVM 18 to 19.
-// Look at representations in 18
-// https://github.com/rust-lang/llvm-project/blob/66a2881a/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L253-L263
-// and representations in 19
-// https://github.com/llvm/llvm-project/blob/843cc474faefad1d639f4c44c1cf3ad7dbda76c8/llvm/include/llvm/ProfileData/Coverage/MCDCTypes.h
-#if LLVM_VERSION_LT(19, 0)
-static coverage::CounterMappingRegion::MCDCParameters
-fromRust(LLVMRustMCDCParameters Params) {
-  auto parameter = coverage::CounterMappingRegion::MCDCParameters{};
-  switch (Params.Tag) {
-  case LLVMRustMCDCParametersTag::None:
-    return parameter;
-  case LLVMRustMCDCParametersTag::Decision:
-    parameter.BitmapIdx =
-        static_cast<unsigned>(Params.DecisionParameters.BitmapIdx),
-    parameter.NumConditions =
-        static_cast<unsigned>(Params.DecisionParameters.NumConditions);
-    return parameter;
-  case LLVMRustMCDCParametersTag::Branch:
-    parameter.ID = static_cast<coverage::CounterMappingRegion::MCDCConditionID>(
-        Params.BranchParameters.ConditionID),
-    parameter.FalseID =
-        static_cast<coverage::CounterMappingRegion::MCDCConditionID>(
-            Params.BranchParameters.ConditionIDs[0]),
-    parameter.TrueID =
-        static_cast<coverage::CounterMappingRegion::MCDCConditionID>(
-            Params.BranchParameters.ConditionIDs[1]);
-    return parameter;
-  }
-  report_fatal_error("Bad LLVMRustMCDCParametersTag!");
-}
-#else
+#if LLVM_VERSION_GE(19, 0)
 static coverage::mcdc::Parameters fromRust(LLVMRustMCDCParameters Params) {
   switch (Params.Tag) {
   case LLVMRustMCDCParametersTag::None:
@@ -214,13 +183,17 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
            RustMappingRegions, NumMappingRegions)) {
     MappingRegions.emplace_back(
         fromRust(Region.Count), fromRust(Region.FalseCount),
-#if LLVM_VERSION_LT(19, 0)
-        // LLVM 19 may move this argument to last.
-        fromRust(Region.MCDCParameters),
+#if LLVM_VERSION_GE(18, 0) && LLVM_VERSION_LT(19, 0)
+        coverage::CounterMappingRegion::MCDCParameters{},
 #endif
         Region.FileID, Region.ExpandedFileID, // File IDs, then region info.
         Region.LineStart, Region.ColumnStart, Region.LineEnd, Region.ColumnEnd,
-        fromRust(Region.Kind));
+        fromRust(Region.Kind)
+#if LLVM_VERSION_GE(19, 0)
+            ,
+        fromRust(Region.MCDCParameters)
+#endif
+    );
   }
 
   std::vector<coverage::CounterExpression> Expressions;
