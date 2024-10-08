@@ -6,7 +6,7 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
-import { execSync } from 'node:child_process';
+import { execSync } from "node:child_process";
 import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
 import type { Config } from "./config";
 
@@ -110,9 +110,9 @@ async function getDebugConfiguration(
 
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
-            `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
-            `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
-            `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
+                `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
+                `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
+                `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
         );
         return;
     }
@@ -130,7 +130,7 @@ async function getDebugConfiguration(
         !isMultiFolderWorkspace || !runnableArgs.workspaceRoot
             ? firstWorkspace
             : workspaceFolders.find((w) => runnableArgs.workspaceRoot?.includes(w.uri.fsPath)) ||
-            firstWorkspace;
+              firstWorkspace;
 
     const workspace = unwrapUndefinable(maybeWorkspace);
     let wsFolder = path.normalize(workspace.uri.fsPath);
@@ -237,15 +237,15 @@ const knownEngines: {
             runnableArgs.executableArgs,
         ],
         additional: {
-            "sourceMap": [
+            sourceMap: [
                 [
-                    `/rustc/${/commit-hash:\s(.*)$/m.exec(execSync("rustc -V -v", {}).toString())?.[1]
-                    }/library`,
-                    "${config:rust-analyzer.cargo.sysroot}/lib/rustlib/src/rust/library"
-
-                ]
-            ]
-        }
+                    `/rustc/${/commit-hash:\s(.*)$/m.exec(
+                        execSync("rustc -V -v", {}).toString(),
+                    )?.[1]}/library`,
+                    "${config:rust-analyzer.cargo.sysroot}/lib/rustlib/src/rust/library",
+                ],
+            ],
+        },
     },
     "vadimcn.vscode-lldb": {
         type: "lldb",
@@ -365,7 +365,6 @@ type LldbDapDebugConfig = {
     env: string[];
     sourceMap: [string, string][];
 } & BaseDebugConfig<"lldb-dap">;
-
 
 type CodeLldbDebugConfig = {
     program: string;
