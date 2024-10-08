@@ -16,13 +16,6 @@ macro_rules! try_opt {
     };
 }
 
-#[cfg_attr(bootstrap, allow_internal_unstable(const_likely))]
-macro_rules! unlikely {
-    ($e: expr) => {
-        intrinsics::unlikely($e)
-    };
-}
-
 // Use this when the generated code should differ between signed and unsigned types.
 macro_rules! sign_dependent_expr {
     (signed ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
