@@ -129,7 +129,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-git-hash",
     "needs-llvm-components",
     "needs-llvm-zstd",
-    "needs-profiler-support",
+    "needs-profiler-runtime",
     "needs-relocation-model-pic",
     "needs-run-enabled",
     "needs-rust-lld",

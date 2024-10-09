@@ -370,10 +370,10 @@ fn sanitizers() {
 #[test]
 fn profiler_support() {
     let config: Config = cfg().profiler_support(false).build();
-    assert!(check_ignore(&config, "//@ needs-profiler-support"));
+    assert!(check_ignore(&config, "//@ needs-profiler-runtime"));
 
     let config: Config = cfg().profiler_support(true).build();
-    assert!(!check_ignore(&config, "//@ needs-profiler-support"));
+    assert!(!check_ignore(&config, "//@ needs-profiler-runtime"));
 }
 
 #[test]

@@ -385,7 +385,7 @@ pub struct Config {
     pub git_merge_commit_email: String,
 
     /// True if the profiler runtime is enabled for this target.
-    /// Used by the "needs-profiler-support" header in test files.
+    /// Used by the "needs-profiler-runtime" directive in test files.
     pub profiler_support: bool,
 }
 
