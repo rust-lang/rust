@@ -311,15 +311,15 @@ mod spec_extend;
 /// The bottom part is the allocation on the heap, a contiguous memory block.
 ///
 /// ```text
-///             ptr      len  capacity
+///         capacity   ptr       len
 ///        +--------+--------+--------+
-///        | 0x0123 |      2 |      4 |
+///        |    4   | 0x0123 |    2   |
 ///        +--------+--------+--------+
-///             |
-///             v
-/// Heap   +--------+--------+--------+--------+
-///        |    'a' |    'b' | uninit | uninit |
-///        +--------+--------+--------+--------+
+///                      |
+///                      v
+/// Heap             +--------+--------+--------+--------+
+///                  |    'a' |    'b' | uninit | uninit |
+///                  +--------+--------+--------+--------+
 /// ```
 ///
 /// - **uninit** represents memory that is not initialized, see [`MaybeUninit`].
