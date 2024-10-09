@@ -249,7 +249,7 @@ pub(crate) struct ResolutionInfo {
     extra_fragment: Option<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct DiagnosticInfo<'a> {
     item: &'a Item,
     dox: &'a str,
@@ -259,6 +259,7 @@ pub(crate) struct DiagnosticInfo<'a> {
 
 pub(crate) struct OwnedDiagnosticInfo {
     item: Item,
+    dox: String,
     ori_link: String,
     link_range: MarkdownLinkRange,
 }
@@ -267,6 +268,7 @@ impl From<DiagnosticInfo<'_>> for OwnedDiagnosticInfo {
     fn from(f: DiagnosticInfo<'_>) -> Self {
         Self {
             item: f.item.clone(),
+            dox: f.dox.to_string(),
             ori_link: f.ori_link.to_string(),
             link_range: f.link_range.clone(),
         }
@@ -278,7 +280,7 @@ impl OwnedDiagnosticInfo {
         DiagnosticInfo {
             item: &self.item,
             ori_link: &self.ori_link,
-            dox: "",
+            dox: &self.dox,
             link_range: self.link_range.clone(),
         }
     }
@@ -1156,18 +1158,45 @@ impl LinkCollector<'_, '_> {
                 // Primitive types are always valid.
                 Res::Primitive(_) => true,
             });
-            if info.resolved.len() == 1 {
-                let (res, fragment) = info.resolved.pop().unwrap();
-                let diag_info = info.diag_info.into_info();
-                if let Some(link) = self.compute_link(
-                    res,
-                    fragment,
-                    path_str,
-                    info.disambiguator,
-                    diag_info,
-                    &info.link_text,
-                ) {
-                    self.save_link(*item_id, link);
+            let diag_info = info.diag_info.into_info();
+            match info.resolved.len() {
+                1 => {
+                    let (res, fragment) = info.resolved.pop().unwrap();
+                    if let Some(link) = self.compute_link(
+                        res,
+                        fragment,
+                        path_str,
+                        info.disambiguator,
+                        diag_info,
+                        &info.link_text,
+                    ) {
+                        self.save_link(*item_id, link);
+                    }
+                }
+                0 => {
+                    report_diagnostic(
+                        self.cx.tcx,
+                        BROKEN_INTRA_DOC_LINKS,
+                        format!(
+                            "all items matching `{path_str}` are either private or doc(hidden)"
+                        ),
+                        &diag_info,
+                        |diag, sp, _| {
+                            if let Some(sp) = sp {
+                                diag.span_label(sp, "unresolved link");
+                            } else {
+                                diag.note("unresolved link");
+                            }
+                        },
+                    );
+                }
+                _ => {
+                    let candidates = info
+                        .resolved
+                        .iter()
+                        .map(|(res, _)| (*res, res.def_id(self.cx.tcx)))
+                        .collect::<Vec<_>>();
+                    ambiguity_error(self.cx, &diag_info, path_str, &candidates, true);
                 }
             }
         }
