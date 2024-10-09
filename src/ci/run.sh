@@ -55,7 +55,7 @@ fi
 # If runner uses an incompatible option and `FORCE_CI_RUSTC` is not defined,
 # switch to in-tree rustc.
 if [ "$FORCE_CI_RUSTC" == "" ]; then
-    echo "debug: `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` configured."
+    echo 'debug: `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` configured.'
     DISABLE_CI_RUSTC_IF_INCOMPATIBLE=1
 fi
 
