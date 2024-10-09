@@ -43,7 +43,7 @@ fn parse_cfg<'a>(cx: &ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, 
         return Err(cx.dcx().create_err(errors::RequiresCfgPattern { span }));
     }
 
-    let cfg = p.parse_meta_item(AllowLeadingUnsafe::Yes)?;
+    let cfg = p.parse_meta_item(AllowLeadingUnsafe::No)?;
 
     let _ = p.eat(&token::Comma);
 

@@ -2493,7 +2493,7 @@ fn add_order_independent_options(
         }
     }
 
-    cmd.set_output_kind(link_output_kind, out_filename);
+    cmd.set_output_kind(link_output_kind, crate_type, out_filename);
 
     add_relro_args(cmd, sess);
 

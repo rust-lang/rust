@@ -174,7 +174,7 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
             }
         };
 
-        let meta_item = match parser.parse_meta_item(AllowLeadingUnsafe::Yes) {
+        let meta_item = match parser.parse_meta_item(AllowLeadingUnsafe::No) {
             Ok(meta_item) if parser.token == token::Eof => meta_item,
             Ok(..) => expected_error(),
             Err(err) => {
