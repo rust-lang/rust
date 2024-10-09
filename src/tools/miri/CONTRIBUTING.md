@@ -45,6 +45,14 @@ process for such contributions:
 This process is largely informal, and its primary goal is to more clearly communicate expectations.
 Please get in touch with us if you have any questions!
 
+### Managing the review state
+
+Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
+keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
+`S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
+they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
+next round of review.
+
 ## Preparing the build environment
 
 Miri heavily relies on internal and unstable rustc interfaces to execute MIR,
