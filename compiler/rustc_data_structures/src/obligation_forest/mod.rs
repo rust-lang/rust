@@ -402,9 +402,10 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     /// Returns the set of obligations that are in a pending state.
-    pub fn map_pending_obligations<P, F>(&self, f: F) -> Vec<P>
+    pub fn map_pending_obligations<P, F, R>(&self, f: F) -> R
     where
         F: Fn(&O) -> P,
+        R: FromIterator<P>,
     {
         self.nodes
             .iter()

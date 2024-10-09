@@ -4,6 +4,7 @@
 
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
@@ -20,8 +21,7 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::normalize::needs_normalization;
 use crate::traits::{
-    BoundVarReplacer, Normalized, ObligationCause, PlaceholderReplacer, PredicateObligation,
-    Reveal, ScrubbedTraitError,
+    BoundVarReplacer, Normalized, ObligationCause, PlaceholderReplacer, Reveal, ScrubbedTraitError,
 };
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
@@ -80,7 +80,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError<'tcx>>(
                 self, value, universes,
             ) {
-                Ok(value) => return Ok(Normalized { value, obligations: vec![] }),
+                Ok(value) => {
+                    return Ok(Normalized { value, obligations: PredicateObligations::new() });
+                }
                 Err(_errors) => {
                     return Err(NoSolution);
                 }
@@ -88,14 +90,14 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         }
 
         if !needs_normalization(&value, self.param_env.reveal()) {
-            return Ok(Normalized { value, obligations: vec![] });
+            return Ok(Normalized { value, obligations: PredicateObligations::new() });
         }
 
         let mut normalizer = QueryNormalizer {
             infcx: self.infcx,
             cause: self.cause,
             param_env: self.param_env,
-            obligations: vec![],
+            obligations: PredicateObligations::new(),
             cache: SsoHashMap::new(),
             anon_depth: 0,
             universes,
@@ -164,7 +166,7 @@ struct QueryNormalizer<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     cause: &'a ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    obligations: Vec<PredicateObligation<'tcx>>,
+    obligations: PredicateObligations<'tcx>,
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
     anon_depth: usize,
     universes: Vec<Option<ty::UniverseIndex>>,

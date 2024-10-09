@@ -77,7 +77,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
     else {
         return vec![];
     };
-    assert_eq!(&obligations, &[]);
+    assert_eq!(obligations.len(), 0);
 
     // Because of #109628, we may have unexpected placeholders. Ignore them!
     // FIXME(#109628): panic in this case once the issue is fixed.

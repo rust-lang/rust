@@ -1,5 +1,6 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -30,7 +31,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
             debug_assert!(!ocx.infcx.next_trait_solver());
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
-            let mut obligations = vec![];
+            let mut obligations = PredicateObligations::new();
             let answer =
                 traits::normalize_projection_ty(selcx, param_env, goal, cause, 0, &mut obligations);
             ocx.register_obligations(obligations);
@@ -99,7 +100,7 @@ fn normalize_canonicalized_inherent_projection_ty<'tcx>(
         |ocx, ParamEnvAnd { param_env, value: goal }| {
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
-            let mut obligations = vec![];
+            let mut obligations = PredicateObligations::new();
             let answer = traits::normalize_inherent_projection(
                 selcx,
                 param_env,

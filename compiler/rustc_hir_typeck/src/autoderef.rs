@@ -5,6 +5,7 @@ use std::iter;
 use itertools::Itertools;
 use rustc_hir_analysis::autoderef::{Autoderef, AutoderefKind};
 use rustc_infer::infer::InferOk;
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -36,10 +37,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
         let steps = autoderef.steps();
         if steps.is_empty() {
-            return InferOk { obligations: vec![], value: vec![] };
+            return InferOk { obligations: PredicateObligations::new(), value: vec![] };
         }
 
-        let mut obligations = vec![];
+        let mut obligations = PredicateObligations::new();
         let targets =
             steps.iter().skip(1).map(|&(ty, _)| ty).chain(iter::once(autoderef.final_ty(false)));
         let steps: Vec<_> = steps

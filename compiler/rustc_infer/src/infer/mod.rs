@@ -51,7 +51,9 @@ use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
 use crate::infer::region_constraints::UndoLog;
-use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
+use crate::traits::{
+    self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine,
+};
 
 pub mod at;
 pub mod canonical;
@@ -69,7 +71,7 @@ pub(crate) mod snapshot;
 mod type_variable;
 
 /// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
-/// around `Vec<PredicateObligation<'tcx>>`, but it has one important property:
+/// around `PredicateObligations<'tcx>`, but it has one important property:
 /// because `InferOk` is marked with `#[must_use]`, if you have a method
 /// `InferCtxt::f` that returns `InferResult<'tcx, ()>` and you call it with
 /// `infcx.f()?;` you'll get a warning about the obligations being discarded
@@ -79,7 +81,7 @@ mod type_variable;
 #[derive(Debug)]
 pub struct InferOk<'tcx, T> {
     pub value: T,
-    pub obligations: Vec<PredicateObligation<'tcx>>,
+    pub obligations: PredicateObligations<'tcx>,
 }
 pub type InferResult<'tcx, T> = Result<InferOk<'tcx, T>, TypeError<'tcx>>;
 
@@ -660,7 +662,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
 }
 
 impl<'tcx> InferOk<'tcx, ()> {
-    pub fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+    pub fn into_obligations(self) -> PredicateObligations<'tcx> {
         self.obligations
     }
 }

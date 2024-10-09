@@ -84,6 +84,8 @@ pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::TraitPredicate<'tcx>>;
 pub type PolyTraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
+pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
+
 impl<'tcx> PredicateObligation<'tcx> {
     /// Flips the polarity of the inner predicate.
     ///

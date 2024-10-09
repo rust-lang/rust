@@ -2,7 +2,7 @@ use std::iter;
 
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
@@ -27,7 +27,7 @@ pub fn obligations<'tcx>(
     recursion_depth: usize,
     arg: GenericArg<'tcx>,
     span: Span,
-) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+) -> Option<PredicateObligations<'tcx>> {
     // Handle the "livelock" case (see comment above) by bailing out if necessary.
     let arg = match arg.unpack() {
         GenericArgKind::Type(ty) => {
@@ -61,11 +61,18 @@ pub fn obligations<'tcx>(
             .into()
         }
         // There is nothing we have to do for lifetimes.
-        GenericArgKind::Lifetime(..) => return Some(Vec::new()),
+        GenericArgKind::Lifetime(..) => return Some(PredicateObligations::new()),
     };
 
-    let mut wf =
-        WfPredicates { infcx, param_env, body_id, span, out: vec![], recursion_depth, item: None };
+    let mut wf = WfPredicates {
+        infcx,
+        param_env,
+        body_id,
+        span,
+        out: PredicateObligations::new(),
+        recursion_depth,
+        item: None,
+    };
     wf.compute(arg);
     debug!("wf::obligations({:?}, body_id={:?}) = {:?}", arg, body_id, wf.out);
 
@@ -82,7 +89,7 @@ pub fn unnormalized_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     arg: GenericArg<'tcx>,
-) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+) -> Option<PredicateObligations<'tcx>> {
     debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
 
     // However, if `arg` IS an unresolved inference variable, returns `None`,
@@ -93,7 +100,7 @@ pub fn unnormalized_obligations<'tcx>(
     }
 
     if let ty::GenericArgKind::Lifetime(..) = arg.unpack() {
-        return Some(vec![]);
+        return Some(PredicateObligations::new());
     }
 
     let mut wf = WfPredicates {
@@ -101,7 +108,7 @@ pub fn unnormalized_obligations<'tcx>(
         param_env,
         body_id: CRATE_DEF_ID,
         span: DUMMY_SP,
-        out: vec![],
+        out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
     };
@@ -120,13 +127,13 @@ pub fn trait_obligations<'tcx>(
     trait_pred: ty::TraitPredicate<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
-) -> Vec<traits::PredicateObligation<'tcx>> {
+) -> PredicateObligations<'tcx> {
     let mut wf = WfPredicates {
         infcx,
         param_env,
         body_id,
         span,
-        out: vec![],
+        out: PredicateObligations::new(),
         recursion_depth: 0,
         item: Some(item),
     };
@@ -147,13 +154,13 @@ pub fn clause_obligations<'tcx>(
     body_id: LocalDefId,
     clause: ty::Clause<'tcx>,
     span: Span,
-) -> Vec<traits::PredicateObligation<'tcx>> {
+) -> PredicateObligations<'tcx> {
     let mut wf = WfPredicates {
         infcx,
         param_env,
         body_id,
         span,
-        out: vec![],
+        out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
     };
@@ -192,7 +199,7 @@ struct WfPredicates<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     body_id: LocalDefId,
     span: Span,
-    out: Vec<traits::PredicateObligation<'tcx>>,
+    out: PredicateObligations<'tcx>,
     recursion_depth: usize,
     item: Option<&'tcx hir::Item<'tcx>>,
 }
@@ -323,7 +330,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
 
-    fn normalize(self, infcx: &InferCtxt<'tcx>) -> Vec<traits::PredicateObligation<'tcx>> {
+    fn normalize(self, infcx: &InferCtxt<'tcx>) -> PredicateObligations<'tcx> {
         // Do not normalize `wf` obligations with the new solver.
         //
         // The current deep normalization routine with the new solver does not
@@ -336,7 +343,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         let cause = self.cause(ObligationCauseCode::WellFormed(None));
         let param_env = self.param_env;
-        let mut obligations = Vec::with_capacity(self.out.len());
+        let mut obligations = PredicateObligations::with_capacity(self.out.len());
         for mut obligation in self.out {
             assert!(!obligation.has_escaping_bound_vars());
             let mut selcx = traits::SelectionContext::new(infcx);
@@ -553,7 +560,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         &mut self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Vec<traits::PredicateObligation<'tcx>> {
+    ) -> PredicateObligations<'tcx> {
         let predicates = self.tcx().predicates_of(def_id);
         let mut origins = vec![def_id; predicates.predicates.len()];
         let mut head = predicates;
