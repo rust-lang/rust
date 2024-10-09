@@ -74,6 +74,26 @@ fn main() {
             // large enough for the thread name.
             #[cfg(target_os = "linux")]
             assert_eq!(get_thread_name(&mut buf[..15]), libc::ERANGE);
+
+            // Solaris compatible implementations return an error,
+            // if the buffer is shorter than the thread name.
+            #[cfg(any(target_os = "illumos", target_os = "solaris"))]
+            assert_eq!(get_thread_name(&mut buf[..4]), libc::ERANGE);
+
+            // For libc implementation for macOS it's not an error
+            // for a buffer being too short for the thread name.
+            #[cfg(target_os = "macos")]
+            {
+                // Ensure that a zero sized buffer returns no error.
+                assert_eq!(get_thread_name(&mut buf[..0]), 0);
+
+                // Ensure that a shorter tnan required buffer still returns no error,
+                // and gives a prefix of the thread name.
+                assert_eq!(get_thread_name(&mut buf[..4]), 0);
+                let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
+                assert_eq!(cstr.to_bytes_with_nul().len(), 4);
+                assert!(short_name.as_bytes().starts_with(cstr.to_bytes()));
+            }
         })
         .unwrap()
         .join()
@@ -105,8 +125,12 @@ fn main() {
 
             // But with a too long name it should fail (except on FreeBSD where the
             // function has no return, hence cannot indicate failure).
-            #[cfg(not(target_os = "freebsd"))]
-            assert_ne!(set_thread_name(&CString::new(long_name).unwrap()), 0);
+            // On macOS, the error code is different.
+            #[cfg(not(any(target_os = "freebsd", target_os = "macos")))]
+            assert_eq!(set_thread_name(&CString::new(long_name).unwrap()), libc::ERANGE);
+
+            #[cfg(target_os = "macos")]
+            assert_eq!(set_thread_name(&CString::new(long_name).unwrap()), libc::ENAMETOOLONG);
         })
         .unwrap()
         .join()
