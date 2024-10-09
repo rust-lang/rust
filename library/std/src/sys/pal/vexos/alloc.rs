@@ -1,8 +1,6 @@
-use crate::{
-    alloc::{GlobalAlloc, Layout, System},
-    ptr,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::ptr;
+use crate::sync::atomic::{AtomicBool, Ordering};
 
 static mut DLMALLOC: dlmalloc::Dlmalloc<Vexos> = dlmalloc::Dlmalloc::new_with_allocator(Vexos);
 

@@ -16,6 +16,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             os: "vexos".into(),
+            is_like_vexos: true,
             vendor: "vex".into(),
             cpu: "cortex-a9".into(),
             abi: "eabihf".into(),
