@@ -145,6 +145,8 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - When particular debugger versions are matched: `ignore-gdb-version`
 - Specific [compare modes]: `compare-mode-polonius`, `compare-mode-chalk`,
   `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
+- The two different test modes used by coverage tests:
+  `ignore-coverage-map`, `ignore-coverage-run`
 
 The following directives will check rustc build settings and target
 settings:

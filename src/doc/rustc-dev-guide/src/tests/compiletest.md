@@ -464,8 +464,9 @@ Each mode also has an alias to run the coverage tests in just that mode:
 ./x test coverage-map -- tests/coverage/if.rs # runs the specified test in "coverage-map" mode only
 ```
 
-If a test cannot be exercised in a particular coverage mode for some reason, you
-can use e.g. `ignore-mode-coverage-map`.
+If a particular test should not be run in one of the coverage test modes for
+some reason, use the `//@ ignore-coverage-map` or `//@ ignore-coverage-run`
+directives.
 
 #### `coverage-map` suite
 
