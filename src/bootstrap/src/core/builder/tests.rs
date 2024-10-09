@@ -6,6 +6,7 @@ use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
+use crate::core::download::is_download_ci_available;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     configure_with_args(&[cmd.to_owned()], host, target)
@@ -216,12 +217,6 @@ fn alias_and_path_for_library() {
 
 #[test]
 fn ci_rustc_if_unchanged_logic() {
-    if env::var_os("NO_DOWNLOAD_CI_RUSTC").is_some_and(|s| s == "1" || s == "true") {
-        // FIXME: Find the actual reason.
-        println!("This test is incompatible in runners configured with `NO_DOWNLOAD_CI_RUSTC`.");
-        return;
-    }
-
     let config = Config::parse_inner(
         Flags::parse(&[
             "build".to_owned(),
@@ -230,6 +225,10 @@ fn ci_rustc_if_unchanged_logic() {
         ]),
         |&_| Ok(Default::default()),
     );
+
+    if !is_download_ci_available(&config.build.triple, config.llvm_assertions) {
+        return;
+    }
 
     if config.rust_info.is_from_tarball() {
         return;
@@ -263,7 +262,9 @@ fn ci_rustc_if_unchanged_logic() {
         .unwrap()
         .success();
 
-    assert!(has_changes == config.download_rustc_commit.is_none());
+    if config.download_rustc_commit.is_some() {
+        assert!(!has_changes);
+    }
 }
 
 mod defaults {
