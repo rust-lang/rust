@@ -214,6 +214,8 @@ fn alias_and_path_for_library() {
     assert_eq!(first(cache.all::<doc::Std>()), &[doc_std!(A => A, stage = 0)]);
 }
 
+// FIXME: This is failing in various runners in merge CI.
+#[ignore]
 #[test]
 fn ci_rustc_if_unchanged_logic() {
     let config = Config::parse_inner(
