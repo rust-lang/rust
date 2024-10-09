@@ -2164,13 +2164,36 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 
 /// Compares the *addresses* of the two function pointers for equality.
 ///
-/// Function pointers comparisons can have surprising results since
-/// they are never guaranteed to be unique and could vary between different
-/// code generation units. Furthermore, different functions could have the
-/// same address after being merged together.
+/// This is the same as `f == g`, but using this function makes clear that the potentially
+/// surprising semantics of function pointer comparison are involved.
+/// There are very few guarantees about how functions are compiled and they have no intrinsic
+/// “identity”; in particular, this comparison:
 ///
-/// This is the same as `f == g` but using this function makes clear
-/// that you are aware of these potentially surprising semantics.
+/// * May return `true` unexpectedly, in cases where functions are equivalent.
+///   For example, the following program is likely (but not guaranteed) to print `(true, true)`
+///   when compiled with optimization:
+///
+///   ```
+///   # #![feature(ptr_fn_addr_eq)]
+///   let f: fn(i32) -> i32 = |x| x;
+///   let g: fn(i32) -> i32 = |x| x + 0;  // different closure, different body
+///   let h: fn(u32) -> u32 = |x| x + 0;  // different signature too
+///   dbg!(std::ptr::fn_addr_eq(f, g), std::ptr::fn_addr_eq(f, h));
+///   ```
+///
+/// * May return `false` in any case.
+///   This is particularly likely with generic functions but may happen with any function.
+///   (From an implementation perspective, this is possible because functions may sometimes be
+///   processed more than once by the compiler, resulting in duplicate machine code.)
+///
+/// Despite these false positives and false negatives, this comparison can still be useful.
+/// Specifically, if
+///
+/// * `T` is the same type as `U`, `T` is a [subtype] of `U`, or `U` is a [subtype] of `T`, and
+/// * `ptr::fn_addr_eq(f, g)` returns true,
+///
+/// then calling `f` and calling `g` will be equivalent.
+///
 ///
 /// # Examples
 ///
@@ -2182,6 +2205,9 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// fn b() { println!("b"); }
 /// assert!(!ptr::fn_addr_eq(a as fn(), b as fn()));
 /// ```
+///
+/// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
+
 #[unstable(feature = "ptr_fn_addr_eq", issue = "129322")]
 #[inline(always)]
 #[must_use = "function pointer comparison produces a value"]
