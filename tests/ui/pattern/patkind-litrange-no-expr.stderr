@@ -1,16 +1,17 @@
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/patkind-litrange-no-expr.rs:20:13
+error: expected pattern, found expression `1 + 1`
+  --> $DIR/patkind-litrange-no-expr.rs:9:20
    |
-LL |     Arith = 1 + 1,
-   |             ^^^^^
+LL |                   $( $value => Some($name::$variant), )* // PatKind::Lit
+   |                      ^^^^^^ expected pattern
+...
+LL | / enum_number!(Change {
+LL | |     Pos = 1,
+LL | |     Neg = -1,
+LL | |     Arith = 1 + 1,
+LL | | });
+   | |__- in this macro invocation
+   |
+   = note: this error originates in the macro `enum_number` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/patkind-litrange-no-expr.rs:20:13
-   |
-LL |     Arith = 1 + 1,
-   |             ^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

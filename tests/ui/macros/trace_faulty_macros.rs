@@ -43,10 +43,10 @@ fn use_bang_macro_as_attr() {}
 fn use_derive_macro_as_attr() {}
 
 macro_rules! test {
-    (let $p:pat = $e:expr) => {test!(($p,$e))};
+    (let $p:pat = $e:expr) => {test!(($p,$e))}; //~ ERROR expected pattern, found expression `1+1`
     // this should be expr
     //           vvv
-    (($p:pat, $e:pat)) => {let $p = $e;}; //~ ERROR expected expression, found pattern `1+1`
+    (($p:pat, $e:pat)) => {let $p = $e;};
 }
 
 fn foo() {

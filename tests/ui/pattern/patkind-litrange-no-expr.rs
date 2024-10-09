@@ -7,6 +7,7 @@ macro_rules! enum_number {
         fn foo(value: i32) -> Option<$name> {
             match value {
                 $( $value => Some($name::$variant), )* // PatKind::Lit
+                //~^ ERROR expected pattern, found expression `1 + 1`
                 $( $value ..= 42 => Some($name::$variant), )* // PatKind::Range
                 _ => None
             }
@@ -17,8 +18,7 @@ macro_rules! enum_number {
 enum_number!(Change {
     Pos = 1,
     Neg = -1,
-    Arith = 1 + 1, //~ ERROR arbitrary expressions aren't allowed in patterns
-                   //~| ERROR arbitrary expressions aren't allowed in patterns
+    Arith = 1 + 1,
 });
 
 fn main() {}

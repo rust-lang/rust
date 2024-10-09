@@ -2171,7 +2171,7 @@ impl<'a> Parser<'a> {
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus`.
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
-        if let token::Interpolated(nt) = &self.token.kind {
+        let expr = if let token::Interpolated(nt) = &self.token.kind {
             match &**nt {
                 // FIXME(nnethercote) The `NtExpr` case should only match if
                 // `e` is an `ExprKind::Lit` or an `ExprKind::Unary` containing
@@ -2183,13 +2183,26 @@ impl<'a> Parser<'a> {
                 // `ExprKind::Path` must be accepted when parsing range
                 // patterns. That requires some care. So for now, we continue
                 // being less strict here than we should be.
-                token::NtExpr(e) | token::NtLiteral(e) => {
-                    let e = e.clone();
-                    self.bump();
-                    return Ok(e);
-                }
-                _ => {}
-            };
+                token::NtLiteral(e) => Some(e.clone()),
+                token::NtExpr(e) => match &e.kind {
+                    ExprKind::Lit(_) | ExprKind::Path(None, _) | ExprKind::MacCall(_) => {
+                        Some(e.clone())
+                    }
+                    ExprKind::Unary(UnOp::Neg, inner)
+                        if matches!(&inner.kind, ast::ExprKind::Lit(_)) =>
+                    {
+                        Some(e.clone())
+                    }
+                    _ => None,
+                },
+                _ => None,
+            }
+        } else {
+            None
+        };
+        if let Some(e) = expr {
+            self.bump();
+            return Ok(e);
         }
 
         let lo = self.token.span;
