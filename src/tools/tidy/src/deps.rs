@@ -129,11 +129,14 @@ const EXCEPTIONS_STDARCH: ExceptionList = &[
 
 const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-start
+    ("arrayref", "BSD-2-Clause"),
     ("bitmaps", "MPL-2.0+"),
+    ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),
     ("bytesize", "Apache-2.0"),
     ("ciborium", "Apache-2.0"),
     ("ciborium-io", "Apache-2.0"),
     ("ciborium-ll", "Apache-2.0"),
+    ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
