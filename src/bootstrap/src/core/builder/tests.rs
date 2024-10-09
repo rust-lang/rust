@@ -239,7 +239,7 @@ fn ci_rustc_if_unchanged_logic() {
     builder.run_step_descriptions(&Builder::get_step_descriptions(config.cmd.kind()), &[]);
 
     let compiler_path = build.src.join("compiler");
-    let library_path = build.src.join("compiler");
+    let library_path = build.src.join("library");
 
     let commit =
         get_closest_merge_commit(Some(&builder.config.src), &builder.config.git_config(), &[
