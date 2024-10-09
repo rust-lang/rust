@@ -11,7 +11,7 @@ use tracing::{debug, instrument};
 use crate::infer::BoundRegionConversionTime::HigherRankedType;
 use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace};
-use crate::traits::{Obligation, PredicateObligation};
+use crate::traits::{Obligation, PredicateObligations};
 
 /// Enforce that `a` is equal to or a subtype of `b`.
 pub(crate) struct TypeRelating<'infcx, 'tcx> {
@@ -24,7 +24,7 @@ pub(crate) struct TypeRelating<'infcx, 'tcx> {
 
     // Mutable fields.
     ambient_variance: ty::Variance,
-    obligations: Vec<PredicateObligation<'tcx>>,
+    obligations: PredicateObligations<'tcx>,
     /// The cache only tracks the `ambient_variance` as it's the
     /// only field which is mutable and which meaningfully changes
     /// the result when relating types.
@@ -65,12 +65,12 @@ impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
             param_env,
             define_opaque_types,
             ambient_variance,
-            obligations: vec![],
+            obligations: PredicateObligations::new(),
             cache: Default::default(),
         }
     }
 
-    pub(crate) fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+    pub(crate) fn into_obligations(self) -> PredicateObligations<'tcx> {
         self.obligations
     }
 }

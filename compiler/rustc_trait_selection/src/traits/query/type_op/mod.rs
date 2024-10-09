@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Certainty;
-use rustc_infer::traits::PredicateObligation;
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
@@ -103,13 +103,13 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         (
             Self::QueryResponse,
             Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
-            Vec<PredicateObligation<'tcx>>,
+            PredicateObligations<'tcx>,
             Certainty,
         ),
         NoSolution,
     > {
         if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
-            return Ok((result, None, vec![], Certainty::Proven));
+            return Ok((result, None, PredicateObligations::new(), Certainty::Proven));
         }
 
         let mut canonical_var_values = OriginalQueryValues::default();

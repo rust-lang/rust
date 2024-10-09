@@ -46,6 +46,7 @@ use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{
     IfExpressionCause, MatchExpressionArmCause, Obligation, PredicateObligation,
+    PredicateObligations,
 };
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::span_bug;
@@ -120,7 +121,7 @@ fn simple<'tcx>(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'
 fn success<'tcx>(
     adj: Vec<Adjustment<'tcx>>,
     target: Ty<'tcx>,
-    obligations: Vec<traits::PredicateObligation<'tcx>>,
+    obligations: PredicateObligations<'tcx>,
 ) -> CoerceResult<'tcx> {
     Ok(InferOk { value: (adj, target), obligations })
 }
@@ -184,7 +185,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Coercing from `!` to any type is allowed:
         if a.is_never() {
             if self.coerce_never {
-                return success(simple(Adjust::NeverToAny)(b), b, vec![]);
+                return success(simple(Adjust::NeverToAny)(b), b, PredicateObligations::new());
             } else {
                 // Otherwise the only coercion we can do is unification.
                 return self.unify_and(a, b, identity);
@@ -278,7 +279,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // Two unresolved type variables: create a `Coerce` predicate.
             let target_ty = if self.use_lub { self.next_ty_var(self.cause.span) } else { b };
 
-            let mut obligations = Vec::with_capacity(2);
+            let mut obligations = PredicateObligations::with_capacity(2);
             for &source_ty in &[a, b] {
                 if source_ty != target_ty {
                     obligations.push(Obligation::new(
@@ -744,7 +745,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Check the obligations of the cast -- for example, when casting
         // `usize` to `dyn* Clone + 'static`:
-        let mut obligations: Vec<_> = predicates
+        let obligations = predicates
             .iter()
             .map(|predicate| {
                 // For each existential predicate (e.g., `?Self: Clone`) instantiate
@@ -764,20 +765,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         ty::OutlivesPredicate(a, b_region),
                     ))),
                 ),
+                // Enforce that the type is `usize`/pointer-sized.
+                Obligation::new(
+                    self.tcx,
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::TraitRef::new(
+                        self.tcx,
+                        self.tcx
+                            .require_lang_item(hir::LangItem::PointerLike, Some(self.cause.span)),
+                        [a],
+                    ),
+                ),
             ])
             .collect();
-
-        // Enforce that the type is `usize`/pointer-sized.
-        obligations.push(Obligation::new(
-            self.tcx,
-            self.cause.clone(),
-            self.param_env,
-            ty::TraitRef::new(
-                self.tcx,
-                self.tcx.require_lang_item(hir::LangItem::PointerLike, Some(self.cause.span)),
-                [a],
-            ),
-        ));
 
         Ok(InferOk {
             value: (

@@ -7,7 +7,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
     self, FromSolverError, MismatchedProjectionTypes, Obligation, ObligationCause,
-    ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
+    ObligationCauseCode, PredicateObligation, PredicateObligations, SelectionError, TraitEngine,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -49,8 +49,8 @@ struct ObligationStorage<'tcx> {
     /// We cannot eagerly return these as error so we instead store them here
     /// to avoid recomputing them each time `select_where_possible` is called.
     /// This also allows us to return the correct `FulfillmentError` for them.
-    overflowed: Vec<PredicateObligation<'tcx>>,
-    pending: Vec<PredicateObligation<'tcx>>,
+    overflowed: PredicateObligations<'tcx>,
+    pending: PredicateObligations<'tcx>,
 }
 
 impl<'tcx> ObligationStorage<'tcx> {
@@ -58,13 +58,13 @@ impl<'tcx> ObligationStorage<'tcx> {
         self.pending.push(obligation);
     }
 
-    fn clone_pending(&self) -> Vec<PredicateObligation<'tcx>> {
+    fn clone_pending(&self) -> PredicateObligations<'tcx> {
         let mut obligations = self.pending.clone();
         obligations.extend(self.overflowed.iter().cloned());
         obligations
     }
 
-    fn take_pending(&mut self) -> Vec<PredicateObligation<'tcx>> {
+    fn take_pending(&mut self) -> PredicateObligations<'tcx> {
         let mut obligations = mem::take(&mut self.pending);
         obligations.append(&mut self.overflowed);
         obligations
@@ -197,14 +197,11 @@ where
         errors
     }
 
-    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
+    fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.obligations.clone_pending()
     }
 
-    fn drain_unstalled_obligations(
-        &mut self,
-        _: &InferCtxt<'tcx>,
-    ) -> Vec<PredicateObligation<'tcx>> {
+    fn drain_unstalled_obligations(&mut self, _: &InferCtxt<'tcx>) -> PredicateObligations<'tcx> {
         self.obligations.take_pending()
     }
 }

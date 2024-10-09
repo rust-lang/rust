@@ -4,7 +4,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::at::At;
 use rustc_infer::traits::{
-    FromSolverError, Normalized, Obligation, PredicateObligation, TraitEngine,
+    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
 };
 use rustc_macros::extension;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
@@ -29,7 +29,7 @@ impl<'tcx> At<'_, 'tcx> {
     /// projection may be fallible.
     fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> InferOk<'tcx, T> {
         if self.infcx.next_trait_solver() {
-            InferOk { value, obligations: Vec::new() }
+            InferOk { value, obligations: PredicateObligations::new() }
         } else {
             let mut selcx = SelectionContext::new(self.infcx);
             let Normalized { value, obligations } =
@@ -83,7 +83,7 @@ pub(crate) fn normalize_with_depth<'a, 'b, 'tcx, T>(
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
-    let mut obligations = Vec::new();
+    let mut obligations = PredicateObligations::new();
     let value = normalize_with_depth_to(selcx, param_env, cause, depth, value, &mut obligations);
     Normalized { value, obligations }
 }
@@ -95,14 +95,14 @@ pub(crate) fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
     cause: ObligationCause<'tcx>,
     depth: usize,
     value: T,
-    obligations: &mut Vec<PredicateObligation<'tcx>>,
+    obligations: &mut PredicateObligations<'tcx>,
 ) -> T
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
     debug!(obligations.len = obligations.len());
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
-    let result = ensure_sufficient_stack(|| normalizer.fold(value));
+    let result = ensure_sufficient_stack(|| AssocTypeNormalizer::fold(&mut normalizer, value));
     debug!(?result, obligations.len = normalizer.obligations.len());
     debug!(?normalizer.obligations,);
     result
@@ -128,7 +128,7 @@ struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
-    obligations: &'a mut Vec<PredicateObligation<'tcx>>,
+    obligations: &'a mut PredicateObligations<'tcx>,
     depth: usize,
     universes: Vec<Option<ty::UniverseIndex>>,
 }
@@ -139,7 +139,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cause: ObligationCause<'tcx>,
         depth: usize,
-        obligations: &'a mut Vec<PredicateObligation<'tcx>>,
+        obligations: &'a mut PredicateObligations<'tcx>,
     ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
         debug_assert!(!selcx.infcx.next_trait_solver());
         AssocTypeNormalizer { selcx, param_env, cause, obligations, depth, universes: vec![] }
