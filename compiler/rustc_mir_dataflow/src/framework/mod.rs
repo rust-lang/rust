@@ -242,7 +242,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     where
         Self: Sized,
     {
-        Engine::new_generic(tcx, body, self)
+        Engine::new(tcx, body, self)
     }
 }
 
@@ -376,19 +376,6 @@ where
     ) {
         self.switch_int_edge_effects(block, discr, edge_effects);
     }
-
-    /* Extension methods */
-    #[inline]
-    fn into_engine<'mir>(
-        self,
-        tcx: TyCtxt<'tcx>,
-        body: &'mir mir::Body<'tcx>,
-    ) -> Engine<'mir, 'tcx, Self>
-    where
-        Self: Sized,
-    {
-        Engine::new_gen_kill(tcx, body, self)
-    }
 }
 
 /// The legal operations for a transfer function in a gen/kill problem.
@@ -419,44 +406,6 @@ pub trait GenKill<T> {
         for elem in elems {
             self.kill(elem);
         }
-    }
-}
-
-/// Stores a transfer function for a gen/kill problem.
-///
-/// Calling `gen_`/`kill` on a `GenKillSet` will "build up" a transfer function so that it can be
-/// applied multiple times efficiently. When there are multiple calls to `gen_` and/or `kill` for
-/// the same element, the most recent one takes precedence.
-#[derive(Clone)]
-pub struct GenKillSet<T> {
-    gen_: HybridBitSet<T>,
-    kill: HybridBitSet<T>,
-}
-
-impl<T: Idx> GenKillSet<T> {
-    /// Creates a new transfer function that will leave the dataflow state unchanged.
-    pub fn identity(universe: usize) -> Self {
-        GenKillSet {
-            gen_: HybridBitSet::new_empty(universe),
-            kill: HybridBitSet::new_empty(universe),
-        }
-    }
-
-    pub fn apply(&self, state: &mut impl BitSetExt<T>) {
-        state.union(&self.gen_);
-        state.subtract(&self.kill);
-    }
-}
-
-impl<T: Idx> GenKill<T> for GenKillSet<T> {
-    fn gen_(&mut self, elem: T) {
-        self.gen_.insert(elem);
-        self.kill.remove(elem);
-    }
-
-    fn kill(&mut self, elem: T) {
-        self.kill.insert(elem);
-        self.gen_.remove(elem);
     }
 }
 
