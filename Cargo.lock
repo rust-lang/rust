@@ -3416,6 +3416,7 @@ dependencies = [
  "measureme",
  "object 0.36.4",
  "rustc-demangle",
+ "rustc_abi",
  "rustc_ast",
  "rustc_attr",
  "rustc_codegen_ssa",
@@ -3456,6 +3457,7 @@ dependencies = [
  "object 0.36.4",
  "pathdiff",
  "regex",
+ "rustc_abi",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -3493,6 +3495,7 @@ name = "rustc_const_eval"
 version = "0.0.0"
 dependencies = [
  "either",
+ "rustc_abi",
  "rustc_apfloat",
  "rustc_ast",
  "rustc_attr",
@@ -3772,6 +3775,7 @@ name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
  "itertools",
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_ir",
  "rustc_attr",
@@ -4027,6 +4031,7 @@ dependencies = [
  "gsgdt",
  "polonius-engine",
  "rustc-rayon-core",
+ "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4522,6 +4527,7 @@ name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
  "itertools",
+ "rustc_abi",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_errors",
