@@ -1,5 +1,8 @@
 use std::iter;
 
+use rustc_abi::Float::*;
+use rustc_abi::Primitive::{Float, Pointer};
+use rustc_abi::{Abi, AddressSpace, PointerKind, Scalar, Size};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -14,7 +17,6 @@ use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
     RiscvInterruptKind,
 };
-use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
 

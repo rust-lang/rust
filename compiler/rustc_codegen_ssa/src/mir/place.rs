@@ -1,10 +1,10 @@
+use rustc_abi::Primitive::{Int, Pointer};
+use rustc_abi::{Align, FieldsShape, Size, TagEncoding, Variants};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir};
-use rustc_target::abi::{
-    Align, FieldsShape, Int, Pointer, Size, TagEncoding, VariantIdx, Variants,
-};
+use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
 
 use super::operand::OperandValue;
