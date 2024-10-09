@@ -1,4 +1,5 @@
 //@ compile-flags: -O -Zmerge-functions=disabled
+//@ min-llvm-version: 19
 #![crate_type = "lib"]
 
 use std::num::NonZero;

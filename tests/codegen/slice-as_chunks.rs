@@ -1,4 +1,5 @@
 //@ compile-flags: -O
+//@ min-llvm-version: 19
 //@ only-64bit (because the LLVM type of i64 for usize shows up)
 
 #![crate_type = "lib"]

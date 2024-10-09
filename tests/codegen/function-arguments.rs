@@ -1,4 +1,5 @@
 //@ compile-flags: -O -C no-prepopulate-passes
+//@ min-llvm-version: 19
 #![crate_type = "lib"]
 #![feature(dyn_star)]
 #![feature(allocator_api)]
