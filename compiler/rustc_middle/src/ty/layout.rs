@@ -2,11 +2,15 @@ use std::num::NonZero;
 use std::ops::Bound;
 use std::{cmp, fmt};
 
+use rustc_abi::Primitive::{self, Float, Int, Pointer};
+use rustc_abi::{
+    Abi, AddressSpace, Align, FieldsShape, HasDataLayout, Integer, LayoutCalculator, LayoutS,
+    PointeeInfo, PointerKind, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout, Variants,
+};
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
-use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
@@ -15,10 +19,11 @@ use rustc_session::config::OptLevel;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::*;
+use rustc_target::abi::{FieldIdx, TyAbiInterface, VariantIdx, call};
 use rustc_target::spec::abi::Abi as SpecAbi;
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi};
 use tracing::debug;
+use {rustc_abi as abi, rustc_hir as hir};
 
 use crate::error::UnsupportedFnAbi;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -27,9 +32,10 @@ use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
 
 #[extension(pub trait IntegerExt)]
-impl Integer {
+impl abi::Integer {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx> {
+        use abi::Integer::{I8, I16, I32, I64, I128};
         match (*self, signed) {
             (I8, false) => tcx.types.u8,
             (I16, false) => tcx.types.u16,
@@ -44,7 +50,8 @@ impl Integer {
         }
     }
 
-    fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer {
+    fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> abi::Integer {
+        use abi::Integer::{I8, I16, I32, I64, I128};
         match ity {
             ty::IntTy::I8 => I8,
             ty::IntTy::I16 => I16,
@@ -54,7 +61,8 @@ impl Integer {
             ty::IntTy::Isize => cx.data_layout().ptr_sized_integer(),
         }
     }
-    fn from_uint_ty<C: HasDataLayout>(cx: &C, ity: ty::UintTy) -> Integer {
+    fn from_uint_ty<C: HasDataLayout>(cx: &C, ity: ty::UintTy) -> abi::Integer {
+        use abi::Integer::{I8, I16, I32, I64, I128};
         match ity {
             ty::UintTy::U8 => I8,
             ty::UintTy::U16 => I16,
@@ -102,7 +110,7 @@ impl Integer {
             tcx.data_layout().c_enum_min_size
         } else {
             // repr(Rust) enums try to be as small as possible
-            I8
+            Integer::I8
         };
 
         // If there are no negative values, we can use the unsigned fit.
@@ -115,9 +123,10 @@ impl Integer {
 }
 
 #[extension(pub trait FloatExt)]
-impl Float {
+impl abi::Float {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        use abi::Float::*;
         match *self {
             F16 => tcx.types.f16,
             F32 => tcx.types.f32,
@@ -127,6 +136,7 @@ impl Float {
     }
 
     fn from_float_ty(fty: ty::FloatTy) -> Self {
+        use abi::Float::*;
         match fty {
             ty::FloatTy::F16 => F16,
             ty::FloatTy::F32 => F32,

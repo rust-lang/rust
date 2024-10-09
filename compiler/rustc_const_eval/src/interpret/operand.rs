@@ -4,13 +4,14 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
+use rustc_abi as abi;
+use rustc_abi::{Abi, HasDataLayout, Size};
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug, ty};
-use rustc_target::abi::{self, Abi, HasDataLayout, Size};
 use tracing::trace;
 
 use super::{
@@ -117,7 +118,7 @@ impl<Prov: Provenance> Immediate<Prov> {
         match (self, abi) {
             (Immediate::Scalar(scalar), Abi::Scalar(s)) => {
                 assert_eq!(scalar.size(), s.size(cx), "{msg}: scalar value has wrong size");
-                if !matches!(s.primitive(), abi::Pointer(..)) {
+                if !matches!(s.primitive(), abi::Primitive::Pointer(..)) {
                     // This is not a pointer, it should not carry provenance.
                     assert!(
                         matches!(scalar, Scalar::Int(..)),
@@ -131,7 +132,7 @@ impl<Prov: Provenance> Immediate<Prov> {
                     a.size(cx),
                     "{msg}: first component of scalar pair has wrong size"
                 );
-                if !matches!(a.primitive(), abi::Pointer(..)) {
+                if !matches!(a.primitive(), abi::Primitive::Pointer(..)) {
                     assert!(
                         matches!(a_val, Scalar::Int(..)),
                         "{msg}: first component of scalar pair should be an integer, but has provenance"
@@ -142,7 +143,7 @@ impl<Prov: Provenance> Immediate<Prov> {
                     b.size(cx),
                     "{msg}: second component of scalar pair has wrong size"
                 );
-                if !matches!(b.primitive(), abi::Pointer(..)) {
+                if !matches!(b.primitive(), abi::Primitive::Pointer(..)) {
                     assert!(
                         matches!(b_val, Scalar::Int(..)),
                         "{msg}: second component of scalar pair should be an integer, but has provenance"
@@ -572,7 +573,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
                 let scalar = alloc.read_scalar(
                     alloc_range(Size::ZERO, size),
-                    /*read_provenance*/ matches!(s, abi::Pointer(_)),
+                    /*read_provenance*/ matches!(s, abi::Primitive::Pointer(_)),
                 )?;
                 Some(ImmTy::from_scalar(scalar, mplace.layout))
             }
@@ -588,11 +589,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
                 let a_val = alloc.read_scalar(
                     alloc_range(Size::ZERO, a_size),
-                    /*read_provenance*/ matches!(a, abi::Pointer(_)),
+                    /*read_provenance*/ matches!(a, abi::Primitive::Pointer(_)),
                 )?;
                 let b_val = alloc.read_scalar(
                     alloc_range(b_offset, b_size),
-                    /*read_provenance*/ matches!(b, abi::Pointer(_)),
+                    /*read_provenance*/ matches!(b, abi::Primitive::Pointer(_)),
                 )?;
                 Some(ImmTy::from_immediate(Immediate::ScalarPair(a_val, b_val), mplace.layout))
             }
