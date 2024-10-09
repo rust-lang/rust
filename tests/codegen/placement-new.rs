@@ -9,9 +9,9 @@ use std::sync::Arc;
 // CHECK-LABEL: @box_default_inplace
 #[no_mangle]
 pub fn box_default_inplace() -> Box<(String, String)> {
-    // CHECK: [[ALLOCA:%.*]] = alloca
+    // CHECK-NOT: alloca
     // CHECK: [[BOX:%.*]] = {{.*}}call {{.*}}__rust_alloc(
-    // CHECK: call void @llvm.memcpy{{.*}}(ptr {{.*}}[[BOX]], ptr {{.*}}[[ALLOCA]]
+    // CHECK-NOT: call void @llvm.memcpy
     // CHECK: ret ptr [[BOX]]
     Box::default()
 }
