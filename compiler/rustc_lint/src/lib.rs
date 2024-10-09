@@ -187,6 +187,7 @@ early_lint_methods!(
             UnusedDocComment: UnusedDocComment,
             Expr2024: Expr2024,
             Precedence: Precedence,
+            MixedExportNameAndNoMangle: MixedExportNameAndNoMangle,
         ]
     ]
 );

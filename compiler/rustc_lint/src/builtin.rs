@@ -3035,3 +3035,67 @@ impl EarlyLintPass for SpecialModuleName {
         }
     }
 }
+
+declare_lint! {
+    /// The `mixed_export_name_and_no_mangle` lint detects mixed usage of `export_name` and `no_mangle`
+    /// where `no_mangle` is not used by the compiler.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[no_mangle]
+    /// #[export_name = "foo"]
+    /// pub fn bar() {}
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler will not use the `no_mangle` attribute when generating the symbol name for the function,
+    /// as the `export_name` attribute is used instead. This can lead to confusion and is unnecessary.
+    ///
+    MIXED_EXPORT_NAME_AND_NO_MANGLE,
+    Warn,
+    "mixed usage of export_name and no_mangle, where no_mangle is not used by the compiler"
+}
+
+declare_lint_pass!(MixedExportNameAndNoMangle => [MIXED_EXPORT_NAME_AND_NO_MANGLE]);
+
+impl MixedExportNameAndNoMangle {
+    fn report_mixed_export_name_and_no_mangle(
+        &self,
+        cx: &EarlyContext<'_>,
+        span_export_name: Span,
+        span_no_mangle: Span,
+    ) {
+        let decorate = crate::lints::BuiltinMixedExportNameAndNoMangle {
+            export_name: span_export_name,
+            no_mangle: span_no_mangle.clone(),
+            removal_span: span_no_mangle,
+        };
+        cx.emit_span_lint(MIXED_EXPORT_NAME_AND_NO_MANGLE, span_export_name, decorate);
+    }
+}
+
+impl EarlyLintPass for MixedExportNameAndNoMangle {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
+        match it.kind {
+            ast::ItemKind::Fn(..) | ast::ItemKind::Static(..) => {
+                let no_mangle = attr::find_by_name(&it.attrs, sym::no_mangle);
+                let export_name = attr::find_by_name(&it.attrs, sym::export_name);
+                if let (Some(no_mangle_attr), Some(export_name_attr)) = (no_mangle, export_name) {
+                    self.report_mixed_export_name_and_no_mangle(
+                        cx,
+                        export_name_attr.span,
+                        no_mangle_attr.span,
+                    );
+                }
+            }
+
+            _ => {}
+        }
+    }
+}

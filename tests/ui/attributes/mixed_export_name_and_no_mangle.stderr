@@ -1,0 +1,17 @@
+warning: the attribute `export_name` may not be used in combination with `no_mangle`
+  --> $DIR/E47446.rs:2:1
+   |
+LL | #[export_name = "foo"]
+   | ^^^^^^^^^^^^^^^^^^^^^^ `export_name` takes precedence
+   |
+   = note: when `export_name` is used `no_mangle` is ignored
+note: the `no_mangle` attribute is ignored
+  --> $DIR/E47446.rs:1:1
+   |
+LL | #[no_mangle]
+   | ^^^^^^^^^^^^
+   = note: `#[warn(mixed_export_name_and_no_mangle)]` on by default
+help: remove the `no_mangle` attribute
+   |
+LL - #[no_mangle]
+   |
