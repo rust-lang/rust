@@ -1187,10 +1187,11 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.tcx.dcx().emit_fatal(Spanned { span, node: err })
-        } else {
-            match fn_abi_request {
+        match err {
+            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::Cycle(_)) => {
+                self.tcx.dcx().emit_fatal(Spanned { span, node: err });
+            }
+            _ => match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
                     span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
                 }
@@ -1200,7 +1201,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
                         "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
                     );
                 }
-            }
+            },
         }
     }
 }
