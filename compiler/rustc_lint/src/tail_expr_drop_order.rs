@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for TailExprDropOrder {
         _: Span,
         def_id: rustc_span::def_id::LocalDefId,
     ) {
-        if cx.tcx.sess.at_least_rust_2024() && cx.tcx.features().shorter_tail_lifetimes {
+        if cx.tcx.sess.at_least_rust_2024() && cx.tcx.features().shorter_tail_lifetimes() {
             Self::check_fn_or_closure(cx, fn_kind, body, def_id);
         }
     }

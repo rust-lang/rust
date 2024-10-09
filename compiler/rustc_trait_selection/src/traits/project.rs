@@ -189,7 +189,7 @@ pub(super) fn poly_project_and_unify_term<'cx, 'tcx>(
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => Err(e),
             ProjectAndUnifyResult::Holds(obligations)
                 if old_universe != new_universe
-                    && selcx.tcx().features().generic_associated_types_extended =>
+                    && selcx.tcx().features().generic_associated_types_extended() =>
             {
                 // If the `generic_associated_types_extended` feature is active, then we ignore any
                 // obligations references lifetimes from any universe greater than or equal to the

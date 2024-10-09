@@ -1235,7 +1235,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         def_id: LocalDefId,
     ) {
         if fn_kind.asyncness().is_async()
-            && !cx.tcx.features().async_fn_track_caller
+            && !cx.tcx.features().async_fn_track_caller()
             // Now, check if the function has the `#[track_caller]` attribute
             && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
         {
@@ -1424,7 +1424,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
         let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
         if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
-            && cx.tcx.features().generic_const_exprs
+            && cx.tcx.features().generic_const_exprs()
         {
             return;
         }
@@ -1538,7 +1538,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::ClauseKind;
 
-        if cx.tcx.features().trivial_bounds {
+        if cx.tcx.features().trivial_bounds() {
             let predicates = cx.tcx.predicates_of(item.owner_id);
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {

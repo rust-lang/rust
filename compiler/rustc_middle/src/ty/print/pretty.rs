@@ -1208,7 +1208,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
         }
 
-        if self.tcx().features().return_type_notation
+        if self.tcx().features().return_type_notation()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
                 self.tcx().opt_rpitit_info(def_id)
             && let ty::Alias(_, alias_ty) =

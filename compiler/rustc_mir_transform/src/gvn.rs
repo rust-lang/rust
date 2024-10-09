@@ -288,7 +288,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
             evaluated: IndexVec::with_capacity(num_values),
             next_opaque: Some(1),
-            feature_unsized_locals: tcx.features().unsized_locals,
+            feature_unsized_locals: tcx.features().unsized_locals(),
             ssa,
             dominators,
             reused_locals: BitSet::new_empty(local_decls.len()),

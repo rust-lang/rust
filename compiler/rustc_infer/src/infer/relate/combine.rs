@@ -238,7 +238,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
-                if self.tcx.features().generic_const_exprs || self.next_trait_solver() =>
+                if self.tcx.features().generic_const_exprs() || self.next_trait_solver() =>
             {
                 match relation.structurally_relate_aliases() {
                     StructurallyRelateAliases::No => {

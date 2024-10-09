@@ -61,7 +61,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
 
     pub fn is_const_stable_const_fn(&self) -> bool {
         self.const_kind == Some(hir::ConstContext::ConstFn)
-            && self.tcx.features().staged_api
+            && self.tcx.features().staged_api()
             && is_const_stable_const_fn(self.tcx, self.def_id().to_def_id())
     }
 

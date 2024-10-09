@@ -136,7 +136,7 @@ pub fn translate_args_with_cause<'tcx>(
 }
 
 pub(super) fn specialization_enabled_in(tcx: TyCtxt<'_>, _: LocalCrate) -> bool {
-    tcx.features().specialization || tcx.features().min_specialization
+    tcx.features().specialization() || tcx.features().min_specialization()
 }
 
 /// Is `impl1` a specialization of `impl2`?

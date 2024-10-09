@@ -149,7 +149,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if let ty::Adt(def, _) = ty.kind()
                     && tcx.is_lang_item(def.did(), LangItem::String)
                 {
-                    if !tcx.features().string_deref_patterns {
+                    if !tcx.features().string_deref_patterns() {
                         span_bug!(
                             test.span,
                             "matching on `String` went through without enabling string_deref_patterns"

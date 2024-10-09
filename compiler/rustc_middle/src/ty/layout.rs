@@ -386,7 +386,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     ),
                 }
             }
-            ty::Array(inner, len) if tcx.features().transmute_generic_consts => {
+            ty::Array(inner, len) if tcx.features().transmute_generic_consts() => {
                 let len_eval = len.try_eval_target_usize(tcx, param_env);
                 if len_eval == Some(0) {
                     return Ok(SizeSkeleton::Known(Size::from_bytes(0), None));

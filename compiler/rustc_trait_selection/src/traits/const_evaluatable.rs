@@ -40,7 +40,7 @@ pub fn is_const_evaluatable<'tcx>(
         ty::ConstKind::Infer(_) => return Err(NotConstEvaluatable::MentionsInfer),
     };
 
-    if tcx.features().generic_const_exprs {
+    if tcx.features().generic_const_exprs() {
         let ct = tcx.expand_abstract_consts(unexpanded_ct);
 
         let is_anon_ct = if let ty::ConstKind::Unevaluated(uv) = ct.kind() {

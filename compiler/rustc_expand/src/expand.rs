@@ -867,7 +867,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         };
-        if self.cx.ecfg.features.proc_macro_hygiene {
+        if self.cx.ecfg.features.proc_macro_hygiene() {
             return;
         }
         feature_err(
@@ -905,7 +905,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
         }
 
-        if !self.cx.ecfg.features.proc_macro_hygiene {
+        if !self.cx.ecfg.features.proc_macro_hygiene() {
             annotatable.visit_with(&mut GateProcMacroInput { sess: &self.cx.sess });
         }
     }

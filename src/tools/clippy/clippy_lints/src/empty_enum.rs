@@ -64,7 +64,7 @@ impl LateLintPass<'_> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Enum(..) = item.kind
             // Only suggest the `never_type` if the feature is enabled
-            && cx.tcx.features().never_type
+            && cx.tcx.features().never_type()
             && let Some(adt) = cx.tcx.type_of(item.owner_id).instantiate_identity().ty_adt_def()
             && adt.variants().is_empty()
         {

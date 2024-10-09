@@ -12,7 +12,7 @@ use super::layout_test::ensure_wf;
 use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedField};
 
 pub fn test_abi(tcx: TyCtxt<'_>) {
-    if !tcx.features().rustc_attrs {
+    if !tcx.features().rustc_attrs() {
         // if the `rustc_attrs` feature is not enabled, don't bother testing ABI
         return;
     }

@@ -141,7 +141,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
             if let Some((ty_span, hir_id)) = self.outermost_fn_param_pat {
-                if !self.fcx.tcx.features().unsized_fn_params {
+                if !self.fcx.tcx.features().unsized_fn_params() {
                     self.fcx.require_type_is_sized(
                         var_ty,
                         ty_span,
@@ -158,7 +158,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         ),
                     );
                 }
-            } else if !self.fcx.tcx.features().unsized_locals {
+            } else if !self.fcx.tcx.features().unsized_locals() {
                 self.fcx.require_type_is_sized(
                     var_ty,
                     p.span,

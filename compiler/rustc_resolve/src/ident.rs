@@ -606,7 +606,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Scope::BuiltinTypes => match this.builtin_types_bindings.get(&ident.name) {
                         Some(binding) => {
                             if matches!(ident.name, sym::f16)
-                                && !this.tcx.features().f16
+                                && !this.tcx.features().f16()
                                 && !ident.span.allows_unstable(sym::f16)
                                 && finalize.is_some()
                                 && innermost_result.is_none()
@@ -620,7 +620,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 .emit();
                             }
                             if matches!(ident.name, sym::f128)
-                                && !this.tcx.features().f128
+                                && !this.tcx.features().f128()
                                 && !ident.span.allows_unstable(sym::f128)
                                 && finalize.is_some()
                                 && innermost_result.is_none()

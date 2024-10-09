@@ -611,7 +611,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // the trait into the concrete method, and uses that for const stability
                     // checks.
                     // FIXME(effects) we might consider moving const stability checks to typeck as well.
-                    if tcx.features().effects {
+                    if tcx.features().effects() {
                         is_trait = true;
 
                         if let Ok(Some(instance)) =
@@ -631,7 +631,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             args: fn_args,
                             span: *fn_span,
                             call_source,
-                            feature: Some(if tcx.features().const_trait_impl {
+                            feature: Some(if tcx.features().const_trait_impl() {
                                 sym::effects
                             } else {
                                 sym::const_trait_impl

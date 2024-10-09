@@ -3022,7 +3022,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Result<Diag<'a>, ErrorGuaranteed> {
-        if !self.tcx.features().generic_const_exprs {
+        if !self.tcx.features().generic_const_exprs() {
             let guar = self
                 .dcx()
                 .struct_span_err(span, "constant expression depends on a generic parameter")

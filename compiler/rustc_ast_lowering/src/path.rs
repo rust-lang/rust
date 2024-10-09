@@ -268,7 +268,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: data.inputs_span,
                             })
                         };
-                        if !self.tcx.features().return_type_notation
+                        if !self.tcx.features().return_type_notation()
                             && self.tcx.sess.is_nightly_build()
                         {
                             add_feature_diagnostics(
@@ -496,7 +496,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // //      disallowed --^^^^^^^^^^        allowed --^^^^^^^^^^
             // ```
             FnRetTy::Ty(ty) if matches!(itctx, ImplTraitContext::OpaqueTy { .. }) => {
-                if self.tcx.features().impl_trait_in_fn_trait_return {
+                if self.tcx.features().impl_trait_in_fn_trait_return() {
                     self.lower_ty(ty, itctx)
                 } else {
                     self.lower_ty(

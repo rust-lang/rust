@@ -1035,7 +1035,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn unsized_feature_enabled(&self) -> bool {
         let features = self.tcx().features();
-        features.unsized_locals || features.unsized_fn_params
+        features.unsized_locals() || features.unsized_fn_params()
     }
 
     /// Equate the inferred type and the annotated type for user type annotations

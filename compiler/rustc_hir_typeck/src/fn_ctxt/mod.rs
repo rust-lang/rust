@@ -404,7 +404,7 @@ fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
     }
 
     // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
-    if tcx.features().never_type_fallback {
+    if tcx.features().never_type_fallback() {
         return DivergingFallbackBehavior::ContextDependent;
     }
 
