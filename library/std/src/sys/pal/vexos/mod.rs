@@ -18,14 +18,24 @@ pub mod stdio;
 pub mod thread;
 pub mod time;
 
-use crate::arch::asm;
+use crate::arch::global_asm;
 use crate::hash::{DefaultHasher, Hasher};
 use crate::ptr::{self, addr_of_mut};
 use crate::time::{Duration, Instant};
 
+global_asm!(
+    r#"
+    .section .boot, "ax"
+    .global _boot
+
+    _boot:
+        ldr sp, =__stack_top @ Set up the user stack.
+        b _start             @ Jump to the Rust entrypoint.
+    "#
+);
+
 #[cfg(not(test))]
 #[no_mangle]
-#[link_section = ".boot"]
 pub unsafe extern "C" fn _start() -> ! {
     extern "C" {
         static mut __bss_start: u8;
@@ -33,9 +43,6 @@ pub unsafe extern "C" fn _start() -> ! {
 
         fn main() -> i32;
     }
-
-    // Setup the stack
-    asm!("ldr sp, =__stack_top", options(nostack));
 
     // VEXos doesn't explicitly clean out .bss.
     ptr::slice_from_raw_parts_mut(
