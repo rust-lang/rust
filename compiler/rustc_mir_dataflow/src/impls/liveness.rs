@@ -4,7 +4,7 @@ use rustc_middle::mir::{
     self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
 };
 
-use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
+use crate::{Analysis, AnalysisDomain, Backward, GenKill};
 
 /// A [live-variable dataflow analysis][liveness].
 ///
@@ -41,14 +41,8 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
-    type Idx = Local;
-
-    fn domain_size(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
-    }
-
-    fn statement_effect(
+impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
+    fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
@@ -57,7 +51,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         TransferFunction(trans).visit_statement(statement, location);
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -67,7 +61,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,

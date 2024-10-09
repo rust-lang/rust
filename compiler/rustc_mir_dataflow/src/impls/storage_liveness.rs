@@ -5,7 +5,7 @@ use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 
 use super::MaybeBorrowedLocals;
-use crate::{AnalysisDomain, GenKill, ResultsCursor};
+use crate::{Analysis, AnalysisDomain, GenKill, ResultsCursor};
 
 pub struct MaybeStorageLive<'a> {
     always_live_locals: Cow<'a, BitSet<Local>>,
@@ -17,7 +17,7 @@ impl<'a> MaybeStorageLive<'a> {
     }
 }
 
-impl<'a, 'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
+impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_live";
@@ -39,14 +39,13 @@ impl<'a, 'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
     }
 }
 
-impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
-    type Idx = Local;
-
-    fn domain_size(&self, body: &Body<'tcx>) -> usize {
-        body.local_decls.len()
-    }
-
-    fn statement_effect(&mut self, trans: &mut Self::Domain, stmt: &Statement<'tcx>, _: Location) {
+impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
+    fn apply_statement_effect(
+        &mut self,
+        trans: &mut Self::Domain,
+        stmt: &Statement<'tcx>,
+        _: Location,
+    ) {
         match stmt.kind {
             StatementKind::StorageLive(l) => trans.gen_(l),
             StatementKind::StorageDead(l) => trans.kill(l),
@@ -54,7 +53,7 @@ impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
         }
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         _trans: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
@@ -64,7 +63,7 @@ impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         _trans: &mut Self::Domain,
         _block: BasicBlock,
@@ -84,7 +83,7 @@ impl<'a> MaybeStorageDead<'a> {
     }
 }
 
-impl<'a, 'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageDead<'a> {
+impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeStorageDead<'a> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_dead";
@@ -105,14 +104,13 @@ impl<'a, 'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageDead<'a> {
     }
 }
 
-impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead<'a> {
-    type Idx = Local;
-
-    fn domain_size(&self, body: &Body<'tcx>) -> usize {
-        body.local_decls.len()
-    }
-
-    fn statement_effect(&mut self, trans: &mut Self::Domain, stmt: &Statement<'tcx>, _: Location) {
+impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
+    fn apply_statement_effect(
+        &mut self,
+        trans: &mut Self::Domain,
+        stmt: &Statement<'tcx>,
+        _: Location,
+    ) {
         match stmt.kind {
             StatementKind::StorageLive(l) => trans.kill(l),
             StatementKind::StorageDead(l) => trans.gen_(l),
@@ -120,7 +118,7 @@ impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead<'a> {
         }
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         _: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
@@ -130,7 +128,7 @@ impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead<'a> {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         _trans: &mut Self::Domain,
         _block: BasicBlock,
@@ -154,7 +152,7 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     }
 }
 
-impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
+impl<'tcx> AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "requires_storage";
@@ -173,21 +171,15 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     }
 }
 
-impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
-    type Idx = Local;
-
-    fn domain_size(&self, body: &Body<'tcx>) -> usize {
-        body.local_decls.len()
-    }
-
-    fn before_statement_effect(
+impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
+    fn apply_before_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
         stmt: &Statement<'tcx>,
         loc: Location,
     ) {
         // If a place is borrowed in a statement, it needs storage for that statement.
-        self.borrowed_locals.mut_analysis().statement_effect(trans, stmt, loc);
+        self.borrowed_locals.mut_analysis().apply_statement_effect(trans, stmt, loc);
 
         match &stmt.kind {
             StatementKind::StorageDead(l) => trans.kill(*l),
@@ -213,13 +205,18 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         }
     }
 
-    fn statement_effect(&mut self, trans: &mut Self::Domain, _: &Statement<'tcx>, loc: Location) {
+    fn apply_statement_effect(
+        &mut self,
+        trans: &mut Self::Domain,
+        _: &Statement<'tcx>,
+        loc: Location,
+    ) {
         // If we move from a place then it only stops needing storage *after*
         // that statement.
         self.check_for_move(trans, loc);
     }
 
-    fn before_terminator_effect(
+    fn apply_before_terminator_effect(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &Terminator<'tcx>,
@@ -277,7 +274,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         }
     }
 
-    fn terminator_effect<'t>(
+    fn apply_terminator_effect<'t>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'t Terminator<'tcx>,
@@ -318,7 +315,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: BasicBlock,
