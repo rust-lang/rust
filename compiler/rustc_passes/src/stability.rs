@@ -935,7 +935,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         tcx.hir().visit_all_item_likes_in_crate(&mut missing);
     }
 
-    let enabled_lang_features = &tcx.features().enabled_lang_features;
+    let enabled_lang_features = tcx.features().enabled_lang_features();
     let mut lang_features = UnordSet::default();
     for &(feature, span, since) in enabled_lang_features {
         if let Some(since) = since {
@@ -948,7 +948,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         }
     }
 
-    let enabled_lib_features = &tcx.features().enabled_lib_features;
+    let enabled_lib_features = tcx.features().enabled_lib_features();
     let mut remaining_lib_features = FxIndexMap::default();
     for (feature, span) in enabled_lib_features {
         if remaining_lib_features.contains_key(&feature) {

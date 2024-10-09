@@ -604,7 +604,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
     if sess.opts.unstable_features.is_nightly_build() {
         return;
     }
-    if features.enabled_features.is_empty() {
+    if features.enabled_features().is_empty() {
         return;
     }
     let mut errored = false;
@@ -621,7 +621,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
         for ident in attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident()) {
             let name = ident.name;
             let stable_since = features
-                .enabled_lang_features
+                .enabled_lang_features()
                 .iter()
                 .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
                 .next();
@@ -643,11 +643,11 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
 
 fn check_incompatible_features(sess: &Session, features: &Features) {
     let enabled_features = features
-        .enabled_lang_features
+        .enabled_lang_features()
         .iter()
         .copied()
         .map(|(name, span, _)| (name, span))
-        .chain(features.enabled_lib_features.iter().copied());
+        .chain(features.enabled_lib_features().iter().copied());
 
     for (f1, f2) in rustc_feature::INCOMPATIBLE_FEATURES
         .iter()
@@ -674,7 +674,7 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
 
     // Ban GCE with the new solver, because it does not implement GCE correctly.
     if let Some(&(_, gce_span, _)) = features
-        .enabled_lang_features
+        .enabled_lang_features()
         .iter()
         .find(|&&(feat, _, _)| feat == sym::generic_const_exprs)
     {

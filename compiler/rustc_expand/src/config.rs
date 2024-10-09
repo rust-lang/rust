@@ -88,7 +88,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             // If the enabled feature is stable, record it.
             if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
                 let since = Some(Symbol::intern(f.since));
-                features.set_enabled_lang_feature(name, mi.span(), since);
+                features.set_enabled_lang_feature(name, mi.span(), since, None);
                 continue;
             }
 
@@ -104,7 +104,6 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // If the enabled feature is unstable, record it.
             if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name) {
-                (f.set_enabled)(&mut features);
                 // When the ICE comes from core, alloc or std (approximation of the standard
                 // library), there's a chance that the person hitting the ICE may be using
                 // -Zbuild-std or similar with an untested target. The bug is probably in the
@@ -115,7 +114,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 {
                     sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
-                features.set_enabled_lang_feature(name, mi.span(), None);
+                features.set_enabled_lang_feature(name, mi.span(), None, Some(f));
                 continue;
             }
 
