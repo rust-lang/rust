@@ -50,7 +50,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
 
     fn statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
