@@ -10,7 +10,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_span::{Span, Symbol};
@@ -1114,3 +1114,15 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_aix_strip_not_used)]
 pub(crate) struct AixStripNotUsed;
+
+#[derive(LintDiagnostic)]
+#[diag(codegen_ssa_mixed_export_name_and_no_mangle)]
+pub(crate) struct MixedExportNameAndNoMangle {
+    #[label]
+    pub no_mangle: Span,
+    pub no_mangle_attr: String,
+    #[note]
+    pub export_name: Span,
+    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
+    pub removal_span: Span,
+}
