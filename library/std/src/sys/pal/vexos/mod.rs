@@ -55,6 +55,11 @@ pub unsafe extern "C" fn _start() -> ! {
 
     main();
 
+    unsafe {
+        crate::sys::thread_local::destructors::run();
+    }
+    crate::rt::thread_cleanup();
+
     abort_internal()
 }
 

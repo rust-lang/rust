@@ -92,6 +92,7 @@ pub(crate) mod guard {
             )),
             target_os = "uefi",
             target_os = "zkvm",
+            target_os = "vexos",
         ))] {
             pub(crate) fn enable() {
                 // FIXME: Right now there is no concept of "thread exit" on
