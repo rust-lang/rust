@@ -3154,26 +3154,26 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> 
             // This is admittedly a bit strange, as on most targets
             // `-isysroot` only applies to include header files, but on Apple
             // targets this also applies to libraries and frameworks.
-            cmd.cc_args(&["-isysroot", &sdk_root]);
+            cmd.cc_arg("-isysroot");
+            cmd.cc_arg(&sdk_root);
         }
         LinkerFlavor::Darwin(Cc::No, _) => {
-            cmd.link_args(&["-syslibroot", &sdk_root]);
+            cmd.link_arg("-syslibroot");
+            cmd.link_arg(&sdk_root);
         }
         _ => unreachable!(),
     }
 
-    Some(sdk_root.into())
+    Some(sdk_root)
 }
 
-fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {
+fn get_apple_sdk_root(sdk_name: &'static str) -> Result<PathBuf, errors::AppleSdkError> {
     // Following what clang does
     // (https://github.com/llvm/llvm-project/blob/
     // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
-    // to allow the SDK path to be set. (For clang, xcrun sets
-    // SDKROOT; for rustc, the user or build system can set it, or we
-    // can fall back to checking for xcrun on PATH.)
+    // to allow the SDK path to be set.
     if let Ok(sdkroot) = env::var("SDKROOT") {
-        let p = Path::new(&sdkroot);
+        let p = PathBuf::from(&sdkroot);
         match &*sdk_name.to_lowercase() {
             // Ignore `SDKROOT` if it's clearly set for the wrong platform.
             "appletvos"
@@ -3202,29 +3202,11 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
                 if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
-            _ => return Ok(sdkroot),
+            _ => return Ok(p),
         }
     }
 
-    let res = Command::new("xcrun")
-        .arg("--show-sdk-path")
-        .arg("-sdk")
-        .arg(sdk_name.to_lowercase())
-        .output()
-        .and_then(|output| {
-            if output.status.success() {
-                Ok(String::from_utf8(output.stdout).unwrap())
-            } else {
-                let error = String::from_utf8(output.stderr);
-                let error = format!("process exit with error: {}", error.unwrap());
-                Err(io::Error::new(io::ErrorKind::Other, &error[..]))
-            }
-        });
-
-    match res {
-        Ok(output) => Ok(output.trim().to_string()),
-        Err(error) => Err(errors::AppleSdkRootError::SdkPath { sdk_name, error }),
-    }
+    apple::find_sdk_root(sdk_name)
 }
 
 /// When using the linker flavors opting in to `lld`, add the necessary paths and arguments to

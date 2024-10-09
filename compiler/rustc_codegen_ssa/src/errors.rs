@@ -541,10 +541,28 @@ pub(crate) enum AppleDeploymentTarget {
     TooLow { env_var: &'static str, version: String, os_min: String },
 }
 
-#[derive(Diagnostic)]
-pub(crate) enum AppleSdkRootError<'a> {
-    #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
-    SdkPath { sdk_name: &'a str, error: Error },
+#[derive(Diagnostic, Debug)]
+pub(crate) enum AppleSdkError {
+    #[diag(codegen_ssa_apple_sdk_error_failed_reading)]
+    FailedReading { path: PathBuf, error: std::io::Error },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing)]
+    Missing { sdk_name: &'static str },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_commandline_tools)]
+    MissingCommandlineTools { sdkroot: PathBuf, sdk_name: &'static str },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_cross_compile_non_macos)]
+    MissingCrossCompileNonMacOS { sdk_name: &'static str },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_developer_dir)]
+    MissingDeveloperDir { dir: PathBuf, sdkroot: PathBuf, sdkroot_bare: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_xcode)]
+    MissingXcode { sdkroot: PathBuf, sdk_name: &'static str },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_xcode_select)]
+    MissingXcodeSelect { dir: PathBuf, sdkroot: PathBuf, sdkroot_bare: PathBuf },
 }
 
 #[derive(Diagnostic)]
