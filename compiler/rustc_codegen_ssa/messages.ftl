@@ -45,6 +45,11 @@ codegen_ssa_apple_sdk_error_missing_developer_dir =
     - `{$sdkroot}`
     - `{$sdkroot_bare}`
 
+codegen_ssa_apple_sdk_error_missing_mac_catalyst_version =
+    failed to find {$version} in SDK version map key `macOS_iOSMac`.
+
+    This is probably a bug in your SDK.
+
 codegen_ssa_apple_sdk_error_missing_sdk_settings =
     failed finding `SDKSettings.json` or `SDKSettings.plist` in `{$sdkroot}`.
 
@@ -61,6 +66,9 @@ codegen_ssa_apple_sdk_error_missing_xcode_select =
     - `{$sdkroot_bare}`
 
     Consider using `sudo xcode-select --switch path/to/Xcode.app` or `sudo xcode-select --reset` to select a valid path.
+
+codegen_ssa_apple_sdk_error_must_have_when_using_ld64 =
+    must know the SDK when linking with ld64
 
 codegen_ssa_apple_sdk_error_not_sdk_path =
     failed parsing SDK at `{$path}`.

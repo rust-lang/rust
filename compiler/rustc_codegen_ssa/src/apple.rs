@@ -282,7 +282,6 @@ pub(crate) struct SDKSettings {
     canonical_name: String,
 
     #[serde(rename = "Version")]
-    #[allow(dead_code)]
     version: AppleOSVersion,
 
     #[serde(rename = "MaximumDeploymentTarget")]
@@ -294,6 +293,13 @@ pub(crate) struct SDKSettings {
     /// Optional to support `SDKSettings.json` converted from an older `SDKSettings.plist`.
     #[serde(rename = "SupportedTargets")]
     supported_targets: Option<BTreeMap<String, SupportedTargets>>,
+
+    /// Optional to support `SDKSettings.json` converted from an older `SDKSettings.plist`.
+    ///
+    /// Could in general be useful in the future for building "zippered" binaries, see:
+    /// <https://github.com/rust-lang/rust/issues/131216>
+    #[serde(rename = "VersionMap")]
+    version_map: Option<BTreeMap<String, BTreeMap<AppleOSVersion, AppleOSVersion>>>,
 }
 
 impl SDKSettings {
@@ -327,6 +333,7 @@ impl SDKSettings {
             },
             default_properties: DefaultProperties::default(),
             supported_targets: None,
+            version_map: None,
         })
     }
 
@@ -370,6 +377,35 @@ impl SDKSettings {
             .mac_catalyst_prefix_path
             .as_deref()
             .unwrap_or(Path::new("/System/iOSSupport"))
+    }
+
+    /// The version of the SDK.
+    ///
+    /// This is needed by the linker.
+    ///
+    /// settings["Version"] or settings["VersionMap"]["macOS_iOSMac"][settings["Version"]].
+    pub(crate) fn sdk_version(&self, target: &Target, sdkroot: &Path) -> Result<AppleOSVersion, AppleSdkError> {
+        if target.abi == "macabi" {
+            let map = self
+                .version_map
+                .as_ref()
+                .ok_or(AppleSdkError::SdkDoesNotSupportOS {
+                    sdkroot: sdkroot.to_owned(),
+                    os: target.os.clone(),
+                    abi: target.abi.clone(),
+                })?
+                .get("macOS_iOSMac")
+                .ok_or(AppleSdkError::SdkDoesNotSupportOS {
+                    sdkroot: sdkroot.to_owned(),
+                    os: target.os.clone(),
+                    abi: target.abi.clone(),
+                })?;
+            map.get(&self.version).cloned().ok_or(AppleSdkError::MissingMacCatalystVersion {
+                version: self.version.pretty().to_string(),
+            })
+        } else {
+            Ok(self.version)
+        }
     }
 
     fn supports_target(&self, target: &Target, sdkroot: &Path) -> Result<(), AppleSdkError> {

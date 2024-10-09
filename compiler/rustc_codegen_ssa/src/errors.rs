@@ -565,6 +565,9 @@ pub(crate) enum AppleSdkError {
     #[diag(codegen_ssa_apple_sdk_error_missing_developer_dir)]
     MissingDeveloperDir { dir: PathBuf, sdkroot: PathBuf, sdkroot_bare: PathBuf },
 
+    #[diag(codegen_ssa_apple_sdk_error_missing_mac_catalyst_version)]
+    MissingMacCatalystVersion { version: String },
+
     #[diag(codegen_ssa_apple_sdk_error_missing_sdk_settings)]
     MissingSDKSettings { sdkroot: PathBuf },
 
@@ -573,6 +576,9 @@ pub(crate) enum AppleSdkError {
 
     #[diag(codegen_ssa_apple_sdk_error_missing_xcode_select)]
     MissingXcodeSelect { dir: PathBuf, sdkroot: PathBuf, sdkroot_bare: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_must_have_when_using_ld64)]
+    MustHaveWhenUsingLd64,
 
     #[diag(codegen_ssa_apple_sdk_error_not_sdk_path)]
     NotSdkPath { sdkroot: PathBuf },

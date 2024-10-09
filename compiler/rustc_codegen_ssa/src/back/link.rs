@@ -2410,9 +2410,9 @@ fn add_order_independent_options(
     // Take care of the flavors and CLI options requesting the `lld` linker.
     add_lld_args(cmd, sess, flavor, self_contained_components);
 
-    add_apple_link_args(cmd, sess, flavor);
-
     let apple_sdk_data = add_apple_sdk(cmd, sess, crate_type, flavor);
+
+    add_apple_link_args(cmd, sess, flavor, &apple_sdk_data);
 
     add_link_script(cmd, sess, tmpdir, crate_type);
 
@@ -2970,7 +2970,12 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
 /// - The environment / ABI.
 /// - The deployment target.
 /// - The SDK version.
-fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+fn add_apple_link_args(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    flavor: LinkerFlavor,
+    settings: &Option<(PathBuf, SDKSettings)>,
+) {
     if !sess.target.is_like_osx {
         return;
     }
@@ -3030,31 +3035,41 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         //   `-[NSView wantsBestResolutionOpenGLSurface]` is `YES` when the SDK version is >= 10.15.
         //   <https://developer.apple.com/documentation/appkit/nsview/1414938-wantsbestresolutionopenglsurface?language=objc>
         //
-        // We do not currently know the actual SDK version though, so we have a few options:
+        // So it is important that we pass the correct version here.
+        //
+        //
+        // For posterity, insufficient alternatives are listed below:
+        //
         // 1. Use the minimum version supported by rustc.
+        //    Too low / too conservative, and means that users will not get the same behaviour from
+        //    a binary compiled with rustc as with one compiled by clang.
+        //
         // 2. Use the same as the deployment target.
+        //    Similarly conservative, and also wrong since if the user specified a higher deployment
+        //    target than the SDK they're compiling/linking with, the runtime might make invalid
+        //    assumptions about the capabilities of the binary.
+        //
         // 3. Use an arbitary recent version.
+        //    Requires that `rustc` is periodically kept up to date with Apple's SDK version, and is
+        //    also wrong for similar reasons as above.
+        //
         // 4. Omit the version.
-        //
-        // The first option is too low / too conservative, and means that users will not get the
-        // same behaviour from a binary compiled with rustc as with one compiled by clang.
-        //
-        // The second option is similarly conservative, and also wrong since if the user specified a
-        // higher deployment target than the SDK they're compiling/linking with, the runtime might
-        // make invalid assumptions about the capabilities of the binary.
-        //
-        // The third option requires that `rustc` is periodically kept up to date with Apple's SDK
-        // version, and is also wrong for similar reasons as above.
-        //
-        // The fourth option is bad because while `ld`, `otool`, `vtool` and such understand it to
-        // mean "absent" or `n/a`, dyld doesn't actually understand it, and will end up interpreting
-        // it as 0.0, which is again too low/conservative.
-        //
-        // Currently, we lie about the SDK version, and choose the second option.
-        //
-        // FIXME(madsmtm): Parse the SDK version from the SDK root instead.
-        // <https://github.com/rust-lang/rust/issues/129432>
-        let sdk_version = &*min_version;
+        //    Bad because while `ld`, `otool`, `vtool` and such understand it to mean "absent" or
+        //    `n/a`, dyld doesn't actually understand it, and will end up interpreting it as 0.0,
+        //    which is again too low/conservative.
+        let AppleOSVersion { major, minor, patch } = if let Some((sdkroot, settings)) = settings {
+            settings.sdk_version(&sess.target, &sdkroot).unwrap_or_else(|err| {
+                sess.dcx().emit_err(err);
+                AppleOSVersion::MAX
+            })
+        } else {
+            // If the SDK wasn't read properly, we may have errored already, but we may also only
+            // have given a warning to support `zig cc` on non-macOS hosts. `ld64` requires the SDK
+            // version though, so we must actually error here.
+            sess.dcx().emit_err(errors::AppleSdkError::MustHaveWhenUsingLd64);
+            AppleOSVersion::MAX
+        };
+        let sdk_version = format!("{major}.{minor}.{patch}");
 
         // From the man page for ld64 (`man ld`):
         // > This is set to indicate the platform, oldest supported version of
@@ -3064,7 +3079,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // Like with `-arch`, the linker can figure out the platform versions
         // itself from the binaries being linked, but to be safe, we specify
         // the desired versions here explicitly.
-        cmd.link_args(&["-platform_version", platform_name, &*min_version, sdk_version]);
+        cmd.link_args(&["-platform_version", platform_name, &*min_version, &*sdk_version]);
     } else {
         // cc == Cc::Yes
         //
