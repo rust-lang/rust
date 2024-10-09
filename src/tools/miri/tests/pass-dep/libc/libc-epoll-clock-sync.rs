@@ -1,0 +1,104 @@
+//@only-target: linux
+// ensure single way to order the thread tests
+//@compile-flags: -Zmiri-preemption-rate=0
+
+use std::convert::TryInto;
+use std::thread;
+use std::thread::spawn;
+
+#[track_caller]
+fn check_epoll_wait<const N: usize>(epfd: i32, expected_notifications: &[(u32, u64)]) {
+    let epoll_event = libc::epoll_event { events: 0, u64: 0 };
+    let mut array: [libc::epoll_event; N] = [epoll_event; N];
+    let maxsize = N;
+    let array_ptr = array.as_mut_ptr();
+    let res = unsafe { libc::epoll_wait(epfd, array_ptr, maxsize.try_into().unwrap(), 0) };
+    if res < 0 {
+        panic!("epoll_wait failed: {}", std::io::Error::last_os_error());
+    }
+    assert_eq!(
+        res,
+        expected_notifications.len().try_into().unwrap(),
+        "got wrong number of notifications"
+    );
+    let slice = unsafe { std::slice::from_raw_parts(array_ptr, res.try_into().unwrap()) };
+    for (return_event, expected_event) in slice.iter().zip(expected_notifications.iter()) {
+        let event = return_event.events;
+        let data = return_event.u64;
+        assert_eq!(event, expected_event.0, "got wrong events");
+        assert_eq!(data, expected_event.1, "got wrong data");
+    }
+}
+
+fn common_setup() -> (i32, [i32; 2], [i32; 2]) {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    // Create two socketpair instances.
+    let mut fds_a = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds_a.as_mut_ptr()) };
+    assert_eq!(res, 0);
+
+    let mut fds_b = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds_b.as_mut_ptr()) };
+    assert_eq!(res, 0);
+
+    // Register both pipe read ends.
+    let mut ev = libc::epoll_event {
+        events: (libc::EPOLLIN | libc::EPOLLET) as _,
+        u64: u64::try_from(fds_a[1]).unwrap(),
+    };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds_a[1], &mut ev) };
+    assert_eq!(res, 0);
+
+    let mut ev = libc::epoll_event {
+        events: (libc::EPOLLIN | libc::EPOLLET) as _,
+        u64: u64::try_from(fds_b[1]).unwrap(),
+    };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds_b[1], &mut ev) };
+    assert_eq!(res, 0);
+
+    (epfd, fds_a, fds_b)
+}
+
+// Test that the clock sync that happens through an epoll_wait only synchronizes with the clock(s)
+// that were reported. It is possible more events had become ready but the epoll_wait didn't
+// provide room for them all.
+//
+// Well before the fix, this fails to report UB.
+fn main() {
+    let (epfd, fds_a, fds_b) = common_setup();
+
+    static mut VAL_ONE: u8 = 40; // This one will be read soundly.
+    static mut VAL_TWO: u8 = 50; // This one will be read unsoundly.
+    let thread1 = spawn(move || {
+        unsafe { VAL_ONE = 41 };
+
+        let data = "abcde".as_bytes().as_ptr();
+        let res = unsafe { libc::write(fds_a[0], data as *const libc::c_void, 5) };
+        assert_eq!(res, 5);
+
+        unsafe { VAL_TWO = 51 };
+
+        let res = unsafe { libc::write(fds_b[0], data as *const libc::c_void, 5) };
+        assert_eq!(res, 5);
+    });
+    thread::yield_now();
+
+    // With room for one event: check result from epoll_wait.
+    let expected_event = u32::try_from(libc::EPOLLIN).unwrap();
+    let expected_value = u64::try_from(fds_a[1]).unwrap();
+    check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)]);
+
+    #[allow(static_mut_refs)]
+    unsafe {
+        assert_eq!(VAL_ONE, 41) // This one is not UB
+    };
+    #[allow(static_mut_refs)]
+    unsafe {
+        assert_eq!(VAL_TWO, 51) // This one should be UB but isn't (yet).
+    };
+
+    thread1.join().unwrap();
+}
