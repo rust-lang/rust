@@ -26,7 +26,6 @@ type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>;
 struct Cache {
     predecessors: OnceLock<Predecessors>,
     switch_sources: OnceLock<SwitchSources>,
-    is_cyclic: OnceLock<bool>,
     reverse_postorder: OnceLock<Vec<BasicBlock>>,
     dominators: OnceLock<Dominators<BasicBlock>>,
 }
@@ -35,12 +34,6 @@ impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         BasicBlocks { basic_blocks, cache: Cache::default() }
-    }
-
-    /// Returns true if control-flow graph contains a cycle reachable from the `START_BLOCK`.
-    #[inline]
-    pub fn is_cfg_cyclic(&self) -> bool {
-        *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
     }
 
     pub fn dominators(&self) -> &Dominators<BasicBlock> {
