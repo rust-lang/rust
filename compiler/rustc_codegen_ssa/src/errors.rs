@@ -533,13 +533,6 @@ pub enum ExtractBundledLibsError<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_unsupported_arch)]
-pub(crate) struct UnsupportedArch<'a> {
-    pub arch: &'a str,
-    pub os: &'a str,
-}
-
-#[derive(Diagnostic)]
 pub(crate) enum AppleSdkRootError<'a> {
     #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
     SdkPath { sdk_name: &'a str, error: Error },
