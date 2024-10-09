@@ -5,7 +5,7 @@ use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 
 use super::MaybeBorrowedLocals;
-use crate::{GenKill, ResultsCursor};
+use crate::{AnalysisDomain, GenKill, ResultsCursor};
 
 pub struct MaybeStorageLive<'a> {
     always_live_locals: Cow<'a, BitSet<Local>>,
@@ -330,22 +330,23 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
 
 impl<'tcx> MaybeRequiresStorage<'_, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
-    fn check_for_move(&mut self, trans: &mut impl GenKill<Local>, loc: Location) {
+    fn check_for_move(
+        &mut self,
+        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
+        loc: Location,
+    ) {
         let body = self.borrowed_locals.body();
         let mut visitor = MoveVisitor { trans, borrowed_locals: &mut self.borrowed_locals };
         visitor.visit_location(body, loc);
     }
 }
 
-struct MoveVisitor<'a, 'mir, 'tcx, T> {
+struct MoveVisitor<'a, 'mir, 'tcx> {
     borrowed_locals: &'a mut BorrowedLocalsResults<'mir, 'tcx>,
-    trans: &'a mut T,
+    trans: &'a mut BitSet<Local>,
 }
 
-impl<'tcx, T> Visitor<'tcx> for MoveVisitor<'_, '_, 'tcx, T>
-where
-    T: GenKill<Local>,
-{
+impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, 'tcx> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, loc: Location) {
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
             self.borrowed_locals.seek_before_primary_effect(loc);

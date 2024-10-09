@@ -89,12 +89,9 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     }
 }
 
-pub struct TransferFunction<'a, T>(pub &'a mut T);
+pub struct TransferFunction<'a>(pub &'a mut BitSet<Local>);
 
-impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
-where
-    T: GenKill<Local>,
-{
+impl<'tcx> Visitor<'tcx> for TransferFunction<'_> {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
             // The resume place is evaluated and assigned to only after coroutine resumes, so its
@@ -108,10 +105,10 @@ where
                     MutatingUseContext::Call | MutatingUseContext::AsmOutput,
                 ) = context
                 {
-                    // For the associated terminators, this is only a `Def` when the terminator returns
-                    // "successfully." As such, we handle this case separately in `call_return_effect`
-                    // above. However, if the place looks like `*_5`, this is still unconditionally a use of
-                    // `_5`.
+                    // For the associated terminators, this is only a `Def` when the terminator
+                    // returns "successfully." As such, we handle this case separately in
+                    // `call_return_effect` above. However, if the place looks like `*_5`, this is
+                    // still unconditionally a use of `_5`.
                 } else {
                     self.0.kill(place.local);
                 }
@@ -128,12 +125,9 @@ where
     }
 }
 
-struct YieldResumeEffect<'a, T>(&'a mut T);
+struct YieldResumeEffect<'a>(&'a mut BitSet<Local>);
 
-impl<'tcx, T> Visitor<'tcx> for YieldResumeEffect<'_, T>
-where
-    T: GenKill<Local>,
-{
+impl<'tcx> Visitor<'tcx> for YieldResumeEffect<'_> {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         DefUse::apply(self.0, *place, context);
         self.visit_projection(place.as_ref(), context, location);
@@ -151,7 +145,7 @@ enum DefUse {
 }
 
 impl DefUse {
-    fn apply(trans: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
+    fn apply(trans: &mut BitSet<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
             Some(DefUse::Def) => trans.kill(place.local),
             Some(DefUse::Use) => trans.gen_(place.local),
