@@ -101,7 +101,7 @@ pub(super) fn handle_needs(
         },
         Need {
             name: "needs-profiler-runtime",
-            condition: cache.profiler_runtime,
+            condition: config.profiler_runtime,
             ignore_reason: "ignored when the profiler runtime is not available",
         },
         Need {
@@ -220,7 +220,6 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_memtag: bool,
     sanitizer_shadow_call_stack: bool,
     sanitizer_safestack: bool,
-    profiler_runtime: bool,
     xray: bool,
     rust_lld: bool,
     dlltool: bool,
@@ -247,7 +246,6 @@ impl CachedNeedsConditions {
             sanitizer_memtag: sanitizers.contains(&Sanitizer::Memtag),
             sanitizer_shadow_call_stack: sanitizers.contains(&Sanitizer::ShadowCallStack),
             sanitizer_safestack: sanitizers.contains(&Sanitizer::Safestack),
-            profiler_runtime: config.profiler_runtime,
             xray: config.target_cfg().xray,
 
             // For tests using the `needs-rust-lld` directive (e.g. for `-Clink-self-contained=+linker`),
