@@ -305,11 +305,11 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     );
 
     /// See `Analysis::apply_switch_int_edge_effects`.
-    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
+    fn switch_int_edge_effects(
         &mut self,
         _block: BasicBlock,
         _discr: &mir::Operand<'tcx>,
-        _edge_effects: &mut impl SwitchIntEdgeEffects<G>,
+        _edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
     }
 }

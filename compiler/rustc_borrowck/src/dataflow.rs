@@ -427,7 +427,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     /// That means they went out of a nonlexical scope
     fn kill_loans_out_of_scope_at_location(
         &self,
-        trans: &mut impl GenKill<BorrowIndex>,
+        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
         location: Location,
     ) {
         // NOTE: The state associated with a given `location`
@@ -447,7 +447,11 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 
     /// Kill any borrows that conflict with `place`.
-    fn kill_borrows_on_place(&self, trans: &mut impl GenKill<BorrowIndex>, place: Place<'tcx>) {
+    fn kill_borrows_on_place(
+        &self,
+        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
+        place: Place<'tcx>,
+    ) {
         debug!("kill_borrows_on_place: place={:?}", place);
 
         let other_borrows_of_local = self

@@ -270,7 +270,7 @@ impl<'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     fn update_bits(
-        trans: &mut impl GenKill<MovePathIndex>,
+        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -283,7 +283,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
 
 impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
     fn update_bits(
-        trans: &mut impl GenKill<MovePathIndex>,
+        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -296,7 +296,7 @@ impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
 
 impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     fn update_bits(
-        trans: &mut impl GenKill<MovePathIndex>,
+        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -399,11 +399,11 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
+    fn switch_int_edge_effects(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
         if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
@@ -524,11 +524,11 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
+    fn switch_int_edge_effects(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
         if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
