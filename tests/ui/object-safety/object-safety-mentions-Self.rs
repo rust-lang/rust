@@ -2,9 +2,9 @@
 // form traits that make use of `Self` in an argument or return
 // position, unless `where Self : Sized` is present..
 //
-//@ revisions: curr object_safe_for_dispatch
+//@ revisions: curr dyn_compatible_for_dispatch
 
-#![cfg_attr(object_safe_for_dispatch, feature(object_safe_for_dispatch))]
+#![cfg_attr(dyn_compatible_for_dispatch, feature(dyn_compatible_for_dispatch))]
 
 
 trait Bar {

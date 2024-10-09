@@ -5,7 +5,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ run-pass
 
-#![feature(object_safe_for_dispatch)]
+#![feature(dyn_compatible_for_dispatch)]
 
 trait Bad {
     fn stat() -> char {

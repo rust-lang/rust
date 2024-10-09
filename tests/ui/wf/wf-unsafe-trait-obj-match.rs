@@ -1,7 +1,7 @@
 // Check that we do not allow coercions to object
 // unsafe trait objects in match arms
 
-#![feature(object_safe_for_dispatch)]
+#![feature(dyn_compatible_for_dispatch)]
 
 trait Trait: Sized {}
 

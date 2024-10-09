@@ -639,8 +639,8 @@ fn object_ty_for_trait<'tcx>(
 /// contained by the trait object, because the object that needs to be coerced is behind
 /// a pointer.
 ///
-/// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result
-/// in a new check that `Trait` is dyn-compatible, creating a cycle (until object_safe_for_dispatch
+/// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
+/// a new check that `Trait` is dyn-compatible, creating a cycle (until dyn_compatible_for_dispatch
 /// is stabilized, see tracking issue <https://github.com/rust-lang/rust/issues/43561>).
 /// Instead, we fudge a little by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
@@ -674,7 +674,7 @@ fn receiver_is_dispatchable<'tcx>(
 
     // the type `U` in the query
     // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.
-    // FIXME(mikeyhew) this is a total hack. Once object_safe_for_dispatch is stabilized, we can
+    // FIXME(mikeyhew) this is a total hack. Once dyn_compatible_for_dispatch is stabilized, we can
     // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
         Ty::new_param(tcx, u32::MAX, Symbol::intern("RustaceansAreAwesome"));

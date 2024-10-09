@@ -1,7 +1,7 @@
 // Check that we do not allow casts or coercions
 // to object unsafe trait objects inside a Box
 
-#![feature(object_safe_for_dispatch)]
+#![feature(dyn_compatible_for_dispatch)]
 
 trait Trait: Sized {}
 
