@@ -2,6 +2,7 @@
 //@ no-prefer-dynamic
 
 #![feature(proc_macro_quote)]
+#![feature(proc_macro_totokens)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro as proc_macro_renamed; // This does not break `quote!`

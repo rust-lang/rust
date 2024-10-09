@@ -33,6 +33,7 @@
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
 #![feature(strict_provenance)]
+#![feature(extend_one)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
@@ -44,6 +45,7 @@ pub mod bridge;
 
 mod diagnostic;
 mod escape;
+mod to_tokens;
 
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
@@ -53,6 +55,8 @@ use std::{error, fmt};
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
+#[unstable(feature = "proc_macro_totokens", issue = "130977")]
+pub use to_tokens::ToTokens;
 
 use crate::escape::{EscapeOptions, escape_bytes};
 
@@ -279,6 +283,7 @@ impl ConcatTreesHelper {
         }
     }
 
+    #[allow(dead_code)]
     fn append_to(self, stream: &mut TokenStream) {
         if self.trees.is_empty() {
             return;
@@ -325,45 +330,22 @@ impl ConcatStreamsHelper {
     }
 }
 
-/// Collects a number of token trees into a single stream.
-#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-impl FromIterator<TokenTree> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
-        let iter = trees.into_iter();
-        let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
-        iter.for_each(|tree| builder.push(tree));
+#[stable(feature = "proc_macro_totokens_migration", since = "CURRENT_RUSTC_VERSION")]
+impl<T: ToTokens> FromIterator<T> for TokenStream {
+    fn from_iter<I: IntoIterator<Item = T>>(t: I) -> Self {
+        let iter = t.into_iter();
+        let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
+        iter.for_each(|t| builder.push(t.into_token_stream()));
         builder.build()
     }
 }
 
-/// A "flattening" operation on token streams, collects token trees
-/// from multiple token streams into a single stream.
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl FromIterator<TokenStream> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
-        let iter = streams.into_iter();
+#[stable(feature = "proc_macro_totokens_migration", since = "CURRENT_RUSTC_VERSION")]
+impl<T: ToTokens> Extend<T> for TokenStream {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, t: I) {
+        let iter = t.into_iter();
         let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
-        iter.for_each(|stream| builder.push(stream));
-        builder.build()
-    }
-}
-
-#[stable(feature = "token_stream_extend", since = "1.30.0")]
-impl Extend<TokenTree> for TokenStream {
-    fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, trees: I) {
-        let iter = trees.into_iter();
-        let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
-        iter.for_each(|tree| builder.push(tree));
-        builder.append_to(self);
-    }
-}
-
-#[stable(feature = "token_stream_extend", since = "1.30.0")]
-impl Extend<TokenStream> for TokenStream {
-    fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
-        let iter = streams.into_iter();
-        let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
-        iter.for_each(|stream| builder.push(stream));
+        iter.for_each(|t| builder.push(t.into_token_stream()));
         builder.append_to(self);
     }
 }
