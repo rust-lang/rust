@@ -480,7 +480,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         if timeout == 0 || !ready_list_empty {
             // If the ready list is not empty, or the timeout is 0, we can return immediately.
-            blocking_epoll_callback(epfd_value, weak_epfd, dest, &event, this)?;
+            return_ready_list(epfd_value, weak_epfd, dest, &event, this)?;
         } else {
             // Blocking
             let timeout = match timeout {
@@ -508,7 +508,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         event: MPlaceTy<'tcx>,
                     }
                     @unblock = |this| {
-                        blocking_epoll_callback(epfd_value, weak_epfd, &dest, &event, this)?;
+                        return_ready_list(epfd_value, weak_epfd, &dest, &event, this)?;
                         interp_ok(())
                     }
                     @timeout = |this| {
@@ -636,8 +636,9 @@ fn check_and_update_one_event_interest<'tcx>(
     }
 }
 
-/// Callback function after epoll_wait unblocks
-fn blocking_epoll_callback<'tcx>(
+/// Stores the ready list of the `epfd` epoll instance into `events` (which must be an array),
+/// and the number of returned events into `dest`.
+fn return_ready_list<'tcx>(
     epfd_value: i32,
     weak_epfd: WeakFileDescriptionRef,
     dest: &MPlaceTy<'tcx>,
