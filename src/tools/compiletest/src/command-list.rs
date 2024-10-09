@@ -208,6 +208,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "pretty-compare-only",
     "pretty-expanded",
     "pretty-mode",
+    "reference",
     "regex-error-pattern",
     "remap-src-base",
     "revisions",
