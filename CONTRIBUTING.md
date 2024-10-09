@@ -14,11 +14,18 @@ standard library in the [Standard library developers Guide][std-dev-guide], comm
 
 ## About the [rustc-dev-guide]
 
-The [rustc-dev-guide] is meant to help document how rustc –the Rust compiler– works,
-as well as to help new contributors get involved in rustc development. It is recommended
-to read and understand the [rustc-dev-guide] before making a contribution. This guide
-talks about the different bots in the Rust ecosystem, the Rust development tools,
-bootstrapping, the compiler architecture, source code representation, and more.
+The [rustc-dev-guide] provides documentation on how the Rust compiler (rustc) works, 
+and serves as a resource for new contributors interested in rustc development. 
+
+It is highly recommended to read and understand the guide before contributing. 
+
+The guide covers topics such as:
+- The various bots in the Rust ecosystem
+- Rust development tools
+- Bootstrapping
+- Compiler architecture
+- Source code representation
+- And more
 
 ## [Getting help](https://rustc-dev-guide.rust-lang.org/getting-started.html#asking-questions)
 
