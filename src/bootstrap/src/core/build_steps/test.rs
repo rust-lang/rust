@@ -2082,7 +2082,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if builder.config.profiler_enabled(target) {
-            cmd.arg("--profiler-support");
+            cmd.arg("--profiler-runtime");
         }
 
         cmd.env("RUST_TEST_TMPDIR", builder.tempdir());
