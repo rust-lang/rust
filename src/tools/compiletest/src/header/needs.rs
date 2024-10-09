@@ -100,9 +100,9 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without unwinding support",
         },
         Need {
-            name: "needs-profiler-support",
+            name: "needs-profiler-runtime",
             condition: cache.profiler_support,
-            ignore_reason: "ignored when profiler support is disabled",
+            ignore_reason: "ignored when the profiler runtime is not available",
         },
         Need {
             name: "needs-force-clang-based-tests",
