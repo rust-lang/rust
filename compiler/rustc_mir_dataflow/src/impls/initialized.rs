@@ -11,7 +11,7 @@ use crate::elaborate_drops::DropFlagState;
 use crate::framework::SwitchIntEdgeEffects;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{
-    AnalysisDomain, GenKill, GenKillAnalysis, MaybeReachable, drop_flag_effects,
+    Analysis, AnalysisDomain, GenKill, MaybeReachable, drop_flag_effects,
     drop_flag_effects_for_function_entry, drop_flag_effects_for_location, lattice,
     on_all_children_bits, on_lookup_result_bits,
 };
@@ -329,14 +329,8 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
-
-    fn domain_size(&self, _: &Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
-    }
-
-    fn statement_effect(
+impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+    fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
@@ -360,7 +354,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         }
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -380,7 +374,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         edges
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
@@ -399,7 +393,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn switch_int_edge_effects(
+    fn apply_switch_int_edge_effects(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
@@ -466,14 +460,8 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
-
-    fn domain_size(&self, _: &Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
-    }
-
-    fn statement_effect(
+impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+    fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
@@ -487,7 +475,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         // mutable borrow occurs. Places cannot become uninitialized through a mutable reference.
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -505,7 +493,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         }
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
@@ -524,7 +512,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn switch_int_edge_effects(
+    fn apply_switch_int_edge_effects(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
@@ -593,14 +581,8 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
-
-    fn domain_size(&self, _: &Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
-    }
-
-    fn statement_effect(
+impl<'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
+    fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
@@ -611,7 +593,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
         })
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -623,7 +605,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
@@ -662,15 +644,9 @@ impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
-    type Idx = InitIndex;
-
-    fn domain_size(&self, _: &Body<'tcx>) -> usize {
-        self.move_data().inits.len()
-    }
-
+impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     #[instrument(skip(self, trans), level = "debug")]
-    fn statement_effect(
+    fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
@@ -698,7 +674,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     }
 
     #[instrument(skip(self, trans, terminator), level = "debug")]
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -720,7 +696,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         block: mir::BasicBlock,

@@ -513,14 +513,8 @@ impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
 ///   region stops containing the CFG points reachable from the issuing location.
 /// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
 ///   `a.b.c` when `a` is overwritten.
-impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
-    type Idx = BorrowIndex;
-
-    fn domain_size(&self, _: &mir::Body<'tcx>) -> usize {
-        self.borrow_set.len()
-    }
-
-    fn before_statement_effect(
+impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
+    fn apply_before_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
@@ -529,7 +523,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         self.kill_loans_out_of_scope_at_location(trans, location);
     }
 
-    fn statement_effect(
+    fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
@@ -577,7 +571,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         }
     }
 
-    fn before_terminator_effect(
+    fn apply_before_terminator_effect(
         &mut self,
         trans: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
@@ -586,7 +580,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         self.kill_loans_out_of_scope_at_location(trans, location);
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -604,7 +598,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         _trans: &mut Self::Domain,
         _block: mir::BasicBlock,

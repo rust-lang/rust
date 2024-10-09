@@ -1,9 +1,11 @@
 //! A framework that can express both [gen-kill] and generic dataflow problems.
 //!
-//! To use this framework, implement either the [`Analysis`] or the
-//! [`GenKillAnalysis`] trait. If your transfer function can be expressed with only gen/kill
-//! operations, prefer `GenKillAnalysis` since it will run faster while iterating to fixpoint. The
-//! `impls` module contains several examples of gen/kill dataflow analyses.
+//! To use this framework, implement the [`Analysis`] trait. There used to be a `GenKillAnalysis`
+//! alternative trait for gen-kill analyses that would pre-compute the transfer function for each
+//! block. It was intended as an optimization, but it ended up not being any faster than
+//! `Analysis`.
+//!
+//! The `impls` module contains several examples of dataflow analyses.
 //!
 //! Create an `Engine` for your analysis using the `into_engine` method on the `Analysis` trait,
 //! then call `iterate_to_fixpoint`. From there, you can use a `ResultsCursor` to inspect the
@@ -122,9 +124,9 @@ pub trait AnalysisDomain<'tcx> {
 ///
 /// # Convergence
 ///
-/// When implementing this trait directly (not via [`GenKillAnalysis`]), it's possible to choose a
-/// transfer function such that the analysis does not reach fixpoint. To guarantee convergence,
-/// your transfer functions must maintain the following invariant:
+/// When implementing this trait it's possible to choose a transfer function such that the analysis
+/// does not reach fixpoint. To guarantee convergence, your transfer functions must maintain the
+/// following invariant:
 ///
 /// > If the dataflow state **before** some point in the program changes to be greater
 /// than the prior state **before** that point, the dataflow state **after** that point must
@@ -223,9 +225,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
 
     /// Creates an `Engine` to find the fixpoint for this dataflow problem.
     ///
-    /// You shouldn't need to override this outside this module, since the combination of the
-    /// default impl and the one for all `A: GenKillAnalysis` will do the right thing.
-    /// Its purpose is to enable method chaining like so:
+    /// You shouldn't need to override this. Its purpose is to enable method chaining like so:
     ///
     /// ```ignore (cross-crate-imports)
     /// let results = MyAnalysis::new(tcx, body)
@@ -246,146 +246,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     }
 }
 
-/// A gen/kill dataflow problem.
-///
-/// Each method in this trait has a corresponding one in `Analysis`. However, the first two methods
-/// here only allow modification of the dataflow state via "gen" and "kill" operations. By defining
-/// transfer functions for each statement in this way, the transfer function for an entire basic
-/// block can be computed efficiently. The remaining methods match up with `Analysis` exactly.
-///
-/// `Analysis` is automatically implemented for all implementers of `GenKillAnalysis` via a blanket
-/// impl below.
-pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
-    type Idx: Idx;
-
-    fn domain_size(&self, body: &mir::Body<'tcx>) -> usize;
-
-    /// See `Analysis::apply_statement_effect`.
-    fn statement_effect(
-        &mut self,
-        trans: &mut Self::Domain,
-        statement: &mir::Statement<'tcx>,
-        location: Location,
-    );
-
-    /// See `Analysis::apply_before_statement_effect`.
-    fn before_statement_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _statement: &mir::Statement<'tcx>,
-        _location: Location,
-    ) {
-    }
-
-    /// See `Analysis::apply_terminator_effect`.
-    fn terminator_effect<'mir>(
-        &mut self,
-        trans: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
-        location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx>;
-
-    /// See `Analysis::apply_before_terminator_effect`.
-    fn before_terminator_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _terminator: &mir::Terminator<'tcx>,
-        _location: Location,
-    ) {
-    }
-
-    /* Edge-specific effects */
-
-    /// See `Analysis::apply_call_return_effect`.
-    fn call_return_effect(
-        &mut self,
-        trans: &mut Self::Domain,
-        block: BasicBlock,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-    );
-
-    /// See `Analysis::apply_switch_int_edge_effects`.
-    fn switch_int_edge_effects(
-        &mut self,
-        _block: BasicBlock,
-        _discr: &mir::Operand<'tcx>,
-        _edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
-    ) {
-    }
-}
-
-// Blanket impl: any impl of `GenKillAnalysis` automatically impls `Analysis`.
-impl<'tcx, A> Analysis<'tcx> for A
-where
-    A: GenKillAnalysis<'tcx>,
-    A::Domain: GenKill<A::Idx> + BitSetExt<A::Idx>,
-{
-    fn apply_statement_effect(
-        &mut self,
-        state: &mut A::Domain,
-        statement: &mir::Statement<'tcx>,
-        location: Location,
-    ) {
-        self.statement_effect(state, statement, location);
-    }
-
-    fn apply_before_statement_effect(
-        &mut self,
-        state: &mut A::Domain,
-        statement: &mir::Statement<'tcx>,
-        location: Location,
-    ) {
-        self.before_statement_effect(state, statement, location);
-    }
-
-    fn apply_terminator_effect<'mir>(
-        &mut self,
-        state: &mut A::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
-        location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        self.terminator_effect(state, terminator, location)
-    }
-
-    fn apply_before_terminator_effect(
-        &mut self,
-        state: &mut A::Domain,
-        terminator: &mir::Terminator<'tcx>,
-        location: Location,
-    ) {
-        self.before_terminator_effect(state, terminator, location);
-    }
-
-    /* Edge-specific effects */
-
-    fn apply_call_return_effect(
-        &mut self,
-        state: &mut A::Domain,
-        block: BasicBlock,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-        self.call_return_effect(state, block, return_places);
-    }
-
-    fn apply_switch_int_edge_effects(
-        &mut self,
-        block: BasicBlock,
-        discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<A::Domain>,
-    ) {
-        self.switch_int_edge_effects(block, discr, edge_effects);
-    }
-}
-
 /// The legal operations for a transfer function in a gen/kill problem.
-///
-/// This abstraction exists because there are two different contexts in which we call the methods in
-/// `GenKillAnalysis`. Sometimes we need to store a single transfer function that can be efficiently
-/// applied multiple times, such as when computing the cumulative transfer function for each block.
-/// These cases require a `GenKillSet`, which in turn requires two `BitSet`s of storage. Oftentimes,
-/// however, we only need to apply an effect once. In *these* cases, it is more efficient to pass the
-/// `BitSet` representing the state vector directly into the `*_effect` methods as opposed to
-/// building up a `GenKillSet` and then throwing it away.
 pub trait GenKill<T> {
     /// Inserts `elem` into the state vector.
     fn gen_(&mut self, elem: T);
