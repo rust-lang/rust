@@ -3,9 +3,10 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
+use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_target::spec::{
-    AppleOSVersion, apple_deployment_target_env_var, apple_minimum_deployment_target,
+    AppleOSVersion, Target, apple_deployment_target_env_var, apple_minimum_deployment_target,
     apple_os_minimum_deployment_target,
 };
 
@@ -212,4 +213,30 @@ pub(crate) fn find_sdk_root(sdk_name: &'static str) -> Result<PathBuf, AppleSdkE
     }
 
     Err(AppleSdkError::Missing { sdk_name })
+}
+
+/// The architecture name understood by Apple's linker.
+///
+/// Supported architecture names can be found in the source:
+/// https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
+pub fn ld64_arch(target: &Target) -> &'static str {
+    // `target.arch` / `target_arch` is not detailed enough.
+    let llvm_arch = target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
+
+    // Intentially verbose to ensure that the list always matches correctly
+    // with the list in the source above.
+    match llvm_arch {
+        "armv7k" => "armv7k",
+        "armv7s" => "armv7s",
+        "arm64" => "arm64",
+        "arm64e" => "arm64e",
+        "arm64_32" => "arm64_32",
+        // ld64 doesn't understand i686, so fall back to i386 instead.
+        //
+        // Same story when linking with cc, since that ends up invoking ld64.
+        "i386" | "i686" => "i386",
+        "x86_64" => "x86_64",
+        "x86_64h" => "x86_64h",
+        _ => bug!("unsupported architecture {llvm_arch} in Apple target: {}", target.llvm_target),
+    }
 }

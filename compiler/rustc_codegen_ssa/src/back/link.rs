@@ -50,7 +50,7 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
-use crate::apple::{deployment_target, find_sdk_root, versioned_llvm_target};
+use crate::apple::{deployment_target, find_sdk_root, ld64_arch, versioned_llvm_target};
 use crate::{
     CodegenResults, CompiledModule, CrateInfo, NativeLib, common, errors,
     looks_like_rust_object_file,
@@ -2974,32 +2974,9 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         return;
     };
 
-    // `sess.target.arch` (`target_arch`) is not detailed enough.
-    let llvm_arch = sess.target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
     let target_os = &*sess.target.os;
     let target_abi = &*sess.target.abi;
-
-    // The architecture name to forward to the linker.
-    //
-    // Supported architecture names can be found in the source:
-    // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
-    //
-    // Intentially verbose to ensure that the list always matches correctly
-    // with the list in the source above.
-    let ld64_arch = match llvm_arch {
-        "armv7k" => "armv7k",
-        "armv7s" => "armv7s",
-        "arm64" => "arm64",
-        "arm64e" => "arm64e",
-        "arm64_32" => "arm64_32",
-        // ld64 doesn't understand i686, so fall back to i386 instead.
-        //
-        // Same story when linking with cc, since that ends up invoking ld64.
-        "i386" | "i686" => "i386",
-        "x86_64" => "x86_64",
-        "x86_64h" => "x86_64h",
-        _ => bug!("unsupported architecture in Apple target: {}", sess.target.llvm_target),
-    };
+    let ld64_arch = ld64_arch(&sess.target);
 
     if cc == Cc::No {
         // From the man page for ld64 (`man ld`):
