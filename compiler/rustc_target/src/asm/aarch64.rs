@@ -96,7 +96,7 @@ fn restricted_for_arm64ec(
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if arch == InlineAsmArch::Arm64EC {
-        Err("x13, x14, x23, x24, x28, v16-v31 cannot be used for Arm64EC")
+        Err("x13, x14, x23, x24, x28, v16-v31, z*, p*, ffr cannot be used for Arm64EC")
     } else {
         Ok(())
     }
@@ -133,6 +133,7 @@ def_regs! {
         x27: reg = ["x27", "w27"],
         x28: reg = ["x28", "w28"] % restricted_for_arm64ec,
         x30: reg = ["x30", "w30", "lr", "wlr"],
+        // FIXME: z* cannot be used for Arm64EC
         v0: vreg, vreg_low16 = ["v0", "b0", "h0", "s0", "d0", "q0", "z0"],
         v1: vreg, vreg_low16 = ["v1", "b1", "h1", "s1", "d1", "q1", "z1"],
         v2: vreg, vreg_low16 = ["v2", "b2", "h2", "s2", "d2", "q2", "z2"],
@@ -165,23 +166,23 @@ def_regs! {
         v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29", "z29"] % restricted_for_arm64ec,
         v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30", "z30"] % restricted_for_arm64ec,
         v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31", "z31"] % restricted_for_arm64ec,
-        p0: preg = ["p0"],
-        p1: preg = ["p1"],
-        p2: preg = ["p2"],
-        p3: preg = ["p3"],
-        p4: preg = ["p4"],
-        p5: preg = ["p5"],
-        p6: preg = ["p6"],
-        p7: preg = ["p7"],
-        p8: preg = ["p8"],
-        p9: preg = ["p9"],
-        p10: preg = ["p10"],
-        p11: preg = ["p11"],
-        p12: preg = ["p12"],
-        p13: preg = ["p13"],
-        p14: preg = ["p14"],
-        p15: preg = ["p15"],
-        ffr: preg = ["ffr"],
+        p0: preg = ["p0"] % restricted_for_arm64ec,
+        p1: preg = ["p1"] % restricted_for_arm64ec,
+        p2: preg = ["p2"] % restricted_for_arm64ec,
+        p3: preg = ["p3"] % restricted_for_arm64ec,
+        p4: preg = ["p4"] % restricted_for_arm64ec,
+        p5: preg = ["p5"] % restricted_for_arm64ec,
+        p6: preg = ["p6"] % restricted_for_arm64ec,
+        p7: preg = ["p7"] % restricted_for_arm64ec,
+        p8: preg = ["p8"] % restricted_for_arm64ec,
+        p9: preg = ["p9"] % restricted_for_arm64ec,
+        p10: preg = ["p10"] % restricted_for_arm64ec,
+        p11: preg = ["p11"] % restricted_for_arm64ec,
+        p12: preg = ["p12"] % restricted_for_arm64ec,
+        p13: preg = ["p13"] % restricted_for_arm64ec,
+        p14: preg = ["p14"] % restricted_for_arm64ec,
+        p15: preg = ["p15"] % restricted_for_arm64ec,
+        ffr: preg = ["ffr"] % restricted_for_arm64ec,
         #error = ["x19", "w19"] =>
             "x19 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x29", "w29", "fp", "wfp"] =>
