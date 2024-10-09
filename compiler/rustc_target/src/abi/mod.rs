@@ -1,9 +1,8 @@
 use std::fmt;
 use std::ops::Deref;
 
-pub use Float::*;
-pub use Integer::*;
-pub use Primitive::*;
+use Float::*;
+use Primitive::*;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable_Generic;
 
