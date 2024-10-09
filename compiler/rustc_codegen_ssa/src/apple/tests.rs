@@ -2,7 +2,19 @@ use std::io;
 use std::path::PathBuf;
 use std::process::Command;
 
-use super::find_sdk_root;
+use super::{add_version_to_llvm_target, find_sdk_root};
+
+#[test]
+fn test_add_version_to_llvm_target() {
+    assert_eq!(
+        add_version_to_llvm_target("aarch64-apple-macosx", (10, 14, 1)),
+        "aarch64-apple-macosx10.14.1"
+    );
+    assert_eq!(
+        add_version_to_llvm_target("aarch64-apple-ios-simulator", (16, 1, 0)),
+        "aarch64-apple-ios16.1.0-simulator"
+    );
+}
 
 fn find_sdk_root_xcrun(sdk_name: &str) -> io::Result<PathBuf> {
     let output = Command::new("xcrun")
