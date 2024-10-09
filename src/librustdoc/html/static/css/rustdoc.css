@@ -2435,7 +2435,7 @@ in src-script.js and main.js
 	}
 
 	/* Position of the "[-]" element. */
-	details.toggle:not(.top-doc) > summary {
+	details.toggle:not(.top-doc) > summary, .impl-items > section  {
 		margin-left: 10px;
 	}
 	.impl-items > details.toggle > summary:not(.hideme)::before,
