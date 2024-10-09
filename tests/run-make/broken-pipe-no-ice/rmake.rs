@@ -5,6 +5,12 @@
 
 //@ ignore-cross-compile (needs to run test binary)
 
+//@ ignore-apple
+// FIXME(#131436): on macOS rustc is still reporting the std broken pipe io error panick but it
+// doesn't fail with 101 exit status (it terminates with a wait status of SIGPIPE). It doesn't say
+// Internal Compiler Error strangely, but it doesn't even go through normal diagnostic infra. Very
+// strange.
+
 #![feature(anonymous_pipe)]
 
 use std::io::Read;
