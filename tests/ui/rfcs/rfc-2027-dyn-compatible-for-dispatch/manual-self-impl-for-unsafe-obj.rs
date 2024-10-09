@@ -1,4 +1,4 @@
-// Check that we can manually implement an object-unsafe trait for its trait object.
+// Check that we can manually implement a dyn-incompatible trait for its trait object.
 
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)

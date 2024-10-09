@@ -1,4 +1,4 @@
-// Check that we if we get ahold of an object unsafe trait
+// Check that we if we get ahold of a dyn-incompatible trait
 // object with auto traits and lifetimes, we can downcast it
 //
 //@ check-pass
