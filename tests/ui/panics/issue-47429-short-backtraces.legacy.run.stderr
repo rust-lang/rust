@@ -1,3 +1,4 @@
+
 thread 'main' panicked at $DIR/issue-47429-short-backtraces.rs:23:5:
 explicit panic
 stack backtrace:
