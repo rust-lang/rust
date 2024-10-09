@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", doc(rust_logo))]
+#![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
 #![warn(unreachable_pub)]
@@ -22,11 +23,16 @@ use rustc_macros::HashStable_Generic;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
 
+mod callconv;
 mod layout;
 #[cfg(test)]
 mod tests;
 
-pub use layout::{LayoutCalculator, LayoutCalculatorError};
+pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
+pub use layout::{
+    FIRST_VARIANT, FieldIdx, Layout, LayoutCalculator, LayoutCalculatorError, TyAbiInterface,
+    TyAndLayout, VariantIdx,
+};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
