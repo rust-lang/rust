@@ -153,8 +153,9 @@ settings:
 
 - `needs-asm-support` — ignores if it is running on a target that doesn't have
   stable support for `asm!`
-- `needs-profiler-support` — ignores if profiler support was not enabled for the
-  target (`profiler = true` in rustc's `config.toml`)
+- `needs-profiler-runtime` — ignores the test if the profiler runtime was not
+  enabled for the target
+  (`build.profiler = true` in rustc's `config.toml`)
 - `needs-sanitizer-support` — ignores if the sanitizer support was not enabled
   for the target (`sanitizers = true` in rustc's `config.toml`)
 - `needs-sanitizer-{address,hwaddress,leak,memory,thread}` — ignores if the

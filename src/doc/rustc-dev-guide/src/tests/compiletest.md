@@ -676,7 +676,7 @@ also registered as an additional prefix for FileCheck directives:
 ```rust,ignore
 //@ revisions: NORMAL COVERAGE
 //@[COVERAGE] compile-flags: -Cinstrument-coverage
-//@[COVERAGE] needs-profiler-support
+//@[COVERAGE] needs-profiler-runtime
 
 // COVERAGE:   @__llvm_coverage_mapping
 // NORMAL-NOT: @__llvm_coverage_mapping
