@@ -75,6 +75,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(any(
         all(target_family = "wasm", target_os = "unknown"),
         target_os = "xous",
+        target_os = "vexos",
     ))] {
         // FIXME: finally remove std support for wasm32-unknown-unknown
         // FIXME: add random data generation to xous
@@ -88,6 +89,7 @@ cfg_if::cfg_if! {
     target_os = "android",
     all(target_family = "wasm", target_os = "unknown"),
     target_os = "xous",
+    target_os = "vexos",
 )))]
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut buf = [0; 16];

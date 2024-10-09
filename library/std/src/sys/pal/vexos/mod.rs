@@ -1,4 +1,3 @@
-pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
 pub mod env;
@@ -19,7 +18,6 @@ pub mod thread;
 pub mod time;
 
 use crate::arch::global_asm;
-use crate::hash::{DefaultHasher, Hasher};
 use crate::ptr::{self, addr_of_mut};
 use crate::time::{Duration, Instant};
 
@@ -54,11 +52,6 @@ pub unsafe extern "C" fn _start() -> ! {
     .fill(0);
 
     main();
-
-    unsafe {
-        crate::sys::thread_local::destructors::run();
-    }
-    crate::rt::thread_cleanup();
 
     abort_internal()
 }
@@ -126,18 +119,4 @@ pub fn abort_internal() -> ! {
     loop {
         crate::hint::spin_loop()
     }
-}
-
-fn hash_time() -> u64 {
-    let mut hasher = DefaultHasher::new();
-    // The closest we can get to a random number is the time since program start
-    let time = unsafe { vex_sdk::vexSystemHighResTimeGet() };
-    hasher.write_u64(time);
-    hasher.finish()
-}
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    let key1 = hash_time();
-    let key2 = hash_time();
-    (key1, key2)
 }
