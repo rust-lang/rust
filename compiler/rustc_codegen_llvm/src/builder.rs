@@ -3,6 +3,8 @@ use std::ops::Deref;
 use std::{iter, ptr};
 
 use libc::{c_char, c_uint};
+use rustc_abi as abi;
+use rustc_abi::{Align, Size, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -20,7 +22,6 @@ use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{self, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -505,12 +506,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
 
             match scalar.primitive() {
-                abi::Int(..) => {
+                abi::Primitive::Int(..) => {
                     if !scalar.is_always_valid(bx) {
                         bx.range_metadata(load, scalar.valid_range(bx));
                     }
                 }
-                abi::Pointer(_) => {
+                abi::Primitive::Pointer(_) => {
                     if !scalar.valid_range(bx).contains(0) {
                         bx.nonnull_metadata(load);
                     }
@@ -521,7 +522,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         }
                     }
                 }
-                abi::Float(_) => {}
+                abi::Primitive::Float(_) => {}
             }
         }
 
