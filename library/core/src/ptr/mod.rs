@@ -2166,10 +2166,12 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 ///
 /// This is the same as `f == g`, but using this function makes clear that the potentially
 /// surprising semantics of function pointer comparison are involved.
-/// There are very few guarantees about how functions are compiled and they have no intrinsic
+///
+/// There are **very few guarantees** about how functions are compiled and they have no intrinsic
 /// “identity”; in particular, this comparison:
 ///
 /// * May return `true` unexpectedly, in cases where functions are equivalent.
+///
 ///   For example, the following program is likely (but not guaranteed) to print `(true, true)`
 ///   when compiled with optimization:
 ///
@@ -2182,6 +2184,7 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 ///   ```
 ///
 /// * May return `false` in any case.
+///
 ///   This is particularly likely with generic functions but may happen with any function.
 ///   (From an implementation perspective, this is possible because functions may sometimes be
 ///   processed more than once by the compiler, resulting in duplicate machine code.)
@@ -2207,7 +2210,6 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// ```
 ///
 /// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
-
 #[unstable(feature = "ptr_fn_addr_eq", issue = "129322")]
 #[inline(always)]
 #[must_use = "function pointer comparison produces a value"]
