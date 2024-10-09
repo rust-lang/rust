@@ -740,6 +740,9 @@ lint_reserved_prefix = prefix `{$prefix}` is unknown
     .label = unknown prefix
     .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
 
+lint_reserved_string = will be parsed as a guarded string in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
+
 lint_shadowed_into_iter =
     this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<{$target} as IntoIterator>::into_iter` in Rust {$edition}
     .use_iter_suggestion = use `.iter()` instead of `.into_iter()` to avoid ambiguity
