@@ -386,7 +386,7 @@ pub struct Config {
 
     /// True if the profiler runtime is enabled for this target.
     /// Used by the "needs-profiler-runtime" directive in test files.
-    pub profiler_support: bool,
+    pub profiler_runtime: bool,
 }
 
 impl Config {

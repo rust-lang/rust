@@ -22,7 +22,7 @@ fn main() {
         eprintln!("warning: `tidy` is not installed; diffs will not be generated");
     }
 
-    if !config.profiler_support && config.mode == Mode::CoverageRun {
+    if !config.profiler_runtime && config.mode == Mode::CoverageRun {
         let actioned = if config.bless { "blessed" } else { "checked" };
         eprintln!(
             r#"
