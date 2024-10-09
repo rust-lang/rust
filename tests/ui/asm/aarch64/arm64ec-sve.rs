@@ -23,11 +23,12 @@ macro_rules! asm {
 
 fn f(x: f64) {
     unsafe {
-        // FIXME: z* cannot be used for Arm64EC
         asm!("", out("z0") _, in("z1") x);
+        //~^ ERROR invalid register `z0`: SVE cannot be used for Arm64EC
+        //~^^ ERROR invalid register `z1`: SVE cannot be used for Arm64EC
         asm!("", out("p0") _);
-        //~^ ERROR cannot use register `p0`
+        //~^ ERROR invalid register `p0`: SVE cannot be used for Arm64EC
         asm!("", out("ffr") _);
-        //~^ ERROR cannot use register `ffr`
+        //~^ ERROR invalid register `ffr`: SVE cannot be used for Arm64EC
     }
 }
