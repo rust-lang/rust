@@ -260,19 +260,18 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 
     fn domain_size(&self, body: &mir::Body<'tcx>) -> usize;
 
-    /// See `Analysis::apply_statement_effect`. Note how the second arg differs.
+    /// See `Analysis::apply_statement_effect`.
     fn statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     );
 
-    /// See `Analysis::apply_before_statement_effect`. Note how the second arg
-    /// differs.
+    /// See `Analysis::apply_before_statement_effect`.
     fn before_statement_effect(
         &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
+        _trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {

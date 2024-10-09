@@ -46,12 +46,7 @@ impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
         body.local_decls.len()
     }
 
-    fn statement_effect(
-        &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        stmt: &Statement<'tcx>,
-        _: Location,
-    ) {
+    fn statement_effect(&mut self, trans: &mut Self::Domain, stmt: &Statement<'tcx>, _: Location) {
         match stmt.kind {
             StatementKind::StorageLive(l) => trans.gen_(l),
             StatementKind::StorageDead(l) => trans.kill(l),
@@ -117,12 +112,7 @@ impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead<'a> {
         body.local_decls.len()
     }
 
-    fn statement_effect(
-        &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        stmt: &Statement<'tcx>,
-        _: Location,
-    ) {
+    fn statement_effect(&mut self, trans: &mut Self::Domain, stmt: &Statement<'tcx>, _: Location) {
         match stmt.kind {
             StatementKind::StorageLive(l) => trans.kill(l),
             StatementKind::StorageDead(l) => trans.gen_(l),
@@ -192,7 +182,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
 
     fn before_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         stmt: &Statement<'tcx>,
         loc: Location,
     ) {
@@ -223,12 +213,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         }
     }
 
-    fn statement_effect(
-        &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _: &Statement<'tcx>,
-        loc: Location,
-    ) {
+    fn statement_effect(&mut self, trans: &mut Self::Domain, _: &Statement<'tcx>, loc: Location) {
         // If we move from a place then it only stops needing storage *after*
         // that statement.
         self.check_for_move(trans, loc);

@@ -43,7 +43,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
 
     fn statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
