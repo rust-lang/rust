@@ -19,9 +19,9 @@ pub fn box_default_inplace() -> Box<(String, String)> {
 // CHECK-LABEL: @arc_default_inplace
 #[no_mangle]
 pub fn arc_default_inplace() -> Arc<(String, String)> {
-    // CHECK: [[ALLOCA:%.*]] = alloca
+    // CHECK-NOT: alloca
     // CHECK: [[ARC:%.*]] = {{.*}}call {{.*}}__rust_alloc(
-    // CHECK: call void @llvm.memcpy
+    // CHECK-NOT: call void @llvm.memcpy
     // CHECK: ret ptr [[ARC]]
     Arc::default()
 }
