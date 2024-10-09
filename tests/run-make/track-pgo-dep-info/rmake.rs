@@ -6,7 +6,7 @@
 
 //@ ignore-cross-compile
 // Reason: the binary is executed
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 
 use run_make_support::{llvm_profdata, rfs, run, rustc};
 

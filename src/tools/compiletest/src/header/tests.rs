@@ -69,7 +69,7 @@ struct ConfigBuilder {
     llvm_version: Option<String>,
     git_hash: bool,
     system_llvm: bool,
-    profiler_support: bool,
+    profiler_runtime: bool,
 }
 
 impl ConfigBuilder {
@@ -113,8 +113,8 @@ impl ConfigBuilder {
         self
     }
 
-    fn profiler_support(&mut self, s: bool) -> &mut Self {
-        self.profiler_support = s;
+    fn profiler_runtime(&mut self, is_available: bool) -> &mut Self {
+        self.profiler_runtime = is_available;
         self
     }
 
@@ -162,8 +162,8 @@ impl ConfigBuilder {
         if self.system_llvm {
             args.push("--system-llvm".to_owned());
         }
-        if self.profiler_support {
-            args.push("--profiler-support".to_owned());
+        if self.profiler_runtime {
+            args.push("--profiler-runtime".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -368,12 +368,12 @@ fn sanitizers() {
 }
 
 #[test]
-fn profiler_support() {
-    let config: Config = cfg().profiler_support(false).build();
-    assert!(check_ignore(&config, "//@ needs-profiler-support"));
+fn profiler_runtime() {
+    let config: Config = cfg().profiler_runtime(false).build();
+    assert!(check_ignore(&config, "//@ needs-profiler-runtime"));
 
-    let config: Config = cfg().profiler_support(true).build();
-    assert!(!check_ignore(&config, "//@ needs-profiler-support"));
+    let config: Config = cfg().profiler_runtime(true).build();
+    assert!(!check_ignore(&config, "//@ needs-profiler-runtime"));
 }
 
 #[test]
@@ -573,12 +573,12 @@ fn families() {
 
 #[test]
 fn ignore_coverage() {
-    // Indicate profiler support so that "coverage-run" tests aren't skipped.
-    let config = cfg().mode("coverage-map").profiler_support(true).build();
+    // Indicate profiler runtime availability so that "coverage-run" tests aren't skipped.
+    let config = cfg().mode("coverage-map").profiler_runtime(true).build();
     assert!(check_ignore(&config, "//@ ignore-coverage-map"));
     assert!(!check_ignore(&config, "//@ ignore-coverage-run"));
 
-    let config = cfg().mode("coverage-run").profiler_support(true).build();
+    let config = cfg().mode("coverage-run").profiler_runtime(true).build();
     assert!(!check_ignore(&config, "//@ ignore-coverage-map"));
     assert!(check_ignore(&config, "//@ ignore-coverage-run"));
 }
