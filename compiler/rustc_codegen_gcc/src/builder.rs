@@ -7,6 +7,8 @@ use gccjit::{
     BinaryOp, Block, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue, Type,
     UnaryOp,
 };
+use rustc_abi as abi;
+use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_apfloat::{Float, Round, Status, ieee};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{
@@ -28,7 +30,6 @@ use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
@@ -998,12 +999,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         ) {
             let vr = scalar.valid_range(bx);
             match scalar.primitive() {
-                abi::Int(..) => {
+                abi::Primitive::Int(..) => {
                     if !scalar.is_always_valid(bx) {
                         bx.range_metadata(load, vr);
                     }
                 }
-                abi::Pointer(_) if vr.start < vr.end && !vr.contains(0) => {
+                abi::Primitive::Pointer(_) if vr.start < vr.end && !vr.contains(0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}
