@@ -1,11 +1,12 @@
 use std::fmt::Write;
 
+use rustc_abi::Primitive::{Float, Int, Pointer};
+use rustc_abi::{Abi, Align, FieldsShape, Scalar, Size, Variants};
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TypeVisitableExt};
-use rustc_target::abi::{Abi, Align, FieldsShape, Float, Int, Pointer, Scalar, Size, Variants};
 use tracing::debug;
 
 use crate::common::*;

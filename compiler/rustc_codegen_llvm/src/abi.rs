@@ -1,6 +1,9 @@
 use std::cmp;
 
 use libc::c_uint;
+use rustc_abi as abi;
+use rustc_abi::Primitive::Int;
+use rustc_abi::{HasDataLayout, Size};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
@@ -11,7 +14,6 @@ pub(crate) use rustc_middle::ty::layout::{WIDE_PTR_ADDR, WIDE_PTR_EXTRA};
 use rustc_middle::{bug, ty};
 use rustc_session::config;
 pub(crate) use rustc_target::abi::call::*;
-use rustc_target::abi::{self, HasDataLayout, Int, Size};
 use rustc_target::spec::SanitizerSet;
 pub(crate) use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;

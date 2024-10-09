@@ -1,6 +1,9 @@
 //! Code that is useful in various codegen modules.
 
 use libc::{c_char, c_uint};
+use rustc_abi as abi;
+use rustc_abi::Primitive::Pointer;
+use rustc_abi::{AddressSpace, HasDataLayout};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
@@ -9,7 +12,6 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::DllImport;
-use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
 use tracing::debug;
 
 use crate::consts::const_alloc_to_llvm;
