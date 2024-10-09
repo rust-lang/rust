@@ -17,7 +17,7 @@ rust-version = "1.65.0"
 foldhash = { version = "0.1.2", default-features = false, optional = true }
 
 # For external trait impls
-rayon = { version = "1.0", optional = true }
+rayon = { version = "1.2", optional = true }
 serde = { version = "1.0.25", default-features = false, optional = true }
 borsh = { version = "1.5.0", default-features = false, optional = true, features = ["derive"]}
 
@@ -37,7 +37,7 @@ equivalent = { version = "1.0", optional = true, default-features = false }
 [dev-dependencies]
 lazy_static = "1.4"
 rand = { version = "0.8.3", features = ["small_rng"] }
-rayon = "1.0"
+rayon = "1.2"
 fnv = "1.0.7"
 serde_test = "1.0"
 doc-comment = "0.3.1"

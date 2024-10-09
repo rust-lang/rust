@@ -105,7 +105,7 @@ impl<T> SizedTypeProperties for T {}
 /// Single tag in a control group.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[repr(transparent)]
-struct Tag(u8);
+pub(crate) struct Tag(u8);
 impl Tag {
     /// Control tag value for an empty bucket.
     const EMPTY: Tag = Tag(0b1111_1111);
