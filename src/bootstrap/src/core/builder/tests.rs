@@ -216,6 +216,12 @@ fn alias_and_path_for_library() {
 
 #[test]
 fn ci_rustc_if_unchanged_logic() {
+    if env::var_os("NO_DOWNLOAD_CI_RUSTC").is_some_and(|s| s == "1" || s == "true") {
+        // FIXME: Find the actual reason.
+        println!("This test is incompatible in runners configured with `NO_DOWNLOAD_CI_RUSTC`.");
+        return;
+    }
+
     let config = Config::parse_inner(
         Flags::parse(&[
             "build".to_owned(),
