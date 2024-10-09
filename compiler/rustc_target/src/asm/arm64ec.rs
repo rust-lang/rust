@@ -99,12 +99,66 @@ impl Arm64ECInlineAsmReg {
         _arch: InlineAsmArch,
         modifier: Option<char>,
     ) -> fmt::Result {
-        let (prefix, index) = if (self as u32) < Self::v0 as u32 {
-            (modifier.unwrap_or('x'), self as u32 - Self::x0 as u32)
+        let (prefix, index) = if let Some(index) = self.reg_index() {
+            (modifier.unwrap_or('x'), index)
+        } else if let Some(index) = self.vreg_index() {
+            (modifier.unwrap_or('v'), index)
         } else {
-            (modifier.unwrap_or('v'), self as u32 - Self::v0 as u32)
+            return out.write_str(self.name());
         };
         assert!(index < 32);
         write!(out, "{prefix}{index}")
+    }
+
+    /// If the register is an integer register then return its index.
+    pub fn reg_index(self) -> Option<u32> {
+        // Unlike `vreg_index`, we can't subtract `x0` to get the u32 because
+        // `x13`, `x19`, `x29`, etc. are missing and the integer constants for the
+        // `x0`..`x30` enum variants don't all match the register number. E.g. the
+        // integer constant for `x12` is 12, but the constant for `x15` is 13.
+        use Arm64ECInlineAsmReg::*;
+        Some(match self {
+            x0 => 0,
+            x1 => 1,
+            x2 => 2,
+            x3 => 3,
+            x4 => 4,
+            x5 => 5,
+            x6 => 6,
+            x7 => 7,
+            x8 => 8,
+            x9 => 9,
+            x10 => 10,
+            x11 => 11,
+            x12 => 12,
+            // x13 is reserved
+            // x14 is reserved
+            x15 => 15,
+            x16 => 16,
+            x17 => 17,
+            // x18 is reserved
+            // x19 is reserved
+            x20 => 20,
+            x21 => 21,
+            x22 => 22,
+            // x23 is reserved
+            // x24 is reserved
+            x25 => 25,
+            x26 => 26,
+            x27 => 27,
+            // x28 is reserved
+            // x29 is reserved
+            x30 => 30,
+            _ => return None,
+        })
+    }
+
+    /// If the register is a vector register then return its index.
+    pub fn vreg_index(self) -> Option<u32> {
+        use Arm64ECInlineAsmReg::*;
+        if self as u32 >= v0 as u32 && self as u32 <= v15 as u32 {
+            return Some(self as u32 - v0 as u32);
+        }
+        None
     }
 }
