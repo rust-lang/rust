@@ -1486,7 +1486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return ty::Const::new_error(self.tcx, guar);
                 }
             }
-        } else if self.tcx.features().generic_const_exprs {
+        } else if self.tcx.features().generic_const_exprs() {
             ct.normalize_internal(self.tcx, self.param_env)
         } else {
             ct

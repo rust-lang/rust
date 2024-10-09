@@ -661,7 +661,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // We are trying to avoid reporting this error if other related errors were reported.
-        if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes {
+        if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes() {
             let is_macro = match res {
                 Res::Def(..) => true,
                 Res::NonMacroAttr(..) => false,
@@ -690,7 +690,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && namespace.ident.name == sym::diagnostic
             && !(attribute.ident.name == sym::on_unimplemented
                 || (attribute.ident.name == sym::do_not_recommend
-                    && self.tcx.features().do_not_recommend))
+                    && self.tcx.features().do_not_recommend()))
         {
             let distance =
                 edit_distance(attribute.ident.name.as_str(), sym::on_unimplemented.as_str(), 5);

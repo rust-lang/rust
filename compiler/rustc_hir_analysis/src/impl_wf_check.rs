@@ -57,7 +57,7 @@ pub(crate) fn check_impl_wf(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let min_specialization = tcx.features().min_specialization;
+    let min_specialization = tcx.features().min_specialization();
     let mut res = Ok(());
     debug_assert_matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. });
     res = res.and(enforce_impl_params_are_constrained(tcx, impl_def_id));

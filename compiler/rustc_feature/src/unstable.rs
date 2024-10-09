@@ -8,7 +8,6 @@ use super::{Feature, to_nonzero};
 
 pub struct UnstableFeature {
     pub feature: Feature,
-    set_enabled: fn(&mut Features),
 }
 
 #[derive(PartialEq)]
@@ -30,6 +29,53 @@ macro_rules! status_to_enum {
     };
 }
 
+/// A set of features to be used by later passes.
+///
+/// There are two ways to check if a language feature `foo` is enabled:
+/// - Directly with the `foo` method, e.g. `if tcx.features().foo() { ... }`.
+/// - With the `enabled` method, e.g. `if tcx.features.enabled(sym::foo) { ... }`.
+///
+/// The former is preferred. `enabled` should only be used when the feature symbol is not a
+/// constant, e.g. a parameter, or when the feature is a library feature.
+#[derive(Clone, Default, Debug)]
+pub struct Features {
+    /// `#![feature]` attrs for language features, for error reporting.
+    enabled_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
+    /// `#![feature]` attrs for non-language (library) features.
+    enabled_lib_features: Vec<(Symbol, Span)>,
+    /// `enabled_lang_features` + `enabled_lib_features`.
+    enabled_features: FxHashSet<Symbol>,
+}
+
+impl Features {
+    pub fn set_enabled_lang_feature(&mut self, name: Symbol, span: Span, since: Option<Symbol>) {
+        self.enabled_lang_features.push((name, span, since));
+        self.enabled_features.insert(name);
+    }
+
+    pub fn set_enabled_lib_feature(&mut self, name: Symbol, span: Span) {
+        self.enabled_lib_features.push((name, span));
+        self.enabled_features.insert(name);
+    }
+
+    pub fn enabled_lang_features(&self) -> &Vec<(Symbol, Span, Option<Symbol>)> {
+        &self.enabled_lang_features
+    }
+
+    pub fn enabled_lib_features(&self) -> &Vec<(Symbol, Span)> {
+        &self.enabled_lib_features
+    }
+
+    pub fn enabled_features(&self) -> &FxHashSet<Symbol> {
+        &self.enabled_features
+    }
+
+    /// Is the given feature enabled (via `#[feature(...)]`)?
+    pub fn enabled(&self, feature: Symbol) -> bool {
+        self.enabled_features.contains(&feature)
+    }
+}
+
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* ($status:ident, $feature:ident, $ver:expr, $issue:expr),
@@ -43,97 +89,15 @@ macro_rules! declare_features {
                     since: $ver,
                     issue: to_nonzero($issue),
                 },
-                // Sets this feature's corresponding bool within `features`.
-                set_enabled: |features| features.$feature = true,
             }),+
         ];
 
-        const NUM_FEATURES: usize = UNSTABLE_FEATURES.len();
-
-        /// A set of features to be used by later passes.
-        #[derive(Clone, Default, Debug)]
-        pub struct Features {
-            /// `#![feature]` attrs for language features, for error reporting.
-            enabled_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
-            /// `#![feature]` attrs for non-language (library) features.
-            enabled_lib_features: Vec<(Symbol, Span)>,
-            /// `enabled_lang_features` + `enabled_lib_features`.
-            enabled_features: FxHashSet<Symbol>,
-            /// State of individual features (unstable lang features only).
-            /// This is `true` if and only if the corresponding feature is listed in `enabled_lang_features`.
-            $(
-                $(#[doc = $doc])*
-                pub $feature: bool
-            ),+
-        }
-
         impl Features {
-            pub fn set_enabled_lang_feature(
-                &mut self,
-                name: Symbol,
-                span: Span,
-                since: Option<Symbol>,
-                feature: Option<&UnstableFeature>,
-            ) {
-                self.enabled_lang_features.push((name, span, since));
-                self.enabled_features.insert(name);
-                if let Some(feature) = feature {
-                    assert_eq!(feature.feature.name, name);
-                    (feature.set_enabled)(self);
-                } else {
-                    // Ensure we don't skip a `set_enabled` call.
-                    debug_assert!(UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name).is_none());
+            $(
+                pub fn $feature(&self) -> bool {
+                    self.enabled_features.contains(&sym::$feature)
                 }
-            }
-
-            pub fn set_enabled_lib_feature(&mut self, name: Symbol, span: Span) {
-                self.enabled_lib_features.push((name, span));
-                self.enabled_features.insert(name);
-                // Ensure we don't skip a `set_enabled` call.
-                debug_assert!(UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name).is_none());
-            }
-
-            /// This is intended for hashing the set of enabled language features.
-            ///
-            /// The expectation is that this produces much smaller code than other alternatives.
-            ///
-            /// Note that the total feature count is pretty small, so this is not a huge array.
-            #[inline]
-            pub fn all_lang_features(&self) -> [u8; NUM_FEATURES] {
-                [$(self.$feature as u8),+]
-            }
-
-            pub fn enabled_lang_features(&self) -> &Vec<(Symbol, Span, Option<Symbol>)> {
-                &self.enabled_lang_features
-            }
-
-            pub fn enabled_lib_features(&self) -> &Vec<(Symbol, Span)> {
-                &self.enabled_lib_features
-            }
-
-            pub fn enabled_features(&self) -> &FxHashSet<Symbol> {
-                &self.enabled_features
-            }
-
-            /// Is the given feature enabled (via `#[feature(...)]`)?
-            pub fn enabled(&self, feature: Symbol) -> bool {
-                let e = self.enabled_features.contains(&feature);
-                if cfg!(debug_assertions) {
-                    // Ensure this matches `self.$feature`, if that exists.
-                    let e2 = match feature {
-                        $( sym::$feature => Some(self.$feature), )*
-                        _ => None,
-                    };
-                    if let Some(e2) = e2 {
-                        assert_eq!(
-                            e, e2,
-                            "mismatch in feature state for `{feature}`: \
-                            `enabled_features` says {e} but `self.{feature}` says {e2}"
-                        );
-                    }
-                }
-                e
-            }
+            )*
 
             /// Some features are known to be incomplete and using them is likely to have
             /// unanticipated results, such as compiler crashes. We warn the user about these

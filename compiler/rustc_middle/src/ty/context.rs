@@ -710,15 +710,15 @@ impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
 
 impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_feature::Features {
     fn generic_const_exprs(self) -> bool {
-        self.generic_const_exprs
+        self.generic_const_exprs()
     }
 
     fn coroutine_clone(self) -> bool {
-        self.coroutine_clone
+        self.coroutine_clone()
     }
 
     fn associated_const_equality(self) -> bool {
-        self.associated_const_equality
+        self.associated_const_equality()
     }
 }
 

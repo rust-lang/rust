@@ -88,7 +88,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
             if seen_repeat {
                 self.dcx().emit_err(err);
-            } else if !tcx.features().more_maybe_bounds {
+            } else if !tcx.features().more_maybe_bounds() {
                 self.tcx().sess.create_feature_err(err, sym::more_maybe_bounds).emit();
             };
         }

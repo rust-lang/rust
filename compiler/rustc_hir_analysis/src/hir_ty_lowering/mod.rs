@@ -1241,7 +1241,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // selection during HIR ty lowering instead of in the trait solver), IATs can lead to cycle
         // errors (#108491) which mask the feature-gate error, needlessly confusing users
         // who use IATs by accident (#113265).
-        if !tcx.features().inherent_associated_types {
+        if !tcx.features().inherent_associated_types() {
             return Ok(None);
         }
 

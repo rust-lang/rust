@@ -1419,7 +1419,7 @@ impl LinkCollector<'_, '_> {
             && key.path_str.contains("::")
         // We only want to check this if this is an associated item.
         {
-            if key.item_id.is_local() && !self.cx.tcx.features().intra_doc_pointers {
+            if key.item_id.is_local() && !self.cx.tcx.features().intra_doc_pointers() {
                 self.report_rawptr_assoc_feature_gate(diag.dox, &diag.link_range, diag.item);
                 return None;
             } else {

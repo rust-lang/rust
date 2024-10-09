@@ -877,8 +877,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME(effects): This is suspicious and should probably not be done,
         // especially now that we enforce host effects and then properly handle
         // effect vars during fallback.
-        let mut host_always_on =
-            !self.features().effects || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
+        let mut host_always_on = !self.features().effects()
+            || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
 
         // Compute the constness required by the context.
         let const_context = self.hir().body_const_context(def_id);
@@ -1826,8 +1826,8 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
     if (matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
-        && tcx.features().intrinsics)
-        || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs)
+        && tcx.features().intrinsics())
+        || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs())
     {
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),

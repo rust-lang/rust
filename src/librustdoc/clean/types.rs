@@ -966,8 +966,8 @@ pub(crate) trait AttributesExt {
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
-        let doc_cfg_active = tcx.features().doc_cfg;
-        let doc_auto_cfg_active = tcx.features().doc_auto_cfg;
+        let doc_cfg_active = tcx.features().doc_cfg();
+        let doc_auto_cfg_active = tcx.features().doc_auto_cfg();
 
         fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
             let mut iter = it.into_iter();

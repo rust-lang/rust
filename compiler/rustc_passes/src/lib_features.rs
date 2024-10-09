@@ -144,7 +144,7 @@ impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
 fn lib_features(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> LibFeatures {
     // If `staged_api` is not enabled then we aren't allowed to define lib
     // features; there is no point collecting them.
-    if !tcx.features().staged_api {
+    if !tcx.features().staged_api() {
         return LibFeatures::default();
     }
 

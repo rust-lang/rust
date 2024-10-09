@@ -1126,7 +1126,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             .map(|witness| cx.print_witness_pat(witness))
             .collect::<Vec<String>>()
             .join(" | ");
-        if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns {
+        if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns() {
             // Arms with a never pattern don't take a body.
             pattern
         } else {
