@@ -2343,56 +2343,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ty_id: NodeId,
         span: Span,
     ) -> &'hir hir::ConstArg<'hir> {
-        let ct_kind = match res {
-            Res::Def(DefKind::ConstParam, _) => {
-                let qpath = self.lower_qpath(
-                    ty_id,
-                    &None,
-                    path,
-                    ParamMode::Optional,
-                    AllowReturnTypeNotation::No,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                    None,
-                );
-                hir::ConstArgKind::Path(qpath)
-            }
-            _ => {
-                // Construct an AnonConst where the expr is the "ty"'s path.
-
-                let parent_def_id = self.current_def_id_parent;
-                let node_id = self.next_node_id();
-                let span = self.lower_span(span);
-
-                // Add a definition for the in-band const def.
-                let def_id =
-                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, span);
-                let hir_id = self.lower_node_id(node_id);
-
-                let path_expr = Expr {
-                    id: ty_id,
-                    kind: ExprKind::Path(None, path.clone()),
-                    span,
-                    attrs: AttrVec::new(),
-                    tokens: None,
-                };
-
-                let ct = self.with_new_scopes(span, |this| {
-                    self.arena.alloc(hir::AnonConst {
-                        def_id,
-                        hir_id,
-                        body: this.with_def_id_parent(def_id, |this| {
-                            this.lower_const_body(path_expr.span, Some(&path_expr))
-                        }),
-                        span,
-                    })
-                });
-                hir::ConstArgKind::Anon(ct)
-            }
-        };
+        let qpath = self.lower_qpath(
+            ty_id,
+            &None,
+            path,
+            ParamMode::Optional,
+            AllowReturnTypeNotation::No,
+            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+            None,
+        );
 
         self.arena.alloc(hir::ConstArg {
             hir_id: self.next_id(),
-            kind: ct_kind,
+            kind: hir::ConstArgKind::Path(qpath),
             is_desugared_from_effects: false,
         })
     }
@@ -2416,14 +2379,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             &anon.value
         };
-        let maybe_res =
-            self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
-        debug!("res={:?}", maybe_res);
-        // FIXME(min_generic_const_args): for now we only lower params to ConstArgKind::Path
-        if let Some(res) = maybe_res
-            && let Res::Def(DefKind::ConstParam, _) = res
-            && let ExprKind::Path(qself, path) = &expr.kind
-        {
+        if let ExprKind::Path(qself, path) = &expr.kind {
             let qpath = self.lower_qpath(
                 expr.id,
                 qself,
