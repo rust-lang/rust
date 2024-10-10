@@ -1,0 +1,21 @@
+error: visibility `pub` is not followed by an item
+  --> $DIR/pub-let-outside-fn.rs:2:5
+   |
+LL |     pub let answer = 42;
+   |     ^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
+
+error: expected item, found keyword `let`
+  --> $DIR/pub-let-outside-fn.rs:2:9
+   |
+LL |     pub let answer = 42;
+   |         ^^^-------------
+   |         |
+   |         unexpected `let` binding outside of a function
+   |
+   = help: consider using `const` or `static` instead of `let` for global variables, or put it inside of a function:  fn foo() { let answer = 42; }
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 2 previous errors
+

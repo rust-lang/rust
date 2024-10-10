@@ -21,7 +21,8 @@ use tracing::debug;
 use super::diagnostics::{ConsumeClosingDelim, dummy_arg};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, UsePreAttrPos,
+    AttemptLocalParseRecovery, AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle,
+    Trailing, UsePreAttrPos,
 };
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::{fluent_generated as fluent, maybe_whole};
@@ -74,21 +75,11 @@ impl<'a> Parser<'a> {
             items.push(item);
         }
 
+        // The last token should be `term`: either EOF or `}`. If it's not that means that we've had an error
+        // parsing an item
         if !self.eat(term) {
-            let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {
-                let msg = format!("expected item, found {token_str}");
-                let mut err = self.dcx().struct_span_err(self.token.span, msg);
-                let span = self.token.span;
-                if self.is_kw_followed_by_ident(kw::Let) {
-                    err.span_label(
-                        span,
-                        "consider using `const` or `static` instead of `let` for global variables",
-                    );
-                } else {
-                    err.span_label(span, "expected item")
-                        .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
-                };
+                let err = self.fallback_incorrect_item();
                 return Err(err);
             }
         }
@@ -96,6 +87,65 @@ impl<'a> Parser<'a> {
         let inject_use_span = post_attr_lo.data().with_hi(post_attr_lo.lo());
         let mod_spans = ModSpans { inner_span: lo.to(self.prev_token.span), inject_use_span };
         Ok((attrs, items, mod_spans))
+    }
+
+    /// Tries to parse the item as a statement to provide further diagnostics.
+    fn fallback_incorrect_item(&mut self) -> rustc_errors::Diag<'a> {
+        let token_str = super::token_descr(&self.token);
+        let token_span = self.token.span;
+        let mut err =
+            self.dcx().struct_span_err(token_span, format!("expected item, found {token_str}"));
+
+        let mut do_default_diag = true;
+
+        match self.parse_full_stmt(AttemptLocalParseRecovery::No) {
+            Ok(Some(stmt)) => {
+                do_default_diag = false;
+                let span = stmt.span;
+                match &stmt.kind {
+                    StmtKind::Let(_) => {
+                        err.span_label(span, "unexpected `let` binding outside of a function")
+                            .help(format!("consider using `const` or `static` instead of `let` for global variables, or put it inside of a function:  fn foo() {{ {} }}",
+                            pprust::stmt_to_string(&stmt)));
+                    }
+                    StmtKind::Semi(expr) => {
+                        err.span_label(span, "unexpected expression").help(format!(
+                            "consider putting it inside a function: fn foo() {{ {}; }}",
+                            pprust::expr_to_string(expr)
+                        ));
+                    }
+                    StmtKind::Expr(expr) => {
+                        err.span_label(span, "unexpected expression").help(format!(
+                            "consider putting it inside a function: fn foo() {{ {} }}",
+                            pprust::expr_to_string(expr)
+                        ));
+                    }
+                    StmtKind::Empty => {
+                        unreachable!(
+                            "Should have been handled by maybe_consume_incorrect_semicolon"
+                        );
+                    }
+                    StmtKind::Item(_) | StmtKind::MacCall(_) => {
+                        // These typically are valid items after an error, use the default message.
+                        do_default_diag = true;
+                    }
+                };
+            }
+            // It's not a statement, we can't do much recovery.
+            Ok(None) => {}
+            Err(e) => {
+                // We don't really care about an error parsing this statement.
+                e.cancel();
+            }
+        }
+
+        if do_default_diag {
+            err.span_label(token_span, "expected item");
+        }
+
+        err.note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
+
+        err
     }
 }
 

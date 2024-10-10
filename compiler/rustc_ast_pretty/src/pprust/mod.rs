@@ -63,6 +63,10 @@ pub fn path_segment_to_string(p: &ast::PathSegment) -> String {
     State::new().path_segment_to_string(p)
 }
 
+pub fn stmt_to_string(p: &ast::Stmt) -> String {
+    State::new().stmt_to_string(p)
+}
+
 pub fn vis_to_string(v: &ast::Visibility) -> String {
     State::new().vis_to_string(v)
 }
