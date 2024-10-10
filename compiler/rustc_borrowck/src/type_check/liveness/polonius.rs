@@ -88,9 +88,9 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
     body: &Body<'tcx>,
     move_data: &MoveData<'tcx>,
 ) {
-    if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
+    if let Some(facts) = typeck.all_facts.as_mut() {
         debug!("populate_access_facts()");
-        let location_table = typeck.borrowck_context.location_table;
+        let location_table = typeck.location_table;
 
         let mut extractor = UseFactsExtractor {
             var_defined_at: &mut facts.var_defined_at,
@@ -108,7 +108,7 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
                 local, local_decl.ty
             );
             let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
-            let universal_regions = &typeck.borrowck_context.universal_regions;
+            let universal_regions = &typeck.universal_regions;
             typeck.infcx.tcx.for_each_free_region(&local_decl.ty, |region| {
                 let region_vid = universal_regions.to_region_vid(region);
                 facts.use_of_var_derefs_origin.push((local, region_vid.into()));
@@ -125,9 +125,9 @@ pub(super) fn add_drop_of_var_derefs_origin<'tcx>(
     kind: &GenericArg<'tcx>,
 ) {
     debug!("add_drop_of_var_derefs_origin(local={:?}, kind={:?}", local, kind);
-    if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
+    if let Some(facts) = typeck.all_facts.as_mut() {
         let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
-        let universal_regions = &typeck.borrowck_context.universal_regions;
+        let universal_regions = &typeck.universal_regions;
         typeck.infcx.tcx.for_each_free_region(kind, |drop_live_region| {
             let region_vid = universal_regions.to_region_vid(drop_live_region);
             facts.drop_of_var_derefs_origin.push((local, region_vid.into()));

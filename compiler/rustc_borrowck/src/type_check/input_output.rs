@@ -48,9 +48,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // FIXME(async_closures): It's kind of wacky that we must apply this
         // transformation here, since we do the same thing in HIR typeck.
         // Maybe we could just fix up the canonicalized signature during HIR typeck?
-        if let DefiningTy::CoroutineClosure(_, args) =
-            self.borrowck_context.universal_regions.defining_ty
-        {
+        if let DefiningTy::CoroutineClosure(_, args) = self.universal_regions.defining_ty {
             assert_matches!(
                 self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(mir_def_id)),
                 Some(hir::CoroutineKind::Desugared(
