@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{SanitizerSet, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,6 +17,11 @@ pub(crate) fn target() -> Target {
             features: "+f,+d".into(),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
+            supported_sanitizers: SanitizerSet::ADDRESS
+                | SanitizerSet::CFI
+                | SanitizerSet::LEAK
+                | SanitizerSet::MEMORY
+                | SanitizerSet::THREAD,
             ..base::linux_ohos::opts()
         },
     }
