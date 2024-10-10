@@ -1783,7 +1783,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let flds = expected.only_has_type(self).and_then(|ty| {
-            let ty = self.resolve_vars_with_obligations(ty);
+            let ty = self.try_structurally_resolve_type(expr.span, ty);
             match ty.kind() {
                 ty::Tuple(flds) => Some(&flds[..]),
                 _ => None,
@@ -1861,7 +1861,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let adt_ty = self.resolve_vars_with_obligations(adt_ty);
+        let adt_ty = self.try_structurally_resolve_type(span, adt_ty);
         let adt_ty_hint = expected.only_has_type(self).and_then(|expected| {
             self.fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
