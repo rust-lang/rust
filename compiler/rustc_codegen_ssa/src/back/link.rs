@@ -1087,7 +1087,9 @@ fn link_natively(
     let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
-        let stripcmd = "/usr/bin/strip";
+        // Use system `strip` when running on host macOS.
+        // <https://github.com/rust-lang/rust/pull/130781>
+        let stripcmd = if cfg!(target_os = "macos") { "/usr/bin/strip" } else { "strip" };
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
                 strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-S"))
