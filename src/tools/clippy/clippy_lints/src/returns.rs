@@ -407,7 +407,7 @@ fn check_final_expr<'tcx>(
                 }
             }
 
-            if ret_span.from_expansion() {
+            if ret_span.from_expansion() || is_from_proc_macro(cx, expr) {
                 return;
             }
 
