@@ -95,6 +95,12 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
     })
 }
 
+enum FloatBinIntrinsic {
+    Min,
+    Max,
+    Copysign,
+}
+
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
@@ -438,6 +444,56 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
+            sym::minnumf16 | sym::maxnumf16 | sym::copysignf16 => {
+                let op = match intrinsic_name {
+                    sym::minnumf16 => FloatBinIntrinsic::Min,
+                    sym::maxnumf16 => FloatBinIntrinsic::Max,
+                    sym::copysignf16 => FloatBinIntrinsic::Copysign,
+                    _ => bug!(),
+                };
+                self.float_bin_op_intrinsic::<rustc_apfloat::ieee::Half>(op, args, dest)?;
+            }
+            sym::minnumf32 | sym::maxnumf32 | sym::copysignf32 => {
+                let op = match intrinsic_name {
+                    sym::minnumf32 => FloatBinIntrinsic::Min,
+                    sym::maxnumf32 => FloatBinIntrinsic::Max,
+                    sym::copysignf32 => FloatBinIntrinsic::Copysign,
+                    _ => bug!(),
+                };
+                self.float_bin_op_intrinsic::<rustc_apfloat::ieee::Single>(op, args, dest)?;
+            }
+            sym::minnumf64 | sym::maxnumf64 | sym::copysignf64 => {
+                let op = match intrinsic_name {
+                    sym::minnumf64 => FloatBinIntrinsic::Min,
+                    sym::maxnumf64 => FloatBinIntrinsic::Max,
+                    sym::copysignf64 => FloatBinIntrinsic::Copysign,
+                    _ => bug!(),
+                };
+                self.float_bin_op_intrinsic::<rustc_apfloat::ieee::Double>(op, args, dest)?;
+            }
+            sym::minnumf128 | sym::maxnumf128 | sym::copysignf128 => {
+                let op = match intrinsic_name {
+                    sym::minnumf128 => FloatBinIntrinsic::Min,
+                    sym::maxnumf128 => FloatBinIntrinsic::Max,
+                    sym::copysignf128 => FloatBinIntrinsic::Copysign,
+                    _ => bug!(),
+                };
+                self.float_bin_op_intrinsic::<rustc_apfloat::ieee::Quad>(op, args, dest)?;
+            }
+
+            sym::fabsf16 => {
+                self.float_abs_intrinsic::<rustc_apfloat::ieee::Half>(args, dest)?;
+            }
+            sym::fabsf32 => {
+                self.float_abs_intrinsic::<rustc_apfloat::ieee::Single>(args, dest)?;
+            }
+            sym::fabsf64 => {
+                self.float_abs_intrinsic::<rustc_apfloat::ieee::Double>(args, dest)?;
+            }
+            sym::fabsf128 => {
+                self.float_abs_intrinsic::<rustc_apfloat::ieee::Quad>(args, dest)?;
+            }
+
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
         }
@@ -697,4 +753,48 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let rhs_bytes = get_bytes(self, rhs)?;
         interp_ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
+
+    fn float_bin_op_intrinsic<F>(
+        &mut self,
+        op: FloatBinIntrinsic,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let res = match op {
+            FloatBinIntrinsic::Min => adjust_nan(self, a.min(b), &[a, b]),
+            FloatBinIntrinsic::Max => adjust_nan(self, a.max(b), &[a, b]),
+            FloatBinIntrinsic::Copysign => a.copy_sign(b), // bitwise, no NaN adjustments
+        };
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_abs_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = self.read_scalar(&args[0])?.to_float()?;
+        // bitwise, no NaN adjustments
+        self.write_scalar(x.abs(), dest)?;
+        interp_ok(())
+    }
+}
+
+// Performs appropriate non-deterministic adjustments of NaN results.
+fn adjust_nan<'tcx, M, F1, F2>(this: &InterpCx<'tcx, M>, f: F2, inputs: &[F1]) -> F2
+where
+    M: Machine<'tcx>,
+    F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>,
+    F2: rustc_apfloat::Float,
+{
+    if f.is_nan() { M::generate_nan(this, inputs) } else { f }
 }
