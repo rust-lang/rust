@@ -10,17 +10,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         b: &Block,
         targeted_by_break: bool,
     ) -> &'hir hir::Block<'hir> {
-        self.arena.alloc(self.lower_block_noalloc(b, targeted_by_break))
+        let hir_id = self.lower_node_id(b.id);
+        self.arena.alloc(self.lower_block_noalloc(hir_id, b, targeted_by_break))
     }
 
     pub(super) fn lower_block_noalloc(
         &mut self,
+        hir_id: hir::HirId,
         b: &Block,
         targeted_by_break: bool,
     ) -> hir::Block<'hir> {
         let (stmts, expr) = self.lower_stmts(&b.stmts);
         let rules = self.lower_block_check_mode(&b.rules);
-        let hir_id = self.lower_node_id(b.id);
         hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
     }
 
