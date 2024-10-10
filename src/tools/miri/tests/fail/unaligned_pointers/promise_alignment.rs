@@ -1,6 +1,5 @@
 //@compile-flags: -Zmiri-symbolic-alignment-check
 //@revisions: call_unaligned_ptr read_unaligned_ptr
-#![feature(strict_provenance)]
 
 #[path = "../../utils/mod.rs"]
 mod utils;

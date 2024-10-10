@@ -9,7 +9,6 @@
     repr_simd,
     simd_ffi,
     staged_api,
-    strict_provenance,
     prelude_import,
     ptr_metadata
 )]

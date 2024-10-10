@@ -2670,7 +2670,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(strict_provenance)]
     /// #![warn(fuzzy_provenance_casts)]
     ///
     /// fn main() {
@@ -2704,7 +2703,7 @@ declare_lint! {
     pub FUZZY_PROVENANCE_CASTS,
     Allow,
     "a fuzzy integer to pointer cast is used",
-    @feature_gate = strict_provenance;
+    @feature_gate = strict_provenance_lints;
 }
 
 declare_lint! {
@@ -2714,7 +2713,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(strict_provenance)]
     /// #![warn(lossy_provenance_casts)]
     ///
     /// fn main() {
@@ -2750,7 +2748,7 @@ declare_lint! {
     pub LOSSY_PROVENANCE_CASTS,
     Allow,
     "a lossy pointer to integer cast is used",
-    @feature_gate = strict_provenance;
+    @feature_gate = strict_provenance_lints;
 }
 
 declare_lint! {

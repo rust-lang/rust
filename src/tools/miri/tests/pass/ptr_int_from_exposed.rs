@@ -2,7 +2,6 @@
 // Tree Borrows doesn't support int2ptr casts, but let's make sure we don't immediately crash either.
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@[stack]compile-flags: -Zmiri-permissive-provenance
-#![feature(strict_provenance, exposed_provenance)]
 
 use std::ptr;
 
