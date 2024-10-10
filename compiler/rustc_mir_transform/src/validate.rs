@@ -595,6 +595,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &self,
         pred: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
     ) -> bool {
+        let pred: ty::Predicate<'tcx> = pred.upcast(self.tcx);
+
+        // We sometimes have to use `defining_opaque_types` for predicates
+        // to succeed here and figuring out how exactly that should work
+        // is annoying. It is harmless enough to just not validate anything
+        // in that case. We still check this after analysis as all opaque
+        // types have been revealed at this point.
+        if pred.has_opaque_types() {
+            return true;
+        }
+
         let infcx = self.tcx.infer_ctxt().build();
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
