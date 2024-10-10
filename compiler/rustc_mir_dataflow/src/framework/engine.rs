@@ -16,14 +16,13 @@ use {rustc_ast as ast, rustc_graphviz as dot};
 
 use super::fmt::DebugWithContext;
 use super::{
-    Analysis, AnalysisDomain, Direction, JoinSemiLattice, ResultsCursor, ResultsVisitor, graphviz,
-    visit_results,
+    Analysis, Direction, JoinSemiLattice, ResultsCursor, ResultsVisitor, graphviz, visit_results,
 };
 use crate::errors::{
     DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
 };
 
-type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
+type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as Analysis<'tcx>>::Domain>;
 
 /// A dataflow analysis that has converged to fixpoint.
 #[derive(Clone)]

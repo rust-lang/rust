@@ -154,7 +154,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
     }
 }
 
-impl<'tcx, D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
+impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     type Domain = BitSet<usize>;
     type Direction = D;
 
@@ -167,9 +167,7 @@ impl<'tcx, D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         unimplemented!("This is never called since `MockAnalysis` is never iterated to fixpoint");
     }
-}
 
-impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     fn apply_statement_effect(
         &mut self,
         state: &mut Self::Domain,

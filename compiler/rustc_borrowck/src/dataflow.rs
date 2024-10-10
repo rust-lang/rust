@@ -7,7 +7,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, Forward, GenKill, Results, ResultsVisitable};
+use rustc_mir_dataflow::{Analysis, Forward, GenKill, Results, ResultsVisitable};
 use tracing::debug;
 
 use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
@@ -22,9 +22,9 @@ pub(crate) struct BorrowckResults<'a, 'tcx> {
 /// The transient state of the dataflow analyses used by the borrow checker.
 #[derive(Debug)]
 pub(crate) struct BorrowckDomain<'a, 'tcx> {
-    pub(crate) borrows: <Borrows<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
-    pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
-    pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
+    pub(crate) borrows: <Borrows<'a, 'tcx> as Analysis<'tcx>>::Domain,
+    pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
+    pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
 }
 
 impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
@@ -427,7 +427,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     /// That means they went out of a nonlexical scope
     fn kill_loans_out_of_scope_at_location(
         &self,
-        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         location: Location,
     ) {
         // NOTE: The state associated with a given `location`
@@ -449,7 +449,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     /// Kill any borrows that conflict with `place`.
     fn kill_borrows_on_place(
         &self,
-        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         place: Place<'tcx>,
     ) {
         debug!("kill_borrows_on_place: place={:?}", place);
@@ -490,7 +490,14 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 }
 
-impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
+/// Forward dataflow computation of the set of borrows that are in scope at a particular location.
+/// - we gen the introduced loans
+/// - we kill loans on locals going out of (regular) scope
+/// - we kill the loans going out of their region's NLL scope: in NLL terms, the frontier where a
+///   region stops containing the CFG points reachable from the issuing location.
+/// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
+///   `a.b.c` when `a` is overwritten.
+impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     type Domain = BitSet<BorrowIndex>;
 
     const NAME: &'static str = "borrows";
@@ -504,16 +511,7 @@ impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
         // no borrows of code region_scopes have been taken prior to
         // function execution, so this method has no effect.
     }
-}
 
-/// Forward dataflow computation of the set of borrows that are in scope at a particular location.
-/// - we gen the introduced loans
-/// - we kill loans on locals going out of (regular) scope
-/// - we kill the loans going out of their region's NLL scope: in NLL terms, the frontier where a
-///   region stops containing the CFG points reachable from the issuing location.
-/// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
-///   `a.b.c` when `a` is overwritten.
-impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     fn apply_before_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
