@@ -1107,8 +1107,6 @@ impl<'a> CrateMetadataRef<'a> {
                 parent_did,
                 None,
                 data.is_non_exhaustive,
-                // FIXME: unnamed fields in crate metadata is unimplemented yet.
-                false,
             ),
         )
     }
@@ -1151,7 +1149,6 @@ impl<'a> CrateMetadataRef<'a> {
             adt_kind,
             variants.into_iter().map(|(_, variant)| variant).collect(),
             repr,
-            false,
         )
     }
 

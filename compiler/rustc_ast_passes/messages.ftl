@@ -1,7 +1,3 @@
-ast_passes_anon_struct_or_union_not_allowed =
-    anonymous {$struct_or_union}s are not allowed outside of unnamed struct or union fields
-    .label = anonymous {$struct_or_union} declared here
-
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
     .suggestion = provide a definition for the constant
@@ -159,14 +155,6 @@ ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
     .because = {$annotation} because of this
     .type = inherent impl for this type
     .only_trait = only trait implementations may be annotated with {$annotation}
-
-ast_passes_invalid_unnamed_field =
-    unnamed fields are not allowed outside of structs or unions
-    .label = unnamed field declared here
-
-ast_passes_invalid_unnamed_field_ty =
-    unnamed fields can only have struct or union types
-    .label = not a struct or union
 
 ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item

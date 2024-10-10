@@ -724,29 +724,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         // Record field names for error reporting.
         self.insert_field_idents(def_id, fields);
         self.insert_field_visibilities_local(def_id.to_def_id(), fields);
-
-        for field in fields {
-            match &field.ty.kind {
-                ast::TyKind::AnonStruct(id, nested_fields)
-                | ast::TyKind::AnonUnion(id, nested_fields) => {
-                    let feed = self.r.feed(*id);
-                    let local_def_id = feed.key();
-                    let def_id = local_def_id.to_def_id();
-                    let def_kind = self.r.tcx.def_kind(local_def_id);
-                    let res = Res::Def(def_kind, def_id);
-                    self.build_reduced_graph_for_struct_variant(
-                        &nested_fields,
-                        Ident::empty(),
-                        feed,
-                        res,
-                        // Anonymous adts inherit visibility from their parent adts.
-                        adt_vis,
-                        field.ty.span,
-                    );
-                }
-                _ => {}
-            }
-        }
     }
 
     /// Constructs the reduced graph for one item.

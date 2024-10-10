@@ -519,10 +519,6 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Impl));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
-        TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
-            vis.visit_id(id);
-            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
-        }
     }
     visit_lazy_tts(vis, tokens);
     vis.visit_span(span);

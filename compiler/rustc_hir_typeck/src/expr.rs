@@ -36,7 +36,6 @@ use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
-use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -1907,8 +1906,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
                 seen_fields.insert(ident, field.span);
-                // FIXME: handle nested fields
-                self.write_field_index(field.hir_id, i, Vec::new());
+                self.write_field_index(field.hir_id, i);
 
                 // We don't look at stability attributes on
                 // struct-like enums (yet...), but it's definitely not
@@ -2552,35 +2550,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         base_def: ty::AdtDef<'tcx>,
         ident: Ident,
-        nested_fields: &mut SmallVec<[(FieldIdx, &'tcx ty::FieldDef); 1]>,
-    ) -> bool {
+    ) -> Option<(FieldIdx, &'tcx ty::FieldDef)> {
         // No way to find a field in an enum.
         if base_def.is_enum() {
-            return false;
+            return None;
         }
 
         for (field_idx, field) in base_def.non_enum_variant().fields.iter_enumerated() {
-            if field.is_unnamed() {
-                // We have an unnamed field, recurse into the nested ADT to find `ident`.
-                // If we find it there, return immediately, and `nested_fields` will contain the
-                // correct path.
-                nested_fields.push((field_idx, field));
-
-                let field_ty = self.tcx.type_of(field.did).instantiate_identity();
-                let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
-                if self.find_adt_field(adt_def, ident, &mut *nested_fields) {
-                    return true;
-                }
-
-                nested_fields.pop();
-            } else if field.ident(self.tcx).normalize_to_macros_2_0() == ident {
+            if field.ident(self.tcx).normalize_to_macros_2_0() == ident {
                 // We found the field we wanted.
-                nested_fields.push((field_idx, field));
-                return true;
+                return Some((field_idx, field));
             }
         }
 
-        false
+        None
     }
 
     // Check field access expressions
@@ -2610,34 +2593,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Ty::new_error(self.tcx(), guar);
                     }
 
-                    let mut field_path = SmallVec::new();
-                    if self.find_adt_field(*base_def, ident, &mut field_path) {
-                        let (first_idx, _) = field_path[0];
-                        let (_, last_field) = field_path.last().unwrap();
-
-                        // Save the index of all fields regardless of their visibility in case
-                        // of error recovery.
-                        let nested_fields = field_path[..]
-                            .array_windows()
-                            .map(|[(_, outer), (inner_idx, _)]| {
-                                let outer_ty = self.field_ty(expr.span, outer, args);
-                                (outer_ty, *inner_idx)
-                            })
-                            .collect();
-                        self.write_field_index(expr.hir_id, first_idx, nested_fields);
+                    if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
+                        self.write_field_index(expr.hir_id, idx);
 
                         let adjustments = self.adjust_steps(&autoderef);
-                        if last_field.vis.is_accessible_from(def_scope, self.tcx) {
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
                             self.apply_adjustments(base, adjustments);
                             self.register_predicates(autoderef.into_obligations());
 
-                            self.tcx.check_stability(
-                                last_field.did,
-                                Some(expr.hir_id),
-                                expr.span,
-                                None,
-                            );
-                            return self.field_ty(expr.span, last_field, args);
+                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
+                            return self.field_ty(expr.span, field, args);
                         }
 
                         // The field is not accessible, fall through to error reporting.
@@ -2652,11 +2617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 self.apply_adjustments(base, adjustments);
                                 self.register_predicates(autoderef.into_obligations());
 
-                                self.write_field_index(
-                                    expr.hir_id,
-                                    FieldIdx::from_usize(index),
-                                    Vec::new(),
-                                );
+                                self.write_field_index(expr.hir_id, FieldIdx::from_usize(index));
                                 return field_ty;
                             }
                         }

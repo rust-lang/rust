@@ -535,9 +535,6 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         TyKind::Err(_guar) => {}
         TyKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
         TyKind::Never | TyKind::CVarArgs => {}
-        TyKind::AnonStruct(_id, ref fields) | TyKind::AnonUnion(_id, ref fields) => {
-            walk_list!(visitor, visit_field_def, fields);
-        }
     }
     V::Result::output()
 }

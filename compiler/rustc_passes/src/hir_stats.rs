@@ -582,8 +582,6 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             BareFn,
             Never,
             Tup,
-            AnonStruct,
-            AnonUnion,
             Path,
             Pat,
             TraitObject,
