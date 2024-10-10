@@ -2,16 +2,21 @@ use std::io;
 use std::path::PathBuf;
 use std::process::Command;
 
+use rustc_target::spec::AppleOSVersion;
+
 use super::{add_version_to_llvm_target, find_sdk_root};
 
 #[test]
 fn test_add_version_to_llvm_target() {
+    let version = AppleOSVersion { major: 10, minor: 14, patch: 1 };
     assert_eq!(
-        add_version_to_llvm_target("aarch64-apple-macosx", (10, 14, 1)),
+        add_version_to_llvm_target("aarch64-apple-macosx", version),
         "aarch64-apple-macosx10.14.1"
     );
+
+    let version = AppleOSVersion { major: 16, minor: 1, patch: 0 };
     assert_eq!(
-        add_version_to_llvm_target("aarch64-apple-ios-simulator", (16, 1, 0)),
+        add_version_to_llvm_target("aarch64-apple-ios-simulator", version),
         "aarch64-apple-ios16.1.0-simulator"
     );
 }

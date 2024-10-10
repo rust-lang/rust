@@ -4450,6 +4450,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "serde",
  "serde_json",
  "tracing",
 ]

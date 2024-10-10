@@ -1,5 +1,9 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::num::ParseIntError;
+use std::str::FromStr;
+
+use serde::de;
 
 use crate::spec::{
     Cc, DebuginfoKind, FramePointer, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType, StaticCow,
@@ -200,14 +204,15 @@ pub fn os_minimum_deployment_target(os: &str) -> OSVersion {
     // ```
     // $ rustc --print deployment-target
     // ```
-    match os {
+    let (major, minor, patch) = match os {
         "macos" => (10, 12, 0),
         "ios" => (10, 0, 0),
         "tvos" => (10, 0, 0),
         "watchos" => (5, 0, 0),
         "visionos" => (1, 0, 0),
         _ => unreachable!("tried to get deployment target for non-Apple platform"),
-    }
+    };
+    OSVersion { major, minor, patch }
 }
 
 /// The deployment target for the given target.
@@ -218,7 +223,7 @@ pub fn os_minimum_deployment_target(os: &str) -> OSVersion {
 /// This matches what LLVM does, see in part:
 /// <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L1900-L1932>
 pub fn minimum_deployment_target(target: &Target) -> OSVersion {
-    match (&*target.os, &*target.arch, &*target.abi) {
+    let (major, minor, patch) = match (&*target.os, &*target.arch, &*target.abi) {
         ("macos", "aarch64", _) => (11, 0, 0),
         ("ios", "aarch64", "macabi") => (14, 0, 0),
         ("ios", "aarch64", "sim") => (14, 0, 0),
@@ -227,8 +232,9 @@ pub fn minimum_deployment_target(target: &Target) -> OSVersion {
         ("ios", _, "macabi") => (13, 1, 0),
         ("tvos", "aarch64", "sim") => (14, 0, 0),
         ("watchos", "aarch64", "sim") => (7, 0, 0),
-        (os, _, _) => os_minimum_deployment_target(os),
-    }
+        (os, _, _) => return os_minimum_deployment_target(os),
+    };
+    OSVersion { major, minor, patch }
 }
 
 /// Name of the environment variable used to fetch the deployment target on the given OS.
@@ -287,18 +293,68 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
 /// Deployment target or SDK version.
 ///
 /// The size of the numbers in here are limited by Mach-O's `LC_BUILD_VERSION`.
-pub type OSVersion = (u16, u8, u8);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct OSVersion {
+    pub major: u16,
+    pub minor: u8,
+    pub patch: u8,
+}
 
-/// Parse an OS version triple (SDK version or deployment target).
-pub fn parse_version(version: &str) -> Result<OSVersion, ParseIntError> {
-    if let Some((major, minor)) = version.split_once('.') {
-        let major = major.parse()?;
-        if let Some((minor, patch)) = minor.split_once('.') {
-            Ok((major, minor.parse()?, patch.parse()?))
-        } else {
-            Ok((major, minor.parse()?, 0))
+impl OSVersion {
+    pub const MIN: Self = Self { major: u16::MIN, minor: u8::MIN, patch: u8::MIN };
+
+    pub const MAX: Self = Self { major: u16::MAX, minor: u8::MAX, patch: u8::MAX };
+
+    pub fn pretty(self) -> impl fmt::Display {
+        let OSVersion { major, minor, patch } = self;
+        fmt::from_fn(move |f| {
+            write!(f, "{major}.{minor}")?;
+            if patch != 0 {
+                write!(f, ".{patch}")?;
+            }
+            Ok(())
+        })
+    }
+}
+
+impl<'de> de::Deserialize<'de> for OSVersion {
+    fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<OSVersion, D::Error> {
+        struct OSVersionVisitor;
+
+        impl<'de> de::Visitor<'de> for OSVersionVisitor {
+            type Value = OSVersion;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a valid `major.minor.patch` version")
+            }
+
+            fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
+                OSVersion::from_str(value).map_err(E::custom)
+            }
         }
-    } else {
-        Ok((version.parse()?, 0, 0))
+
+        deserializer.deserialize_str(OSVersionVisitor)
+    }
+}
+
+impl FromStr for OSVersion {
+    type Err = ParseIntError;
+
+    /// Parse an OS version triple (SDK version or deployment target).
+    fn from_str(version: &str) -> Result<Self, Self::Err> {
+        if let Some((major, minor)) = version.split_once('.') {
+            let major = major.parse()?;
+            if let Some((minor, patch)) = minor.split_once('.') {
+                let minor = minor.parse()?;
+                let patch = patch.parse()?;
+                Ok(Self { major, minor, patch })
+            } else {
+                let minor = minor.parse()?;
+                Ok(Self { major, minor, patch: 0 })
+            }
+        } else {
+            let major = version.parse()?;
+            Ok(Self { major, minor: 0, patch: 0 })
+        }
     }
 }

@@ -63,8 +63,7 @@ pub use base::apple::{
     OSVersion as AppleOSVersion, deployment_target_env_var as apple_deployment_target_env_var,
     minimum_deployment_target as apple_minimum_deployment_target,
     os_minimum_deployment_target as apple_os_minimum_deployment_target,
-    parse_version as apple_parse_version, platform as current_apple_platform,
-    sdk_name as apple_sdk_name,
+    platform as current_apple_platform, sdk_name as apple_sdk_name,
 };
 pub use base::avr_gnu::ef_avr_arch;
 

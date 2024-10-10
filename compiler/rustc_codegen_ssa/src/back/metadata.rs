@@ -392,9 +392,12 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 /// Since Xcode 15, Apple's LD apparently requires object files to use this load command, so this
 /// returns the `MachOBuildVersion` for the target to do so.
 fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachOBuildVersion {
+    use rustc_target::spec::AppleOSVersion;
+
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
-    fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
+    fn pack_version(version: AppleOSVersion) -> u32 {
+        let AppleOSVersion { major, minor, patch } = version;
         let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
         (major << 16) | (minor << 8) | patch
     }

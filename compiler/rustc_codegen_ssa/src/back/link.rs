@@ -38,9 +38,9 @@ use rustc_session::{Session, filesearch};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,
-    LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SplitDebuginfo,
+    AppleOSVersion, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
+    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel,
+    SanitizerSet, SplitDebuginfo,
 };
 use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, info, warn};
@@ -3038,7 +3038,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
             _ => bug!("invalid OS/ABI combination for Apple target: {target_os}, {target_abi}"),
         };
 
-        let (major, minor, patch) = deployment_target(sess);
+        let AppleOSVersion { major, minor, patch } = deployment_target(sess);
         let min_version = format!("{major}.{minor}.{patch}");
 
         // The SDK version is used at runtime when compiling with a newer SDK / version of Xcode:
@@ -3108,7 +3108,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 
             // The presence of `-mmacosx-version-min` makes CC default to
             // macOS, and it sets the deployment target.
-            let (major, minor, patch) = deployment_target(sess);
+            let AppleOSVersion { major, minor, patch } = deployment_target(sess);
             // Intentionally pass this as a single argument, Clang doesn't
             // seem to like it otherwise.
             cmd.cc_arg(&format!("-mmacosx-version-min={major}.{minor}.{patch}"));

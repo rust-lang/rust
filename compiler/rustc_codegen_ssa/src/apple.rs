@@ -1,31 +1,18 @@
 use std::borrow::Cow;
-use std::env;
-use std::fs;
 use std::io::ErrorKind;
-use std::fmt::{Display, from_fn};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 use rustc_session::Session;
 use rustc_target::spec::{
     AppleOSVersion, apple_deployment_target_env_var, apple_minimum_deployment_target,
-    apple_os_minimum_deployment_target, apple_parse_version,
+    apple_os_minimum_deployment_target,
 };
 
 use crate::errors::{AppleDeploymentTarget, AppleSdkError};
 
 #[cfg(test)]
 mod tests;
-
-pub fn pretty_version(version: AppleOSVersion) -> impl Display {
-    let (major, minor, patch) = version;
-    from_fn(move |f| {
-        write!(f, "{major}.{minor}")?;
-        if patch != 0 {
-            write!(f, ".{patch}")?;
-        }
-        Ok(())
-    })
-}
 
 /// Get the deployment target based on the standard environment variables, or fall back to the
 /// minimum version supported by `rustc`.
@@ -35,7 +22,7 @@ pub fn deployment_target(sess: &Session) -> AppleOSVersion {
     let env_var = apple_deployment_target_env_var(&sess.target.os);
 
     if let Ok(deployment_target) = env::var(env_var) {
-        match apple_parse_version(&deployment_target) {
+        match deployment_target.parse::<AppleOSVersion>() {
             Ok(version) => {
                 // It is common that the deployment target is set a bit too low, for example on
                 // macOS Aarch64 to also target older x86_64. So we only want to warn when variable
@@ -44,8 +31,8 @@ pub fn deployment_target(sess: &Session) -> AppleOSVersion {
                 if version < os_min {
                     sess.dcx().emit_warn(AppleDeploymentTarget::TooLow {
                         env_var,
-                        version: pretty_version(version).to_string(),
-                        os_min: pretty_version(os_min).to_string(),
+                        version: version.pretty().to_string(),
+                        os_min: os_min.pretty().to_string(),
                     });
                 }
 
@@ -71,7 +58,7 @@ fn add_version_to_llvm_target(llvm_target: &str, deployment_target: AppleOSVersi
     let environment = components.next();
     assert_eq!(components.next(), None, "too many LLVM triple components");
 
-    let (major, minor, patch) = deployment_target;
+    let AppleOSVersion { major, minor, patch } = deployment_target;
 
     assert!(
         !os.contains(|c: char| c.is_ascii_digit()),
