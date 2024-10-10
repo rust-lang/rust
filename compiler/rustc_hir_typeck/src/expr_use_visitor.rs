@@ -687,7 +687,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     fn walk_struct_expr<'hir>(
         &self,
         fields: &[hir::ExprField<'_>],
-        opt_with: &Option<&'hir hir::Expr<'_>>,
+        opt_with: &hir::Rest<'hir>,
     ) -> Result<(), Cx::Error> {
         // Consume the expressions supplying values for each field.
         for field in fields {
@@ -703,8 +703,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
 
         let with_expr = match *opt_with {
-            Some(w) => &*w,
-            None => {
+            hir::Rest::Base(w) => &*w,
+            hir::Rest::DefaultFields(_) | hir::Rest::None => {
                 return Ok(());
             }
         };

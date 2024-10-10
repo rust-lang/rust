@@ -339,9 +339,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let field_names = adt_def.variant(variant_index).fields.indices();
+                let variant = adt_def.variant(variant_index);
+                let field_names = variant.fields.indices();
 
-                let fields = if let Some(FruInfo { base, field_types }) = base {
+                let fields = if let Rest::Base(FruInfo { base, field_types }) = base {
                     let place_builder = unpack!(block = this.as_place_builder(block, *base));
 
                     // MIR does not natively support FRU, so for each
@@ -354,6 +355,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 let place = place_builder.clone_project(PlaceElem::Field(n, *ty));
                                 this.consume_by_copy_or_move(place.to_place(this))
                             }
+                        })
+                        .collect()
+                } else if let Rest::DefaultFields(field_types) = base {
+                    iter::zip(field_names, &**field_types)
+                        .map(|(n, ty)| match fields_map.get(&n) {
+                            Some(v) => v.clone(),
+                            None => match variant.fields[n].value {
+                                Some(def) => {
+                                    let value = this.tcx.instantiate_and_normalize_erasing_regions(
+                                        args,
+                                        this.param_env,
+                                        Const::from_unevaluated(this.tcx, def),
+                                    );
+                                    let value =
+                                        match value.eval(this.tcx, this.param_env, expr_span) {
+                                            Ok(val) => Const::Val(val, value.ty()),
+                                            Err(_) => value,
+                                        };
+                                    this.literal_operand(expr_span, value)
+                                }
+                                None => {
+                                    let name = variant.fields[n].name;
+                                    span_bug!(
+                                        expr_span,
+                                        "missing mandatory field `{name}` of type `{ty}`",
+                                    );
+                                }
+                            },
                         })
                         .collect()
                 } else {

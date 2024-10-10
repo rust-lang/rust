@@ -1813,11 +1813,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_struct(
         &self,
-        expr: &hir::Expr<'_>,
+        expr: &hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        qpath: &QPath<'tcx>,
+        qpath: &'tcx QPath<'tcx>,
         fields: &'tcx [hir::ExprField<'tcx>],
-        base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
+        base_expr: &'tcx hir::Rest<'tcx>,
     ) -> Ty<'tcx> {
         // Find the relevant variant
         let (variant, adt_ty) = match self.check_struct_path(qpath, expr.hir_id) {
@@ -1857,7 +1857,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         variant: &'tcx ty::VariantDef,
         hir_fields: &'tcx [hir::ExprField<'tcx>],
-        base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
+        base_expr: &'tcx hir::Rest<'tcx>,
     ) {
         let tcx = self.tcx;
 
@@ -1982,13 +1982,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the fields with the base_expr. This could cause us to hit errors later
         // when certain fields are assumed to exist that in fact do not.
         if error_happened {
-            if let Some(base_expr) = base_expr {
+            if let hir::Rest::Base(base_expr) = base_expr {
                 self.check_expr(base_expr);
             }
             return;
         }
 
-        if let Some(base_expr) = base_expr {
+        if let hir::Rest::DefaultFields(span) = *base_expr {
+            for f in &variant.fields {
+                let ident = self.tcx.adjust_ident(f.ident(self.tcx), variant.def_id);
+                if let Some(_) = remaining_fields.remove(&ident)
+                    && f.value.is_none()
+                    && self.tcx.features().default_field_values
+                {
+                    let guar = self
+                        .dcx()
+                        .struct_span_err(span, format!("missing mandatory field `{ident}`"))
+                        .emit();
+                    self.set_tainted_by_errors(guar);
+                    return;
+                }
+            }
+            let fru_tys = match adt_ty.kind() {
+                ty::Adt(adt, args) if adt.is_struct() => variant
+                    .fields
+                    .iter()
+                    .map(|f| self.normalize(span, f.ty(self.tcx, args)))
+                    .collect(),
+                ty::Adt(adt, args) if adt.is_enum() && self.tcx.features().default_field_values => {
+                    variant
+                        .fields
+                        .iter()
+                        .map(|f| self.normalize(span, f.ty(self.tcx, args)))
+                        .collect()
+                }
+                _ => {
+                    self.dcx().emit_err(FunctionalRecordUpdateOnNonStruct { span });
+                    return;
+                }
+            };
+            self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr.hir_id, fru_tys);
+        } else if let hir::Rest::Base(base_expr) = base_expr {
             // FIXME: We are currently creating two branches here in order to maintain
             // consistency. But they should be merged as much as possible.
             let fru_tys = if self.tcx.features().type_changing_struct_update {
@@ -2120,12 +2154,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_struct_fields_on_error(
         &self,
         fields: &'tcx [hir::ExprField<'tcx>],
-        base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
+        base_expr: &'tcx hir::Rest<'tcx>,
     ) {
         for field in fields {
             self.check_expr(field.expr);
         }
-        if let Some(base) = *base_expr {
+        if let hir::Rest::Base(base) = *base_expr {
             self.check_expr(base);
         }
     }

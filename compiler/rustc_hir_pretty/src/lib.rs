@@ -1090,12 +1090,12 @@ impl<'a> State<'a> {
         &mut self,
         qpath: &hir::QPath<'_>,
         fields: &[hir::ExprField<'_>],
-        wth: Option<&hir::Expr<'_>>,
+        wth: hir::Rest<'_>,
     ) {
         self.print_qpath(qpath, true);
         self.word("{");
         self.commasep_cmnt(Consistent, fields, |s, field| s.print_expr_field(field), |f| f.span);
-        if let Some(expr) = wth {
+        if let hir::Rest::Base(expr) = wth {
             self.ibox(INDENT_UNIT);
             if !fields.is_empty() {
                 self.word(",");
@@ -1103,6 +1103,14 @@ impl<'a> State<'a> {
             }
             self.word("..");
             self.print_expr(expr);
+            self.end();
+        } else if let hir::Rest::DefaultFields(_) = wth {
+            self.ibox(INDENT_UNIT);
+            if !fields.is_empty() {
+                self.word(",");
+                self.space();
+            }
+            self.word("..");
             self.end();
         } else if !fields.is_empty() {
             self.word(",");

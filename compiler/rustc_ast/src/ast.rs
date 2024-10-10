@@ -3021,6 +3021,7 @@ pub struct FieldDef {
     pub ident: Option<Ident>,
 
     pub ty: P<Ty>,
+    pub default: Option<AnonConst>,
     pub is_placeholder: bool,
 }
 

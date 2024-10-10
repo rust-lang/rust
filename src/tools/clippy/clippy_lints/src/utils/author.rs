@@ -4,7 +4,7 @@ use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir, ArrayLen, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind,
-    ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind,
+    ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind, Rest,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -597,7 +597,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             },
             ExprKind::Struct(qpath, fields, base) => {
                 bind!(self, qpath, fields);
-                opt_bind!(self, base);
+                let base = OptionPat::new(match base {
+                    Rest::Base(base) => Some(self.bind("base", base)),
+                    Rest::None | Rest::DefaultFields(_) => None,
+                });
                 kind!("Struct({qpath}, {fields}, {base})");
                 self.qpath(qpath);
                 self.slice(fields, |field| {

@@ -1594,7 +1594,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn check_struct_path(
         &self,
-        qpath: &QPath<'tcx>,
+        qpath: &'tcx QPath<'tcx>,
         hir_id: HirId,
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();

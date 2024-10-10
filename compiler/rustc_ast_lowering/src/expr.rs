@@ -316,12 +316,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Struct(se) => {
                     let rest = match &se.rest {
-                        StructRest::Base(e) => Some(self.lower_expr(e)),
+                        StructRest::Base(e) => hir::Rest::Base(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            let guar = self.dcx().emit_err(BaseExpressionDoubleDot { span: *sp });
-                            Some(&*self.arena.alloc(self.expr_err(*sp, guar)))
+                            if !self.tcx.features().default_field_values {
+                                self.dcx().emit_err(BaseExpressionDoubleDot { span: *sp });
+                            }
+                            hir::Rest::DefaultFields(*sp)
                         }
-                        StructRest::None => None,
+                        StructRest::None => hir::Rest::None,
                     };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
@@ -1460,7 +1462,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Struct(
             self.arena.alloc(hir::QPath::LangItem(lang_item, self.lower_span(span))),
             fields,
-            None,
+            hir::Rest::None,
         )
     }
 

@@ -1377,6 +1377,7 @@ pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
     pub vis: Visibility<DefId>,
+    pub value: Option<DefId>,
 }
 
 impl PartialEq for FieldDef {
@@ -1389,9 +1390,9 @@ impl PartialEq for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did: lhs_did, name: _, vis: _ } = &self;
+        let Self { did: lhs_did, name: _, vis: _, value: _ } = &self;
 
-        let Self { did: rhs_did, name: _, vis: _ } = other;
+        let Self { did: rhs_did, name: _, vis: _, value: _ } = other;
 
         let res = lhs_did == rhs_did;
 
@@ -1417,7 +1418,7 @@ impl Hash for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did, name: _, vis: _ } = &self;
+        let Self { did, name: _, vis: _, value: _ } = &self;
 
         did.hash(s)
     }

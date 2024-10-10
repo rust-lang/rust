@@ -426,6 +426,11 @@ declare_features! (
     (unstable, custom_test_frameworks, "1.30.0", Some(50297)),
     /// Allows declarative macros 2.0 (`macro`).
     (unstable, decl_macro, "1.17.0", Some(39412)),
+    /// Allows the use of default values on struct definitions and the construction of struct
+    /// literals with the functional update syntax without a base.
+    // FIXME: change tracking issue number from RFCS repo to rust repo after RFC is accepted an
+    // tracking ticket is created.
+    (unstable, default_field_values, "CURRENT_RUSTC_VERSION", Some(3681)),
     /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
     (unstable, deprecated_safe, "1.61.0", Some(94978)),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.

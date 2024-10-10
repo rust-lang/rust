@@ -972,7 +972,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
             let adt = self.typeck_results().expr_ty(expr).ty_adt_def().unwrap();
             let variant = adt.variant_of_res(res);
-            if let Some(base) = *base {
+            if let hir::Rest::Base(base) = *base {
                 // If the expression uses FRU we need to make sure all the unmentioned fields
                 // are checked for privacy (RFC 736). Rather than computing the set of
                 // unmentioned fields, just check them all.
@@ -983,6 +983,17 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                     let (hir_id, use_ctxt, span) = match field {
                         Some(field) => (field.hir_id, field.ident.span, field.span),
                         None => (base.hir_id, base.span, base.span),
+                    };
+                    self.check_field(hir_id, use_ctxt, span, adt, variant_field, true);
+                }
+            } else if let hir::Rest::DefaultFields(span) = *base {
+                for (vf_index, variant_field) in variant.fields.iter_enumerated() {
+                    let field = fields
+                        .iter()
+                        .find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
+                    let (hir_id, use_ctxt, span) = match field {
+                        Some(field) => (field.hir_id, field.ident.span, field.span),
+                        None => (expr.hir_id, span, span),
                     };
                     self.check_field(hir_id, use_ctxt, span, adt, variant_field, true);
                 }

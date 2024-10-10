@@ -541,6 +541,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
+    gate_all!(default_field_values, "default values on `struct` fields aren't supported");
     gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(postfix_match, "postfix match is experimental");

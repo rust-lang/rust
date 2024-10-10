@@ -771,6 +771,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
             vis_span: self.lower_span(f.vis.span),
+            default: f.default.as_ref().map(|v| self.lower_anon_const_to_anon_const(v)),
             ty,
         }
     }

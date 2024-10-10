@@ -127,7 +127,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             for field in &**fields {
                 visitor.visit_expr(&visitor.thir()[field.expr]);
             }
-            if let Some(base) = base {
+            if let crate::thir::Rest::Base(base) = base {
                 visitor.visit_expr(&visitor.thir()[base.base]);
             }
         }

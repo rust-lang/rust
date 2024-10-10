@@ -158,8 +158,15 @@ pub struct AdtExpr<'tcx> {
     pub user_ty: UserTy<'tcx>,
 
     pub fields: Box<[FieldExpr]>,
-    /// The base, e.g. `Foo {x: 1, .. base}`.
-    pub base: Option<FruInfo<'tcx>>,
+    /// The base, e.g. `Foo {x: 1, ..base}`.
+    pub base: Rest<'tcx>,
+}
+
+#[derive(Clone, Debug, HashStable)]
+pub enum Rest<'tcx> {
+    Base(FruInfo<'tcx>),
+    DefaultFields(Box<[Ty<'tcx>]>),
+    None,
 }
 
 #[derive(Clone, Debug, HashStable)]

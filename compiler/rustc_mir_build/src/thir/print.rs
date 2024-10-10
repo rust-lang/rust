@@ -566,9 +566,11 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             self.print_expr(field_expr.expr, depth_lvl + 2);
         }
 
-        if let Some(ref base) = adt_expr.base {
+        if let Rest::Base(ref base) = adt_expr.base {
             print_indented!(self, "base:", depth_lvl + 1);
             self.print_fru_info(base, depth_lvl + 2);
+        } else if let Rest::DefaultFields(_) = adt_expr.base {
+            print_indented!(self, "defaults", depth_lvl + 1);
         } else {
             print_indented!(self, "base: None", depth_lvl + 1);
         }

@@ -1048,12 +1048,13 @@ pub fn walk_flat_map_field_def<T: MutVisitor>(
     visitor: &mut T,
     mut fd: FieldDef,
 ) -> SmallVec<[FieldDef; 1]> {
-    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut fd;
+    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _, default } = &mut fd;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_ty(ty);
+    visit_opt(default, |default| visitor.visit_anon_const(default));
     visitor.visit_span(span);
     smallvec![fd]
 }

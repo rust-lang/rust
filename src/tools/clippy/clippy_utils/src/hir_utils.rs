@@ -9,7 +9,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{
     ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
     ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
-    LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind,
+    LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind, Rest,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -348,7 +348,12 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l.as_ref(), r.as_ref(), |l, r| self.eq_expr(l, r)),
             (&ExprKind::Struct(l_path, lf, ref lo), &ExprKind::Struct(r_path, rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path)
-                    && both(lo.as_ref(), ro.as_ref(), |l, r| self.eq_expr(l, r))
+                    && match (lo, ro) {
+                        (Rest::Base(l), Rest::Base(r)) => self.eq_expr(l, r),
+                        (Rest::None, Rest::None) => true,
+                        (Rest::DefaultFields(_), Rest::DefaultFields(_)) => true,
+                        _ => false,
+                    }
                     && over(lf, rf, |l, r| self.eq_expr_field(l, r))
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
@@ -928,7 +933,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(f.expr);
                 }
 
-                if let Some(e) = *expr {
+                if let Rest::Base(e) = *expr {
                     self.hash_expr(e);
                 }
             },

@@ -1,0 +1,180 @@
+error: the `#[default]` attribute may only be used on unit enum variants
+  --> $DIR/feature-gate-default-field-values.rs:15:5
+   |
+LL |     Foo {
+   |     ^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:8:15
+   |
+LL |     pub bar: S = S,
+   |               ^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:9:17
+   |
+LL |     pub baz: i32 = 42 + 3,
+   |                 ^^^^^^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:16:15
+   |
+LL |         bar: S = S,
+   |               ^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:17:17
+   |
+LL |         baz: i32 = 42 + 3,
+   |                 ^^^^^^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:23:11
+   |
+LL |     bar: S = Qux::<A, C>::S,
+   |           ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:24:13
+   |
+LL |     baz: i32 = foo(),
+   |             ^^^^^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:25:13
+   |
+LL |     bat: i32 = <Qux<A, C> as T>::K,
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:26:13
+   |
+LL |     bay: i32 = C,
+   |             ^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on `struct` fields aren't supported
+  --> $DIR/feature-gate-default-field-values.rs:27:16
+   |
+LL |     bak: Vec<A> = Vec::new(),
+   |                ^^^^^^^^^^^^^
+   |
+   = note: see issue #3681 <https://github.com/rust-lang/rust/issues/3681> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0797]: base expression required after `..`
+  --> $DIR/feature-gate-default-field-values.rs:47:21
+   |
+LL |     let x = Foo { .. };
+   |                     ^
+   |
+help: add a base expression here
+   |
+LL |     let x = Foo { ../* expr */ };
+   |                     ++++++++++
+
+error[E0797]: base expression required after `..`
+  --> $DIR/feature-gate-default-field-values.rs:49:29
+   |
+LL |     let z = Foo { baz: 1, .. };
+   |                             ^
+   |
+help: add a base expression here
+   |
+LL |     let z = Foo { baz: 1, ../* expr */ };
+   |                             ++++++++++
+
+error[E0797]: base expression required after `..`
+  --> $DIR/feature-gate-default-field-values.rs:55:26
+   |
+LL |     let x = Bar::Foo { .. };
+   |                          ^
+   |
+help: add a base expression here
+   |
+LL |     let x = Bar::Foo { ../* expr */ };
+   |                          ++++++++++
+
+error[E0797]: base expression required after `..`
+  --> $DIR/feature-gate-default-field-values.rs:58:34
+   |
+LL |     let z = Bar::Foo { baz: 1, .. };
+   |                                  ^
+   |
+help: add a base expression here
+   |
+LL |     let z = Bar::Foo { baz: 1, ../* expr */ };
+   |                                  ++++++++++
+
+error[E0797]: base expression required after `..`
+  --> $DIR/feature-gate-default-field-values.rs:65:31
+   |
+LL |     let x = Qux::<i32, 4> { .. };
+   |                               ^
+   |
+help: add a base expression here
+   |
+LL |     let x = Qux::<i32, 4> { ../* expr */ };
+   |                               ++++++++++
+
+error[E0797]: base expression required after `..`
+  --> $DIR/feature-gate-default-field-values.rs:66:73
+   |
+LL |     assert!(matches!(Qux::<i32, 4> { bar: S, baz: 42, bat: 2, bay: 4, .. }, x));
+   |                                                                         ^
+   |
+help: add a base expression here
+   |
+LL |     assert!(matches!(Qux::<i32, 4> { bar: S, baz: 42, bat: 2, bay: 4, ../* expr */ }, x));
+   |                                                                         ++++++++++
+
+error[E0436]: functional record update syntax requires a struct
+  --> $DIR/feature-gate-default-field-values.rs:55:26
+   |
+LL |     let x = Bar::Foo { .. };
+   |                          ^
+
+error[E0436]: functional record update syntax requires a struct
+  --> $DIR/feature-gate-default-field-values.rs:58:34
+   |
+LL |     let z = Bar::Foo { baz: 1, .. };
+   |                                  ^
+
+error: aborting due to 18 previous errors
+
+Some errors have detailed explanations: E0436, E0658, E0797.
+For more information about an error, try `rustc --explain E0436`.

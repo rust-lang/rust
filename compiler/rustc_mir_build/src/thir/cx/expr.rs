@@ -214,7 +214,7 @@ impl<'tcx> Cx<'tcx> {
                     args,
                     fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr }]),
                     user_ty: None,
-                    base: None,
+                    base: Rest::None,
                 }));
 
                 debug!(?kind);
@@ -447,7 +447,7 @@ impl<'tcx> Cx<'tcx> {
                             variant_index: index,
                             fields: field_refs,
                             user_ty,
-                            base: None,
+                            base: Rest::None,
                         }))
                     } else {
                         ExprKind::Call {
@@ -577,20 +577,33 @@ impl<'tcx> Cx<'tcx> {
                             args,
                             user_ty,
                             fields: self.field_refs(fields),
-                            base: base.map(|base| FruInfo {
-                                base: self.mirror_expr(base),
-                                field_types: self.typeck_results().fru_field_types()[expr.hir_id]
-                                    .iter()
-                                    .copied()
-                                    .collect(),
-                            }),
+                            base: match base {
+                                hir::Rest::Base(base) => Rest::Base(FruInfo {
+                                    base: self.mirror_expr(base),
+                                    field_types: self.typeck_results().fru_field_types()
+                                        [expr.hir_id]
+                                        .iter()
+                                        .copied()
+                                        .collect(),
+                                }),
+                                hir::Rest::DefaultFields(_) => Rest::DefaultFields(
+                                    self.typeck_results().fru_field_types()[expr.hir_id]
+                                        .iter()
+                                        .copied()
+                                        .collect(),
+                                ),
+                                hir::Rest::None => Rest::None,
+                            },
                         }))
                     }
                     AdtKind::Enum => {
                         let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
                         match res {
                             Res::Def(DefKind::Variant, variant_id) => {
-                                assert!(base.is_none());
+                                assert!(matches!(
+                                    base,
+                                    hir::Rest::None | hir::Rest::DefaultFields(_)
+                                ));
 
                                 let index = adt.variant_index_with_id(variant_id);
                                 let user_provided_types =
@@ -604,7 +617,18 @@ impl<'tcx> Cx<'tcx> {
                                     args,
                                     user_ty,
                                     fields: self.field_refs(fields),
-                                    base: None,
+                                    base: match base {
+                                        hir::Rest::DefaultFields(_) => Rest::DefaultFields(
+                                            self.typeck_results().fru_field_types()[expr.hir_id]
+                                                .iter()
+                                                .copied()
+                                                .collect(),
+                                        ),
+                                        hir::Rest::Base(base) => {
+                                            span_bug!(base.span, "unexpected res: {:?}", res);
+                                        }
+                                        hir::Rest::None => Rest::None,
+                                    },
                                 }))
                             }
                             _ => {
@@ -1008,7 +1032,7 @@ impl<'tcx> Cx<'tcx> {
                         args,
                         user_ty,
                         fields: Box::new([]),
-                        base: None,
+                        base: Rest::None,
                     })),
                     _ => bug!("unexpected ty: {:?}", ty),
                 }
