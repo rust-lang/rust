@@ -392,11 +392,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   but reports to the program that it did actually write. This is useful when you
   are not interested in the actual program's output, but only want to see Miri's
   errors and warnings.
-* `-Zmiri-panic-on-unsupported` will make some forms of unsupported functionality,
-  such as FFI and unsupported syscalls, panic within the context of the emulated
-  application instead of raising an error within the context of Miri (and halting
-  execution). Note that code might not expect these operations to ever panic, so
-  this flag can lead to strange (mis)behavior.
 * `-Zmiri-recursive-validation` is a *highly experimental* flag that makes validity checking
   recurse below references.
 * `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into

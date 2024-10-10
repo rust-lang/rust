@@ -168,10 +168,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.write_int(result.to_i32()?, dest)?;
                     }
                     id => {
-                        this.handle_unsupported_foreign_item(format!(
-                            "can't execute syscall with ID {id}"
-                        ))?;
-                        return interp_ok(EmulateItemResult::AlreadyJumped);
+                        throw_unsup_format!("can't execute syscall with ID {id}");
                     }
                 }
             }
