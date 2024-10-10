@@ -7,6 +7,18 @@ Subject: [PATCH] Disable broken tests
  src/report.rs | 36 ++++++++++++++++++++++++++++++++++++
  1 file changed, 36 insertions(+)
 
+diff --git a/src/toolchains/rust.rs b/src/toolchains/rust.rs
+index 0c50f7a..bfde2b1 100644
+--- a/src/toolchains/rust.rs
++++ b/src/toolchains/rust.rs
+@@ -83,6 +83,7 @@ impl Toolchain for RustcToolchain {
+             .arg(out_dir)
+             .arg("--target")
+             .arg(built_info::TARGET)
++            .arg("-g")
+             .arg(format!("-Cmetadata={lib_name}"))
+             .arg(src_path);
+         if let Some(codegen_backend) = &self.codegen_backend {
 diff --git a/src/report.rs b/src/report.rs
 index 958ab43..dcf1044 100644
 --- a/src/report.rs
