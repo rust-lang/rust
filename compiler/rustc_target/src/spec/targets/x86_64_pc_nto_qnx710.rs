@@ -21,6 +21,7 @@ pub(crate) fn target() -> Target {
                 "-Vgcc_ntox86_64_cxx",
             ]),
             env: "nto71".into(),
+            vendor: "pc".into(),
             ..base::nto_qnx::opts()
         },
     }
