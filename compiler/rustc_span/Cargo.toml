@@ -19,5 +19,5 @@ scoped-tls = "1.0"
 sha1 = "0.10.0"
 sha2 = "0.10.1"
 tracing = "0.1"
-unicode-width = "0.1.4"
+unicode-width = "0.2.0"
 # tidy-alphabetical-end
