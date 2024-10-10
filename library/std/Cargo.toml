@@ -121,9 +121,8 @@ std_detect_file_io = ["std_detect/std_detect_file_io"]
 std_detect_dlsym_getauxval = ["std_detect/std_detect_dlsym_getauxval"]
 std_detect_env_override = ["std_detect/std_detect_env_override"]
 
-# Enable using raw-dylib for Windows imports.
-# This will eventually be the default.
-windows_raw_dylib = ["windows-targets/windows_raw_dylib"]
+# Enable using Windows import libraries instead of raw-dylib.
+windows_use_import_libs = ["windows-targets/windows_use_import_libs"]
 
 [package.metadata.fortanix-sgx]
 # Maximum possible number of threads when testing

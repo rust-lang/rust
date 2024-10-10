@@ -7,7 +7,7 @@
 #![feature(decl_macro)]
 #![feature(no_core)]
 
-#[cfg(feature = "windows_raw_dylib")]
+#[cfg(not(feature = "windows_use_import_libs"))]
 pub macro link {
     ($library:literal $abi:literal $($link_name:literal)? $(#[$doc:meta])? fn $($function:tt)*) => (
         #[cfg_attr(not(target_arch = "x86"), link(name = $library, kind = "raw-dylib", modifiers = "+verbatim"))]
@@ -18,7 +18,7 @@ pub macro link {
         }
     )
 }
-#[cfg(not(feature = "windows_raw_dylib"))]
+#[cfg(feature = "windows_use_import_libs")]
 pub macro link {
     ($library:literal $abi:literal $($link_name:literal)? $(#[$doc:meta])? fn $($function:tt)*) => (
         // Note: the windows-targets crate uses a pre-built Windows.lib import library which we don't
@@ -33,10 +33,11 @@ pub macro link {
     )
 }
 
-#[cfg(not(feature = "windows_raw_dylib"))]
+#[cfg(feature = "windows_use_import_libs")]
 #[link(name = "advapi32")]
 #[link(name = "ntdll")]
 #[link(name = "userenv")]
 #[link(name = "ws2_32")]
 #[link(name = "dbghelp")] // required for backtrace-rs symbolization
+#[link(name = "synchronization")]
 extern "C" {}

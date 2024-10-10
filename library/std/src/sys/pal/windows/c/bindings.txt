@@ -2188,6 +2188,7 @@ Windows.Win32.Networking.WinSock.WSATRY_AGAIN
 Windows.Win32.Networking.WinSock.WSATYPE_NOT_FOUND
 Windows.Win32.Networking.WinSock.WSAVERNOTSUPPORTED
 Windows.Win32.Security.Authentication.Identity.RtlGenRandom
+Windows.Win32.Security.Cryptography.ProcessPrng
 Windows.Win32.Security.SECURITY_ATTRIBUTES
 Windows.Win32.Security.TOKEN_ACCESS_MASK
 Windows.Win32.Security.TOKEN_ACCESS_PSEUDO_HANDLE
@@ -2595,7 +2596,10 @@ Windows.Win32.System.Threading.TryAcquireSRWLockShared
 Windows.Win32.System.Threading.UpdateProcThreadAttribute
 Windows.Win32.System.Threading.WaitForMultipleObjects
 Windows.Win32.System.Threading.WaitForSingleObject
+Windows.Win32.System.Threading.WaitOnAddress
 Windows.Win32.System.Threading.WakeAllConditionVariable
+Windows.Win32.System.Threading.WakeByAddressAll
+Windows.Win32.System.Threading.WakeByAddressSingle
 Windows.Win32.System.Threading.WakeConditionVariable
 Windows.Win32.System.WindowsProgramming.PROGRESS_CONTINUE
 Windows.Win32.UI.Shell.GetUserProfileDirectoryW
