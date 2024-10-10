@@ -12,7 +12,7 @@ use stdx::TupleExt;
 
 use crate::{
     consteval::{try_const_usize, usize_const},
-    infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
+    infer::{expr::ExprIsRead, BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
     static_lifetime, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
@@ -361,7 +361,7 @@ impl InferenceContext<'_> {
                 None => self.err_ty(),
             },
             Pat::ConstBlock(expr) => {
-                self.infer_expr(*expr, &Expectation::has_type(expected.clone()))
+                self.infer_expr(*expr, &Expectation::has_type(expected.clone()), ExprIsRead::Yes)
             }
             Pat::Missing => self.err_ty(),
         };
@@ -497,7 +497,7 @@ impl InferenceContext<'_> {
             }
         }
 
-        self.infer_expr(expr, &Expectation::has_type(expected.clone()))
+        self.infer_expr(expr, &Expectation::has_type(expected.clone()), ExprIsRead::Yes)
     }
 
     fn is_non_ref_pat(&mut self, body: &hir_def::body::Body, pat: PatId) -> bool {

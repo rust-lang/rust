@@ -5,8 +5,9 @@ use hir_def::{hir::ExprId, AdtId};
 use stdx::never;
 
 use crate::{
-    infer::unify::InferenceTable, Adjustment, Binders, DynTy, InferenceDiagnostic, Interner,
-    PlaceholderIndex, QuantifiedWhereClauses, Ty, TyExt, TyKind, TypeFlags, WhereClause,
+    infer::{coerce::CoerceNever, unify::InferenceTable},
+    Adjustment, Binders, DynTy, InferenceDiagnostic, Interner, PlaceholderIndex,
+    QuantifiedWhereClauses, Ty, TyExt, TyKind, TypeFlags, WhereClause,
 };
 
 #[derive(Debug)]
@@ -128,7 +129,7 @@ impl CastCheck {
             return Ok(());
         }
 
-        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &self.cast_ty) {
+        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &self.cast_ty, CoerceNever::Yes) {
             apply_adjustments(self.source_expr, adj);
             set_coercion_cast(self.source_expr);
             return Ok(());
@@ -154,7 +155,8 @@ impl CastCheck {
                         let sig = self.expr_ty.callable_sig(table.db).expect("FnDef had no sig");
                         let sig = table.normalize_associated_types_in(sig);
                         let fn_ptr = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
-                        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &fn_ptr) {
+                        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &fn_ptr, CoerceNever::Yes)
+                        {
                             apply_adjustments(self.source_expr, adj);
                         } else {
                             return Err(CastError::IllegalCast);
@@ -241,7 +243,8 @@ impl CastCheck {
             if let TyKind::Array(ety, _) = t_expr.kind(Interner) {
                 // Coerce to a raw pointer so that we generate RawPtr in MIR.
                 let array_ptr_type = TyKind::Raw(m_expr, t_expr.clone()).intern(Interner);
-                if let Ok((adj, _)) = table.coerce(&self.expr_ty, &array_ptr_type) {
+                if let Ok((adj, _)) = table.coerce(&self.expr_ty, &array_ptr_type, CoerceNever::Yes)
+                {
                     apply_adjustments(self.source_expr, adj);
                 } else {
                     never!(
@@ -253,7 +256,7 @@ impl CastCheck {
 
                 // This is a less strict condition than rustc's `demand_eqtype`,
                 // but false negative is better than false positive
-                if table.coerce(ety, t_cast).is_ok() {
+                if table.coerce(ety, t_cast, CoerceNever::Yes).is_ok() {
                     return Ok(());
                 }
             }

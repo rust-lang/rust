@@ -12,11 +12,10 @@ use hir_expand::name::Name;
 use intern::sym;
 
 use crate::{
-    infer::Expectation, lower::lower_to_chalk_mutability, Adjust, Adjustment, AutoBorrow, Interner,
-    OverloadedDeref, TyBuilder, TyKind,
+    infer::{expr::ExprIsRead, Expectation, InferenceContext},
+    lower::lower_to_chalk_mutability,
+    Adjust, Adjustment, AutoBorrow, Interner, OverloadedDeref, TyBuilder, TyKind,
 };
-
-use super::InferenceContext;
 
 impl InferenceContext<'_> {
     pub(crate) fn infer_mut_body(&mut self) {
@@ -164,7 +163,11 @@ impl InferenceContext<'_> {
                                         if let Some(ty) = self.result.type_of_expr.get(index) {
                                             ty.clone()
                                         } else {
-                                            self.infer_expr(index, &Expectation::none())
+                                            self.infer_expr(
+                                                index,
+                                                &Expectation::none(),
+                                                ExprIsRead::Yes,
+                                            )
                                         };
                                     let trait_ref = TyBuilder::trait_ref(self.db, index_trait)
                                         .push(base_ty)
