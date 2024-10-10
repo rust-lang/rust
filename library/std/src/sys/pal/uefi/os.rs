@@ -6,6 +6,7 @@ use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::uefi;
+use crate::os::uefi::ffi::OsStringExt;
 use crate::path::{self, PathBuf};
 use crate::ptr::NonNull;
 use crate::{fmt, io};
@@ -171,44 +172,96 @@ pub fn current_exe() -> io::Result<PathBuf> {
     helpers::device_path_to_text(protocol).map(PathBuf::from)
 }
 
-pub struct Env(!);
+pub struct Env {
+    vars: Vec<(OsString, OsString)>,
+    pos: usize,
+}
+
+struct EnvIter {
+    last_var_name: Vec<u16>,
+    last_var_guid: r_efi::efi::Guid,
+}
+
+pub struct EnvStrDebug<'a> {
+    iter: &'a [(OsString, OsString)],
+}
+
+impl fmt::Debug for EnvStrDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut list = f.debug_list();
+        for (a, b) in self.iter {
+            list.entry(&(a.to_str().unwrap(), b.to_str().unwrap()));
+        }
+        list.finish()
+    }
+}
 
 impl Env {
     // FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
     pub fn str_debug(&self) -> impl fmt::Debug + '_ {
-        let Self(inner) = self;
-        match *inner {}
+        EnvStrDebug { iter: self.vars.as_slice() }
     }
 }
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
+
     fn next(&mut self) -> Option<(OsString, OsString)> {
-        self.0
+        let res = self.vars.get(self.pos)?;
+        self.pos += 1;
+        Some(res.clone())
+    }
+}
+
+impl Iterator for EnvIter {
+    type Item = (OsString, OsString);
+
+    fn next(&mut self) -> Option<(OsString, OsString)> {
+        let (key, guid) =
+            uefi_vars::get_next_variable_name(&self.last_var_name, self.last_var_guid).ok()?;
+
+        self.last_var_name = key;
+        self.last_var_guid = guid;
+
+        if self.last_var_guid == uefi_vars::SHELL_VARIABLE_GUID {
+            let k = OsString::from_wide(&self.last_var_name[..(self.last_var_name.len() - 1)]);
+            let v = uefi_vars::get(self.last_var_name.as_mut_slice())?;
+
+            Some((k, v))
+        } else {
+            self.next()
+        }
     }
 }
 
 impl fmt::Debug for Env {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self(inner) = self;
-        match *inner {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(&self.vars).finish()
     }
 }
 
 pub fn env() -> Env {
-    panic!("not supported on this platform")
+    let iter =
+        EnvIter { last_var_name: Vec::from([0]), last_var_guid: uefi_vars::SHELL_VARIABLE_GUID };
+
+    Env { vars: iter.collect(), pos: 0 }
 }
 
-pub fn getenv(_: &OsStr) -> Option<OsString> {
-    None
+pub fn getenv(key: &OsStr) -> Option<OsString> {
+    let mut key = uefi_vars::key(key)?;
+    uefi_vars::get(key.as_mut_slice())
 }
 
-pub unsafe fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot set env vars on this platform"))
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+    let mut k =
+        uefi_vars::key(k).ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid key"))?;
+    uefi_vars::set(k.as_mut_slice(), v)
 }
 
-pub unsafe fn unsetenv(_: &OsStr) -> io::Result<()> {
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot unset env vars on this platform"))
+pub unsafe fn unsetenv(k: &OsStr) -> io::Result<()> {
+    let mut k =
+        uefi_vars::key(k).ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid key"))?;
+    uefi_vars::unset(k.as_mut_slice())
 }
 
 pub fn temp_dir() -> PathBuf {
@@ -238,4 +291,149 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     panic!("no pids on this platform")
+}
+
+mod uefi_vars {
+    use super::helpers;
+    use crate::ffi::{OsStr, OsString};
+    use crate::io;
+    use crate::mem::size_of;
+    use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
+    use crate::ptr::NonNull;
+
+    // Using Shell Variable Guid from edk2/ShellPkg
+    // https://github.com/tianocore/edk2/blob/master/ShellPkg/Include/Guid/ShellVariableGuid.h
+    pub(crate) const SHELL_VARIABLE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
+        0x158def5a,
+        0xf656,
+        0x419c,
+        0xb0,
+        0x27,
+        &[0x7a, 0x31, 0x92, 0xc0, 0x79, 0xd2],
+    );
+
+    pub(crate) fn key(k: &OsStr) -> Option<Vec<u16>> {
+        let key = k.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+        if key[..key.len() - 1].contains(&0) {
+            return None;
+        } else {
+            Some(key)
+        }
+    }
+
+    pub(crate) fn get(key: &mut [u16]) -> Option<OsString> {
+        let rt: NonNull<r_efi::efi::RuntimeServices> =
+            helpers::runtime_services().expect("UEFI Runtime Services Missing").cast();
+
+        let mut len = 0usize;
+        let mut guid = SHELL_VARIABLE_GUID;
+
+        let ret = unsafe {
+            ((*rt.as_ptr()).get_variable)(
+                key.as_mut_ptr(),
+                &mut guid,
+                crate::ptr::null_mut(),
+                &mut len,
+                crate::ptr::null_mut(),
+            )
+        };
+
+        if ret != r_efi::efi::Status::BUFFER_TOO_SMALL {
+            return None;
+        }
+
+        let mut val = Vec::<u16>::with_capacity(len / size_of::<u16>());
+        let ret = unsafe {
+            ((*rt.as_ptr()).get_variable)(
+                key.as_mut_ptr(),
+                &mut guid,
+                crate::ptr::null_mut(),
+                &mut len,
+                val.as_mut_ptr().cast(),
+            )
+        };
+
+        if ret.is_error() {
+            None
+        } else {
+            unsafe { val.set_len(len / size_of::<u16>()) };
+            Some(OsString::from_wide(&val))
+        }
+    }
+
+    pub(crate) fn set(key: &mut [u16], val: &OsStr) -> io::Result<()> {
+        // UEFI variable value does not need to be NULL terminated.
+        let mut val = val.encode_wide().collect::<Vec<u16>>();
+        let rt: NonNull<r_efi::efi::RuntimeServices> =
+            helpers::runtime_services().expect("UEFI Runtime Services Missing").cast();
+        let mut guid = SHELL_VARIABLE_GUID;
+
+        let r = unsafe {
+            ((*rt.as_ptr()).set_variable)(
+                key.as_mut_ptr(),
+                &mut guid,
+                r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
+                val.len() * size_of::<u16>(),
+                val.as_mut_ptr().cast(),
+            )
+        };
+
+        if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+    }
+
+    pub(crate) fn unset(key: &mut [u16]) -> io::Result<()> {
+        let rt: NonNull<r_efi::efi::RuntimeServices> =
+            helpers::runtime_services().expect("UEFI Runtime Services Missing").cast();
+        let mut guid = SHELL_VARIABLE_GUID;
+
+        let r = unsafe {
+            ((*rt.as_ptr()).set_variable)(
+                key.as_mut_ptr(),
+                &mut guid,
+                r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
+                0,
+                crate::ptr::null_mut(),
+            )
+        };
+
+        if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+    }
+
+    pub(crate) fn get_next_variable_name(
+        last_var_name: &[u16],
+        last_guid: r_efi::efi::Guid,
+    ) -> io::Result<(Vec<u16>, r_efi::efi::Guid)> {
+        let mut var_name = Vec::from(last_var_name);
+        let mut var_size = var_name.capacity() * size_of::<u16>();
+        let mut guid: r_efi::efi::Guid = last_guid;
+        let rt: NonNull<r_efi::efi::RuntimeServices> =
+            helpers::runtime_services().expect("UEFI Runtime Services Missing").cast();
+
+        let r = unsafe {
+            ((*rt.as_ptr()).get_next_variable_name)(&mut var_size, var_name.as_mut_ptr(), &mut guid)
+        };
+
+        if !r.is_error() {
+            unsafe { var_name.set_len(var_size / size_of::<u16>()) };
+            return Ok((var_name, guid));
+        }
+
+        if r != r_efi::efi::Status::BUFFER_TOO_SMALL {
+            return Err(io::Error::from_raw_os_error(r.as_usize()));
+        }
+
+        var_name.reserve((var_size / size_of::<u16>()) - var_name.capacity() + 1);
+        var_size = var_name.capacity() * size_of::<u16>();
+
+        let r = unsafe {
+            ((*rt.as_ptr()).get_next_variable_name)(&mut var_size, var_name.as_mut_ptr(), &mut guid)
+        };
+
+        if r.is_error() {
+            Err(io::Error::from_raw_os_error(r.as_usize()))
+        } else {
+            unsafe { var_name.set_len(var_size / size_of::<u16>()) };
+            Ok((var_name, guid))
+        }
+    }
 }
