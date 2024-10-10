@@ -51,14 +51,6 @@ impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
         self.transfer_function(trans).visit_terminator(terminator, location);
         terminator.edges()
     }
-
-    fn apply_call_return_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _block: BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-    }
 }
 
 /// A `Visitor` that defines the transfer function for `MaybeBorrowedLocals`.

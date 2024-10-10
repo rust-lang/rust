@@ -1,9 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{
-    self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
-};
+use rustc_middle::mir::{self, BasicBlock, Body, Location, Place, TerminatorEdges};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
@@ -594,14 +592,6 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
             }
         }
         terminator.edges()
-    }
-
-    fn apply_call_return_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _block: mir::BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
     }
 }
 

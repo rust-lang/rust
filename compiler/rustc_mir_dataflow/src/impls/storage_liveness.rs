@@ -50,25 +50,6 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
             _ => (),
         }
     }
-
-    fn apply_terminator_effect<'mir>(
-        &mut self,
-        _trans: &mut Self::Domain,
-        terminator: &'mir Terminator<'tcx>,
-        _: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        // Terminators have no effect
-        terminator.edges()
-    }
-
-    fn apply_call_return_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _block: BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-        // Nothing to do when a call returns successfully
-    }
 }
 
 pub struct MaybeStorageDead<'a> {
@@ -112,25 +93,6 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
             StatementKind::StorageDead(l) => trans.gen_(l),
             _ => (),
         }
-    }
-
-    fn apply_terminator_effect<'mir>(
-        &mut self,
-        _: &mut Self::Domain,
-        terminator: &'mir Terminator<'tcx>,
-        _: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        // Terminators have no effect
-        terminator.edges()
-    }
-
-    fn apply_call_return_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _block: BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-        // Nothing to do when a call returns successfully
     }
 }
 
