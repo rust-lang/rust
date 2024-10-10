@@ -195,12 +195,26 @@ fn make_format_args(
                                     Applicability::MaybeIncorrect,
                                 );
                             } else {
-                                let sugg_fmt = match args.explicit_args().len() {
-                                    0 => "{}".to_string(),
-                                    count => {
-                                        format!("{}{{}}", "{} ".repeat(count))
+                                let not_impl_display_trait = |kind: &ExprKind| -> bool {
+                                    match kind {
+                                        ExprKind::Block(b, None) if b.stmts.is_empty() => true,
+                                        ExprKind::Tup(v) if v.is_empty() => true,
+                                        _ => false,
                                     }
                                 };
+
+                                let mut sugg_fmt = "".to_string();
+                                for kind in [&efmt.kind]
+                                    .into_iter()
+                                    .chain(args.explicit_args().into_iter().map(|a| &a.expr.kind))
+                                {
+                                    sugg_fmt.push_str(if not_impl_display_trait(kind) {
+                                        "{:?} "
+                                    } else {
+                                        "{} "
+                                    });
+                                }
+                                sugg_fmt = sugg_fmt.trim_end().to_string();
                                 err.span_suggestion(
                                     unexpanded_fmt_span.shrink_to_lo(),
                                     "you might be missing a string literal to format with",
