@@ -208,14 +208,6 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         let idx = self.effect(Effect::Before.at_index(location.statement_index));
         assert!(state.insert(idx));
     }
-
-    fn apply_call_return_effect(
-        &mut self,
-        _state: &mut Self::Domain,
-        _block: BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

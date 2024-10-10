@@ -164,10 +164,12 @@ pub trait Analysis<'tcx> {
     /// initialized here.
     fn apply_terminator_effect<'mir>(
         &mut self,
-        state: &mut Self::Domain,
+        _state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
-        location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx>;
+        _location: Location,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        terminator.edges()
+    }
 
     /// Updates the current dataflow state with an effect that occurs immediately *before* the
     /// given terminator.
@@ -192,10 +194,11 @@ pub trait Analysis<'tcx> {
     /// edges.
     fn apply_call_return_effect(
         &mut self,
-        state: &mut Self::Domain,
-        block: BasicBlock,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-    );
+        _state: &mut Self::Domain,
+        _block: BasicBlock,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
+    ) {
+    }
 
     /// Updates the current dataflow state with the effect of taking a particular branch in a
     /// `SwitchInt` terminator.
