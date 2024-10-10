@@ -12,7 +12,7 @@ use rustc_infer::traits::{
 use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
+use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
 use tracing::instrument;
 
 use super::Certainty;
@@ -86,10 +86,7 @@ impl<'tcx> ObligationStorage<'tcx> {
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
                     .evaluate_root_goal(goal, GenerateProofTree::No)
                     .0;
-                match result {
-                    Ok((has_changed, _)) => has_changed,
-                    _ => false,
-                }
+                matches!(result, Ok((HasChanged::Yes, _)))
             }));
         })
     }
@@ -113,7 +110,7 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
         &self,
         infcx: &InferCtxt<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        result: &Result<(bool, Certainty), NoSolution>,
+        result: &Result<(HasChanged, Certainty), NoSolution>,
     ) {
         if let Some(inspector) = infcx.obligation_inspector.get() {
             let result = match result {
@@ -181,7 +178,11 @@ where
                         continue;
                     }
                 };
-                has_changed |= changed;
+
+                if changed == HasChanged::Yes {
+                    has_changed = true;
+                }
+
                 match certainty {
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => self.obligations.register(obligation),
