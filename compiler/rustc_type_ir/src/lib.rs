@@ -206,8 +206,8 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "nightly", derive(Decodable, Encodable, Hash, HashStable_NoContext))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(Decodable, Encodable, HashStable_NoContext))]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type

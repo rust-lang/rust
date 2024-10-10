@@ -698,6 +698,12 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {
+    fn dummy() -> Self {
+        DUMMY_SP
+    }
+}
+
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {

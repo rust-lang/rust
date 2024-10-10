@@ -10,7 +10,6 @@ pub trait Foo {
 impl Foo for () {
     fn bar<'im: 'im>(&'im mut self) -> impl Sized + 'im {}
     //~^ ERROR return type captures more lifetimes than trait definition
-    //~| WARN impl trait in impl method signature does not match trait method signature
 }
 
 fn main() {}

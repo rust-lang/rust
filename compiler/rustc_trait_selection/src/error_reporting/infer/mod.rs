@@ -1285,9 +1285,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ValuePairs::ExistentialProjection(_) => {
                         (false, Mismatch::Fixed("existential projection"))
                     }
-                    ValuePairs::Dummy => {
-                        bug!("do not expect to report a type error from a ValuePairs::Dummy")
-                    }
                 };
                 let Some(vals) = self.values_str(values) else {
                     // Derived error. Cancel the emitter.
@@ -1852,9 +1849,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, &exp_found.found);
                 Some((exp, fnd, None))
-            }
-            ValuePairs::Dummy => {
-                bug!("do not expect to report a type error from a ValuePairs::Dummy")
             }
         }
     }

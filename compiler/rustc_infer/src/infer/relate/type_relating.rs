@@ -1,4 +1,5 @@
 use rustc_middle::traits::solve::Goal;
+use rustc_middle::ty::relate::combine::{super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::{
     Relate, RelateResult, TypeRelation, relate_args_invariantly, relate_args_with_variances,
 };
@@ -20,7 +21,6 @@ pub(crate) struct TypeRelating<'infcx, 'tcx> {
     trace: TypeTrace<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     define_opaque_types: DefineOpaqueTypes,
-    structurally_relate_aliases: StructurallyRelateAliases,
 
     // Mutable fields.
     ambient_variance: ty::Variance,
@@ -56,15 +56,14 @@ impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
-        structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,
     ) -> TypeRelating<'infcx, 'tcx> {
+        assert!(!infcx.next_trait_solver);
         TypeRelating {
             infcx,
             trace,
             param_env,
             define_opaque_types,
-            structurally_relate_aliases,
             ambient_variance,
             obligations: vec![],
             cache: Default::default(),
@@ -183,23 +182,16 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 )?;
             }
 
-            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
-                infcx.set_tainted_by_errors(e);
-                return Ok(Ty::new_error(self.cx(), e));
-            }
-
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => {
-                infcx.super_combine_tys(self, a, b)?;
+                super_combine_tys(infcx, self, a, b)?;
             }
 
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if self.define_opaque_types == DefineOpaqueTypes::Yes
-                    && def_id.is_local()
-                    && !infcx.next_trait_solver() =>
+                if self.define_opaque_types == DefineOpaqueTypes::Yes && def_id.is_local() =>
             {
                 self.register_goals(infcx.handle_opaque_type(
                     a,
@@ -210,7 +202,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
             }
 
             _ => {
-                infcx.super_combine_tys(self, a, b)?;
+                super_combine_tys(infcx, self, a, b)?;
             }
         }
 
@@ -265,7 +257,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        self.infcx.super_combine_consts(self, a, b)
+        super_combine_consts(self.infcx, self, a, b)
     }
 
     fn binders<T>(
@@ -357,7 +349,7 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, 'tcx>
     }
 
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        self.structurally_relate_aliases
+        StructurallyRelateAliases::No
     }
 
     fn register_predicates(

@@ -32,7 +32,6 @@ use rustc_middle::infer::unify_key::{
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
-use rustc_middle::traits::solve::{Goal, NoSolution};
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{
@@ -340,7 +339,6 @@ pub enum ValuePairs<'tcx> {
     PolySigs(ExpectedFound<ty::PolyFnSig<'tcx>>),
     ExistentialTraitRef(ExpectedFound<ty::PolyExistentialTraitRef<'tcx>>),
     ExistentialProjection(ExpectedFound<ty::PolyExistentialProjection<'tcx>>),
-    Dummy,
 }
 
 impl<'tcx> ValuePairs<'tcx> {
@@ -1637,10 +1635,6 @@ impl<'tcx> TypeTrace<'tcx> {
             cause: cause.clone(),
             values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
         }
-    }
-
-    fn dummy(cause: &ObligationCause<'tcx>) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: ValuePairs::Dummy }
     }
 }
 

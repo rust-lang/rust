@@ -7,6 +7,7 @@ use rustc_type_ir::data_structures::{HashMap, HashSet, ensure_sufficient_stack};
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
+use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
@@ -871,7 +872,7 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs)
+        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs)?)
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
