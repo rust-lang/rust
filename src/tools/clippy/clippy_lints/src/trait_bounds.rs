@@ -5,7 +5,7 @@ use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash, is_from_proc_macro};
 use core::hash::{Hash, Hasher};
 use itertools::Itertools;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, IndexEntry};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -16,7 +16,6 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
-use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -427,7 +426,7 @@ fn rollup_traits(
     bounds: &[GenericBound<'_>],
     msg: &'static str,
 ) -> Vec<(ComparableTraitRef, Span)> {
-    let mut map = FxHashMap::default();
+    let mut map = FxIndexMap::default();
     let mut repeated_res = false;
 
     let only_comparable_trait_refs = |bound: &GenericBound<'_>| {
@@ -442,8 +441,8 @@ fn rollup_traits(
     for bound in bounds.iter().filter_map(only_comparable_trait_refs) {
         let (comparable_bound, span_direct) = bound;
         match map.entry(comparable_bound) {
-            Entry::Occupied(_) => repeated_res = true,
-            Entry::Vacant(e) => {
+            IndexEntry::Occupied(_) => repeated_res = true,
+            IndexEntry::Vacant(e) => {
                 e.insert((span_direct, i));
                 i += 1;
             },

@@ -8,7 +8,7 @@ use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{eq_expr_value, hash_expr, higher};
 use rustc_ast::{LitKind, RangeLimits};
 use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::unhash::UnindexMap;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -226,7 +226,7 @@ fn upper_index_expr(expr: &Expr<'_>) -> Option<usize> {
 }
 
 /// Checks if the expression is an index into a slice and adds it to `indexes`
-fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnhashMap<u64, Vec<IndexEntry<'hir>>>) {
+fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnindexMap<u64, Vec<IndexEntry<'hir>>>) {
     if let ExprKind::Index(slice, index_lit, _) = expr.kind
         && cx.typeck_results().expr_ty_adjusted(slice).peel_refs().is_slice()
         && let Some(index) = upper_index_expr(index_lit)
@@ -274,7 +274,7 @@ fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Unh
 }
 
 /// Checks if the expression is an `assert!` expression and adds it to `asserts`
-fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnhashMap<u64, Vec<IndexEntry<'hir>>>) {
+fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnindexMap<u64, Vec<IndexEntry<'hir>>>) {
     if let Some((comparison, asserted_len, slice)) = assert_len_expr(cx, expr) {
         let hash = hash_expr(cx, slice);
         let indexes = map.entry(hash).or_default();
@@ -311,7 +311,7 @@ fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Un
 /// Inspects indexes and reports lints.
 ///
 /// Called at the end of this lint after all indexing and `assert!` expressions have been collected.
-fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>>) {
+fn report_indexes(cx: &LateContext<'_>, map: &UnindexMap<u64, Vec<IndexEntry<'_>>>) {
     for bucket in map.values() {
         for entry in bucket {
             let Some(full_span) = entry
@@ -403,7 +403,7 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
 
 impl LateLintPass<'_> for MissingAssertsForIndexing {
     fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
-        let mut map = UnhashMap::default();
+        let mut map = UnindexMap::default();
 
         for_each_expr_without_closures(body.value, |expr| {
             check_index(cx, expr, &mut map);

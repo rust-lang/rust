@@ -66,7 +66,7 @@ impl GatedSpans {
 #[derive(Default)]
 pub struct SymbolGallery {
     /// All symbols occurred and their first occurrence span.
-    pub symbols: Lock<FxHashMap<Symbol, Span>>,
+    pub symbols: Lock<FxIndexMap<Symbol, Span>>,
 }
 
 impl SymbolGallery {

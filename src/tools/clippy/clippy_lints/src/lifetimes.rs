@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::trait_ref_of_method;
 use itertools::Itertools;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
@@ -311,7 +311,7 @@ fn could_use_elision<'tcx>(
     Some((elidable_lts, usages))
 }
 
-fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<LocalDefId> {
+fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefId> {
     named_generics
         .iter()
         .filter_map(|par| {
@@ -497,7 +497,7 @@ struct Usage {
 
 struct LifetimeChecker<'cx, 'tcx, F> {
     cx: &'cx LateContext<'tcx>,
-    map: FxHashMap<LocalDefId, Vec<Usage>>,
+    map: FxIndexMap<LocalDefId, Vec<Usage>>,
     where_predicate_depth: usize,
     generic_args_depth: usize,
     phantom: std::marker::PhantomData<F>,
@@ -619,7 +619,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
 fn report_elidable_impl_lifetimes<'tcx>(
     cx: &LateContext<'tcx>,
     impl_: &'tcx Impl<'_>,
-    map: &FxHashMap<LocalDefId, Vec<Usage>>,
+    map: &FxIndexMap<LocalDefId, Vec<Usage>>,
 ) {
     let single_usages = map
         .iter()

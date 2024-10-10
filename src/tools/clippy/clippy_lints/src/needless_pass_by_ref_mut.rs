@@ -5,7 +5,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
 use core::ops::ControlFlow;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -101,7 +101,7 @@ fn check_closures<'tcx>(
     ctx: &mut MutablyUsedVariablesCtxt<'tcx>,
     cx: &LateContext<'tcx>,
     checked_closures: &mut FxHashSet<LocalDefId>,
-    closures: FxHashSet<LocalDefId>,
+    closures: FxIndexSet<LocalDefId>,
 ) {
     let hir = cx.tcx.hir();
     for closure in closures {
@@ -196,7 +196,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                 prev_bind: None,
                 prev_move_to_closure: HirIdSet::default(),
                 aliases: HirIdMap::default(),
-                async_closures: FxHashSet::default(),
+                async_closures: FxIndexSet::default(),
                 tcx: cx.tcx,
             };
             euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx)
@@ -207,7 +207,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
 
             // We retrieve all the closures declared in the function because they will not be found
             // by `euv::Delegate`.
-            let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
+            let mut closures: FxIndexSet<LocalDefId> = FxIndexSet::default();
             for_each_expr(cx, body, |expr| {
                 if let ExprKind::Closure(closure) = expr.kind {
                     closures.insert(closure.def_id);
@@ -307,7 +307,7 @@ struct MutablyUsedVariablesCtxt<'tcx> {
     /// use of a variable.
     prev_move_to_closure: HirIdSet,
     aliases: HirIdMap<HirId>,
-    async_closures: FxHashSet<LocalDefId>,
+    async_closures: FxIndexSet<LocalDefId>,
     tcx: TyCtxt<'tcx>,
 }
 

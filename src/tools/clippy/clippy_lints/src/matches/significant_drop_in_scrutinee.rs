@@ -7,6 +7,7 @@ use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{get_attr, is_lint_allowed};
 use itertools::Itertools;
 use rustc_ast::Mutability;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
@@ -475,19 +476,19 @@ impl<'tcx> Visitor<'tcx> for SigDropHelper<'_, 'tcx> {
 
 struct ArmSigDropHelper<'a, 'tcx> {
     sig_drop_checker: SigDropChecker<'a, 'tcx>,
-    found_sig_drop_spans: FxHashSet<Span>,
+    found_sig_drop_spans: FxIndexSet<Span>,
 }
 
 impl<'a, 'tcx> ArmSigDropHelper<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> ArmSigDropHelper<'a, 'tcx> {
         ArmSigDropHelper {
             sig_drop_checker: SigDropChecker::new(cx),
-            found_sig_drop_spans: FxHashSet::<Span>::default(),
+            found_sig_drop_spans: FxIndexSet::<Span>::default(),
         }
     }
 }
 
-fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &[&'tcx Expr<'_>]) -> FxHashSet<Span> {
+fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &[&'tcx Expr<'_>]) -> FxIndexSet<Span> {
     let mut helper = ArmSigDropHelper::new(cx);
     for arm in arms {
         helper.visit_expr(arm);
