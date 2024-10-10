@@ -33,20 +33,20 @@ help: to link to the struct, prefix with `struct@`
 LL | /// [`struct@ambiguous`] is ambiguous.
    |       +++++++
 
-error: `ambiguous` is both a function and a struct
-  --> $DIR/ambiguity.rs:29:6
+error: `foo::bar` is both a function and an enum
+  --> $DIR/ambiguity.rs:35:43
    |
-LL | /// [ambiguous] is ambiguous.
-   |      ^^^^^^^^^ ambiguous link
+LL | /// Ambiguous non-implied shortcut link [`foo::bar`].
+   |                                           ^^^^^^^^ ambiguous link
    |
 help: to link to the function, add parentheses
    |
-LL | /// [ambiguous()] is ambiguous.
-   |               ++
-help: to link to the struct, prefix with `struct@`
+LL | /// Ambiguous non-implied shortcut link [`foo::bar()`].
+   |                                                   ++
+help: to link to the enum, prefix with `enum@`
    |
-LL | /// [struct@ambiguous] is ambiguous.
-   |      +++++++
+LL | /// Ambiguous non-implied shortcut link [`enum@foo::bar`].
+   |                                           +++++
 
 error: `multi_conflict` is a function, a struct, and a macro
   --> $DIR/ambiguity.rs:31:7
@@ -82,20 +82,5 @@ help: to link to the module, prefix with `mod@`
 LL | /// Ambiguous [mod@type_and_value].
    |                ++++
 
-error: `foo::bar` is both a function and an enum
-  --> $DIR/ambiguity.rs:35:43
-   |
-LL | /// Ambiguous non-implied shortcut link [`foo::bar`].
-   |                                           ^^^^^^^^ ambiguous link
-   |
-help: to link to the function, add parentheses
-   |
-LL | /// Ambiguous non-implied shortcut link [`foo::bar()`].
-   |                                                   ++
-help: to link to the enum, prefix with `enum@`
-   |
-LL | /// Ambiguous non-implied shortcut link [`enum@foo::bar`].
-   |                                           +++++
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 

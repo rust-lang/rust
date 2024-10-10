@@ -27,6 +27,7 @@ mod propagate_stability;
 pub(crate) use self::propagate_stability::PROPAGATE_STABILITY;
 
 pub(crate) mod collect_intra_doc_links;
+pub(crate) use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
 mod check_doc_test_visibility;
 pub(crate) use self::check_doc_test_visibility::CHECK_DOC_TEST_VISIBILITY;
@@ -78,6 +79,7 @@ pub(crate) const PASSES: &[Pass] = &[
     STRIP_PRIV_IMPORTS,
     PROPAGATE_DOC_CFG,
     PROPAGATE_STABILITY,
+    COLLECT_INTRA_DOC_LINKS,
     COLLECT_TRAIT_IMPLS,
     CALCULATE_DOC_COVERAGE,
     RUN_LINTS,
@@ -91,6 +93,7 @@ pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
+    ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
     ConditionalPass::always(PROPAGATE_DOC_CFG),
     ConditionalPass::always(PROPAGATE_STABILITY),
     ConditionalPass::always(RUN_LINTS),

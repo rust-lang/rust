@@ -34,7 +34,16 @@ use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
+use crate::passes::Pass;
 use crate::visit::DocVisitor;
+
+/// We create an empty pass for `collect_intra_doc_link` so it still listed when displaying
+/// passes list.
+pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
+    name: "collect-intra-doc-links",
+    run: |krate: Crate, _: &mut DocContext<'_>| krate,
+    description: "resolves intra-doc links",
+};
 
 pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
     krate: Crate,
@@ -247,6 +256,7 @@ pub(crate) struct ResolutionInfo {
     dis: Option<Disambiguator>,
     path_str: Box<str>,
     extra_fragment: Option<String>,
+    link_range: MarkdownLinkRange,
 }
 
 #[derive(Clone, Debug)]
@@ -290,7 +300,7 @@ pub(crate) struct LinkCollector<'a, 'tcx> {
     pub(crate) cx: &'a mut DocContext<'tcx>,
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
-    pub(crate) visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
+    pub(crate) visited_links: FxHashMap<ResolutionInfo, Option<Vec<(Res, Option<UrlFragment>)>>>,
     /// These links are ambiguous. We need for the cache to have its paths filled. Unfortunately,
     /// if we run the `LinkCollector` pass after `Cache::populate`, a lot of items that we need
     /// to go through will be removed, making a lot of intra-doc links to not be inferred.
@@ -299,7 +309,7 @@ pub(crate) struct LinkCollector<'a, 'tcx> {
     /// inferring them (if possible).
     ///
     /// Key is `(item ID, path str)`.
-    pub(crate) ambiguous_links: FxHashMap<(ItemId, String), AmbiguousLinks>,
+    pub(crate) ambiguous_links: FxHashMap<(ItemId, String), Vec<AmbiguousLinks>>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -1079,6 +1089,7 @@ impl LinkCollector<'_, '_> {
                 dis: disambiguator,
                 path_str: path_str.clone(),
                 extra_fragment: extra_fragment.clone(),
+                link_range: ori_link.range.clone(),
             },
             diag_info.clone(), // this struct should really be Copy, but Range is not :(
             // For reference-style links we want to report only one error so unsuccessful
@@ -1095,7 +1106,11 @@ impl LinkCollector<'_, '_> {
                 diag_info: diag_info.into(),
                 resolved,
             };
-            self.ambiguous_links.insert((item.item_id, path_str.to_string()), links);
+
+            self.ambiguous_links
+                .entry((item.item_id, path_str.to_string()))
+                .or_default()
+                .push(links);
             None
         } else if let Some((res, fragment)) = resolved.pop() {
             self.compute_link(res, fragment, path_str, disambiguator, diag_info, link_text)
@@ -1152,51 +1167,60 @@ impl LinkCollector<'_, '_> {
     pub(crate) fn resolve_ambiguities(&mut self) {
         let mut ambiguous_links = mem::take(&mut self.ambiguous_links);
 
-        for ((item_id, path_str), info) in ambiguous_links.iter_mut() {
-            info.resolved.retain(|(res, _)| match res {
-                Res::Def(_, def_id) => self.validate_link(*def_id),
-                // Primitive types are always valid.
-                Res::Primitive(_) => true,
-            });
-            let diag_info = info.diag_info.into_info();
-            match info.resolved.len() {
-                1 => {
-                    let (res, fragment) = info.resolved.pop().unwrap();
-                    if let Some(link) = self.compute_link(
-                        res,
-                        fragment,
-                        path_str,
-                        info.disambiguator,
-                        diag_info,
-                        &info.link_text,
-                    ) {
-                        self.save_link(*item_id, link);
+        for ((item_id, path_str), info_items) in ambiguous_links.iter_mut() {
+            for info in info_items {
+                info.resolved.retain(|(res, _)| match res {
+                    Res::Def(_, def_id) => self.validate_link(*def_id),
+                    // Primitive types are always valid.
+                    Res::Primitive(_) => true,
+                });
+                let diag_info = info.diag_info.into_info();
+                match info.resolved.len() {
+                    1 => {
+                        let (res, fragment) = info.resolved.pop().unwrap();
+                        if let Some(link) = self.compute_link(
+                            res,
+                            fragment,
+                            path_str,
+                            info.disambiguator,
+                            diag_info,
+                            &info.link_text,
+                        ) {
+                            self.save_link(*item_id, link);
+                        }
                     }
-                }
-                0 => {
-                    report_diagnostic(
-                        self.cx.tcx,
-                        BROKEN_INTRA_DOC_LINKS,
-                        format!(
-                            "all items matching `{path_str}` are either private or doc(hidden)"
-                        ),
-                        &diag_info,
-                        |diag, sp, _| {
-                            if let Some(sp) = sp {
-                                diag.span_label(sp, "unresolved link");
-                            } else {
-                                diag.note("unresolved link");
-                            }
-                        },
-                    );
-                }
-                _ => {
-                    let candidates = info
-                        .resolved
-                        .iter()
-                        .map(|(res, _)| (*res, res.def_id(self.cx.tcx)))
-                        .collect::<Vec<_>>();
-                    ambiguity_error(self.cx, &diag_info, path_str, &candidates, true);
+                    0 => {
+                        report_diagnostic(
+                            self.cx.tcx,
+                            BROKEN_INTRA_DOC_LINKS,
+                            format!(
+                                "all items matching `{path_str}` are either private or doc(hidden)"
+                            ),
+                            &diag_info,
+                            |diag, sp, _| {
+                                if let Some(sp) = sp {
+                                    diag.span_label(sp, "unresolved link");
+                                } else {
+                                    diag.note("unresolved link");
+                                }
+                            },
+                        );
+                    }
+                    _ => {
+                        let candidates = info
+                            .resolved
+                            .iter()
+                            .map(|(res, fragment)| {
+                                let def_id = if let Some(UrlFragment::Item(def_id)) = fragment {
+                                    Some(*def_id)
+                                } else {
+                                    None
+                                };
+                                (*res, def_id)
+                            })
+                            .collect::<Vec<_>>();
+                        ambiguity_error(self.cx, &diag_info, path_str, &candidates, true);
+                    }
                 }
             }
         }
@@ -1387,15 +1411,13 @@ impl LinkCollector<'_, '_> {
         diag: DiagnosticInfo<'_>,
         // If errors are cached then they are only reported on first occurrence
         // which we want in some cases but not in others.
-        cache_errors: bool,
+        _cache_errors: bool,
         // If this call is intended to be recoverable, then pass true to silence.
         // This is only recoverable when path is failed to resolved.
         recoverable: bool,
     ) -> Option<Vec<(Res, Option<UrlFragment>)>> {
         if let Some(res) = self.visited_links.get(&key) {
-            if res.is_some() || cache_errors {
-                return res.clone().map(|r| vec![r]);
-            }
+            return res.clone();
         }
 
         let mut candidates = self.resolve_with_disambiguator(&key, diag.clone(), recoverable);
@@ -1426,25 +1448,24 @@ impl LinkCollector<'_, '_> {
         }
 
         let mut resolved = Vec::with_capacity(candidates.len());
-        for (res, def_id) in candidates.as_slice() {
+        for (res, def_id) in candidates {
             let fragment = match (&key.extra_fragment, def_id) {
                 (Some(_), Some(def_id)) => {
-                    report_anchor_conflict(self.cx, diag, *def_id);
+                    report_anchor_conflict(self.cx, diag, def_id);
                     return None;
                 }
                 (Some(u_frag), None) => Some(UrlFragment::UserWritten(u_frag.clone())),
-                (None, Some(def_id)) => Some(UrlFragment::Item(*def_id)),
+                (None, Some(def_id)) => Some(UrlFragment::Item(def_id)),
                 (None, None) => None,
             };
-            let r = (res.clone(), fragment.clone());
-            self.visited_links.insert(key.clone(), Some(r.clone()));
-            resolved.push(r);
+            resolved.push((res, fragment));
         }
 
-        if resolved.is_empty() && cache_errors {
+        if resolved.is_empty() {
             self.visited_links.insert(key, None);
             None
         } else {
+            self.visited_links.insert(key.clone(), Some(resolved.clone()));
             Some(resolved)
         }
     }

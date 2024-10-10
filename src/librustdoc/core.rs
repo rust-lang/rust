@@ -31,7 +31,7 @@ use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::Condition::*;
 use crate::passes::collect_intra_doc_links::LinkCollector;
-use crate::passes::{self};
+use crate::passes;
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -441,20 +441,22 @@ pub(crate) fn run_global_ctxt(
         }
     }
 
+    debug!("running pass {}", passes::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS.name);
     let (mut krate, LinkCollector { visited_links, ambiguous_links, .. }) =
         tcx.sess.time("collect_intra_doc_links", || {
             passes::collect_intra_doc_links::collect_intra_doc_links(krate, &mut ctxt)
         });
-    tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
-
-    if let Some(guar) = tcx.dcx().has_errors() {
-        return Err(guar);
-    }
 
     krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
 
     let mut collector = LinkCollector { cx: &mut ctxt, visited_links, ambiguous_links };
     collector.resolve_ambiguities();
+
+    tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
+
+    if let Some(guar) = tcx.dcx().has_errors() {
+        return Err(guar);
+    }
 
     Ok((krate, ctxt.render_options, ctxt.cache))
 }
