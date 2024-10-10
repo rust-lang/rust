@@ -607,7 +607,7 @@ impl Pat {
     /// Walk top-down and call `it` in each place where a pattern occurs
     /// starting with the root pattern `walk` is called on. If `it` returns
     /// false then we will descend no further but siblings will be processed.
-    pub fn walk(&self, it: &mut impl FnMut(&Pat) -> bool) {
+    pub fn walk<'s>(&'s self, it: &mut impl FnMut(&'s Pat) -> bool) {
         if !it(self) {
             return;
         }
@@ -626,9 +626,11 @@ impl Pat {
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s) | PatKind::Deref(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => {
-                s.walk(it)
-            }
+            PatKind::Box(s)
+            | PatKind::Deref(s)
+            | PatKind::Ref(s, _)
+            | PatKind::Paren(s)
+            | PatKind::Guard(s, _) => s.walk(it),
 
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild
@@ -837,6 +839,9 @@ pub enum PatKind {
 
     // A never pattern `!`.
     Never,
+
+    /// A guard pattern (e.g., `x if guard(x)`).
+    Guard(P<Pat>, P<Expr>),
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),

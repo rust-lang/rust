@@ -2,6 +2,10 @@
 //! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
+mod block;
+mod expr;
+mod pattern;
+
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -13,9 +17,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
-use tracing::instrument;
 
-use crate::thir::pattern::pat_from_hir;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 pub(crate) fn thir_body(
@@ -107,11 +109,6 @@ impl<'tcx> Cx<'tcx> {
                 .iter()
                 .all(|attr| attr.name_or_empty() != rustc_span::sym::custom_mir),
         }
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
-        pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
     }
 
     fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {
@@ -206,6 +203,3 @@ impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'tcx> {
         self.typeck_results
     }
 }
-
-mod block;
-mod expr;

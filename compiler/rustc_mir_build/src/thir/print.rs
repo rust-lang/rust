@@ -770,6 +770,14 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "]", depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
+            PatKind::Guard { subpattern, condition } => {
+                print_indented!(self, "Guard {", depth_lvl + 1);
+                print_indented!(self, "subpattern:", depth_lvl + 2);
+                self.print_pat(subpattern, depth_lvl + 3);
+                print_indented!(self, "condition:", depth_lvl + 2);
+                self.print_expr(*condition, depth_lvl + 3);
+                print_indented!(self, "}", depth_lvl + 1);
+            }
             PatKind::Error(_) => {
                 print_indented!(self, "Error", depth_lvl + 1);
             }

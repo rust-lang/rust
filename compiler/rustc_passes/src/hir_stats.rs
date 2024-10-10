@@ -294,6 +294,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
             Deref,
             Ref,
             Lit,
+            Guard,
             Range,
             Slice,
             Err
@@ -551,6 +552,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             Slice,
             Rest,
             Never,
+            Guard,
             Paren,
             MacCall,
             Err

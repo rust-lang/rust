@@ -469,7 +469,7 @@ impl<'a> Parser<'a> {
             PathStyle::Pat
                 if let Ok(_) = self
                     .parse_paren_comma_seq(|p| {
-                        p.parse_pat_allow_top_alt(
+                        p.parse_pat_allow_top_guard(
                             None,
                             RecoverComma::No,
                             RecoverColon::No,

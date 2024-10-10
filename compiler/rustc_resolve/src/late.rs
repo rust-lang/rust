@@ -758,7 +758,14 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
     fn visit_pat(&mut self, p: &'ast Pat) {
         let prev = self.diag_metadata.current_pat;
         self.diag_metadata.current_pat = Some(p);
-        visit::walk_pat(self, p);
+
+        match p.kind {
+            // We visit only the subpattern, allowing the condition to be resolved later in `resolve_pat`.
+            PatKind::Guard(ref subpat, _) => self.visit_pat(subpat),
+            // Otherwise, we just walk the pattern.
+            _ => visit::walk_pat(self, p),
+        }
+
         self.diag_metadata.current_pat = prev;
     }
     fn visit_local(&mut self, local: &'ast Local) {
@@ -2220,12 +2227,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let mut parameter_info = Vec::new();
         let mut all_candidates = Vec::new();
 
+        let top_rib_idx = self.ribs[ValueNS].len() - 1;
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         for (index, (pat, ty)) in inputs.enumerate() {
             debug!(?pat, ?ty);
             self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
                 if let Some(pat) = pat {
-                    this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+                    this.resolve_pattern(pat, PatternSource::FnParam, top_rib_idx, &mut bindings);
                 }
             });
 
@@ -3483,6 +3491,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     Ident::new(kw::SelfLower, span),
                     delegation.id,
                     PatternSource::FnParam,
+                    this.ribs[ValueNS].len() - 1,
                     &mut bindings,
                 );
                 this.visit_block(body);
@@ -3491,10 +3500,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn resolve_params(&mut self, params: &'ast [Param]) {
+        let top_rib_idx = self.ribs[ValueNS].len() - 1;
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
             for Param { pat, .. } in params {
-                this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+                this.resolve_pattern(pat, PatternSource::FnParam, top_rib_idx, &mut bindings);
             }
         });
         for Param { ty, .. } in params {
@@ -3712,20 +3722,22 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// Arising from `source`, resolve a top level pattern.
     fn resolve_pattern_top(&mut self, pat: &'ast Pat, pat_src: PatternSource) {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
-        self.resolve_pattern(pat, pat_src, &mut bindings);
+        let top_rib_idx = self.ribs[ValueNS].len() - 1;
+        self.resolve_pattern(pat, pat_src, top_rib_idx, &mut bindings);
     }
 
     fn resolve_pattern(
         &mut self,
         pat: &'ast Pat,
         pat_src: PatternSource,
+        top_rib_idx: usize,
         bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
         // We walk the pattern before declaring the pattern's inner bindings,
         // so that we avoid resolving a literal expression to a binding defined
         // by the pattern.
         visit::walk_pat(self, pat);
-        self.resolve_pattern_inner(pat, pat_src, bindings);
+        self.resolve_pattern_inner(pat, pat_src, top_rib_idx, bindings);
         // This has to happen *after* we determine which pat_idents are variants:
         self.check_consistent_bindings(pat);
     }
@@ -3751,8 +3763,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// See the implementation and `fresh_binding` for more details.
     fn resolve_pattern_inner(
         &mut self,
-        pat: &Pat,
+        pat: &'ast Pat,
         pat_src: PatternSource,
+        top_rib_idx: usize,
         bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
         // Visit all direct subpatterns of this pattern.
@@ -3765,7 +3778,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     let has_sub = sub.is_some();
                     let res = self
                         .try_resolve_as_non_binding(pat_src, bmode, ident, has_sub)
-                        .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
+                        .unwrap_or_else(|| {
+                            self.fresh_binding(ident, pat.id, pat_src, top_rib_idx, bindings)
+                        });
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                     self.r.record_pat_span(pat.id, pat.span);
                 }
@@ -3796,7 +3811,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         // part of the or-pattern internally rejects already bound names.
                         // For example, `V1(a) | V2(a, a)` and `V1(a, a) | V2(a)` are bad.
                         bindings.push((PatBoundCtx::Product, Default::default()));
-                        self.resolve_pattern_inner(p, pat_src, bindings);
+                        self.resolve_pattern_inner(p, pat_src, top_rib_idx, bindings);
                         // Move up the non-overlapping bindings to the or-pattern.
                         // Existing bindings just get "merged".
                         let collected = bindings.pop().unwrap().1;
@@ -3811,6 +3826,15 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     // Prevent visiting `ps` as we've already done so above.
                     return false;
                 }
+                PatKind::Guard(ref subpat, ref cond) => {
+                    self.with_rib(ValueNS, RibKind::Normal, |this| {
+                        this.resolve_pattern_inner(subpat, pat_src, top_rib_idx, bindings);
+                        this.resolve_expr(cond, None);
+                    });
+
+                    // Prevent visiting `pat` as we've already done so above.
+                    return false;
+                }
                 _ => {}
             }
             true
@@ -3822,6 +3846,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ident: Ident,
         pat_id: NodeId,
         pat_src: PatternSource,
+        top_rib_idx: usize,
         bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) -> Res {
         // Add the binding to the local ribs, if it doesn't already exist in the bindings map.
@@ -3854,18 +3879,23 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             bindings.last_mut().unwrap().1.insert(ident);
         }
 
-        if already_bound_or {
+        let res = if already_bound_or {
             // `Variant1(a) | Variant2(a)`, ok
             // Reuse definition from the first `a`.
-            self.innermost_rib_bindings(ValueNS)[&ident]
+            self.ribs[ValueNS][top_rib_idx].bindings[&ident]
         } else {
             let res = Res::Local(pat_id);
             if ident_valid {
                 // A completely fresh binding add to the set if it's valid.
-                self.innermost_rib_bindings(ValueNS).insert(ident, res);
+                self.ribs[ValueNS][top_rib_idx].bindings.insert(ident, res);
             }
             res
-        }
+        };
+
+        // Record the binding in the innermost rib so guard expressions can use it.
+        self.innermost_rib_bindings(ValueNS).insert(ident, res);
+
+        res
     }
 
     fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut IdentMap<Res> {

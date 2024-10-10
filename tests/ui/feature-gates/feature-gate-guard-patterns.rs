@@ -1,0 +1,29 @@
+fn match_guards_still_work() {
+    match 0 {
+        0 if guard(0) => {},
+        _ => {},
+    }
+}
+
+fn other_guards_dont() {
+    match 0 {
+        (0 if guard(0)) | 1 => {},
+        //~^ ERROR: guard patterns are unstable
+        _ => {},
+    }
+
+    let ((x if guard(x)) | x) = 0;
+    //~^ ERROR: guard patterns are unstable
+
+    if let (x if guard(x)) = 0 {}
+    //~^ ERROR: guard patterns are unstable
+    while let (x if guard(x)) = 0 {}
+    //~^ ERROR: guard patterns are unstable
+}
+
+fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {}
+//~^ ERROR: guard patterns are unstable
+
+fn guard<T>(x: T) -> bool {
+    unimplemented!()
+}

@@ -334,6 +334,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 PatKind::Or { .. } |
                 PatKind::InlineConstant { .. } |
                 PatKind::AscribeUserType { .. } |
+                PatKind::Guard { .. } |
                 PatKind::Error(_) => {}
             }
         };

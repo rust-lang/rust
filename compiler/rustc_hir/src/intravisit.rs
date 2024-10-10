@@ -700,6 +700,10 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V:
             visit_opt!(visitor, visit_pat, slice_pattern);
             walk_list!(visitor, visit_pat, postpatterns);
         }
+        PatKind::Guard(subpat, condition) => {
+            try_visit!(visitor.visit_pat(subpat));
+            try_visit!(visitor.visit_expr(condition));
+        }
     }
     V::Result::output()
 }

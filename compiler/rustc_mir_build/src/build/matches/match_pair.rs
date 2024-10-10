@@ -1,4 +1,5 @@
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
@@ -250,6 +251,10 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
             }
 
             PatKind::Never => TestCase::Never,
+
+            PatKind::Guard { .. } => {
+                span_bug!(pattern.span, "MIR lowering is not yet implemented for guard patterns")
+            }
         };
 
         MatchPairTree { place, test_case, subpairs, pattern }

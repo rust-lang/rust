@@ -27,7 +27,7 @@ fn array_indexing() {
     { let x[0, 1, 2]; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
     { let x[0; 20]; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
     { let x[]; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
-    { let (x[]); } //~ error: expected one of `)`, `,`, `@`, or `|`, found `[`
+    { let (x[]); } //~ error: expected one of `)`, `,`, `@`, `if`, or `|`, found `[`
     //~^ missing `,`
 }
 
@@ -95,12 +95,12 @@ fn main() {
         f?() => (),
         //~^ error: expected a pattern, found an expression
         (_ + 1) => (),
-        //~^ error: expected one of `)`, `,`, or `|`, found `+`
+        //~^ error: expected one of `)`, `,`, `if`, or `|`, found `+`
     }
 
     let 1 + 1 = 2;
     //~^ error: expected a pattern, found an expression
 
     let b = matches!(x, (x * x | x.f()) | x[0]);
-    //~^ error: expected one of `)`, `,`, `@`, or `|`, found `*`
+    //~^ error: expected one of `)`, `,`, `@`, `if`, or `|`, found `*`
 }

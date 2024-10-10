@@ -258,9 +258,11 @@ impl<'a> NormalizedPat<'a> {
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
-            PatKind::Binding(.., Some(pat)) | PatKind::Box(pat) | PatKind::Deref(pat) | PatKind::Ref(pat, _) => {
-                Self::from_pat(cx, arena, pat)
-            },
+            PatKind::Binding(.., Some(pat))
+            | PatKind::Box(pat)
+            | PatKind::Deref(pat)
+            | PatKind::Ref(pat, _)
+            | PatKind::Guard(pat, _) => Self::from_pat(cx, arena, pat),
             PatKind::Never => Self::Never,
             PatKind::Struct(ref path, fields, _) => {
                 let fields =

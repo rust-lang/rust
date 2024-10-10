@@ -645,7 +645,8 @@ impl<'tcx> Pat<'tcx> {
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
             | DerefPattern { subpattern, .. }
-            | InlineConstant { subpattern, .. } => subpattern.walk_(it),
+            | InlineConstant { subpattern, .. }
+            | Guard { subpattern, .. } => subpattern.walk_(it),
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
@@ -826,6 +827,13 @@ pub enum PatKind<'tcx> {
     /// Invariant: `pats.len() >= 2`.
     Or {
         pats: Box<[Box<Pat<'tcx>>]>,
+    },
+
+    /// A guard pattern, e.g. `x if guard(x)`.
+    Guard {
+        subpattern: Box<Pat<'tcx>>,
+        #[type_visitable(ignore)]
+        condition: ExprId,
     },
 
     /// A never pattern `!`.

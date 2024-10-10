@@ -22,7 +22,7 @@ use rustc_middle::util::Providers;
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
-    providers.check_match = thir::pattern::check_match;
+    providers.check_match = thir::check_match::check_match;
     providers.lit_to_const = thir::constant::lit_to_const;
     providers.hooks.build_mir = build::mir_build;
     providers.closure_saved_names_of_captured_variables =
