@@ -91,6 +91,10 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// Cached terminate upon unwinding block and its reason
     terminate_block: Option<(Bx::BasicBlock, UnwindTerminateReason)>,
 
+    /// A bool flag for each basic block indicating whether it is a cold block.
+    /// A cold block is a block that is unlikely to be executed at runtime.
+    cold_blocks: IndexVec<mir::BasicBlock, bool>,
+
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `PlaceRef` representing an alloca, but not always:
     /// sometimes we can skip the alloca and just store the value
@@ -207,6 +211,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
+        cold_blocks: find_cold_blocks(cx.tcx(), mir),
         locals: locals::Locals::empty(),
         debug_context,
         per_local_var_debug_info: None,
@@ -476,4 +481,40 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     args
+}
+
+fn find_cold_blocks<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir: &mir::Body<'tcx>,
+) -> IndexVec<mir::BasicBlock, bool> {
+    let local_decls = &mir.local_decls;
+
+    let mut cold_blocks: IndexVec<mir::BasicBlock, bool> =
+        IndexVec::from_elem(false, &mir.basic_blocks);
+
+    // Traverse all basic blocks from end of the function to the start.
+    for (bb, bb_data) in traversal::postorder(mir) {
+        let terminator = bb_data.terminator();
+
+        // If a BB ends with a call to a cold function, mark it as cold.
+        if let mir::TerminatorKind::Call { ref func, .. } = terminator.kind
+            && let ty::FnDef(def_id, ..) = *func.ty(local_decls, tcx).kind()
+            && let attrs = tcx.codegen_fn_attrs(def_id)
+            && attrs.flags.contains(CodegenFnAttrFlags::COLD)
+        {
+            cold_blocks[bb] = true;
+            continue;
+        }
+
+        // If all successors of a BB are cold and there's at least one of them, mark this BB as cold
+        let mut succ = terminator.successors();
+        if let Some(first) = succ.next()
+            && cold_blocks[first]
+            && succ.all(|s| cold_blocks[s])
+        {
+            cold_blocks[bb] = true;
+        }
+    }
+
+    cold_blocks
 }
