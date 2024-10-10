@@ -4,7 +4,7 @@ use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFunctionEntry};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
 use rustc_span::symbol::sym;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
@@ -500,7 +500,9 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     to_add.extend(tune_cpu_attr(cx));
 
     let function_features =
-        codegen_fn_attrs.target_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
+        codegen_fn_attrs.target_features_for_instance(cx.tcx, ParamEnv::reveal_all(), instance);
+    let function_features =
+        function_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
 
     if let Some(f) = llvm_util::check_tied_features(
         cx.tcx.sess,

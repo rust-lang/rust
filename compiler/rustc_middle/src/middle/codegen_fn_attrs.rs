@@ -5,6 +5,7 @@ use rustc_target::abi::Align;
 use rustc_target::spec::SanitizerSet;
 
 use crate::mir::mono::Linkage;
+use crate::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct CodegenFnAttrs {
@@ -26,9 +27,9 @@ pub struct CodegenFnAttrs {
     /// be set when `link_name` is set. This is for foreign items with the
     /// "raw-dylib" kind.
     pub link_ordinal: Option<u16>,
-    /// The `#[target_feature(enable = "...")]` attribute and the enabled
-    /// features (only enabled features are supported right now).
-    pub target_features: Vec<TargetFeature>,
+    /// All the target features that are enabled for this function. Some features might be enabled
+    /// implicitly.
+    pub def_target_features: Vec<TargetFeature>,
     /// The `#[linkage = "..."]` attribute on Rust-defined items and the value we found.
     pub linkage: Option<Linkage>,
     /// The `#[linkage = "..."]` attribute on foreign items and the value we found.
@@ -49,14 +50,16 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
+    /// Whether the target features can be extended through the arguments of the function.
+    pub target_features_from_args: bool,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct TargetFeature {
     /// The name of the target feature (e.g. "avx")
     pub name: Symbol,
-    /// The feature is implied by another feature, rather than explicitly added by the
-    /// `#[target_feature]` attribute
+    /// The feature is implied by another feature or by an argument, rather than explicitly
+    /// added by the `#[target_feature]` attribute
     pub implied: bool,
 }
 
@@ -137,6 +140,30 @@ bitflags::bitflags! {
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
 
+pub fn extend_with_struct_target_features<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    target_features: &mut Vec<TargetFeature>,
+) {
+    // Collect target features from types reachable from `env.value` by dereferencing a certain
+    // number of references and resolving aliases.
+
+    let mut ty = env.value;
+    if matches!(ty.kind(), ty::Alias(..)) {
+        ty = match tcx.try_normalize_erasing_regions(env.param_env, ty) {
+            Ok(ty) => ty,
+            Err(_) => return,
+        };
+    }
+    while let ty::Ref(_, inner, _) = ty.kind() {
+        ty = *inner;
+    }
+
+    if let ty::Adt(adt_def, ..) = ty.kind() {
+        target_features.extend_from_slice(&tcx.struct_target_features(adt_def.did()));
+    }
+}
+
 impl CodegenFnAttrs {
     pub const EMPTY: &'static Self = &Self::new();
 
@@ -148,7 +175,7 @@ impl CodegenFnAttrs {
             export_name: None,
             link_name: None,
             link_ordinal: None,
-            target_features: vec![],
+            def_target_features: vec![],
             linkage: None,
             import_linkage: None,
             link_section: None,
@@ -156,6 +183,7 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
+            target_features_from_args: false,
         }
     }
 
@@ -173,5 +201,60 @@ impl CodegenFnAttrs {
                 None | Some(Linkage::Internal | Linkage::Private) => false,
                 Some(_) => true,
             }
+    }
+
+    pub fn target_features_for_instance<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        instance: Instance<'tcx>,
+    ) -> Vec<TargetFeature> {
+        if !self.target_features_from_args {
+            return self.def_target_features.clone();
+        }
+        let inputs = match tcx.type_of(instance.def_id()).skip_binder().kind() {
+            ty::Closure(..) => {
+                let closure = instance.args.as_closure();
+                let mut inputs =
+                    tcx.instantiate_bound_regions_with_erased(closure.sig()).inputs().to_vec();
+                inputs.extend(closure.upvar_tys());
+                inputs
+            }
+            ty::CoroutineClosure(..) => {
+                let closure = instance.args.as_coroutine_closure();
+                // FIXME: might be missing inputs to the closure
+                closure.upvar_tys().to_vec()
+            }
+            ty::Coroutine(..) => {
+                let coro = instance.args.as_coroutine();
+                coro.upvar_tys().to_vec()
+            }
+            _ => {
+                let ty = match tcx.try_instantiate_and_normalize_erasing_regions(
+                    instance.args,
+                    param_env,
+                    tcx.type_of(instance.def_id()),
+                ) {
+                    Ok(ty) => ty,
+                    Err(_) => {
+                        return self.def_target_features.clone();
+                    }
+                };
+                let sig = tcx.instantiate_bound_regions_with_erased(ty.fn_sig(tcx));
+                sig.inputs().to_vec()
+            }
+        };
+        let mut additional_features = vec![];
+        for input in inputs {
+            extend_with_struct_target_features(tcx, param_env.and(input), &mut additional_features);
+        }
+        if additional_features.is_empty() {
+            self.def_target_features.clone()
+        } else {
+            additional_features.extend_from_slice(&self.def_target_features);
+            additional_features.sort_by_key(|a| (a.name, a.implied));
+            additional_features.dedup_by_key(|a| a.name);
+            additional_features
+        }
     }
 }
