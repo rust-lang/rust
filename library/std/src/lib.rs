@@ -267,6 +267,7 @@
 #![allow(unused_features)]
 //
 // Features:
+#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
@@ -627,6 +628,14 @@ pub mod simd {
     #[doc(inline)]
     pub use crate::std_float::StdFloat;
 }
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "124509")]
+mod autodiff {
+    pub use core::autodiff;
+}
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "124509")]
+pub use autodiff::autodiff;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {

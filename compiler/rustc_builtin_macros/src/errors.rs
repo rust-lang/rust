@@ -145,6 +145,78 @@ pub(crate) struct AllocMustStatics {
     pub(crate) span: Span,
 }
 
+#[cfg(llvm_enzyme)]
+pub(crate) use autodiff::*;
+
+#[cfg(llvm_enzyme)]
+mod autodiff {
+    use super::*;
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_missing_config)]
+    pub(crate) struct AutoDiffMissingConfig {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_unknown_activity)]
+    pub(crate) struct AutoDiffUnknownActivity {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) act: String,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_ty_activity)]
+    pub(crate) struct AutoDiffInvalidTypeForActivity {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) act: String,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_number_activities)]
+    pub(crate) struct AutoDiffInvalidNumberActivities {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) expected: usize,
+        pub(crate) found: usize,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_mode_activity)]
+    pub(crate) struct AutoDiffInvalidApplicationModeAct {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) mode: String,
+        pub(crate) act: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_mode)]
+    pub(crate) struct AutoDiffInvalidMode {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) mode: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff)]
+    pub(crate) struct AutoDiffInvalidApplication {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+}
+
+#[cfg(not(llvm_enzyme))]
+pub(crate) use ad_fallback::*;
+#[cfg(not(llvm_enzyme))]
+mod ad_fallback {
+    use super::*;
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_not_build)]
+    pub(crate) struct AutoDiffSupportNotBuild {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+}
+
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_invalid)]
 pub(crate) struct ConcatBytesInvalid {
