@@ -1688,7 +1688,7 @@ pub(crate) struct MarkdownLink {
     pub range: MarkdownLinkRange,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum MarkdownLinkRange {
     /// Normally, markdown link warnings point only at the destination.
     Destination(Range<usize>),

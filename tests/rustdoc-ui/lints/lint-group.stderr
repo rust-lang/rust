@@ -33,6 +33,14 @@ error: missing code example in this documentation
 LL | /// <unknown>
    | ^^^^^^^^^^^^^
 
+error: unclosed HTML tag `unknown`
+  --> $DIR/lint-group.rs:29:5
+   |
+LL | /// <unknown>
+   |     ^^^^^^^^^
+   |
+   = note: `#[deny(rustdoc::invalid_html_tags)]` implied by `#[deny(rustdoc::all)]`
+
 error: unresolved link to `error`
   --> $DIR/lint-group.rs:12:29
    |
@@ -41,14 +49,6 @@ LL | /// what up, let's make an [error]
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(rustdoc::all)]`
-
-error: unclosed HTML tag `unknown`
-  --> $DIR/lint-group.rs:29:5
-   |
-LL | /// <unknown>
-   |     ^^^^^^^^^
-   |
-   = note: `#[deny(rustdoc::invalid_html_tags)]` implied by `#[deny(rustdoc::all)]`
 
 error: aborting due to 5 previous errors
 
