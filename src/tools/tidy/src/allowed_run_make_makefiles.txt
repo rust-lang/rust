@@ -1,8 +1,6 @@
 run-make/branch-protection-check-IBT/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/extern-fn-reachable/Makefile
-run-make/incr-add-rust-src-component/Makefile
-run-make/issue-84395-lto-embed-bitcode/Makefile
 run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
 run-make/split-debuginfo/Makefile
