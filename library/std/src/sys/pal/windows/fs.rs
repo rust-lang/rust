@@ -503,6 +503,14 @@ impl File {
         Ok(newpos as u64)
     }
 
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        let mut result = 0;
+        Some(
+            cvt(unsafe { c::GetFileSizeEx(self.handle.as_raw_handle(), &mut result) })
+                .map(|_| result as u64),
+        )
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         Ok(Self { handle: self.handle.try_clone()? })
     }
