@@ -370,7 +370,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.consume_exprs(args)?;
             }
 
-            hir::ExprKind::Struct(_, fields, ref opt_with) => {
+            hir::ExprKind::Struct(_, fields, opt_with) => {
                 self.walk_struct_expr(fields, opt_with)?;
             }
 
@@ -687,7 +687,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     fn walk_struct_expr<'hir>(
         &self,
         fields: &[hir::ExprField<'_>],
-        opt_with: &Option<&'hir hir::Expr<'_>>,
+        opt_with: Option<&'hir hir::Expr<'_>>,
     ) -> Result<(), Cx::Error> {
         // Consume the expressions supplying values for each field.
         for field in fields {
@@ -702,11 +702,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
         }
 
-        let with_expr = match *opt_with {
-            Some(w) => &*w,
-            None => {
-                return Ok(());
-            }
+        let Some(with_expr) = opt_with else {
+            return Ok(());
         };
 
         let with_place = self.cat_expr(with_expr)?;
