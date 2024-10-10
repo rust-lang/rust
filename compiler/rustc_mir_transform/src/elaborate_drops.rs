@@ -133,7 +133,7 @@ impl InitializationData<'_, '_> {
     }
 
     fn maybe_live_dead(&self, path: MovePathIndex) -> (bool, bool) {
-        (self.inits.contains(path), self.uninits.contains(path))
+        (self.inits.get().contains(path), self.uninits.get().contains(path))
     }
 }
 

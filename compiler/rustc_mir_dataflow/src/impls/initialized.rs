@@ -11,9 +11,8 @@ use crate::elaborate_drops::DropFlagState;
 use crate::framework::SwitchIntEdgeEffects;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{
-    AnalysisDomain, GenKill, GenKillAnalysis, MaybeReachable, drop_flag_effects,
-    drop_flag_effects_for_function_entry, drop_flag_effects_for_location, lattice,
-    on_all_children_bits, on_lookup_result_bits,
+    Analysis, GenKill, MaybeReachable, drop_flag_effects, drop_flag_effects_for_function_entry,
+    drop_flag_effects_for_location, lattice, on_all_children_bits, on_lookup_result_bits,
 };
 
 /// `MaybeInitializedPlaces` tracks all places that might be
@@ -270,7 +269,7 @@ impl<'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     fn update_bits(
-        trans: &mut impl GenKill<MovePathIndex>,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -283,7 +282,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
 
 impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
     fn update_bits(
-        trans: &mut impl GenKill<MovePathIndex>,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -296,7 +295,7 @@ impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
 
 impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     fn update_bits(
-        trans: &mut impl GenKill<MovePathIndex>,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -307,7 +306,7 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     /// There can be many more `MovePathIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = MaybeReachable<ChunkedBitSet<MovePathIndex>>;
@@ -327,18 +326,10 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             state.gen_(path);
         });
     }
-}
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
-
-    fn domain_size(&self, _: &Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
-    }
-
-    fn statement_effect(
+    fn apply_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -360,7 +351,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         }
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -380,7 +371,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         edges
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
@@ -399,11 +390,11 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
+    fn apply_switch_int_edge_effects(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
         if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
@@ -442,7 +433,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     /// There can be many more `MovePathIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = ChunkedBitSet<MovePathIndex>;
@@ -464,18 +455,10 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             state.remove(path);
         });
     }
-}
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
-
-    fn domain_size(&self, _: &Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
-    }
-
-    fn statement_effect(
+    fn apply_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -487,7 +470,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         // mutable borrow occurs. Places cannot become uninitialized through a mutable reference.
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -505,7 +488,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         }
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
@@ -524,11 +507,11 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
+    fn apply_switch_int_edge_effects(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
         if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
@@ -571,7 +554,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> AnalysisDomain<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     /// Use set intersection as the join operator.
     type Domain = lattice::Dual<BitSet<MovePathIndex>>;
 
@@ -591,18 +574,10 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
             state.0.insert(path);
         });
     }
-}
 
-impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
-
-    fn domain_size(&self, _: &Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
-    }
-
-    fn statement_effect(
+    fn apply_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -611,7 +586,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
         })
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -623,7 +598,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
@@ -643,7 +618,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
+impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     /// There can be many more `InitIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = ChunkedBitSet<InitIndex>;
@@ -660,19 +635,11 @@ impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
             state.insert(InitIndex::new(arg_init));
         }
     }
-}
-
-impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
-    type Idx = InitIndex;
-
-    fn domain_size(&self, _: &Body<'tcx>) -> usize {
-        self.move_data().inits.len()
-    }
 
     #[instrument(skip(self, trans), level = "debug")]
-    fn statement_effect(
+    fn apply_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -698,7 +665,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     }
 
     #[instrument(skip(self, trans, terminator), level = "debug")]
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -720,7 +687,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         block: mir::BasicBlock,

@@ -4,7 +4,7 @@ use rustc_middle::mir::{
     self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
 };
 
-use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
+use crate::{Analysis, Backward, GenKill};
 
 /// A [live-variable dataflow analysis][liveness].
 ///
@@ -25,7 +25,7 @@ use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
 pub struct MaybeLiveLocals;
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
+impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     type Domain = BitSet<Local>;
     type Direction = Backward;
 
@@ -39,25 +39,17 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // No variables are live until we observe a use
     }
-}
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
-    type Idx = Local;
-
-    fn domain_size(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
-    }
-
-    fn statement_effect(
+    fn apply_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
         TransferFunction(trans).visit_statement(statement, location);
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -67,7 +59,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         terminator.edges()
     }
 
-    fn call_return_effect(
+    fn apply_call_return_effect(
         &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
@@ -89,12 +81,9 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     }
 }
 
-pub struct TransferFunction<'a, T>(pub &'a mut T);
+pub struct TransferFunction<'a>(pub &'a mut BitSet<Local>);
 
-impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
-where
-    T: GenKill<Local>,
-{
+impl<'tcx> Visitor<'tcx> for TransferFunction<'_> {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
             // The resume place is evaluated and assigned to only after coroutine resumes, so its
@@ -108,10 +97,10 @@ where
                     MutatingUseContext::Call | MutatingUseContext::AsmOutput,
                 ) = context
                 {
-                    // For the associated terminators, this is only a `Def` when the terminator returns
-                    // "successfully." As such, we handle this case separately in `call_return_effect`
-                    // above. However, if the place looks like `*_5`, this is still unconditionally a use of
-                    // `_5`.
+                    // For the associated terminators, this is only a `Def` when the terminator
+                    // returns "successfully." As such, we handle this case separately in
+                    // `call_return_effect` above. However, if the place looks like `*_5`, this is
+                    // still unconditionally a use of `_5`.
                 } else {
                     self.0.kill(place.local);
                 }
@@ -128,12 +117,9 @@ where
     }
 }
 
-struct YieldResumeEffect<'a, T>(&'a mut T);
+struct YieldResumeEffect<'a>(&'a mut BitSet<Local>);
 
-impl<'tcx, T> Visitor<'tcx> for YieldResumeEffect<'_, T>
-where
-    T: GenKill<Local>,
-{
+impl<'tcx> Visitor<'tcx> for YieldResumeEffect<'_> {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         DefUse::apply(self.0, *place, context);
         self.visit_projection(place.as_ref(), context, location);
@@ -151,7 +137,7 @@ enum DefUse {
 }
 
 impl DefUse {
-    fn apply(trans: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
+    fn apply(trans: &mut BitSet<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
             Some(DefUse::Def) => trans.kill(place.local),
             Some(DefUse::Use) => trans.gen_(place.local),
@@ -231,7 +217,7 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
     }
 }
 
-impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
+impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     type Domain = BitSet<Local>;
     type Direction = Backward;
 
@@ -245,9 +231,7 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // No variables are live until we observe a use
     }
-}
 
-impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,

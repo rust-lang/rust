@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_hir::def_id::DefId;
-use rustc_index::{Idx, IndexVec};
+use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, create_dump_file, dump_enabled, traversal};
 use rustc_middle::ty::TyCtxt;
@@ -16,15 +16,13 @@ use {rustc_ast as ast, rustc_graphviz as dot};
 
 use super::fmt::DebugWithContext;
 use super::{
-    Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis, GenKillSet, JoinSemiLattice,
-    ResultsCursor, ResultsVisitor, graphviz, visit_results,
+    Analysis, Direction, JoinSemiLattice, ResultsCursor, ResultsVisitor, graphviz, visit_results,
 };
 use crate::errors::{
     DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
 };
-use crate::framework::BitSetExt;
 
-type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
+type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as Analysis<'tcx>>::Domain>;
 
 /// A dataflow analysis that has converged to fixpoint.
 #[derive(Clone)]
@@ -82,53 +80,6 @@ where
     entry_sets: IndexVec<BasicBlock, A::Domain>,
     pass_name: Option<&'static str>,
     analysis: A,
-
-    /// Cached, cumulative transfer functions for each block.
-    //
-    // FIXME(ecstaticmorse): This boxed `Fn` trait object is invoked inside a tight loop for
-    // gen/kill problems on cyclic CFGs. This is not ideal, but it doesn't seem to degrade
-    // performance in practice. I've tried a few ways to avoid this, but they have downsides. See
-    // the message for the commit that added this FIXME for more information.
-    apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
-}
-
-impl<'mir, 'tcx, A, D, T> Engine<'mir, 'tcx, A>
-where
-    A: GenKillAnalysis<'tcx, Idx = T, Domain = D>,
-    D: Clone + JoinSemiLattice + GenKill<T> + BitSetExt<T>,
-    T: Idx,
-{
-    /// Creates a new `Engine` to solve a gen-kill dataflow problem.
-    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>, mut analysis: A) -> Self {
-        // If there are no back-edges in the control-flow graph, we only ever need to apply the
-        // transfer function for each block exactly once (assuming that we process blocks in RPO).
-        //
-        // In this case, there's no need to compute the block transfer functions ahead of time.
-        if !body.basic_blocks.is_cfg_cyclic() {
-            return Self::new(tcx, body, analysis, None);
-        }
-
-        // Otherwise, compute and store the cumulative transfer function for each block.
-
-        let identity = GenKillSet::identity(analysis.domain_size(body));
-        let mut trans_for_block = IndexVec::from_elem(identity, &body.basic_blocks);
-
-        for (block, block_data) in body.basic_blocks.iter_enumerated() {
-            let trans = &mut trans_for_block[block];
-            A::Direction::gen_kill_statement_effects_in_block(
-                &mut analysis,
-                trans,
-                block,
-                block_data,
-            );
-        }
-
-        let apply_trans = Box::new(move |bb: BasicBlock, state: &mut A::Domain| {
-            trans_for_block[bb].apply(state);
-        });
-
-        Self::new(tcx, body, analysis, Some(apply_trans as Box<_>))
-    }
 }
 
 impl<'mir, 'tcx, A, D> Engine<'mir, 'tcx, A>
@@ -138,19 +89,7 @@ where
 {
     /// Creates a new `Engine` to solve a dataflow problem with an arbitrary transfer
     /// function.
-    ///
-    /// Gen-kill problems should use `new_gen_kill`, which will coalesce transfer functions for
-    /// better performance.
-    pub fn new_generic(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>, analysis: A) -> Self {
-        Self::new(tcx, body, analysis, None)
-    }
-
-    fn new(
-        tcx: TyCtxt<'tcx>,
-        body: &'mir mir::Body<'tcx>,
-        analysis: A,
-        apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
-    ) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>, analysis: A) -> Self {
         let mut entry_sets =
             IndexVec::from_fn_n(|_| analysis.bottom_value(body), body.basic_blocks.len());
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
@@ -160,7 +99,7 @@ where
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
-        Engine { analysis, tcx, body, pass_name: None, entry_sets, apply_statement_trans_for_block }
+        Engine { analysis, tcx, body, pass_name: None, entry_sets }
     }
 
     /// Adds an identifier to the graphviz output for this particular run of a dataflow analysis.
@@ -177,14 +116,7 @@ where
     where
         A::Domain: DebugWithContext<A>,
     {
-        let Engine {
-            mut analysis,
-            body,
-            mut entry_sets,
-            tcx,
-            apply_statement_trans_for_block,
-            pass_name,
-        } = self;
+        let Engine { mut analysis, body, mut entry_sets, tcx, pass_name } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
 
@@ -213,13 +145,8 @@ where
             state.clone_from(&entry_sets[bb]);
 
             // Apply the block transfer function, using the cached one if it exists.
-            let edges = A::Direction::apply_effects_in_block(
-                &mut analysis,
-                &mut state,
-                bb,
-                bb_data,
-                apply_statement_trans_for_block.as_deref(),
-            );
+            let edges =
+                A::Direction::apply_effects_in_block(&mut analysis, &mut state, bb, bb_data);
 
             A::Direction::join_state_into_successors_of(
                 &mut analysis,
