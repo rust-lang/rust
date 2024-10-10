@@ -1,0 +1,17 @@
+error: return type captures more lifetimes than trait definition
+  --> $DIR/rpitit-impl-captures-too-much.rs:10:39
+   |
+LL |     fn hello(self_: Invariant<'_>) -> impl Sized + use<'_> {}
+   |                               --      ^^^^^^^^^^^^^^^^^^^^
+   |                               |
+   |                               this lifetime was captured
+   |
+note: hidden type must only reference lifetimes captured by this impl trait
+  --> $DIR/rpitit-impl-captures-too-much.rs:6:39
+   |
+LL |     fn hello(self_: Invariant<'_>) -> impl Sized + use<Self>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^
+   = note: hidden type inferred to be `impl Sized`
+
+error: aborting due to 1 previous error
+

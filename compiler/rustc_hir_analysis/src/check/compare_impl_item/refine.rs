@@ -64,6 +64,10 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     };
 
+    if hidden_tys.items().any(|(_, &ty)| ty.skip_binder().references_error()) {
+        return;
+    }
+
     let mut collector = ImplTraitInTraitCollector { tcx, types: FxIndexSet::default() };
     trait_m_sig.visit_with(&mut collector);
 
