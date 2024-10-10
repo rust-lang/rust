@@ -18,8 +18,8 @@ use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind,
-    GoalSource, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult,
-    SolverMode,
+    GoalSource, HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData,
+    QueryResult, SolverMode,
 };
 
 pub(super) mod canonical;
@@ -126,11 +126,31 @@ pub enum GenerateProofTree {
 }
 
 pub trait SolverDelegateEvalExt: SolverDelegate {
+    /// Evaluates a goal from **outside** of the trait solver.
+    ///
+    /// Using this while inside of the solver is wrong as it uses a new
+    /// search graph which would break cycle detection.
     fn evaluate_root_goal(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         generate_proof_tree: GenerateProofTree,
-    ) -> (Result<(bool, Certainty), NoSolution>, Option<inspect::GoalEvaluation<Self::Interner>>);
+    ) -> (
+        Result<(HasChanged, Certainty), NoSolution>,
+        Option<inspect::GoalEvaluation<Self::Interner>>,
+    );
+
+    /// Check whether evaluating `goal` with a depth of `root_depth` may
+    /// succeed. This only returns `false` if the goal is guaranteed to
+    /// not hold. In case evaluation overflows and fails with ambiguity this
+    /// returns `true`.
+    ///
+    /// This is only intended to be used as a performance optimization
+    /// in coherence checking.
+    fn root_goal_may_hold_with_depth(
+        &self,
+        root_depth: usize,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+    ) -> bool;
 
     // FIXME: This is only exposed because we need to use it in `analyse.rs`
     // which is not yet uplifted. Once that's done, we should remove this.
@@ -139,7 +159,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         generate_proof_tree: GenerateProofTree,
     ) -> (
-        Result<(NestedNormalizationGoals<Self::Interner>, bool, Certainty), NoSolution>,
+        Result<(NestedNormalizationGoals<Self::Interner>, HasChanged, Certainty), NoSolution>,
         Option<inspect::GoalEvaluation<Self::Interner>>,
     );
 }
@@ -149,19 +169,29 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    /// Evaluates a goal from **outside** of the trait solver.
-    ///
-    /// Using this while inside of the solver is wrong as it uses a new
-    /// search graph which would break cycle detection.
     #[instrument(level = "debug", skip(self))]
     fn evaluate_root_goal(
         &self,
         goal: Goal<I, I::Predicate>,
         generate_proof_tree: GenerateProofTree,
-    ) -> (Result<(bool, Certainty), NoSolution>, Option<inspect::GoalEvaluation<I>>) {
-        EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
+    ) -> (Result<(HasChanged, Certainty), NoSolution>, Option<inspect::GoalEvaluation<I>>) {
+        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, |ecx| {
             ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
         })
+    }
+
+    fn root_goal_may_hold_with_depth(
+        &self,
+        root_depth: usize,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+    ) -> bool {
+        self.probe(|| {
+            EvalCtxt::enter_root(self, root_depth, GenerateProofTree::No, |ecx| {
+                ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
+            })
+            .0
+        })
+        .is_ok()
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -170,10 +200,10 @@ where
         goal: Goal<I, I::Predicate>,
         generate_proof_tree: GenerateProofTree,
     ) -> (
-        Result<(NestedNormalizationGoals<I>, bool, Certainty), NoSolution>,
+        Result<(NestedNormalizationGoals<I>, HasChanged, Certainty), NoSolution>,
         Option<inspect::GoalEvaluation<I>>,
     ) {
-        EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
+        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, |ecx| {
             ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal)
         })
     }
@@ -197,10 +227,11 @@ where
     /// over using this manually (such as [`SolverDelegateEvalExt::evaluate_root_goal`]).
     pub(super) fn enter_root<R>(
         delegate: &D,
+        root_depth: usize,
         generate_proof_tree: GenerateProofTree,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<I>>) {
-        let mut search_graph = SearchGraph::new(delegate.solver_mode());
+        let mut search_graph = SearchGraph::new(delegate.solver_mode(), root_depth);
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -339,7 +370,7 @@ where
         goal_evaluation_kind: GoalEvaluationKind,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
-    ) -> Result<(bool, Certainty), NoSolution> {
+    ) -> Result<(HasChanged, Certainty), NoSolution> {
         let (normalization_nested_goals, has_changed, certainty) =
             self.evaluate_goal_raw(goal_evaluation_kind, source, goal)?;
         assert!(normalization_nested_goals.is_empty());
@@ -360,7 +391,7 @@ where
         goal_evaluation_kind: GoalEvaluationKind,
         _source: GoalSource,
         goal: Goal<I, I::Predicate>,
-    ) -> Result<(NestedNormalizationGoals<I>, bool, Certainty), NoSolution> {
+    ) -> Result<(NestedNormalizationGoals<I>, HasChanged, Certainty), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
@@ -378,8 +409,13 @@ where
             Ok(response) => response,
         };
 
-        let has_changed = !response.value.var_values.is_identity_modulo_regions()
-            || !response.value.external_constraints.opaque_types.is_empty();
+        let has_changed = if !response.value.var_values.is_identity_modulo_regions()
+            || !response.value.external_constraints.opaque_types.is_empty()
+        {
+            HasChanged::Yes
+        } else {
+            HasChanged::No
+        };
 
         let (normalization_nested_goals, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, orig_values, response);
@@ -552,7 +588,7 @@ where
         for (source, goal) in goals.goals {
             let (has_changed, certainty) =
                 self.evaluate_goal(GoalEvaluationKind::Nested, source, goal)?;
-            if has_changed {
+            if has_changed == HasChanged::Yes {
                 unchanged_certainty = None;
             }
 
