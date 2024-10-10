@@ -203,12 +203,6 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
-lint_cstring_ptr = getting the inner pointer of a temporary `CString`
-    .as_ptr_label = this pointer will be invalid
-    .unwrap_label = this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
-    .note = pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-    .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
-
 lint_custom_inner_attribute_unstable = custom inner attributes are unstable
 
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
@@ -419,6 +413,12 @@ lint_incomplete_include =
     include macro expected single expression in source
 
 lint_inner_macro_attribute_unstable = inner macro attributes are unstable
+
+lint_instantly_dangling = getting a pointer from a temporary `{$ty}` will result in a dangling pointer
+    .label_ptr = this pointer will immediately be invalid
+    .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+    .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+    .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
