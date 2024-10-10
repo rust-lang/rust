@@ -29,7 +29,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
-    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -1003,6 +1003,18 @@ impl<'tcx> Ty<'tcx> {
             Tuple(tys) => tys.is_empty(),
             _ => false,
         }
+    }
+
+    /// Check if type is an `usize`.
+    #[inline]
+    pub fn is_usize(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize))
+    }
+
+    /// Check if type is an `usize` or an integral type variable.
+    #[inline]
+    pub fn is_usize_like(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize) | Infer(IntVar(_)))
     }
 
     #[inline]
