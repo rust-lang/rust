@@ -14,6 +14,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
+use build_manifest::PkgType;
 use object::BinaryFormat;
 use object::read::archive::ArchiveFile;
 
@@ -1432,6 +1433,51 @@ impl Step for Rustfmt {
     }
 }
 
+trait WixManifest {
+    fn wix_name(&self) -> String;
+    fn wix_group(&self) -> String {
+        format!("{}Group", self.wix_name())
+    }
+    fn wix_dir_var(&self) -> String {
+        format!("var.{}Dir", self.wix_name())
+    }
+    fn transform_harvested_output(&self) -> Option<&str>;
+}
+
+impl WixManifest for PkgType {
+    fn wix_name(&self) -> String {
+        match self {
+            PkgType::Rustc => "Rustc",
+            PkgType::HtmlDocs => "Docs",
+            PkgType::RustMingw => "Gcc",
+            PkgType::RustStd => "Std",
+            PkgType::Cargo => "Cargo",
+            PkgType::RustAnalysis => "Analysis",
+            PkgType::RustAnalyzer => "RustAnalyzer",
+            PkgType::Clippy => "Clippy",
+            PkgType::Rustfmt => "RustFmt",
+            PkgType::Miri => "Miri",
+            _ => {
+                unimplemented!("wix name not implemented for {:?}", self)
+            }
+        }
+        .to_string()
+    }
+
+    fn transform_harvested_output(&self) -> Option<&str> {
+        match self {
+            PkgType::HtmlDocs => Some("msi/squash-components.xsl"),
+            PkgType::Cargo
+            | PkgType::RustAnalysis
+            | PkgType::RustAnalyzer
+            | PkgType::Clippy
+            | PkgType::Rustfmt
+            | PkgType::Miri => Some("msi/remove-duplicates.xsl"),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct Extended {
     stage: u32,
@@ -1591,9 +1637,15 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-std");
             prepare("rust-analysis");
-            prepare("clippy");
-            prepare("rust-analyzer");
-            for tool in &["rust-docs", "miri", "rustc-codegen-cranelift"] {
+
+            for tool in &[
+                "clippy",
+                "rustfmt",
+                "rust-analyzer",
+                "rust-docs",
+                "miri",
+                "rustc-codegen-cranelift",
+            ] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1622,45 +1674,54 @@ impl Step for Extended {
         }
 
         if target.is_windows() {
+            const CORE_PACKAGES: &[PkgType] =
+                &[PkgType::Rustc, PkgType::Cargo, PkgType::RustStd, PkgType::RustAnalysis];
+            const OPTIONAL_PACKAGES: &[PkgType] = &[
+                PkgType::Clippy,
+                PkgType::Rustfmt,
+                PkgType::RustAnalyzer,
+                PkgType::HtmlDocs,
+                PkgType::Miri,
+            ];
+
+            let apply_to_tools = |f: &mut dyn FnMut(&PkgType)| {
+                for tool in CORE_PACKAGES {
+                    f(tool);
+                }
+                for tool in OPTIONAL_PACKAGES {
+                    if built_tools.contains(tool.tarball_component_name()) {
+                        f(tool);
+                    }
+                }
+                if target.is_windows_gnu() {
+                    f(&PkgType::RustMingw);
+                }
+            };
+
             let exe = tmp.join("exe");
             let _ = fs::remove_dir_all(&exe);
 
-            let prepare = |name: &str| {
+            apply_to_tools(&mut |pkg_type: &PkgType| {
+                let name = pkg_type.tarball_component_name();
                 builder.create_dir(&exe.join(name));
-                let dir = if name == "rust-std" || name == "rust-analysis" {
-                    format!("{}-{}", name, target.triple)
-                } else if name == "rust-analyzer" {
-                    "rust-analyzer-preview".to_string()
-                } else if name == "clippy" {
-                    "clippy-preview".to_string()
-                } else if name == "miri" {
-                    "miri-preview".to_string()
-                } else if name == "rustc-codegen-cranelift" {
-                    // FIXME add installer support for cg_clif once it is ready to be distributed on
-                    // windows.
-                    unreachable!("cg_clif shouldn't be built for windows");
-                } else {
-                    name.to_string()
+
+                let dir = match pkg_type {
+                    PkgType::RustStd | PkgType::RustAnalysis => {
+                        format!("{}-{}", name, target.triple)
+                    }
+                    PkgType::RustcCodegenCranelift => {
+                        // FIXME add installer support for cg_clif once it is ready to be distributed on
+                        // windows.
+                        unreachable!("cg_clif shouldn't be built for windows");
+                    }
+                    _ => pkg_type.manifest_component_name(),
                 };
                 builder.cp_link_r(
                     &work.join(format!("{}-{}", pkgname(builder, name), target.triple)).join(dir),
                     &exe.join(name),
                 );
                 builder.remove(&exe.join(name).join("manifest.in"));
-            };
-            prepare("rustc");
-            prepare("cargo");
-            prepare("rust-analysis");
-            prepare("rust-std");
-            for tool in &["clippy", "rust-analyzer", "rust-docs", "miri"] {
-                if built_tools.contains(tool) {
-                    prepare(tool);
-                }
-            }
-            if target.is_windows_gnu() {
-                prepare("rust-mingw");
-            }
-
+            });
             builder.install(&etc.join("gfx/rust-logo.ico"), &exe, 0o644);
 
             // Generate msi installer
@@ -1672,212 +1733,56 @@ impl Step for Extended {
             let light = wix.join("bin/light.exe");
 
             let heat_flags = ["-nologo", "-gg", "-sfrag", "-srd", "-sreg"];
-            command(&heat)
-                .current_dir(&exe)
-                .arg("dir")
-                .arg("rustc")
-                .args(heat_flags)
-                .arg("-cg")
-                .arg("RustcGroup")
-                .arg("-dr")
-                .arg("Rustc")
-                .arg("-var")
-                .arg("var.RustcDir")
-                .arg("-out")
-                .arg(exe.join("RustcGroup.wxs"))
-                .run(builder);
-            if built_tools.contains("rust-docs") {
-                command(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("rust-docs")
-                    .args(heat_flags)
-                    .arg("-cg")
-                    .arg("DocsGroup")
-                    .arg("-dr")
-                    .arg("Docs")
-                    .arg("-var")
-                    .arg("var.DocsDir")
-                    .arg("-out")
-                    .arg(exe.join("DocsGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/squash-components.xsl"))
-                    .run(builder);
-            }
-            command(&heat)
-                .current_dir(&exe)
-                .arg("dir")
-                .arg("cargo")
-                .args(heat_flags)
-                .arg("-cg")
-                .arg("CargoGroup")
-                .arg("-dr")
-                .arg("Cargo")
-                .arg("-var")
-                .arg("var.CargoDir")
-                .arg("-out")
-                .arg(exe.join("CargoGroup.wxs"))
-                .arg("-t")
-                .arg(etc.join("msi/remove-duplicates.xsl"))
-                .run(builder);
-            command(&heat)
-                .current_dir(&exe)
-                .arg("dir")
-                .arg("rust-std")
-                .args(heat_flags)
-                .arg("-cg")
-                .arg("StdGroup")
-                .arg("-dr")
-                .arg("Std")
-                .arg("-var")
-                .arg("var.StdDir")
-                .arg("-out")
-                .arg(exe.join("StdGroup.wxs"))
-                .run(builder);
-            if built_tools.contains("rust-analyzer") {
-                command(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("rust-analyzer")
-                    .args(heat_flags)
-                    .arg("-cg")
-                    .arg("RustAnalyzerGroup")
-                    .arg("-dr")
-                    .arg("RustAnalyzer")
-                    .arg("-var")
-                    .arg("var.RustAnalyzerDir")
-                    .arg("-out")
-                    .arg(exe.join("RustAnalyzerGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/remove-duplicates.xsl"))
-                    .run(builder);
-            }
-            if built_tools.contains("clippy") {
-                command(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("clippy")
-                    .args(heat_flags)
-                    .arg("-cg")
-                    .arg("ClippyGroup")
-                    .arg("-dr")
-                    .arg("Clippy")
-                    .arg("-var")
-                    .arg("var.ClippyDir")
-                    .arg("-out")
-                    .arg(exe.join("ClippyGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/remove-duplicates.xsl"))
-                    .run(builder);
-            }
-            if built_tools.contains("miri") {
-                command(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("miri")
-                    .args(heat_flags)
-                    .arg("-cg")
-                    .arg("MiriGroup")
-                    .arg("-dr")
-                    .arg("Miri")
-                    .arg("-var")
-                    .arg("var.MiriDir")
-                    .arg("-out")
-                    .arg(exe.join("MiriGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/remove-duplicates.xsl"))
-                    .run(builder);
-            }
-            command(&heat)
-                .current_dir(&exe)
-                .arg("dir")
-                .arg("rust-analysis")
-                .args(heat_flags)
-                .arg("-cg")
-                .arg("AnalysisGroup")
-                .arg("-dr")
-                .arg("Analysis")
-                .arg("-var")
-                .arg("var.AnalysisDir")
-                .arg("-out")
-                .arg(exe.join("AnalysisGroup.wxs"))
-                .arg("-t")
-                .arg(etc.join("msi/remove-duplicates.xsl"))
-                .run(builder);
-            if target.is_windows_gnu() {
-                command(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("rust-mingw")
-                    .args(heat_flags)
-                    .arg("-cg")
-                    .arg("GccGroup")
-                    .arg("-dr")
-                    .arg("Gcc")
-                    .arg("-var")
-                    .arg("var.GccDir")
-                    .arg("-out")
-                    .arg(exe.join("GccGroup.wxs"))
-                    .run(builder);
-            }
 
+            apply_to_tools(&mut |pkg_type: &PkgType| {
+                let mut binding = command(&heat);
+                let cmd = binding
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg(pkg_type.tarball_component_name())
+                    .args(heat_flags)
+                    .arg("-cg")
+                    .arg(pkg_type.wix_group())
+                    .arg("-dr")
+                    .arg(pkg_type.wix_name())
+                    .arg("-var")
+                    .arg(pkg_type.wix_dir_var())
+                    .arg("-out")
+                    .arg(exe.join(format!("{}.wxs", pkg_type.wix_group())));
+                if let Some(t) = pkg_type.transform_harvested_output() {
+                    cmd.arg("-t").arg(etc.join(t));
+                }
+                cmd.run(builder);
+            });
+
+            fn candle_arg(pkg_type: &PkgType) -> String {
+                format!("-d{}Dir={}", pkg_type.wix_name(), pkg_type.tarball_component_name())
+            }
             let candle = |input: &Path| {
                 let output = exe.join(input.file_stem().unwrap()).with_extension("wixobj");
                 let arch = if target.contains("x86_64") { "x64" } else { "x86" };
                 let mut cmd = command(&candle);
                 cmd.current_dir(&exe)
                     .arg("-nologo")
-                    .arg("-dRustcDir=rustc")
-                    .arg("-dCargoDir=cargo")
-                    .arg("-dStdDir=rust-std")
-                    .arg("-dAnalysisDir=rust-analysis")
                     .arg("-arch")
                     .arg(arch)
                     .arg("-out")
                     .arg(&output)
                     .arg(input);
-                add_env(builder, &mut cmd, target);
 
-                if built_tools.contains("clippy") {
-                    cmd.arg("-dClippyDir=clippy");
-                }
-                if built_tools.contains("rust-docs") {
-                    cmd.arg("-dDocsDir=rust-docs");
-                }
-                if built_tools.contains("rust-analyzer") {
-                    cmd.arg("-dRustAnalyzerDir=rust-analyzer");
-                }
-                if built_tools.contains("miri") {
-                    cmd.arg("-dMiriDir=miri");
-                }
-                if target.is_windows_gnu() {
-                    cmd.arg("-dGccDir=rust-mingw");
-                }
+                add_env(builder, &mut cmd, target);
+                apply_to_tools(&mut |pkg_type: &PkgType| {
+                    cmd.arg(candle_arg(pkg_type));
+                });
                 cmd.run(builder);
             };
             candle(&xform(&etc.join("msi/rust.wxs")));
             candle(&etc.join("msi/ui.wxs"));
             candle(&etc.join("msi/rustwelcomedlg.wxs"));
-            candle("RustcGroup.wxs".as_ref());
-            if built_tools.contains("rust-docs") {
-                candle("DocsGroup.wxs".as_ref());
-            }
-            candle("CargoGroup.wxs".as_ref());
-            candle("StdGroup.wxs".as_ref());
-            if built_tools.contains("clippy") {
-                candle("ClippyGroup.wxs".as_ref());
-            }
-            if built_tools.contains("miri") {
-                candle("MiriGroup.wxs".as_ref());
-            }
-            if built_tools.contains("rust-analyzer") {
-                candle("RustAnalyzerGroup.wxs".as_ref());
-            }
-            candle("AnalysisGroup.wxs".as_ref());
 
-            if target.is_windows_gnu() {
-                candle("GccGroup.wxs".as_ref());
-            }
+            apply_to_tools(&mut |pkg_type: &PkgType| {
+                candle(format!("{}.wxs", pkg_type.wix_group()).as_ref())
+            });
 
             builder.create(&exe.join("LICENSE.rtf"), &rtf);
             builder.install(&etc.join("gfx/banner.bmp"), &exe, 0o644);
@@ -1895,29 +1800,13 @@ impl Step for Extended {
                 .arg(exe.join(&filename))
                 .arg("rust.wixobj")
                 .arg("ui.wixobj")
-                .arg("rustwelcomedlg.wixobj")
-                .arg("RustcGroup.wixobj")
-                .arg("CargoGroup.wixobj")
-                .arg("StdGroup.wixobj")
-                .arg("AnalysisGroup.wixobj")
-                .current_dir(&exe);
+                .arg("rustwelcomedlg.wixobj");
 
-            if built_tools.contains("clippy") {
-                cmd.arg("ClippyGroup.wixobj");
-            }
-            if built_tools.contains("miri") {
-                cmd.arg("MiriGroup.wixobj");
-            }
-            if built_tools.contains("rust-analyzer") {
-                cmd.arg("RustAnalyzerGroup.wixobj");
-            }
-            if built_tools.contains("rust-docs") {
-                cmd.arg("DocsGroup.wixobj");
-            }
+            apply_to_tools(&mut |pkg_type: &PkgType| {
+                cmd.arg(format!("{}.wixobj", pkg_type.wix_group()));
+            });
 
-            if target.is_windows_gnu() {
-                cmd.arg("GccGroup.wixobj");
-            }
+            cmd.current_dir(&exe);
             // ICE57 wrongly complains about the shortcuts
             cmd.arg("-sice:ICE57");
 

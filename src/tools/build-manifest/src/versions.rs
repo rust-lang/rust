@@ -13,12 +13,12 @@ const DEFAULT_TARGET: &str = "x86_64-unknown-linux-gnu";
 macro_rules! pkg_type {
     ( $($variant:ident = $component:literal $(; preview = true $(@$is_preview:tt)? )? ),+ $(,)? ) => {
         #[derive(Debug, Hash, Eq, PartialEq, Clone)]
-        pub(crate) enum PkgType {
+        pub enum PkgType {
             $($variant,)+
         }
 
         impl PkgType {
-            pub(crate) fn is_preview(&self) -> bool {
+            pub fn is_preview(&self) -> bool {
                 match self {
                     $( $( $($is_preview)? PkgType::$variant => true, )? )+
                     _ => false,
@@ -26,13 +26,13 @@ macro_rules! pkg_type {
             }
 
             /// First part of the tarball name.
-            pub(crate) fn tarball_component_name(&self) -> &str {
+            pub fn tarball_component_name(&self) -> &str {
                 match self {
                     $( PkgType::$variant => $component,)+
                 }
             }
 
-            pub(crate) fn all() -> &'static [PkgType] {
+            pub fn all() -> &'static [PkgType] {
                 &[ $(PkgType::$variant),+ ]
             }
         }
@@ -64,7 +64,7 @@ pkg_type! {
 
 impl PkgType {
     /// Component name in the manifest. In particular, this includes the `-preview` suffix where appropriate.
-    pub(crate) fn manifest_component_name(&self) -> String {
+    pub fn manifest_component_name(&self) -> String {
         if self.is_preview() {
             format!("{}-preview", self.tarball_component_name())
         } else {
@@ -150,14 +150,14 @@ pub(crate) struct VersionInfo {
     pub(crate) present: bool,
 }
 
-pub(crate) struct Versions {
+pub struct Versions {
     channel: String,
     dist_path: PathBuf,
     versions: HashMap<PkgType, VersionInfo>,
 }
 
 impl Versions {
-    pub(crate) fn new(channel: &str, dist_path: &Path) -> Result<Self, Error> {
+    pub fn new(channel: &str, dist_path: &Path) -> Result<Self, Error> {
         Ok(Self { channel: channel.into(), dist_path: dist_path.into(), versions: HashMap::new() })
     }
 

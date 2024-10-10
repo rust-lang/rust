@@ -11,13 +11,13 @@ use sha2::{Digest, Sha256};
 
 use crate::manifest::{FileHash, Manifest};
 
-pub(crate) struct Checksums {
+pub struct Checksums {
     cache_path: Option<PathBuf>,
     collected: Mutex<HashMap<PathBuf, String>>,
 }
 
 impl Checksums {
-    pub(crate) fn new() -> Result<Self, Box<dyn Error>> {
+    pub fn new() -> Result<Self, Box<dyn Error>> {
         let cache_path = std::env::var_os("BUILD_MANIFEST_CHECKSUM_CACHE").map(PathBuf::from);
 
         let mut collected = HashMap::new();

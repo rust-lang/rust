@@ -9,7 +9,7 @@ This gets called by `promote-release` <https://github.com/rust-lang/promote-rele
 ## Adding a new component
 
 1. Add a new `Step` to `dist.rs`. This should usually be named after the filename of the uploaded tarball. See https://github.com/rust-lang/rust/pull/101799/files#diff-2c56335faa24486df09ba392d8900c57e2fac4633e1f7038469bcf9ed3feb871 for an example.
-    a. If appropriate, call `tarball.is_preview(true)` for the component.
+   a. If appropriate, call `tarball.is_preview(true)` for the component.
 2. Add a new `PkgType` to build-manifest. Fix all the compile errors as appropriate.
 
 ## Testing changes locally
