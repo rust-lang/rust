@@ -12,6 +12,8 @@ use core::iter::FusedIterator;
 use core::mem::MaybeUninit;
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::ParseBoolError;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -22,7 +24,7 @@ pub use core::str::SplitWhitespace;
 pub use core::str::pattern;
 use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{Bytes, CharIndices, Chars, from_utf8, from_utf8_mut};
+pub use core::str::{Bytes, CharIndices, Chars};
 #[stable(feature = "str_escape", since = "1.34.0")]
 pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -35,8 +37,6 @@ pub use core::str::{MatchIndices, RMatchIndices};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{ParseBoolError, from_utf8_unchecked, from_utf8_unchecked_mut};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplit, Split};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitN, SplitN};
@@ -46,6 +46,9 @@ pub use core::str::{RSplitTerminator, SplitTerminator};
 pub use core::str::{Utf8Chunk, Utf8Chunks};
 #[unstable(feature = "str_from_raw_parts", issue = "119206")]
 pub use core::str::{from_raw_parts, from_raw_parts_mut};
+#[allow(deprecated_in_future)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{from_utf8, from_utf8_mut, from_utf8_unchecked, from_utf8_unchecked_mut};
 use core::unicode::conversions;
 use core::{mem, ptr};
 
@@ -681,7 +684,7 @@ pub fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
 
         // SAFETY: we know this is a valid char boundary
         // since we only skipped over leading ascii bytes
-        let rest = core::str::from_utf8_unchecked(slice);
+        let rest = str::from_utf8_unchecked(slice);
 
         (ascii_string, rest)
     }

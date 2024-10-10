@@ -171,7 +171,7 @@ use crate::sys::sync::Parker;
 use crate::sys::thread as imp;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::{Duration, Instant};
-use crate::{env, fmt, io, panic, panicking, str};
+use crate::{env, fmt, io, panic, panicking};
 
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 mod scoped;
@@ -1239,8 +1239,6 @@ enum ThreadName {
 
 // This module ensures private fields are kept private, which is necessary to enforce the safety requirements.
 mod thread_name_string {
-    use core::str;
-
     use super::ThreadName;
     use crate::ffi::{CStr, CString};
 

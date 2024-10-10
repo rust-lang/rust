@@ -280,7 +280,7 @@ impl<'a> fmt::Display for EscapeAscii<'a> {
             // SAFETY: prefix length was derived by counting bytes in the same splice, so it's in-bounds
             let (prefix, remainder) = unsafe { bytes.split_at_unchecked(prefix) };
             // SAFETY: prefix is a valid utf8 sequence, as it's a subset of ASCII
-            let prefix = unsafe { crate::str::from_utf8_unchecked(prefix) };
+            let prefix = unsafe { str::from_utf8_unchecked(prefix) };
 
             f.write_str(prefix)?; // the fast part
 

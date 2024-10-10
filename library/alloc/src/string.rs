@@ -62,7 +62,7 @@ use crate::alloc::Allocator;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, Chars, Utf8Error, from_utf8_unchecked_mut};
+use crate::str::{Chars, Utf8Error};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{FromStr, from_boxed_utf8_unchecked};
 use crate::vec::Vec;
@@ -2055,7 +2055,7 @@ impl String {
     #[inline]
     pub fn leak<'a>(self) -> &'a mut str {
         let slice = self.vec.leak();
-        unsafe { from_utf8_unchecked_mut(slice) }
+        unsafe { str::from_utf8_unchecked_mut(slice) }
     }
 }
 

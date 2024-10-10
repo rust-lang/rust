@@ -1344,7 +1344,7 @@ impl fmt::Debug for Duration {
                 if end > 0 {
                     // SAFETY: We are only writing ASCII digits into the buffer and
                     // it was initialized with '0's, so it contains valid UTF8.
-                    let s = unsafe { crate::str::from_utf8_unchecked(&buf[..end]) };
+                    let s = unsafe { str::from_utf8_unchecked(&buf[..end]) };
 
                     // If the user request a precision > 9, we pad '0's at the end.
                     let w = f.precision().unwrap_or(pos);

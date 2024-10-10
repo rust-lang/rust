@@ -7,7 +7,7 @@ use crate::mem::MaybeUninit;
 use crate::os::windows::io::{FromRawHandle, IntoRawHandle};
 use crate::sys::handle::Handle;
 use crate::sys::{c, cvt};
-use crate::{cmp, io, ptr, str};
+use crate::{cmp, io, ptr};
 
 #[cfg(test)]
 mod tests;

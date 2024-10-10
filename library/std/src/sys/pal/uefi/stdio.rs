@@ -155,9 +155,9 @@ fn write(
     buf: &[u8],
 ) -> io::Result<usize> {
     // Get valid UTF-8 buffer
-    let utf8 = match crate::str::from_utf8(buf) {
+    let utf8 = match str::from_utf8(buf) {
         Ok(x) => x,
-        Err(e) => unsafe { crate::str::from_utf8_unchecked(&buf[..e.valid_up_to()]) },
+        Err(e) => unsafe { str::from_utf8_unchecked(&buf[..e.valid_up_to()]) },
     };
 
     let mut utf16: Vec<u16> = utf8.encode_utf16().collect();

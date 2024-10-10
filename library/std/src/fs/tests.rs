@@ -16,7 +16,7 @@ use crate::path::Path;
 use crate::sync::Arc;
 use crate::sys_common::io::test::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
-use crate::{env, str, thread};
+use crate::{env, thread};
 
 macro_rules! check {
     ($e:expr) => {

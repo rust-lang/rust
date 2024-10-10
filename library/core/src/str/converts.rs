@@ -1,8 +1,7 @@
 //! Ways to create a `str` from bytes slice.
 
 use super::Utf8Error;
-use super::validations::run_utf8_validation;
-use crate::{mem, ptr};
+use crate::ptr;
 
 /// Converts a slice of bytes to a string slice.
 ///
@@ -83,16 +82,10 @@ use crate::{mem, ptr};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
 #[rustc_allow_const_fn_unstable(str_internals)]
-#[rustc_diagnostic_item = "str_from_utf8"]
+#[deprecated(since = "TBD", note = "replaced by the `from_utf8` method on the `str` type")]
+// #[rustc_diagnostic_item = "str_from_utf8"]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
-    // FIXME(const-hack): This should use `?` again, once it's `const`
-    match run_utf8_validation(v) {
-        Ok(_) => {
-            // SAFETY: validation succeeded.
-            Ok(unsafe { from_utf8_unchecked(v) })
-        }
-        Err(err) => Err(err),
-    }
+    str::from_utf8(v)
 }
 
 /// Converts a mutable slice of bytes to a mutable string slice.
@@ -127,13 +120,14 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// errors that can be returned.
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
-#[rustc_diagnostic_item = "str_from_utf8_mut"]
+#[deprecated(since = "TBD", note = "replaced by the `from_utf8_mut` method on the `str` type")]
+// #[rustc_diagnostic_item = "str_from_utf8_mut"]
 pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     // FIXME(const-hack): This should use `?` again, once it's `const`
-    match run_utf8_validation(v) {
+    match super::run_utf8_validation(v) {
         Ok(_) => {
             // SAFETY: validation succeeded.
-            Ok(unsafe { from_utf8_unchecked_mut(v) })
+            Ok(unsafe { str::from_utf8_unchecked_mut(v) })
         }
         Err(err) => Err(err),
     }
@@ -168,11 +162,14 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_unchecked", since = "1.55.0")]
-#[rustc_diagnostic_item = "str_from_utf8_unchecked"]
+#[deprecated(
+    since = "TBD",
+    note = "replaced by the `from_utf8_unchecked` method on the `str` type"
+)]
+// #[rustc_diagnostic_item = "str_from_utf8_unchecked"]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
-    // Also relies on `&str` and `&[u8]` having the same layout.
-    unsafe { mem::transmute(v) }
+    // SAFETY: same requirements
+    unsafe { str::from_utf8_unchecked(v) }
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -200,13 +197,14 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     feature = "const_str_from_utf8_unchecked_mut",
     since = "CURRENT_RUSTC_VERSION"
 )]
-#[rustc_diagnostic_item = "str_from_utf8_unchecked_mut"]
+#[deprecated(
+    since = "TBD",
+    note = "replaced by the `from_utf8_unchecked_mut` method on the `str` type"
+)]
+// #[rustc_diagnostic_item = "str_from_utf8_unchecked_mut"]
 pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    // SAFETY: the caller must guarantee that the bytes `v`
-    // are valid UTF-8, thus the cast to `*mut str` is safe.
-    // Also, the pointer dereference is safe because that pointer
-    // comes from a reference which is guaranteed to be valid for writes.
-    unsafe { &mut *(v as *mut [u8] as *mut str) }
+    // SAFETY: same requirements
+    unsafe { str::from_utf8_unchecked_mut(v) }
 }
 
 /// Creates a `&str` from a pointer and a length.

@@ -1,0 +1,14 @@
+error[E0599]: no function or associated item named `from_utf8` found for type `str` in the current scope
+  --> $DIR/feature-gate-inherent-str-constructors.rs:5:10
+   |
+LL |     str::from_utf8(b"hi").unwrap();
+   |          ^^^^^^^^^ function or associated item not found in `str`
+   |
+help: you are looking for the module in `std`, not the primitive type
+   |
+LL |     std::str::from_utf8(b"hi").unwrap();
+   |     +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

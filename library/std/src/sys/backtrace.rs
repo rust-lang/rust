@@ -192,7 +192,7 @@ pub fn output_filename(
         }
         #[cfg(not(unix))]
         BytesOrWideString::Bytes(bytes) => {
-            Path::new(crate::str::from_utf8(bytes).unwrap_or("<unknown>")).into()
+            Path::new(str::from_utf8(bytes).unwrap_or("<unknown>")).into()
         }
         #[cfg(windows)]
         BytesOrWideString::Wide(wide) => {

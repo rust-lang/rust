@@ -29,7 +29,7 @@ use crate::iter::FusedIterator;
 use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::AsInner;
-use crate::{fmt, mem, ops, slice, str};
+use crate::{fmt, mem, ops, slice};
 
 const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
 
@@ -656,7 +656,7 @@ impl Wtf8 {
     ///
     /// This does not copy the data.
     #[inline]
-    pub fn as_str(&self) -> Result<&str, str::Utf8Error> {
+    pub fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
         str::from_utf8(&self.bytes)
     }
 

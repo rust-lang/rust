@@ -327,7 +327,7 @@ pub use self::{
 };
 use crate::mem::take;
 use crate::ops::{Deref, DerefMut};
-use crate::{cmp, fmt, slice, str, sys};
+use crate::{cmp, fmt, slice, sys};
 
 mod buffered;
 pub(crate) mod copy;

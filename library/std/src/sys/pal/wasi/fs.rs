@@ -790,7 +790,7 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
     // necessary
     for entry in ReadDir::new(fd, dummy_root) {
         let entry = entry?;
-        let path = crate::str::from_utf8(&entry.name).map_err(|_| {
+        let path = str::from_utf8(&entry.name).map_err(|_| {
             io::const_io_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")
         })?;
 

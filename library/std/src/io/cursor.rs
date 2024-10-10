@@ -387,8 +387,7 @@ where
     }
 
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        let content =
-            crate::str::from_utf8(Cursor::split(self).1).map_err(|_| io::Error::INVALID_UTF8)?;
+        let content = str::from_utf8(Cursor::split(self).1).map_err(|_| io::Error::INVALID_UTF8)?;
         let len = content.len();
         buf.try_reserve(len)?;
         buf.push_str(content);

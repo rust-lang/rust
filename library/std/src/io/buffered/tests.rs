@@ -1015,9 +1015,7 @@ struct WriteRecorder {
 
 impl Write for WriteRecorder {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        use crate::str::from_utf8;
-
-        self.events.push(RecordedEvent::Write(from_utf8(buf).unwrap().to_string()));
+        self.events.push(RecordedEvent::Write(str::from_utf8(buf).unwrap().to_string()));
         Ok(buf.len())
     }
 

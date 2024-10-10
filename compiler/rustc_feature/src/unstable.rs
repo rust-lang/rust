@@ -497,6 +497,8 @@ declare_features! (
     (unstable, impl_trait_in_fn_trait_return, "1.64.0", Some(99697)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
+    /// Adds `from_utf8*` functions as inherent methods on the `str` type.
+    (unstable, inherent_str_constructors, "1.82.0", Some(131114)),
     /// Allow anonymous constants from an inline `const` block in pattern position
     (unstable, inline_const_pat, "1.58.0", Some(76001)),
     /// Allows using `pointer` and `reference` in intra-doc links

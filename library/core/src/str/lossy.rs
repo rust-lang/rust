@@ -1,4 +1,3 @@
-use super::from_utf8_unchecked;
 use super::validations::utf8_char_width;
 use crate::fmt;
 use crate::fmt::{Formatter, Write};
@@ -281,7 +280,7 @@ impl<'a> Iterator for Utf8Chunks<'a> {
 
         Some(Utf8Chunk {
             // SAFETY: All bytes up to `valid_up_to` are valid UTF-8.
-            valid: unsafe { from_utf8_unchecked(valid) },
+            valid: unsafe { str::from_utf8_unchecked(valid) },
             invalid,
         })
     }

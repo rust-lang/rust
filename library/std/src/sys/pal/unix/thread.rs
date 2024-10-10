@@ -527,7 +527,6 @@ mod cgroups {
     use crate::io::{BufRead, Read};
     use crate::os::unix::ffi::OsStringExt;
     use crate::path::{Path, PathBuf};
-    use crate::str::from_utf8;
 
     #[derive(PartialEq)]
     enum Cgroup {
@@ -556,7 +555,7 @@ mod cgroups {
                     let version = match fields.nth(1) {
                         Some(b"") => Cgroup::V2,
                         Some(controllers)
-                            if from_utf8(controllers)
+                            if str::from_utf8(controllers)
                                 .is_ok_and(|c| c.split(',').any(|c| c == "cpu")) =>
                         {
                             Cgroup::V1

@@ -3482,7 +3482,7 @@ impl Default for Arc<str> {
     #[inline]
     fn default() -> Self {
         let arc: Arc<[u8]> = Default::default();
-        debug_assert!(core::str::from_utf8(&*arc).is_ok());
+        debug_assert!(str::from_utf8(&*arc).is_ok());
         let (ptr, alloc) = Arc::into_inner_with_allocator(arc);
         unsafe { Arc::from_ptr_in(ptr.as_ptr() as *mut ArcInner<str>, alloc) }
     }

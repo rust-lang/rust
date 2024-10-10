@@ -343,6 +343,7 @@
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(inherent_str_constructors)]
 #![feature(ip)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]

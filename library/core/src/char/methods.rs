@@ -3,7 +3,6 @@
 use super::*;
 use crate::intrinsics::const_eval_select;
 use crate::slice;
-use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
 use crate::unicode::{self, conversions};
 
@@ -678,7 +677,7 @@ impl char {
     #[inline]
     pub const fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
-        unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
+        unsafe { str::from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,

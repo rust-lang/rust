@@ -7,7 +7,7 @@ use crate::iter::FusedIterator;
 use crate::marker::PhantomData;
 use crate::ptr::NonNull;
 use crate::slice::memchr;
-use crate::{fmt, intrinsics, ops, slice, str};
+use crate::{fmt, intrinsics, ops, slice};
 
 // FIXME: because this is doc(inline)d, we *have* to use intra-doc links because the actual link
 //   depends on where the item is being documented. however, since this is libcore, we can't
@@ -664,7 +664,7 @@ impl CStr {
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
     #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
-    pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
+    pub const fn to_str(&self) -> Result<&str, crate::str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should
         // be rewritten to do the UTF-8 check inline with the length calculation
