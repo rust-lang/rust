@@ -57,6 +57,7 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             | clean::EnumItem(..)
             | clean::TraitItem(..)
             | clean::FunctionItem(..)
+            | clean::TestItem(..)
             | clean::VariantItem(..)
             | clean::ForeignFunctionItem(..)
             | clean::ForeignStaticItem(..)
