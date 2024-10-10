@@ -106,6 +106,7 @@ def_regs! {
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r0", "r1", "r1r0"] =>
             "r0 and r1 are not available due to an issue in LLVM",
+            // if this issue is resolved, then R0 has to be added to clobbered registers
     }
 }
 
