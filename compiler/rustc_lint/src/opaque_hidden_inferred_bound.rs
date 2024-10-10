@@ -69,7 +69,7 @@ declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx>) {
-        let hir::TyKind::OpaqueDef(opaque, _) = &ty.kind else {
+        let hir::TyKind::OpaqueDef(opaque) = &ty.kind else {
             return;
         };
 
