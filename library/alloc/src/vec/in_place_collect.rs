@@ -229,6 +229,7 @@ where
     I: Iterator<Item = T> + InPlaceCollect,
     <I as SourceIter>::Source: AsVecIntoIter,
 {
+    #[track_caller]
     default fn from_iter(iterator: I) -> Self {
         // Select the implementation in const eval to avoid codegen of the dead branch to improve compile times.
         let fun: fn(I) -> Vec<T> = const {
@@ -246,6 +247,7 @@ where
     }
 }
 
+#[track_caller]
 fn from_iter_in_place<I, T>(mut iterator: I) -> Vec<T>
 where
     I: Iterator<Item = T> + InPlaceCollect,
