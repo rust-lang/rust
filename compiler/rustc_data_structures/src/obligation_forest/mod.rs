@@ -75,6 +75,7 @@ use std::fmt::Debug;
 use std::hash;
 use std::marker::PhantomData;
 
+use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::fx::{FxHashMap, FxHashSet};
@@ -141,7 +142,7 @@ pub trait ObligationProcessor {
 #[derive(Debug)]
 pub enum ProcessResult<O, E> {
     Unchanged,
-    Changed(Vec<O>),
+    Changed(ThinVec<O>),
     Error(E),
 }
 
