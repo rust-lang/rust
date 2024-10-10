@@ -231,7 +231,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr(lhs_expr)
             }
         };
-        let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
+
+        // Guide inference on the lhs ty if necessary.
+        self.select_obligations_where_possible(|_| {});
+        let lhs_ty = self.resolve_vars_if_possible(lhs_ty);
 
         // N.B., as we have not yet type-checked the RHS, we don't have the
         // type at hand. Make a variable to represent it. The whole reason
