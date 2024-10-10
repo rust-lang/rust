@@ -6,18 +6,8 @@ use Primitive::*;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable_Generic;
 
-use crate::json::{Json, ToJson};
-
-pub mod call;
-
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
-pub use rustc_abi::{Float, *};
-
-impl ToJson for Endian {
-    fn to_json(&self) -> Json {
-        self.as_str().to_json()
-    }
-}
+use crate::{Float, *};
 
 rustc_index::newtype_index! {
     /// The *source-order* index of a field in a variant.
