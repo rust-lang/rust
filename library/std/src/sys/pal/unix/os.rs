@@ -706,7 +706,7 @@ pub fn page_size() -> usize {
 //     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
 #[cfg(target_vendor = "apple")]
 fn confstr(key: c_int, size_hint: Option<usize>) -> io::Result<OsString> {
-    let mut buf: Vec<u8> = Vec::new();
+    let mut buf: Vec<u8> = Vec::with_capacity(0);
     let mut bytes_needed_including_nul = size_hint
         .unwrap_or_else(|| {
             // Treat "None" as "do an extra call to get the length". In theory
