@@ -1782,7 +1782,7 @@ impl<'test> TestCx<'test> {
 
     fn get_output_file(&self, extension: &str) -> TargetLocation {
         let thin_lto = self.props.compile_flags.iter().any(|s| s.ends_with("lto=thin"));
-        if thin_lto {
+        if false && thin_lto {
             TargetLocation::ThisDirectory(self.output_base_dir())
         } else {
             // This works with both `--emit asm` (as default output name for the assembly)
@@ -1795,7 +1795,7 @@ impl<'test> TestCx<'test> {
 
     fn get_filecheck_file(&self, extension: &str) -> PathBuf {
         let thin_lto = self.props.compile_flags.iter().any(|s| s.ends_with("lto=thin"));
-        if thin_lto {
+        if false && thin_lto {
             let name = self.testpaths.file.file_stem().unwrap().to_str().unwrap();
             let canonical_name = name.replace('-', "_");
             let mut output_file = None;
