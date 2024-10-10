@@ -624,8 +624,9 @@ impl u8 {
     ///
     /// [`to_ascii_uppercase`]: Self::to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_unstable(feature = "const_make_ascii", issue = "130698")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     pub const fn make_ascii_uppercase(&mut self) {
         *self = self.to_ascii_uppercase();
     }
@@ -650,8 +651,9 @@ impl u8 {
     ///
     /// [`to_ascii_lowercase`]: Self::to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_unstable(feature = "const_make_ascii", issue = "130698")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     pub const fn make_ascii_lowercase(&mut self) {
         *self = self.to_ascii_lowercase();
     }
