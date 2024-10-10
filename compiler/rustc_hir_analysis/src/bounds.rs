@@ -72,7 +72,7 @@ impl<'tcx> Bounds<'tcx> {
         // FIXME(effects): Lift this out of `push_trait_bound`, and move it somewhere else.
         // Perhaps moving this into `lower_poly_trait_ref`, just like we lower associated
         // type bounds.
-        if !tcx.features().effects || only_self_bounds.0 {
+        if !tcx.features().effects() || only_self_bounds.0 {
             return;
         }
         // For `T: ~const Tr` or `T: const Tr`, we need to add an additional bound on the

@@ -109,7 +109,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // We do not allow generic parameters in anon consts if we are inside
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
-            } else if tcx.features().generic_const_exprs {
+            } else if tcx.features().generic_const_exprs() {
                 let parent_node = tcx.parent_hir_node(hir_id);
                 debug!(?parent_node);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node

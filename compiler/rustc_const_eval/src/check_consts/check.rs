@@ -276,7 +276,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let gate = match op.status_in_item(self.ccx) {
             Status::Allowed => return,
 
-            Status::Unstable(gate) if self.tcx.features().active(gate) => {
+            Status::Unstable(gate) if self.tcx.features().enabled(gate) => {
                 let unstable_in_stable = self.ccx.is_const_stable_const_fn()
                     && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate);
                 if unstable_in_stable {
@@ -611,7 +611,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // the trait into the concrete method, and uses that for const stability
                     // checks.
                     // FIXME(effects) we might consider moving const stability checks to typeck as well.
-                    if tcx.features().effects {
+                    if tcx.features().effects() {
                         is_trait = true;
 
                         if let Ok(Some(instance)) =
@@ -631,7 +631,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             args: fn_args,
                             span: *fn_span,
                             call_source,
-                            feature: Some(if tcx.features().const_trait_impl {
+                            feature: Some(if tcx.features().const_trait_impl() {
                                 sym::effects
                             } else {
                                 sym::const_trait_impl
@@ -700,10 +700,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // Calling an unstable function *always* requires that the corresponding gate
                     // (or implied gate) be enabled, even if the function has
                     // `#[rustc_allow_const_fn_unstable(the_gate)]`.
-                    let gate_declared = |gate| tcx.features().declared(gate);
-                    let feature_gate_declared = gate_declared(gate);
-                    let implied_gate_declared = implied_by.is_some_and(gate_declared);
-                    if !feature_gate_declared && !implied_gate_declared {
+                    let gate_enabled = |gate| tcx.features().enabled(gate);
+                    let feature_gate_enabled = gate_enabled(gate);
+                    let implied_gate_enabled = implied_by.is_some_and(gate_enabled);
+                    if !feature_gate_enabled && !implied_gate_enabled {
                         self.check_op(ops::FnCallUnstable(callee, Some(gate)));
                         return;
                     }
@@ -717,7 +717,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                     // Otherwise, we are something const-stable calling a const-unstable fn.
                     if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
-                        trace!("rustc_allow_const_fn_unstable gate active");
+                        trace!("rustc_allow_const_fn_unstable gate enabled");
                         return;
                     }
 

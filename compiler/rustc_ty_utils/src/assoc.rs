@@ -181,7 +181,7 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
 fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
     // don't synthesize the associated type even if the user has written `const_trait`
     // if the effects feature is disabled.
-    if !tcx.features().effects {
+    if !tcx.features().effects() {
         return None;
     }
     let (feed, parent_did) = match tcx.def_kind(def_id) {

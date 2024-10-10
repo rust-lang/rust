@@ -721,7 +721,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         use rustc_middle::ty::cast::IntTy::*;
 
         if self.cast_ty.is_dyn_star() {
-            if fcx.tcx.features().dyn_star {
+            if fcx.tcx.features().dyn_star() {
                 span_bug!(self.span, "should be handled by `coerce`");
             } else {
                 // Report "casting is invalid" rather than "non-primitive cast"

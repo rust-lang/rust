@@ -87,7 +87,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         let is_feature_allowed = |feature_gate| {
             // All features require that the corresponding gate be enabled,
             // even if the function has `#[rustc_allow_const_fn_unstable(the_gate)]`.
-            if !tcx.features().active(feature_gate) {
+            if !tcx.features().enabled(feature_gate) {
                 return false;
             }
 
@@ -105,7 +105,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
             // If this crate is not using stability attributes, or this function is not claiming to be a
             // stable `const fn`, that is all that is required.
-            if !tcx.features().staged_api || tcx.has_attr(def_id, sym::rustc_const_unstable) {
+            if !tcx.features().staged_api() || tcx.has_attr(def_id, sym::rustc_const_unstable) {
                 return true;
             }
 
@@ -135,7 +135,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
         let required_gates = required_gates.unwrap_or(&[]);
         let missing_gates: Vec<_> =
-            required_gates.iter().copied().filter(|&g| !features.active(g)).collect();
+            required_gates.iter().copied().filter(|&g| !features.enabled(g)).collect();
 
         match missing_gates.as_slice() {
             [] => {

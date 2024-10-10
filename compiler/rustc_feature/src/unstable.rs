@@ -8,7 +8,6 @@ use super::{Feature, to_nonzero};
 
 pub struct UnstableFeature {
     pub feature: Feature,
-    pub set_enabled: fn(&mut Features),
 }
 
 #[derive(PartialEq)]
@@ -30,6 +29,46 @@ macro_rules! status_to_enum {
     };
 }
 
+/// A set of features to be used by later passes.
+#[derive(Clone, Default, Debug)]
+pub struct Features {
+    /// `#![feature]` attrs for language features, for error reporting.
+    enabled_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
+    /// `#![feature]` attrs for non-language (library) features.
+    enabled_lib_features: Vec<(Symbol, Span)>,
+    /// `enabled_lang_features` + `enabled_lib_features`.
+    enabled_features: FxHashSet<Symbol>,
+}
+
+impl Features {
+    pub fn set_enabled_lang_feature(&mut self, name: Symbol, span: Span, since: Option<Symbol>) {
+        self.enabled_lang_features.push((name, span, since));
+        self.enabled_features.insert(name);
+    }
+
+    pub fn set_enabled_lib_feature(&mut self, name: Symbol, span: Span) {
+        self.enabled_lib_features.push((name, span));
+        self.enabled_features.insert(name);
+    }
+
+    pub fn enabled_lang_features(&self) -> &Vec<(Symbol, Span, Option<Symbol>)> {
+        &self.enabled_lang_features
+    }
+
+    pub fn enabled_lib_features(&self) -> &Vec<(Symbol, Span)> {
+        &self.enabled_lib_features
+    }
+
+    pub fn enabled_features(&self) -> &FxHashSet<Symbol> {
+        &self.enabled_features
+    }
+
+    /// Is the given feature enabled (via `#[feature(...)]`)?
+    pub fn enabled(&self, feature: Symbol) -> bool {
+        self.enabled_features.contains(&feature)
+    }
+}
+
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* ($status:ident, $feature:ident, $ver:expr, $issue:expr),
@@ -43,73 +82,15 @@ macro_rules! declare_features {
                     since: $ver,
                     issue: to_nonzero($issue),
                 },
-                // Sets this feature's corresponding bool within `features`.
-                set_enabled: |features| features.$feature = true,
             }),+
         ];
 
-        const NUM_FEATURES: usize = UNSTABLE_FEATURES.len();
-
-        /// A set of features to be used by later passes.
-        #[derive(Clone, Default, Debug)]
-        pub struct Features {
-            /// `#![feature]` attrs for language features, for error reporting.
-            /// "declared" here means that the feature is actually enabled in the current crate.
-            pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
-            /// `#![feature]` attrs for non-language (library) features.
-            /// "declared" here means that the feature is actually enabled in the current crate.
-            pub declared_lib_features: Vec<(Symbol, Span)>,
-            /// `declared_lang_features` + `declared_lib_features`.
-            pub declared_features: FxHashSet<Symbol>,
-            /// Active state of individual features (unstable only).
-            $(
-                $(#[doc = $doc])*
-                pub $feature: bool
-            ),+
-        }
-
         impl Features {
-            pub fn set_declared_lang_feature(
-                &mut self,
-                symbol: Symbol,
-                span: Span,
-                since: Option<Symbol>
-            ) {
-                self.declared_lang_features.push((symbol, span, since));
-                self.declared_features.insert(symbol);
-            }
-
-            pub fn set_declared_lib_feature(&mut self, symbol: Symbol, span: Span) {
-                self.declared_lib_features.push((symbol, span));
-                self.declared_features.insert(symbol);
-            }
-
-            /// This is intended for hashing the set of active features.
-            ///
-            /// The expectation is that this produces much smaller code than other alternatives.
-            ///
-            /// Note that the total feature count is pretty small, so this is not a huge array.
-            #[inline]
-            pub fn all_features(&self) -> [u8; NUM_FEATURES] {
-                [$(self.$feature as u8),+]
-            }
-
-            /// Is the given feature explicitly declared, i.e. named in a
-            /// `#![feature(...)]` within the code?
-            pub fn declared(&self, feature: Symbol) -> bool {
-                self.declared_features.contains(&feature)
-            }
-
-            /// Is the given feature active (enabled by the user)?
-            ///
-            /// Panics if the symbol doesn't correspond to a declared feature.
-            pub fn active(&self, feature: Symbol) -> bool {
-                match feature {
-                    $( sym::$feature => self.$feature, )*
-
-                    _ => panic!("`{}` was not listed in `declare_features`", feature),
+            $(
+                pub fn $feature(&self) -> bool {
+                    self.enabled_features.contains(&sym::$feature)
                 }
-            }
+            )*
 
             /// Some features are known to be incomplete and using them is likely to have
             /// unanticipated results, such as compiler crashes. We warn the user about these
@@ -119,8 +100,11 @@ macro_rules! declare_features {
                     $(
                         sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
-                    // Accepted/removed features aren't in this file but are never incomplete.
-                    _ if self.declared_features.contains(&feature) => false,
+                    _ if self.enabled_features.contains(&feature) => {
+                        // Accepted/removed features and library features aren't in this file but
+                        // are never incomplete.
+                        false
+                    }
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
@@ -132,7 +116,7 @@ macro_rules! declare_features {
                     $(
                         sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
-                    _ if self.declared_features.contains(&feature) => {
+                    _ if self.enabled_features.contains(&feature) => {
                         // This could be accepted/removed, or a libs feature.
                         // Accepted/removed features aren't in this file but are never internal
                         // (a removed feature might have been internal, but that's now irrelevant).

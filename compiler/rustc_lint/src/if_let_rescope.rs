@@ -243,7 +243,7 @@ impl_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if expr.span.edition().at_least_rust_2024() || !cx.tcx.features().if_let_rescope {
+        if expr.span.edition().at_least_rust_2024() || !cx.tcx.features().if_let_rescope() {
             return;
         }
         if let (Level::Allow, _) = cx.tcx.lint_level_at_node(IF_LET_RESCOPE, expr.hir_id) {

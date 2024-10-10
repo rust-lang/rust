@@ -406,7 +406,7 @@ fn thir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: LocalDefId,
 ) -> Result<Option<ty::EarlyBinder<'tcx, ty::Const<'tcx>>>, ErrorGuaranteed> {
-    if !tcx.features().generic_const_exprs {
+    if !tcx.features().generic_const_exprs() {
         return Ok(None);
     }
 

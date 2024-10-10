@@ -18,7 +18,7 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
     // if the `rustc_attrs` feature is not enabled, then the
     // attributes we are interested in cannot be present anyway, so
     // skip the walk.
-    if !tcx.features().rustc_attrs {
+    if !tcx.features().rustc_attrs() {
         return;
     }
 

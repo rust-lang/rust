@@ -1161,7 +1161,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
                         && param.is_elided_lifetime()
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
-                        && !self.tcx.features().anonymous_lifetime_in_impl_trait
+                        && !self.tcx.features().anonymous_lifetime_in_impl_trait()
                     {
                         let mut diag: rustc_errors::Diag<'_> = rustc_session::parse::feature_err(
                             &self.tcx.sess,
@@ -2239,7 +2239,7 @@ fn deny_non_region_late_bound(
             format!("late-bound {what} parameter not allowed on {where_}"),
         );
 
-        let guar = diag.emit_unless(!tcx.features().non_lifetime_binders || !first);
+        let guar = diag.emit_unless(!tcx.features().non_lifetime_binders() || !first);
 
         first = false;
         *arg = ResolvedArg::Error(guar);
