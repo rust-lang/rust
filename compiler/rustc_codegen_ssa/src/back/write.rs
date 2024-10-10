@@ -520,6 +520,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
 
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
+    metadata: &EncodedMetadata,
     compiled_modules: &CompiledModules,
 ) -> FxIndexMap<WorkProductId, WorkProduct> {
     let mut work_products = FxIndexMap::default();
@@ -529,6 +530,14 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     }
 
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
+
+    if let Some(path) = metadata.path() {
+        if let Some((id, product)) =
+            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, "metadata", &[("rmeta", path)])
+        {
+            work_products.insert(id, product);
+        }
+    }
 
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
         let mut files = Vec::new();
@@ -2059,8 +2068,11 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         sess.dcx().abort_if_errors();
 
-        let work_products =
-            copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess, &compiled_modules);
+        let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+            sess,
+            &self.metadata,
+            &compiled_modules,
+        );
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
         // FIXME: time_llvm_passes support - does this use a global context or
