@@ -160,6 +160,19 @@ pub trait Pattern: Sized {
             None
         }
     }
+
+    /// Returns the pattern as utf-8 bytes if possible.
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>>;
+}
+/// Result of calling [`Pattern::as_utf8_pattern()`].
+/// Can be used for inspecting the contents of a [`Pattern`] in cases
+/// where the underlying representation can be represented as UTF-8.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Utf8Pattern<'a> {
+    /// Type returned by String and str types.
+    StringPattern(&'a [u8]),
+    /// Type returned by char types.
+    CharPattern(char),
 }
 
 // Searcher
@@ -599,6 +612,11 @@ impl Pattern for char {
     {
         self.encode_utf8(&mut [0u8; 4]).strip_suffix_of(haystack)
     }
+
+    #[inline]
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        Some(Utf8Pattern::CharPattern(*self))
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -656,6 +674,11 @@ impl<C: MultiCharEq> Pattern for MultiCharEqPattern<C> {
     #[inline]
     fn into_searcher(self, haystack: &str) -> MultiCharEqSearcher<'_, C> {
         MultiCharEqSearcher { haystack, char_eq: self.0, char_indices: haystack.char_indices() }
+    }
+
+    #[inline]
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        None
     }
 }
 
@@ -746,6 +769,11 @@ macro_rules! pattern_methods {
             $t: ReverseSearcher<$a>,
         {
             ($pmap)(self).strip_suffix_of(haystack)
+        }
+
+        #[inline]
+        fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+            None
         }
     };
 }
@@ -1021,6 +1049,11 @@ impl<'b> Pattern for &'b str {
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        Some(Utf8Pattern::StringPattern(self.as_bytes()))
     }
 }
 

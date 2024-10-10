@@ -53,7 +53,7 @@ use core::ops::AddAssign;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Range, RangeBounds};
-use core::str::pattern::Pattern;
+use core::str::pattern::{Pattern, Utf8Pattern};
 use core::{fmt, hash, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
@@ -2435,6 +2435,11 @@ impl<'b> Pattern for &'b String {
         Self::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
     {
         self[..].strip_suffix_of(haystack)
+    }
+
+    #[inline]
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        Some(Utf8Pattern::StringPattern(self.as_bytes()))
     }
 }
 
