@@ -40,29 +40,25 @@ pub unsafe fn _Unwind_DeleteException(exception: *mut _Unwind_Exception) {
 }
 
 pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
-    #[cfg(panic = "unwind")]
-    extern "C" {
-        /// LLVM lowers this intrinsic to the `throw` instruction.
-        // FIXME(coolreader18): move to stdarch
-        #[link_name = "llvm.wasm.throw"]
-        fn wasm_throw(tag: i32, ptr: *mut u8) -> !;
-    }
-
     // The wasm `throw` instruction takes a "tag", which differentiates certain
     // types of exceptions from others. LLVM currently just identifies these
     // via integers, with 0 corresponding to C++ exceptions and 1 to C setjmp()/longjmp().
     // Ideally, we'd be able to choose something unique for Rust, but for now,
     // we pretend to be C++ and implement the Itanium exception-handling ABI.
     cfg_if::cfg_if! {
-        // for now, unless we're -Zbuild-std with panic=unwind, never codegen a throw.
+        // panic=abort is default for wasm targets. Because an unknown instruction is a load-time
+        // error on wasm, instead of a runtime error like on traditional architectures, we never
+        // want to codegen a `throw` instruction, as that would break users using runtimes that
+        // don't yet support exceptions. The only time this first branch would be selected is if
+        // the user explicitly opts in to wasm exceptions, via -Zbuild-std with -Cpanic=unwind.
         if #[cfg(panic = "unwind")] {
-            wasm_throw(0, exception.cast())
+            // corresponds with llvm::WebAssembly::Tag::CPP_EXCEPTION
+            //     in llvm-project/llvm/include/llvm/CodeGen/WasmEHFuncInfo.h
+            const CPP_EXCEPTION_TAG: i32 = 0;
+            core::arch::wasm::throw::<CPP_EXCEPTION_TAG>(exception.cast())
         } else {
             let _ = exception;
-            #[cfg(target_arch = "wasm32")]
-            core::arch::wasm32::unreachable();
-            #[cfg(target_arch = "wasm64")]
-            core::arch::wasm64::unreachable();
+            core::arch::wasm::unreachable()
         }
     }
 }
