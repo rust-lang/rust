@@ -3390,4 +3390,113 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_label(block.span, "this block is missing a tail expression");
         }
     }
+
+    pub(crate) fn annotate_incorrect_or_expr(
+        &self,
+        diag: &mut Diag<'_>,
+        expr: &'tcx hir::Expr<'tcx>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        if expected_ty != self.tcx.types.bool {
+            return;
+        }
+        let hir::Node::Expr(&hir::Expr {
+            kind:
+                hir::ExprKind::Binary(
+                    hir::BinOp { node: hir::BinOpKind::Or, span: binop_span },
+                    lhs,
+                    rhs,
+                ),
+            hir_id: parent_hir_id,
+            span: full_span,
+            ..
+        }) = self.tcx.parent_hir_node(expr.hir_id)
+        else {
+            return;
+        };
+        if rhs.hir_id != expr.hir_id {
+            return;
+        }
+        let hir::Expr {
+            kind:
+                hir::ExprKind::Binary(hir::BinOp { node: hir::BinOpKind::Eq, span: eq_span }, lhs, _),
+            ..
+        } = *lhs
+        else {
+            return;
+        };
+        let Some(lhs_ty) = self.typeck_results.borrow().expr_ty_opt(lhs) else {
+            return;
+        };
+        // Coercion here is not totally right, but w/e.
+        if !self.can_coerce(expr_ty, lhs_ty) {
+            return;
+        }
+
+        // Track whether all of the exprs to the right, i.e. `|| a || b || c` are all pattern-like.
+        let mut is_literal = rhs.is_approximately_pattern();
+        // Track the span of the outermost `||` expr.
+        let mut full_span = full_span;
+
+        // Walk up the expr tree gathering up the binop spans of any subsequent `|| a || b || c`.
+        let mut expr_hir_id = parent_hir_id;
+        let mut binop_spans = vec![binop_span];
+        while let hir::Node::Expr(&hir::Expr {
+            kind:
+                hir::ExprKind::Binary(
+                    hir::BinOp { node: hir::BinOpKind::Or, span: binop_span },
+                    lhs,
+                    rhs,
+                ),
+            hir_id: parent_hir_id,
+            span,
+            ..
+        }) = self.tcx.parent_hir_node(expr_hir_id)
+            && lhs.hir_id == expr_hir_id
+        {
+            binop_spans.push(binop_span);
+            expr_hir_id = parent_hir_id;
+            full_span = span;
+            is_literal |= rhs.is_approximately_pattern();
+        }
+
+        // If the type is structural peq, then suggest `matches!(x, a | b | c)`.
+        // Otherwise, suggest adding `x == ` to every `||`.
+        if is_literal
+            // I know this logic may look a bit sketchy, but int vars don't implement
+            // `StructuralPeq` b/c they're unconstrained, so just check for those manually.
+            && (self.tcx.lang_items().structural_peq_trait().is_some_and(|structural_peq_def_id| {
+                self.type_implements_trait(structural_peq_def_id, [lhs_ty], self.param_env)
+                    .must_apply_modulo_regions()
+            }) || lhs_ty.is_integral())
+        {
+            let eq_span = lhs.span.shrink_to_hi().to(eq_span);
+            diag.multipart_suggestion_verbose(
+                "use `matches!()` to match against multiple values",
+                [
+                    (full_span.shrink_to_lo(), "matches!(".to_string()),
+                    (full_span.shrink_to_hi(), ")".to_string()),
+                    (eq_span, ",".to_string()),
+                ]
+                .into_iter()
+                .chain(binop_spans.into_iter().map(|span| (span, "|".to_string())))
+                .collect(),
+                Applicability::MachineApplicable,
+            );
+        } else if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = lhs.kind
+            && let Res::Local(local) = path.res
+        {
+            let local = self.tcx.hir().name(local);
+            let local_name = format!(" {local} ==");
+            diag.multipart_suggestion_verbose(
+                format!("use `{local} == ...` to match against several different values"),
+                binop_spans
+                    .into_iter()
+                    .map(|span| (span.shrink_to_hi(), local_name.clone()))
+                    .collect(),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
 }
