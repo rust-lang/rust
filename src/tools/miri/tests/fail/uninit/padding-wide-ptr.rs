@@ -1,7 +1,13 @@
 use std::mem;
 
-// If this is `None`, the metadata becomes padding.
-type T = Option<&'static str>;
+#[repr(C)]
+struct RefAndLen {
+    ptr: &'static u8,
+    len: usize,
+}
+
+// If this is `None`, the len becomes padding.
+type T = Option<RefAndLen>;
 
 fn main() {
     unsafe {
