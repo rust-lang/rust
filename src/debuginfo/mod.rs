@@ -101,6 +101,7 @@ impl DebugContext {
             None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
         };
 
+        let file_has_md5 = file_info.is_some();
         let mut line_program = LineProgram::new(
             encoding,
             LineEncoding::default(),
@@ -108,7 +109,7 @@ impl DebugContext {
             LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
             file_info,
         );
-        line_program.file_has_md5 = file_info.is_some();
+        line_program.file_has_md5 = file_has_md5;
 
         dwarf.unit.line_program = line_program;
 

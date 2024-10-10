@@ -294,7 +294,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
     if arg_uninhabited {
         fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
-        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
         return;
     }
     fx.tcx
@@ -311,7 +311,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         if !reachable_blocks.contains(bb) {
             // We want to skip this block, because it's not reachable. But we still create
             // the block so terminators in other blocks can reference it.
-            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+            fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             continue;
         }
 
@@ -540,11 +540,11 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             }
             TerminatorKind::UnwindResume => {
                 // FIXME implement unwinding
-                fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+                fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             }
             TerminatorKind::Unreachable => {
                 fx.bcx.set_cold_block(block);
-                fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+                fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             }
             TerminatorKind::Yield { .. }
             | TerminatorKind::FalseEdge { .. }
@@ -1082,7 +1082,7 @@ fn codegen_panic_inner<'tcx>(
     let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
 
     if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
-        fx.bcx.ins().trap(TrapCode::User(0));
+        fx.bcx.ins().trap(TrapCode::user(2).unwrap());
         return;
     }
 
@@ -1095,5 +1095,5 @@ fn codegen_panic_inner<'tcx>(
         args,
     );
 
-    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+    fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }
