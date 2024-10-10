@@ -71,7 +71,8 @@ impl<T: Clone> Redundant for T {
 }
 
 default impl Redundant for i32 {
-    fn redundant(&self) {} //~ ERROR E0520
+    fn redundant(&self) {}
+    //~^ ERROR `redundant` specializes an item from a parent `impl`, but that item is not marked `default`
 }
 
 fn main() {}

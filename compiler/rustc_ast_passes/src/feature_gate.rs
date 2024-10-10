@@ -666,7 +666,7 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
 }
 
 fn check_new_solver_banned_features(sess: &Session, features: &Features) {
-    if !sess.opts.unstable_opts.next_solver.is_some_and(|n| n.globally) {
+    if !sess.opts.unstable_opts.next_solver.globally {
         return;
     }
 
