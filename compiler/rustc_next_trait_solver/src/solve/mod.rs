@@ -48,6 +48,14 @@ enum GoalEvaluationKind {
     Nested,
 }
 
+/// Whether evaluating this goal ended up changing the
+/// inference state.
+#[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
+pub enum HasChanged {
+    Yes,
+    No,
+}
+
 // FIXME(trait-system-refactor-initiative#117): we don't detect whether a response
 // ended up pulling down any universes.
 fn has_no_inference_or_external_constraints<I: Interner>(
