@@ -141,62 +141,89 @@ fn path_search_pat(path: &Path<'_>) -> (Pat, Pat) {
 
 /// Get the search patterns to use for the given expression
 fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
-    match e.kind {
-        ExprKind::ConstBlock(_) => (Pat::Str("const"), Pat::Str("}")),
-        // Parenthesis are trimmed from the text before the search patterns are matched.
-        // See: `span_matches_pat`
-        ExprKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
-        ExprKind::Unary(UnOp::Deref, e) => (Pat::Str("*"), expr_search_pat(tcx, e).1),
-        ExprKind::Unary(UnOp::Not, e) => (Pat::Str("!"), expr_search_pat(tcx, e).1),
-        ExprKind::Unary(UnOp::Neg, e) => (Pat::Str("-"), expr_search_pat(tcx, e).1),
-        ExprKind::Lit(lit) => lit_search_pat(&lit.node),
-        ExprKind::Array(_) | ExprKind::Repeat(..) => (Pat::Str("["), Pat::Str("]")),
-        ExprKind::Call(e, []) | ExprKind::MethodCall(_, e, [], _) => (expr_search_pat(tcx, e).0, Pat::Str("(")),
-        ExprKind::Call(first, [.., last])
-        | ExprKind::MethodCall(_, first, [.., last], _)
-        | ExprKind::Binary(_, first, last)
-        | ExprKind::Tup([first, .., last])
-        | ExprKind::Assign(first, last, _)
-        | ExprKind::AssignOp(_, first, last) => (expr_search_pat(tcx, first).0, expr_search_pat(tcx, last).1),
-        ExprKind::Tup([e]) | ExprKind::DropTemps(e) => expr_search_pat(tcx, e),
-        ExprKind::Cast(e, _) | ExprKind::Type(e, _) => (expr_search_pat(tcx, e).0, Pat::Str("")),
-        ExprKind::Let(let_expr) => (Pat::Str("let"), expr_search_pat(tcx, let_expr.init).1),
-        ExprKind::If(..) => (Pat::Str("if"), Pat::Str("}")),
-        ExprKind::Loop(_, Some(_), _, _) | ExprKind::Block(_, Some(_)) => (Pat::Str("'"), Pat::Str("}")),
-        ExprKind::Loop(_, None, LoopSource::Loop, _) => (Pat::Str("loop"), Pat::Str("}")),
-        ExprKind::Loop(_, None, LoopSource::While, _) => (Pat::Str("while"), Pat::Str("}")),
-        ExprKind::Loop(_, None, LoopSource::ForLoop, _) | ExprKind::Match(_, _, MatchSource::ForLoopDesugar) => {
-            (Pat::Str("for"), Pat::Str("}"))
-        },
-        ExprKind::Match(_, _, MatchSource::Normal) => (Pat::Str("match"), Pat::Str("}")),
-        ExprKind::Match(e, _, MatchSource::TryDesugar(_)) => (expr_search_pat(tcx, e).0, Pat::Str("?")),
-        ExprKind::Match(e, _, MatchSource::AwaitDesugar) | ExprKind::Yield(e, YieldSource::Await { .. }) => {
-            (expr_search_pat(tcx, e).0, Pat::Str("await"))
-        },
-        ExprKind::Closure(&Closure { body, .. }) => (Pat::Str(""), expr_search_pat(tcx, tcx.hir().body(body).value).1),
-        ExprKind::Block(
-            Block {
-                rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
-                ..
+    fn expr_search_pat_inner(tcx: TyCtxt<'_>, e: &Expr<'_>, outer_span: Span) -> (Pat, Pat) {
+        // The expression can have subexpressions in different contexts, in which case
+        // building up a search pattern from the macro expansion would lead to false positives;
+        // e.g. `return format!(..)` would be considered to be from a proc macro
+        // if we build up a pattern for the macro expansion and compare it to the invocation `format!()`.
+        // So instead we return an empty pattern such that `span_matches_pat` always returns true.
+        if !e.span.eq_ctxt(outer_span) {
+            return (Pat::Str(""), Pat::Str(""));
+        }
+
+        match e.kind {
+            ExprKind::ConstBlock(_) => (Pat::Str("const"), Pat::Str("}")),
+            // Parenthesis are trimmed from the text before the search patterns are matched.
+            // See: `span_matches_pat`
+            ExprKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
+            ExprKind::Unary(UnOp::Deref, e) => (Pat::Str("*"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Unary(UnOp::Not, e) => (Pat::Str("!"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Unary(UnOp::Neg, e) => (Pat::Str("-"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Lit(lit) => lit_search_pat(&lit.node),
+            ExprKind::Array(_) | ExprKind::Repeat(..) => (Pat::Str("["), Pat::Str("]")),
+            ExprKind::Call(e, []) | ExprKind::MethodCall(_, e, [], _) => {
+                (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("("))
             },
-            None,
-        ) => (Pat::Str("unsafe"), Pat::Str("}")),
-        ExprKind::Block(_, None) => (Pat::Str("{"), Pat::Str("}")),
-        ExprKind::Field(e, name) => (expr_search_pat(tcx, e).0, Pat::Sym(name.name)),
-        ExprKind::Index(e, _, _) => (expr_search_pat(tcx, e).0, Pat::Str("]")),
-        ExprKind::Path(ref path) => qpath_search_pat(path),
-        ExprKind::AddrOf(_, _, e) => (Pat::Str("&"), expr_search_pat(tcx, e).1),
-        ExprKind::Break(Destination { label: None, .. }, None) => (Pat::Str("break"), Pat::Str("break")),
-        ExprKind::Break(Destination { label: Some(name), .. }, None) => (Pat::Str("break"), Pat::Sym(name.ident.name)),
-        ExprKind::Break(_, Some(e)) => (Pat::Str("break"), expr_search_pat(tcx, e).1),
-        ExprKind::Continue(Destination { label: None, .. }) => (Pat::Str("continue"), Pat::Str("continue")),
-        ExprKind::Continue(Destination { label: Some(name), .. }) => (Pat::Str("continue"), Pat::Sym(name.ident.name)),
-        ExprKind::Ret(None) => (Pat::Str("return"), Pat::Str("return")),
-        ExprKind::Ret(Some(e)) => (Pat::Str("return"), expr_search_pat(tcx, e).1),
-        ExprKind::Struct(path, _, _) => (qpath_search_pat(path).0, Pat::Str("}")),
-        ExprKind::Yield(e, YieldSource::Yield) => (Pat::Str("yield"), expr_search_pat(tcx, e).1),
-        _ => (Pat::Str(""), Pat::Str("")),
+            ExprKind::Call(first, [.., last])
+            | ExprKind::MethodCall(_, first, [.., last], _)
+            | ExprKind::Binary(_, first, last)
+            | ExprKind::Tup([first, .., last])
+            | ExprKind::Assign(first, last, _)
+            | ExprKind::AssignOp(_, first, last) => (
+                expr_search_pat_inner(tcx, first, outer_span).0,
+                expr_search_pat_inner(tcx, last, outer_span).1,
+            ),
+            ExprKind::Tup([e]) | ExprKind::DropTemps(e) => expr_search_pat_inner(tcx, e, outer_span),
+            ExprKind::Cast(e, _) | ExprKind::Type(e, _) => (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("")),
+            ExprKind::Let(let_expr) => (Pat::Str("let"), expr_search_pat_inner(tcx, let_expr.init, outer_span).1),
+            ExprKind::If(..) => (Pat::Str("if"), Pat::Str("}")),
+            ExprKind::Loop(_, Some(_), _, _) | ExprKind::Block(_, Some(_)) => (Pat::Str("'"), Pat::Str("}")),
+            ExprKind::Loop(_, None, LoopSource::Loop, _) => (Pat::Str("loop"), Pat::Str("}")),
+            ExprKind::Loop(_, None, LoopSource::While, _) => (Pat::Str("while"), Pat::Str("}")),
+            ExprKind::Loop(_, None, LoopSource::ForLoop, _) | ExprKind::Match(_, _, MatchSource::ForLoopDesugar) => {
+                (Pat::Str("for"), Pat::Str("}"))
+            },
+            ExprKind::Match(_, _, MatchSource::Normal) => (Pat::Str("match"), Pat::Str("}")),
+            ExprKind::Match(e, _, MatchSource::TryDesugar(_)) => {
+                (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("?"))
+            },
+            ExprKind::Match(e, _, MatchSource::AwaitDesugar) | ExprKind::Yield(e, YieldSource::Await { .. }) => {
+                (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("await"))
+            },
+            ExprKind::Closure(&Closure { body, .. }) => (
+                Pat::Str(""),
+                expr_search_pat_inner(tcx, tcx.hir().body(body).value, outer_span).1,
+            ),
+            ExprKind::Block(
+                Block {
+                    rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
+                    ..
+                },
+                None,
+            ) => (Pat::Str("unsafe"), Pat::Str("}")),
+            ExprKind::Block(_, None) => (Pat::Str("{"), Pat::Str("}")),
+            ExprKind::Field(e, name) => (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Sym(name.name)),
+            ExprKind::Index(e, _, _) => (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("]")),
+            ExprKind::Path(ref path) => qpath_search_pat(path),
+            ExprKind::AddrOf(_, _, e) => (Pat::Str("&"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Break(Destination { label: None, .. }, None) => (Pat::Str("break"), Pat::Str("break")),
+            ExprKind::Break(Destination { label: Some(name), .. }, None) => {
+                (Pat::Str("break"), Pat::Sym(name.ident.name))
+            },
+            ExprKind::Break(_, Some(e)) => (Pat::Str("break"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Continue(Destination { label: None, .. }) => (Pat::Str("continue"), Pat::Str("continue")),
+            ExprKind::Continue(Destination { label: Some(name), .. }) => {
+                (Pat::Str("continue"), Pat::Sym(name.ident.name))
+            },
+            ExprKind::Ret(None) => (Pat::Str("return"), Pat::Str("return")),
+            ExprKind::Ret(Some(e)) => (Pat::Str("return"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Struct(path, _, _) => (qpath_search_pat(path).0, Pat::Str("}")),
+            ExprKind::Yield(e, YieldSource::Yield) => (Pat::Str("yield"), expr_search_pat_inner(tcx, e, outer_span).1),
+            _ => (Pat::Str(""), Pat::Str("")),
+        }
     }
+
+    expr_search_pat_inner(tcx, e, e.span)
 }
 
 fn fn_header_search_pat(header: FnHeader) -> Pat {
