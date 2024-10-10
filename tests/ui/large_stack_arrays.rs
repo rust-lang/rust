@@ -16,6 +16,11 @@ enum E {
 }
 
 const STATIC_PROMOTED_LARGE_ARRAY: &[u8; 512001] = &[0; 512001];
+const STATIC_PROMOTED_LARGE_ARRAY_WITH_NESTED: &[u8; 512001] = {
+    const NESTED: () = ();
+    &[0; 512001]
+};
+
 pub static DOESNOTLINT: [u8; 512_001] = [0; 512_001];
 pub static DOESNOTLINT2: [u8; 512_001] = {
     let x = 0;
