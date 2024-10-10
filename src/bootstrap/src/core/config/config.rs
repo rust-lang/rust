@@ -2777,13 +2777,9 @@ impl Config {
         }
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
-        let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", &commit])
-            .arg("--")
-            .args([self.src.join("compiler"), self.src.join("library")])
-            .as_command_mut()
-            .status())
-        .success();
+        let dirs = vec![self.src.join("compiler"), self.src.join("library")];
+        let has_changes = self.check_for_changes(&dirs, &commit);
+
         if has_changes {
             if if_unchanged {
                 if self.is_verbose() {
@@ -2897,6 +2893,20 @@ impl Config {
         }
 
         Some(commit.to_string())
+    }
+
+    /// Check for changes in specified directories since a given commit.
+    /// Returns true if changes exist, false if no changes
+    pub fn check_for_changes(&self, dirs: &[PathBuf], commit: &str) -> bool {
+        let mut git = helpers::git(Some(&self.src));
+        git.args(["diff-index", "--quiet", commit]);
+        if !dirs.is_empty() {
+            git.arg("--");
+            for dir in dirs {
+                git.arg(dir);
+            }
+        }
+        !t!(git.as_command_mut().status()).success()
     }
 }
 
