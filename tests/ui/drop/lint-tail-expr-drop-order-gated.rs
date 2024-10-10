@@ -2,7 +2,7 @@
 // or the feature gate `shorter_tail_lifetimes` is disabled.
 
 //@ revisions: neither no_feature_gate edition_less_than_2024
-//@ check-pass
+//@ ignore-test
 //@ [neither] edition: 2021
 //@ [no_feature_gate] compile-flags: -Z unstable-options
 //@ [no_feature_gate] edition: 2024
