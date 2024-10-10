@@ -6,17 +6,6 @@
 
 use std::arch::asm;
 
-#[no_mangle]
-pub extern "C" fn panicky() {}
-
-struct Foo;
-
-impl Drop for Foo {
-    fn drop(&mut self) {
-        println!();
-    }
-}
-
 // CHECK-LABEL: @asm_goto
 #[no_mangle]
 pub unsafe fn asm_goto() {
@@ -36,6 +25,19 @@ pub unsafe fn asm_goto_with_outputs() -> u64 {
     // CHECK-NEXT: [[RET:%.+]] = phi i64 [ [[RES]], %[[FALLTHROUGHBB]] ], [ 1, %start ]
     // CHECK-NEXT: ret i64 [[RET]]
     out
+}
+
+// CHECK-LABEL: @asm_goto_with_outputs_use_in_label
+#[no_mangle]
+pub unsafe fn asm_goto_with_outputs_use_in_label() -> u64 {
+    let out: u64;
+    // CHECK: [[RES:%[0-9]+]] = callbr i64 asm sideeffect alignstack inteldialect "
+    // CHECK-NEXT: to label %[[FALLTHROUGHBB:[a-b0-9]+]] [label %[[JUMPBB:[a-b0-9]+]]]
+    asm!("{} /* {} */", out(reg) out, label { return out; });
+    // CHECK: [[JUMPBB]]:
+    // CHECK-NEXT: [[RET:%.+]] = phi i64 [ 1, %[[FALLTHROUGHBB]] ], [ [[RES]], %start ]
+    // CHECK-NEXT: ret i64 [[RET]]
+    1
 }
 
 // CHECK-LABEL: @asm_goto_noreturn

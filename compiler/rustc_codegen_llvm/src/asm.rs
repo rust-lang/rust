@@ -342,24 +342,25 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
-        // Switch to the 'normal' basic block if we did an `invoke` instead of a `call`
-        if let Some(dest) = dest {
-            self.switch_to_block(dest);
-        }
+        // Write results to outputs. We need to do this for all possible control flow.
+        for block in Some(dest).into_iter().chain(labels.iter().copied().map(Some)) {
+            if let Some(block) = block {
+                self.switch_to_block(block);
+            }
 
-        // Write results to outputs
-        for (idx, op) in operands.iter().enumerate() {
-            if let InlineAsmOperandRef::Out { reg, place: Some(place), .. }
-            | InlineAsmOperandRef::InOut { reg, out_place: Some(place), .. } = *op
-            {
-                let value = if output_types.len() == 1 {
-                    result
-                } else {
-                    self.extract_value(result, op_idx[&idx] as u64)
-                };
-                let value =
-                    llvm_fixup_output(self, value, reg.reg_class(), &place.layout, instance);
-                OperandValue::Immediate(value).store(self, place);
+            for (idx, op) in operands.iter().enumerate() {
+                if let InlineAsmOperandRef::Out { reg, place: Some(place), .. }
+                | InlineAsmOperandRef::InOut { reg, out_place: Some(place), .. } = *op
+                {
+                    let value = if output_types.len() == 1 {
+                        result
+                    } else {
+                        self.extract_value(result, op_idx[&idx] as u64)
+                    };
+                    let value =
+                        llvm_fixup_output(self, value, reg.reg_class(), &place.layout, instance);
+                    OperandValue::Immediate(value).store(self, place);
+                }
             }
         }
     }
