@@ -728,6 +728,49 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 };
             }
 
+            if arg_idx.is_none() && arg.layout.size > Pointer(AddressSpace::DATA).size(cx) * 2 {
+                // Return values larger than 2 registers using a return area
+                // pointer. LLVM and Cranelift disagree about how to return
+                // values that don't fit in the registers designated for return
+                // values. LLVM will force the entire return value to be passed
+                // by return area pointer, while Cranelift will look at each IR level
+                // return value independently and decide to pass it in a
+                // register or not, which would result in the return value
+                // being passed partially in registers and partially through a
+                // return area pointer.
+                //
+                // While Cranelift may need to be fixed as the LLVM behavior is
+                // generally more correct with respect to the surface language,
+                // forcing this behavior in rustc itself makes it easier for
+                // other backends to conform to the Rust ABI and for the C ABI
+                // rustc already handles this behavior anyway.
+                //
+                // In addition LLVM's decision to pass the return value in
+                // registers or using a return area pointer depends on how
+                // exactly the return type is lowered to an LLVM IR type. For
+                // example `Option<u128>` can be lowered as `{ i128, i128 }`
+                // in which case the x86_64 backend would use a return area
+                // pointer, or it could be passed as `{ i32, i128 }` in which
+                // case the x86_64 backend would pass it in registers by taking
+                // advantage of an LLVM ABI extension that allows using 3
+                // registers for the x86_64 sysv call conv rather than the
+                // officially specified 2 registers.
+                //
+                // FIXME: Technically we should look at the amount of available
+                // return registers rather than guessing that there are 2
+                // registers for return values. In practice only a couple of
+                // architectures have less than 2 return registers. None of
+                // which supported by Cranelift.
+                //
+                // NOTE: This adjustment is only necessary for the Rust ABI as
+                // for other ABI's the calling convention implementations in
+                // rustc_target already ensure any return value which doesn't
+                // fit in the available amount of return registers is passed in
+                // the right way for the current target.
+                arg.make_indirect();
+                return;
+            }
+
             match arg.layout.abi {
                 Abi::Aggregate { .. } => {}
 
