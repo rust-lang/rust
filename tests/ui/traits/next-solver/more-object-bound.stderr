@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<dyn Trait<A = A, B = B> as SuperTrait>::A == B`
-  --> $DIR/more-object-bound.rs:12:5
+  --> $DIR/more-object-bound.rs:12:17
    |
 LL | fn transmute<A, B>(x: A) -> B {
    |              -  -
@@ -9,7 +9,7 @@ LL | fn transmute<A, B>(x: A) -> B {
    |              found type parameter
    |              expected type parameter
 LL |     foo::<A, B, dyn Trait<A = A, B = B>>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `A`, found type parameter `B`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `A`, found type parameter `B`
    |
    = note: expected type parameter `A`
               found type parameter `B`
