@@ -2063,13 +2063,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
-                self.prohibit_or_lint_bare_trait_object_ty(hir_ty);
-
-                let repr = match repr {
-                    TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
-                    TraitObjectSyntax::DynStar => ty::DynStar,
-                };
-                self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
+                if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
+                    // Don't continue with type analysis if the `dyn` keyword is missing
+                    // It generates confusing errors, especially if the user meant to use another
+                    // keyword like `impl`
+                    Ty::new_error(tcx, guar)
+                } else {
+                    let repr = match repr {
+                        TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
+                        TraitObjectSyntax::DynStar => ty::DynStar,
+                    };
+                    self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
+                }
             }
             // If we encounter a fully qualified path with RTN generics, then it must have
             // *not* gone through `lower_ty_maybe_return_type_notation`, and therefore

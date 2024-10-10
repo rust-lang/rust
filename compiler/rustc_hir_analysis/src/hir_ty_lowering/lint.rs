@@ -1,6 +1,6 @@
 use rustc_ast::TraitObjectSyntax;
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, EmissionGuarantee, StashKey};
+use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed, StashKey, Suggestions};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::Applicability;
@@ -15,13 +15,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// *Bare* trait object types are ones that aren't preceded by the keyword `dyn`.
     /// In edition 2021 and onward we emit a hard error for them.
-    pub(super) fn prohibit_or_lint_bare_trait_object_ty(&self, self_ty: &hir::Ty<'_>) {
+    pub(super) fn prohibit_or_lint_bare_trait_object_ty(
+        &self,
+        self_ty: &hir::Ty<'_>,
+    ) -> Option<ErrorGuaranteed> {
         let tcx = self.tcx();
 
         let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
             self_ty.kind
         else {
-            return;
+            return None;
         };
 
         let in_path = match tcx.parent_hir_node(self_ty.hir_id) {
@@ -70,8 +73,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if self_ty.span.edition().at_least_rust_2021() {
-            let msg = "trait objects must include the `dyn` keyword";
-            let label = "add `dyn` keyword before this trait";
+            let msg = "expected a type, found a trait";
+            let label = "you can add the `dyn` keyword if you want a trait object";
             let mut diag =
                 rustc_errors::struct_span_code_err!(self.dcx(), self_ty.span, E0782, "{}", msg);
             if self_ty.span.can_be_used_for_suggestions()
@@ -83,7 +86,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
-            diag.stash(self_ty.span, StashKey::TraitMissingMethod);
+            // In case there is an associate type with the same name
+            // Add the suggestion to this error
+            if let Some(mut sugg) =
+                tcx.dcx().steal_non_err(self_ty.span, StashKey::AssociatedTypeSuggestion)
+                && let Suggestions::Enabled(ref mut s1) = diag.suggestions
+                && let Suggestions::Enabled(ref mut s2) = sugg.suggestions
+            {
+                s1.append(s2);
+                sugg.cancel();
+            }
+            diag.stash(self_ty.span, StashKey::TraitMissingMethod)
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
@@ -96,6 +109,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
                 self.maybe_suggest_blanket_trait_impl(self_ty, lint);
             });
+            None
         }
     }
 
@@ -174,41 +188,31 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // 1. Independent functions
         // 2. Functions inside trait blocks
         // 3. Functions inside impl blocks
-        let (sig, generics, owner) = match tcx.hir_node_by_def_id(parent_id) {
+        let (sig, generics) = match tcx.hir_node_by_def_id(parent_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. }) => {
-                (sig, generics, None)
+                (sig, generics)
             }
             hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 generics,
-                owner_id,
                 ..
-            }) => (sig, generics, Some(tcx.parent(owner_id.to_def_id()))),
+            }) => (sig, generics),
             hir::Node::ImplItem(hir::ImplItem {
                 kind: hir::ImplItemKind::Fn(sig, _),
                 generics,
-                owner_id,
                 ..
-            }) => (sig, generics, Some(tcx.parent(owner_id.to_def_id()))),
+            }) => (sig, generics),
             _ => return false,
         };
         let Ok(trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
             return false;
         };
         let impl_sugg = vec![(self_ty.span.shrink_to_lo(), "impl ".to_string())];
-        let mut is_downgradable = true;
-
         // Check if trait object is safe for suggesting dynamic dispatch.
         let is_dyn_compatible = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
                 objects.iter().all(|(o, _)| match o.trait_ref.path.res {
-                    Res::Def(DefKind::Trait, id) => {
-                        if Some(id) == owner {
-                            // For recursive traits, don't downgrade the error. (#119652)
-                            is_downgradable = false;
-                        }
-                        tcx.is_dyn_compatible(id)
-                    }
+                    Res::Def(DefKind::Trait, id) => tcx.is_dyn_compatible(id),
                     _ => false,
                 })
             }
@@ -255,9 +259,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     suggestion,
                     Applicability::MachineApplicable,
                 );
-            } else if is_downgradable {
-                // We'll emit the dyn-compatibility error already, with a structured suggestion.
-                diag.downgrade_to_delayed_bug();
             }
             return true;
         }
@@ -281,10 +282,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
             if !is_dyn_compatible {
                 diag.note(format!("`{trait_name}` it is dyn-incompatible, so it can't be `dyn`"));
-                if is_downgradable {
-                    // We'll emit the dyn-compatibility error already, with a structured suggestion.
-                    diag.downgrade_to_delayed_bug();
-                }
             } else {
                 // No ampersand in suggestion if it's borrowed already
                 let (dyn_str, paren_dyn_str) =

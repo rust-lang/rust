@@ -1,21 +1,14 @@
-error[E0038]: the trait `Ord` cannot be made into an object
+error[E0782]: expected a type, found a trait
   --> $DIR/bare-trait-dont-suggest-dyn.rs:6:33
    |
 LL | fn ord_prefer_dot(s: String) -> Ord {
-   |                                 ^^^ `Ord` cannot be made into an object
+   |                                 ^^^
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-   = note: the trait cannot be made into an object because it uses `Self` as a type parameter
-  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-   = note: the trait cannot be made into an object because it uses `Self` as a type parameter
-help: consider using an opaque type instead
+help: `Ord` is dyn-incompatible, use `impl Ord` to return an opaque type, as long as you return a single underlying type
    |
 LL | fn ord_prefer_dot(s: String) -> impl Ord {
    |                                 ++++
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0782`.

@@ -1,41 +1,10 @@
-error[E0038]: the trait `Copy` cannot be made into an object
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:4:20
-   |
-LL | fn f(_: impl Trait<T = Copy>) {}
-   |                    ^^^^^^^^ `Copy` cannot be made into an object
-   |
-   = note: the trait cannot be made into an object because it requires `Self: Sized`
-   = note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-
-error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:10:42
-   |
-LL | fn g(_: impl Trait<T = std::fmt::Debug + Eq>) {}
-   |                        ---------------   ^^ additional non-auto trait
-   |                        |
-   |                        first non-auto trait
-   |
-   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Debug + Eq {}`
-   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
-
-error[E0038]: the trait `Eq` cannot be made into an object
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:10:24
-   |
-LL | fn g(_: impl Trait<T = std::fmt::Debug + Eq>) {}
-   |                        ^^^^^^^^^^^^^^^^^^^^ `Eq` cannot be made into an object
-   |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-   = note: the trait cannot be made into an object because it uses `Self` as a type parameter
-
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:4:24
    |
 LL | fn f(_: impl Trait<T = Copy>) {}
    |                        ^^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL | fn f(_: impl Trait<T = dyn Copy>) {}
    |                        +++
@@ -44,13 +13,13 @@ help: you might have meant to write a bound here
 LL | fn f(_: impl Trait<T: Copy>) {}
    |                     ~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:10:24
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:9:24
    |
 LL | fn g(_: impl Trait<T = std::fmt::Debug + Eq>) {}
    |                        ^^^^^^^^^^^^^^^^^^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL | fn g(_: impl Trait<T = dyn std::fmt::Debug + Eq>) {}
    |                        +++
@@ -59,13 +28,13 @@ help: you might have meant to write a bound here
 LL | fn g(_: impl Trait<T: std::fmt::Debug + Eq>) {}
    |                     ~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:18:26
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:14:26
    |
 LL | fn h(_: impl Trait<T<> = 'static + for<'a> Fn(&'a ())>) {}
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL | fn h(_: impl Trait<T<> = dyn 'static + for<'a> Fn(&'a ())>) {}
    |                          +++
@@ -74,18 +43,17 @@ help: you might have meant to write a bound here
 LL | fn h(_: impl Trait<T<>: 'static + for<'a> Fn(&'a ())>) {}
    |                       ~
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:24:26
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:20:26
    |
 LL | type Obj = dyn Trait<T = Clone>;
    |                          ^^^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL | type Obj = dyn Trait<T = dyn Clone>;
    |                          +++
 
-error: aborting due to 7 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0038, E0225, E0782.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0782`.

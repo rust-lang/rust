@@ -9,6 +9,7 @@ impl dyn Trait {
 fn main() {
     match () {
         Trait::CONST => {}
-        //~^ ERROR trait objects must include the `dyn` keyword
+        //~^ ERROR expected a type, found a trait
+        //~| HELP you can add the `dyn` keyword if you want a trait object
     }
 }
