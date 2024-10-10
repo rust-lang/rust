@@ -2,7 +2,7 @@ use std::hash::Hash;
 use std::io::Write;
 use std::num::NonZero;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
@@ -30,7 +30,7 @@ pub struct QueryInfo {
     pub query: QueryStackFrame,
 }
 
-pub type QueryMap = FxHashMap<QueryJobId, QueryJobInfo>;
+pub type QueryMap = FxIndexMap<QueryJobId, QueryJobInfo>;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
