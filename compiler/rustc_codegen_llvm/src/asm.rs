@@ -343,7 +343,14 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
         // Write results to outputs. We need to do this for all possible control flow.
-        for block in Some(dest).into_iter().chain(labels.iter().copied().map(Some)) {
+        //
+        // Note that `dest` maybe populated with unreachable_block when asm goto with outputs
+        // is used (because we need to codegen callbr which always needs a destination), so
+        // here we use the NORETURN option to determine if `dest` should be used.
+        for block in (if options.contains(InlineAsmOptions::NORETURN) { None } else { Some(dest) })
+            .into_iter()
+            .chain(labels.iter().copied().map(Some))
+        {
             if let Some(block) = block {
                 self.switch_to_block(block);
             }
