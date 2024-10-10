@@ -78,6 +78,11 @@ lint_builtin_deprecated_attr_used = use of deprecated attribute `{$name}`: no lo
 lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
 
+lint_builtin_double_negations = use of a double negation
+    .note = the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+    .note_decrement = use `-= 1` if you meant to decrement the value
+    .add_parens_suggestion = add parentheses for clarity
+
 lint_builtin_ellipsis_inclusive_range_patterns = `...` range patterns are deprecated
     .suggestion = use `..=` for an inclusive range
 
