@@ -1274,6 +1274,7 @@ impl<T> [T] {
     /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked() // Zero-length chunks are never allowed
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
@@ -1319,6 +1320,7 @@ impl<T> [T] {
     /// assert_eq!(chunks, &[['R', 'u'], ['s', 't']]);
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1353,6 +1355,7 @@ impl<T> [T] {
     /// assert_eq!(chunks, &[['o', 'r'], ['e', 'm']]);
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1431,6 +1434,7 @@ impl<T> [T] {
     /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks are never allowed
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
@@ -1471,6 +1475,7 @@ impl<T> [T] {
     /// assert_eq!(v, &[1, 1, 2, 2, 9]);
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1511,6 +1516,7 @@ impl<T> [T] {
     /// assert_eq!(v, &[9, 1, 1, 2, 2]);
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     #[must_use]

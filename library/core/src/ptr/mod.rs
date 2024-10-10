@@ -645,7 +645,10 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// see the [module documentation][crate::ptr] for details.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")
+)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
@@ -667,7 +670,10 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")
+)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn dangling<T>() -> *const T {
     without_provenance(mem::align_of::<T>())
@@ -689,7 +695,10 @@ pub const fn dangling<T>() -> *const T {
 /// see the [module documentation][crate::ptr] for details.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")
+)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
@@ -711,7 +720,10 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")
+)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())
@@ -1911,6 +1923,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// Any questions go to @nagisa.
 #[cfg_attr(not(bootstrap), allow(ptr_to_integer_transmute_in_consts))]
 #[lang = "align_offset"]
+#[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
 pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.

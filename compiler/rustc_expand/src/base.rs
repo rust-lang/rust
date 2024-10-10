@@ -865,9 +865,16 @@ impl SyntaxExtension {
             })
             .unwrap_or_else(|| (None, helper_attrs));
         let stability = attr::find_stability(sess, attrs, span);
-        let const_stability = attr::find_const_stability(sess, attrs, span);
+        let (const_stability, const_stable_indirect) =
+            attr::find_const_stability(sess, attrs, span);
         let body_stability = attr::find_body_stability(sess, attrs);
         if let Some((_, sp)) = const_stability {
+            sess.dcx().emit_err(errors::MacroConstStability {
+                span: sp,
+                head_span: sess.source_map().guess_head_span(span),
+            });
+        }
+        if let Some(sp) = const_stable_indirect {
             sess.dcx().emit_err(errors::MacroConstStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),

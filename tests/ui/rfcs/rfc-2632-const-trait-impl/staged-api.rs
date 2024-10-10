@@ -32,10 +32,14 @@ fn non_const_context() {
 #[unstable(feature = "none", issue = "none")]
 const fn const_context() {
     Unstable::func();
-    //[stable]~^ ERROR not yet stable as a const fn
+    //~^ ERROR cannot use `#[feature(unstable)]`
+    //[stable]~| ERROR not yet stable as a const fn
     Foo::func();
-    //[unstable]~^ ERROR not yet stable as a const fn
-    // ^ fails, because the `foo` feature is not active
+    //[unstable]~^ ERROR cannot use `#[feature(foo)]`
+    Unstable2::func();
+    //~^ ERROR not yet stable as a const fn
+    //~| ERROR cannot use `#[feature(unstable2)]`
+    // ^ fails, because the `unstable2` feature is not active
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -44,20 +48,24 @@ pub const fn const_context_not_const_stable() {
     //[stable]~^ ERROR function has missing const stability attribute
     Unstable::func();
     //[stable]~^ ERROR not yet stable as a const fn
-    Foo::func();
-    //[unstable]~^ ERROR not yet stable as a const fn
-    // ^ fails, because the `foo` feature is not active
+    //[stable]~| ERROR cannot use `#[feature(unstable)]`
+    Foo::func(); // fine, because it's in the same crate
+    Unstable2::func();
+    //~^ ERROR not yet stable as a const fn
+    //[stable]~| ERROR cannot use `#[feature(unstable2)]`
+    // ^ fails, because the `unstable2` feature is not active
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "cheese", since = "1.0.0")]
 const fn stable_const_context() {
     Unstable::func();
-    //~^ ERROR not yet stable as a const fn
+    //~^ ERROR cannot use `#[feature(unstable)]`
+    //[stable]~| ERROR not yet stable as a const fn
     Foo::func();
-    //[unstable]~^ ERROR not yet stable as a const fn
+    //[unstable]~^ ERROR cannot use `#[feature(foo)]`
     const_context_not_const_stable()
-    //[unstable]~^ ERROR not yet stable as a const fn
+    //[unstable]~^ ERROR cannot use `#[feature(foo)]`
 }
 
 fn main() {}

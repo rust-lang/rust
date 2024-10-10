@@ -620,11 +620,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
-        rustc_allow_const_fn_unstable, Normal,
-        template!(Word, List: "feat1, feat2, ..."), DuplicatesOk, EncodeCrossCrate::No,
-        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
-    ),
-    gated!(
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
@@ -838,6 +833,15 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_runtime, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, INTERNAL_UNSTABLE
+    ),
+    rustc_attr!(
+        rustc_const_stable_indirect, Normal,
+        template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
+    ),
+    gated!(
+        rustc_allow_const_fn_unstable, Normal,
+        template!(Word, List: "feat1, feat2, ..."), DuplicatesOk, EncodeCrossCrate::No,
+        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
     ),
 
     // ==========================================================================

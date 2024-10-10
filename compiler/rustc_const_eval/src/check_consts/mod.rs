@@ -59,10 +59,10 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
         self.const_kind.expect("`const_kind` must not be called on a non-const fn")
     }
 
-    pub fn is_const_stable_const_fn(&self) -> bool {
+    pub fn is_safe_to_expose_on_stable_const_fn(&self) -> bool {
         self.const_kind == Some(hir::ConstContext::ConstFn)
             && self.tcx.features().staged_api
-            && is_const_stable_const_fn(self.tcx, self.def_id().to_def_id())
+            && is_safe_to_expose_on_stable_const_fn(self.tcx, self.def_id().to_def_id())
     }
 
     fn is_async(&self) -> bool {
@@ -90,50 +90,43 @@ pub fn rustc_allow_const_fn_unstable(
     attr::rustc_allow_const_fn_unstable(tcx.sess, attrs).any(|name| name == feature_gate)
 }
 
-/// Returns `true` if the given `const fn` is "const-stable".
+/// Returns `true` if the given `const fn` is "safe to expose on stable".
 ///
 /// Panics if the given `DefId` does not refer to a `const fn`.
 ///
-/// Const-stability is only relevant for `const fn` within a `staged_api` crate. Only "const-stable"
-/// functions can be called in a const-context by users of the stable compiler. "const-stable"
-/// functions are subject to more stringent restrictions than "const-unstable" functions: They
-/// cannot use unstable features and can only call other "const-stable" functions.
-pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // A default body in a `#[const_trait]` is not const-stable because const
-    // trait fns currently cannot be const-stable. We shouldn't
-    // restrict default bodies to only call const-stable functions.
+/// This is relevant within a `staged_api` crate. Unlike with normal features, the use of unstable
+/// const features *recursively* taints the functions that use them. This is to avoid accidentally
+/// exposing e.g. the implementation of an unstable const intrinsic on stable. So we partition the
+/// world into two functions: those that are safe to expose on stable (and hence may not use
+/// unstable features, not even recursively), and those that are not.
+pub fn is_safe_to_expose_on_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    // A default body in a `#[const_trait]` is not const-stable because const trait fns currently
+    // cannot be const-stable. These functions can't be called from anything stable, so we shouldn't
+    // restrict them to only call const-stable functions.
     if tcx.is_const_default_method(def_id) {
+        // FIXME(const_trait_impl): we can't blanket-allow this if these things can ever be stable.
         return false;
     }
 
     // Const-stability is only relevant for `const fn`.
     assert!(tcx.is_const_fn_raw(def_id));
 
-    // A function is only const-stable if it has `#[rustc_const_stable]` or it the trait it belongs
-    // to is const-stable.
     match tcx.lookup_const_stability(def_id) {
-        Some(stab) => stab.is_const_stable(),
-        None if is_parent_const_stable_trait(tcx, def_id) => {
-            // Remove this when `#![feature(const_trait_impl)]` is stabilized,
-            // returning `true` unconditionally.
-            tcx.dcx().span_delayed_bug(
-                tcx.def_span(def_id),
-                "trait implementations cannot be const stable yet",
-            );
-            true
+        None => {
+            // We allow calling unmarked local functions *in the current crate*. This covers in
+            // particular all `const fn` whose inherited regular stability is `stable`, which means
+            // we don't infer any const stability for them. For the cross-crate case we require the
+            // other crate to explicitly add `#[rustc_const_stable_indirect]` as a promise that this
+            // function is meant to be indirectly const-stable, which will make
+            // `lookup_const_stability` return `Some`. This ensures that the other crate checked
+            // recursive const vailidty on that function, even if the other crate is not using
+            // `staged_api`.
+            def_id.is_local()
         }
-        None => false, // By default, items are not const stable.
+        Some(stab) => {
+            // We consider things safe-to-expose if they don't have any explicit const stability attribute,
+            // if they are stable, or if they are marked as `const_stable_indirect`.
+            stab.is_const_stable() || !stab.has_const_stable_attr || stab.const_stable_indirect
+        }
     }
-}
-
-fn is_parent_const_stable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let local_def_id = def_id.expect_local();
-    let hir_id = tcx.local_def_id_to_hir_id(local_def_id);
-
-    let parent_owner_id = tcx.parent_hir_id(hir_id).owner;
-    if !tcx.is_const_trait_impl_raw(parent_owner_id.to_def_id()) {
-        return false;
-    }
-
-    tcx.lookup_const_stability(parent_owner_id).is_some_and(|stab| stab.is_const_stable())
 }

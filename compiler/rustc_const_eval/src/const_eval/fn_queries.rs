@@ -6,8 +6,11 @@ use rustc_span::symbol::Symbol;
 use {rustc_attr as attr, rustc_hir as hir};
 
 /// Whether the `def_id` is an unstable const fn and what feature gate(s) are necessary to enable
-/// it.
-pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<(Symbol, Option<Symbol>)> {
+/// it. Either feature being enabled makes the function callable.
+pub fn is_unstable_const_fn(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> Option<(Option<Symbol>, Option<Symbol>)> {
     if tcx.is_const_fn_raw(def_id) {
         let const_stab = tcx.lookup_const_stability(def_id)?;
         match const_stab.level {

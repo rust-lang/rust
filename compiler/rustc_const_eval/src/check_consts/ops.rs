@@ -27,7 +27,13 @@ use crate::{errors, fluent_generated};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     Allowed,
-    Unstable(Symbol),
+    Unstable {
+        /// The feature that must be enabled to use this operation.
+        gate: Symbol,
+        /// Whether it is allowed to use this operation from stable `const fn`.
+        /// This will usually be `false`.
+        safe_to_expose_on_stable: bool,
+    },
     Forbidden,
 }
 
@@ -298,27 +304,71 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 ///
 /// Contains the name of the feature that would allow the use of this function.
 #[derive(Debug)]
-pub(crate) struct FnCallUnstable(pub DefId, pub Option<Symbol>);
+pub(crate) struct FnCallUnstable {
+    pub def_id: DefId,
+    pub feature: Option<Symbol>,
+}
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let FnCallUnstable(def_id, feature) = *self;
-
-        let mut err = ccx
-            .dcx()
-            .create_err(errors::UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
-
-        // FIXME: make this translatable
-        #[allow(rustc::untranslatable_diagnostic)]
-        if ccx.is_const_stable_const_fn() {
-            err.help(fluent_generated::const_eval_const_stable);
-        } else if ccx.tcx.sess.is_nightly_build() {
-            if let Some(feature) = feature {
-                err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
-            }
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        match self.feature {
+            Some(feature) => Status::Unstable { gate: feature, safe_to_expose_on_stable: false },
+            None => Status::Forbidden,
         }
+    }
 
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        let mut err = ccx.dcx().create_err(errors::UnstableConstFn {
+            span,
+            def_path: ccx.tcx.def_path_str(self.def_id),
+        });
+        if let Some(feature) = self.feature {
+            // FIXME: make this translatable
+            #[allow(rustc::untranslatable_diagnostic)]
+            err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
+        }
         err
+    }
+}
+
+/// A call to an intrinsic that is just not const-callable at all.
+#[derive(Debug)]
+pub(crate) struct IntrinsicNonConst {
+    pub name: Symbol,
+}
+
+impl<'tcx> NonConstOp<'tcx> for IntrinsicNonConst {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        ccx.dcx().create_err(errors::NonConstIntrinsic {
+            span,
+            name: self.name,
+            kind: ccx.const_kind(),
+        })
+    }
+}
+
+/// A call to an intrinsic that is just not const-callable at all.
+#[derive(Debug)]
+pub(crate) struct IntrinsicUnstable {
+    pub name: Symbol,
+    pub feature: Symbol,
+    pub const_stable_indirect: bool,
+}
+
+impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        Status::Unstable {
+            gate: self.feature,
+            safe_to_expose_on_stable: self.const_stable_indirect,
+        }
+    }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        ccx.dcx().create_err(errors::UnstableIntrinsic {
+            span,
+            name: self.name,
+            feature: self.feature,
+        })
     }
 }
 
@@ -331,7 +381,7 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
             hir::CoroutineSource::Block,
         ) = self.0
         {
-            Status::Unstable(sym::const_async_blocks)
+            Status::Unstable { gate: sym::const_async_blocks, safe_to_expose_on_stable: false }
         } else {
             Status::Forbidden
         }
