@@ -417,6 +417,7 @@ symbols! {
         asm_const,
         asm_experimental_arch,
         asm_goto,
+        asm_goto_with_outputs,
         asm_sym,
         asm_unwind,
         assert,
