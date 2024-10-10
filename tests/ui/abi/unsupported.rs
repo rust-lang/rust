@@ -20,39 +20,142 @@
     abi_msp430_interrupt,
     abi_avr_interrupt,
     abi_x86_interrupt,
-    abi_riscv_interrupt
+    abi_riscv_interrupt,
+    abi_c_cmse_nonsecure_call,
+    cmse_nonsecure_entry
 )]
 #[lang = "sized"]
 trait Sized {}
 
+#[lang = "copy"]
+trait Copy {}
+
 extern "ptx-kernel" fn ptx() {}
 //~^ ERROR is not a supported ABI
+fn ptx_ptr(f: extern "ptx-kernel" fn()) {
+    //~^ WARN unsupported_fn_ptr_calling_conventions
+    //~^^ WARN this was previously accepted
+    f()
+}
+extern "ptx-kernel" {}
+//~^ ERROR is not a supported ABI
+
 extern "aapcs" fn aapcs() {}
 //[x64]~^ ERROR is not a supported ABI
 //[i686]~^^ ERROR is not a supported ABI
 //[aarch64]~^^^ ERROR is not a supported ABI
 //[riscv32]~^^^^ ERROR is not a supported ABI
 //[riscv64]~^^^^^ ERROR is not a supported ABI
+fn aapcs_ptr(f: extern "aapcs" fn()) {
+    //[x64]~^ WARN unsupported_fn_ptr_calling_conventions
+    //[x64]~^^ WARN this was previously accepted
+    //[i686]~^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[i686]~^^^^ WARN this was previously accepted
+    //[aarch64]~^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[aarch64]~^^^^^^ WARN this was previously accepted
+    //[riscv32]~^^^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[riscv32]~^^^^^^^^ WARN this was previously accepted
+    //[riscv64]~^^^^^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[riscv64]~^^^^^^^^^^ WARN this was previously accepted
+    f()
+}
+extern "aapcs" {}
+//[x64]~^ ERROR is not a supported ABI
+//[i686]~^^ ERROR is not a supported ABI
+//[aarch64]~^^^ ERROR is not a supported ABI
+//[riscv32]~^^^^ ERROR is not a supported ABI
+//[riscv64]~^^^^^ ERROR is not a supported ABI
+
 extern "msp430-interrupt" fn msp430() {}
 //~^ ERROR is not a supported ABI
+fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
+    //~^ WARN unsupported_fn_ptr_calling_conventions
+    //~^^ WARN this was previously accepted
+    f()
+}
+extern "msp430-interrupt" {}
+//~^ ERROR is not a supported ABI
+
 extern "avr-interrupt" fn avr() {}
 //~^ ERROR is not a supported ABI
+fn avr_ptr(f: extern "avr-interrupt" fn()) {
+    //~^ WARN unsupported_fn_ptr_calling_conventions
+    //~^^ WARN this was previously accepted
+    f()
+}
+extern "avr-interrupt" {}
+//~^ ERROR is not a supported ABI
+
 extern "riscv-interrupt-m" fn riscv() {}
 //[arm]~^ ERROR is not a supported ABI
 //[x64]~^^ ERROR is not a supported ABI
 //[i686]~^^^ ERROR is not a supported ABI
 //[aarch64]~^^^^ ERROR is not a supported ABI
+fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
+    //[arm]~^ WARN unsupported_fn_ptr_calling_conventions
+    //[arm]~^^ WARN this was previously accepted
+    //[x64]~^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[x64]~^^^^ WARN this was previously accepted
+    //[i686]~^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[i686]~^^^^^^ WARN this was previously accepted
+    //[aarch64]~^^^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[aarch64]~^^^^^^^^ WARN this was previously accepted
+    f()
+}
+extern "riscv-interrupt-m" {}
+//[arm]~^ ERROR is not a supported ABI
+//[x64]~^^ ERROR is not a supported ABI
+//[i686]~^^^ ERROR is not a supported ABI
+//[aarch64]~^^^^ ERROR is not a supported ABI
+
 extern "x86-interrupt" fn x86() {}
 //[aarch64]~^ ERROR is not a supported ABI
 //[arm]~^^ ERROR is not a supported ABI
 //[riscv32]~^^^ ERROR is not a supported ABI
 //[riscv64]~^^^^ ERROR is not a supported ABI
+fn x86_ptr(f: extern "x86-interrupt" fn()) {
+    //[aarch64]~^ WARN unsupported_fn_ptr_calling_conventions
+    //[aarch64]~^^ WARN this was previously accepted
+    //[arm]~^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[arm]~^^^^ WARN this was previously accepted
+    //[riscv32]~^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[riscv32]~^^^^^^ WARN this was previously accepted
+    //[riscv64]~^^^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[riscv64]~^^^^^^^^ WARN this was previously accepted
+    f()
+}
+extern "x86-interrupt" {}
+//[aarch64]~^ ERROR is not a supported ABI
+//[arm]~^^ ERROR is not a supported ABI
+//[riscv32]~^^^ ERROR is not a supported ABI
+//[riscv64]~^^^^ ERROR is not a supported ABI
+
 extern "thiscall" fn thiscall() {}
 //[x64]~^ ERROR is not a supported ABI
 //[arm]~^^ ERROR is not a supported ABI
 //[aarch64]~^^^ ERROR is not a supported ABI
 //[riscv32]~^^^^ ERROR is not a supported ABI
 //[riscv64]~^^^^^ ERROR is not a supported ABI
+fn thiscall_ptr(f: extern "thiscall" fn()) {
+    //[x64]~^ WARN unsupported_fn_ptr_calling_conventions
+    //[x64]~^^ WARN this was previously accepted
+    //[arm]~^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[arm]~^^^^ WARN this was previously accepted
+    //[aarch64]~^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[aarch64]~^^^^^^ WARN this was previously accepted
+    //[riscv32]~^^^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[riscv32]~^^^^^^^^ WARN this was previously accepted
+    //[riscv64]~^^^^^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[riscv64]~^^^^^^^^^^ WARN this was previously accepted
+    f()
+}
+extern "thiscall" {}
+//[x64]~^ ERROR is not a supported ABI
+//[arm]~^^ ERROR is not a supported ABI
+//[aarch64]~^^^ ERROR is not a supported ABI
+//[riscv32]~^^^^ ERROR is not a supported ABI
+//[riscv64]~^^^^^ ERROR is not a supported ABI
+
 extern "stdcall" fn stdcall() {}
 //[x64]~^ WARN use of calling convention not supported
 //[x64]~^^ WARN this was previously accepted
@@ -64,3 +167,43 @@ extern "stdcall" fn stdcall() {}
 //[riscv32]~^^^^^^^^ WARN this was previously accepted
 //[riscv64]~^^^^^^^^^ WARN use of calling convention not supported
 //[riscv64]~^^^^^^^^^^ WARN this was previously accepted
+fn stdcall_ptr(f: extern "stdcall" fn()) {
+    //[x64]~^ WARN unsupported_fn_ptr_calling_conventions
+    //[x64]~^^ WARN this was previously accepted
+    //[arm]~^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[arm]~^^^^ WARN this was previously accepted
+    //[aarch64]~^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[aarch64]~^^^^^^ WARN this was previously accepted
+    //[riscv32]~^^^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[riscv32]~^^^^^^^^ WARN this was previously accepted
+    //[riscv64]~^^^^^^^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[riscv64]~^^^^^^^^^^ WARN this was previously accepted
+    f()
+}
+extern "stdcall" {}
+//[x64]~^ WARN use of calling convention not supported
+//[x64]~^^ WARN this was previously accepted
+//[arm]~^^^ WARN use of calling convention not supported
+//[arm]~^^^^ WARN this was previously accepted
+//[aarch64]~^^^^^ WARN use of calling convention not supported
+//[aarch64]~^^^^^^ WARN this was previously accepted
+//[riscv32]~^^^^^^^ WARN use of calling convention not supported
+//[riscv32]~^^^^^^^^ WARN this was previously accepted
+//[riscv64]~^^^^^^^^^ WARN use of calling convention not supported
+//[riscv64]~^^^^^^^^^^ WARN this was previously accepted
+
+fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
+    //~^ WARN unsupported_fn_ptr_calling_conventions
+    //~^^ WARN this was previously accepted
+    f()
+}
+
+extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
+//~^ ERROR is not a supported ABI
+fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
+    //~^ WARN unsupported_fn_ptr_calling_conventions
+    //~^^ WARN this was previously accepted
+    f()
+}
+extern "C-cmse-nonsecure-entry" {}
+//~^ ERROR is not a supported ABI

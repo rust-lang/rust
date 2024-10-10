@@ -1,6 +1,5 @@
-use rustc_errors::DiagCtxtHandle;
-use rustc_hir as hir;
-use rustc_hir::HirId;
+use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
+use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, ParamEnv, TyCtxt};
 use rustc_span::Span;
@@ -26,7 +25,19 @@ pub(crate) fn validate_cmse_abi<'tcx>(
             ..
         }) = hir_node
         else {
-            // might happen when this ABI is used incorrectly. That will be handled elsewhere
+            let span = match tcx.parent_hir_node(hir_id) {
+                hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::ForeignMod { .. }, span, ..
+                }) => *span,
+                _ => tcx.hir().span(hir_id),
+            };
+            struct_span_code_err!(
+                tcx.dcx(),
+                span,
+                E0781,
+                "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
+            )
+            .emit();
             return;
         };
 
