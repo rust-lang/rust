@@ -1,8 +1,38 @@
-error[E0382]: use of moved value: `x`
-  --> $DIR/feature-gate-pin_ergonomics.rs:17:9
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:13:14
    |
-LL | fn bar(mut x: Pin<&mut Foo>) {
-   |        ----- move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
+LL |     let _y: &pin mut Foo = x;
+   |              ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:16:18
+   |
+LL | fn foo_sugar(_: &pin mut Foo) {}
+   |                  ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:28:18
+   |
+LL | fn baz_sugar(_: &pin const Foo) {}
+   |                  ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/feature-gate-pin_ergonomics.rs:20:9
+   |
+LL | fn bar(x: Pin<&mut Foo>) {
+   |        - move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
 LL |     foo(x);
    |         - value moved here
 LL |     foo(x);
@@ -11,13 +41,13 @@ LL |     foo(x);
 note: consider changing this parameter type in function `foo` to borrow instead if owning the value isn't necessary
   --> $DIR/feature-gate-pin_ergonomics.rs:12:11
    |
-LL | fn foo(_: Pin<&mut Foo>) {
+LL | fn foo(x: Pin<&mut Foo>) {
    |    ---    ^^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/feature-gate-pin_ergonomics.rs:22:5
+  --> $DIR/feature-gate-pin_ergonomics.rs:25:5
    |
 LL | fn baz(mut x: Pin<&mut Foo>) {
    |        ----- move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
@@ -36,6 +66,7 @@ help: consider reborrowing the `Pin` instead of moving it
 LL |     x.as_mut().foo();
    |      +++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0382`.
+Some errors have detailed explanations: E0382, E0658.
+For more information about an error, try `rustc --explain E0382`.

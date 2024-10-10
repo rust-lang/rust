@@ -3482,7 +3482,7 @@ struct LifetimeFinder<'ast> {
 
 impl<'ast> Visitor<'ast> for LifetimeFinder<'ast> {
     fn visit_ty(&mut self, t: &'ast Ty) {
-        if let TyKind::Ref(_, mut_ty) = &t.kind {
+        if let TyKind::Ref(_, mut_ty) | TyKind::PinnedRef(_, mut_ty) = &t.kind {
             self.seen.push(t);
             if t.span.lo() == self.lifetime.lo() {
                 self.found = Some(&mut_ty.ty);

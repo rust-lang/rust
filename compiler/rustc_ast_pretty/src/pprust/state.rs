@@ -1163,6 +1163,12 @@ impl<'a> State<'a> {
                 self.print_opt_lifetime(lifetime);
                 self.print_mt(mt, false);
             }
+            ast::TyKind::PinnedRef(lifetime, mt) => {
+                self.word("&");
+                self.print_opt_lifetime(lifetime);
+                self.word("pin ");
+                self.print_mt(mt, true);
+            }
             ast::TyKind::Never => {
                 self.word("!");
             }

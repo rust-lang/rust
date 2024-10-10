@@ -579,6 +579,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             Array,
             Ptr,
             Ref,
+            PinnedRef,
             BareFn,
             Never,
             Tup,
