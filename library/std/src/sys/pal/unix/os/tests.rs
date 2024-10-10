@@ -25,7 +25,7 @@ fn test_parse_glibc_version() {
 // Smoke check `confstr`, do it for several hint values, to ensure our resizing
 // logic is correct.
 #[test]
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 fn test_confstr() {
     for key in [libc::_CS_DARWIN_USER_TEMP_DIR, libc::_CS_PATH] {
         let value_nohint = super::confstr(key, None).unwrap_or_else(|e| {

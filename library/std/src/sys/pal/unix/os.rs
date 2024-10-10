@@ -704,7 +704,7 @@ pub fn page_size() -> usize {
 //
 // [posix_confstr]:
 //     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[cfg(target_vendor = "apple")]
 fn confstr(key: c_int, size_hint: Option<usize>) -> io::Result<OsString> {
     let mut buf: Vec<u8> = Vec::new();
     let mut bytes_needed_including_nul = size_hint
@@ -765,7 +765,7 @@ fn darwin_temp_dir() -> PathBuf {
 pub fn temp_dir() -> PathBuf {
     crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
         cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))] {
+            if #[cfg(target_vendor = "apple")] {
                 darwin_temp_dir()
             } else if #[cfg(target_os = "android")] {
                 PathBuf::from("/data/local/tmp")
