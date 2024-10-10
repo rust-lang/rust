@@ -76,8 +76,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
             ty::Array(elem, len)
                 if matches!(*elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
-                        == Some(expected_bytes) =>
+                    && len
+                        .try_to_target_usize(bx.tcx)
+                        .expect("expected monomorphic const in codegen")
+                        == expected_bytes =>
             {
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
@@ -696,8 +698,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
             ty::Array(elem, len)
                 if matches!(*elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
-                        == Some(expected_bytes) =>
+                    && len
+                        .try_to_target_usize(bx.tcx)
+                        .expect("expected monomorphic const in codegen")
+                        == expected_bytes =>
             {
                 // Zero-extend iN to the array length:
                 let ze = bx.zext(result, bx.type_ix(expected_bytes * 8));
