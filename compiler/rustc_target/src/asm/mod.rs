@@ -893,6 +893,7 @@ pub enum InlineAsmClobberAbi {
     RiscV,
     LoongArch,
     S390x,
+    Msp430,
 }
 
 impl InlineAsmClobberAbi {
@@ -944,6 +945,10 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::S390x => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::S390x),
+                _ => Err(&["C", "system"]),
+            },
+            InlineAsmArch::Msp430 => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::Msp430),
                 _ => Err(&["C", "system"]),
             },
             _ => Err(&[]),
@@ -1123,6 +1128,11 @@ impl InlineAsmClobberAbi {
                     // a0-a1 are reserved, other access registers are volatile
                     a2, a3, a4, a5, a6, a7,
                     a8, a9, a10, a11, a12, a13, a14, a15,
+                }
+            },
+            InlineAsmClobberAbi::Msp430 => clobbered_regs! {
+                Msp430 Msp430InlineAsmReg {
+                    r11, r12, r13, r14, r15,
                 }
             },
         }
