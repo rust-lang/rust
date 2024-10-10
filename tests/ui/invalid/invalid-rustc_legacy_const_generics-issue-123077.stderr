@@ -1,0 +1,38 @@
+error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+  --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:8:55
+   |
+LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, || ());
+   |                                                       ^^^^^
+
+error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+  --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:11:59
+   |
+LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, 5 + || ());
+   |                                                           ^^^^^
+
+error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+  --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:14:61
+   |
+LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, foo::<{ 1 + 2 }>());
+   |                                                             ^^^^^^^^^
+
+error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+  --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:17:61
+   |
+LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, foo::<3>());
+   |                                                             ^
+
+error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+  --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:20:56
+   |
+LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, &const {});
+   |                                                        ^^^^^^^^
+
+error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+  --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:24:9
+   |
+LL |         struct F();
+   |         ^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
