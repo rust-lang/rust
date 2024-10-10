@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 #![feature(noop_waker)]
 #![coverage(off)]
 //@ edition: 2021

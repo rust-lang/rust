@@ -1,5 +1,5 @@
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:15:1
+  --> $DIR/bad-syntax.rs:14:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:18:1
+  --> $DIR/bad-syntax.rs:17:1
    |
 LL | #[coverage = true]
    | ^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:21:1
+  --> $DIR/bad-syntax.rs:20:1
    |
 LL | #[coverage()]
    | ^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:24:1
+  --> $DIR/bad-syntax.rs:23:1
    |
 LL | #[coverage(off, off)]
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:27:1
+  --> $DIR/bad-syntax.rs:26:1
    |
 LL | #[coverage(off, on)]
    | ^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:30:1
+  --> $DIR/bad-syntax.rs:29:1
    |
 LL | #[coverage(bogus)]
    | ^^^^^^^^^^^^^^^^^^
@@ -77,7 +77,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:33:1
+  --> $DIR/bad-syntax.rs:32:1
    |
 LL | #[coverage(bogus, off)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:36:1
+  --> $DIR/bad-syntax.rs:35:1
    |
 LL | #[coverage(off, bogus)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: expected identifier, found `,`
-  --> $DIR/bad-syntax.rs:42:12
+  --> $DIR/bad-syntax.rs:41:12
    |
 LL | #[coverage(,off)]
    |            ^ expected identifier
@@ -115,25 +115,25 @@ LL + #[coverage(off)]
    |
 
 error: multiple `coverage` attributes
-  --> $DIR/bad-syntax.rs:7:1
+  --> $DIR/bad-syntax.rs:6:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/bad-syntax.rs:8:1
+  --> $DIR/bad-syntax.rs:7:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^
 
 error: multiple `coverage` attributes
-  --> $DIR/bad-syntax.rs:11:1
+  --> $DIR/bad-syntax.rs:10:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/bad-syntax.rs:12:1
+  --> $DIR/bad-syntax.rs:11:1
    |
 LL | #[coverage(on)]
    | ^^^^^^^^^^^^^^^

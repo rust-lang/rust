@@ -1,5 +1,5 @@
 error: malformed `coverage` attribute input
-  --> $DIR/subword.rs:7:1
+  --> $DIR/subword.rs:6:1
    |
 LL | #[coverage(yes(milord))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/subword.rs:10:1
+  --> $DIR/subword.rs:9:1
    |
 LL | #[coverage(no(milord))]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/subword.rs:13:1
+  --> $DIR/subword.rs:12:1
    |
 LL | #[coverage(yes = "milord")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL | #[coverage(on)]
    | ~~~~~~~~~~~~~~~
 
 error: malformed `coverage` attribute input
-  --> $DIR/subword.rs:16:1
+  --> $DIR/subword.rs:15:1
    |
 LL | #[coverage(no = "milord")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

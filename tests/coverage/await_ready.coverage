@@ -1,4 +1,3 @@
-   LL|       |#![feature(coverage_attribute)]
    LL|       |#![feature(noop_waker)]
    LL|       |#![coverage(off)]
    LL|       |//@ edition: 2021

@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // Demonstrates the interaction of `#[coverage(off)]` and `#[coverage(on)]`

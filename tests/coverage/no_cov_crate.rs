@@ -1,5 +1,4 @@
 // Enables `coverage(off)` on the entire crate
-#![feature(coverage_attribute)]
 
 #[coverage(off)]
 fn do_not_add_coverage_1() {

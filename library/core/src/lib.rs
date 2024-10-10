@@ -107,6 +107,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(coverage_attribute))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(const_align_of_val)]
@@ -154,7 +155,6 @@
 #![feature(const_typed_swap)]
 #![feature(const_ub_checks)]
 #![feature(const_unicode_case_lookup)]
-#![feature(coverage_attribute)]
 #![feature(do_not_recommend)]
 #![feature(duration_consts_float)]
 #![feature(internal_impls_macro)]

@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // Check that yes/no in `#[coverage(yes)]` and `#[coverage(no)]` must be bare

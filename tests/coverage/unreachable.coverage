@@ -1,5 +1,4 @@
    LL|       |#![feature(core_intrinsics)]
-   LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
    LL|       |
    LL|       |// <https://github.com/rust-lang/rust/issues/116171>
