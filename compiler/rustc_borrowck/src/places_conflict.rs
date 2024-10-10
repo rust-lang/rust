@@ -3,7 +3,7 @@
 //! we can prove overlap one way or another. Essentially, we treat `Overlap` as
 //! a monoid and report a conflict if the product ends up not being `Disjoint`.
 //!
-//! At each step, if we didn't run out of borrow or place, we know that our elements
+//! On each step, if we didn't run out of borrow or place, we know that our elements
 //! have the same type, and that they only overlap if they are the identical.
 //!
 //! For example, if we are comparing these:
