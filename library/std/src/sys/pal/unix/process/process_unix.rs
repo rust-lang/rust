@@ -335,7 +335,7 @@ impl Command {
                 cvt(libc::setuid(u as uid_t))?;
             }
         }
-        if let Some(ref cwd) = *self.get_cwd() {
+        if let Some(cwd) = self.get_cwd() {
             cvt(libc::chdir(cwd.as_ptr()))?;
         }
 

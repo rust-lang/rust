@@ -312,8 +312,8 @@ impl Command {
     }
 
     #[allow(dead_code)]
-    pub fn get_cwd(&self) -> &Option<CString> {
-        &self.cwd
+    pub fn get_cwd(&self) -> Option<&CStr> {
+        self.cwd.as_deref()
     }
     #[allow(dead_code)]
     pub fn get_uid(&self) -> Option<uid_t> {

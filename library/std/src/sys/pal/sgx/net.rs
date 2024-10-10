@@ -78,9 +78,8 @@ fn io_err_to_addr(result: io::Result<&SocketAddr>) -> io::Result<String> {
     }
 }
 
-fn addr_to_sockaddr(addr: &Option<String>) -> io::Result<SocketAddr> {
-    addr.as_ref()
-        .ok_or(io::ErrorKind::AddrNotAvailable)?
+fn addr_to_sockaddr(addr: Option<&str>) -> io::Result<SocketAddr> {
+    addr.ok_or(io::ErrorKind::AddrNotAvailable)?
         .to_socket_addrs()
         // unwrap OK: if an iterator is returned, we're guaranteed to get exactly one entry
         .map(|mut it| it.next().unwrap())
@@ -161,11 +160,11 @@ impl TcpStream {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        addr_to_sockaddr(&self.peer_addr)
+        addr_to_sockaddr(self.peer_addr.as_deref())
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        addr_to_sockaddr(&self.inner.local_addr)
+        addr_to_sockaddr(self.inner.local_addr.as_deref())
     }
 
     pub fn shutdown(&self, _: Shutdown) -> io::Result<()> {
@@ -255,13 +254,14 @@ impl TcpListener {
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        addr_to_sockaddr(&self.inner.local_addr)
+        addr_to_sockaddr(self.inner.local_addr.as_deref())
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         let (fd, local_addr, peer_addr) = usercalls::accept_stream(self.inner.inner.raw())?;
         let peer_addr = Some(peer_addr);
-        let ret_peer = addr_to_sockaddr(&peer_addr).unwrap_or_else(|_| ([0; 4], 0).into());
+        let ret_peer =
+            addr_to_sockaddr(peer_addr.as_deref()).unwrap_or_else(|_| ([0; 4], 0).into());
         Ok((TcpStream { inner: Socket::new(fd, local_addr), peer_addr }, ret_peer))
     }
 

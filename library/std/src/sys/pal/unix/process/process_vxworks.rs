@@ -57,7 +57,7 @@ impl Command {
                 t!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
             }
 
-            if let Some(ref cwd) = *self.get_cwd() {
+            if let Some(cwd) = self.get_cwd() {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
 
