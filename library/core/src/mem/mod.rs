@@ -874,6 +874,38 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
     }
 }
 
+/// Replaces the value in `dest` by the value returned by `f`.
+///
+/// `f` receives the current referenced value of `dest` as its argument.
+///
+/// * If you want to replace the values of two variables, see [`swap`].
+/// * If you want to replace with a default value, see [`take`].
+/// * If you want replace without the function, see [`replace`].
+///
+/// # Examples
+///
+/// A simple example:
+///
+/// ```
+/// use std::mem;
+///
+/// let mut v: Vec<i32> = vec![1, 2];
+///
+/// mem::replace(&mut v, |mut v| { v.push(3); v });
+/// assert_eq!(vec![1, 2, 3], v);
+/// ```
+#[inline]
+#[unstable(feature = "mem_reshape", issue = "130848")]
+pub fn reshape<T>(dest: &mut T, f: impl FnOnce(T) -> T) {
+    // SAFETY: We read from `dest` but directly write to it afterwards,
+    // such that the old value is not duplicated. Nothing is dropped and
+    // nothing here can panic.
+    unsafe {
+        let result = ptr::read(dest);
+        ptr::write(dest, f(result));
+    }
+}
+
 /// Disposes of a value.
 ///
 /// This does so by calling the argument's implementation of [`Drop`][drop].
