@@ -589,15 +589,22 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                                 param_span: tcx.def_span(def_id),
                             });
                         } else {
-                            // If the `use_span` is actually just the param itself, then we must
-                            // have not duplicated the lifetime but captured the original.
-                            // The "effective" `use_span` will be the span of the opaque itself,
-                            // and the param span will be the def span of the param.
-                            tcx.dcx().emit_err(errors::LifetimeNotCaptured {
-                                opaque_span,
-                                use_span: opaque_span,
-                                param_span: use_span,
-                            });
+                            if tcx.def_kind(tcx.parent(param.def_id)) == DefKind::Trait {
+                                tcx.dcx().emit_err(errors::LifetimeImplicitlyCaptured {
+                                    opaque_span,
+                                    param_span: tcx.def_span(param.def_id),
+                                });
+                            } else {
+                                // If the `use_span` is actually just the param itself, then we must
+                                // have not duplicated the lifetime but captured the original.
+                                // The "effective" `use_span` will be the span of the opaque itself,
+                                // and the param span will be the def span of the param.
+                                tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                                    opaque_span,
+                                    use_span: opaque_span,
+                                    param_span: use_span,
+                                });
+                            }
                         }
                         continue;
                     }
