@@ -1,5 +1,5 @@
 use rustc_middle::traits::solve::Goal;
-use rustc_middle::ty::relate::combine::InferCtxtCombineExt;
+use rustc_middle::ty::relate::combine::{super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::{
     Relate, RelateResult, TypeRelation, relate_args_invariantly, relate_args_with_variances,
 };
@@ -186,7 +186,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => {
-                infcx.super_combine_tys(self, a, b)?;
+                super_combine_tys(infcx, self, a, b)?;
             }
 
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
@@ -202,7 +202,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
             }
 
             _ => {
-                infcx.super_combine_tys(self, a, b)?;
+                super_combine_tys(infcx, self, a, b)?;
             }
         }
 
@@ -257,7 +257,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        self.infcx.super_combine_consts(self, a, b)
+        super_combine_consts(self.infcx, self, a, b)
     }
 
     fn binders<T>(

@@ -3,7 +3,7 @@ use rustc_type_ir::solve::Goal;
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 
-use self::combine::{InferCtxtCombineExt, PredicateEmittingRelation};
+use self::combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys};
 use crate::data_structures::DelayedSet;
 
 pub trait RelateExt: InferCtxtLike {
@@ -228,7 +228,7 @@ where
             }
 
             _ => {
-                self.infcx.super_combine_tys(self, a, b)?;
+                super_combine_tys(self.infcx, self, a, b)?;
             }
         }
 
@@ -255,7 +255,7 @@ where
 
     #[instrument(skip(self), level = "trace")]
     fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const> {
-        self.infcx.super_combine_consts(self, a, b)
+        super_combine_consts(self.infcx, self, a, b)
     }
 
     fn binders<T>(
