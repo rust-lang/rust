@@ -49,6 +49,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-eabi",
     "ignore-emscripten",
     "ignore-endian-big",
+    "ignore-enzyme",
     "ignore-freebsd",
     "ignore-fuchsia",
     "ignore-gdb",
