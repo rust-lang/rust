@@ -422,6 +422,9 @@ parse_invalid_meta_item = expected unsuffixed literal, found `{$token}`
 
 parse_invalid_offset_of = offset_of expects dot-separated field and variant names
 
+parse_invalid_path_sep_in_fn_definition = invalid path separator in function definition
+    .suggestion = remove invalid path separator
+
 parse_invalid_unicode_escape = invalid unicode character escape
     .label = invalid escape
     .help = unicode escape must {$surrogate ->

@@ -269,6 +269,13 @@ impl<'a> Parser<'a> {
     ///                  | ( < lifetimes , typaramseq ( , )? > )
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     pub(super) fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
+        // invalid path separator `::` in function definition
+        // for example `fn invalid_path_separator::<T>() {}`
+        if self.eat_noexpect(&token::PathSep) {
+            self.dcx()
+                .emit_err(errors::InvalidPathSepInFnDefinition { span: self.prev_token.span });
+        }
+
         let span_lo = self.token.span;
         let (params, span) = if self.eat_lt() {
             let params = self.parse_generic_params()?;
