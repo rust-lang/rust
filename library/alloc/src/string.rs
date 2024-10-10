@@ -1417,9 +1417,14 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, ch: char) {
-        match ch.len_utf8() {
-            1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+        let len = self.len();
+        let ch_len = ch.len_utf8();
+        self.reserve(ch_len);
+
+        // SAFETY: Just reserved capacity for at least the length needed to encode `ch`.
+        unsafe {
+            core::char::encode_utf8_raw_unchecked(ch as u32, self.vec.as_mut_ptr().add(self.len()));
+            self.vec.set_len(len + ch_len);
         }
     }
 
@@ -1716,24 +1721,30 @@ impl String {
     #[rustc_confusables("set")]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
-        let mut bits = [0; 4];
-        let bits = ch.encode_utf8(&mut bits).as_bytes();
 
-        unsafe {
-            self.insert_bytes(idx, bits);
-        }
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    unsafe fn insert_bytes(&mut self, idx: usize, bytes: &[u8]) {
         let len = self.len();
-        let amt = bytes.len();
-        self.vec.reserve(amt);
+        let ch_len = ch.len_utf8();
+        self.reserve(ch_len);
 
+        // SAFETY: Shift data `ch_len` bytes to the right,
+        // capacity was just reserved for at least that many bytes.
         unsafe {
-            ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
-            ptr::copy_nonoverlapping(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
-            self.vec.set_len(len + amt);
+            ptr::copy(
+                self.vec.as_ptr().add(idx),
+                self.vec.as_mut_ptr().add(idx + ch_len),
+                len - idx,
+            );
+        }
+
+        // SAFETY: Encode the character into the space left after the shift
+        // if `idx != len`, or into the uninitialized spare capacity otherwise.
+        unsafe {
+            core::char::encode_utf8_raw_unchecked(ch as u32, self.vec.as_mut_ptr().add(idx));
+        }
+
+        // SAFETY: `ch_len` initialized bytes have been added.
+        unsafe {
+            self.vec.set_len(len + ch_len);
         }
     }
 
@@ -1763,8 +1774,14 @@ impl String {
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         assert!(self.is_char_boundary(idx));
 
+        let len = self.len();
+        let amt = string.len();
+        self.reserve(amt);
+
         unsafe {
-            self.insert_bytes(idx, string.as_bytes());
+            ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
+            ptr::copy_nonoverlapping(string.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
+            self.vec.set_len(len + amt);
         }
     }
 
