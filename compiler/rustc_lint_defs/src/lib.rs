@@ -910,14 +910,14 @@ macro_rules! declare_tool_lint {
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         report_in_external_macro: $rep:expr
         $(, @feature_gate = $gate:ident;)?
-        $(, eval_always: $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => (
          $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
-        $(, @eval_always: $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
         $(, @feature_gate = $gate:ident;)?
     ) => (
         $(#[$attr])*
