@@ -765,7 +765,8 @@ fn darwin_temp_dir() -> PathBuf {
 pub fn temp_dir() -> PathBuf {
     crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
         cfg_if::cfg_if! {
-            if #[cfg(target_vendor = "apple")] {
+            // FIXME: Support `confstr` in Miri.
+            if #[cfg(all(target_vendor = "apple", not(miri)))] {
                 darwin_temp_dir()
             } else if #[cfg(target_os = "android")] {
                 PathBuf::from("/data/local/tmp")
