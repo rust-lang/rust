@@ -221,6 +221,10 @@ pub enum Suggestion {
     /// Remove `r#` from identifier:
     /// `format!("{r#foo}")` -> `format!("{foo}")`
     RemoveRawIdent(InnerSpan),
+    // Reorder `?#` to `#?`.
+    ReorderFormat(InnerSpan),
+    // Remove possibly unnecessary character.
+    RemoveCharacter(InnerSpan),
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -731,6 +735,13 @@ impl<'a> Parser<'a> {
             }
         } else if self.consume('?') {
             spec.ty = "?";
+            if let Some(&(_, char)) = self.cur.peek() {
+                match char {
+                    '#' => self.suggest_format_reorder(char),
+                    'x' | 'X' => self.suggest_format_remove(char),
+                    _ => {}
+                }
+            }
         } else {
             spec.ty = self.word();
             if !spec.ty.is_empty() {
@@ -891,6 +902,33 @@ impl<'a> Parser<'a> {
                 span: pos.to(pos),
                 secondary_label: None,
                 suggestion: Suggestion::None,
+            });
+        }
+    }
+
+    fn suggest_format_reorder(&mut self, reorder: char) {
+        if let Some(pos) = self.consume_pos(reorder) {
+            let pos = self.span(pos - 1, pos + 1);
+            self.errors.insert(0, ParseError {
+                description: format!("unknown format identifier '?{}'", reorder),
+                note: Some("if you intended to print `{`, you can escape it using `{{`".to_owned()),
+                label: format!("help: the format parameter should be written `{}?`", reorder),
+                span: pos,
+                secondary_label: None,
+                suggestion: Suggestion::ReorderFormat(pos),
+            });
+        }
+    }
+    fn suggest_format_remove(&mut self, remove: char) {
+        if let Some(pos) = self.consume_pos(remove) {
+            let pos = self.span(pos, pos + 1);
+            self.errors.insert(0, ParseError {
+                description: format!("unknown format identifier '?{}'", remove),
+                note: Some("if you intended to print `{`, you can escape it using `{{`".to_owned()),
+                label: format!("help: consider removing `{}`", remove),
+                span: pos,
+                secondary_label: None,
+                suggestion: Suggestion::RemoveCharacter(pos),
             });
         }
     }
