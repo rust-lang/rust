@@ -7,7 +7,7 @@ use core::borrow::Borrow;
 use core::ffi::{CStr, c_char};
 use core::num::NonZero;
 use core::slice::memchr;
-use core::str::{self, Utf8Error};
+use core::str::{self, FromStr, Utf8Error};
 use core::{fmt, mem, ops, ptr, slice};
 
 use crate::borrow::{Cow, ToOwned};
@@ -814,6 +814,30 @@ impl From<Vec<NonZero<u8>>> for CString {
             // invariant of `NonZero<u8>`.
             Self::_from_vec_unchecked(v)
         }
+    }
+}
+
+impl FromStr for CString {
+    type Err = NulError;
+
+    /// Converts a string `s` into a [`CString`].
+    ///
+    /// This method is equivalent to [`CString::new`].
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::new(s)
+    }
+}
+
+impl TryFrom<CString> for String {
+    type Error = IntoStringError;
+
+    /// Converts a [`CString`] into a [`String`] if it contains valid UTF-8 data.
+    ///
+    /// This method is equivalent to [`CString::into_string`].
+    #[inline]
+    fn try_from(value: CString) -> Result<Self, Self::Error> {
+        value.into_string()
     }
 }
 
