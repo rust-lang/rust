@@ -515,6 +515,13 @@ lint_named_argument_used_positionally = named argument `{$named_arg_name}` is no
     .label_position_arg = this formatting argument uses named argument `{$named_arg_name}` by position
     .suggestion = use the named argument by name to avoid ambiguity
 
+lint_never_block_without_tail_expr = diverging block without tail expression which has non-unit type
+    .note = if the last statement is `return`, `break`, or `continue`, it will still compile in Rust 2024
+
+lint_never_block_without_tail_expr_help_generic = the tail expression in this block must have an appropriate type, this can be achieved by moving the diverging expression to the end
+
+lint_never_block_without_tail_expr_help_remove_semi = remove semicolon here
+
 lint_node_source = `forbid` level set here
     .note = {$reason}
 

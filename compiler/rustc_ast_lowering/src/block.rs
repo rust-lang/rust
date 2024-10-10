@@ -30,6 +30,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> (&'hir [hir::Stmt<'hir>], Option<&'hir hir::Expr<'hir>>) {
         let mut stmts = SmallVec::<[hir::Stmt<'hir>; 8]>::new();
         let mut expr = None;
+        tracing::debug!(?ast_stmts);
         while let [s, tail @ ..] = ast_stmts {
             match &s.kind {
                 StmtKind::Let(local) => {
