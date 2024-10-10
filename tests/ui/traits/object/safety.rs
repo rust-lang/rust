@@ -1,4 +1,4 @@
-// Check that static methods are not object-safe.
+// Check that static methods render the trait dyn-incompatible.
 
 trait Tr {
     fn foo();

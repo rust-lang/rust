@@ -199,7 +199,7 @@ fn check_object_overlap<'tcx>(
         for component_def_id in component_def_ids {
             if !tcx.is_dyn_compatible(component_def_id) {
                 // FIXME(dyn_compat_renaming): Rename test and update comment.
-                // Without the 'object_safe_for_dispatch' feature this is an error
+                // Without the 'dyn_compatible_for_dispatch' feature this is an error
                 // which will be reported by wfcheck. Ignore it here.
                 // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
                 // With the feature enabled, the trait is not implemented automatically,

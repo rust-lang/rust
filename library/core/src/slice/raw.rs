@@ -204,7 +204,8 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[rustc_const_stable(feature = "const_slice_from_ref", since = "CURRENT_RUSTC_VERSION")]
+#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
 #[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
     array::from_mut(s)

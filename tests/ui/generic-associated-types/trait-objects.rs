@@ -6,7 +6,7 @@
 trait StreamingIterator {
     type Item<'a> where Self: 'a;
     fn size_hint(&self) -> (usize, Option<usize>);
-    // Uncommenting makes `StreamingIterator` not object safe
+    // Uncommenting makes `StreamingIterator` dyn-incompatible.
 //    fn next(&mut self) -> Self::Item<'_>;
 }
 

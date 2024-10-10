@@ -254,6 +254,16 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                     b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
                 )?,
+                ty::Projection if relation.cx().is_impl_trait_in_trait(a.def_id) => {
+                    relate_args_with_variances(
+                        relation,
+                        a.def_id,
+                        relation.cx().variances_of(a.def_id),
+                        a.args,
+                        b.args,
+                        false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+                    )?
+                }
                 ty::Projection | ty::Weak | ty::Inherent => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }

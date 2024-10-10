@@ -82,6 +82,7 @@ fn aarch64_linux() {
     println!("sha2: {}", is_aarch64_feature_detected!("sha2"));
     println!("sha3: {}", is_aarch64_feature_detected!("sha3"));
     println!("sm4: {}", is_aarch64_feature_detected!("sm4"));
+    println!("sme-b16b16: {}", is_aarch64_feature_detected!("sme-b16b16"));
     println!("sme-f16f16: {}", is_aarch64_feature_detected!("sme-f16f16"));
     println!("sme-f64f64: {}", is_aarch64_feature_detected!("sme-f64f64"));
     println!("sme-f8f16: {}", is_aarch64_feature_detected!("sme-f8f16"));

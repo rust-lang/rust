@@ -1,0 +1,123 @@
+error[E0038]: the trait `DynIncompatible` cannot be made into an object
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:22:13
+   |
+LL | fn car() -> dyn DynIncompatible {
+   |             ^^^^^^^^^^^^^^^^^^^ `DynIncompatible` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:4:8
+   |
+LL | trait DynIncompatible {
+   |       --------------- this trait cannot be made into an object...
+LL |     fn foo() -> Self;
+   |        ^^^ ...because associated function `foo` has no `self` parameter
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `DynIncompatible` for this new enum and using it instead:
+             A
+             B
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL |     fn foo(&self) -> Self;
+   |            +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      +++++++++++++++++
+
+error[E0038]: the trait `DynIncompatible` cannot be made into an object
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:30:17
+   |
+LL | fn cat() -> Box<dyn DynIncompatible> {
+   |                 ^^^^^^^^^^^^^^^^^^^ `DynIncompatible` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:4:8
+   |
+LL | trait DynIncompatible {
+   |       --------------- this trait cannot be made into an object...
+LL |     fn foo() -> Self;
+   |        ^^^ ...because associated function `foo` has no `self` parameter
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `DynIncompatible` for this new enum and using it instead:
+             A
+             B
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL |     fn foo(&self) -> Self;
+   |            +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      +++++++++++++++++
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:22:13
+   |
+LL | fn car() -> dyn DynIncompatible {
+   |             ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: if there were a single returned type, you could use `impl Trait` instead
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn car() -> Box<dyn DynIncompatible> {
+LL |
+LL |     if true {
+LL ~         return Box::new(A);
+LL |     }
+LL ~     Box::new(B)
+   |
+
+error[E0038]: the trait `DynIncompatible` cannot be made into an object
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:32:16
+   |
+LL |         return Box::new(A);
+   |                ^^^^^^^^^^^ `DynIncompatible` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:4:8
+   |
+LL | trait DynIncompatible {
+   |       --------------- this trait cannot be made into an object...
+LL |     fn foo() -> Self;
+   |        ^^^ ...because associated function `foo` has no `self` parameter
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `DynIncompatible` for this new enum and using it instead:
+             A
+             B
+   = note: required for the cast from `Box<A>` to `Box<(dyn DynIncompatible + 'static)>`
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL |     fn foo(&self) -> Self;
+   |            +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      +++++++++++++++++
+
+error[E0038]: the trait `DynIncompatible` cannot be made into an object
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:34:5
+   |
+LL |     Box::new(B)
+   |     ^^^^^^^^^^^ `DynIncompatible` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:4:8
+   |
+LL | trait DynIncompatible {
+   |       --------------- this trait cannot be made into an object...
+LL |     fn foo() -> Self;
+   |        ^^^ ...because associated function `foo` has no `self` parameter
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `DynIncompatible` for this new enum and using it instead:
+             A
+             B
+   = note: required for the cast from `Box<B>` to `Box<(dyn DynIncompatible + 'static)>`
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL |     fn foo(&self) -> Self;
+   |            +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      +++++++++++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0038, E0746.
+For more information about an error, try `rustc --explain E0038`.

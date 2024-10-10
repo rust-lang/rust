@@ -1,9 +1,9 @@
-//@ aux-build:not-object-safe.rs
+//@ aux-build:dyn-incompatible.rs
 
-extern crate not_object_safe;
+extern crate dyn_incompatible;
 
 pub trait B where
-    Self: not_object_safe::A,
+    Self: dyn_incompatible::A,
 {
     fn f2(&self);
 }

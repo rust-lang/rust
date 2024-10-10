@@ -454,6 +454,8 @@ impl Session {
         let bin_path = filesearch::make_target_bin_path(&self.sysroot, config::host_triple());
         let fallback_sysroot_paths = filesearch::sysroot_candidates()
             .into_iter()
+            // Ignore sysroot candidate if it was the same as the sysroot path we just used.
+            .filter(|sysroot| *sysroot != self.sysroot)
             .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_triple()));
         let search_paths = std::iter::once(bin_path).chain(fallback_sysroot_paths);
 
