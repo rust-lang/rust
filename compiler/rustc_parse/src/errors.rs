@@ -2111,6 +2111,24 @@ pub(crate) enum UnknownPrefixSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_reserved_string)]
+#[note]
+pub(crate) struct ReservedString {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<GuardedStringSugg>,
+}
+#[derive(Subdiagnostic)]
+#[suggestion(
+    parse_suggestion_whitespace,
+    code = " ",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct GuardedStringSugg(#[primary_span] pub Span);
+
+#[derive(Diagnostic)]
 #[diag(parse_too_many_hashes)]
 pub(crate) struct TooManyHashes {
     #[primary_span]

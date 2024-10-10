@@ -666,7 +666,7 @@ impl<T: Default> Cell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 
 // Allow types that wrap `Cell` to also implement `DispatchFromDyn`
-// and become object safe method receivers.
+// and become dyn-compatible method receivers.
 // Note that currently `Cell` itself cannot be a method receiver
 // because it does not implement Deref.
 // In other words:
@@ -2247,7 +2247,7 @@ impl<T> From<T> for UnsafeCell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 
 // Allow types that wrap `UnsafeCell` to also implement `DispatchFromDyn`
-// and become object safe method receivers.
+// and become dyn-compatible method receivers.
 // Note that currently `UnsafeCell` itself cannot be a method receiver
 // because it does not implement Deref.
 // In other words:
@@ -2349,7 +2349,7 @@ impl<T> From<T> for SyncUnsafeCell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
 
 // Allow types that wrap `SyncUnsafeCell` to also implement `DispatchFromDyn`
-// and become object safe method receivers.
+// and become dyn-compatible method receivers.
 // Note that currently `SyncUnsafeCell` itself cannot be a method receiver
 // because it does not implement Deref.
 // In other words:

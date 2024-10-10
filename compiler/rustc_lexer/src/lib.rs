@@ -104,6 +104,12 @@ pub enum TokenKind {
     /// for emoji identifier recovery, as those are not meant to be ever accepted.
     InvalidPrefix,
 
+    /// Guarded string literal prefix: `#"` or `##`.
+    ///
+    /// Used for reserving "guarded strings" (RFC 3598) in edition 2024.
+    /// Split into the component tokens on older editions.
+    GuardedStrPrefix,
+
     /// Examples: `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
     /// suffix, but may be present here on string and float literals. Users of
     /// this type will need to check for and reject that case.
@@ -191,28 +197,39 @@ pub enum DocStyle {
 /// `rustc_ast::ast::LitKind`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LiteralKind {
-    /// "12_u8", "0o100", "0b120i99", "1f32".
+    /// `12_u8`, `0o100`, `0b120i99`, `1f32`.
     Int { base: Base, empty_int: bool },
-    /// "12.34f32", "1e3", but not "1f32".
+    /// `12.34f32`, `1e3`, but not `1f32`.
     Float { base: Base, empty_exponent: bool },
-    /// "'a'", "'\\'", "'''", "';"
+    /// `'a'`, `'\\'`, `'''`, `';`
     Char { terminated: bool },
-    /// "b'a'", "b'\\'", "b'''", "b';"
+    /// `b'a'`, `b'\\'`, `b'''`, `b';`
     Byte { terminated: bool },
-    /// ""abc"", ""abc"
+    /// `"abc"`, `"abc`
     Str { terminated: bool },
-    /// "b"abc"", "b"abc"
+    /// `b"abc"`, `b"abc`
     ByteStr { terminated: bool },
     /// `c"abc"`, `c"abc`
     CStr { terminated: bool },
-    /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a". `None` indicates
+    /// `r"abc"`, `r#"abc"#`, `r####"ab"###"c"####`, `r#"a`. `None` indicates
     /// an invalid literal.
     RawStr { n_hashes: Option<u8> },
-    /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
+    /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`. `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
     /// `cr"abc"`, "cr#"abc"#", `cr#"a`. `None` indicates an invalid literal.
     RawCStr { n_hashes: Option<u8> },
+}
+
+/// `#"abc"#`, `##"a"` (fewer closing), or even `#"a` (unterminated).
+///
+/// Can capture fewer closing hashes than starting hashes,
+/// for more efficient lexing and better backwards diagnostics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct GuardedStr {
+    pub n_hashes: u32,
+    pub terminated: bool,
+    pub token_len: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -401,6 +418,12 @@ impl Cursor<'_> {
                 let suffix_start = self.pos_within_token();
                 self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
+            }
+
+            // Guarded string literal prefix: `#"` or `##`
+            '#' if matches!(self.first(), '"' | '#') => {
+                self.bump();
+                TokenKind::GuardedStrPrefix
             }
 
             // One-symbol tokens.
@@ -778,6 +801,60 @@ impl Cursor<'_> {
         }
         // End of file reached.
         false
+    }
+
+    /// Attempt to lex for a guarded string literal.
+    ///
+    /// Used by `rustc_parse::lexer` to lex for guarded strings
+    /// conditionally based on edition.
+    ///
+    /// Note: this will not reset the `Cursor` when a
+    /// guarded string is not found. It is the caller's
+    /// responsibility to do so.
+    pub fn guarded_double_quoted_string(&mut self) -> Option<GuardedStr> {
+        debug_assert!(self.prev() != '#');
+
+        let mut n_start_hashes: u32 = 0;
+        while self.first() == '#' {
+            n_start_hashes += 1;
+            self.bump();
+        }
+
+        if self.first() != '"' {
+            return None;
+        }
+        self.bump();
+        debug_assert!(self.prev() == '"');
+
+        // Lex the string itself as a normal string literal
+        // so we can recover that for older editions later.
+        let terminated = self.double_quoted_string();
+        if !terminated {
+            let token_len = self.pos_within_token();
+            self.reset_pos_within_token();
+
+            return Some(GuardedStr { n_hashes: n_start_hashes, terminated: false, token_len });
+        }
+
+        // Consume closing '#' symbols.
+        // Note that this will not consume extra trailing `#` characters:
+        // `###"abcde"####` is lexed as a `GuardedStr { n_end_hashes: 3, .. }`
+        // followed by a `#` token.
+        let mut n_end_hashes = 0;
+        while self.first() == '#' && n_end_hashes < n_start_hashes {
+            n_end_hashes += 1;
+            self.bump();
+        }
+
+        // Reserved syntax, always an error, so it doesn't matter if
+        // `n_start_hashes != n_end_hashes`.
+
+        self.eat_literal_suffix();
+
+        let token_len = self.pos_within_token();
+        self.reset_pos_within_token();
+
+        Some(GuardedStr { n_hashes: n_start_hashes, terminated: true, token_len })
     }
 
     /// Eats the double-quoted string and returns `n_hashes` and an error if encountered.

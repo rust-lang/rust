@@ -862,6 +862,27 @@ mod prim_array {}
 /// assert_eq!(x, &[1, 7, 3]);
 /// ```
 ///
+/// It is possible to slice empty subranges of slices by using empty ranges (including `slice.len()..slice.len()`):
+/// ```
+/// let x = [1, 2, 3];
+/// let empty = &x[0..0];   // subslice before the first element
+/// assert_eq!(empty, &[]);
+/// let empty = &x[..0];    // same as &x[0..0]
+/// assert_eq!(empty, &[]);
+/// let empty = &x[1..1];   // empty subslice in the middle
+/// assert_eq!(empty, &[]);
+/// let empty = &x[3..3];   // subslice after the last element
+/// assert_eq!(empty, &[]);
+/// let empty = &x[3..];    // same as &x[3..3]
+/// assert_eq!(empty, &[]);
+/// ```
+///
+/// It is not allowed to use subranges that start with lower bound bigger than `slice.len()`:
+/// ```should_panic
+/// let x = vec![1, 2, 3];
+/// let _ = &x[4..4];
+/// ```
+///
 /// As slices store the length of the sequence they refer to, they have twice
 /// the size of pointers to [`Sized`](marker/trait.Sized.html) types.
 /// Also see the reference on
