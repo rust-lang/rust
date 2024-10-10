@@ -1,5 +1,6 @@
 use rustc_ast::{MetaItemInner, MetaItemKind, ast, attr};
 use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_name};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
 use rustc_hir as hir;
@@ -13,13 +14,13 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_session::lint;
 use rustc_session::parse::feature_err;
+use rustc_session::{Session, lint};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, sym};
 use rustc_target::spec::{SanitizerSet, abi};
 
-use crate::errors;
+use crate::errors::{self, MissingFeatures, TargetFeatureDisableOrEnable};
 use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature};
 
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
@@ -662,7 +663,47 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
+    if let Some(features) = check_tied_features(
+        tcx.sess,
+        &codegen_fn_attrs
+            .target_features
+            .iter()
+            .map(|features| (features.name.as_str(), true))
+            .collect(),
+    ) {
+        let span = tcx
+            .get_attrs(did, sym::target_feature)
+            .next()
+            .map_or_else(|| tcx.def_span(did), |a| a.span);
+        tcx.dcx()
+            .create_err(TargetFeatureDisableOrEnable {
+                features,
+                span: Some(span),
+                missing_features: Some(MissingFeatures),
+            })
+            .emit();
+    }
+
     codegen_fn_attrs
+}
+
+/// Given a map from target_features to whether they are enabled or disabled, ensure only valid
+/// combinations are allowed.
+pub fn check_tied_features(
+    sess: &Session,
+    features: &FxHashMap<&str, bool>,
+) -> Option<&'static [&'static str]> {
+    if !features.is_empty() {
+        for tied in sess.target.tied_target_features() {
+            // Tied features must be set to the same value, or not set at all
+            let mut tied_iter = tied.iter();
+            let enabled = features.get(tied_iter.next().unwrap());
+            if tied_iter.any(|f| enabled != features.get(f)) {
+                return Some(tied);
+            }
+        }
+    }
+    None
 }
 
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller

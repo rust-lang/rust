@@ -33,9 +33,6 @@ codegen_llvm_lto_proc_macro = lto cannot be used for `proc-macro` crate type wit
 codegen_llvm_mismatch_data_layout =
     data-layout for target `{$rustc_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`
 
-codegen_llvm_missing_features =
-    add the missing features in a `target_feature` attribute
-
 codegen_llvm_multiple_source_dicompileunit = multiple source DICompileUnits found
 codegen_llvm_multiple_source_dicompileunit_with_llvm_err = multiple source DICompileUnits found: {$llvm_err}
 
@@ -62,9 +59,6 @@ codegen_llvm_serialize_module_with_llvm_err = failed to serialize module {$name}
 
 codegen_llvm_symbol_already_defined =
     symbol `{$symbol_name}` is already defined
-
-codegen_llvm_target_feature_disable_or_enable =
-    the target features {$features} must all be either enabled or disabled together
 
 codegen_llvm_target_machine = could not create LLVM TargetMachine for triple: {$triple}
 codegen_llvm_target_machine_with_llvm_err = could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}
