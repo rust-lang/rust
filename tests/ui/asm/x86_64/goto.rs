@@ -65,6 +65,25 @@ fn goto_out_jump() {
     }
 }
 
+fn goto_out_jump_noreturn() {
+    unsafe {
+        let mut value = false;
+        let mut out: usize;
+        asm!(
+            "lea {}, [{} + 1]",
+            "jmp {}",
+            out(reg) out,
+            in(reg) 0x12345678usize,
+            label {
+                value = true;
+                assert_eq!(out, 0x12345679);
+            },
+            options(noreturn)
+        );
+        assert!(value);
+    }
+}
+
 // asm goto with outputs cause miscompilation in LLVM when multiple outputs are present.
 // The code sample below is adapted from https://github.com/llvm/llvm-project/issues/74483
 // and does not work with `-C opt-level=0`
@@ -131,6 +150,7 @@ fn main() {
     goto_jump();
     goto_out_fallthrough();
     goto_out_jump();
+    goto_out_jump_noreturn();
     // goto_multi_out();
     goto_noreturn();
     goto_noreturn_diverge();
