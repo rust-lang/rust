@@ -98,10 +98,9 @@ impl Thread {
 
         extern "C" fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
             unsafe {
-                // Next, set up our stack overflow handler which may get triggered if we run
-                // out of stack.
-                let _handler = stack_overflow::Handler::new();
-                // Finally, let's run some code.
+                // Protect this thread against stack overflows
+                stack_overflow::protect(false);
+                // and run its main function.
                 Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             }
             ptr::null_mut()
