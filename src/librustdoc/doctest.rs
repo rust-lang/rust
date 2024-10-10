@@ -643,8 +643,7 @@ fn run_test(
     } else {
         cmd = Command::new(&output_file);
         if doctest.is_multiple_tests {
-            cmd.arg("*doctest-bin-path");
-            cmd.arg(&output_file);
+            cmd.env("RUSTDOC_DOCTEST_BIN_PATH", &output_file);
         }
     }
     if let Some(run_directory) = &rustdoc_options.test_run_directory {
@@ -788,7 +787,8 @@ struct CreateRunnableDocTests {
 
 impl CreateRunnableDocTests {
     fn new(rustdoc_options: RustdocOptions, opts: GlobalTestOptions) -> CreateRunnableDocTests {
-        let can_merge_doctests = rustdoc_options.edition >= Edition::Edition2024;
+        // let can_merge_doctests = rustdoc_options.edition >= Edition::Edition2024;
+        let can_merge_doctests = true;
         CreateRunnableDocTests {
             standalone_tests: Vec::new(),
             mergeable_tests: FxIndexMap::default(),
