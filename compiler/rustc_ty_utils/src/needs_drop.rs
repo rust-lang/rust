@@ -8,7 +8,7 @@ use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::sym;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::errors::NeedsDropOverflow;
 
@@ -400,6 +400,22 @@ fn adt_significant_drop_tys(
     .map(|components| tcx.mk_type_list(&components))
 }
 
+#[instrument(level = "debug", skip(tcx))]
+fn list_significant_drop_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+    drop_tys_helper(
+        tcx,
+        ty.value, // identical to `tcx.make_adt(def, identity_args)`
+        ty.param_env,
+        adt_consider_insignificant_dtor(tcx),
+        true,
+    )
+    .collect::<Result<Vec<_>, _>>()
+    .map(|components| tcx.mk_type_list(&components))
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         needs_drop_raw,
@@ -407,6 +423,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         has_significant_drop_raw,
         adt_drop_tys,
         adt_significant_drop_tys,
+        list_significant_drop_tys,
         ..*providers
     };
 }
