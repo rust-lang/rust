@@ -1449,7 +1449,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write`]: crate::ptr::write()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write(self, val: T)
@@ -1468,7 +1468,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write_bytes`]: crate::ptr::write_bytes()
     #[doc(alias = "memset")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write_bytes(self, val: u8, count: usize)
@@ -1509,7 +1509,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write_unaligned(self, val: T)

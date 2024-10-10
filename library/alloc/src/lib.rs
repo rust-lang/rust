@@ -173,7 +173,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(cfg_sanitize)]
 #![feature(const_precise_live_drops)]
-#![feature(const_ptr_write)]
 #![feature(const_try)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
