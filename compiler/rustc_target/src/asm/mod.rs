@@ -66,7 +66,12 @@ macro_rules! def_reg_class {
 }
 
 macro_rules! def_regs {
-    ($arch:ident $arch_reg:ident $arch_regclass:ident {
+    ($arch:ident $arch_reg:ident $arch_regclass:ident { $($tt:tt)* }) => {
+        def_regs! {
+            $arch $arch_reg $arch $arch_regclass { $($tt)* }
+        }
+    };
+    ($arch:ident $arch_reg:ident $regclass_arch:ident $arch_regclass:ident {
         $(
             $reg:ident: $class:ident $(, $extra_class:ident)* = [$reg_name:literal $(, $alias:literal)*] $(% $filter:ident)?,
         )*
@@ -144,11 +149,11 @@ macro_rules! def_regs {
             use super::{InlineAsmReg, InlineAsmRegClass};
             $(
                 if $($filter(_arch, _reloc_model, _target_features, _target, false).is_ok() &&)? true {
-                    if let Some(set) = _map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$class)) {
+                    if let Some(set) = _map.get_mut(&InlineAsmRegClass::$regclass_arch($arch_regclass::$class)) {
                         set.insert(InlineAsmReg::$arch($arch_reg::$reg));
                     }
                     $(
-                        if let Some(set) = _map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$extra_class)) {
+                        if let Some(set) = _map.get_mut(&InlineAsmRegClass::$regclass_arch($arch_regclass::$extra_class)) {
                             set.insert(InlineAsmReg::$arch($arch_reg::$reg));
                         }
                     )*
@@ -179,6 +184,7 @@ macro_rules! types {
 
 mod aarch64;
 mod arm;
+mod arm64ec;
 mod avr;
 mod bpf;
 mod csky;
@@ -197,6 +203,7 @@ mod x86;
 
 pub use aarch64::{AArch64InlineAsmReg, AArch64InlineAsmRegClass};
 pub use arm::{ArmInlineAsmReg, ArmInlineAsmRegClass};
+pub use arm64ec::Arm64ECInlineAsmReg;
 pub use avr::{AvrInlineAsmReg, AvrInlineAsmRegClass};
 pub use bpf::{BpfInlineAsmReg, BpfInlineAsmRegClass};
 pub use csky::{CSKYInlineAsmReg, CSKYInlineAsmRegClass};
@@ -279,6 +286,7 @@ pub enum InlineAsmReg {
     X86(X86InlineAsmReg),
     Arm(ArmInlineAsmReg),
     AArch64(AArch64InlineAsmReg),
+    Arm64EC(Arm64ECInlineAsmReg),
     RiscV(RiscVInlineAsmReg),
     Nvptx(NvptxInlineAsmReg),
     PowerPC(PowerPCInlineAsmReg),
@@ -303,6 +311,7 @@ impl InlineAsmReg {
             Self::X86(r) => r.name(),
             Self::Arm(r) => r.name(),
             Self::AArch64(r) => r.name(),
+            Self::Arm64EC(r) => r.name(),
             Self::RiscV(r) => r.name(),
             Self::PowerPC(r) => r.name(),
             Self::Hexagon(r) => r.name(),
@@ -323,6 +332,7 @@ impl InlineAsmReg {
             Self::X86(r) => InlineAsmRegClass::X86(r.reg_class()),
             Self::Arm(r) => InlineAsmRegClass::Arm(r.reg_class()),
             Self::AArch64(r) => InlineAsmRegClass::AArch64(r.reg_class()),
+            Self::Arm64EC(r) => InlineAsmRegClass::AArch64(r.reg_class()),
             Self::RiscV(r) => InlineAsmRegClass::RiscV(r.reg_class()),
             Self::PowerPC(r) => InlineAsmRegClass::PowerPC(r.reg_class()),
             Self::Hexagon(r) => InlineAsmRegClass::Hexagon(r.reg_class()),
@@ -345,9 +355,8 @@ impl InlineAsmReg {
         Ok(match arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64 => Self::X86(X86InlineAsmReg::parse(name)?),
             InlineAsmArch::Arm => Self::Arm(ArmInlineAsmReg::parse(name)?),
-            InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC => {
-                Self::AArch64(AArch64InlineAsmReg::parse(name)?)
-            }
+            InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmReg::parse(name)?),
+            InlineAsmArch::Arm64EC => Self::Arm64EC(Arm64ECInlineAsmReg::parse(name)?),
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                 Self::RiscV(RiscVInlineAsmReg::parse(name)?)
             }
@@ -385,6 +394,7 @@ impl InlineAsmReg {
             Self::X86(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Arm(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::AArch64(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Arm64EC(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::RiscV(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::PowerPC(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Hexagon(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
@@ -414,6 +424,7 @@ impl InlineAsmReg {
             Self::X86(r) => r.emit(out, arch, modifier),
             Self::Arm(r) => r.emit(out, arch, modifier),
             Self::AArch64(r) => r.emit(out, arch, modifier),
+            Self::Arm64EC(r) => r.emit(out, arch, modifier),
             Self::RiscV(r) => r.emit(out, arch, modifier),
             Self::PowerPC(r) => r.emit(out, arch, modifier),
             Self::Hexagon(r) => r.emit(out, arch, modifier),
@@ -434,6 +445,7 @@ impl InlineAsmReg {
             Self::X86(r) => r.overlapping_regs(|r| cb(Self::X86(r))),
             Self::Arm(r) => r.overlapping_regs(|r| cb(Self::Arm(r))),
             Self::AArch64(_) => cb(self),
+            Self::Arm64EC(_) => cb(self),
             Self::RiscV(_) => cb(self),
             Self::PowerPC(r) => r.overlapping_regs(|r| cb(Self::PowerPC(r))),
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
@@ -803,9 +815,14 @@ pub fn allocatable_registers(
             arm::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
-        InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC => {
+        InlineAsmArch::AArch64 => {
             let mut map = aarch64::regclass_map();
             aarch64::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
+            map
+        }
+        InlineAsmArch::Arm64EC => {
+            let mut map = aarch64::regclass_map();
+            arm64ec::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
@@ -890,6 +907,7 @@ pub enum InlineAsmClobberAbi {
     Arm,
     AArch64,
     AArch64NoX18,
+    Arm64EC,
     RiscV,
     LoongArch,
     S390x,
@@ -931,7 +949,7 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::Arm64EC => match name {
-                "C" | "system" => Ok(InlineAsmClobberAbi::AArch64NoX18),
+                "C" | "system" => Ok(InlineAsmClobberAbi::Arm64EC),
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {
@@ -1028,7 +1046,6 @@ impl InlineAsmClobberAbi {
                     p0, p1, p2, p3, p4, p5, p6, p7,
                     p8, p9, p10, p11, p12, p13, p14, p15,
                     ffr,
-
                 }
             },
             InlineAsmClobberAbi::AArch64NoX18 => clobbered_regs! {
@@ -1047,7 +1064,20 @@ impl InlineAsmClobberAbi {
                     p0, p1, p2, p3, p4, p5, p6, p7,
                     p8, p9, p10, p11, p12, p13, p14, p15,
                     ffr,
+                }
+            },
+            InlineAsmClobberAbi::Arm64EC => clobbered_regs! {
+                Arm64EC Arm64ECInlineAsmReg {
+                    // x13 and x14 cannot be used in Arm64EC.
+                    x0, x1, x2, x3, x4, x5, x6, x7,
+                    x8, x9, x10, x11, x12, x15,
+                    x16, x17, x30,
 
+                    // Technically the low 64 bits of v8-v15 are preserved, but
+                    // we have no way of expressing this using clobbers.
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+                    v8, v9, v10, v11, v12, v13, v14, v15,
+                    // v16-v31, p*, and ffr cannot be used in Arm64EC.
                 }
             },
             InlineAsmClobberAbi::Arm => clobbered_regs! {

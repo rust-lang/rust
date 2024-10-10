@@ -1,0 +1,26 @@
+error: invalid register `z0`: SVE cannot be used for Arm64EC
+  --> $DIR/arm64ec-sve.rs:26:18
+   |
+LL |         asm!("", out("z0") _, in("z1") x);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `z1`: SVE cannot be used for Arm64EC
+  --> $DIR/arm64ec-sve.rs:26:31
+   |
+LL |         asm!("", out("z0") _, in("z1") x);
+   |                               ^^^^^^^^^^
+
+error: invalid register `p0`: SVE cannot be used for Arm64EC
+  --> $DIR/arm64ec-sve.rs:29:18
+   |
+LL |         asm!("", out("p0") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `ffr`: SVE cannot be used for Arm64EC
+  --> $DIR/arm64ec-sve.rs:31:18
+   |
+LL |         asm!("", out("ffr") _);
+   |                  ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

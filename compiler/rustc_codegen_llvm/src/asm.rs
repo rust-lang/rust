@@ -542,57 +542,18 @@ fn xmm_reg_index(reg: InlineAsmReg) -> Option<u32> {
 
 /// If the register is an AArch64 integer register then return its index.
 fn a64_reg_index(reg: InlineAsmReg) -> Option<u32> {
-    use AArch64InlineAsmReg::*;
-    // Unlike `a64_vreg_index`, we can't subtract `x0` to get the u32 because
-    // `x19` and `x29` are missing and the integer constants for the
-    // `x0`..`x30` enum variants don't all match the register number. E.g. the
-    // integer constant for `x18` is 18, but the constant for `x20` is 19.
-    Some(match reg {
-        InlineAsmReg::AArch64(r) => match r {
-            x0 => 0,
-            x1 => 1,
-            x2 => 2,
-            x3 => 3,
-            x4 => 4,
-            x5 => 5,
-            x6 => 6,
-            x7 => 7,
-            x8 => 8,
-            x9 => 9,
-            x10 => 10,
-            x11 => 11,
-            x12 => 12,
-            x13 => 13,
-            x14 => 14,
-            x15 => 15,
-            x16 => 16,
-            x17 => 17,
-            x18 => 18,
-            // x19 is reserved
-            x20 => 20,
-            x21 => 21,
-            x22 => 22,
-            x23 => 23,
-            x24 => 24,
-            x25 => 25,
-            x26 => 26,
-            x27 => 27,
-            x28 => 28,
-            // x29 is reserved
-            x30 => 30,
-            _ => return None,
-        },
-        _ => return None,
-    })
+    match reg {
+        InlineAsmReg::AArch64(r) => r.reg_index(),
+        InlineAsmReg::Arm64EC(r) => r.reg_index(),
+        _ => None,
+    }
 }
 
 /// If the register is an AArch64 vector register then return its index.
 fn a64_vreg_index(reg: InlineAsmReg) -> Option<u32> {
-    use AArch64InlineAsmReg::*;
     match reg {
-        InlineAsmReg::AArch64(reg) if reg as u32 >= v0 as u32 && reg as u32 <= v31 as u32 => {
-            Some(reg as u32 - v0 as u32)
-        }
+        InlineAsmReg::AArch64(reg) => reg.vreg_index(),
+        InlineAsmReg::Arm64EC(reg) => reg.vreg_index(),
         _ => None,
     }
 }
@@ -625,7 +586,13 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // We use i32 as the type for discarded outputs
                     'w'
                 };
-                if class == 'x' && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
+                if class == 'x'
+                    && matches!(
+                        reg,
+                        InlineAsmReg::AArch64(AArch64InlineAsmReg::x30)
+                            | InlineAsmReg::Arm64EC(Arm64ECInlineAsmReg::x30)
+                    )
+                {
                     // LLVM doesn't recognize x30. use lr instead.
                     "{lr}".to_string()
                 } else {
