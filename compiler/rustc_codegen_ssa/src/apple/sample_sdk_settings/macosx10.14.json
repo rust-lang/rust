@@ -1,0 +1,58 @@
+{
+    "DisplayName": "macOS 10.14",
+    "DefaultProperties": {
+        "DEPLOYMENT_TARGET_SUGGESTED_VALUES": [
+            "10.6",
+            "10.7",
+            "10.8",
+            "10.9",
+            "10.10",
+            "10.11",
+            "10.12",
+            "10.13",
+            "10.14"
+        ],
+        "DEFAULT_COMPILER": "com.apple.compilers.llvm.clang.1_0",
+        "KASAN_DEFAULT_CFLAGS": "-DKASAN=1 -fsanitize=address -mllvm -asan-globals-live-support -mllvm -asan-force-dynamic-shadow",
+        "MACOSX_DEPLOYMENT_TARGET": "10.14",
+        "PLATFORM_NAME": "macosx"
+    },
+    "MinimalDisplayName": "10.14",
+    "Version": "10.14",
+    "IsBaseSDK": "YES",
+    "SupportedTargets": {
+        "macosx": {
+            "MinimumDeploymentTarget": "10.6",
+            "LLVMTargetTripleSys": "macosx",
+            "MaximumDeploymentTarget": "10.14.99",
+            "LLVMTargetTripleEnvironment": "",
+            "LLVMTargetTripleVendor": "apple",
+            "BuildVersionPlatformID": "1",
+            "DefaultDeploymentTarget": "10.14",
+            "Archs": [
+                "x86_64"
+            ],
+            "ValidDeploymentTargets": [
+                "10.6",
+                "10.7",
+                "10.8",
+                "10.9",
+                "10.10",
+                "10.11",
+                "10.12",
+                "10.13",
+                "10.14"
+            ]
+        }
+    },
+    "PropertyConditionFallbackNames": [],
+    "DefaultDeploymentTarget": "10.14",
+    "MaximumDeploymentTarget": "10.14.99",
+    "DebuggerOptions": {
+        "SupportsViewDebugging": "YES"
+    },
+    "CanonicalName": "macosx10.14",
+    "CustomProperties": {
+        "KERNEL_EXTENSION_HEADER_SEARCH_PATHS": "$(KERNEL_FRAMEWORK)\/PrivateHeaders $(KERNEL_FRAMEWORK_HEADERS)"
+    }
+}

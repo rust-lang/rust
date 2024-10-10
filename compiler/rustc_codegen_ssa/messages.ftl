@@ -8,8 +8,16 @@ codegen_ssa_apple_deployment_target_invalid =
 codegen_ssa_apple_deployment_target_too_low =
     deployment target in {$env_var} was set to {$version}, but the minimum supported by `rustc` is {$os_min}
 
+codegen_ssa_apple_deployment_target_too_high =
+    deployment target was set to {$version}, but the maximum supported by the current SDK is {$sdk_max}
+
+    Use the {$env_var} environment variable to set it to something lower.
+
 codegen_ssa_apple_sdk_error_failed_reading =
     failed reading `{$path}` while looking for SDK root: {$error}
+
+codegen_ssa_apple_sdk_error_invalid_sdk_settings_json =
+    failed parsing SDK settings from `{$path}`: {$error}
 
 codegen_ssa_apple_sdk_error_missing =
     failed finding SDK for platform `{$sdk_name}`. It looks like you have not installed Xcode?
@@ -37,6 +45,11 @@ codegen_ssa_apple_sdk_error_missing_developer_dir =
     - `{$sdkroot}`
     - `{$sdkroot_bare}`
 
+codegen_ssa_apple_sdk_error_missing_sdk_settings =
+    failed finding `SDKSettings.json` or `SDKSettings.plist` in `{$sdkroot}`.
+
+    Are you sure this is a valid SDK?
+
 codegen_ssa_apple_sdk_error_missing_xcode =
     failed finding SDK at `{$sdkroot}` in Xcode installation.
 
@@ -48,6 +61,49 @@ codegen_ssa_apple_sdk_error_missing_xcode_select =
     - `{$sdkroot_bare}`
 
     Consider using `sudo xcode-select --switch path/to/Xcode.app` or `sudo xcode-select --reset` to select a valid path.
+
+codegen_ssa_apple_sdk_error_not_sdk_path =
+    failed parsing SDK at `{$path}`.
+
+    The SDK did not seem to contain `SDKSettings.json`, and hence `rustc` falled back to parsing required SDK details from the SDK name itself.
+
+    This name must be of the form `[SDKName][major].[minor].[patch].sdk`, for example `MacOSX10.13.sdk` or `iPhoneOS11.0.sdk`.
+
+codegen_ssa_apple_sdk_error_sdk_does_not_support_arch =
+    the SDK at `{$sdkroot}` does not support the {$arch} architecture.
+
+codegen_ssa_apple_sdk_error_sdk_does_not_support_os =
+    the SDK at `{$sdkroot}` does not support { $abi ->
+        [macabi] Mac Catalyst
+        [sim] the {$os} simulator
+        *[normal] {$os}
+    }.
+
+    Use `xcode-select --switch` or one of the `SDKROOT` and `DEVELOPER_DIR` environment variables to select { $abi ->
+        [macabi] a newer version of Xcode that has support for it
+        *[others] another SDK that has support for it
+    }.
+
+    { $abi ->
+        [macabi] Also remember that it is the macOS SDK that supports Mac Catalyst, not the iOS SDK.
+        *[others] {""}
+    }
+
+codegen_ssa_apple_sdk_error_sdk_root_ignored =
+    the SDKROOT environment variable has been ignored, and `rustc` will attempt to find a suitable SDK
+
+codegen_ssa_apple_sdk_error_sdk_root_is_root_path =
+    the path SDKROOT was set to the root path `/`.
+
+    This will work poorly with other tooling, and as such the value has been ignored.
+
+codegen_ssa_apple_sdk_error_sdk_root_missing =
+    the path `{$sdkroot}` specified in SDKROOT did not exist, so it has been ignored
+
+codegen_ssa_apple_sdk_error_sdk_root_not_absolute =
+    the path `{$sdkroot}` specified in SDKROOT was not an absolute path.
+
+    This will work poorly with other tooling, and as such the value has been ignored.
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 

@@ -1,0 +1,180 @@
+{
+    "DefaultVariant": "macos",
+    "DisplayName": "macOS 11.3",
+    "MinimalDisplayName": "11.3",
+    "DefaultProperties": {
+        "ENTITLEMENTS_DESTINATION": "Signature",
+        "CODE_SIGNING_ALLOWED": "YES",
+        "DEFAULT_COMPILER": "com.apple.compilers.llvm.clang.1_0",
+        "TEST_LIBRARY_SEARCH_PATHS": "$(inherited) $(PLATFORM_DIR)\/Developer\/$(TEST_FRAMEWORK_DEVELOPER_VARIANT_SUBPATH)usr\/lib",
+        "KASAN_DEFAULT_CFLAGS": "-DKASAN=1 -fsanitize=address -mllvm -asan-globals-live-support -mllvm -asan-force-dynamic-shadow",
+        "DEPLOYMENT_TARGET_SUGGESTED_VALUES": [
+            "10.9",
+            "10.10",
+            "10.11",
+            "10.12",
+            "10.13",
+            "10.14",
+            "10.15",
+            "11.0",
+            "11.1",
+            "11.2",
+            "11.3"
+        ],
+        "IOS_UNZIPPERED_TWIN_PREFIX_PATH": "\/System\/iOSSupport",
+        "MACOSX_DEPLOYMENT_TARGET": "11.3",
+        "AD_HOC_CODE_SIGNING_ALLOWED": "YES",
+        "PLATFORM_NAME": "macosx",
+        "TEST_FRAMEWORK_SEARCH_PATHS": "$(inherited) $(PLATFORM_DIR)\/Developer\/$(TEST_FRAMEWORK_DEVELOPER_VARIANT_SUBPATH)Library\/Frameworks"
+    },
+    "IsBaseSDK": "YES",
+    "SupportedTargets": {
+        "iosmac": {
+            "MinimumDeploymentTarget": "13.1",
+            "LLVMTargetTripleEnvironment": "macabi",
+            "LLVMTargetTripleSys": "ios",
+            "MaximumDeploymentTarget": "14.5.99",
+            "LLVMTargetTripleVendor": "apple",
+            "BuildVersionPlatformID": "6",
+            "DeploymentTargetSettingName": "IPHONEOS_DEPLOYMENT_TARGET",
+            "Archs": [
+                "x86_64",
+                "x86_64h",
+                "arm64",
+                "arm64e"
+            ],
+            "DefaultDeploymentTarget": "14.5",
+            "ValidDeploymentTargets": [
+                "13.1",
+                "13.2",
+                "13.3",
+                "13.3.1",
+                "13.4",
+                "13.5",
+                "14.0",
+                "14.1",
+                "14.2",
+                "14.3",
+                "14.4",
+                "14.5"
+            ]
+        },
+        "macosx": {
+            "MinimumDeploymentTarget": "10.9",
+            "PlatformFamilyName": "macOS",
+            "LLVMTargetTripleEnvironment": "",
+            "LLVMTargetTripleSys": "macosx",
+            "MaximumDeploymentTarget": "11.3.99",
+            "LLVMTargetTripleVendor": "apple",
+            "BuildVersionPlatformID": "1",
+            "DeploymentTargetSettingName": "MACOSX_DEPLOYMENT_TARGET",
+            "Archs": [
+                "x86_64",
+                "x86_64h",
+                "arm64",
+                "arm64e"
+            ],
+            "ValidDeploymentTargets": [
+                "10.9",
+                "10.10",
+                "10.11",
+                "10.12",
+                "10.13",
+                "10.14",
+                "10.15",
+                "11.0",
+                "11.1",
+                "11.2",
+                "11.3"
+            ],
+            "DefaultDeploymentTarget": "11.3"
+        }
+    },
+    "Version": "11.3",
+    "PropertyConditionFallbackNames": [],
+    "VersionMap": {
+        "iOSMac_macOS": {
+            "13.3.1": "10.15.3",
+            "13.3": "10.15.2",
+            "14.2": "11.0",
+            "13.2": "10.15.1",
+            "14.5": "11.3",
+            "14.1": "11.0",
+            "13.5": "10.15.5",
+            "13.1": "10.15",
+            "14.4": "11.2",
+            "14.0": "11.0",
+            "13.4": "10.15.4",
+            "14.3": "11.1"
+        },
+        "macOS_iOSMac": {
+            "11.0.1": "14.2",
+            "10.15": "13.1",
+            "11.2": "14.4",
+            "10.15.5": "13.5",
+            "10.15.4": "13.4",
+            "10.15.3": "13.3.1",
+            "10.15.2": "13.3",
+            "11.0": "14.2",
+            "10.15.1": "13.2",
+            "11.3": "14.5",
+            "11.1": "14.3"
+        }
+    },
+    "DefaultDeploymentTarget": "11.3",
+    "MaximumDeploymentTarget": "11.3.99",
+    "Variants": [
+        {
+            "Name": "macos",
+            "BuildSettings": {
+                "_BOOL_": "NO",
+                "_IS_EMPTY_": "YES",
+                "CODE_SIGN_IDENTITY": "$(CODE_SIGN_IDENTITY_$(_DEVELOPMENT_TEAM_IS_EMPTY))",
+                "LLVM_TARGET_TRIPLE_OS_VERSION_YES": "macos11.3",
+                "_DEVELOPMENT_TEAM_IS_EMPTY": "$(_BOOL_$(_IS_EMPTY_$(DEVELOPMENT_TEAM)))",
+                "LLVM_TARGET_TRIPLE_OS_VERSION": "$(LLVM_TARGET_TRIPLE_OS_VERSION_$(_MACOSX_DEPLOYMENT_TARGET_IS_EMPTY))",
+                "LLVM_TARGET_TRIPLE_OS_VERSION_NO": "macos$(MACOSX_DEPLOYMENT_TARGET)",
+                "_BOOL_YES": "YES",
+                "CODE_SIGN_IDENTITY_YES": "-",
+                "CODE_SIGN_IDENTITY_NO": "Apple Development",
+                "_MACOSX_DEPLOYMENT_TARGET_IS_EMPTY": "$(_BOOL_$(_IS_EMPTY_$(MACOSX_DEPLOYMENT_TARGET)))",
+                "_BOOL_NO": "NO",
+                "IPHONEOS_DEPLOYMENT_TARGET": "14.5",
+                "LLVM_TARGET_TRIPLE_SUFFIX": ""
+            }
+        },
+        {
+            "Name": "iosmac",
+            "BuildSettings": {
+                "_BOOL_NO": "NO",
+                "SYSTEM_HEADER_SEARCH_PATHS": "$(inherited) $(SDKROOT)$(IOS_UNZIPPERED_TWIN_PREFIX_PATH)\/usr\/include",
+                "SYSTEM_FRAMEWORK_SEARCH_PATHS": "$(inherited) $(SDKROOT)$(IOS_UNZIPPERED_TWIN_PREFIX_PATH)\/System\/Library\/Frameworks",
+                "SWIFT_DEPLOYMENT_TARGET": "$(IPHONEOS_DEPLOYMENT_TARGET)",
+                "_BOOL_": "NO",
+                "LLVM_TARGET_TRIPLE_OS_VERSION_YES": "ios14.5",
+                "_IS_EMPTY_": "YES",
+                "LIBRARY_SEARCH_PATHS": "$(inherited) $(SDKROOT)$(IOS_UNZIPPERED_TWIN_PREFIX_PATH)\/usr\/lib $(TOOLCHAIN_DIR)\/usr\/lib\/swift\/maccatalyst",
+                "TARGETED_DEVICE_FAMILY": "2",
+                "RESOURCES_UI_FRAMEWORK_FAMILY": "uikit",
+                "LLVM_TARGET_TRIPLE_SUFFIX": "-macabi",
+                "RESOURCES_MINIMUM_DEPLOYMENT_TARGET": "$(IPHONEOS_DEPLOYMENT_TARGET)",
+                "SWIFT_PLATFORM_TARGET_PREFIX": "ios",
+                "_BOOL_YES": "YES",
+                "_IPHONEOS_DEPLOYMENT_TARGET_IS_EMPTY": "$(_BOOL_$(_IS_EMPTY_$(IPHONEOS_DEPLOYMENT_TARGET)))",
+                "IPHONEOS_DEPLOYMENT_TARGET": "14.5",
+                "CODE_SIGN_IDENTITY": "Apple Development",
+                "LLVM_TARGET_TRIPLE_OS_VERSION": "$(LLVM_TARGET_TRIPLE_OS_VERSION_$(_IPHONEOS_DEPLOYMENT_TARGET_IS_EMPTY))",
+                "RESOURCES_PLATFORM_NAME": "macosx",
+                "ENABLE_HARDENED_RUNTIME": "YES",
+                "LLVM_TARGET_TRIPLE_OS_VERSION_NO": "ios$(IPHONEOS_DEPLOYMENT_TARGET)"
+            }
+        }
+    ],
+    "DebuggerOptions": {
+        "SupportsViewDebugging": "YES"
+    },
+    "CanonicalName": "macosx11.3",
+    "CustomProperties": {
+        "KERNEL_EXTENSION_HEADER_SEARCH_PATHS": "$(KERNEL_FRAMEWORK)\/PrivateHeaders $(KERNEL_FRAMEWORK_HEADERS)"
+    }
+}

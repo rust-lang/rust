@@ -50,7 +50,7 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
-use crate::apple::{deployment_target, find_sdk_root, ld64_arch, versioned_llvm_target};
+use crate::apple::{SDKSettings, deployment_target, ld64_arch, versioned_llvm_target};
 use crate::{
     CodegenResults, CompiledModule, CrateInfo, NativeLib, common, errors,
     looks_like_rust_object_file,
@@ -2100,16 +2100,20 @@ fn add_library_search_dirs(
     cmd: &mut dyn Linker,
     sess: &Session,
     self_contained_components: LinkSelfContainedComponents,
-    apple_sdk_root: Option<&Path>,
+    apple_sdk_data: &Option<(PathBuf, SDKSettings)>,
 ) {
     if !sess.opts.unstable_opts.link_native_libraries {
         return;
     }
 
+    let apple_sdk_data = apple_sdk_data
+        .as_ref()
+        .map(|(sdkroot, settings)| (&**sdkroot, settings.mac_catalyst_prefix_path()));
+
     walk_native_lib_search_dirs(
         sess,
         self_contained_components,
-        apple_sdk_root,
+        apple_sdk_data,
         |dir, is_framework| {
             if is_framework {
                 cmd.framework_path(dir);
@@ -2408,7 +2412,7 @@ fn add_order_independent_options(
 
     add_apple_link_args(cmd, sess, flavor);
 
-    let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
+    let apple_sdk_data = add_apple_sdk(cmd, sess, crate_type, flavor);
 
     add_link_script(cmd, sess, tmpdir, crate_type);
 
@@ -2464,7 +2468,7 @@ fn add_order_independent_options(
 
     cmd.linker_plugin_lto();
 
-    add_library_search_dirs(cmd, sess, self_contained_components, apple_sdk_root.as_deref());
+    add_library_search_dirs(cmd, sess, self_contained_components, &apple_sdk_data);
 
     cmd.output_filename(out_filename);
 
@@ -3100,7 +3104,12 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     }
 }
 
-fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
+fn add_apple_sdk(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    crate_type: CrateType,
+    flavor: LinkerFlavor,
+) -> Option<(PathBuf, SDKSettings)> {
     if !sess.target.is_like_osx {
         return None;
     }
@@ -3108,10 +3117,8 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> 
         return None;
     };
 
-    let sdk_name = rustc_target::spec::apple_sdk_name(&sess.target);
-
-    let sdkroot = match get_apple_sdk_root(sdk_name) {
-        Ok(s) => s,
+    let (sdkroot, settings) = match SDKSettings::from_environment(sess, crate_type) {
+        Ok((sdkroot, settings)) => (sdkroot, settings),
         Err(e) => {
             // If cross compiling from non-macOS, the user might be using something like `zig cc`.
             //
@@ -3154,49 +3161,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> 
         cmd.link_arg(&sdkroot);
     }
 
-    Some(sdkroot)
-}
-
-fn get_apple_sdk_root(sdk_name: &'static str) -> Result<PathBuf, errors::AppleSdkError> {
-    // Following what clang does
-    // (https://github.com/llvm/llvm-project/blob/
-    // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
-    // to allow the SDK path to be set.
-    if let Ok(sdkroot) = env::var("SDKROOT") {
-        let p = PathBuf::from(&sdkroot);
-        match &*sdk_name.to_lowercase() {
-            // Ignore `SDKROOT` if it's clearly set for the wrong platform.
-            "appletvos"
-                if sdkroot.contains("TVSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") => {}
-            "appletvsimulator"
-                if sdkroot.contains("TVOS.platform") || sdkroot.contains("MacOSX.platform") => {}
-            "iphoneos"
-                if sdkroot.contains("iPhoneSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") => {}
-            "iphonesimulator"
-                if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") => {
-            }
-            "macosx"
-                if sdkroot.contains("iPhoneOS.platform")
-                    || sdkroot.contains("iPhoneSimulator.platform") => {}
-            "watchos"
-                if sdkroot.contains("WatchSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") => {}
-            "watchsimulator"
-                if sdkroot.contains("WatchOS.platform") || sdkroot.contains("MacOSX.platform") => {}
-            "xros"
-                if sdkroot.contains("XRSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") => {}
-            "xrsimulator"
-                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
-            // Ignore `SDKROOT` if it's not a valid path.
-            _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
-            _ => return Ok(p),
-        }
-    }
-
-    find_sdk_root(sdk_name)
+    Some((sdkroot, settings))
 }
 
 /// When using the linker flavors opting in to `lld`, add the necessary paths and arguments to

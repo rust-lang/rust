@@ -24,7 +24,7 @@ use crate::{errors, fluent_generated};
 pub fn walk_native_lib_search_dirs<R>(
     sess: &Session,
     self_contained_components: LinkSelfContainedComponents,
-    apple_sdk_root: Option<&Path>,
+    apple_sdk_data: Option<(&Path, &Path)>,
     mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
 ) -> ControlFlow<R> {
     // Library search paths explicitly supplied by user (`-L` on the command line).
@@ -62,13 +62,17 @@ pub fn walk_native_lib_search_dirs<R>(
         f(&sess.target_tlib_path.dir, false)?;
     }
 
-    // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
-    // we must have the support library stubs in the library search path (#121430).
-    if let Some(sdk_root) = apple_sdk_root
-        && sess.target.llvm_target.contains("macabi")
+    // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks we must have the
+    // support library stubs under `/System/iOSSupport` in the library search path (#121430).
+    if let Some((sdkroot, mac_catalyst_prefix_path)) = apple_sdk_data
+        && sess.target.abi == "macabi"
     {
-        f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
-        f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
+        // `.join` with a root path replaces the path, while we want to extend the path.
+        let mac_catalyst_prefix_path =
+            mac_catalyst_prefix_path.strip_prefix("/").unwrap_or(mac_catalyst_prefix_path);
+        let root = sdkroot.join(mac_catalyst_prefix_path);
+        f(&root.join("usr/lib"), false)?;
+        f(&root.join("System/Library/Frameworks"), true)?;
     }
 
     ControlFlow::Continue(())
