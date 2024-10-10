@@ -704,7 +704,9 @@ pub fn page_size() -> usize {
 //
 // [posix_confstr]:
 //     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
-#[cfg(target_vendor = "apple")]
+//
+// FIXME: Support `confstr` in Miri.
+#[cfg(all(target_vendor = "apple", not(miri)))]
 fn confstr(key: c_int, size_hint: Option<usize>) -> io::Result<OsString> {
     let mut buf: Vec<u8> = Vec::with_capacity(0);
     let mut bytes_needed_including_nul = size_hint
@@ -753,7 +755,7 @@ fn confstr(key: c_int, size_hint: Option<usize>) -> io::Result<OsString> {
     Ok(OsString::from_vec(buf))
 }
 
-#[cfg(target_vendor = "apple")]
+#[cfg(all(target_vendor = "apple", not(miri)))]
 fn darwin_temp_dir() -> PathBuf {
     confstr(libc::_CS_DARWIN_USER_TEMP_DIR, Some(64)).map(PathBuf::from).unwrap_or_else(|_| {
         // It failed for whatever reason (there are several possible reasons),
@@ -765,7 +767,7 @@ fn darwin_temp_dir() -> PathBuf {
 pub fn temp_dir() -> PathBuf {
     crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
         cfg_if::cfg_if! {
-            if #[cfg(target_vendor = "apple")] {
+            if #[cfg(all(target_vendor = "apple", not(miri)))] {
                 darwin_temp_dir()
             } else if #[cfg(target_os = "android")] {
                 PathBuf::from("/data/local/tmp")
