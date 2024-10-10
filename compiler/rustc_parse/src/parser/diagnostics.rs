@@ -14,6 +14,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult, Subdiagnostic,
     Suggestions, pluralize,
@@ -2437,7 +2438,7 @@ impl<'a> Parser<'a> {
         let mut labels = vec![];
         while let TokenKind::Interpolated(nt) = &tok.kind {
             let tokens = nt.tokens();
-            labels.push(nt.clone());
+            labels.push(Lrc::clone(nt));
             if let Some(tokens) = tokens
                 && let tokens = tokens.to_attr_token_stream()
                 && let tokens = tokens.0.deref()

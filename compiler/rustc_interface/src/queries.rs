@@ -142,7 +142,7 @@ impl Linker {
 
         Ok(Linker {
             dep_graph: tcx.dep_graph.clone(),
-            output_filenames: tcx.output_filenames(()).clone(),
+            output_filenames: Arc::clone(tcx.output_filenames(())),
             crate_hash: if tcx.needs_crate_hash() {
                 Some(tcx.crate_hash(LOCAL_CRATE))
             } else {

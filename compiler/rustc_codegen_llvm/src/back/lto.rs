@@ -569,7 +569,7 @@ fn thin_lto(
 
             info!(" - {}: re-compiled", module_name);
             opt_jobs.push(LtoModuleCodegen::Thin(ThinModule {
-                shared: shared.clone(),
+                shared: Arc::clone(&shared),
                 idx: module_index,
             }));
         }

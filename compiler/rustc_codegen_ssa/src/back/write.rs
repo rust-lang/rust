@@ -11,6 +11,7 @@ use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
@@ -514,7 +515,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
             future: Some(coordinator_thread),
             phantom: PhantomData,
         },
-        output_filenames: tcx.output_filenames(()).clone(),
+        output_filenames: Lrc::clone(tcx.output_filenames(())),
     }
 }
 
@@ -1203,7 +1204,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         coordinator_send,
         expanded_args: tcx.sess.expanded_args.clone(),
         diag_emitter: shared_emitter.clone(),
-        output_filenames: tcx.output_filenames(()).clone(),
+        output_filenames: Lrc::clone(tcx.output_filenames(())),
         regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,

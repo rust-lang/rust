@@ -3319,6 +3319,7 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_ast",
+ "rustc_data_structures",
  "rustc_lexer",
  "rustc_span",
  "thin-vec",

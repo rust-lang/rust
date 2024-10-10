@@ -368,7 +368,7 @@ impl Clone for TokenKind {
         // a copy. This is faster than the `derive(Clone)` version which has a
         // separate path for every variant.
         match self {
-            Interpolated(nt) => Interpolated(nt.clone()),
+            Interpolated(nt) => Interpolated(Lrc::clone(nt)),
             _ => unsafe { std::ptr::read(self) },
         }
     }

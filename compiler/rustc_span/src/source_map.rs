@@ -286,8 +286,8 @@ impl SourceMap {
         });
 
         let file = Lrc::new(file);
-        files.source_files.push(file.clone());
-        files.stable_id_to_source_file.insert(file_id, file.clone());
+        files.source_files.push(Lrc::clone(&file));
+        files.stable_id_to_source_file.insert(file_id, Lrc::clone(&file));
 
         Ok(file)
     }
@@ -386,7 +386,7 @@ impl SourceMap {
     /// Return the SourceFile that contains the given `BytePos`
     pub fn lookup_source_file(&self, pos: BytePos) -> Lrc<SourceFile> {
         let idx = self.lookup_source_file_idx(pos);
-        (*self.files.borrow().source_files)[idx].clone()
+        Lrc::clone(&(*self.files.borrow().source_files)[idx])
     }
 
     /// Looks up source information about a `BytePos`.
@@ -468,7 +468,7 @@ impl SourceMap {
         if lo != hi {
             return true;
         }
-        let f = (*self.files.borrow().source_files)[lo].clone();
+        let f = Lrc::clone(&(*self.files.borrow().source_files)[lo]);
         let lo = f.relative_position(sp.lo());
         let hi = f.relative_position(sp.hi());
         f.lookup_line(lo) != f.lookup_line(hi)
@@ -994,7 +994,7 @@ impl SourceMap {
         let filename = self.path_mapping().map_filename_prefix(filename).0;
         for sf in self.files.borrow().source_files.iter() {
             if filename == sf.name {
-                return Some(sf.clone());
+                return Some(Lrc::clone(&sf));
             }
         }
         None
@@ -1003,7 +1003,7 @@ impl SourceMap {
     /// For a global `BytePos`, computes the local offset within the containing `SourceFile`.
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> SourceFileAndBytePos {
         let idx = self.lookup_source_file_idx(bpos);
-        let sf = (*self.files.borrow().source_files)[idx].clone();
+        let sf = Lrc::clone(&(*self.files.borrow().source_files)[idx]);
         let offset = bpos - sf.start_pos;
         SourceFileAndBytePos { sf, pos: offset }
     }

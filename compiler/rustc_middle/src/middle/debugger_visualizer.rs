@@ -32,7 +32,7 @@ impl DebuggerVisualizerFile {
 
     pub fn path_erased(&self) -> Self {
         DebuggerVisualizerFile {
-            src: self.src.clone(),
+            src: Lrc::clone(&self.src),
             visualizer_type: self.visualizer_type,
             path: None,
         }

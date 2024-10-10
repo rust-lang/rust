@@ -1555,7 +1555,7 @@ impl HumanEmitter {
                 // Get the left-side margin to remove it
                 let mut whitespace_margin = usize::MAX;
                 for line_idx in 0..annotated_file.lines.len() {
-                    let file = annotated_file.file.clone();
+                    let file = Lrc::clone(&annotated_file.file);
                     let line = &annotated_file.lines[line_idx];
                     if let Some(source_string) =
                         line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
@@ -1646,7 +1646,7 @@ impl HumanEmitter {
 
                     let depths = self.render_source_line(
                         &mut buffer,
-                        annotated_file.file.clone(),
+                        Lrc::clone(&annotated_file.file),
                         &annotated_file.lines[line_idx],
                         width_offset,
                         code_offset,
@@ -2529,7 +2529,12 @@ impl FileWithAnnotatedLines {
                 //  | |      |
                 //  | |______foo
                 //  |        baz
-                add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
+                add_annotation_to_file(
+                    &mut output,
+                    Lrc::clone(&file),
+                    ann.line_start,
+                    ann.as_start(),
+                );
                 // 4 is the minimum vertical length of a multiline span when presented: two lines
                 // of code and two lines of underline. This is not true for the special case where
                 // the beginning doesn't have an underline, but the current logic seems to be
@@ -2545,11 +2550,11 @@ impl FileWithAnnotatedLines {
                     .unwrap_or(ann.line_start);
                 for line in ann.line_start + 1..until {
                     // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
-                    add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
+                    add_annotation_to_file(&mut output, Lrc::clone(&file), line, ann.as_line());
                 }
                 let line_end = ann.line_end - 1;
                 if middle < line_end {
-                    add_annotation_to_file(&mut output, file.clone(), line_end, ann.as_line());
+                    add_annotation_to_file(&mut output, Lrc::clone(&file), line_end, ann.as_line());
                 }
             } else {
                 end_ann.annotation_type = AnnotationType::Singleline;

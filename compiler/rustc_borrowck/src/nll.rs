@@ -107,13 +107,13 @@ pub(crate) fn compute_regions<'a, 'tcx>(
             param_env,
             body,
             promoted,
-            universal_regions.clone(),
+            Rc::clone(&universal_regions),
             location_table,
             borrow_set,
             &mut all_facts,
             flow_inits,
             move_data,
-            elements.clone(),
+            Rc::clone(&elements),
             upvars,
         );
 
@@ -165,7 +165,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         universe_causes,
         type_tests,
         liveness_constraints,
-        elements.clone(),
+        Rc::clone(&elements),
     );
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
