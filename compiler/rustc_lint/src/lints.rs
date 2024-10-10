@@ -1809,6 +1809,12 @@ pub(crate) enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
     },
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_unpredictable_fn_pointer_comparisons)]
+#[note(lint_note_duplicated_fn)]
+#[note(lint_note_deduplicated_fn)]
+pub(crate) struct UnpredictableFunctionPointerComparisons;
+
 pub(crate) struct ImproperCTypes<'a> {
     pub ty: Ty<'a>,
     pub desc: &'a str,

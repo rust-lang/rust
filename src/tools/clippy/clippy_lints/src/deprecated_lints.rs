@@ -74,6 +74,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
     #[clippy::version = "1.53.0"]
     ("clippy::filter_map", "clippy::manual_filter_map"),
     #[clippy::version = ""]
+    ("clippy::fn_address_comparisons", "unpredictable_function_pointer_comparisons"),
+    #[clippy::version = ""]
     ("clippy::identity_conversion", "clippy::useless_conversion"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::if_let_redundant_pattern_matching", "clippy::redundant_pattern_matching"),

@@ -1,0 +1,66 @@
+warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+  --> $DIR/fn-ptr-comparisons.rs:16:13
+   |
+LL |     let _ = f == a;
+   |             ^^^^^^
+   |
+   = note: the address of the same function can very between different codegen units
+   = note: furthermore, different functions could have the same address after being merged together
+   = note: `#[warn(unpredictable_function_pointer_comparisons)]` on by default
+
+warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+  --> $DIR/fn-ptr-comparisons.rs:18:13
+   |
+LL |     let _ = f != a;
+   |             ^^^^^^
+   |
+   = note: the address of the same function can very between different codegen units
+   = note: furthermore, different functions could have the same address after being merged together
+
+warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+  --> $DIR/fn-ptr-comparisons.rs:20:13
+   |
+LL |     let _ = f == g;
+   |             ^^^^^^
+   |
+   = note: the address of the same function can very between different codegen units
+   = note: furthermore, different functions could have the same address after being merged together
+
+warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+  --> $DIR/fn-ptr-comparisons.rs:22:13
+   |
+LL |     let _ = f == f;
+   |             ^^^^^^
+   |
+   = note: the address of the same function can very between different codegen units
+   = note: furthermore, different functions could have the same address after being merged together
+
+warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+  --> $DIR/fn-ptr-comparisons.rs:24:13
+   |
+LL |     let _ = g == g;
+   |             ^^^^^^
+   |
+   = note: the address of the same function can very between different codegen units
+   = note: furthermore, different functions could have the same address after being merged together
+
+warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+  --> $DIR/fn-ptr-comparisons.rs:28:13
+   |
+LL |     let _ = cfn == c;
+   |             ^^^^^^^^
+   |
+   = note: the address of the same function can very between different codegen units
+   = note: furthermore, different functions could have the same address after being merged together
+
+warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+  --> $DIR/fn-ptr-comparisons.rs:32:13
+   |
+LL |     let _ = t == test;
+   |             ^^^^^^^^^
+   |
+   = note: the address of the same function can very between different codegen units
+   = note: furthermore, different functions could have the same address after being merged together
+
+warning: 7 warnings emitted
+

@@ -22,7 +22,8 @@ use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
     AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
     AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
-    InvalidNanComparisonsSuggestion, UnusedComparisons, VariantSizeDifferencesDiag,
+    InvalidNanComparisonsSuggestion, UnpredictableFunctionPointerComparisons, UnusedComparisons,
+    VariantSizeDifferencesDiag,
 };
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
@@ -165,6 +166,32 @@ declare_lint! {
     "detects ambiguous wide pointer comparisons"
 }
 
+declare_lint! {
+    /// The `unpredictable_function_pointer_comparisons` lint checks comparison
+    /// of function pointer as the operands.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn foo() {}
+    /// # let a = foo as fn();
+    ///
+    /// let _ = a == foo;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Function pointers comparisons do not produce meaningful result since
+    /// they are never guaranteed to be unique and could vary between different
+    /// code generation units. Furthermore, different functions could have the
+    /// same address after being merged together.
+    UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+    Warn,
+    "detects unpredictable function pointer comparisons"
+}
+
 #[derive(Copy, Clone)]
 pub(crate) struct TypeLimits {
     /// Id of the last visited negated expression
@@ -177,7 +204,8 @@ impl_lint_pass!(TypeLimits => [
     UNUSED_COMPARISONS,
     OVERFLOWING_LITERALS,
     INVALID_NAN_COMPARISONS,
-    AMBIGUOUS_WIDE_POINTER_COMPARISONS
+    AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+    UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS
 ]);
 
 impl TypeLimits {
@@ -251,7 +279,7 @@ fn lint_nan<'tcx>(
     cx.emit_span_lint(INVALID_NAN_COMPARISONS, e.span, lint);
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 enum ComparisonOp {
     BinOp(hir::BinOpKind),
     Other,
@@ -379,6 +407,30 @@ fn lint_wide_pointer<'tcx>(
     );
 }
 
+fn lint_fn_pointer<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx hir::Expr<'tcx>,
+    _cmpop: ComparisonOp,
+    l: &'tcx hir::Expr<'tcx>,
+    r: &'tcx hir::Expr<'tcx>,
+) {
+    let Some(l_ty) = cx.typeck_results().expr_ty_opt(l) else { return };
+    let Some(r_ty) = cx.typeck_results().expr_ty_opt(r) else { return };
+
+    let l_ty = l_ty.peel_refs();
+    let r_ty = r_ty.peel_refs();
+
+    if !l_ty.is_fn() || !r_ty.is_fn() {
+        return;
+    }
+
+    cx.emit_span_lint(
+        UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+        e.span,
+        UnpredictableFunctionPointerComparisons,
+    );
+}
+
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
@@ -395,7 +447,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                         cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
-                        lint_wide_pointer(cx, e, ComparisonOp::BinOp(binop.node), l, r);
+                        let cmpop = ComparisonOp::BinOp(binop.node);
+                        lint_wide_pointer(cx, e, cmpop, l, r);
+                        lint_fn_pointer(cx, e, cmpop, l, r);
                     }
                 }
             }
@@ -407,6 +461,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
                 lint_wide_pointer(cx, e, cmpop, l, r);
+                lint_fn_pointer(cx, e, cmpop, l, r);
             }
             hir::ExprKind::MethodCall(_, l, [r], _)
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
@@ -414,6 +469,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
                 lint_wide_pointer(cx, e, cmpop, l, r);
+                lint_fn_pointer(cx, e, cmpop, l, r);
             }
             _ => {}
         };
