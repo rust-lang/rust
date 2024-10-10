@@ -183,7 +183,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 OR_FUN_CALL,
                 span_replace_word,
-                format!("use of `{name}` followed by a function call"),
+                format!("function call inside of `{name}`"),
                 "try",
                 format!("{name}_{suffix}({sugg})"),
                 app,
