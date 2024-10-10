@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use crate::ci::CiEnv;
+
 pub struct GitConfig<'a> {
     pub git_repository: &'a str,
     pub nightly_branch: &'a str,
@@ -114,8 +116,8 @@ fn git_upstream_merge_base(
 
 /// Searches for the nearest merge commit in the repository that also exists upstream.
 ///
-/// If it fails to find the upstream remote, it then looks for the most recent commit made
-/// by the merge bot by matching the author's email address with the merge bot's email.
+/// It looks for the most recent commit made by the merge bot by matching the author's email
+/// address with the merge bot's email.
 pub fn get_closest_merge_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
@@ -127,7 +129,15 @@ pub fn get_closest_merge_commit(
         git.current_dir(git_dir);
     }
 
-    let merge_base = git_upstream_merge_base(config, git_dir).unwrap_or_else(|_| "HEAD".into());
+    let merge_base = {
+        if CiEnv::is_ci() {
+            git_upstream_merge_base(config, git_dir).unwrap()
+        } else {
+            // For non-CI environments, ignore rust-lang/rust upstream as it usually gets
+            // outdated very quickly.
+            "HEAD".to_string()
+        }
+    };
 
     git.args([
         "rev-list",
