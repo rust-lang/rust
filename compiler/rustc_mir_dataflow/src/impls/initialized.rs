@@ -11,9 +11,8 @@ use crate::elaborate_drops::DropFlagState;
 use crate::framework::SwitchIntEdgeEffects;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{
-    Analysis, AnalysisDomain, GenKill, MaybeReachable, drop_flag_effects,
-    drop_flag_effects_for_function_entry, drop_flag_effects_for_location, lattice,
-    on_all_children_bits, on_lookup_result_bits,
+    Analysis, GenKill, MaybeReachable, drop_flag_effects, drop_flag_effects_for_function_entry,
+    drop_flag_effects_for_location, lattice, on_all_children_bits, on_lookup_result_bits,
 };
 
 /// `MaybeInitializedPlaces` tracks all places that might be
@@ -270,7 +269,7 @@ impl<'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     fn update_bits(
-        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -283,7 +282,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
 
 impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
     fn update_bits(
-        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -296,7 +295,7 @@ impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
 
 impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     fn update_bits(
-        trans: &mut <Self as AnalysisDomain<'tcx>>::Domain,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
         state: DropFlagState,
     ) {
@@ -307,7 +306,7 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     /// There can be many more `MovePathIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = MaybeReachable<ChunkedBitSet<MovePathIndex>>;
@@ -327,9 +326,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             state.gen_(path);
         });
     }
-}
 
-impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
@@ -436,7 +433,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     /// There can be many more `MovePathIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = ChunkedBitSet<MovePathIndex>;
@@ -458,9 +455,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             state.remove(path);
         });
     }
-}
 
-impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
@@ -559,7 +554,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> AnalysisDomain<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     /// Use set intersection as the join operator.
     type Domain = lattice::Dual<BitSet<MovePathIndex>>;
 
@@ -579,9 +574,7 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
             state.0.insert(path);
         });
     }
-}
 
-impl<'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
     fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
@@ -625,7 +618,7 @@ impl<'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
+impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     /// There can be many more `InitIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = ChunkedBitSet<InitIndex>;
@@ -642,9 +635,7 @@ impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
             state.insert(InitIndex::new(arg_init));
         }
     }
-}
 
-impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     #[instrument(skip(self, trans), level = "debug")]
     fn apply_statement_effect(
         &mut self,

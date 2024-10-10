@@ -89,11 +89,26 @@ impl<T: Idx> BitSetExt<T> for ChunkedBitSet<T> {
     }
 }
 
-/// Defines the domain of a dataflow problem.
+/// A dataflow problem with an arbitrarily complex transfer function.
 ///
-/// This trait specifies the lattice on which this analysis operates (the domain) as well as its
-/// initial value at the entry point of each basic block.
-pub trait AnalysisDomain<'tcx> {
+/// This trait specifies the lattice on which this analysis operates (the domain), its
+/// initial value at the entry point of each basic block, and various operations.
+///
+/// # Convergence
+///
+/// When implementing this trait it's possible to choose a transfer function such that the analysis
+/// does not reach fixpoint. To guarantee convergence, your transfer functions must maintain the
+/// following invariant:
+///
+/// > If the dataflow state **before** some point in the program changes to be greater
+/// than the prior state **before** that point, the dataflow state **after** that point must
+/// also change to be greater than the prior state **after** that point.
+///
+/// This invariant guarantees that the dataflow state at a given point in the program increases
+/// monotonically until fixpoint is reached. Note that this monotonicity requirement only applies
+/// to the same point in the program at different points in time. The dataflow state at a given
+/// point in the program may or may not be greater than the state at any preceding point.
+pub trait Analysis<'tcx> {
     /// The type that holds the dataflow state at any given point in the program.
     type Domain: Clone + JoinSemiLattice;
 
@@ -118,25 +133,7 @@ pub trait AnalysisDomain<'tcx> {
     // block where control flow could exit the MIR body (e.g., those terminated with `return` or
     // `resume`). It's not obvious how to handle `yield` points in coroutines, however.
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain);
-}
 
-/// A dataflow problem with an arbitrarily complex transfer function.
-///
-/// # Convergence
-///
-/// When implementing this trait it's possible to choose a transfer function such that the analysis
-/// does not reach fixpoint. To guarantee convergence, your transfer functions must maintain the
-/// following invariant:
-///
-/// > If the dataflow state **before** some point in the program changes to be greater
-/// than the prior state **before** that point, the dataflow state **after** that point must
-/// also change to be greater than the prior state **after** that point.
-///
-/// This invariant guarantees that the dataflow state at a given point in the program increases
-/// monotonically until fixpoint is reached. Note that this monotonicity requirement only applies
-/// to the same point in the program at different points in time. The dataflow state at a given
-/// point in the program may or may not be greater than the state at any preceding point.
-pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// Updates the current dataflow state with the effect of evaluating a statement.
     fn apply_statement_effect(
         &mut self,

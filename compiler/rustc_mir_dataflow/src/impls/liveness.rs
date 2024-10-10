@@ -4,7 +4,7 @@ use rustc_middle::mir::{
     self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
 };
 
-use crate::{Analysis, AnalysisDomain, Backward, GenKill};
+use crate::{Analysis, Backward, GenKill};
 
 /// A [live-variable dataflow analysis][liveness].
 ///
@@ -25,7 +25,7 @@ use crate::{Analysis, AnalysisDomain, Backward, GenKill};
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
 pub struct MaybeLiveLocals;
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
+impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     type Domain = BitSet<Local>;
     type Direction = Backward;
 
@@ -39,9 +39,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // No variables are live until we observe a use
     }
-}
 
-impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
@@ -219,7 +217,7 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
     }
 }
 
-impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
+impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     type Domain = BitSet<Local>;
     type Direction = Backward;
 
@@ -233,9 +231,7 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // No variables are live until we observe a use
     }
-}
 
-impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,

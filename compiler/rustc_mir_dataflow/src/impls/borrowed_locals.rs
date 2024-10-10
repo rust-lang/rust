@@ -2,7 +2,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 
-use crate::{Analysis, AnalysisDomain, GenKill};
+use crate::{Analysis, GenKill};
 
 /// A dataflow analysis that tracks whether a pointer or reference could possibly exist that points
 /// to a given local. This analysis ignores fake borrows, so it should not be used by
@@ -20,7 +20,7 @@ impl MaybeBorrowedLocals {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
+impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
     type Domain = BitSet<Local>;
     const NAME: &'static str = "maybe_borrowed_locals";
 
@@ -32,9 +32,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
     fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
         // No locals are aliased on function entry
     }
-}
 
-impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
     fn apply_statement_effect(
         &mut self,
         trans: &mut Self::Domain,
