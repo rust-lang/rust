@@ -3,10 +3,11 @@
 
 #![crate_type = "proc-macro"]
 #![feature(proc_macro_quote)]
+#![feature(proc_macro_totokens)]
 
 extern crate proc_macro;
 
-use proc_macro::{quote, Ident, Span, TokenStream, TokenTree};
+use proc_macro::{Ident, Span, TokenStream, TokenTree, quote};
 
 #[proc_macro_attribute]
 pub fn struct_with_bound(_: TokenStream, _: TokenStream) -> TokenStream {

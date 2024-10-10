@@ -4,7 +4,9 @@
 //! This quasiquoter uses macros 2.0 hygiene to reliably access
 //! items from `proc_macro`, to build a `proc_macro::TokenStream`.
 
-use crate::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+use crate::{
+    Delimiter, Group, Ident, Literal, Punct, Spacing, Span, ToTokens, TokenStream, TokenTree,
+};
 
 macro_rules! quote_tt {
     (($($t:tt)*)) => { Group::new(Delimiter::Parenthesis, quote!($($t)*)) };
@@ -50,7 +52,7 @@ macro_rules! quote {
     () => { TokenStream::new() };
     ($($t:tt)*) => {
         [
-            $(TokenStream::from(quote_ts!($t)),)*
+            $(ToTokens::into_token_stream(quote_ts!($t)),)*
         ].iter().cloned().collect::<TokenStream>()
     };
 }
@@ -73,8 +75,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                 after_dollar = false;
                 match tree {
                     TokenTree::Ident(_) => {
-                        return Some(quote!(Into::<crate::TokenStream>::into(
-                        Clone::clone(&(@ tree))),));
+                        return Some(quote!(ToTokens::into_token_stream(Clone::clone(&(@ tree))),));
                     }
                     TokenTree::Punct(ref tt) if tt.as_char() == '$' => {}
                     _ => panic!("`$` must be followed by an ident or `$` in `quote!`"),

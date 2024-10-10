@@ -2,7 +2,7 @@
 //@ no-prefer-dynamic
 
 #![feature(proc_macro_quote)]
-
+#![feature(proc_macro_totokens)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
@@ -18,10 +18,8 @@ pub fn proc_macro_rules(input: TokenStream) -> TokenStream {
         let local_use = id("local_use");
         let mut single_quote = Punct::new('\'', Spacing::Joint);
         single_quote.set_span(Span::mixed_site());
-        let label_use: TokenStream = [
-            TokenTree::from(single_quote),
-            id("label_use"),
-        ].iter().cloned().collect();
+        let label_use: TokenStream =
+            [TokenTree::from(single_quote), id("label_use")].iter().cloned().collect();
         quote!(
             struct $item_def;
             let $local_def = 0;

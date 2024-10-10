@@ -3,6 +3,7 @@
 
 #![crate_type = "proc-macro"]
 #![feature(proc_macro_quote)]
+#![feature(proc_macro_totokens)]
 
 extern crate proc_macro;
 
