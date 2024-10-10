@@ -343,7 +343,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_field_def(&mut self, field: &'hir FieldDef<'hir>) {
-        self.insert(field.span, field.hir_id, Node::Field(field));
+        self.insert(field.span(), field.hir_id, Node::Field(field));
         self.with_parent(field.hir_id, |this| {
             intravisit::walk_field_def(this, field);
         });

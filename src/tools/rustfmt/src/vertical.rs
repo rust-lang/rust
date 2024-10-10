@@ -45,9 +45,9 @@ impl AlignedItem for ast::FieldDef {
     fn rewrite_prefix(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         let attrs_str = self.attrs.rewrite_result(context, shape)?;
         let missing_span = if self.attrs.is_empty() {
-            mk_sp(self.span.lo(), self.span.lo())
+            mk_sp(self.span().lo(), self.span().lo())
         } else {
-            mk_sp(self.attrs.last().unwrap().span.hi(), self.span.lo())
+            mk_sp(self.attrs.last().unwrap().span.hi(), self.span().lo())
         };
         let attrs_extendable = self.ident.is_none() && is_attributes_extendable(&attrs_str);
         let field_str = rewrite_struct_field_prefix(context, self)?;

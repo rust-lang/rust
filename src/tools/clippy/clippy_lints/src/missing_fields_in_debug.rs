@@ -185,7 +185,7 @@ fn check_struct<'tcx>(
             if field_accesses.contains(&field.ident.name) || is_path_lang_item(cx, field.ty, LangItem::PhantomData) {
                 None
             } else {
-                Some((field.span, "this field is unused"))
+                Some((field.span(), "this field is unused"))
             }
         })
         .collect::<Vec<_>>();

@@ -762,13 +762,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = self.lower_node_id(f.id);
         self.lower_attrs(hir_id, &f.attrs);
         hir::FieldDef {
-            span: self.lower_span(f.span),
             hir_id,
             def_id: self.local_def_id(f.id),
             ident: match f.ident {
                 Some(ident) => self.lower_ident(ident),
                 // FIXME(jseyfried): positional field hygiene.
-                None => Ident::new(sym::integer(index), self.lower_span(f.span)),
+                None => Ident::new(sym::integer(index), self.lower_span(f.span())),
             },
             vis_span: self.lower_span(f.vis.span),
             ty,

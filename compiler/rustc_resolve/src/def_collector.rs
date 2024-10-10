@@ -103,7 +103,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             self.visit_macro_invoc(field.id);
         } else {
             let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
-            let def = self.create_def(field.id, name, DefKind::Field, field.span);
+            let def = self.create_def(field.id, name, DefKind::Field, field.span());
             self.with_parent(def, |this| visit::walk_field_def(this, field));
             self.visit_anon_adt(&field.ty);
         }

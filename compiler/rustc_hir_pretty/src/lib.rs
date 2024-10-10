@@ -735,7 +735,7 @@ impl<'a> State<'a> {
                 if let hir::VariantData::Tuple(..) = struct_def {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
-                        s.maybe_print_comment(field.span.lo());
+                        s.maybe_print_comment(field.span().lo());
                         s.print_outer_attributes(s.attrs(field.hir_id));
                         s.print_type(field.ty);
                     });
@@ -762,7 +762,7 @@ impl<'a> State<'a> {
 
         for field in fields {
             self.hardbreak_if_not_bol();
-            self.maybe_print_comment(field.span.lo());
+            self.maybe_print_comment(field.span().lo());
             self.print_outer_attributes(self.attrs(field.hir_id));
             self.print_ident(field.ident);
             self.word_nbsp(":");

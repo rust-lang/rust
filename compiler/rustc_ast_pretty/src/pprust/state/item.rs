@@ -470,7 +470,7 @@ impl<'a> State<'a> {
 
             for field in fields {
                 self.hardbreak_if_not_bol();
-                self.maybe_print_comment(field.span.lo());
+                self.maybe_print_comment(field.span().lo());
                 self.print_outer_attributes(&field.attrs);
                 self.print_visibility(&field.vis);
                 self.print_ident(field.ident.unwrap());
@@ -498,7 +498,7 @@ impl<'a> State<'a> {
                 if let ast::VariantData::Tuple(..) = struct_def {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
-                        s.maybe_print_comment(field.span.lo());
+                        s.maybe_print_comment(field.span().lo());
                         s.print_outer_attributes(&field.attrs);
                         s.print_visibility(&field.vis);
                         s.print_type(&field.ty)

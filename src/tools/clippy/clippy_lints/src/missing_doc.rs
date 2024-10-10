@@ -242,10 +242,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         if !sf.is_positional() {
             let attrs = cx.tcx.hir().attrs(sf.hir_id);
             if !is_from_proc_macro(cx, sf) {
-                self.check_missing_docs_attrs(cx, sf.def_id, attrs, sf.span, "a", "struct field");
+                self.check_missing_docs_attrs(cx, sf.def_id, attrs, sf.span(), "a", "struct field");
             }
         }
-        self.prev_span = Some(sf.span);
+        self.prev_span = Some(sf.span());
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {

@@ -1041,7 +1041,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
     /// anonymous adt.
     fn check_field(&mut self, field: &hir::FieldDef<'_>) {
         if field.ident.name != kw::Underscore {
-            self.check_field_decl(field.ident, field.span.into());
+            self.check_field_decl(field.ident, field.span().into());
             return;
         }
         match &field.ty.kind {
@@ -1065,7 +1065,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
                     && let Node::Item(item) = self.tcx.hir_node_by_def_id(local)
                     && item.is_adt()
                 {
-                    self.check_field_in_nested_adt(self.tcx.adt_def(def_id), field.span);
+                    self.check_field_in_nested_adt(self.tcx.adt_def(def_id), field.span());
                 }
             }
             // Abort due to errors (there must be an error if an unnamed field
