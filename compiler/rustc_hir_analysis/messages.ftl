@@ -259,6 +259,9 @@ hir_analysis_late_bound_lifetime_in_apit = `impl Trait` can only mention lifetim
 hir_analysis_late_bound_type_in_apit = `impl Trait` can only mention type parameters from an fn or impl
     .label = type parameter declared here
 
+hir_analysis_lifetime_implicitly_captured = `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
+    .param_label = all lifetime parameters originating from a trait are captured implicitly
+
 hir_analysis_lifetime_must_be_first = lifetime parameter `{$name}` must be listed before non-lifetime parameters
     .label = move the lifetime before this parameter
 
