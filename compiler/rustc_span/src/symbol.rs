@@ -777,6 +777,7 @@ symbols! {
         dropck_eyepatch,
         dropck_parametricity,
         dylib,
+        dyn_compatible_for_dispatch,
         dyn_metadata,
         dyn_star,
         dyn_trait,

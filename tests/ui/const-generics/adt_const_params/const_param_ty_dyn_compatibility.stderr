@@ -1,0 +1,33 @@
+error[E0038]: the trait `ConstParamTy_` cannot be made into an object
+  --> $DIR/const_param_ty_dyn_compatibility.rs:6:12
+   |
+LL | fn foo(a: &dyn ConstParamTy_) {}
+   |            ^^^^^^^^^^^^^^^^^ `ConstParamTy_` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: the trait cannot be made into an object because it uses `Self` as a type parameter
+help: consider using an opaque type instead
+   |
+LL | fn foo(a: &impl ConstParamTy_) {}
+   |            ~~~~
+
+error[E0038]: the trait `UnsizedConstParamTy` cannot be made into an object
+  --> $DIR/const_param_ty_dyn_compatibility.rs:9:12
+   |
+LL | fn bar(a: &dyn UnsizedConstParamTy) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ `UnsizedConstParamTy` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: the trait cannot be made into an object because it uses `Self` as a type parameter
+help: consider using an opaque type instead
+   |
+LL | fn bar(a: &impl UnsizedConstParamTy) {}
+   |            ~~~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

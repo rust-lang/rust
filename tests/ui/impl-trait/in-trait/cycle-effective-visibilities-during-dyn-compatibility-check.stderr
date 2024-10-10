@@ -1,0 +1,70 @@
+error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+  --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:20:22
+   |
+LL |         MyTrait::foo(&self)
+   |         ------------ ^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
+   |         |
+   |         required by a bound introduced by this call
+   |
+   = help: the trait `MyTrait` is implemented for `Outer`
+
+error[E0038]: the trait `MyTrait` cannot be made into an object
+  --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:20:9
+   |
+LL |         MyTrait::foo(&self)
+   |         ^^^^^^^^^^^^ `MyTrait` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
+   |
+LL | trait MyTrait {
+   |       ------- this trait cannot be made into an object...
+LL |     fn foo(&self) -> impl Marker;
+   |                      ^^^^^^^^^^^ ...because method `foo` references an `impl Trait` type in its return type
+   = help: consider moving `foo` to another trait
+   = help: only type `Outer` implements the trait, consider using it directly instead
+
+error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+  --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:20:9
+   |
+LL |         MyTrait::foo(&self)
+   |         ^^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
+   |
+   = help: the trait `MyTrait` is implemented for `Outer`
+
+error[E0038]: the trait `MyTrait` cannot be made into an object
+  --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:16:6
+   |
+LL | impl dyn MyTrait {
+   |      ^^^^^^^^^^^ `MyTrait` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
+   |
+LL | trait MyTrait {
+   |       ------- this trait cannot be made into an object...
+LL |     fn foo(&self) -> impl Marker;
+   |                      ^^^^^^^^^^^ ...because method `foo` references an `impl Trait` type in its return type
+   = help: consider moving `foo` to another trait
+   = help: only type `Outer` implements the trait, consider using it directly instead
+
+error[E0038]: the trait `MyTrait` cannot be made into an object
+  --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:18:15
+   |
+LL |     fn other(&self) -> impl Marker {
+   |               ^^^^ `MyTrait` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
+   |
+LL | trait MyTrait {
+   |       ------- this trait cannot be made into an object...
+LL |     fn foo(&self) -> impl Marker;
+   |                      ^^^^^^^^^^^ ...because method `foo` references an `impl Trait` type in its return type
+   = help: consider moving `foo` to another trait
+   = help: only type `Outer` implements the trait, consider using it directly instead
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.
