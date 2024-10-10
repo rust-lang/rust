@@ -83,17 +83,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return interp_ok(Some(body));
                 }
 
-                let error_msg = format!(
+                throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
                     "can't call foreign function `{link_name}` on OS `{os}`",
                     os = this.tcx.sess.target.os,
-                );
-                if this.machine.panic_on_unsupported {
-                    // message is slightly different here to make automated analysis easier
-                    let error_msg = format!("unsupported Miri functionality: {error_msg}");
-                    this.start_panic(error_msg.as_ref(), mir::UnwindAction::Continue)?;
-                } else {
-                    throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(error_msg));
-                }
+                )));
             }
         }
 

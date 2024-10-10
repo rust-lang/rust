@@ -496,11 +496,6 @@ pub struct MiriMachine<'tcx> {
     /// `None` means no `Instance` exported under the given name is found.
     pub(crate) exported_symbols_cache: FxHashMap<Symbol, Option<Instance<'tcx>>>,
 
-    /// Whether to raise a panic in the context of the evaluated process when unsupported
-    /// functionality is encountered. If `false`, an error is propagated in the Miri application context
-    /// instead (default behavior)
-    pub(crate) panic_on_unsupported: bool,
-
     /// Equivalent setting as RUST_BACKTRACE on encountering an error.
     pub(crate) backtrace_style: BacktraceStyle,
 
@@ -667,7 +662,6 @@ impl<'tcx> MiriMachine<'tcx> {
             profiler,
             string_cache: Default::default(),
             exported_symbols_cache: FxHashMap::default(),
-            panic_on_unsupported: config.panic_on_unsupported,
             backtrace_style: config.backtrace_style,
             local_crates,
             extern_statics: FxHashMap::default(),
@@ -807,7 +801,6 @@ impl VisitProvenance for MiriMachine<'_> {
             profiler: _,
             string_cache: _,
             exported_symbols_cache: _,
-            panic_on_unsupported: _,
             backtrace_style: _,
             local_crates: _,
             rng: _,
