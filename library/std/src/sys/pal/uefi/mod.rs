@@ -15,7 +15,6 @@
 
 pub mod args;
 pub mod env;
-#[path = "../unsupported/fs.rs"]
 pub mod fs;
 pub mod helpers;
 #[path = "../unsupported/io.rs"]
