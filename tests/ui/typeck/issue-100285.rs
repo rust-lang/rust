@@ -13,8 +13,7 @@ fn foo(n: i32) -> i32 {
         } else {
           return 5;
         }
-
-    } //~ HELP consider returning a value here
+    }
 }
 
 fn main() {}

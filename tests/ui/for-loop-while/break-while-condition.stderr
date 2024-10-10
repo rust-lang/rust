@@ -38,6 +38,16 @@ LL | |             }
    = note:   expected type `!`
            found unit type `()`
    = note: `while` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the loop condition expression or pattern.
+  --> $DIR/break-while-condition.rs:24:13
+   |
+LL |             while false {
+   |             ^^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/break-while-condition.rs:24:13
+   |
+LL |             while false {
+   |             ^^^^^^^^^^^
 help: consider adding a diverging expression here
    |
 LL ~             }
