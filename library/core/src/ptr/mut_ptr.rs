@@ -179,13 +179,12 @@ impl<T: ?Sized> *mut T {
     #[inline]
     #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
     pub fn with_addr(self, addr: usize) -> Self {
-        // This should probably be an intrinsic to make it more efficient, but meanwhile, we can
-        // implement it with `wrapping_offset`, which preserves the pointer's provenance.
+        // This should probably be an intrinsic to avoid doing any sort of arithmetic, but
+        // meanwhile, we can implement it with `wrapping_offset`, which preserves the pointer's
+        // provenance.
         let self_addr = self.addr() as isize;
         let dest_addr = addr as isize;
         let offset = dest_addr.wrapping_sub(self_addr);
-
-        // This is the canonical desugaring of this operation
         self.wrapping_byte_offset(offset)
     }
 
