@@ -142,11 +142,6 @@ fn main() {
             rustc
         };
 
-        // FIXME(madsmtm): Incremental cache is not yet busted
-        // https://github.com/rust-lang/rust/issues/118204
-        let higher_example_version = example_version;
-        let default_version = example_version;
-
         rustc().env(env_var, example_version).run();
         minos("foo.o", example_version);
 

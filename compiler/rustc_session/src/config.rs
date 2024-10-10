@@ -1183,6 +1183,7 @@ impl Default for Options {
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
             verbose: false,
+            apple_deployment_target_env: None,
         }
     }
 }
@@ -2733,6 +2734,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         color,
         logical_env,
         verbose,
+        apple_deployment_target_env: None,
     }
 }
 
