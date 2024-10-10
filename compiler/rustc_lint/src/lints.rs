@@ -54,6 +54,26 @@ pub(crate) enum ShadowedIntoIterDiagSub {
     },
 }
 
+// autorefs.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_implicit_unsafe_autorefs)]
+#[note]
+pub(crate) struct ImplicitUnsafeAutorefsDiag {
+    #[subdiagnostic]
+    pub suggestion: ImplicitUnsafeAutorefsSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct ImplicitUnsafeAutorefsSuggestion {
+    pub mutbl: &'static str,
+    pub deref: &'static str,
+    #[suggestion_part(code = "({mutbl}{deref}")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
 // builtin.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_while_true)]

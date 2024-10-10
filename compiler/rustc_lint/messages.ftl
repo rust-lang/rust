@@ -351,6 +351,10 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax
 
+lint_implicit_unsafe_autorefs = implicit auto-ref creates a reference to a dereference of a raw pointer
+    .note = creating a reference requires the pointer to be valid and imposes aliasing requirements
+    .suggestion = try using a raw pointer method instead; or if this reference is intentional, make it explicit
+
 lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
     .note = the type is defined here
