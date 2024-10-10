@@ -65,7 +65,7 @@ pub(super) fn build_custom_mir<'tcx>(
     };
 
     body.local_decls.push(LocalDecl::new(return_ty, return_ty_span));
-    body.basic_blocks_mut().push(BasicBlockData::new(None));
+    body.basic_blocks_mut().push(BasicBlockData::new(None, false));
     body.source_scopes.push(SourceScopeData {
         span,
         parent_scope: None,
