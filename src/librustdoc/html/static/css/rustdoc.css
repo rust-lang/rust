@@ -932,6 +932,11 @@ rustdoc-toolbar {
 	min-height: 60px;
 }
 
+rustdoc-toolbar u {
+	text-decoration-color: #ffffff80;
+	text-decoration-thickness: 1px;
+}
+
 .docblock code, .docblock-short code,
 pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background-color: var(--code-block-background-color);
