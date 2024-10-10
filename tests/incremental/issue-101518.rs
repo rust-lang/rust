@@ -1,4 +1,11 @@
-//@ revisions: cpass
+// This test creates 2 constants that have the same contents but a different AllocId.
+// When hashed, those two contants would have the same stable hash. From the point of view
+// of the query system, the two calls to `try_destructure_mir_constant` would have the same
+// `DepNode` but with different inputs.
+//
+// This test verifies that the query system does not ICE in such cases.
+//
+//@ revisions: cpass1 cpass2
 
 #[derive(PartialEq, Eq)]
 struct Id<'a> {
@@ -21,4 +28,7 @@ fn visit_struct2() {
     }
 }
 
-fn main() {}
+fn main() {
+    visit_struct();
+    visit_struct2();
+}
