@@ -2399,6 +2399,20 @@ impl Config {
                 Some(commit) => {
                     self.download_ci_rustc(commit);
 
+                    // CI-rustc can't be used without CI-LLVM. If `self.llvm_from_ci` is false, it means the "if-unchanged"
+                    // logic has detected some changes in the LLVM submodule (download-ci-llvm=false can't happen here as
+                    // we don't allow it while parsing the configuration).
+                    if !self.llvm_from_ci {
+                        // This happens when LLVM submodule is updated in CI, we should disable ci-rustc without an error
+                        // to not break CI. For non-CI environments, we should return an error.
+                        if CiEnv::is_ci() {
+                            println!("WARNING: LLVM submodule has changes, `download-rustc` will be disabled.");
+                            return None;
+                        } else {
+                            panic!("ERROR: LLVM submodule has changes, `download-rustc` can't be used.");
+                        }
+                    }
+
                     if let Some(config_path) = &self.config {
                         let ci_config_toml = match self.get_builder_toml("ci-rustc") {
                             Ok(ci_config_toml) => ci_config_toml,
