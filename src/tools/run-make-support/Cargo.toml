@@ -10,6 +10,6 @@ similar = "2.5.0"
 wasmparser = { version = "0.216", default-features = false, features = ["std"] }
 regex = "1.8" # 1.8 to avoid memchr 2.6.0, as 2.5.0 is pinned in the workspace
 gimli = "0.31.0"
+libc = "0.2"
 build_helper = { path = "../build_helper" }
 serde_json = "1.0"
-libc = "0.2"

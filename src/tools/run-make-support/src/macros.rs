@@ -104,6 +104,21 @@ macro_rules! impl_common_helpers {
                 self
             }
 
+            /// Set an auxiliary stream passed to the process, besides the stdio streams.
+            /// Use with caution - ideally, only set one aux fd; if there are multiple,
+            /// their old `fd` may overlap with another's `newfd`, and may break.
+            //FIXME: If more than 1 auxiliary file descriptor is needed, this function
+            // should be rewritten.
+            #[cfg(unix)]
+            pub fn set_aux_fd<F: Into<std::os::fd::OwnedFd>>(
+                &mut self,
+                newfd: std::os::fd::RawFd,
+                fd: F,
+            ) -> &mut Self {
+                self.cmd.set_aux_fd(newfd, fd);
+                self
+            }
+
             /// Run the constructed command and assert that it is successfully run.
             #[track_caller]
             pub fn run(&mut self) -> crate::command::CompletedProcess {
