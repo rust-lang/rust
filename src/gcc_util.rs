@@ -1,15 +1,14 @@
 #[cfg(feature = "master")]
 use gccjit::Context;
+use rustc_codegen_ssa::codegen_attrs::check_tied_features;
+use rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 use smallvec::{SmallVec, smallvec};
 
-use crate::errors::{
-    PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,
-    UnknownCTargetFeaturePrefix,
-};
+use crate::errors::{PossibleFeature, UnknownCTargetFeature, UnknownCTargetFeaturePrefix};
 
 /// The list of GCC features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
@@ -183,23 +182,6 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
         ("aarch64", "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
         (_, s) => smallvec![s],
     }
-}
-
-// Given a map from target_features to whether they are enabled or disabled,
-// ensure only valid combinations are allowed.
-pub fn check_tied_features(
-    sess: &Session,
-    features: &FxHashMap<&str, bool>,
-) -> Option<&'static [&'static str]> {
-    for tied in sess.target.tied_target_features() {
-        // Tied features must be set to the same value, or not set at all
-        let mut tied_iter = tied.iter();
-        let enabled = features.get(tied_iter.next().unwrap());
-        if tied_iter.any(|feature| enabled != features.get(feature)) {
-            return Some(tied);
-        }
-    }
-    None
 }
 
 fn arch_to_gcc(name: &str) -> &str {
