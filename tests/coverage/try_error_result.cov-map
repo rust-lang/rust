@@ -10,6 +10,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 13) to (start + 0, 26)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 5) to (start + 0, 6)
+Highest counter ID seen: c1
 
 Function name: <try_error_result::Thing2>::call
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 34, 05, 01, 18, 05, 02, 0d, 00, 14, 02, 02, 0d, 00, 13, 01, 02, 05, 00, 06]
@@ -23,6 +24,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 13) to (start + 0, 19)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 5) to (start + 0, 6)
+Highest counter ID seen: c1
 
 Function name: try_error_result::call
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 05, 01, 01, 14, 05, 02, 09, 00, 10, 02, 02, 09, 00, 0f, 01, 02, 01, 00, 02]
@@ -36,6 +38,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 15)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c1
 
 Function name: try_error_result::main
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 71, 01, 02, 0c, 05, 03, 05, 00, 06, 02, 02, 05, 00, 0b, 01, 01, 01, 00, 02]
@@ -49,6 +52,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 5) to (start + 0, 11)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
 
 Function name: try_error_result::test1
 Raw bytes (75): 0x[01, 01, 08, 01, 07, 00, 09, 03, 0d, 12, 1d, 03, 0d, 1b, 0d, 1f, 00, 11, 00, 0b, 01, 0d, 01, 02, 17, 03, 07, 09, 00, 0e, 12, 02, 09, 04, 1a, 1d, 06, 0d, 00, 29, 11, 00, 29, 00, 2a, 00, 01, 0d, 00, 2a, 00, 00, 2a, 00, 2b, 0e, 04, 0d, 00, 2a, 00, 00, 2a, 00, 2b, 0d, 03, 05, 00, 0b, 17, 01, 01, 00, 02]
@@ -79,6 +83,7 @@ Number of file 0 mappings: 11
 - Code(Counter(3)) at (prev + 3, 5) to (start + 0, 11)
 - Code(Expression(5, Add)) at (prev + 1, 1) to (start + 0, 2)
     = (((c4 + Zero) + Zero) + c3)
+Highest counter ID seen: c7
 
 Function name: try_error_result::test2
 Raw bytes (358): 0x[01, 01, 3b, 01, 07, 05, 09, 03, 0d, 41, 11, 4a, 15, 41, 11, 42, 1d, 46, 19, 4a, 15, 41, 11, 4a, 15, 41, 11, 46, 19, 4a, 15, 41, 11, 42, 1d, 46, 19, 4a, 15, 41, 11, 5e, 25, 49, 21, 49, 21, 5e, 25, 49, 21, 8a, 01, 2d, 8e, 01, 29, 92, 01, 41, 03, 0d, 92, 01, 41, 03, 0d, 8e, 01, 29, 92, 01, 41, 03, 0d, 8a, 01, 2d, 8e, 01, 29, 92, 01, 41, 03, 0d, a6, 01, 35, 45, 31, 45, 31, a6, 01, 35, 45, 31, ba, 01, 3d, 4d, 39, 4d, 39, ba, 01, 3d, 4d, 39, c3, 01, 0d, c7, 01, db, 01, cb, 01, cf, 01, 11, 15, d3, 01, d7, 01, 19, 1d, 21, 25, df, 01, e3, 01, 29, 2d, e7, 01, eb, 01, 31, 35, 39, 3d, 28, 01, 3d, 01, 03, 17, 03, 08, 09, 00, 0e, 92, 01, 02, 09, 04, 1a, 41, 06, 0d, 00, 2f, 11, 00, 2f, 00, 30, 4a, 00, 31, 03, 35, 15, 04, 11, 00, 12, 46, 02, 11, 04, 12, 3e, 05, 11, 00, 14, 46, 00, 17, 00, 41, 19, 00, 41, 00, 42, 42, 00, 43, 00, 5f, 1d, 00, 5f, 00, 60, 3e, 01, 0d, 00, 20, 5a, 01, 11, 00, 14, 49, 00, 17, 00, 41, 21, 00, 41, 00, 42, 5e, 00, 43, 00, 60, 25, 00, 60, 00, 61, 5a, 01, 0d, 00, 20, 86, 01, 04, 11, 00, 14, 8e, 01, 00, 17, 00, 42, 29, 00, 42, 00, 43, 8a, 01, 00, 44, 00, 61, 2d, 00, 61, 00, 62, 86, 01, 01, 0d, 00, 20, a2, 01, 01, 11, 00, 14, 45, 00, 17, 01, 36, 31, 01, 36, 00, 37, a6, 01, 01, 12, 00, 2f, 35, 00, 2f, 00, 30, a2, 01, 01, 0d, 00, 20, b6, 01, 01, 11, 00, 14, 4d, 00, 17, 01, 36, 39, 02, 11, 00, 12, ba, 01, 01, 12, 00, 2f, 3d, 01, 11, 00, 12, b6, 01, 02, 0d, 00, 20, 0d, 03, 05, 00, 0b, bf, 01, 01, 01, 00, 02]
@@ -207,4 +212,5 @@ Number of file 0 mappings: 40
 - Code(Counter(3)) at (prev + 3, 5) to (start + 0, 11)
 - Code(Expression(47, Add)) at (prev + 1, 1) to (start + 0, 2)
     = ((((c4 + c5) + ((c6 + c7) + (c8 + c9))) + ((c10 + c11) + ((c12 + c13) + (c14 + c15)))) + c3)
+Highest counter ID seen: c19
 

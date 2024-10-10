@@ -33,6 +33,7 @@ Number of file 0 mappings: 10
     false = c3
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = (c1 + ((c2 + c3) + c4))
+Highest counter ID seen: c4
 
 Function name: non_control_flow::assign_3_bis
 Raw bytes (85): 0x[01, 01, 07, 07, 11, 09, 0d, 01, 05, 05, 09, 16, 1a, 05, 09, 01, 05, 0a, 01, 1b, 01, 00, 2c, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 05, 03, 00, 0d, 00, 18, 30, 05, 1a, 01, 03, 02, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 30, 09, 16, 03, 00, 02, 00, 12, 00, 13, 13, 00, 17, 00, 18, 30, 0d, 11, 02, 00, 00, 00, 17, 00, 18, 03, 01, 05, 01, 02]
@@ -66,6 +67,7 @@ Number of file 0 mappings: 10
     false = c4
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = ((c2 + c3) + c4)
+Highest counter ID seen: c4
 
 Function name: non_control_flow::assign_and
 Raw bytes (64): 0x[01, 01, 04, 07, 0e, 09, 0d, 01, 05, 01, 05, 08, 01, 0c, 01, 00, 21, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 03, 02, 00, 0d, 00, 13, 30, 05, 0e, 01, 02, 00, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 30, 09, 0d, 02, 00, 00, 00, 12, 00, 13, 03, 01, 05, 01, 02]
@@ -91,6 +93,7 @@ Number of file 0 mappings: 8
     false = c3
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = ((c2 + c3) + (c0 - c1))
+Highest counter ID seen: c3
 
 Function name: non_control_flow::assign_or
 Raw bytes (64): 0x[01, 01, 04, 07, 0d, 05, 09, 01, 05, 01, 05, 08, 01, 11, 01, 00, 20, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 03, 02, 00, 0d, 00, 13, 30, 05, 0e, 01, 00, 02, 00, 0d, 00, 0e, 0e, 00, 12, 00, 13, 30, 09, 0d, 02, 00, 00, 00, 12, 00, 13, 03, 01, 05, 01, 02]
@@ -117,6 +120,7 @@ Number of file 0 mappings: 8
     false = c3
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = ((c1 + c2) + c3)
+Highest counter ID seen: c3
 
 Function name: non_control_flow::foo
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 25, 01, 02, 02]
@@ -125,6 +129,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 37, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: non_control_flow::func_call
 Raw bytes (52): 0x[01, 01, 03, 01, 05, 0b, 02, 09, 0d, 06, 01, 29, 01, 01, 0a, 28, 03, 02, 01, 09, 00, 0f, 30, 05, 02, 01, 02, 00, 00, 09, 00, 0a, 05, 00, 0e, 00, 0f, 30, 09, 0d, 02, 00, 00, 00, 0e, 00, 0f, 07, 01, 01, 00, 02]
@@ -146,6 +151,7 @@ Number of file 0 mappings: 6
     false = c3
 - Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
     = ((c2 + c3) + (c0 - c1))
+Highest counter ID seen: c3
 
 Function name: non_control_flow::right_comb_tree
 Raw bytes (139): 0x[01, 01, 13, 07, 1a, 0b, 19, 0f, 15, 13, 11, 09, 0d, 01, 05, 01, 05, 05, 19, 05, 19, 4a, 15, 05, 19, 4a, 15, 05, 19, 46, 11, 4a, 15, 05, 19, 46, 11, 4a, 15, 05, 19, 0e, 01, 20, 01, 00, 41, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 06, 05, 00, 0d, 00, 2a, 30, 05, 1a, 01, 02, 00, 00, 0d, 00, 0e, 05, 00, 13, 00, 14, 30, 4a, 19, 02, 03, 00, 00, 13, 00, 14, 4a, 00, 19, 00, 1a, 30, 46, 15, 03, 04, 00, 00, 19, 00, 1a, 46, 00, 1f, 00, 20, 30, 42, 11, 04, 05, 00, 00, 1f, 00, 20, 42, 00, 24, 00, 27, 30, 09, 0d, 05, 00, 00, 00, 24, 00, 27, 03, 01, 05, 01, 02]
@@ -201,4 +207,5 @@ Number of file 0 mappings: 14
     false = c3
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = (((((c2 + c3) + c4) + c5) + c6) + (c0 - c1))
+Highest counter ID seen: c6
 

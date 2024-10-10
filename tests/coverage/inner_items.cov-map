@@ -5,6 +5,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 33, 9) to (start + 3, 10)
+Highest counter ID seen: c0
 
 Function name: <inner_items::main::InStruct as inner_items::main::InTrait>::trait_func
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 28, 09, 03, 0a]
@@ -13,6 +14,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 40, 9) to (start + 3, 10)
+Highest counter ID seen: c0
 
 Function name: inner_items::main
 Raw bytes (43): 0x[01, 01, 02, 01, 05, 01, 09, 07, 01, 03, 01, 07, 0f, 05, 07, 10, 02, 06, 02, 02, 06, 00, 07, 01, 24, 08, 00, 0f, 09, 00, 10, 02, 06, 06, 02, 06, 00, 07, 01, 02, 09, 05, 02]
@@ -31,6 +33,7 @@ Number of file 0 mappings: 7
 - Code(Expression(1, Sub)) at (prev + 2, 6) to (start + 0, 7)
     = (c0 - c2)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 5, 2)
+Highest counter ID seen: c2
 
 Function name: inner_items::main::in_func
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 12, 05, 04, 06]
@@ -39,4 +42,5 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 18, 5) to (start + 4, 6)
+Highest counter ID seen: c0
 

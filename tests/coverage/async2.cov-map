@@ -5,6 +5,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 16, 1) to (start + 0, 23)
+Highest counter ID seen: c0
 
 Function name: async2::async_func::{closure#0}
 Raw bytes (24): 0x[01, 01, 00, 04, 01, 10, 17, 03, 09, 05, 03, 0a, 02, 06, 00, 02, 06, 00, 07, 01, 01, 01, 00, 02]
@@ -16,6 +17,7 @@ Number of file 0 mappings: 4
 - Code(Counter(1)) at (prev + 3, 10) to (start + 2, 6)
 - Code(Zero) at (prev + 2, 6) to (start + 0, 7)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
 
 Function name: async2::async_func_just_println
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 18, 01, 00, 24]
@@ -24,6 +26,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 24, 1) to (start + 0, 36)
+Highest counter ID seen: c0
 
 Function name: async2::async_func_just_println::{closure#0}
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 18, 24, 02, 02]
@@ -32,6 +35,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 24, 36) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: async2::main
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 1c, 01, 07, 02]
@@ -40,6 +44,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 28, 1) to (start + 7, 2)
+Highest counter ID seen: c0
 
 Function name: async2::non_async_func
 Raw bytes (24): 0x[01, 01, 00, 04, 01, 08, 01, 03, 09, 05, 03, 0a, 02, 06, 00, 02, 06, 00, 07, 01, 01, 01, 00, 02]
@@ -51,4 +56,5 @@ Number of file 0 mappings: 4
 - Code(Counter(1)) at (prev + 3, 10) to (start + 2, 6)
 - Code(Zero) at (prev + 2, 6) to (start + 0, 7)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
 

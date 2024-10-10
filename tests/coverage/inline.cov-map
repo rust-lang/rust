@@ -11,6 +11,7 @@ Number of file 0 mappings: 5
     = (c0 + c1)
 - Code(Counter(1)) at (prev + 0, 17) to (start + 2, 6)
 - Code(Counter(0)) at (prev + 3, 5) to (start + 1, 2)
+Highest counter ID seen: c1
 
 Function name: inline::error
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 31, 01, 01, 14]
@@ -19,6 +20,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 49, 1) to (start + 1, 20)
+Highest counter ID seen: c0
 
 Function name: inline::length::<char>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 1e, 01, 02, 02]
@@ -27,6 +29,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 30, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: inline::main
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 05, 01, 02, 02]
@@ -35,6 +38,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 5, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: inline::permutate::<char>
 Raw bytes (52): 0x[01, 01, 04, 01, 05, 02, 0d, 05, 0f, 09, 0d, 08, 01, 0f, 01, 02, 0e, 05, 02, 0f, 02, 06, 02, 02, 0f, 00, 14, 11, 01, 0d, 00, 0e, 06, 00, 12, 00, 16, 11, 00, 17, 04, 0a, 0d, 05, 0c, 02, 06, 0b, 03, 01, 00, 02]
@@ -57,6 +61,7 @@ Number of file 0 mappings: 8
 - Code(Counter(3)) at (prev + 5, 12) to (start + 2, 6)
 - Code(Expression(2, Add)) at (prev + 3, 1) to (start + 0, 2)
     = (c1 + (c2 + c3))
+Highest counter ID seen: c4
 
 Function name: inline::permutations::<char>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 0a, 01, 03, 02]
@@ -65,6 +70,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 10, 1) to (start + 3, 2)
+Highest counter ID seen: c0
 
 Function name: inline::swap::<char>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 23, 01, 04, 02]
@@ -73,4 +79,5 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 35, 1) to (start + 4, 2)
+Highest counter ID seen: c0
 

@@ -18,4 +18,5 @@ Number of file 0 mappings: 6
     false = c3
 - Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
     = ((c2 + c3) + (c0 - c1))
+Highest counter ID seen: c3
 
