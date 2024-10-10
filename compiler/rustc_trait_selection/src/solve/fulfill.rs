@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::ControlFlow;
 
+use rustc_data_structures::thinvec::ExtractIf;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
@@ -81,7 +82,8 @@ impl<'tcx> ObligationStorage<'tcx> {
             // we get all obligations involved in the overflow. We pretty much check: if
             // we were to do another step of `select_where_possible`, which goals would
             // change.
-            self.overflowed.extend(self.pending.extract_if(|o| {
+            // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
+            self.overflowed.extend(ExtractIf::new(&mut self.pending, |o| {
                 let goal = o.clone().into();
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
                     .evaluate_root_goal(goal, GenerateProofTree::No)

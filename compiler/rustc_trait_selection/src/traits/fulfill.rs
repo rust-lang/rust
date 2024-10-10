@@ -14,6 +14,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt};
+use thin_vec::ThinVec;
 use tracing::{debug, debug_span, instrument};
 
 use super::project::{self, ProjectAndUnifyResult};
@@ -28,7 +29,7 @@ use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
-pub(crate) type PendingPredicateObligations<'tcx> = Vec<PendingPredicateObligation<'tcx>>;
+pub(crate) type PendingPredicateObligations<'tcx> = ThinVec<PendingPredicateObligation<'tcx>>;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     /// Note that we include both the `ParamEnv` and the `Predicate`,
