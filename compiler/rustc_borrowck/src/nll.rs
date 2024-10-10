@@ -1,9 +1,9 @@
 //! The entry point of the NLL borrow checker.
 
+use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
-use std::{env, io};
 
 use polonius_engine::{Algorithm, Output};
 use rustc_data_structures::fx::FxIndexMap;
@@ -21,6 +21,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
+use rustc_span::Symbol;
 use rustc_span::symbol::sym;
 use tracing::{debug, instrument};
 
@@ -179,9 +180,11 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         }
 
         if polonius_output {
-            let algorithm =
-                env::var("POLONIUS_ALGORITHM").unwrap_or_else(|_| String::from("Hybrid"));
-            let algorithm = Algorithm::from_str(&algorithm).unwrap();
+            let algorithm = infcx
+                .tcx
+                .env_var(Symbol::intern("POLONIUS_ALGORITHM"))
+                .unwrap_or_else(|| Symbol::intern("Hybrid"));
+            let algorithm = Algorithm::from_str(algorithm.as_str()).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_analysis");
             Some(Box::new(Output::compute(all_facts, algorithm, false)))

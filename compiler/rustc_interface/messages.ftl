@@ -4,6 +4,9 @@ interface_cant_emit_mir =
 interface_emoji_identifier =
     identifiers cannot contain emoji: `{$ident}`
 
+interface_env_var_not_unicode =
+    cannot read environment variable "{$key}" with value "{$var}", since it contains non-unicode data
+
 interface_error_writing_dependencies =
     error writing dependencies to `{$path}`: {$error}
 
