@@ -12,10 +12,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
+use build_helper::ci::CiEnv;
+use build_helper::git::get_closest_merge_commit;
+
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::core::config::TargetSelection;
+use crate::core::config::{Config, TargetSelection};
+use crate::utils::channel;
 use crate::utils::exec::command;
-use crate::utils::helpers::{self, HashStamp, t};
+use crate::utils::helpers::{self, HashStamp, output, t};
 use crate::{Kind, generate_smart_stamp_hash};
 
 pub struct Meta {
@@ -38,8 +42,7 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
     // Initialize the gcc submodule if not initialized already.
     builder.config.update_submodule("src/gcc");
 
-    // FIXME (GuillaumeGomez): To be done once gccjit has been built in the CI.
-    // builder.config.maybe_download_ci_gcc();
+    builder.config.maybe_download_ci_gcc();
 
     let root = builder.src.join("src/gcc");
     let out_dir = builder.gcc_out(target).join("build");
@@ -72,6 +75,103 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
     }
 
     GccBuildStatus::ShouldBuild(Meta { stamp, out_dir, install_dir, root })
+}
+
+/// This retrieves the GCC sha we *want* to use, according to git history.
+pub(crate) fn detect_gcc_sha(config: &Config, is_git: bool) -> String {
+    let gcc_sha = if is_git {
+        get_closest_merge_commit(Some(&config.src), &config.git_config(), &[
+            config.src.join("src/gcc"),
+            config.src.join("src/bootstrap/download-ci-gcc-stamp"),
+            // the GCC shared object file is named `GCC-rust-{version}-nightly`
+            config.src.join("src/version"),
+        ])
+        .unwrap()
+    } else if let Some(info) = channel::read_commit_info_file(&config.src) {
+        info.sha.trim().to_owned()
+    } else {
+        "".to_owned()
+    };
+
+    if gcc_sha.is_empty() {
+        eprintln!("error: could not find commit hash for downloading GCC");
+        eprintln!("HELP: maybe your repository history is too shallow?");
+        eprintln!("HELP: consider disabling `download-ci-gcc`");
+        eprintln!("HELP: or fetch enough history to include one upstream commit");
+        panic!();
+    }
+
+    gcc_sha
+}
+
+/// Returns whether the CI-found GCC is currently usable.
+///
+/// This checks both the build triple platform to confirm we're usable at all,
+/// and then verifies if the current HEAD matches the detected GCC SHA head,
+/// in which case GCC is indicated as not available.
+pub(crate) fn is_ci_gcc_available(config: &Config, asserts: bool) -> bool {
+    // This is currently all tier 1 targets and tier 2 targets with host tools
+    // (since others may not have CI artifacts)
+    // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
+    let supported_platforms = [
+        // tier 1
+        ("aarch64-unknown-linux-gnu", false),
+        ("aarch64-apple-darwin", false),
+        ("i686-pc-windows-gnu", false),
+        ("i686-pc-windows-msvc", false),
+        ("i686-unknown-linux-gnu", false),
+        ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-apple-darwin", true),
+        ("x86_64-pc-windows-gnu", true),
+        ("x86_64-pc-windows-msvc", true),
+        // tier 2 with host tools
+        ("aarch64-pc-windows-msvc", false),
+        ("aarch64-unknown-linux-musl", false),
+        ("arm-unknown-linux-gnueabi", false),
+        ("arm-unknown-linux-gnueabihf", false),
+        ("armv7-unknown-linux-gnueabihf", false),
+        ("loongarch64-unknown-linux-gnu", false),
+        ("loongarch64-unknown-linux-musl", false),
+        ("mips-unknown-linux-gnu", false),
+        ("mips64-unknown-linux-gnuabi64", false),
+        ("mips64el-unknown-linux-gnuabi64", false),
+        ("mipsel-unknown-linux-gnu", false),
+        ("powerpc-unknown-linux-gnu", false),
+        ("powerpc64-unknown-linux-gnu", false),
+        ("powerpc64le-unknown-linux-gnu", false),
+        ("riscv64gc-unknown-linux-gnu", false),
+        ("s390x-unknown-linux-gnu", false),
+        ("x86_64-unknown-freebsd", false),
+        ("x86_64-unknown-illumos", false),
+        ("x86_64-unknown-linux-musl", false),
+        ("x86_64-unknown-netbsd", false),
+    ];
+
+    if !supported_platforms.contains(&(&*config.build.triple, asserts))
+        && (asserts || !supported_platforms.contains(&(&*config.build.triple, true)))
+    {
+        return false;
+    }
+
+    if is_ci_gcc_modified(config) {
+        eprintln!("Detected GCC as non-available: running in CI and modified GCC in this change");
+        return false;
+    }
+
+    true
+}
+
+/// Returns true if we're running in CI with modified LLVM (and thus can't download it)
+pub(crate) fn is_ci_gcc_modified(config: &Config) -> bool {
+    CiEnv::is_ci() && config.rust_info.is_managed_git_subrepository() && {
+        // We assume we have access to git, so it's okay to unconditionally pass
+        // `true` here.
+        let gcc_sha = detect_gcc_sha(config, true);
+        let head_sha =
+            output(helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD").as_command_mut());
+        let head_sha = head_sha.trim();
+        gcc_sha == head_sha
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
