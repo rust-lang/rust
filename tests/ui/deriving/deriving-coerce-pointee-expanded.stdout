@@ -2,12 +2,12 @@
 #![no_std]
 //@ check-pass
 //@ compile-flags: -Zunpretty=expanded
-#![feature(derive_smart_pointer)]
+#![feature(derive_coerce_pointee)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
-use std::marker::SmartPointer;
+use std::marker::CoercePointee;
 
 pub trait MyTrait<T: ?Sized> {}
 

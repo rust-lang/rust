@@ -6,7 +6,7 @@
 
 extern crate proc_macro;
 
-use proc_macro::{quote, TokenStream};
+use proc_macro::{TokenStream, quote};
 
 #[proc_macro_derive(AnotherMacro, attributes(pointee))]
 pub fn derive(_input: TokenStream) -> TokenStream {
