@@ -37,7 +37,7 @@ use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
@@ -421,12 +421,12 @@ rustc_index::newtype_index!(
 pub struct StateData<V> {
     bottom: V,
     /// This map only contains values that are not `⊥`.
-    map: FxHashMap<ValueIndex, V>,
+    map: FxIndexMap<ValueIndex, V>,
 }
 
 impl<V: HasBottom> StateData<V> {
     fn new() -> StateData<V> {
-        StateData { bottom: V::BOTTOM, map: FxHashMap::default() }
+        StateData { bottom: V::BOTTOM, map: FxIndexMap::default() }
     }
 
     fn get(&self, idx: ValueIndex) -> &V {
@@ -435,7 +435,7 @@ impl<V: HasBottom> StateData<V> {
 
     fn insert(&mut self, idx: ValueIndex, elem: V) {
         if elem.is_bottom() {
-            self.map.remove(&idx);
+            self.map.shift_remove(&idx);
         } else {
             self.map.insert(idx, elem);
         }
@@ -455,14 +455,13 @@ impl<V: Clone> Clone for StateData<V> {
 impl<V: JoinSemiLattice + Clone + HasBottom> JoinSemiLattice for StateData<V> {
     fn join(&mut self, other: &Self) -> bool {
         let mut changed = false;
-        #[allow(rustc::potential_query_instability)]
         for (i, v) in other.map.iter() {
             match self.map.entry(*i) {
-                StdEntry::Vacant(e) => {
+                IndexEntry::Vacant(e) => {
                     e.insert(v.clone());
                     changed = true
                 }
-                StdEntry::Occupied(e) => changed |= e.into_mut().join(v),
+                IndexEntry::Occupied(e) => changed |= e.into_mut().join(v),
             }
         }
         changed
