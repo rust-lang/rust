@@ -47,9 +47,6 @@ rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
 rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
 rm tests/ui/delegation/fn-header.rs
 
-# unsized locals
-rm -r tests/run-pass-valgrind/unsized-locals
-
 # misc unimplemented things
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
 rm -r tests/run-make/repr128-dwarf # debuginfo test
@@ -183,5 +180,5 @@ index 9607ff02f96..b7d97caf9a2 100644
 EOF
 
 echo "[TEST] rustc test suite"
-COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--nocapture tests/{codegen-units,run-make,run-pass-valgrind,ui,incremental}
+COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--nocapture tests/{codegen-units,run-make,ui,incremental}
 popd
