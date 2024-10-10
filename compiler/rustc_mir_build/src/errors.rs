@@ -851,6 +851,14 @@ pub(crate) struct MCDCExceedsConditionLimit {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_exceeds_mcdc_decision_depth)]
+pub(crate) struct MCDCExceedsDecisionDepth {
+    #[primary_span]
+    pub span: Span,
+    pub max_decision_depth: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_pattern_not_covered, code = E0005)]
 pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[primary_span]

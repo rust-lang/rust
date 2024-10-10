@@ -35,6 +35,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
+        // Prepare mcdc context so that the nested decision get proper depth if any.
+        // The guard automatically marks the context processing parent decisions restored on dropping.
+        let _mcdc_guard = this.mcdc_prepare_ctx_for(&expr.kind);
+
         let expr_is_block_or_scope =
             matches!(expr.kind, ExprKind::Block { .. } | ExprKind::Scope { .. });
 

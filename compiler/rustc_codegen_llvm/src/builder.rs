@@ -1745,7 +1745,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 0 as c_uint,
             );
         }
-        self.store(self.const_i32(0), mcdc_temp, self.tcx.data_layout.i32_align.abi);
+        self.mcdc_condbitmap_reset(mcdc_temp);
     }
 
     pub(crate) fn mcdc_condbitmap_update(&mut self, cond_index: &'ll Value, mcdc_temp: &'ll Value) {
@@ -1758,5 +1758,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align);
         let new_tv_index = self.add(current_tv_index, cond_index);
         self.store(new_tv_index, mcdc_temp, align);
+    }
+
+    pub(crate) fn mcdc_condbitmap_reset(&mut self, mcdc_temp: &'ll Value) {
+        debug!("mcdc_condbitmap_reset() with args ({:?})", mcdc_temp);
+        let align = self.tcx.data_layout.i32_align.abi;
+        self.store(self.const_i32(0), mcdc_temp, align);
     }
 }
