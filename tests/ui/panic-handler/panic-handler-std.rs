@@ -1,4 +1,4 @@
-//@ normalize-stderr-test: "loaded from .*libstd-.*.rlib" -> "loaded from SYSROOT/libstd-*.rlib"
+//@ normalize-stderr-test: "loaded from .*libstd-.*.rmeta" -> "loaded from SYSROOT/libstd-*.rmeta"
 //@ error-pattern: found duplicate lang item `panic_impl`
 
 extern crate core;

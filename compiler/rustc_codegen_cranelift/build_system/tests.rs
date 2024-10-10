@@ -433,6 +433,7 @@ impl<'a> TestRunner<'a> {
         cmd.arg(&self.target_compiler.triple);
         cmd.arg("-Cpanic=abort");
         cmd.arg("--check-cfg=cfg(jit)");
+        cmd.arg("--emit=metadata,link");
         cmd.args(args);
         cmd
     }

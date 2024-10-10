@@ -309,7 +309,7 @@ fn link_rlib<'a>(
             let (metadata, metadata_position) = create_wrapper_file(
                 sess,
                 ".rmeta".to_string(),
-                codegen_results.metadata.raw_data(),
+                codegen_results.metadata.maybe_reference(),
             );
             let metadata = emit_wrapper_file(sess, &metadata, tmpdir, METADATA_FILENAME);
             match metadata_position {

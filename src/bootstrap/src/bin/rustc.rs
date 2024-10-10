@@ -127,6 +127,12 @@ fn main() {
         }
     }
 
+    if orig_args.iter().any(|arg| arg == "-Zsplit-metadata")
+        && orig_args.windows(2).any(|args| args[0] == "--crate-type" && args[1] == "dylib")
+    {
+        cmd.arg("--emit").arg("metadata");
+    }
+
     // Print backtrace in case of ICE
     if env::var("RUSTC_BACKTRACE_ON_ICE").is_ok() && env::var("RUST_BACKTRACE").is_err() {
         cmd.env("RUST_BACKTRACE", "1");

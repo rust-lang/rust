@@ -221,6 +221,10 @@ pub(crate) struct CrateHeader {
     /// This is separate from [`ProcMacroData`] to avoid having to update [`METADATA_VERSION`] every
     /// time ProcMacroData changes.
     pub(crate) is_proc_macro_crate: bool,
+    /// Whether this header is a reference to a separate rmeta file.
+    ///
+    /// This is used inside rlibs and dylibs when using `-Zsplit-metadata`.
+    pub(crate) is_reference: bool,
 }
 
 /// Serialized `.rmeta` data for a crate.
