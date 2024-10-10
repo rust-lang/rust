@@ -17,6 +17,7 @@ use rustc_middle::traits::solve::Certainty;
 pub use rustc_middle::traits::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 pub use self::ImplSource::*;
 pub use self::SelectionError::*;
@@ -83,6 +84,8 @@ impl<'tcx, P> From<Obligation<'tcx, P>> for solve::Goal<'tcx, P> {
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::TraitPredicate<'tcx>>;
 pub type PolyTraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
+
+pub type PredicateObligations<'tcx> = ThinVec<PredicateObligation<'tcx>>;
 
 impl<'tcx> PredicateObligation<'tcx> {
     /// Flips the polarity of the inner predicate.

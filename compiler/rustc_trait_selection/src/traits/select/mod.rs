@@ -18,7 +18,7 @@ use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::relate::TypeRelation;
-use rustc_infer::traits::TraitObligation;
+use rustc_infer::traits::{PredicateObligations, TraitObligation};
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -1067,7 +1067,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 && fresh_trait_pred.has_aliases()
                 && fresh_trait_pred.is_global()
             {
-                let mut nested_obligations = Vec::new();
+                let mut nested_obligations = PredicateObligations::new();
                 let predicate = normalize_with_depth_to(
                     this,
                     param_env,
@@ -1715,7 +1715,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> ProjectionMatchesProjection {
         debug_assert_eq!(obligation.predicate.def_id, env_predicate.projection_def_id());
 
-        let mut nested_obligations = Vec::new();
+        let mut nested_obligations = PredicateObligations::new();
         let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
             BoundRegionConversionTime::HigherRankedType,
@@ -2410,7 +2410,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         recursion_depth: usize,
         trait_def_id: DefId,
         types: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
-    ) -> Vec<PredicateObligation<'tcx>> {
+    ) -> PredicateObligations<'tcx> {
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
         // regions. For example, `for<'a> Foo<&'a i32> : Copy` would
@@ -2552,9 +2552,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         a_region: ty::Region<'tcx>,
         b_region: ty::Region<'tcx>,
-    ) -> SelectionResult<'tcx, Vec<PredicateObligation<'tcx>>> {
+    ) -> SelectionResult<'tcx, PredicateObligations<'tcx>> {
         let tcx = self.tcx();
-        let mut nested = vec![];
+        let mut nested = PredicateObligations::new();
 
         // We may upcast to auto traits that are either explicitly listed in
         // the object type's bounds, or implied by the principal trait ref's
@@ -2705,7 +2705,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         where_clause_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
+    ) -> Result<PredicateObligations<'tcx>, ()> {
         self.match_poly_trait_ref(obligation, where_clause_trait_ref)
     }
 
@@ -2716,7 +2716,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
+    ) -> Result<PredicateObligations<'tcx>, ()> {
         let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
@@ -2797,7 +2797,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         def_id: DefId,              // of impl or trait
         args: GenericArgsRef<'tcx>, // for impl or trait
         parent_trait_pred: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
-    ) -> Vec<PredicateObligation<'tcx>> {
+    ) -> PredicateObligations<'tcx> {
         let tcx = self.tcx();
 
         // To allow for one-pass evaluation of the nested obligation,
@@ -2817,7 +2817,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let predicates = tcx.predicates_of(def_id);
         assert_eq!(predicates.parent, None);
         let predicates = predicates.instantiate_own(tcx, args);
-        let mut obligations = Vec::with_capacity(predicates.len());
+        let mut obligations = PredicateObligations::with_capacity(predicates.len());
         for (index, (predicate, span)) in predicates.into_iter().enumerate() {
             let cause = if tcx.is_lang_item(parent_trait_pred.def_id(), LangItem::CoerceUnsized) {
                 cause.clone()

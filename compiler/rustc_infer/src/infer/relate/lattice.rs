@@ -27,7 +27,7 @@ use tracing::{debug, instrument};
 use super::StructurallyRelateAliases;
 use super::combine::PredicateEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace};
-use crate::traits::{Obligation, PredicateObligation};
+use crate::traits::{Obligation, PredicateObligations};
 
 #[derive(Clone, Copy)]
 pub(crate) enum LatticeOpKind {
@@ -52,7 +52,7 @@ pub(crate) struct LatticeOp<'infcx, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     // Mutable fields
     kind: LatticeOpKind,
-    obligations: Vec<PredicateObligation<'tcx>>,
+    obligations: PredicateObligations<'tcx>,
 }
 
 impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
@@ -62,10 +62,10 @@ impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         kind: LatticeOpKind,
     ) -> LatticeOp<'infcx, 'tcx> {
-        LatticeOp { infcx, trace, param_env, kind, obligations: vec![] }
+        LatticeOp { infcx, trace, param_env, kind, obligations: PredicateObligations::new() }
     }
 
-    pub(crate) fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+    pub(crate) fn into_obligations(self) -> PredicateObligations<'tcx> {
         self.obligations
     }
 }

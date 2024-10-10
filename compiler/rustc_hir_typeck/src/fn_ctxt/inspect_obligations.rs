@@ -1,6 +1,6 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
 
-use rustc_infer::traits::{self, ObligationCause};
+use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
@@ -15,10 +15,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a list of all obligations whose self type has been unified
     /// with the unconstrained type `self_ty`.
     #[instrument(skip(self), level = "debug")]
-    pub(crate) fn obligations_for_self_ty(
-        &self,
-        self_ty: ty::TyVid,
-    ) -> Vec<traits::PredicateObligation<'tcx>> {
+    pub(crate) fn obligations_for_self_ty(&self, self_ty: ty::TyVid) -> PredicateObligations<'tcx> {
         if self.next_trait_solver() {
             self.obligations_for_self_ty_next(self_ty)
         } else {
@@ -75,10 +72,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn obligations_for_self_ty_next(
         &self,
         self_ty: ty::TyVid,
-    ) -> Vec<traits::PredicateObligation<'tcx>> {
+    ) -> PredicateObligations<'tcx> {
         let obligations = self.fulfillment_cx.borrow().pending_obligations();
         debug!(?obligations);
-        let mut obligations_for_self_ty = vec![];
+        let mut obligations_for_self_ty = PredicateObligations::new();
         for obligation in obligations {
             let mut visitor = NestedObligationsForSelfTy {
                 fcx: self,
@@ -103,7 +100,7 @@ struct NestedObligationsForSelfTy<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     self_ty: ty::TyVid,
     root_cause: &'a ObligationCause<'tcx>,
-    obligations_for_self_ty: &'a mut Vec<traits::PredicateObligation<'tcx>>,
+    obligations_for_self_ty: &'a mut PredicateObligations<'tcx>,
 }
 
 impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {

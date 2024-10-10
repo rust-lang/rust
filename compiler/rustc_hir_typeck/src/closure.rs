@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
@@ -805,7 +805,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // [c1]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341089706
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
         self.commit_if_ok(|_| {
-            let mut all_obligations = vec![];
+            let mut all_obligations = PredicateObligations::new();
             let supplied_sig = self.instantiate_binder_with_fresh_vars(
                 self.tcx.def_span(expr_def_id),
                 BoundRegionConversionTime::FnCall,

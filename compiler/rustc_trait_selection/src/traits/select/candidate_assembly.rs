@@ -12,7 +12,9 @@ use hir::LangItem;
 use hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
-use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation, SelectionError};
+use rustc_infer::traits::{
+    Obligation, ObligationCause, PolyTraitObligation, PredicateObligations, SelectionError,
+};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -963,7 +965,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 0,
                 // We're *intentionally* throwing these away,
                 // since we don't actually use them.
-                &mut vec![],
+                &mut PredicateObligations::new(),
             )
             .as_type()
             .unwrap();

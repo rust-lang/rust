@@ -16,7 +16,7 @@ use tracing::{debug, instrument};
 use super::DefineOpaqueTypes;
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{self, Obligation};
+use crate::traits::{self, Obligation, PredicateObligations};
 
 mod table;
 
@@ -46,14 +46,14 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> InferOk<'tcx, T> {
         // We handle opaque types differently in the new solver.
         if self.next_trait_solver() {
-            return InferOk { value, obligations: vec![] };
+            return InferOk { value, obligations: PredicateObligations::new() };
         }
 
         if !value.has_opaque_types() {
-            return InferOk { value, obligations: vec![] };
+            return InferOk { value, obligations: PredicateObligations::new() };
         }
 
-        let mut obligations = vec![];
+        let mut obligations = PredicateObligations::new();
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,

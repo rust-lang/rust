@@ -114,7 +114,7 @@ impl<'tcx> Debug for FulfillmentError<'tcx> {
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
     /// if it is already implemented.
-    Cycle(Vec<PredicateObligation<'tcx>>),
+    Cycle(PredicateObligations<'tcx>),
     Select(SelectionError<'tcx>),
     Project(MismatchedProjectionTypes<'tcx>),
     Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
