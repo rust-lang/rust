@@ -259,7 +259,7 @@ fn strip_underscores(symbol: Symbol) -> Symbol {
     // Do not allocate a new string unless necessary.
     let s = symbol.as_str();
     if s.contains('_') {
-        let mut s = s.to_string();
+        let mut s = s.to_owned();
         s.retain(|c| c != '_');
         return Symbol::intern(&s);
     }
