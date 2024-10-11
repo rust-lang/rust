@@ -29,7 +29,6 @@
 #![feature(const_pin)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_write)]
-#![feature(const_result)]
 #![feature(const_three_way_compare)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
