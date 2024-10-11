@@ -124,16 +124,6 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // If that's the case this means that this impl block declaration
                 // is using local items and so we don't lint on it.
 
-                // We also ignore anon-const in item by including the anon-const
-                // parent as well.
-                let parent_parent = if parent_def_kind == DefKind::Const
-                    && parent_opt_item_name == Some(kw::Underscore)
-                {
-                    Some(cx.tcx.parent(parent))
-                } else {
-                    None
-                };
-
                 // 1. We collect all the `hir::Path` from the `Self` type and `Trait` ref
                 // of the `impl` definition
                 let mut collector = PathCollector { paths: Vec::new() };
@@ -148,13 +138,33 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     |p| matches!(p.res, Res::Def(def_kind, _) if def_kind != DefKind::TyParam),
                 );
 
-                // 2. We check if any of path reference a "local" parent and if that the case
-                // we bail out as asked by T-lang, even though this isn't correct from a
-                // type-system point of view, as inference exists and could still leak the impl.
+                // 1.9. We retrieve the parent def id of the impl item, ...
+                //
+                // ... modulo const-anons items, for enhanced compatibility with the ecosystem
+                // as that pattern is common with `serde`, `bevy`, ...
+                //
+                // For this example we want the `DefId` parent of the outermost const-anon items.
+                // ```
+                // const _: () = { // the parent of this const-anon
+                //     const _: () = {
+                //         impl Foo {}
+                //     };
+                // };
+                // ```
+                let outermost_impl_parent = peel_parent_while(cx.tcx, parent, |tcx, did| {
+                    tcx.def_kind(did) == DefKind::Const
+                        && tcx.opt_item_name(did) == Some(kw::Underscore)
+                });
+
+                // 2. We check if any of the paths reference a the `impl`-parent.
+                //
+                // If that the case we bail out, as was asked by T-lang, even though this isn't
+                // correct from a type-system point of view, as inference exists and one-impl-rule
+                // make its so that we could still leak the impl.
                 if collector
                     .paths
                     .iter()
-                    .any(|path| path_has_local_parent(path, cx, parent, parent_parent))
+                    .any(|path| path_has_local_parent(path, cx, parent, outermost_impl_parent))
                 {
                     return;
                 }
@@ -253,8 +263,8 @@ impl<'tcx> Visitor<'tcx> for PathCollector<'tcx> {
     }
 }
 
-/// Given a path and a parent impl def id, this checks if the if parent resolution
-/// def id correspond to the def id of the parent impl definition.
+/// Given a path, this checks if the if the parent resolution def id corresponds to
+/// the def id of the parent impl definition (the direct one and the outermost one).
 ///
 /// Given this path, we will look at the path (and ignore any generic args):
 ///
@@ -267,32 +277,50 @@ fn path_has_local_parent(
     path: &Path<'_>,
     cx: &LateContext<'_>,
     impl_parent: DefId,
-    impl_parent_parent: Option<DefId>,
+    outermost_impl_parent: Option<DefId>,
 ) -> bool {
     path.res
         .opt_def_id()
-        .is_some_and(|did| did_has_local_parent(did, cx.tcx, impl_parent, impl_parent_parent))
+        .is_some_and(|did| did_has_local_parent(did, cx.tcx, impl_parent, outermost_impl_parent))
 }
 
-/// Given a def id and a parent impl def id, this checks if the parent
-/// def id (modulo modules) correspond to the def id of the parent impl definition.
+/// Given a def id this checks if the parent def id (modulo modules) correspond to
+/// the def id of the parent impl definition (the direct one and the outermost one).
 #[inline]
 fn did_has_local_parent(
     did: DefId,
     tcx: TyCtxt<'_>,
     impl_parent: DefId,
-    impl_parent_parent: Option<DefId>,
+    outermost_impl_parent: Option<DefId>,
 ) -> bool {
-    did.is_local()
-        && if let Some(did_parent) = tcx.opt_parent(did) {
-            did_parent == impl_parent
-                || Some(did_parent) == impl_parent_parent
-                || !did_parent.is_crate_root()
-                    && tcx.def_kind(did_parent) == DefKind::Mod
-                    && did_has_local_parent(did_parent, tcx, impl_parent, impl_parent_parent)
-        } else {
-            false
-        }
+    if !did.is_local() {
+        return false;
+    }
+
+    let Some(parent_did) = tcx.opt_parent(did) else {
+        return false;
+    };
+
+    peel_parent_while(tcx, parent_did, |tcx, did| tcx.def_kind(did) == DefKind::Mod)
+        .map(|parent_did| parent_did == impl_parent || Some(parent_did) == outermost_impl_parent)
+        .unwrap_or(false)
+}
+
+/// Given a `DefId` checks if it satisfies `f` if it does check with it's parent and continue
+/// until it doesn't satisfies `f` and return the last `DefId` checked.
+///
+/// In other word this method return the first `DefId` that doesn't satisfies `f`.
+#[inline]
+fn peel_parent_while(
+    tcx: TyCtxt<'_>,
+    mut did: DefId,
+    mut f: impl FnMut(TyCtxt<'_>, DefId) -> bool,
+) -> Option<DefId> {
+    while !did.is_crate_root() && f(tcx, did) {
+        did = tcx.opt_parent(did).filter(|parent_did| parent_did.is_local())?;
+    }
+
+    Some(did)
 }
 
 /// Return for a given `Path` the span until the last args
