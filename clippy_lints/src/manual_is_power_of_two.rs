@@ -41,7 +41,7 @@ impl LateLintPass<'_> for ManualIsPowerOfTwo {
             && bin_op.node == BinOpKind::Eq
         {
             // a.count_ones() == 1
-            if let ExprKind::MethodCall(method_name, reciever, _, _) = left.kind
+            if let ExprKind::MethodCall(method_name, reciever, [], _) = left.kind
                 && method_name.ident.as_str() == "count_ones"
                 && let &Uint(_) = cx.typeck_results().expr_ty(reciever).kind()
                 && check_lit(right, 1)
@@ -50,7 +50,7 @@ impl LateLintPass<'_> for ManualIsPowerOfTwo {
             }
 
             // 1 == a.count_ones()
-            if let ExprKind::MethodCall(method_name, reciever, _, _) = right.kind
+            if let ExprKind::MethodCall(method_name, reciever, [], _) = right.kind
                 && method_name.ident.as_str() == "count_ones"
                 && let &Uint(_) = cx.typeck_results().expr_ty(reciever).kind()
                 && check_lit(left, 1)

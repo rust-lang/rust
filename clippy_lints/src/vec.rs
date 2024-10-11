@@ -244,7 +244,7 @@ fn adjusts_to_slice(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 pub fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     const ALLOWED_METHOD_NAMES: &[&str] = &["len", "as_ptr", "is_empty"];
 
-    if let ExprKind::MethodCall(path, ..) = e.kind {
+    if let ExprKind::MethodCall(path, _, [], _) = e.kind {
         ALLOWED_METHOD_NAMES.contains(&path.ident.name.as_str())
     } else {
         is_trait_method(cx, e, sym::IntoIterator)
