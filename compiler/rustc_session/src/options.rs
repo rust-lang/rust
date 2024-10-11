@@ -1705,8 +1705,18 @@ options! {
         "show all expected values in check-cfg diagnostics (default: no)"),
     checksum_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_cargo_src_file_hash, [TRACKED],
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
-    codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
-        "the backend to use"),
+    codegen_backend: Option<String> = (
+        {
+            #[cfg(bootstrap)]
+            {
+                None
+            }
+
+            #[cfg(not(bootstrap))]
+            {
+                Some("cranelift".into())
+            }
+        }, parse_opt_string, [TRACKED], "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
         "combine CGUs into a single one"),
     coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],

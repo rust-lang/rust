@@ -448,7 +448,10 @@ impl Builder {
         for pkg in PkgType::all() {
             match pkg {
                 // rustc/rust-std/cargo/docs are all required
-                PkgType::Rustc | PkgType::Cargo | PkgType::HtmlDocs => {
+                PkgType::Rustc
+                | PkgType::Cargo
+                | PkgType::HtmlDocs
+                | PkgType::RustcCodegenCranelift => {
                     components.push(host_component(pkg));
                 }
                 PkgType::RustStd => {
@@ -476,7 +479,6 @@ impl Builder {
                 | PkgType::LlvmTools
                 | PkgType::RustAnalysis
                 | PkgType::JsonDocs
-                | PkgType::RustcCodegenCranelift
                 | PkgType::LlvmBitcodeLinker => {
                     extensions.push(host_component(pkg));
                 }
