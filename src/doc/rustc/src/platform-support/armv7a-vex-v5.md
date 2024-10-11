@@ -20,11 +20,26 @@ This target is maintained by members of the [vexide](https://github.com/vexide) 
 This target is cross-compiled. Dynamic linking is unsupported.
 
 `#![no_std]` crates can be built using `build-std` to build `core` and optionally
-`alloc`. Unwinding panics are not yet supported.
-
-`std` is partially implemented, but many modules (such as `thread`, `process`, `net`, etc...) will return errors. An allocator is provided along with partial support for the `time`, `env` and `io` modules. Filesystem operations over SDCard through `std::fs` are partially supported within the restrictions of the user environment (e.g. directories cannot be created, filesystem objects cannot be removed).
+`alloc`. Unwinding panics are not yet supported. `std` is partially implemented, see below.
 
 This target generates binaries in the ELF format that may uploaded to the brain with external tools.
+
+## Standard Library Support
+
+`armv7a-vex-v5` implements as much of the standard library as is possible using only public VEX SDK functions.
+This includes:
+
+- `std::time`, not including `SystemTime` as the SDK does not provide absolute time information.
+- `std::io`, including `stdin()` and `stdout()`, but not `stderr()`, as stderr does not exist on this platform.
+- `std::fs`, with the exception of directory reading and file deletion, due to public SDK limitations.
+- modules which do not need to interact with the OS beyond allocation,
+  such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc.
+
+Notable modules which are not implemented include:
+
+- `std::process`
+- `std::thread`
+- `std::net`
 
 ## Building the target
 
