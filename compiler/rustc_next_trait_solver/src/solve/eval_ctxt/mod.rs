@@ -92,7 +92,6 @@ where
 #[derive_where(Clone, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
-// FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.
 struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
     /// loop. In each iteration we take the RHS of the projection, replace it with
@@ -421,6 +420,7 @@ where
         let (normalization_nested_goals, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, orig_values, response);
         self.inspect.goal_evaluation(goal_evaluation);
+
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
         //
