@@ -677,7 +677,7 @@ pub struct FunctionHeader {
 /// on unwinding for more info.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Abi {
-    // We only have a concrete listing here for stable ABI's because their are so many
+    // We only have a concrete listing here for stable ABI's because there are so many
     // See rustc_ast_passes::feature_gate::PostExpansionVisitor::check_abi for the list
     /// The default ABI, but that can also be written explicitly with `extern "Rust"`.
     Rust,

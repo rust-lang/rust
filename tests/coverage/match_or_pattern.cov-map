@@ -72,4 +72,5 @@ Number of file 0 mappings: 25
     = (c14 + c15)
 - Code(Expression(26, Add)) at (prev + 2, 1) to (start + 0, 2)
     = ((c14 + c15) + c16)
+Highest counter ID seen: c16
 
