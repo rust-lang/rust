@@ -2338,7 +2338,8 @@ pub struct TargetOptions {
     pub is_like_wasm: bool,
     /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
     pub is_like_android: bool,
-    /// Whether a target toolchain is like VEXos.
+    /// Whether a target toolchain is like VEXos, the operating system used by the VEX Robotics V5 Brain.
+    /// Introduced for the `armv7a-vex-v5` target.
     pub is_like_vexos: bool,
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
