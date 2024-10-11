@@ -206,6 +206,11 @@ jobs:
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
 
+      - name: print disk usage
+        run: |
+          echo "disk usage:"
+          df -h
+
       - name: upload artifacts to github
         uses: actions/upload-artifact@v4
         with:
