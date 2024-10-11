@@ -3058,6 +3058,7 @@ pub(crate) struct ReservedString {
     pub suggestion: Span,
 }
 
+#[derive(LintDiagnostic)]
 #[diag(lint_builtin_mixed_export_name_and_no_mangle)]
 pub(crate) struct BuiltinMixedExportNameAndNoMangle {
     #[label]
