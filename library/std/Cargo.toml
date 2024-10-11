@@ -86,7 +86,7 @@ r-efi = { version = "4.5.0", features = ['rustc-dep-of-std'] }
 r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(target_os = "vexos")'.dependencies]
-vex-sdk = { version = "0.21.0", features = ['rustc-dep-of-std'] }
+vex-sdk = { version = "0.22.0", features = ['rustc-dep-of-std'] }
 
 [features]
 backtrace = [
