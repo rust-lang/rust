@@ -242,7 +242,8 @@ fn aux_build() {
         //@ aux-build: b.rs
         "
         )
-        .aux,
+        .aux
+        .builds,
         vec!["a.rs", "b.rs"],
     );
 }
