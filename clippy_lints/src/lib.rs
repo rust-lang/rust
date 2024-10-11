@@ -1,6 +1,7 @@
 #![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(control_flow_enum)]
 #![feature(f128)]
 #![feature(f16)]
@@ -59,9 +60,10 @@ extern crate rustc_trait_selection;
 extern crate thin_vec;
 
 #[macro_use]
-extern crate clippy_utils;
+mod declare_clippy_lint;
+
 #[macro_use]
-extern crate declare_clippy_lint;
+extern crate clippy_utils;
 
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
@@ -394,7 +396,7 @@ mod zero_sized_map_values;
 mod zombie_processes;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-use clippy_config::{Conf, get_configuration_metadata};
+use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
@@ -522,8 +524,9 @@ impl LintInfo {
 
 pub fn explain(name: &str) -> i32 {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
+
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
-        println!("{}", info.explanation);
+        println!("{}", sanitize_explanation(info.explanation));
         // Check if the lint has configuration
         let mut mdconf = get_configuration_metadata();
         let name = name.to_ascii_lowercase();

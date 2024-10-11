@@ -445,6 +445,7 @@ impl DiagnosticCollector {
                         .map(|((lint, reason), version)| LintMetadata::new_deprecated(lint, reason, version)),
                 )
                 .collect();
+
             metadata.sort_unstable_by(|a, b| a.id.cmp(&b.id));
 
             let json = serde_json::to_string_pretty(&metadata).unwrap();
