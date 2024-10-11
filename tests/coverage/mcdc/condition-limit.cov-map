@@ -87,4 +87,5 @@ Number of file 0 mappings: 18
     = ((((((c2 + c3) + c4) + c5) + c6) + c7) + (c0 - c1))
 - Code(Expression(37, Add)) at (prev + 1, 1) to (start + 0, 2)
     = (c8 + ((((((c2 + c3) + c4) + c5) + c6) + c7) + (c0 - c1)))
+Highest counter ID seen: c8
 
