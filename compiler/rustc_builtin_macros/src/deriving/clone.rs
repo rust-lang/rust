@@ -115,7 +115,7 @@ fn cs_clone_simple(
                 // type parameters.
             } else if !field.ty.kind.is_anon_adt() {
                 // let _: AssertParamIsClone<FieldTy>;
-                super::assert_ty_bounds(cx, &mut stmts, field.ty.clone(), field.span, &[
+                super::assert_ty_bounds(cx, &mut stmts, field.ty.clone(), field.span(), &[
                     sym::clone,
                     sym::AssertParamIsClone,
                 ]);

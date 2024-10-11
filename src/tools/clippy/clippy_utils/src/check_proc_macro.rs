@@ -426,13 +426,24 @@ impl_with_search_pat!((cx: LateContext<'tcx>, self: Expr<'tcx>) => expr_search_p
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Item<'_>) => item_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: TraitItem<'_>) => trait_item_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: ImplItem<'_>) => impl_item_search_pat(self));
-impl_with_search_pat!((_cx: LateContext<'tcx>, self: FieldDef<'_>) => field_def_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Variant<'_>) => variant_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ty<'_>) => ty_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Attribute) => attr_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ident) => ident_search_pat(*self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Lit) => lit_search_pat(&self.node));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Path<'_>) => path_search_pat(self));
+
+impl<'cx> WithSearchPat<'cx> for FieldDef<'cx> {
+    type Context = LateContext<'cx>;
+
+    fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
+        field_def_search_pat(self)
+    }
+
+    fn span(&self) -> Span {
+        self.span()
+    }
+}
 
 impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;

@@ -399,7 +399,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             .iter()
             .enumerate()
             .map(|(i, field)| {
-                field.ident.unwrap_or_else(|| Ident::from_str_and_span(&format!("{i}"), field.span))
+                field
+                    .ident
+                    .unwrap_or_else(|| Ident::from_str_and_span(&format!("{i}"), field.span()))
             })
             .collect();
         self.r.field_names.insert(def_id, fields);

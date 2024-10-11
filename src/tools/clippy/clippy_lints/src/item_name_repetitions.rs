@@ -261,7 +261,7 @@ fn check_struct_name_repetition(cx: &LateContext<'_>, item: &Item<'_>, fields: &
                         cx,
                         STRUCT_FIELD_NAMES,
                         field.hir_id,
-                        field.span,
+                        field.span(),
                         "field name starts with the struct's name",
                     );
                 }
@@ -277,7 +277,7 @@ fn check_struct_name_repetition(cx: &LateContext<'_>, item: &Item<'_>, fields: &
                             cx,
                             STRUCT_FIELD_NAMES,
                             field.hir_id,
-                            field.span,
+                            field.span(),
                             "field name ends with the struct's name",
                         );
                     }

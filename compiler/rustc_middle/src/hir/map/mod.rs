@@ -921,7 +921,7 @@ impl<'hir> Map<'hir> {
             Node::TraitItem(trait_item) => trait_item.span,
             Node::ImplItem(impl_item) => impl_item.span,
             Node::Variant(variant) => variant.span,
-            Node::Field(field) => field.span,
+            Node::Field(field) => field.span(),
             Node::AnonConst(constant) => constant.span,
             Node::ConstBlock(constant) => self.body(constant.body).value.span,
             Node::ConstArg(const_arg) => const_arg.span(),

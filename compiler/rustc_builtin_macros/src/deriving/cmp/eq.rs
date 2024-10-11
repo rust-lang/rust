@@ -66,7 +66,7 @@ fn cs_total_eq_assert(
                 // Already produced an assertion for this type.
             } else {
                 // let _: AssertParamIsEq<FieldTy>;
-                super::assert_ty_bounds(cx, &mut stmts, field.ty.clone(), field.span, &[
+                super::assert_ty_bounds(cx, &mut stmts, field.ty.clone(), field.span(), &[
                     sym::cmp,
                     sym::AssertParamIsEq,
                 ]);

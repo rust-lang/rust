@@ -3190,7 +3190,6 @@ pub struct PolyTraitRef<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct FieldDef<'hir> {
-    pub span: Span,
     pub vis_span: Span,
     pub ident: Ident,
     pub hir_id: HirId,
@@ -3202,6 +3201,10 @@ impl FieldDef<'_> {
     // Still necessary in couple of places
     pub fn is_positional(&self) -> bool {
         self.ident.as_str().as_bytes()[0].is_ascii_digit()
+    }
+
+    pub fn span(&self) -> Span {
+        self.vis_span.to(self.ty.span)
     }
 }
 
