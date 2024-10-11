@@ -14,6 +14,7 @@
 mod abi;
 mod asm;
 mod backend;
+mod bsan;
 mod builder;
 mod consts;
 mod coverageinfo;

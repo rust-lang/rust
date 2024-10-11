@@ -31,6 +31,7 @@
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
+#include "llvm/Transforms/Instrumentation/BorrowSanitizer.h"
 #include "llvm/Transforms/Instrumentation/DataFlowSanitizer.h"
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/InstrProfiling.h"
@@ -670,6 +671,7 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeHWAddressRecover;
   bool SanitizeKernelAddress;
   bool SanitizeKernelAddressRecover;
+  bool SanitizeBorrow;
 };
 
 extern "C" LLVMRustResult LLVMRustOptimize(
@@ -918,6 +920,13 @@ extern "C" LLVMRustResult LLVMRustOptimize(
                 SanitizerOptions->SanitizeHWAddressRecover,
                 /*DisableOptimization=*/false);
             MPM.addPass(HWAddressSanitizerPass(opts));
+          });
+    }
+    if (SanitizerOptions->SanitizeBorrow) {
+      OptimizerLastEPCallbacks.push_back(
+          [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
+            BorrowSanitizerOptions opts;
+            MPM.addPass(BorrowSanitizerPass(opts));
           });
     }
   }

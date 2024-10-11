@@ -252,6 +252,7 @@ pub enum AttributeKind {
     FnRetThunkExtern = 41,
     Writable = 42,
     DeadOnUnwind = 43,
+    SanitizeBorrow = 44,
 }
 
 /// LLVMIntPredicate
@@ -541,6 +542,7 @@ pub struct SanitizerOptions {
     pub sanitize_hwaddress_recover: bool,
     pub sanitize_kernel_address: bool,
     pub sanitize_kernel_address_recover: bool,
+    pub sanitize_borrow: bool,
 }
 
 /// LLVMRelocMode

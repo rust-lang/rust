@@ -1,0 +1,27 @@
+name: sync
+on: workflow_dispatch
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: "sync"
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rebase
+        run: src/ci/scripts/sync.sh
+      - name: Build
+        run: ./x.py build --stage 1 library

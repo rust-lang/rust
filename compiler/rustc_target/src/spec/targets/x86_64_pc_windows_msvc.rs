@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     base.features = "+cx16,+sse3,+sahf".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(128);
-    base.supported_sanitizers = SanitizerSet::ADDRESS;
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::BORROW;
 
     Target {
         llvm_target: "x86_64-pc-windows-msvc".into(),

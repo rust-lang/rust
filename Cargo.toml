@@ -8,6 +8,8 @@ members = [
   "src/rustc-std-workspace/rustc-std-workspace-alloc",
   "src/rustc-std-workspace/rustc-std-workspace-std",
   "src/rustdoc-json-types",
+  "src/tools/bsan",
+  "src/tools/build_helper",
   "src/tools/cargotest",
   "src/tools/clippy",
   "src/tools/clippy/clippy_dev",

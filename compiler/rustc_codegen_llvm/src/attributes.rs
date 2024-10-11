@@ -114,6 +114,9 @@ pub(crate) fn sanitize_attrs<'ll>(
     if enabled.contains(SanitizerSet::SAFESTACK) {
         attrs.push(llvm::AttributeKind::SanitizeSafeStack.create_attr(cx.llcx));
     }
+    if enabled.contains(SanitizerSet::BORROW) {
+        attrs.push(llvm::AttributeKind::SanitizeBorrow.create_attr(cx.llcx));
+    }
     attrs
 }
 

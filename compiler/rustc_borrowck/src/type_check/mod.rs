@@ -1245,10 +1245,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     "Unexpected NonDivergingIntrinsic::CopyNonOverlapping, should only appear after lowering_intrinsics",
                 ),
             },
+            StatementKind::Retag { .. } => {
+                if !self.infcx.tcx.sess.emit_retags() {
+                    bug!("Statement not allowed in this MIR phase")
+                }
+            },
             StatementKind::FakeRead(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
-            | StatementKind::Retag { .. }
             | StatementKind::Coverage(..)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)

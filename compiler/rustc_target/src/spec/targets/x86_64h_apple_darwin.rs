@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     opts.max_atomic_width = Some(128);
     opts.frame_pointer = FramePointer::Always;
     opts.supported_sanitizers =
-        SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
+        SanitizerSet::ADDRESS | SanitizerSet::BORROW | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
     // x86_64h is core2-avx without a few of the features which would otherwise
     // be guaranteed, so we need to disable those. This imitates clang's logic:

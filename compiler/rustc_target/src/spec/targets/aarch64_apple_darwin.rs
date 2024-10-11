@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
             cpu: "apple-m1".into(),
             max_atomic_width: Some(128),
             // FIXME: The leak sanitizer currently fails the tests, see #88132.
-            supported_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD,
+            supported_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::BORROW | SanitizerSet::CFI | SanitizerSet::THREAD,
             ..opts
         },
     }

@@ -245,7 +245,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     // The first argument (index 0), but add 1 for the return value.
     let mut dropee_ptr = Place::from(Local::new(1 + 0));
-    if tcx.sess.opts.unstable_opts.mir_emit_retag {
+    if tcx.sess.emit_retags() {
         // We want to treat the function argument as if it was passed by `&mut`. As such, we
         // generate
         // ```

@@ -358,6 +358,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::Writable;
   case LLVMRustAttributeKind::DeadOnUnwind:
     return Attribute::DeadOnUnwind;
+  case SanitizeBorrow:
+    return Attribute::SanitizeBorrow;
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }
