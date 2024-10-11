@@ -40,6 +40,7 @@
 #![feature(local_waker)]
 #![feature(vec_pop_if)]
 #![feature(unique_rc_arc)]
+#![feature(macro_metavar_expr_concat)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -59,6 +60,7 @@ mod heap;
 mod linked_list;
 mod rc;
 mod slice;
+mod sort;
 mod str;
 mod string;
 mod task;
