@@ -691,6 +691,14 @@ impl TestProps {
                 panic!("`use-minicore` is only supported for ui, codegen and assembly test modes");
             }
 
+            // FIXME(jieyouxu): this check is currently order-dependent, but we should probably
+            // collect all directives in one go then perform a validation pass after that.
+            if self.local_pass_mode().is_some_and(|pm| pm == PassMode::Run) {
+                // `minicore` can only be used with non-run modes, because it's `core` prelude stubs
+                // and can't run.
+                panic!("`use-minicore` core stubs cannot be used to run the test binary");
+            }
+
             self.use_minicore = use_minicore;
         }
     }
