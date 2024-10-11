@@ -42,7 +42,7 @@ fn main() {
 
     extern "C" {
         async fn fe1(); //~ ERROR functions in `extern` blocks cannot have qualifiers
-        unsafe fn fe2(); //~ ERROR items in unadorned `extern` blocks cannot have safety qualifiers
+        unsafe fn fe2(); //~ ERROR items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
         const fn fe3(); //~ ERROR functions in `extern` blocks cannot have qualifiers
         extern "C" fn fe4(); //~ ERROR functions in `extern` blocks cannot have qualifiers
         const async unsafe extern "C" fn fe5();
@@ -50,6 +50,6 @@ fn main() {
         //~| ERROR functions in `extern` blocks
         //~| ERROR functions in `extern` blocks
         //~| ERROR functions cannot be both `const` and `async`
-        //~| ERROR items in unadorned `extern` blocks cannot have safety qualifiers
+        //~| ERROR items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
     }
 }

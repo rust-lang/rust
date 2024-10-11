@@ -70,8 +70,8 @@ ast_passes_extern_fn_qualifiers = functions in `extern` blocks cannot have quali
     .label = in this `extern` block
     .suggestion = remove this qualifier
 
-ast_passes_extern_invalid_safety = items in unadorned `extern` blocks cannot have safety qualifiers
-    .suggestion = add unsafe to this `extern` block
+ast_passes_extern_invalid_safety = items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
+    .suggestion = add `unsafe` to this `extern` block
 
 ast_passes_extern_item_ascii = items in `extern` blocks cannot use non-ascii identifiers
     .label = in this `extern` block
