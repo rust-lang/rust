@@ -1780,58 +1780,14 @@ impl<'test> TestCx<'test> {
         proc_res.fatal(None, || on_failure(*self));
     }
 
-    fn get_output_file(&self, extension: &str) -> TargetLocation {
-        let thin_lto = self.props.compile_flags.iter().any(|s| s.ends_with("lto=thin"));
-        if thin_lto {
-            TargetLocation::ThisDirectory(self.output_base_dir())
-        } else {
-            // This works with both `--emit asm` (as default output name for the assembly)
-            // and `ptx-linker` because the latter can write output at requested location.
-            let output_path = self.output_base_name().with_extension(extension);
-
-            TargetLocation::ThisFile(output_path.clone())
-        }
-    }
-
-    fn get_filecheck_file(&self, extension: &str) -> PathBuf {
-        let thin_lto = self.props.compile_flags.iter().any(|s| s.ends_with("lto=thin"));
-        if thin_lto {
-            let name = self.testpaths.file.file_stem().unwrap().to_str().unwrap();
-            let canonical_name = name.replace('-', "_");
-            let mut output_file = None;
-            for entry in self.output_base_dir().read_dir().unwrap() {
-                if let Ok(entry) = entry {
-                    let entry_path = entry.path();
-                    let entry_file = entry_path.file_name().unwrap().to_str().unwrap();
-                    if entry_file.starts_with(&format!("{}.{}", name, canonical_name))
-                        && entry_file.ends_with(extension)
-                    {
-                        assert!(
-                            output_file.is_none(),
-                            "thinlto doesn't support multiple cgu tests"
-                        );
-                        output_file = Some(entry_file.to_string());
-                    }
-                }
-            }
-            if let Some(output_file) = output_file {
-                self.output_base_dir().join(output_file)
-            } else {
-                self.output_base_name().with_extension(extension)
-            }
-        } else {
-            self.output_base_name().with_extension(extension)
-        }
-    }
-
     // codegen tests (using FileCheck)
 
     fn compile_test_and_save_ir(&self) -> (ProcRes, PathBuf) {
-        let output_file = self.get_output_file("ll");
+        let output_path = self.output_base_name().with_extension("ll");
         let input_file = &self.testpaths.file;
         let rustc = self.make_compile_args(
             input_file,
-            output_file,
+            TargetLocation::ThisFile(output_path.clone()),
             Emit::LlvmIr,
             AllowUnused::No,
             LinkToAux::Yes,
@@ -1839,35 +1795,27 @@ impl<'test> TestCx<'test> {
         );
 
         let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
-        let output_path = self.get_filecheck_file("ll");
         (proc_res, output_path)
     }
 
     fn compile_test_and_save_assembly(&self) -> (ProcRes, PathBuf) {
-        let output_file = self.get_output_file("s");
+        // This works with both `--emit asm` (as default output name for the assembly)
+        // and `ptx-linker` because the latter can write output at requested location.
+        let output_path = self.output_base_name().with_extension("s");
         let input_file = &self.testpaths.file;
 
-        let mut emit = Emit::None;
-        match self.props.assembly_output.as_ref().map(AsRef::as_ref) {
-            Some("emit-asm") => {
-                emit = Emit::Asm;
-            }
-
-            Some("bpf-linker") => {
-                emit = Emit::LinkArgsAsm;
-            }
-
-            Some("ptx-linker") => {
-                // No extra flags needed.
-            }
-
-            Some(header) => self.fatal(&format!("unknown 'assembly-output' header: {header}")),
-            None => self.fatal("missing 'assembly-output' header"),
-        }
+        // Use the `//@ assembly-output:` directive to determine how to emit assembly.
+        let emit = match self.props.assembly_output.as_deref() {
+            Some("emit-asm") => Emit::Asm,
+            Some("bpf-linker") => Emit::LinkArgsAsm,
+            Some("ptx-linker") => Emit::None, // No extra flags needed.
+            Some(other) => self.fatal(&format!("unknown 'assembly-output' directive: {other}")),
+            None => self.fatal("missing 'assembly-output' directive"),
+        };
 
         let rustc = self.make_compile_args(
             input_file,
-            output_file,
+            TargetLocation::ThisFile(output_path.clone()),
             emit,
             AllowUnused::No,
             LinkToAux::Yes,
@@ -1875,7 +1823,6 @@ impl<'test> TestCx<'test> {
         );
 
         let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
-        let output_path = self.get_filecheck_file("s");
         (proc_res, output_path)
     }
 
