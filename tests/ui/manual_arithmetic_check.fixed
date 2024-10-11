@@ -6,14 +6,14 @@ fn main() {
     let b = 13u32;
     let c = 8u32;
 
-    let result = if a > b { a - b } else { a.saturating_sub(b) };
+    let result = a.saturating_sub(b);
     //~^ ERROR: manual arithmetic check found
-    let result = if b < a { a - b } else { a.saturating_sub(b) };
+    let result = a.saturating_sub(b);
     //~^ ERROR: manual arithmetic check found
 
-    let result = if a < b { a.saturating_sub(b) } else { a - b };
+    let result = a.saturating_sub(b);
     //~^ ERROR: manual arithmetic check found
-    let result = if b > a { a.saturating_sub(b) } else { a - b };
+    let result = a.saturating_sub(b);
     //~^ ERROR: manual arithmetic check found
 
     // Should not warn!

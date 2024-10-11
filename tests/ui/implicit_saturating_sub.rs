@@ -269,7 +269,6 @@ fn main() {
     };
 }
 
-// https://github.com/rust-lang/rust-clippy/issues/13524
 fn regression_13524(a: usize, b: usize, c: bool) -> usize {
     if c {
         123
