@@ -39,6 +39,8 @@ toml = "0.7.3"
 walkdir = "2.3"
 filetime = "0.2.9"
 itertools = "0.12"
+pulldown-cmark = "0.11"
+rinja = { version = "0.3", default-features = false, features = ["config"] }
 
 # UI test dependencies
 clippy_utils = { path = "clippy_utils" }
