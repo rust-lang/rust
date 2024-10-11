@@ -1,6 +1,8 @@
 //! Code for dealing with test directives that request an "auxiliary" crate to
 //! be built and made available to the test in some way.
 
+use std::iter;
+
 use crate::common::Config;
 use crate::header::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE};
 
@@ -18,6 +20,20 @@ pub(crate) struct AuxProps {
     /// Similar to `builds`, but also uses the resulting dylib as a
     /// `-Zcodegen-backend` when compiling the test file.
     pub(crate) codegen_backend: Option<String>,
+}
+
+impl AuxProps {
+    /// Yields all of the paths (relative to `./auxiliary/`) that have been
+    /// specified in `aux-*` directives for this test.
+    pub(crate) fn all_aux_path_strings(&self) -> impl Iterator<Item = &str> {
+        let Self { builds, bins, crates, codegen_backend } = self;
+
+        iter::empty()
+            .chain(builds.iter().map(String::as_str))
+            .chain(bins.iter().map(String::as_str))
+            .chain(crates.iter().map(|(_, path)| path.as_str()))
+            .chain(codegen_backend.iter().map(String::as_str))
+    }
 }
 
 /// If the given test directive line contains an `aux-*` directive, parse it
