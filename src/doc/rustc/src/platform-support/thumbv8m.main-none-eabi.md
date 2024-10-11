@@ -76,8 +76,9 @@ to use these flags.
 
 <div class="warning">
 
-Never use the `-fpregs` *target-feature* with these `eabihf` targets
-as it will cause compilation units to have different ABIs, which is unsound.
+Never use the `-fpregs` *target-feature* with the `thumbv8m.main-none-eabihf`
+target as it will cause compilation units to have different ABIs, which is
+unsound.
 
 </div>
 
