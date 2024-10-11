@@ -74,6 +74,11 @@ to use these flags.
 | Cortex-M85  | DP  | Yes | Int       | `cortex-m85`  | `-mve.fp`             |
 | Cortex-M85  | DP  | Yes | Int+Float | `cortex-m85`  | None                  |
 
+*Technically* you can use this hard-float ABI on a CPU which has no FPU but does
+have Integer MVE, because MVE provides the same set of registers as the FPU
+(including `s0` and `d0`). The particular set of flags that might enable this
+unusual scenario are currently not recorded here.
+
 <div class="warning">
 
 Never use the `-fpregs` *target-feature* with the `thumbv8m.main-none-eabihf`
