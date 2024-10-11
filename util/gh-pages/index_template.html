@@ -143,26 +143,29 @@ Otherwise, have a great day =^.^=
                 </div> {# #}
             </div>
             {% for lint in lints %}
-                <article class="panel panel-default collapsed" id="{{lint.id}}"> {# #}
-                    <header class="panel-heading" onclick="expandLint('{{lint.id}}')"> {# #}
-                        <h2 class="panel-title"> {# #}
-                            <div class="panel-title-name" id="lint-{{lint.id}}"> {# #}
-                                <span>{{lint.id}}</span> {#+ #}
-                                <a href="#{{lint.id}}" class="anchor label label-default" onclick="openLint(event)">&para;</a> {#+ #}
-                                <a href="" class="anchor label label-default" onclick="copyToClipboard(event)"> {# #}
-                                    &#128203; {# #}
-                                </a> {# #}
-                            </div> {# #}
+                <article class="panel panel-default" id="{{lint.id}}"> {# #}
+                    <input id="label-{{lint.id}}" type="checkbox"> {# #}
+                    <label for="label-{{lint.id}}" onclick="highlightIfNeeded('{{lint.id}}')"> {# #}
+                        <header class="panel-heading"> {# #}
+                            <h2 class="panel-title"> {# #}
+                                <div class="panel-title-name" id="lint-{{lint.id}}"> {# #}
+                                    <span>{{lint.id}}</span> {#+ #}
+                                    <a href="#{{lint.id}}" class="anchor label label-default" onclick="openLint(event)">&para;</a> {#+ #}
+                                    <a href="" class="anchor label label-default" onclick="copyToClipboard(event)"> {# #}
+                                        &#128203; {# #}
+                                    </a> {# #}
+                                </div> {# #}
 
-                            <div class="panel-title-addons"> {# #}
-                                <span class="label label-lint-group label-default label-group-{{lint.group}}">{{lint.group}}</span> {#+ #}
+                                <div class="panel-title-addons"> {# #}
+                                    <span class="label label-lint-group label-default label-group-{{lint.group}}">{{lint.group}}</span> {#+ #}
 
-                                <span class="label label-lint-level label-lint-level-{{lint.level}}">{{lint.level}}</span> {#+ #}
+                                    <span class="label label-lint-level label-lint-level-{{lint.level}}">{{lint.level}}</span> {#+ #}
 
-                                <span class="label label-doc-folding">&plus;</span> {# #}
-                            </div> {# #}
-                        </h2> {# #}
-                    </header> {# #}
+                                    <span class="label label-doc-folding"></span> {# #}
+                                </div> {# #}
+                            </h2> {# #}
+                        </header> {# #}
+                    </label> {# #}
 
                     <div class="list-group lint-docs"> {# #}
                         <div class="list-group-item lint-doc-md">{{Self::markdown(lint.docs)}}</div> {# #}
