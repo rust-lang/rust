@@ -540,7 +540,8 @@ impl Layout {
 )]
 pub type LayoutErr = LayoutError;
 
-/// The parameters given to `Layout::from_size_align`
+/// The `LayoutError` is returned when the parameters given
+/// to `Layout::from_size_align`
 /// or some other `Layout` constructor
 /// do not satisfy its documented constraints.
 #[stable(feature = "alloc_layout_error", since = "1.50.0")]
