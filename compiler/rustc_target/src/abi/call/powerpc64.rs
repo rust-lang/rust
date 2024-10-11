@@ -10,6 +10,7 @@ use crate::spec::HasTargetSpec;
 enum ABI {
     ELFv1, // original ABI used for powerpc64 (big-endian)
     ELFv2, // newer ABI used for powerpc64le and musl (both endians)
+    AIX,   // used by AIX OS, big-endian only
 }
 use ABI::*;
 
@@ -23,9 +24,9 @@ where
     C: HasDataLayout,
 {
     arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
-        // ELFv1 only passes one-member aggregates transparently.
+        // ELFv1 and AIX only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
-        if (abi == ELFv1 && arg.layout.size > unit.size)
+        if ((abi == ELFv1 || abi == AIX) && arg.layout.size > unit.size)
             || arg.layout.size > unit.size.checked_mul(8, cx).unwrap()
         {
             return None;
@@ -55,8 +56,15 @@ where
         return;
     }
 
+    // The AIX ABI expect byval for aggregates
+    // See https://github.com/llvm/llvm-project/blob/main/clang/lib/CodeGen/Targets/PPC.cpp.
+    if !is_ret && abi == AIX {
+        arg.pass_by_stack_offset(None);
+        return;
+    }
+
     // The ELFv1 ABI doesn't return aggregates in registers
-    if is_ret && abi == ELFv1 {
+    if is_ret && (abi == ELFv1 || abi == AIX) {
         arg.make_indirect();
         return;
     }
@@ -93,6 +101,8 @@ where
 {
     let abi = if cx.target_spec().env == "musl" {
         ELFv2
+    } else if cx.target_spec().os == "aix" {
+        AIX
     } else {
         match cx.data_layout().endian {
             Endian::Big => ELFv1,
