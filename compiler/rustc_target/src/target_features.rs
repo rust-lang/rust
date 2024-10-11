@@ -427,6 +427,13 @@ const WASM_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sign-ext", Stable, &[]),
     ("simd128", Stable, &[]),
     // tidy-alphabetical-end
+    //
+    // Note that if a new feature is added above please add it to the test at
+    // tests/ui/wasm/default-enabled-features.rs to ensure that its
+    // on-by-default state is tracked over time. If you'd also be so kind as to
+    // update the reference, such as in
+    // https://github.com/rust-lang/reference/pull/1638, it would also be much
+    // appreciated.
 ];
 
 const BPF_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] =
