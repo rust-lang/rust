@@ -47,18 +47,6 @@ ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
 # We disable optimized compiler built-ins because that requires a C toolchain for the target.
 # We also skip the x86_64-unknown-linux-gnu target as it is well-tested by other jobs.
 ENV SCRIPT \
-           # `core::builder::tests::ci_rustc_if_unchanged_logic` bootstrap test covers the `rust.download-rustc=if-unchanged` logic.
-           # Here we are adding a dummy commit on compiler and running that test to ensure when there is a change on the compiler,
-           # we never download ci rustc with `rust.download-rustc=if-unchanged` option.
-           echo \"\" >> ../compiler/rustc/src/main.rs && \
-           git config --global user.email \"dummy@dummy.com\" && \
-           git config --global user.name \"dummy\" && \
-           git add ../compiler/rustc/src/main.rs && \
-           git commit -m \"test commit for rust.download-rustc=if-unchanged logic\" && \
-           DISABLE_CI_RUSTC_IF_INCOMPATIBLE=0 python3 ../x.py test bootstrap -- core::builder::tests::ci_rustc_if_unchanged_logic && \
-           # Revert the dummy commit
-           git reset --hard HEAD~1 && \
-
            python3 ../x.py check --stage 0 --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
            /scripts/check-default-config-profiles.sh && \
            python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
