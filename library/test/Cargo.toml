@@ -9,4 +9,4 @@ std = { path = "../std" }
 core = { path = "../core" }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.150", default-features = false }
+libc = { version = "0.2.159", default-features = false }
