@@ -220,6 +220,8 @@ declare_features! (
     (removed, test_removed_feature, "1.0.0", None, None),
     /// Allows using items which are missing stability attributes
     (removed, unmarked_api, "1.0.0", None, None),
+    /// Allows unnamed fields of struct and union type
+    (removed, unnamed_fields, "CURRENT_RUSTC_VERSION", Some(49804), Some("feature needs redesign")),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None),
     /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.
     (removed, untagged_unions, "1.13.0", Some(55149),

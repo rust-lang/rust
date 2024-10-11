@@ -287,12 +287,6 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
             | ast::TyKind::Pat(..)
             | ast::TyKind::Dummy
             | ast::TyKind::Err(..) => break None,
-
-            // These end in brace, but cannot occur in a let-else statement.
-            // They are only parsed as fields of a data structure. For the
-            // purpose of denying trailing braces in the expression of a
-            // let-else, we can disregard these.
-            ast::TyKind::AnonStruct(..) | ast::TyKind::AnonUnion(..) => break None,
         }
     }
 }

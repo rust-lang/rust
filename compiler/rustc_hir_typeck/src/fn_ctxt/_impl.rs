@@ -165,16 +165,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn write_field_index(
-        &self,
-        hir_id: HirId,
-        index: FieldIdx,
-        nested_fields: Vec<(Ty<'tcx>, FieldIdx)>,
-    ) {
+    pub(crate) fn write_field_index(&self, hir_id: HirId, index: FieldIdx) {
         self.typeck_results.borrow_mut().field_indices_mut().insert(hir_id, index);
-        if !nested_fields.is_empty() {
-            self.typeck_results.borrow_mut().nested_fields_mut().insert(hir_id, nested_fields);
-        }
     }
 
     #[instrument(level = "debug", skip(self))]

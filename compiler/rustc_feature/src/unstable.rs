@@ -623,8 +623,6 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
-    /// Allows unnamed fields of struct and union type
-    (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "1.82.0", Some(95174)),

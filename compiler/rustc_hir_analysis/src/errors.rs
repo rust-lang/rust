@@ -735,13 +735,6 @@ pub(crate) struct InvalidUnionField {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_invalid_unnamed_field_ty)]
-pub(crate) struct InvalidUnnamedFieldTy {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_return_type_notation_on_non_rpitit)]
 pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
     #[primary_span]
@@ -1596,41 +1589,6 @@ pub(crate) struct UnconstrainedGenericParameter {
     pub const_param_note: bool,
     #[note(hir_analysis_const_param_note2)]
     pub const_param_note2: bool,
-}
-
-#[derive(Diagnostic)]
-pub(crate) enum UnnamedFieldsRepr<'a> {
-    #[diag(hir_analysis_unnamed_fields_repr_missing_repr_c)]
-    MissingReprC {
-        #[primary_span]
-        #[label]
-        span: Span,
-        adt_kind: &'static str,
-        adt_name: Symbol,
-        #[subdiagnostic]
-        unnamed_fields: Vec<UnnamedFieldsReprFieldDefined>,
-        #[suggestion(code = "#[repr(C)]\n")]
-        sugg_span: Span,
-    },
-    #[diag(hir_analysis_unnamed_fields_repr_field_missing_repr_c)]
-    FieldMissingReprC {
-        #[primary_span]
-        #[label]
-        span: Span,
-        #[label(hir_analysis_field_ty_label)]
-        field_ty_span: Span,
-        field_ty: Ty<'a>,
-        field_adt_kind: &'static str,
-        #[suggestion(code = "#[repr(C)]\n")]
-        sugg_span: Span,
-    },
-}
-
-#[derive(Subdiagnostic)]
-#[note(hir_analysis_unnamed_fields_repr_field_defined)]
-pub(crate) struct UnnamedFieldsReprFieldDefined {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
