@@ -970,6 +970,7 @@ bootstrap = [
     "@albertlarsan68",
     "@onur-ozkan",
     "@kobzol",
+    "@jieyouxu",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
