@@ -1,4 +1,4 @@
-int_module!(i32);
+int_module!(i32, u32);
 
 #[test]
 fn test_arith_operation() {

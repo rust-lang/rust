@@ -2376,11 +2376,16 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn carrying_add(self, rhs: Self, carry: bool) -> (Self, bool) {
-            // note: longer-term this should be done via an intrinsic.
-            // note: no intermediate overflow is required (https://github.com/rust-lang/rust/issues/85532#issuecomment-1032214946).
-            let (a, b) = self.overflowing_add(rhs);
-            let (c, d) = a.overflowing_add(carry as $SelfT);
-            (c, b != d)
+            #[cfg(bootstrap)]
+            {
+                let (a, b) = self.overflowing_add(rhs);
+                let (c, d) = a.overflowing_add(carry as $SelfT);
+                (c, b != d)
+            }
+            #[cfg(not(bootstrap))]
+            {
+                intrinsics::add_with_carry(self, rhs, carry)
+            }
         }
 
         /// Calculates `self` + `rhs` with an unsigned `rhs`.
@@ -2484,11 +2489,16 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool) {
-            // note: longer-term this should be done via an intrinsic.
-            // note: no intermediate overflow is required (https://github.com/rust-lang/rust/issues/85532#issuecomment-1032214946).
-            let (a, b) = self.overflowing_sub(rhs);
-            let (c, d) = a.overflowing_sub(borrow as $SelfT);
-            (c, b != d)
+            #[cfg(bootstrap)]
+            {
+                let (a, b) = self.overflowing_sub(rhs);
+                let (c, d) = a.overflowing_sub(borrow as $SelfT);
+                (c, b != d)
+            }
+            #[cfg(not(bootstrap))]
+            {
+                intrinsics::sub_with_carry(self, rhs, borrow)
+            }
         }
 
         /// Calculates `self` - `rhs` with an unsigned `rhs`
@@ -2538,6 +2548,120 @@ macro_rules! int_impl {
         pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
             (a as Self, b)
+        }
+
+        /// Calculates the complete product `self * rhs` without the possibility to overflow.
+        ///
+        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
+        /// of the result as two separate values, in that order.
+        ///
+        /// If you also need to add a carry to the wide result, then you want
+        /// [`Self::carrying_mul`] instead.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i32` is used here.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// assert_eq!(5i32.widening_mul(-2), (4294967286, -1));
+        /// assert_eq!(1_000_000_000i32.widening_mul(-10), (2884901888, -3));
+        /// ```
+        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(not(bootstrap))]
+        pub const fn widening_mul(self, rhs: Self) -> ($UnsignedT, Self) {
+            let (lo, hi) = intrinsics::mul_double(self, rhs);
+            (lo as $UnsignedT, hi)
+        }
+
+        /// Calculates the "full multiplication" `self * rhs + carry`
+        /// without the possibility to overflow.
+        ///
+        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
+        /// of the result as two separate values, in that order.
+        ///
+        /// Performs "long multiplication" which takes in an extra amount to add, and may return an
+        /// additional amount of overflow. This allows for chaining together multiple
+        /// multiplications to create "big integers" which represent larger values.
+        ///
+        /// If you don't need the `carry`, then you can use [`Self::widening_mul`] instead.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i32` is used here.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// assert_eq!(5i32.carrying_mul(-2, 0), (4294967286, -1));
+        /// assert_eq!(5i32.carrying_mul(-2, 10), (0, 0));
+        /// assert_eq!(1_000_000_000i32.carrying_mul(-10, 0), (2884901888, -3));
+        /// assert_eq!(1_000_000_000i32.carrying_mul(-10, 10), (2884901898, -3));
+        #[doc = concat!("assert_eq!(",
+            stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
+            "(", stringify!($SelfT), "::MAX.unsigned_abs() + 1, ", stringify!($SelfT), "::MAX / 2));"
+        )]
+        /// ```
+        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(not(bootstrap))]
+        pub const fn carrying_mul(self, rhs: Self, carry: Self) -> ($UnsignedT, Self) {
+            let (lo, hi) = intrinsics::mul_double_add(self, rhs, carry);
+            (lo as $UnsignedT, hi)
+        }
+
+        /// Calculates the "full multiplication" `self * rhs + carry1 + carry2`
+        /// without the possibility to overflow.
+        ///
+        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
+        /// of the result as two separate values, in that order.
+        ///
+        /// Performs "long multiplication" which takes in an extra amount to add, and may return an
+        /// additional amount of overflow. This allows for chaining together multiple
+        /// multiplications to create "big integers" which represent larger values.
+        ///
+        /// If you don't need either `carry`, then you can use [`Self::widening_mul`] instead,
+        /// and if you only need one `carry`, then you can use [`Self::carrying_mul`] instead.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i32` is used here.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// assert_eq!(5i32.carrying2_mul(-2, 0, 0), (4294967286, -1));
+        /// assert_eq!(5i32.carrying2_mul(-2, 10, 10), (10, 0));
+        /// assert_eq!(1_000_000_000i32.carrying2_mul(-10, 0, 0), (2884901888, -3));
+        /// assert_eq!(1_000_000_000i32.carrying2_mul(-10, 10, 10), (2884901908, -3));
+        #[doc = concat!("assert_eq!(",
+            stringify!($SelfT), "::MAX.carrying2_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
+            "(", stringify!($UnsignedT), "::MAX, ", stringify!($SelfT), "::MAX / 2));"
+        )]
+        /// ```
+        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(not(bootstrap))]
+        pub const fn carrying2_mul(self, rhs: Self, carry1: Self, carry2: Self) -> ($UnsignedT, Self) {
+            let (lo, hi) = intrinsics::mul_double_add2(self, rhs, carry1, carry2);
+            (lo as $UnsignedT, hi)
         }
 
         /// Calculates the divisor when `self` is divided by `rhs`.

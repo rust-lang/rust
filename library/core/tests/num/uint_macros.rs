@@ -288,6 +288,27 @@ macro_rules! uint_module {
             assert_eq!($T::MAX.borrowing_sub($T::MAX, true), ($T::MAX, true));
         }
 
+        #[cfg(not(bootstrap))]
+        #[test]
+        fn test_widening_mul() {
+            assert_eq!($T::MAX.widening_mul($T::MAX), (1, $T::MAX - 1));
+        }
+
+        #[cfg(not(bootstrap))]
+        #[test]
+        fn test_carrying_mul() {
+            assert_eq!($T::MAX.carrying_mul($T::MAX, 0), (1, $T::MAX - 1));
+            assert_eq!($T::MAX.carrying_mul($T::MAX, $T::MAX), (0, $T::MAX));
+        }
+
+        #[cfg(not(bootstrap))]
+        #[test]
+        fn test_carrying2_mul() {
+            assert_eq!($T::MAX.carrying2_mul($T::MAX, 0, 0), (1, $T::MAX - 1));
+            assert_eq!($T::MAX.carrying2_mul($T::MAX, $T::MAX, 0), (0, $T::MAX));
+            assert_eq!($T::MAX.carrying2_mul($T::MAX, $T::MAX, $T::MAX), ($T::MAX, $T::MAX));
+        }
+
         #[test]
         fn test_midpoint() {
             assert_eq!(<$T>::midpoint(1, 3), 2);

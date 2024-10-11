@@ -103,6 +103,11 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::add_with_overflow
         | sym::sub_with_overflow
         | sym::mul_with_overflow
+        | sym::add_with_carry
+        | sym::sub_with_carry
+        | sym::mul_double
+        | sym::mul_double_add
+        | sym::mul_double_add2
         | sym::wrapping_add
         | sym::wrapping_sub
         | sym::wrapping_mul
@@ -432,6 +437,28 @@ pub fn check_intrinsic_type(
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                 (1, 0, vec![param(0), param(0)], Ty::new_tup(tcx, &[param(0), tcx.types.bool]))
             }
+
+            sym::add_with_carry | sym::sub_with_carry => (
+                1,
+                0,
+                vec![param(0), param(0), tcx.types.bool],
+                Ty::new_tup(tcx, &[param(0), tcx.types.bool]),
+            ),
+
+            sym::mul_double => {
+                (1, 0, vec![param(0), param(0)], Ty::new_tup(tcx, &[param(0), param(0)]))
+            }
+
+            sym::mul_double_add => {
+                (1, 0, vec![param(0), param(0), param(0)], Ty::new_tup(tcx, &[param(0), param(0)]))
+            }
+
+            sym::mul_double_add2 => (
+                1,
+                0,
+                vec![param(0), param(0), param(0), param(0)],
+                Ty::new_tup(tcx, &[param(0), param(0)]),
+            ),
 
             sym::ptr_guaranteed_cmp => (
                 1,

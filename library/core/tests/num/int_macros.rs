@@ -1,5 +1,5 @@
 macro_rules! int_module {
-    ($T:ident) => {
+    ($T:ident, $U:ident) => {
         use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
         use core::$T::*;
 
@@ -363,6 +363,66 @@ macro_rules! int_module {
             assert_eq!($T::MAX.borrowing_sub(-1, true), ($T::MAX, false)); // no intermediate overflow
             assert_eq!((0 as $T).borrowing_sub($T::MIN, false), ($T::MIN, true));
             assert_eq!((0 as $T).borrowing_sub($T::MIN, true), ($T::MAX, false));
+        }
+
+        #[test]
+        #[cfg(not(bootstrap))]
+        fn test_widening_mul() {
+            assert_eq!($T::MAX.widening_mul($T::MAX), (1, $T::MAX / 2));
+            assert_eq!($T::MIN.widening_mul($T::MAX), ($T::MIN as $U, $T::MIN / 2));
+            assert_eq!($T::MIN.widening_mul($T::MIN), (0, $T::MAX / 2 + 1));
+        }
+
+        #[test]
+        #[cfg(not(bootstrap))]
+        fn test_carrying_mul() {
+            assert_eq!($T::MAX.carrying_mul($T::MAX, 0), (1, $T::MAX / 2));
+            assert_eq!($T::MAX.carrying_mul($T::MAX, $T::MAX), ($U::MAX / 2 + 1, $T::MAX / 2));
+            assert_eq!($T::MAX.carrying_mul($T::MAX, $T::MIN), ($U::MAX / 2 + 2, $T::MAX / 2 - 1));
+            assert_eq!($T::MIN.carrying_mul($T::MAX, 0), ($T::MIN as $U, $T::MIN / 2));
+            assert_eq!($T::MIN.carrying_mul($T::MAX, $T::MAX), ($U::MAX, $T::MIN / 2));
+            assert_eq!($T::MIN.carrying_mul($T::MAX, $T::MIN), (0, $T::MIN / 2));
+            assert_eq!($T::MIN.carrying_mul($T::MIN, 0), (0, $T::MAX / 2 + 1));
+            assert_eq!($T::MIN.carrying_mul($T::MIN, $T::MAX), ($U::MAX / 2, $T::MAX / 2 + 1));
+            assert_eq!($T::MIN.carrying_mul($T::MIN, $T::MIN), ($U::MAX / 2 + 1, $T::MAX / 2));
+        }
+
+        #[test]
+        #[cfg(not(bootstrap))]
+        fn test_carrying2_mul() {
+            assert_eq!($T::MAX.carrying2_mul($T::MAX, 0, 0), (1, $T::MAX / 2));
+            assert_eq!($T::MAX.carrying2_mul($T::MAX, $T::MAX, 0), ($U::MAX / 2 + 1, $T::MAX / 2));
+            assert_eq!(
+                $T::MAX.carrying2_mul($T::MAX, $T::MIN, 0),
+                ($U::MAX / 2 + 2, $T::MAX / 2 - 1)
+            );
+            assert_eq!($T::MAX.carrying2_mul($T::MAX, $T::MAX, $T::MAX), ($U::MAX, $T::MAX / 2));
+            assert_eq!($T::MAX.carrying2_mul($T::MAX, $T::MAX, $T::MIN), (0, $T::MAX / 2));
+            assert_eq!($T::MAX.carrying2_mul($T::MAX, $T::MIN, $T::MIN), (1, $T::MAX / 2 - 1));
+            assert_eq!($T::MIN.carrying2_mul($T::MAX, 0, 0), ($T::MIN as $U, $T::MIN / 2));
+            assert_eq!($T::MIN.carrying2_mul($T::MAX, $T::MAX, 0), ($U::MAX, $T::MIN / 2));
+            assert_eq!($T::MIN.carrying2_mul($T::MAX, $T::MIN, 0), (0, $T::MIN / 2));
+            assert_eq!(
+                $T::MIN.carrying2_mul($T::MAX, $T::MAX, $T::MAX),
+                ($U::MAX / 2 - 1, $T::MIN / 2 + 1)
+            );
+            assert_eq!(
+                $T::MIN.carrying2_mul($T::MAX, $T::MAX, $T::MIN),
+                ($U::MAX / 2, $T::MIN / 2)
+            );
+            assert_eq!(
+                $T::MIN.carrying2_mul($T::MAX, $T::MIN, $T::MIN),
+                ($U::MAX / 2 + 1, $T::MIN / 2 - 1)
+            );
+            assert_eq!($T::MIN.carrying2_mul($T::MIN, 0, 0), (0, $T::MAX / 2 + 1));
+            assert_eq!($T::MIN.carrying2_mul($T::MIN, $T::MAX, 0), ($U::MAX / 2, $T::MAX / 2 + 1));
+            assert_eq!($T::MIN.carrying2_mul($T::MIN, $T::MIN, 0), ($U::MAX / 2 + 1, $T::MAX / 2));
+            assert_eq!(
+                $T::MIN.carrying2_mul($T::MIN, $T::MAX, $T::MAX),
+                ($U::MAX - 1, $T::MAX / 2 + 1)
+            );
+            assert_eq!($T::MIN.carrying2_mul($T::MIN, $T::MAX, $T::MIN), ($U::MAX, $T::MAX / 2));
+            assert_eq!($T::MIN.carrying2_mul($T::MIN, $T::MIN, $T::MIN), (0, $T::MAX / 2));
         }
 
         #[test]

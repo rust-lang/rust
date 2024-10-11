@@ -626,6 +626,17 @@ where
         self.write_immediate(Immediate::Scalar(val.into()), dest)
     }
 
+    /// Write a scalar pair to a place
+    #[inline(always)]
+    pub fn write_scalar_pair(
+        &mut self,
+        val1: impl Into<Scalar<M::Provenance>>,
+        val2: impl Into<Scalar<M::Provenance>>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.write_immediate(Immediate::ScalarPair(val1.into(), val2.into()), dest)
+    }
+
     /// Write a pointer to a place
     #[inline(always)]
     pub fn write_pointer(

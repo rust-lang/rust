@@ -5,6 +5,7 @@
 #![cfg_attr(not(bootstrap), warn(unqualified_local_imports))]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
+#![feature(bigint_helper_methods)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]

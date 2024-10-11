@@ -347,7 +347,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::rotate_left
             | sym::rotate_right
             | sym::saturating_add
-            | sym::saturating_sub => {
+            | sym::saturating_sub
+            | sym::add_with_carry
+            | sym::sub_with_carry
+            | sym::mul_double
+            | sym::mul_double_add
+            | sym::mul_double_add2 => {
                 let ty = arg_tys[0];
                 match int_type_width_signed(ty, self) {
                     Some((width, signed)) => match name {
@@ -416,6 +421,76 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                 width
                             );
                             self.call_intrinsic(llvm_name, &[lhs, rhs])
+                        }
+                        sym::add_with_carry | sym::sub_with_carry => {
+                            let llty = self.type_ix(width);
+                            let is_add = name == sym::add_with_carry;
+                            let lhs = args[0].immediate();
+                            let rhs = args[1].immediate();
+
+                            // sign-extending the carry would treat it as -1, not 1
+                            let carry = self.intcast(args[2].immediate(), llty, false);
+
+                            let llvm_name = &format!(
+                                "llvm.{}{}.with.overflow.i{}",
+                                if signed { 's' } else { 'u' },
+                                if is_add { "add" } else { "sub" },
+                                width,
+                            );
+
+                            let ret = self.call_intrinsic(llvm_name, &[lhs, rhs]);
+                            let agg = self.extract_value(ret, 0);
+                            let overflow1 = self.extract_value(ret, 1);
+
+                            let ret = self.call_intrinsic(llvm_name, &[agg, carry]);
+                            let agg = self.extract_value(ret, 0);
+                            let overflow2 = self.extract_value(ret, 1);
+
+                            let overflow = if signed {
+                                self.icmp(IntPredicate::IntNE, overflow1, overflow2)
+                            } else {
+                                self.or(overflow1, overflow2)
+                            };
+
+                            let holder = self.const_struct(
+                                &[self.const_undef(llty), self.const_undef(self.type_i1())],
+                                false,
+                            );
+                            let holder = self.insert_value(holder, agg, 0);
+                            let holder = self.insert_value(holder, overflow, 1);
+                            holder
+                        }
+                        sym::mul_double | sym::mul_double_add | sym::mul_double_add2 => {
+                            let single_ty = self.type_ix(width);
+                            let double_ty = self.type_ix(width * 2);
+                            let lhs = self.intcast(args[0].immediate(), double_ty, signed);
+                            let rhs = self.intcast(args[1].immediate(), double_ty, signed);
+                            let mut ret = self.mul(lhs, rhs);
+                            if name == sym::mul_double_add || name == sym::mul_double_add2 {
+                                let carry = self.intcast(args[2].immediate(), double_ty, signed);
+                                ret = self.add(ret, carry)
+                            }
+                            if name == sym::mul_double_add2 {
+                                let carry2 = self.intcast(args[3].immediate(), double_ty, signed);
+                                ret = self.add(ret, carry2);
+                            }
+
+                            // note: insignificant part is always treated as unsigned, even if we
+                            //   coerce it to signed in the final result to make the intrinsic
+                            //   signature simpler
+                            let lo = self.intcast(ret, single_ty, signed);
+
+                            let bits = self.const_uint(double_ty, width);
+                            let hi = self.ashr(ret, bits);
+                            let hi = self.intcast(hi, single_ty, signed);
+
+                            let holder = self.const_struct(
+                                &[self.const_undef(single_ty), self.const_undef(single_ty)],
+                                false,
+                            );
+                            let holder = self.insert_value(holder, lo, 0);
+                            let holder = self.insert_value(holder, hi, 1);
+                            holder
                         }
                         _ => bug!(),
                     },

@@ -2444,6 +2444,80 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
+    /// Performs integer addition with an explicit carry flag.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+    #[unstable(feature = "core_intrinsics", issue = "none")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn add_with_carry<T: Copy>(x: T, y: T, z: bool) -> (T, bool);
+
+    /// Performs integer subtraction with an explicit carry flag.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+    #[unstable(feature = "core_intrinsics", issue = "none")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn sub_with_carry<T: Copy>(x: T, y: T, z: bool) -> (T, bool);
+
+    /// Performs double-wide integer multiplication.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+    #[unstable(feature = "core_intrinsics", issue = "none")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn mul_double<T: Copy>(x: T, y: T) -> (T, T);
+
+    /// Performs double-wide integer multiplication with an extra addition.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+    #[unstable(feature = "core_intrinsics", issue = "none")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn mul_double_add<T: Copy>(x: T, y: T, z: T) -> (T, T);
+    /// Performs double-wide integer multiplication with an extra two additions.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+    #[unstable(feature = "core_intrinsics", issue = "none")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn mul_double_add2<T: Copy>(x: T, y: T, z: T, w: T) -> (T, T);
+
     /// Performs an exact division, resulting in undefined behavior where
     /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
     ///

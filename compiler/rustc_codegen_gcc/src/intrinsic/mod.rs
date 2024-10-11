@@ -192,6 +192,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::prefetch_write_instruction => {
                 unimplemented!();
             }
+            #[cfg(not(bootstrap))]
+            sym::add_with_carry
+            | sym::sub_with_carry
+            | sym::mul_double
+            | sym::mul_double_add
+            | sym::mul_double_add2 => unimplemented!(),
             sym::ctlz
             | sym::ctlz_nonzero
             | sym::cttz

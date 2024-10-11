@@ -178,6 +178,34 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )?;
                 self.write_scalar(val, dest)?;
             }
+            sym::add_with_carry | sym::sub_with_carry => {
+                let l = self.read_immediate(&args[0])?;
+                let r = self.read_immediate(&args[1])?;
+                let c = self.read_immediate(&args[2])?;
+                let (val, overflowed) = self.carrying_arith(
+                    if intrinsic_name == sym::add_with_carry { BinOp::Add } else { BinOp::Sub },
+                    &l,
+                    &r,
+                    &c,
+                )?;
+                self.write_scalar_pair(val, overflowed, dest)?;
+            }
+            sym::mul_double | sym::mul_double_add | sym::mul_double_add2 => {
+                let l = self.read_immediate(&args[0])?;
+                let r = self.read_immediate(&args[1])?;
+                let c1 = if intrinsic_name != sym::mul_double {
+                    Some(self.read_immediate(&args[2])?)
+                } else {
+                    None
+                };
+                let c2 = if intrinsic_name == sym::mul_double_add2 {
+                    Some(self.read_immediate(&args[3])?)
+                } else {
+                    None
+                };
+                let (lo, hi) = self.mul_double_add2(&l, &r, c1.as_ref(), c2.as_ref())?;
+                self.write_scalar_pair(lo, hi, dest)?;
+            }
             sym::discriminant_value => {
                 let place = self.deref_pointer(&args[0])?;
                 let variant = self.read_discriminant(&place)?;
@@ -570,6 +598,106 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         } else {
             val
+        })
+    }
+
+    pub fn carrying_arith(
+        &self,
+        mir_op: BinOp,
+        l: &ImmTy<'tcx, M::Provenance>,
+        r: &ImmTy<'tcx, M::Provenance>,
+        c: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, (Scalar<M::Provenance>, Scalar<M::Provenance>)> {
+        assert_eq!(l.layout.ty, r.layout.ty);
+        assert_matches!(l.layout.ty.kind(), ty::Int(..) | ty::Uint(..));
+        assert_matches!(c.layout.ty.kind(), ty::Bool);
+        assert_matches!(mir_op, BinOp::Add | BinOp::Sub);
+
+        let mir_op = mir_op.wrapping_to_overflowing().unwrap();
+
+        let (val, overflowed1) = self.binary_op(mir_op, l, r)?.to_scalar_pair();
+
+        let val = ImmTy::from_scalar(val, l.layout);
+        let c = ImmTy::from_scalar(c.to_scalar(), l.layout);
+
+        let (val, overflowed2) = self.binary_op(mir_op, &val, &c)?.to_scalar_pair();
+
+        let overflowed1 = overflowed1.to_bool()?;
+        let overflowed2 = overflowed2.to_bool()?;
+
+        let overflowed = Scalar::from_bool(if l.layout.abi.is_signed() {
+            overflowed1 != overflowed2
+        } else {
+            overflowed1 | overflowed2
+        });
+
+        interp_ok((val, overflowed))
+    }
+
+    pub fn mul_double_add2(
+        &self,
+        l: &ImmTy<'tcx, M::Provenance>,
+        r: &ImmTy<'tcx, M::Provenance>,
+        c1: Option<&ImmTy<'tcx, M::Provenance>>,
+        c2: Option<&ImmTy<'tcx, M::Provenance>>,
+    ) -> InterpResult<'tcx, (Scalar<M::Provenance>, Scalar<M::Provenance>)> {
+        assert_eq!(l.layout.ty, r.layout.ty);
+        assert_matches!(l.layout.ty.kind(), ty::Int(..) | ty::Uint(..));
+
+        let is_signed = l.layout.abi.is_signed();
+        let size = l.layout.size;
+        let bits = size.bits();
+        let l = l.to_scalar_int()?;
+        let r = r.to_scalar_int()?;
+
+        interp_ok(if is_signed {
+            let l = l.to_int(size);
+            let r = r.to_int(size);
+            let c1 = c1.map_or(interp_ok(0), |c1| interp_ok(c1.to_scalar_int()?.to_int(size)))?;
+            let c2 = c2.map_or(interp_ok(0), |c2| interp_ok(c2.to_scalar_int()?.to_int(size)))?;
+            if bits == 128 {
+                #[cfg(bootstrap)]
+                {
+                    let _ = (l, r, c1, c2);
+                    unimplemented!()
+                }
+                #[cfg(not(bootstrap))]
+                {
+                    let (lo, hi) = l.carrying2_mul(r, c1, c2);
+                    let lo = Scalar::from_uint(lo, size);
+                    let hi = Scalar::from_int(hi, size);
+                    (lo, hi)
+                }
+            } else {
+                let prod = l * r + c1 + c2;
+                let lo = Scalar::from_int(prod, size);
+                let hi = Scalar::from_int(prod >> size.bits(), size);
+                (lo, hi)
+            }
+        } else {
+            let l = l.to_uint(size);
+            let r = r.to_uint(size);
+            let c1 = c1.map_or(interp_ok(0), |c1| interp_ok(c1.to_scalar_int()?.to_uint(size)))?;
+            let c2 = c2.map_or(interp_ok(0), |c2| interp_ok(c2.to_scalar_int()?.to_uint(size)))?;
+            if bits == 128 {
+                #[cfg(bootstrap)]
+                {
+                    let _ = (l, r, c1, c2);
+                    unimplemented!()
+                }
+                #[cfg(not(bootstrap))]
+                {
+                    let (lo, hi) = l.carrying2_mul(r, c1, c2);
+                    let lo = Scalar::from_uint(lo, size);
+                    let hi = Scalar::from_uint(hi, size);
+                    (lo, hi)
+                }
+            } else {
+                let prod = l * r + c1 + c2;
+                let lo = Scalar::from_uint(prod, size);
+                let hi = Scalar::from_uint(prod >> size.bits(), size);
+                (lo, hi)
+            }
         })
     }
 
