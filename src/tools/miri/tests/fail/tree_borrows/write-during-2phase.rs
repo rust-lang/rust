@@ -16,12 +16,15 @@ impl Foo {
 
 pub fn main() {
     let mut f = Foo(0);
-    let inner = &mut f.0 as *mut u64;
-    let _res = f.add(unsafe {
-        let n = f.0;
+    let alias = &mut f.0 as *mut u64;
+    let res = f.add(unsafe {
         // This is the access at fault, but it's not immediately apparent because
         // the reference that got invalidated is not under a Protector.
-        *inner = 42;
-        n
+        *alias = 42;
+        0
     });
+    // `res` could be optimized to be `0`, since at the time the reference for the `self` argument
+    // is created, it has value `0`, and then later we add `0` to that. But turns out there is
+    // a sneaky alias that's used to change the value of `*self` before it is read...
+    assert_eq!(res, 42);
 }
