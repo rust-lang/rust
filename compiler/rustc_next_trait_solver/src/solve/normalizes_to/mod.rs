@@ -899,7 +899,7 @@ where
                 for ty in types.iter() {
                     // We can't find the intersection if the types used are generic.
                     //
-                    // FIXME(effects) do we want to look at where clauses to get some
+                    // FIXME(effects): do we want to look at where clauses to get some
                     // clue for the case where generic types are being used?
                     let Some(kind) = ty::EffectKind::try_from_ty(cx, ty) else {
                         return Err(NoSolution);

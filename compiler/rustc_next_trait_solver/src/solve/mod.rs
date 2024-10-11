@@ -10,9 +10,6 @@
 //!
 //! For a high-level overview of how this solver works, check out the relevant
 //! section of the rustc-dev-guide.
-//!
-//! FIXME(@lcnr): Write that section. If you read this before then ask me
-//! about it on zulip.
 
 mod alias_relate;
 mod assembly;

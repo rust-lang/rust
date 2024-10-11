@@ -444,7 +444,6 @@ where
     for &arg in &state.value.var_values.var_values.as_slice()
         [orig_values.len()..state.value.var_values.len()]
     {
-        // FIXME: This is so ugly.
         let unconstrained = delegate.fresh_var_for_kind_with_span(arg, span);
         orig_values.push(unconstrained);
     }
