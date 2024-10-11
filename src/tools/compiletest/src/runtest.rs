@@ -1804,23 +1804,14 @@ impl<'test> TestCx<'test> {
         let output_path = self.output_base_name().with_extension("s");
         let input_file = &self.testpaths.file;
 
-        let mut emit = Emit::None;
-        match self.props.assembly_output.as_ref().map(AsRef::as_ref) {
-            Some("emit-asm") => {
-                emit = Emit::Asm;
-            }
-
-            Some("bpf-linker") => {
-                emit = Emit::LinkArgsAsm;
-            }
-
-            Some("ptx-linker") => {
-                // No extra flags needed.
-            }
-
-            Some(header) => self.fatal(&format!("unknown 'assembly-output' header: {header}")),
-            None => self.fatal("missing 'assembly-output' header"),
-        }
+        // Use the `//@ assembly-output:` directive to determine how to emit assembly.
+        let emit = match self.props.assembly_output.as_deref() {
+            Some("emit-asm") => Emit::Asm,
+            Some("bpf-linker") => Emit::LinkArgsAsm,
+            Some("ptx-linker") => Emit::None, // No extra flags needed.
+            Some(other) => self.fatal(&format!("unknown 'assembly-output' directive: {other}")),
+            None => self.fatal("missing 'assembly-output' directive"),
+        };
 
         let rustc = self.make_compile_args(
             input_file,
