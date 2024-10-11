@@ -3594,52 +3594,64 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         span: Span,
     ) {
-        if let Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) =
-            self.tcx.coroutine_kind(obligation.cause.body_id)
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+
+        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
+        let impls_future = self.type_implements_trait(
+            future_trait,
+            [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
+            obligation.param_env,
+        );
+        if !impls_future.must_apply_modulo_regions() {
+            return;
+        }
+
+        let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
+        // `<T as Future>::Output`
+        let projection_ty = trait_pred.map_bound(|trait_pred| {
+            Ty::new_projection(
+                self.tcx,
+                item_def_id,
+                // Future::Output has no args
+                [trait_pred.self_ty()],
+            )
+        });
+        let InferOk { value: projection_ty, .. } =
+            self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
+
+        debug!(
+            normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
+        );
+        let try_obligation = self.mk_trait_obligation_with_new_self_ty(
+            obligation.param_env,
+            trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
+        );
+        debug!(try_trait_obligation = ?try_obligation);
+        if self.predicate_may_hold(&try_obligation)
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+            && snippet.ends_with('?')
         {
-            let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
-
-            let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-            let impls_future = self.type_implements_trait(
-                future_trait,
-                [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
-                obligation.param_env,
-            );
-            if !impls_future.must_apply_modulo_regions() {
-                return;
-            }
-
-            let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
-            // `<T as Future>::Output`
-            let projection_ty = trait_pred.map_bound(|trait_pred| {
-                Ty::new_projection(
-                    self.tcx,
-                    item_def_id,
-                    // Future::Output has no args
-                    [trait_pred.self_ty()],
-                )
-            });
-            let InferOk { value: projection_ty, .. } =
-                self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
-
-            debug!(
-                normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
-            );
-            let try_obligation = self.mk_trait_obligation_with_new_self_ty(
-                obligation.param_env,
-                trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
-            );
-            debug!(try_trait_obligation = ?try_obligation);
-            if self.predicate_may_hold(&try_obligation)
-                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
-                && snippet.ends_with('?')
-            {
-                err.span_suggestion_verbose(
-                    span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
-                    "consider `await`ing on the `Future`",
-                    ".await",
-                    Applicability::MaybeIncorrect,
-                );
+            match self.tcx.coroutine_kind(obligation.cause.body_id) {
+                Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+                    err.span_suggestion_verbose(
+                        span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
+                        "consider `await`ing on the `Future`",
+                        ".await",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {
+                    let mut span: MultiSpan = span.with_lo(span.hi() - BytePos(1)).into();
+                    span.push_span_label(
+                        self.tcx.def_span(obligation.cause.body_id),
+                        "this is not `async`",
+                    );
+                    err.span_note(
+                        span,
+                        "this implements `Future` and its output type supports \
+                        `?`, but the future cannot be awaited in a synchronous function",
+                    );
+                }
             }
         }
     }
