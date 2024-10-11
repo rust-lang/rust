@@ -841,13 +841,13 @@ impl<'test> TestCx<'test> {
     /// Auxiliaries, no matter how deep, have the same root_out_dir and root_testpaths.
     fn document(&self, root_out_dir: &Path, root_testpaths: &TestPaths) -> ProcRes {
         if self.props.build_aux_docs {
-            for rel_ab in &self.props.aux_builds {
+            for rel_ab in &self.props.aux.builds {
                 let aux_testpaths = self.compute_aux_test_paths(root_testpaths, rel_ab);
-                let aux_props =
+                let props_for_aux =
                     self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
                 let aux_cx = TestCx {
                     config: self.config,
-                    props: &aux_props,
+                    props: &props_for_aux,
                     testpaths: &aux_testpaths,
                     revision: self.revision,
                 };
@@ -1059,11 +1059,11 @@ impl<'test> TestCx<'test> {
     fn aux_output_dir(&self) -> PathBuf {
         let aux_dir = self.aux_output_dir_name();
 
-        if !self.props.aux_builds.is_empty() {
+        if !self.props.aux.builds.is_empty() {
             remove_and_create_dir_all(&aux_dir);
         }
 
-        if !self.props.aux_bins.is_empty() {
+        if !self.props.aux.bins.is_empty() {
             let aux_bin_dir = self.aux_bin_output_dir_name();
             remove_and_create_dir_all(&aux_dir);
             remove_and_create_dir_all(&aux_bin_dir);
@@ -1073,15 +1073,15 @@ impl<'test> TestCx<'test> {
     }
 
     fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Path, rustc: &mut Command) {
-        for rel_ab in &self.props.aux_builds {
+        for rel_ab in &self.props.aux.builds {
             self.build_auxiliary(of, rel_ab, &aux_dir, false /* is_bin */);
         }
 
-        for rel_ab in &self.props.aux_bins {
+        for rel_ab in &self.props.aux.bins {
             self.build_auxiliary(of, rel_ab, &aux_dir, true /* is_bin */);
         }
 
-        for (aux_name, aux_path) in &self.props.aux_crates {
+        for (aux_name, aux_path) in &self.props.aux.crates {
             let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, false /* is_bin */);
             let lib_name =
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), aux_type);
@@ -1097,7 +1097,7 @@ impl<'test> TestCx<'test> {
 
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
         // to `-Zcodegen-backend` when compiling the test file.
-        if let Some(aux_file) = &self.props.aux_codegen_backend {
+        if let Some(aux_file) = &self.props.aux.codegen_backend {
             let aux_type = self.build_auxiliary(of, aux_file, aux_dir, false);
             if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
                 let lib_path = aux_dir.join(&lib_name);

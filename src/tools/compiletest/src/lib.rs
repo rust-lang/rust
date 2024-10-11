@@ -862,7 +862,8 @@ fn files_related_to_test(
         related.push(testpaths.file.clone());
     }
 
-    for aux in &props.aux {
+    for aux in props.aux.all_aux_path_strings() {
+        // FIXME(Zalathar): Perform all `auxiliary` path resolution in one place.
         let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
         related.push(path);
     }

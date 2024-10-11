@@ -9,11 +9,13 @@ use std::process::Command;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
+use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::header::cfg::{MatchOutcome, parse_cfg_name_directive};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
 use crate::{extract_cdb_version, extract_gdb_version};
 
+pub(crate) mod auxiliary;
 mod cfg;
 mod needs;
 #[cfg(test)]
@@ -33,9 +35,10 @@ impl HeadersCache {
 /// the test.
 #[derive(Default)]
 pub struct EarlyProps {
-    pub aux: Vec<String>,
-    pub aux_bin: Vec<String>,
-    pub aux_crate: Vec<(String, String)>,
+    /// Auxiliary crates that should be built and made available to this test.
+    /// Included in [`EarlyProps`] so that the indicated files can participate
+    /// in up-to-date checking. Building happens via [`TestProps::aux`] instead.
+    pub(crate) aux: AuxProps,
     pub revisions: Vec<String>,
 }
 
@@ -55,21 +58,7 @@ impl EarlyProps {
             testfile,
             rdr,
             &mut |HeaderLine { directive: ln, .. }| {
-                config.push_name_value_directive(ln, directives::AUX_BUILD, &mut props.aux, |r| {
-                    r.trim().to_string()
-                });
-                config.push_name_value_directive(
-                    ln,
-                    directives::AUX_BIN,
-                    &mut props.aux_bin,
-                    |r| r.trim().to_string(),
-                );
-                config.push_name_value_directive(
-                    ln,
-                    directives::AUX_CRATE,
-                    &mut props.aux_crate,
-                    Config::parse_aux_crate,
-                );
+                parse_and_update_aux(config, ln, &mut props.aux);
                 config.parse_and_update_revisions(ln, &mut props.revisions);
             },
         );
@@ -98,18 +87,8 @@ pub struct TestProps {
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<PathBuf>,
-    // Other crates that should be compiled (typically from the same
-    // directory as the test, but for backwards compatibility reasons
-    // we also check the auxiliary directory)
-    pub aux_builds: Vec<String>,
-    // Auxiliary crates that should be compiled as `#![crate_type = "bin"]`.
-    pub aux_bins: Vec<String>,
-    // Similar to `aux_builds`, but a list of NAME=somelib.rs of dependencies
-    // to build and pass with the `--extern` flag.
-    pub aux_crates: Vec<(String, String)>,
-    /// Similar to `aux_builds`, but also passes the resulting dylib path to
-    /// `-Zcodegen-backend`.
-    pub aux_codegen_backend: Option<String>,
+    /// Auxiliary crates that should be built and made available to this test.
+    pub(crate) aux: AuxProps,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
     // Environment variables to unset prior to compiling.
@@ -276,10 +255,7 @@ impl TestProps {
             run_flags: vec![],
             doc_flags: vec![],
             pp_exact: None,
-            aux_builds: vec![],
-            aux_bins: vec![],
-            aux_crates: vec![],
-            aux_codegen_backend: None,
+            aux: Default::default(),
             revisions: vec![],
             rustc_env: vec![
                 ("RUSTC_ICE".to_string(), "0".to_string()),
@@ -454,21 +430,10 @@ impl TestProps {
                         PRETTY_COMPARE_ONLY,
                         &mut self.pretty_compare_only,
                     );
-                    config.push_name_value_directive(ln, AUX_BUILD, &mut self.aux_builds, |r| {
-                        r.trim().to_string()
-                    });
-                    config.push_name_value_directive(ln, AUX_BIN, &mut self.aux_bins, |r| {
-                        r.trim().to_string()
-                    });
-                    config.push_name_value_directive(
-                        ln,
-                        AUX_CRATE,
-                        &mut self.aux_crates,
-                        Config::parse_aux_crate,
-                    );
-                    if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
-                        self.aux_codegen_backend = Some(r.trim().to_owned());
-                    }
+
+                    // Call a helper method to deal with aux-related directives.
+                    parse_and_update_aux(config, ln, &mut self.aux);
+
                     config.push_name_value_directive(
                         ln,
                         EXEC_ENV,
@@ -942,14 +907,6 @@ fn iter_header(
 }
 
 impl Config {
-    fn parse_aux_crate(r: String) -> (String, String) {
-        let mut parts = r.trim().splitn(2, '=');
-        (
-            parts.next().expect("missing aux-crate name (e.g. log=log.rs)").to_string(),
-            parts.next().expect("missing aux-crate value (e.g. log=log.rs)").to_string(),
-        )
-    }
-
     fn parse_and_update_revisions(&self, line: &str, existing: &mut Vec<String>) {
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
