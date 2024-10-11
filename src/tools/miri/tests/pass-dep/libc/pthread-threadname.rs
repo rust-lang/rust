@@ -79,10 +79,9 @@ fn main() {
             // if the buffer is shorter than the thread name.
             #[cfg(any(target_os = "illumos", target_os = "solaris"))]
             assert_eq!(get_thread_name(&mut buf[..4]), libc::ERANGE);
-
-            // For libc implementation for macOS it's not an error
-            // for a buffer being too short for the thread name.
-            #[cfg(target_os = "macos")]
+            // On macOS and FreeBSD it's not an error for the buffer to be
+            // too short for the thread name -- they truncate instead.
+            #[cfg(any(target_os = "freebsd", target_os = "macos"))]
             {
                 // Ensure that a zero sized buffer returns no error.
                 assert_eq!(get_thread_name(&mut buf[..0]), 0);
@@ -123,8 +122,8 @@ fn main() {
             // Also test directly calling pthread_setname to check its return value.
             assert_eq!(set_thread_name(&cstr), 0);
 
-            // But with a too long name it should fail (except on FreeBSD where the
-            // function has no return, hence cannot indicate failure).
+            // But with a too long name it should fail (except on FreeBSD where
+            // names of arbitrary size seem to be supported).
             // On macOS, the error code is different.
             #[cfg(not(any(target_os = "freebsd", target_os = "macos")))]
             assert_eq!(set_thread_name(&CString::new(long_name).unwrap()), libc::ERANGE);
