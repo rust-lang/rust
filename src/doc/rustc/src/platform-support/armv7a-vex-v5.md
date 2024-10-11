@@ -2,7 +2,6 @@
 
 **Tier: 3**
 
-
 Allows compiling user programs for the [VEX V5 Brain](https://www.vexrobotics.com/276-4810.html), a microcontroller for educational and competitive robotics.
 
 Rust support for this target is not affiliated with VEX Robotics or IFI.
@@ -11,9 +10,9 @@ Rust support for this target is not affiliated with VEX Robotics or IFI.
 
 This target is maintained by members of the [vexide](https://github.com/vexide) organization:
 
+- [@max-niederman](https://github.com/max-niederman)
 - [@Tropix126](https://github.com/Tropix126)
 - [@Gavin-Niederman](https://github.com/Gavin-Niederman)
-- [@max-niederman](https://github.com/max-niederman)
 - [@doinkythederp](https://github.com/doinkythederp)
 
 ## Requirements
