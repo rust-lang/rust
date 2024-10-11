@@ -41,12 +41,12 @@ runners:
 
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
-    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc
+    SCRIPT: ./x.py --stage 2 build llvm
     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     MACOSX_DEPLOYMENT_TARGET: 10.12
     MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-    SELECT_XCODE: /Applications/Xcode_14.3.1.app
+    SELECT_XCODE: /Applications/Xcode_15.2.app
     NO_LLVM_ASSERTIONS: 1
     NO_DEBUG_ASSERTIONS: 1
     NO_OVERFLOW_CHECKS: 1
@@ -280,11 +280,11 @@ auto:
 
   - image: dist-x86_64-apple
     env:
-      SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+      SCRIPT: ./x.py build llvm --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
       RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       MACOSX_DEPLOYMENT_TARGET: 10.12
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      SELECT_XCODE: /Applications/Xcode_15.2.app
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
@@ -294,13 +294,13 @@ auto:
 
   - image: dist-apple-various
     env:
-      SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim,aarch64-apple-ios-macabi,x86_64-apple-ios-macabi
+      SCRIPT: ./x.py build llvm --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim,aarch64-apple-ios-macabi,x86_64-apple-ios-macabi
       # Mac Catalyst cannot currently compile the sanitizer:
       # https://github.com/rust-lang/rust/issues/129069
       RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set target.aarch64-apple-ios-macabi.sanitizers=false --set target.x86_64-apple-ios-macabi.sanitizers=false
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       MACOSX_DEPLOYMENT_TARGET: 10.12
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      SELECT_XCODE: /Applications/Xcode_15.2.app
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
@@ -320,7 +320,7 @@ auto:
   # This target only needs to support 11.0 and up as nothing else supports the hardware
   - image: dist-aarch64-apple
     env:
-      SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      SCRIPT: ./x.py build llvm --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
         --enable-full-tools
         --enable-sanitizers
@@ -329,7 +329,7 @@ auto:
         --set llvm.ninja=false
         --set rust.lto=thin
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
@@ -343,13 +343,13 @@ auto:
   # This target only needs to support 11.0 and up as nothing else supports the hardware
   - image: aarch64-apple
     env:
-      SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      SCRIPT: ./x.py --stage 2 build llvm --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
