@@ -25,6 +25,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+
+use crate::{iter::FromIterator, ops::{self, ControlFlow}};
+
 mod bytewise;
 pub(crate) use bytewise::BytewiseEq;
 
@@ -626,6 +629,114 @@ impl Ordering {
             Equal => f(),
             _ => self,
         }
+    }
+}
+
+/// Implementation of [`ops::Try`] that diverges on any variant other than [`Ordering::Equal`].
+/// In some cases, this may be more clear than [`Ordering::then_with`].
+///
+/// # Example
+///
+/// ```rust
+/// # use core::cmp::{Ord, Ordering};
+/// # #[derive(PartialEq, Eq, PartialOrd, Ord)] struct String;
+/// # #[derive(Eq, PartialEq)]
+/// struct Movie {
+///     name: String,
+///     release_year: u16
+/// }
+///
+/// # impl PartialOrd for Movie { fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) } }
+/// #
+/// impl Ord for Movie {
+///     fn cmp(&self, other: &Self) -> Ordering {
+///         self.name.cmp(&other.name)?;
+///         self.release_year.cmp(&other.release_year)
+///     }
+/// }
+/// ```
+#[stable(feature = "ordering_extra_impl", since = "1.85.0")]
+impl ops::Try for Ordering {
+    type Output = Self;
+    type Residual = Self;
+
+    #[inline]
+    fn from_output(output: Self) -> Self {
+        output
+    }
+
+    fn branch(self) -> ControlFlow<Self, Self> {
+        match self {
+            Ordering::Equal => ControlFlow::Continue(self),
+            _ => ControlFlow::Break(self)
+        }
+    }
+}
+
+#[stable(feature = "ordering_extra_impl", since = "1.85.0")]
+impl ops::FromResidual for Ordering {
+    #[inline]
+    fn from_residual(residual: Self) -> Self {
+        residual
+    }
+}
+
+/// Implementation of `FromIterator` that returns the first unequal comparison, or [`Ordering::Equal`] if there are none.
+///
+/// # Example
+///
+/// ```rust
+/// # use core::cmp::{Ord, Ordering};
+/// /// Stores a integer using an arbitrary amount of base 2<sup>64</sup> digits.
+/// # #[derive(Eq, PartialEq)]
+/// struct BigInteger<const LEN: usize> {
+///     is_negative: bool,
+///     digits: [u64; LEN]
+/// }
+///
+/// # impl<const LEN: usize> PartialOrd for BigInteger<LEN> { fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) } }
+/// #
+/// impl<const LEN: usize> Ord for BigInteger<LEN> {
+///     fn cmp(&self, other: &Self) -> Ordering {
+///         other.is_negative.cmp(&self.is_negative)?;
+///         self.digits.iter().rev()
+///             .zip(other.digits.iter().rev())
+///             .map(|(left, right)| left.cmp(right))
+///             .map(|mut ord| {
+///                  if self.is_negative { ord = ord.reverse(); } 
+///                  ord
+///             })
+///             .collect()
+///     }
+/// }
+/// # // Just to make sure the doc code isn't broken
+/// #
+/// # fn main() {
+/// #     let a = BigInteger { is_negative: false, digits: [0, 0, 5] };
+/// #     let b = BigInteger { is_negative: false, digits: [u64::MAX, u64::MAX, 4] };
+/// #     let c = BigInteger { is_negative: true, digits:  [0, 0, 5] };
+/// #     let d = BigInteger { is_negative: true, digits: [u64::MAX, u64::MAX, 4] };
+/// #     assert!(a > b); assert!(c < b); assert!(b == b); assert!(c < d);
+/// # }
+/// ```
+#[stable(feature = "ordering_extra_impl", since = "1.85.0")]
+impl FromIterator<Ordering> for Ordering {
+    fn from_iter<I: IntoIterator<Item = Ordering>>(i: I) -> Ordering {
+        for ord in i {
+            ord?;
+        }
+        Ordering::Equal
+    }
+}
+
+#[stable(feature = "ordering_extra_impl", since = "1.85.0")]
+/// Shorthand for [`Ordering::reverse`].
+impl ops::Neg for Ordering {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self {
+        self.reverse()
     }
 }
 

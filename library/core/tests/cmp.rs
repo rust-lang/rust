@@ -215,6 +215,28 @@ fn cmp_default() {
     assert_eq!(Fool(false), Fool(true));
 }
 
+#[test]
+fn ordering_try() {
+    fn gt() -> Ordering {
+        5.cmp(&3)?;
+        unreachable!()
+    }
+
+    fn lt() -> Ordering {
+        3.cmp(&5)?;
+        unreachable!()
+    }
+
+    fn eq() -> Ordering {
+        4.cmp(&4)?;
+        Ordering::Equal
+    }
+
+    assert_eq!(eq(), Ordering::Equal);
+    assert_eq!(lt(), Ordering::Less);
+    assert_eq!(gt(), Ordering::Greater);
+}
+
 /* FIXME(#110395)
 mod const_cmp {
     use super::*;
