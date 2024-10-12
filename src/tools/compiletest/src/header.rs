@@ -57,7 +57,7 @@ impl EarlyProps {
             &mut poisoned,
             testfile,
             rdr,
-            &mut |HeaderLine { directive: ln, .. }| {
+            &mut |DirectiveLine { directive: ln, .. }| {
                 parse_and_update_aux(config, ln, &mut props.aux);
                 config.parse_and_update_revisions(ln, &mut props.revisions);
             },
@@ -344,7 +344,7 @@ impl TestProps {
                 &mut poisoned,
                 testfile,
                 file,
-                &mut |HeaderLine { header_revision, directive: ln, .. }| {
+                &mut |DirectiveLine { header_revision, directive: ln, .. }| {
                     if header_revision.is_some() && header_revision != test_revision {
                         return;
                     }
@@ -745,7 +745,7 @@ const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
 ///           ^^^^^^^^^^^^^^^^^ directive
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^^ original_line
 /// ```
-struct HeaderLine<'ln> {
+struct DirectiveLine<'ln> {
     line_number: usize,
     /// Raw line from the test file, including comment prefix and any revision.
     original_line: &'ln str,
@@ -803,7 +803,7 @@ fn iter_header(
     poisoned: &mut bool,
     testfile: &Path,
     rdr: impl Read,
-    it: &mut dyn FnMut(HeaderLine<'_>),
+    it: &mut dyn FnMut(DirectiveLine<'_>),
 ) {
     if testfile.is_dir() {
         return;
@@ -824,7 +824,12 @@ fn iter_header(
         ];
         // Process the extra implied directives, with a dummy line number of 0.
         for directive in extra_directives {
-            it(HeaderLine { line_number: 0, original_line: "", header_revision: None, directive });
+            it(DirectiveLine {
+                line_number: 0,
+                original_line: "",
+                header_revision: None,
+                directive,
+            });
         }
     }
 
@@ -897,7 +902,7 @@ fn iter_header(
             }
         }
 
-        it(HeaderLine {
+        it(DirectiveLine {
             line_number,
             original_line,
             header_revision,
@@ -1292,7 +1297,7 @@ pub fn make_test_description<R: Read>(
         &mut local_poisoned,
         path,
         src,
-        &mut |HeaderLine { header_revision, original_line, directive: ln, line_number }| {
+        &mut |DirectiveLine { header_revision, original_line, directive: ln, line_number }| {
             if header_revision.is_some() && header_revision != test_revision {
                 return;
             }
