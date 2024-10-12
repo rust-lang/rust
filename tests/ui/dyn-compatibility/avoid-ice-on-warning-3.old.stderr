@@ -26,7 +26,7 @@ LL | trait B { fn f(a: A) -> dyn A; }
    |                         +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:12:19
+  --> $DIR/avoid-ice-on-warning-3.rs:14:19
    |
 LL | trait A { fn g(b: B) -> B; }
    |                   ^
@@ -39,7 +39,7 @@ LL | trait A { fn g(b: dyn B) -> B; }
    |                   +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:12:25
+  --> $DIR/avoid-ice-on-warning-3.rs:14:25
    |
 LL | trait A { fn g(b: B) -> B; }
    |                         ^
@@ -72,7 +72,7 @@ LL | trait B { fn f(a: A) -> A; }
    |                   ^ `A` cannot be made into an object
    |
 note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/avoid-ice-on-warning-3.rs:12:14
+  --> $DIR/avoid-ice-on-warning-3.rs:14:14
    |
 LL | trait A { fn g(b: B) -> B; }
    |       -      ^ ...because associated function `g` has no `self` parameter
@@ -88,7 +88,7 @@ LL | trait A { fn g(b: B) -> B where Self: Sized; }
    |                           +++++++++++++++++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:12:19
+  --> $DIR/avoid-ice-on-warning-3.rs:14:19
    |
 LL | trait A { fn g(b: B) -> B; }
    |                   ^
@@ -102,7 +102,7 @@ LL | trait A { fn g(b: dyn B) -> B; }
    |                   +++
 
 error[E0038]: the trait `B` cannot be made into an object
-  --> $DIR/avoid-ice-on-warning-3.rs:12:19
+  --> $DIR/avoid-ice-on-warning-3.rs:14:19
    |
 LL | trait A { fn g(b: B) -> B; }
    |                   ^ `B` cannot be made into an object

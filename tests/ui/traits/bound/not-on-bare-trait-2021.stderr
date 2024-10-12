@@ -1,38 +1,4 @@
-error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
-  --> $DIR/not-on-bare-trait-2021.rs:8:12
-   |
-LL | fn foo(_x: Foo + Send) {
-   |            ^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn Foo + Send + 'static)`
-   = help: unsized fn params are gated as an unstable feature
-help: you can use `impl Trait` as the argument type
-   |
-LL | fn foo(_x: impl Foo + Send) {
-   |            ++++
-help: function arguments must have a statically known size, borrowed types always have a known size
-   |
-LL | fn foo(_x: &(dyn Foo + Send)) {
-   |            +++++           +
-
-error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
-  --> $DIR/not-on-bare-trait-2021.rs:12:11
-   |
-LL | fn bar(x: Foo) -> Foo {
-   |           ^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
-   = help: unsized fn params are gated as an unstable feature
-help: you can use `impl Trait` as the argument type
-   |
-LL | fn bar(x: impl Foo) -> Foo {
-   |           ++++
-help: function arguments must have a statically known size, borrowed types always have a known size
-   |
-LL | fn bar(x: &dyn Foo) -> Foo {
-   |           ++++
-
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/not-on-bare-trait-2021.rs:8:12
    |
 LL | fn foo(_x: Foo + Send) {
@@ -51,8 +17,8 @@ help: alternatively, use a trait object to accept any type that implements `Foo 
 LL | fn foo(_x: &(dyn Foo + Send)) {
    |            +++++           +
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/not-on-bare-trait-2021.rs:12:11
+error[E0782]: expected a type, found a trait
+  --> $DIR/not-on-bare-trait-2021.rs:11:11
    |
 LL | fn bar(x: Foo) -> Foo {
    |           ^^^
@@ -70,8 +36,8 @@ help: alternatively, use a trait object to accept any type that implements `Foo`
 LL | fn bar(x: &dyn Foo) -> Foo {
    |           ++++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/not-on-bare-trait-2021.rs:12:19
+error[E0782]: expected a type, found a trait
+  --> $DIR/not-on-bare-trait-2021.rs:11:19
    |
 LL | fn bar(x: Foo) -> Foo {
    |                   ^^^
@@ -85,7 +51,6 @@ help: alternatively, you can return an owned trait object
 LL | fn bar(x: Foo) -> Box<dyn Foo> {
    |                   +++++++    +
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0277, E0782.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0782`.
