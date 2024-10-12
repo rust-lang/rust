@@ -26,6 +26,49 @@ macro_rules! macro_if {
 
 macro_rules! make_ast_visitor {
     ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
+        #[allow(unused)]
+        macro_rules! ref_t {
+            ($t: ty) => { & $($lt)? $($mut)? $t };
+        }
+
+        #[allow(unused)]
+        macro_rules! result {
+            ($V: ty) => {
+                macro_if!($($mut)? { () } else { <$V>::Result })
+            };
+            () => {
+                result!(Self)
+            };
+        }
+
+        #[allow(unused)]
+        macro_rules! make_visit {
+            (
+                $ty: ty
+                $$(, $$($arg: ident)? $$(_ $ignored_arg: ident)?: $arg_ty: ty)*;
+                $visit: ident, $walk: ident
+            ) => {
+                fn $visit(
+                    &mut self,
+                    node: ref_t!($ty)
+                    $$(, $$($arg)? $$(#[allow(unused)] $ignored_arg)?: $arg_ty)*
+                ) -> result!() {
+                    $walk(self, node $$($$(, $arg)?)*)
+                }
+            };
+        }
+
+        #[allow(unused)]
+        macro_rules! P {
+            ($t: ty) => {
+                macro_if!{$($mut)? {
+                    P<$t>
+                } else {
+                    $t
+                }}
+            };
+        }
+
         /// Each method of the traits `Visitor` and `MutVisitor` trait is a hook
         /// to be potentially overridden. Each method's default implementation
         /// recursively visits the substructure of the input via the corresponding
