@@ -40,16 +40,12 @@ error[E0570]: `"thiscall"` is not a supported ABI for the current target
 LL | extern "thiscall" fn thiscall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target
+error[E0570]: `"stdcall"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:56:1
    |
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
-error: aborting due to 7 previous errors; 1 warning emitted
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0570`.
