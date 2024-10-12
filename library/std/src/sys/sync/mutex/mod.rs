@@ -1,8 +1,12 @@
 cfg_if::cfg_if! {
     if #[cfg(any(
-        all(target_os = "windows", not(target_vendor = "win7")),
         target_os = "linux",
         target_os = "android",
+    ))] {
+        mod pi_futex;
+        pub use pi_futex::Mutex;
+    } else if #[cfg(any(
+        all(target_os = "windows", not(target_vendor = "win7")),
         target_os = "freebsd",
         target_os = "openbsd",
         target_os = "dragonfly",
