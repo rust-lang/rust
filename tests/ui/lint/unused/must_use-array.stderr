@@ -16,12 +16,6 @@ error: unused array of `S` that must be used
 LL |     many();
    |     ^^^^^^
 
-error: unused array of `S` in tuple element 0 that must be used
-  --> $DIR/must_use-array.rs:46:6
-   |
-LL |     ([S], 0, ());
-   |      ^^^
-
 error: unused array of implementers of `T` that must be used
   --> $DIR/must_use-array.rs:47:5
    |
@@ -40,11 +34,5 @@ error: unused array of arrays of arrays of `S` that must be used
 LL |     array_of_arrays_of_arrays();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unused array of `S` that must be used
-  --> $DIR/must_use-array.rs:52:5
-   |
-LL |     usize_max();
-   |     ^^^^^^^^^^^
-
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 

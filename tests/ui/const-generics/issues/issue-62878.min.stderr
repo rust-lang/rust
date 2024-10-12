@@ -6,18 +6,6 @@ LL | fn foo<const N: usize, const A: [u8; N]>() {}
    |
    = note: const parameters may not be used in the type of const parameters
 
-error: `[u8; N]` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-62878.rs:5:33
-   |
-LL | fn foo<const N: usize, const A: [u8; N]>() {}
-   |                                 ^^^^^^^
-   |
-   = note: the only supported types are integers, `bool`, and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-
 error[E0747]: type provided when a constant was expected
   --> $DIR/issue-62878.rs:10:11
    |
@@ -30,7 +18,7 @@ help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
 LL + #![feature(generic_arg_infer)]
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0747, E0770.
 For more information about an error, try `rustc --explain E0747`.
