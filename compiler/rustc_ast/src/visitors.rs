@@ -125,15 +125,12 @@ macro_rules! make_ast_visitor {
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
                 make_visit!{MutTy; visit_mt, walk_mt}
-                make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
                 make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
                 make_visit!{Path; visit_path, walk_path}
                 make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
                 make_visit!{UseTree; visit_use_tree, walk_use_tree}
                 make_visit!{VariantData; visit_variant_data, walk_variant_data}
                 make_visit!{WhereClause; visit_where_clause, walk_where_clause}
-
-                make_visit!{P!(FnDecl); visit_fn_decl, walk_fn_decl}
 
                 fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
                     walk_flat_map_item(self, ni)
@@ -215,7 +212,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{EnumDef; visit_enum_def, walk_enum_def}
                 make_visit!{ExprField; visit_expr_field, walk_expr_field}
                 make_visit!{FieldDef; visit_field_def, walk_field_def}
-                make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
                 make_visit!{ForeignItem; visit_foreign_item, walk_item}
                 make_visit!{GenericParam; visit_generic_param, walk_generic_param}
                 make_visit!{Item; visit_item, walk_item}
@@ -264,6 +260,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Attribute; visit_attribute, walk_attribute}
             make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
             make_visit!{Crate; visit_crate, walk_crate}
+            make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
             make_visit!{FormatArgs; visit_format_args, walk_format_args}
             make_visit!{GenericArg; visit_generic_arg, walk_generic_arg}
             make_visit!{GenericArgs; visit_generic_args, walk_generic_args}
@@ -273,6 +270,7 @@ macro_rules! make_ast_visitor {
             make_visit!{InlineAsmSym; visit_inline_asm_sym, walk_inline_asm_sym}
             make_visit!{Label; visit_label, walk_label}
             make_visit!{MacCall; visit_mac_call, walk_mac}
+            make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
@@ -281,6 +279,7 @@ macro_rules! make_ast_visitor {
 
             make_visit!{P!(Block); visit_block, walk_block}
             make_visit!{P!(Expr); visit_expr, walk_expr}
+            make_visit!{P!(FnDecl); visit_fn_decl, walk_fn_decl}
             make_visit!{P!(Local); visit_local, walk_local}
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Ty); visit_ty, walk_ty}
@@ -548,13 +547,13 @@ pub mod visit {
                     body,
                     from_glob: _,
                 }) => {
-                    try_visit!(walk_qself(visitor, qself));
+                    try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(path, *id));
                     visit_opt!(visitor, visit_ident, *rename);
                     visit_opt!(visitor, visit_block, body);
                 }
                 ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
-                    try_visit!(walk_qself(visitor, qself));
+                    try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(prefix, *id));
                     if let Some(suffixes) = suffixes {
                         for (ident, rename) in suffixes {
@@ -634,10 +633,10 @@ pub mod visit {
                 let BareFnTy { safety: _, ext: _, generic_params, decl, decl_span: _ } =
                     &**function_declaration;
                 walk_list!(visitor, visit_generic_param, generic_params);
-                try_visit!(walk_fn_decl(visitor, decl));
+                try_visit!(visitor.visit_fn_decl(decl));
             }
             TyKind::Path(maybe_qself, path) => {
-                try_visit!(walk_qself(visitor, maybe_qself));
+                try_visit!(visitor.visit_qself(maybe_qself));
                 try_visit!(visitor.visit_path(path, *id));
             }
             TyKind::Pat(ty, pat) => {
@@ -768,16 +767,16 @@ pub mod visit {
         let Pat { id, kind, span: _, tokens: _ } = pattern;
         match kind {
             PatKind::TupleStruct(opt_qself, path, elems) => {
-                try_visit!(walk_qself(visitor, opt_qself));
+                try_visit!(visitor.visit_qself(opt_qself));
                 try_visit!(visitor.visit_path(path, *id));
                 walk_list!(visitor, visit_pat, elems);
             }
             PatKind::Path(opt_qself, path) => {
-                try_visit!(walk_qself(visitor, opt_qself));
+                try_visit!(visitor.visit_qself(opt_qself));
                 try_visit!(visitor.visit_path(path, *id))
             }
             PatKind::Struct(opt_qself, path, fields, _rest) => {
-                try_visit!(walk_qself(visitor, opt_qself));
+                try_visit!(visitor.visit_qself(opt_qself));
                 try_visit!(visitor.visit_path(path, *id));
                 walk_list!(visitor, visit_pat_field, fields);
             }
@@ -963,12 +962,12 @@ pub mod visit {
                 // Identifier and visibility are visited as a part of the item.
                 try_visit!(visitor.visit_fn_header(header));
                 try_visit!(visitor.visit_generics(generics));
-                try_visit!(walk_fn_decl(visitor, decl));
+                try_visit!(visitor.visit_fn_decl(decl));
                 visit_opt!(visitor, visit_block, body);
             }
             FnKind::Closure(binder, _coroutine_kind, decl, body) => {
                 try_visit!(visitor.visit_closure_binder(binder));
-                try_visit!(walk_fn_decl(visitor, decl));
+                try_visit!(visitor.visit_fn_decl(decl));
                 try_visit!(visitor.visit_expr(body));
             }
         }
@@ -1016,7 +1015,7 @@ pub mod visit {
                     body,
                     from_glob: _,
                 }) => {
-                    try_visit!(walk_qself(visitor, qself));
+                    try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(path, *id));
                     visit_opt!(visitor, visit_ident, *rename);
                     visit_opt!(visitor, visit_block, body);
@@ -1027,7 +1026,7 @@ pub mod visit {
                     suffixes,
                     body,
                 }) => {
-                    try_visit!(walk_qself(visitor, qself));
+                    try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(prefix, id));
                     if let Some(suffixes) = suffixes {
                         for (ident, rename) in suffixes {
@@ -1145,7 +1144,7 @@ pub mod visit {
         visitor: &mut V,
         InlineAsmSym { id, qself, path }: &'a InlineAsmSym,
     ) -> V::Result {
-        try_visit!(walk_qself(visitor, qself));
+        try_visit!(visitor.visit_qself(qself));
         visitor.visit_path(path, *id)
     }
 
@@ -1177,7 +1176,7 @@ pub mod visit {
             }
             ExprKind::Struct(se) => {
                 let StructExpr { qself, path, fields, rest } = &**se;
-                try_visit!(walk_qself(visitor, qself));
+                try_visit!(visitor.visit_qself(qself));
                 try_visit!(visitor.visit_path(path, *id));
                 walk_list!(visitor, visit_expr_field, fields);
                 match rest {
@@ -1286,7 +1285,7 @@ pub mod visit {
             }
             ExprKind::Underscore => {}
             ExprKind::Path(maybe_qself, path) => {
-                try_visit!(walk_qself(visitor, maybe_qself));
+                try_visit!(visitor.visit_qself(maybe_qself));
                 try_visit!(visitor.visit_path(path, *id));
             }
             ExprKind::Break(opt_label, opt_expr) => {
@@ -1698,7 +1697,7 @@ pub mod mut_visit {
     fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut ParenthesizedArgs) {
         let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
         visit_thin_vec(inputs, |input| vis.visit_ty(input));
-        walk_fn_ret_ty(vis, output);
+        vis.visit_fn_ret_ty(output);
         vis.visit_span(span);
         vis.visit_span(inputs_span);
     }
@@ -2006,7 +2005,7 @@ pub mod mut_visit {
     fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
         let FnDecl { inputs, output } = decl.deref_mut();
         inputs.flat_map_in_place(|param| vis.flat_map_param(param));
-        walk_fn_ret_ty(vis, output);
+        vis.visit_fn_ret_ty(output);
     }
 
     fn walk_fn_ret_ty<T: MutVisitor>(vis: &mut T, fn_ret_ty: &mut FnRetTy) {
