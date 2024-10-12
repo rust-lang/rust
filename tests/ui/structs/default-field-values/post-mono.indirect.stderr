@@ -5,6 +5,20 @@ LL |     post_mono: usize = X / 0,
    |                        ^^^^^ attempt to divide `1_usize` by zero
 
 note: erroneous constant encountered
+  --> $DIR/post-mono.rs:7:24
+   |
+LL |     post_mono: usize = X / 0,
+   |                        ^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/post-mono.rs:7:24
+   |
+LL |     post_mono: usize = X / 0,
+   |                        ^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
   --> $DIR/post-mono.rs:12:19
    |
 LL |     let x: Z<X> = Z { .. };
