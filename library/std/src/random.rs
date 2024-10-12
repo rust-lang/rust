@@ -3,8 +3,10 @@
 //! The [`Random`] trait allows generating a random value for a type using a
 //! given [`RandomSource`].
 
+#[unstable(feature = "deterministic_random_chacha8", issue = "131606")]
+pub use core::random::DeterministicRandomSource;
 #[unstable(feature = "random", issue = "130703")]
-pub use core::random::*;
+pub use core::random::{Random, RandomSource};
 
 use crate::sys::random as sys;
 
