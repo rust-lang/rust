@@ -1,13 +1,21 @@
-# Deprecated features
+# Deprecated Features in Rust
 
-## Passes
+## Overview
+This document outlines features that are deprecated in Rust. A feature is considered deprecated when it is no longer recommended for use and may be removed in future versions.
 
-Rustdoc has a concept called "passes". These are transformations that
-`rustdoc` runs on your documentation before producing its final output.
+## Removed Features
+### LLVM 17 Support
+**Removed:** LLVM 17 support has been removed from the Rust compiler. 
 
-Customizing passes is **deprecated**. The available passes are not considered stable and may
-change in any release.
+#### Reason for Removal
+- LLVM 17 has been deprecated in favor of newer versions that provide better performance and support for recent language features.
 
-In the past the most common use case for customizing passes was to omit the `strip-private` pass.
-You can do this more easily, and without risk of the pass being changed, by passing
-[`--document-private-items`](command-line-arguments.md#--document-private-items-show-items-that-are-not-public).
+#### Alternatives
+- It is recommended to upgrade to LLVM 18 or higher to take advantage of the latest features and improvements.
+
+## General Guidelines
+- Always refer to the official Rust documentation for the latest updates on supported features and tooling.
+- Users should update their environments accordingly to avoid issues with deprecated features.
+
+## Additional Information
+For more details about the Rust versioning and feature removal policy, please refer to the official Rust documentation at [Rust Documentation](https://doc.rust-lang.org/book/).
