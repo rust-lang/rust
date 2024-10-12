@@ -537,7 +537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && binding_id != self.binding_id
                 {
                     if self.check_and_add_sugg_binding(LetStmt {
-                        ty_hir_id_opt: if let Some(ty) = ty { Some(ty.hir_id) } else { None },
+                        ty_hir_id_opt: ty.map(|ty| ty.hir_id),
                         binding_id,
                         span: pat.span,
                         init_hir_id: init.hir_id,
