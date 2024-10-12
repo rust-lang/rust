@@ -298,7 +298,7 @@ macro_rules! make_ast_visitor {
                 make_visit!{Variant; visit_variant, walk_variant}
                 make_visit!{VariantData; visit_variant_data, walk_struct_def}
 
-                fn visit_ident(&mut self, _ident: Ident) -> Self::Result {
+                fn visit_ident(&mut self, _ident: &'ast Ident) -> Self::Result {
                     Self::Result::output()
                 }
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
@@ -427,7 +427,7 @@ pub mod visit {
     #[derive(Copy, Clone, Debug)]
     pub enum FnKind<'a> {
         /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
-        Fn(FnCtxt, Ident, &'a FnSig, &'a Visibility, &'a Generics, Option<&'a Block>),
+        Fn(FnCtxt, &'a Ident, &'a FnSig, &'a Visibility, &'a Generics, Option<&'a Block>),
 
         /// E.g., `|x, y| body`.
         Closure(&'a ClosureBinder, &'a Option<CoroutineKind>, &'a FnDecl, &'a Expr),
@@ -507,12 +507,12 @@ pub mod visit {
         visitor: &mut V,
         Label { ident }: &'a Label,
     ) -> V::Result {
-        visitor.visit_ident(*ident)
+        visitor.visit_ident(ident)
     }
 
     pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime) -> V::Result {
         let Lifetime { id: _, ident } = lifetime;
-        visitor.visit_ident(*ident)
+        visitor.visit_ident(ident)
     }
 
     pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef) -> V::Result
@@ -553,8 +553,7 @@ pub mod visit {
                     visit_opt!(visitor, visit_expr, expr);
                 }
                 ItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                    let kind =
-                        FnKind::Fn(FnCtxt::Free, *ident, sig, vis, generics, body.as_deref());
+                    let kind = FnKind::Fn(FnCtxt::Free, ident, sig, vis, generics, body.as_deref());
                     try_visit!(visitor.visit_fn(kind, *span, *id));
                 }
                 ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
@@ -623,7 +622,7 @@ pub mod visit {
                 }) => {
                     try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(path, *id));
-                    visit_opt!(visitor, visit_ident, *rename);
+                    visit_opt!(visitor, visit_ident, rename);
                     visit_opt!(visitor, visit_block, body);
                 }
                 ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
@@ -631,9 +630,9 @@ pub mod visit {
                     try_visit!(visitor.visit_path(prefix, *id));
                     if let Some(suffixes) = suffixes {
                         for (ident, rename) in suffixes {
-                            visitor.visit_ident(*ident);
+                            visitor.visit_ident(ident);
                             if let Some(rename) = rename {
-                                visitor.visit_ident(*rename);
+                                visitor.visit_ident(rename);
                             }
                         }
                     }
@@ -667,7 +666,7 @@ pub mod visit {
             variant;
         walk_list!(visitor, visit_attribute, attrs);
         try_visit!(visitor.visit_vis(vis));
-        try_visit!(visitor.visit_ident(*ident));
+        try_visit!(visitor.visit_ident(ident));
         try_visit!(visitor.visit_variant_data(data));
         visit_opt!(visitor, visit_variant_discr, disr_expr);
         V::Result::output()
@@ -677,7 +676,7 @@ pub mod visit {
         let ExprField { attrs, id: _, span: _, ident, expr, is_shorthand: _, is_placeholder: _ } =
             f;
         walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_ident(*ident));
+        try_visit!(visitor.visit_ident(ident));
         try_visit!(visitor.visit_expr(expr));
         V::Result::output()
     }
@@ -685,7 +684,7 @@ pub mod visit {
     pub fn walk_pat_field<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a PatField) -> V::Result {
         let PatField { ident, pat, is_shorthand: _, attrs, id: _, span: _, is_placeholder: _ } = fp;
         walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_ident(*ident));
+        try_visit!(visitor.visit_ident(ident));
         try_visit!(visitor.visit_pat(pat));
         V::Result::output()
     }
@@ -760,7 +759,7 @@ pub mod visit {
         match kind {
             UseTreeKind::Simple(rename) => {
                 // The extra IDs are handled during AST lowering.
-                visit_opt!(visitor, visit_ident, *rename);
+                visit_opt!(visitor, visit_ident, rename);
             }
             UseTreeKind::Glob => {}
             UseTreeKind::Nested { ref items, span: _ } => {
@@ -777,7 +776,7 @@ pub mod visit {
         segment: &'a PathSegment,
     ) -> V::Result {
         let PathSegment { ident, id: _, args } = segment;
-        try_visit!(visitor.visit_ident(*ident));
+        try_visit!(visitor.visit_ident(ident));
         visit_opt!(visitor, visit_generic_args, args);
         V::Result::output()
     }
@@ -823,7 +822,7 @@ pub mod visit {
         constraint: &'a AssocItemConstraint,
     ) -> V::Result {
         let AssocItemConstraint { id: _, ident, gen_args, kind, span: _ } = constraint;
-        try_visit!(visitor.visit_ident(*ident));
+        try_visit!(visitor.visit_ident(ident));
         visit_opt!(visitor, visit_generic_args, gen_args);
         match kind {
             AssocItemConstraintKind::Equality { term } => match term {
@@ -861,7 +860,7 @@ pub mod visit {
                 try_visit!(visitor.visit_pat(subpattern));
             }
             PatKind::Ident(_bmode, ident, optional_subpattern) => {
-                try_visit!(visitor.visit_ident(*ident));
+                try_visit!(visitor.visit_ident(ident));
                 visit_opt!(visitor, visit_pat, optional_subpattern);
             }
             PatKind::Lit(expression) => try_visit!(visitor.visit_expr(expression)),
@@ -886,7 +885,7 @@ pub mod visit {
             _ctxt: AssocCtxt,
             visitor: &mut V,
         ) -> V::Result {
-            let &Item { id, span, ident, ref vis, .. } = item;
+            let Item { id, span, ident, vis, .. } = item;
             match self {
                 ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
                     try_visit!(visitor.visit_ty(ty));
@@ -895,7 +894,7 @@ pub mod visit {
                 ForeignItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
                     let kind =
                         FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, generics, body.as_deref());
-                    try_visit!(visitor.visit_fn(kind, span, id));
+                    try_visit!(visitor.visit_fn(kind, *span, *id));
                 }
                 ForeignItemKind::TyAlias(box TyAlias {
                     generics,
@@ -953,7 +952,7 @@ pub mod visit {
         let GenericParam { id: _, ident, attrs, bounds, is_placeholder: _, kind, colon_span: _ } =
             param;
         walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_ident(*ident));
+        try_visit!(visitor.visit_ident(ident));
         walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         match kind {
             GenericParamKind::Lifetime => (),
@@ -1055,7 +1054,7 @@ pub mod visit {
             ctxt: AssocCtxt,
             visitor: &mut V,
         ) -> V::Result {
-            let &Item { id, span, ident, ref vis, .. } = item;
+            let Item { id, span, ident, vis, .. } = item;
             match self {
                 AssocItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
                     try_visit!(visitor.visit_generics(generics));
@@ -1065,7 +1064,7 @@ pub mod visit {
                 AssocItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
                     let kind =
                         FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body.as_deref());
-                    try_visit!(visitor.visit_fn(kind, span, id));
+                    try_visit!(visitor.visit_fn(kind, *span, *id));
                 }
                 AssocItemKind::Type(box TyAlias {
                     generics,
@@ -1091,7 +1090,7 @@ pub mod visit {
                 }) => {
                     try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(path, *id));
-                    visit_opt!(visitor, visit_ident, *rename);
+                    visit_opt!(visitor, visit_ident, rename);
                     visit_opt!(visitor, visit_block, body);
                 }
                 AssocItemKind::DelegationMac(box DelegationMac {
@@ -1101,12 +1100,12 @@ pub mod visit {
                     body,
                 }) => {
                     try_visit!(visitor.visit_qself(qself));
-                    try_visit!(visitor.visit_path(prefix, id));
+                    try_visit!(visitor.visit_path(prefix, *id));
                     if let Some(suffixes) = suffixes {
                         for (ident, rename) in suffixes {
-                            visitor.visit_ident(*ident);
+                            visitor.visit_ident(ident);
                             if let Some(rename) = rename {
-                                visitor.visit_ident(*rename);
+                                visitor.visit_ident(rename);
                             }
                         }
                     }
@@ -1122,7 +1121,7 @@ pub mod visit {
         item: &'a Item<impl WalkItemKind>,
         ctxt: AssocCtxt,
     ) -> V::Result {
-        let &Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
+        let Item { id: _, span: _, ident, vis, attrs, kind, tokens: _ } = item;
         walk_list!(visitor, visit_attribute, attrs);
         try_visit!(visitor.visit_vis(vis));
         try_visit!(visitor.visit_ident(ident));
@@ -1142,7 +1141,7 @@ pub mod visit {
         let FieldDef { attrs, id: _, span: _, vis, ident, ty, is_placeholder: _ } = field;
         walk_list!(visitor, visit_attribute, attrs);
         try_visit!(visitor.visit_vis(vis));
-        visit_opt!(visitor, visit_ident, *ident);
+        visit_opt!(visitor, visit_ident, ident);
         try_visit!(visitor.visit_ty(ty));
         V::Result::output()
     }
@@ -1227,7 +1226,7 @@ pub mod visit {
         for FormatArgument { kind, expr } in arguments.all_args() {
             match kind {
                 FormatArgumentKind::Named(ident) | FormatArgumentKind::Captured(ident) => {
-                    try_visit!(visitor.visit_ident(*ident))
+                    try_visit!(visitor.visit_ident(ident))
                 }
                 FormatArgumentKind::Normal => {}
             }
@@ -1347,7 +1346,7 @@ pub mod visit {
             }
             ExprKind::Field(subexpression, ident) => {
                 try_visit!(visitor.visit_expr(subexpression));
-                try_visit!(visitor.visit_ident(*ident));
+                try_visit!(visitor.visit_ident(ident));
             }
             ExprKind::Index(main_expression, index_expression, _span) => {
                 try_visit!(visitor.visit_expr(main_expression));
@@ -1382,7 +1381,7 @@ pub mod visit {
             ExprKind::FormatArgs(f) => try_visit!(visitor.visit_format_args(f)),
             ExprKind::OffsetOf(container, fields) => {
                 try_visit!(visitor.visit_ty(container));
-                walk_list!(visitor, visit_ident, fields.iter().copied());
+                walk_list!(visitor, visit_ident, fields.iter());
             }
             ExprKind::Yield(optional_expression) => {
                 visit_opt!(visitor, visit_expr, optional_expression);

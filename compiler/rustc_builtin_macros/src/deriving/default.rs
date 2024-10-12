@@ -222,7 +222,7 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
         rustc_ast::visit::walk_attribute(self, attr);
     }
     fn visit_variant(&mut self, v: &'a rustc_ast::Variant) {
-        self.visit_ident(v.ident);
+        self.visit_ident(&v.ident);
         self.visit_vis(&v.vis);
         self.visit_variant_data(&v.data);
         visit_opt!(self, visit_anon_const, &v.disr_expr);

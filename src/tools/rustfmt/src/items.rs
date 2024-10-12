@@ -3443,7 +3443,7 @@ impl Rewrite for ast::ForeignItem {
                     visitor.visit_fn(
                         visit::FnKind::Fn(
                             fn_ctxt,
-                            self.ident,
+                            &self.ident,
                             sig,
                             &self.vis,
                             generics,

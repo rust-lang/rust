@@ -390,7 +390,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 block = b;
                 self.rewrite_fn_before_block(
                     indent,
-                    ident,
+                    *ident,
                     &FnSig::from_fn_kind(&fk, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                 )
@@ -549,7 +549,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         self.visit_fn(
                             visit::FnKind::Fn(
                                 fn_ctxt,
-                                item.ident,
+                                &item.ident,
                                 sig,
                                 &item.vis,
                                 generics,
@@ -652,7 +652,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     let inner_attrs = inner_attributes(&ai.attrs);
                     let fn_ctxt = visit::FnCtxt::Assoc(assoc_ctxt);
                     self.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, generics, Some(body)),
+                        visit::FnKind::Fn(fn_ctxt, &ai.ident, sig, &ai.vis, generics, Some(body)),
                         &sig.decl,
                         ai.span,
                         defaultness,
