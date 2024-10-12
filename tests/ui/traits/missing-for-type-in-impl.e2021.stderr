@@ -10,13 +10,13 @@ help: this trait has no implementations, consider adding one
 LL | trait Foo<T> {
    | ^^^^^^^^^^^^
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/missing-for-type-in-impl.rs:8:6
    |
 LL | impl Foo<i64> {
    |      ^^^^^^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL | impl dyn Foo<i64> {
    |      +++
