@@ -1263,7 +1263,8 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+#[rustc_const_stable(feature = "const_replace", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_diagnostic_item = "ptr_replace"]
 pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
@@ -1611,7 +1612,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+#[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_diagnostic_item = "ptr_write"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write<T>(dst: *mut T, src: T) {
@@ -1719,7 +1720,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_refs_to_cell))]
+#[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {

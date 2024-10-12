@@ -1,6 +1,5 @@
 //@ run-pass
 
-#![feature(const_ptr_write)]
 // issue: https://github.com/rust-lang/rust/issues/69488
 // Loads of partially-initialized data could produce completely-uninitialized results.
 // Test to make sure that we no longer do such a "deinitializing" load.
