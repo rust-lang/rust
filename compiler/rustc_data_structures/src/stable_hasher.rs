@@ -381,14 +381,7 @@ impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for Box<T> {
     }
 }
 
-impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for ::std::rc::Rc<T> {
-    #[inline]
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        (**self).hash_stable(ctx, hasher);
-    }
-}
-
-impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for ::std::sync::Arc<T> {
+impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for crate::sync::Lrc<T> {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         (**self).hash_stable(ctx, hasher);

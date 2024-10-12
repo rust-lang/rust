@@ -199,7 +199,6 @@ cfg_match! {
         pub type AtomicU64 = Atomic<u64>;
 
         pub use std::rc::Rc as Lrc;
-        pub use std::rc::Weak as Weak;
         #[doc(no_inline)]
         pub use std::cell::Ref as ReadGuard;
         #[doc(no_inline)]
@@ -277,8 +276,7 @@ cfg_match! {
         #[cfg(not(target_has_atomic = "64"))]
         pub use portable_atomic::AtomicU64;
 
-        pub use std::sync::Arc as Lrc;
-        pub use std::sync::Weak as Weak;
+        pub use triomphe::Arc as Lrc;
 
         pub type LRef<'a, T> = &'a T;
 

@@ -10,8 +10,18 @@ smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"
 # tidy-alphabetical-end
 
+[dependencies.triomphe]
+version = "0.1"
+optional = true
+features = ["unsize", "unstable_dropck_eyepatch"]
+git = "https://github.com/GnomedDev/triomphe"
+branch = "dropck-eyepatch"
+
 [dev-dependencies]
 # tidy-alphabetical-start
 rustc_macros = { path = "../rustc_macros" }
 tempfile = "3.2"
 # tidy-alphabetical-end
+
+[features]
+rustc_use_parallel_compiler = ["dep:triomphe"]

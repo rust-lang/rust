@@ -4,9 +4,9 @@
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_data_structures::sync::Lrc;
 use rustc_hir::{InlineAsmOperand, ItemId};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_session::config::{OutputFilenames, OutputType};
@@ -110,7 +110,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
 pub(crate) struct GlobalAsmConfig {
     assembler: PathBuf,
     target: String,
-    pub(crate) output_filenames: Arc<OutputFilenames>,
+    pub(crate) output_filenames: Lrc<OutputFilenames>,
 }
 
 impl GlobalAsmConfig {

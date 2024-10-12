@@ -2,7 +2,7 @@ use std::any::Any;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use std::{env, fs, iter};
 
 use rustc_ast::{self as ast, visit};
@@ -811,7 +811,7 @@ pub(crate) fn create_global_ctxt<'tcx>(
                 crate_name,
             )));
             feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
-            feed.output_filenames(Arc::new(outputs));
+            feed.output_filenames(Lrc::new(outputs));
         });
         Ok(qcx)
     })

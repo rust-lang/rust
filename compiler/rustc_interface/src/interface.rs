@@ -21,11 +21,12 @@ use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::filesearch::{self, sysroot_candidates};
 use rustc_session::parse::ParseSess;
-use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
+use rustc_session::{CompilerIO, EarlyDiagCtxt, LintStoreMarker, Session, lint};
 use rustc_span::FileName;
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use tracing::trace;
+use unsize::{CoerceUnsize, Coercion};
 
 use crate::util;
 
@@ -481,7 +482,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 register_lints(&sess, &mut lint_store);
                 sess.registered_lints = true;
             }
-            sess.lint_store = Some(Lrc::new(lint_store));
+
+            sess.lint_store = Some(Lrc::new(lint_store).unsize(Coercion!(to dyn LintStoreMarker)));
 
             let compiler = Compiler {
                 sess,

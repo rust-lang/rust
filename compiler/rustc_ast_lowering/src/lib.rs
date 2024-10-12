@@ -192,17 +192,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             current_item: None,
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
-            allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
+            allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].as_slice().into(),
             allow_gen_future: if tcx.features().async_fn_track_caller {
-                [sym::gen_future, sym::closure_track_caller].into()
+                [sym::gen_future, sym::closure_track_caller].as_slice().into()
             } else {
-                [sym::gen_future].into()
+                [sym::gen_future].as_slice().into()
             },
-            allow_for_await: [sym::async_iterator].into(),
-            allow_async_fn_traits: [sym::async_fn_traits].into(),
+            allow_for_await: [sym::async_iterator].as_slice().into(),
+            allow_async_fn_traits: [sym::async_fn_traits].as_slice().into(),
             // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
             // interact with `gen`/`async gen` blocks
-            allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
+            allow_async_iterator: [sym::gen_future, sym::async_iterator].as_slice().into(),
             generics_def_id_map: Default::default(),
             host_param_id: None,
             ast_index,

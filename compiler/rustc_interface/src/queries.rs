@@ -1,13 +1,12 @@
 use std::any::Any;
 use std::cell::{RefCell, RefMut};
-use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{OnceLock, WorkerLocal};
+use rustc_data_structures::sync::{Lrc, OnceLock, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
@@ -115,7 +114,7 @@ impl<'tcx> Queries<'tcx> {
 
 pub struct Linker {
     dep_graph: DepGraph,
-    output_filenames: Arc<OutputFilenames>,
+    output_filenames: Lrc<OutputFilenames>,
     // Only present when incr. comp. is enabled.
     crate_hash: Option<Svh>,
     ongoing_codegen: Box<dyn Any>,
