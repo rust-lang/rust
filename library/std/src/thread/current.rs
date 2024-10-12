@@ -110,22 +110,24 @@ mod id {
     }
 }
 
-/// Sets the thread handle for the current thread.
-///
-/// Aborts if the handle or the ID has been set already.
-pub(crate) fn set_current(thread: Thread) {
-    if CURRENT.get() != NONE || id::get().is_some() {
-        // Using `panic` here can add ~3kB to the binary size. We have complete
-        // control over where this is called, so just abort if there is a bug.
-        rtabort!("thread::set_current should only be called once per thread");
+/// Tries to set the thread handle for the current thread. Fails if a handle was
+/// already set or if the thread ID of `thread` would change an already-set ID.
+pub(crate) fn set_current(thread: Thread) -> Result<(), Thread> {
+    if CURRENT.get() != NONE {
+        return Err(thread);
     }
 
-    id::set(thread.id());
+    match id::get() {
+        Some(id) if id == thread.id() => {}
+        None => id::set(thread.id()),
+        _ => return Err(thread),
+    }
 
     // Make sure that `crate::rt::thread_cleanup` will be run, which will
     // call `drop_current`.
     crate::sys::thread_local::guard::enable();
     CURRENT.set(thread.into_raw().cast_mut());
+    Ok(())
 }
 
 /// Gets the id of the thread that invokes it.
