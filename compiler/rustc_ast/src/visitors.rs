@@ -15,6 +15,16 @@ use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
 
+#[allow(unused)]
+macro_rules! macro_if {
+    ($_: tt { $($if: tt)* } $(else {$($else: tt)*})?) => {
+        $($if)*
+    };
+    ({ $($if: tt)* } $(else {$($else: tt)*})?) => {
+        $($($else)*)?
+    };
+}
+
 pub mod visit {
     //! AST walker. Each overridden visit method has full control over what
     //! happens with its node, it can do its own traversal of the node's children,
