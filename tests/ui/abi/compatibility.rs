@@ -1,5 +1,5 @@
 //@ check-pass
-//@ use-minicore
+//@ compile-flags: -Cpanic=abort
 //@ revisions: i686
 //@[i686] compile-flags: --target i686-unknown-linux-gnu
 //@[i686] needs-llvm-components: x86
@@ -69,8 +69,11 @@
 // sparc64: https://github.com/rust-lang/rust/issues/115336
 // mips64: https://github.com/rust-lang/rust/issues/115404
 
-extern crate minicore;
-use minicore::*;
+#[rustc_builtin_macro]
+macro_rules! include {
+    ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+}
+include!("../../auxiliary/minicore.rs");
 
 /// To work cross-target this test must be no_core. This little prelude supplies what we need.
 ///
