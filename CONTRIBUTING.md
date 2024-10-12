@@ -40,3 +40,13 @@ refer to [this section][contributing-bug-reports] and [open an issue][issue temp
 [internals]: https://internals.rust-lang.org
 [rust-discord]: http://discord.gg/rust-lang
 [rust-zulip]: https://rust-lang.zulipchat.com
+
+## External LLVM Version Compatibility
+
+To build `rustc`, it is important to know which versions of LLVM are supported. As of Rust 1.82, the following external LLVM versions are supported:
+
+- **Minimum Supported Version**: LLVM 17
+- **Maximum Supported Version**: LLVM 19
+
+If you attempt to use LLVM versions outside this range, you may encounter compatibility issues when compiling `rustc`. Please ensure you are using a compatible version for your build.
+
