@@ -4,6 +4,7 @@ use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir::data_structures::{HashMap, HashSet, ensure_sufficient_stack};
+use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
@@ -18,9 +19,9 @@ use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind,
-    GoalSource, HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData,
-    QueryResult, SolverMode,
+    CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind, GoalSource,
+    HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult,
+    SolverMode,
 };
 
 pub(super) mod canonical;
@@ -987,40 +988,22 @@ where
 
     // Do something for each opaque/hidden pair defined with `def_id` in the
     // current inference context.
-    pub(super) fn unify_existing_opaque_tys(
+    pub(super) fn probe_existing_opaque_ty(
         &mut self,
-        param_env: I::ParamEnv,
         key: ty::OpaqueTypeKey<I>,
-        ty: I::Ty,
-    ) -> Vec<CanonicalResponse<I>> {
-        // FIXME: Super inefficient to be cloning this...
-        let opaques = self.delegate.clone_opaque_types_for_query_response();
-
-        let mut values = vec![];
-        for (candidate_key, candidate_ty) in opaques {
-            if candidate_key.def_id != key.def_id {
-                continue;
-            }
-            values.extend(
-                self.probe(|result| inspect::ProbeKind::OpaqueTypeStorageLookup {
-                    result: *result,
-                })
-                .enter(|ecx| {
-                    for (a, b) in std::iter::zip(candidate_key.args.iter(), key.args.iter()) {
-                        ecx.eq(param_env, a, b)?;
-                    }
-                    ecx.eq(param_env, candidate_ty, ty)?;
-                    ecx.add_item_bounds_for_hidden_type(
-                        candidate_key.def_id.into(),
-                        candidate_key.args,
-                        param_env,
-                        candidate_ty,
-                    );
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }),
+    ) -> Option<(ty::OpaqueTypeKey<I>, I::Ty)> {
+        let mut matching =
+            self.delegate.clone_opaque_types_for_query_response().into_iter().filter(
+                |(candidate_key, _)| {
+                    candidate_key.def_id == key.def_id
+                        && DeepRejectCtxt::relate_rigid_rigid(self.cx())
+                            .args_may_unify(candidate_key.args, key.args)
+                },
             );
-        }
-        values
+        let first = matching.next();
+        let second = matching.next();
+        assert_eq!(second, None);
+        first
     }
 
     // Try to evaluate a const, or return `None` if the const is too generic.
