@@ -3,7 +3,7 @@ use std::time::Duration;
 use rustc_target::abi::Size;
 
 use crate::concurrency::init_once::InitOnceStatus;
-use crate::concurrency::sync::{lazy_sync_get_data, lazy_sync_init};
+use crate::concurrency::sync::lazy_sync_get_data;
 use crate::*;
 
 #[derive(Copy, Clone)]
@@ -16,23 +16,20 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Windows sync primitives are pointer sized.
     // We only use the first 4 bytes for the id.
 
-    fn init_once_get_id(&mut self, init_once_ptr: &OpTy<'tcx>) -> InterpResult<'tcx, InitOnceId> {
+    fn init_once_get_data(
+        &mut self,
+        init_once_ptr: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, InitOnceData> {
         let this = self.eval_context_mut();
 
         let init_once = this.deref_pointer(init_once_ptr)?;
         let init_offset = Size::ZERO;
 
-        if let Some(data) =
-            lazy_sync_get_data::<InitOnceData>(this, &init_once, init_offset, "INIT_ONCE")?
-        {
-            interp_ok(data.id)
-        } else {
+        lazy_sync_get_data(this, &init_once, init_offset, "INIT_ONCE", |this| {
             // TODO: check that this is still all-zero.
             let id = this.machine.sync.init_once_create();
-            let data = InitOnceData { id };
-            lazy_sync_init(this, &init_once, init_offset, data)?;
-            interp_ok(id)
-        }
+            interp_ok(InitOnceData { id })
+        })
     }
 
     /// Returns `true` if we were succssful, `false` if we would block.
@@ -74,7 +71,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = this.init_once_get_id(init_once_op)?;
+        let id = this.init_once_get_data(init_once_op)?.id;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
         let pending_place = this.deref_pointer(pending_op)?;
         let context = this.read_pointer(context_op)?;
@@ -120,7 +117,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let id = this.init_once_get_id(init_once_op)?;
+        let id = this.init_once_get_data(init_once_op)?.id;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
         let context = this.read_pointer(context_op)?;
 

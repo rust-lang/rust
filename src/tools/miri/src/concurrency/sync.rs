@@ -201,12 +201,11 @@ pub fn lazy_sync_init<'tcx, T: 'static + Copy>(
     init_offset: Size,
     data: T,
 ) -> InterpResult<'tcx> {
-    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
-
     let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
     let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
     alloc_extra.sync.insert(offset, Box::new(data));
     // Mark this as "initialized".
+    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
     ecx.write_scalar_atomic(
         Scalar::from_u32(LAZY_INIT_COOKIE),
         &init_field,
@@ -217,18 +216,19 @@ pub fn lazy_sync_init<'tcx, T: 'static + Copy>(
 
 /// Helper for lazily initialized `alloc_extra.sync` data:
 /// Checks if the primitive is initialized, and return its associated data if so.
-/// Otherwise, return None.
+/// Otherwise, calls `new_data` to initialize the primitive.
 pub fn lazy_sync_get_data<'tcx, T: 'static + Copy>(
     ecx: &mut MiriInterpCx<'tcx>,
     primitive: &MPlaceTy<'tcx>,
     init_offset: Size,
     name: &str,
-) -> InterpResult<'tcx, Option<T>> {
-    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
+    new_data: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
+) -> InterpResult<'tcx, T> {
     // Check if this is already initialized. Needs to be atomic because we can race with another
     // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
     // So we just try to replace MUTEX_INIT_COOKIE with itself.
     let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
+    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
     let (_init, success) = ecx
         .atomic_compare_exchange_scalar(
             &init_field,
@@ -239,6 +239,7 @@ pub fn lazy_sync_get_data<'tcx, T: 'static + Copy>(
             /* can_fail_spuriously */ false,
         )?
         .to_scalar_pair();
+
     if success.to_bool()? {
         // If it is initialized, it must be found in the "sync primitive" table,
         // or else it has been moved illegally.
@@ -247,9 +248,11 @@ pub fn lazy_sync_get_data<'tcx, T: 'static + Copy>(
         let data = alloc_extra
             .get_sync::<T>(offset)
             .ok_or_else(|| err_ub_format!("`{name}` can't be moved after first use"))?;
-        interp_ok(Some(*data))
+        interp_ok(*data)
     } else {
-        interp_ok(None)
+        let data = new_data(ecx)?;
+        lazy_sync_init(ecx, primitive, init_offset, data)?;
+        interp_ok(data)
     }
 }
 
