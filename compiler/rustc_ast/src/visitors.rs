@@ -1,5 +1,21 @@
-pub mod visit {
+use std::ops::DerefMut;
+use std::panic;
 
+use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::sync::Lrc;
+use rustc_span::Span;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Ident;
+use smallvec::{Array, SmallVec, smallvec};
+use thin_vec::ThinVec;
+
+use crate::ast::*;
+use crate::ptr::P;
+use crate::token::{self, Token};
+use crate::tokenstream::*;
+
+pub mod visit {
     //! AST walker. Each overridden visit method has full control over what
     //! happens with its node, it can do its own traversal of the node's children,
     //! call `visit::walk_*` to apply the default traversal algorithm, or prevent
@@ -17,11 +33,8 @@ pub mod visit {
 
     pub use rustc_ast_ir::visit::VisitorResult;
     pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
-    use rustc_span::Span;
-    use rustc_span::symbol::Ident;
 
-    use crate::ast::*;
-    use crate::ptr::P;
+    use super::*;
 
     #[derive(Copy, Clone, Debug, PartialEq)]
     pub enum AssocCtxt {
@@ -1282,22 +1295,7 @@ pub mod mut_visit {
     //! a `MutVisitor` renaming item names in a module will miss all of those
     //! that are created by the expansion of a macro.
 
-    use std::ops::DerefMut;
-    use std::panic;
-
-    use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-    use rustc_data_structures::stack::ensure_sufficient_stack;
-    use rustc_data_structures::sync::Lrc;
-    use rustc_span::Span;
-    use rustc_span::source_map::Spanned;
-    use rustc_span::symbol::Ident;
-    use smallvec::{Array, SmallVec, smallvec};
-    use thin_vec::ThinVec;
-
-    use crate::ast::*;
-    use crate::ptr::P;
-    use crate::token::{self, Token};
-    use crate::tokenstream::*;
+    use super::*;
     use crate::visit::{AssocCtxt, BoundKind};
 
     pub trait ExpectOne<A: Array> {
