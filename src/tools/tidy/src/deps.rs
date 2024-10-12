@@ -471,7 +471,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
 const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "addr2line",
-    "adler",
+    "adler2",
     "allocator-api2",
     "cc",
     "cfg-if",
