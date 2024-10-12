@@ -4,7 +4,6 @@
 #![feature(assert_matches)]
 #![feature(btree_extract_if)]
 #![feature(cow_is_borrowed)]
-#![feature(const_cow_is_borrowed)]
 #![feature(const_heap)]
 #![cfg_attr(bootstrap, feature(const_mut_refs))]
 #![feature(const_try)]
