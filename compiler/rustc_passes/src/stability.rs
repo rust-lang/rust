@@ -179,7 +179,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             // their ABI; `fn_sig.abi` is *not* correct for foreign functions.
             && !is_foreign_item
             && const_stab.is_some()
-            && (!self.in_trait_impl || !self.tcx.is_const_fn_raw(def_id.to_def_id()))
+            && (!self.in_trait_impl || !self.tcx.is_const_fn(def_id.to_def_id()))
         {
             self.tcx.dcx().emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span });
         }
@@ -597,8 +597,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             return;
         }
 
-        let is_const = self.tcx.is_const_fn_raw(def_id.to_def_id())
-            || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
+        let is_const = self.tcx.is_const_fn(def_id.to_def_id())
+            || self.tcx.is_const_trait_impl(def_id.to_def_id());
         let is_stable =
             self.tcx.lookup_stability(def_id).is_some_and(|stability| stability.level.is_stable());
         let missing_const_stability_attribute =
@@ -820,7 +820,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
                     // needs to have an error emitted.
                     if features.const_trait_impl()
-                        && self.tcx.is_const_trait_impl_raw(item.owner_id.to_def_id())
+                        && self.tcx.is_const_trait_impl(item.owner_id.to_def_id())
                         && const_stab.is_some_and(|(stab, _)| stab.is_const_stable())
                     {
                         self.tcx.dcx().emit_err(errors::TraitImplConstStable { span: item.span });

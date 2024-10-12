@@ -122,7 +122,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
                         // FIXME(effects) revisit this
-                        if !tcx.is_const_trait_impl_raw(data.impl_def_id) {
+                        if !tcx.is_const_trait_impl(data.impl_def_id) {
                             let span = tcx.def_span(data.impl_def_id);
                             err.subdiagnostic(errors::NonConstImplNote { span });
                         }
@@ -174,7 +174,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 let note = match self_ty.kind() {
                     FnDef(def_id, ..) => {
                         let span = tcx.def_span(*def_id);
-                        if ccx.tcx.is_const_fn_raw(*def_id) {
+                        if ccx.tcx.is_const_fn(*def_id) {
                             span_bug!(span, "calling const FnDef errored when it shouldn't");
                         }
 

@@ -673,7 +673,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
         // Make sure the callee is a `const fn`.
         let is_const_fn = match *fn_ty.kind() {
-            ty::FnDef(def_id, _) => self.tcx.is_const_fn_raw(def_id),
+            ty::FnDef(def_id, _) => self.tcx.is_const_fn(def_id),
             _ => false,
         };
         if !is_const_fn {

@@ -537,7 +537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
                 if let ty::FnDef(def_id, _args) = *arg_ty.kind() {
-                    if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
+                    if idx == 0 && !self.tcx.is_const_fn(def_id) {
                         self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
                     }
                 } else {

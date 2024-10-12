@@ -112,7 +112,7 @@ pub fn is_safe_to_expose_on_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> b
     }
 
     // Const-stability is only relevant for `const fn`.
-    assert!(tcx.is_const_fn_raw(def_id));
+    assert!(tcx.is_const_fn(def_id));
 
     match tcx.lookup_const_stability(def_id) {
         None => {

@@ -731,7 +731,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // Trait functions are not `const fn` so we have to skip them here.
-                if !tcx.is_const_fn_raw(callee) && !is_trait {
+                if !tcx.is_const_fn(callee) && !is_trait {
                     self.check_op(ops::FnCallNonConst {
                         caller,
                         callee,

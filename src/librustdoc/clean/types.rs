@@ -640,7 +640,7 @@ impl Item {
             asyncness: ty::Asyncness,
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
-            let constness = if tcx.is_const_fn_raw(def_id) {
+            let constness = if tcx.is_const_fn(def_id) {
                 hir::Constness::Const
             } else {
                 hir::Constness::NotConst
@@ -662,7 +662,7 @@ impl Item {
                         safety
                     },
                     abi,
-                    constness: if tcx.is_const_fn_raw(def_id) {
+                    constness: if tcx.is_const_fn(def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst

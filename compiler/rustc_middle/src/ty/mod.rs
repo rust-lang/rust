@@ -1995,8 +1995,11 @@ impl<'tcx> TyCtxt<'tcx> {
         (ident, scope)
     }
 
+    /// Checks whether this is a `const fn`. Returns `false` for non-functions.
+    ///
+    /// Even if this returns `true`, constness may still be unstable!
     #[inline]
-    pub fn is_const_fn_raw(self, def_id: DefId) -> bool {
+    pub fn is_const_fn(self, def_id: DefId) -> bool {
         matches!(
             self.def_kind(def_id),
             DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure

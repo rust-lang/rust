@@ -741,12 +741,11 @@ rustc_queries! {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns `true` if this is a const fn, use the `is_const_fn` to know whether your crate
-    /// actually sees it as const fn (e.g., the const-fn-ness might be unstable and you might
-    /// not have the feature gate active).
+    /// Returns `true` if this is a const fn / const impl.
     ///
     /// **Do not call this function manually.** It is only meant to cache the base data for the
-    /// `is_const_fn` function. Consider using `is_const_fn` or `is_const_fn_raw` instead.
+    /// higher-level functions. Consider using `is_const_fn` or `is_const_trait_impl` instead.
+    /// Also note that neither of them takes into account feature gates and stability.
     query constness(key: DefId) -> hir::Constness {
         desc { |tcx| "checking if item is const: `{}`", tcx.def_path_str(key) }
         separate_provide_extern
