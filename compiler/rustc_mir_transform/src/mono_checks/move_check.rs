@@ -2,7 +2,7 @@ use rustc_abi::Size;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, traversal};
+use rustc_middle::mir::{self, Location};
 use rustc_middle::ty::{self, AssocKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::Limit;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
@@ -12,10 +12,10 @@ use tracing::{debug, trace};
 
 use crate::errors::LargeAssignmentsLint;
 
-struct MoveCheckVisitor<'tcx> {
+struct MoveCheckVisitor<'body, 'tcx> {
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    body: &'tcx mir::Body<'tcx>,
+    body: &'body mir::Body<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
 }
@@ -23,15 +23,15 @@ struct MoveCheckVisitor<'tcx> {
 pub(crate) fn check_moves<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    body: &'tcx mir::Body<'tcx>,
+    body: &mir::Body<'tcx>,
 ) {
     let mut visitor = MoveCheckVisitor { tcx, instance, body, move_size_spans: vec![] };
-    for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
         visitor.visit_basic_block_data(bb, data)
     }
 }
 
-impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
+impl<'body, 'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'body, 'tcx> {
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. }
@@ -52,7 +52,7 @@ impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
     }
 }
 
-impl<'tcx> MoveCheckVisitor<'tcx> {
+impl<'body, 'tcx> MoveCheckVisitor<'body, 'tcx> {
     fn monomorphize<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

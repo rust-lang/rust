@@ -3,9 +3,8 @@
 #![crate_type = "lib"]
 
 // The bug here was that it was loading and storing the whole value.
-// It's ok for it to load the discriminant,
-// to preserve the UB from `unreachable_unchecked`,
-// but it better only store the constant discriminant of `B`.
+// It's ok to load the discriminant so that we preserve the UB from
+// `unreachable_unchecked`, but it must only store the constant discriminant of `B`.
 
 pub enum State {
     A([u8; 753]),
@@ -23,7 +22,7 @@ pub unsafe fn update(s: *mut State) {
     // CHECK-NOT: 75{{3|4}}
 
     // CHECK: %[[TAG:.+]] = load i8, ptr %s, align 1
-    // CHECK-NEXT: trunc nuw i8 %[[TAG]] to i1
+    // CHECK-NEXT: and i8 %[[TAG]], 1
 
     // CHECK-NOT: load
     // CHECK-NOT: store
