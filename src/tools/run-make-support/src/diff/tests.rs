@@ -1,4 +1,4 @@
-use crate::*;
+use crate::diff;
 
 #[test]
 fn test_diff() {
