@@ -2,7 +2,7 @@ use rustc_abi::Size;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, traversal};
+use rustc_middle::mir::{self, Location};
 use rustc_middle::ty::{self, AssocTag, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::Limit;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
@@ -26,7 +26,7 @@ pub(crate) fn check_moves<'tcx>(
     body: &'tcx mir::Body<'tcx>,
 ) {
     let mut visitor = MoveCheckVisitor { tcx, instance, body, move_size_spans: vec![] };
-    for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
         visitor.visit_basic_block_data(bb, data)
     }
 }
