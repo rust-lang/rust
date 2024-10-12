@@ -295,6 +295,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
+            "fmuladdf32" => {
+                let [a, b, c] = check_arg_count(args)?;
+                let a = this.read_scalar(a)?.to_f32()?;
+                let b = this.read_scalar(b)?.to_f32()?;
+                let c = this.read_scalar(c)?.to_f32()?;
+                let fuse: bool = this.machine.rng.get_mut().gen();
+                let res = if fuse {
+                    // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
+                    a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                } else {
+                    ((a * b).value + c).value
+                };
+                let res = this.adjust_nan(res, &[a, b, c]);
+                this.write_scalar(res, dest)?;
+            }
+            "fmuladdf64" => {
+                let [a, b, c] = check_arg_count(args)?;
+                let a = this.read_scalar(a)?.to_f64()?;
+                let b = this.read_scalar(b)?.to_f64()?;
+                let c = this.read_scalar(c)?.to_f64()?;
+                let fuse: bool = this.machine.rng.get_mut().gen();
+                let res = if fuse {
+                    // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
+                    a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                } else {
+                    ((a * b).value + c).value
+                };
+                let res = this.adjust_nan(res, &[a, b, c]);
+                this.write_scalar(res, dest)?;
+            }
+
             "powf32" => {
                 let [f1, f2] = check_arg_count(args)?;
                 let f1 = this.read_scalar(f1)?.to_f32()?;

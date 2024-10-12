@@ -884,6 +884,11 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.fma.f64", fn(t_f64, t_f64, t_f64) -> t_f64);
         ifn!("llvm.fma.f128", fn(t_f128, t_f128, t_f128) -> t_f128);
 
+        ifn!("llvm.fmuladd.f16", fn(t_f16, t_f16, t_f16) -> t_f16);
+        ifn!("llvm.fmuladd.f32", fn(t_f32, t_f32, t_f32) -> t_f32);
+        ifn!("llvm.fmuladd.f64", fn(t_f64, t_f64, t_f64) -> t_f64);
+        ifn!("llvm.fmuladd.f128", fn(t_f128, t_f128, t_f128) -> t_f128);
+
         ifn!("llvm.fabs.f16", fn(t_f16) -> t_f16);
         ifn!("llvm.fabs.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.fabs.f64", fn(t_f64) -> t_f64);
