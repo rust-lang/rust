@@ -1,99 +1,64 @@
-error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type `LoudDropper` drops `LoudDropper` while dropping
+error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type is `LoudDropper`
   --> $DIR/lint-tail-expr-drop-order.rs:28:15
    |
 LL |     let x = LoudDropper;
-   |         - this local binding may observe changes in drop order under Edition 2024, whose type `LoudDropper` drops `LoudDropper` while dropping
+   |         - this local binding may observe changes in drop order under Edition 2024, whose type is `LoudDropper`
 LL |     // Should lint
 LL |     x.get() + LoudDropper.get()
    |               ^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
-note: these are the types and values with significant drop implementation
-  --> $DIR/lint-tail-expr-drop-order.rs:10:1
-   |
-LL | struct LoudDropper;
-   | ^^^^^^^^^^^^^^^^^^
-note: these are the types and values with significant drop implementation that are from Edition 2024 dropped earlier rather than later
-  --> $DIR/lint-tail-expr-drop-order.rs:10:1
-   |
-LL | struct LoudDropper;
-   | ^^^^^^^^^^^^^^^^^^
 note: the lint level is defined here
   --> $DIR/lint-tail-expr-drop-order.rs:7:9
    |
 LL | #![deny(tail_expr_drop_order)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type `LoudDropper` drops `LoudDropper` while dropping
+error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type is `LoudDropper`
   --> $DIR/lint-tail-expr-drop-order.rs:46:19
    |
 LL |         let x = LoudDropper;
-   |             - this local binding may observe changes in drop order under Edition 2024, whose type `LoudDropper` drops `LoudDropper` while dropping
+   |             - this local binding may observe changes in drop order under Edition 2024, whose type is `LoudDropper`
 LL |         // Should lint
 LL |         x.get() + LoudDropper.get()
    |                   ^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
-note: these are the types and values with significant drop implementation
-  --> $DIR/lint-tail-expr-drop-order.rs:10:1
-   |
-LL | struct LoudDropper;
-   | ^^^^^^^^^^^^^^^^^^
-note: these are the types and values with significant drop implementation that are from Edition 2024 dropped earlier rather than later
-  --> $DIR/lint-tail-expr-drop-order.rs:10:1
-   |
-LL | struct LoudDropper;
-   | ^^^^^^^^^^^^^^^^^^
 
-error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type `LoudDropper` drops `LoudDropper` while dropping
+error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type is `LoudDropper`
   --> $DIR/lint-tail-expr-drop-order.rs:66:7
    |
 LL |     let x = LoudDropper;
-   |         - this local binding may observe changes in drop order under Edition 2024, whose type `LoudDropper` drops `LoudDropper` while dropping
+   |         - this local binding may observe changes in drop order under Edition 2024, whose type is `LoudDropper`
 LL |     { LoudDropper.get() }
    |       ^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
-note: these are the types and values with significant drop implementation
-  --> $DIR/lint-tail-expr-drop-order.rs:10:1
-   |
-LL | struct LoudDropper;
-   | ^^^^^^^^^^^^^^^^^^
-note: these are the types and values with significant drop implementation that are from Edition 2024 dropped earlier rather than later
-  --> $DIR/lint-tail-expr-drop-order.rs:10:1
-   |
-LL | struct LoudDropper;
-   | ^^^^^^^^^^^^^^^^^^
 
-error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type `LoudDropper` drops `LoudDropper` while dropping
+error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type is `LoudDropper`
   --> $DIR/lint-tail-expr-drop-order.rs:112:5
    |
 LL |     let future = f();
-   |         ------ this local binding may observe changes in drop order under Edition 2024, whose type `impl std::future::Future<Output = ()>` drops `LoudDropper` while dropping
+   |         ------ this local binding may observe changes in drop order under Edition 2024, whose type `impl std::future::Future<Output = ()>` also needs to drop `LoudDropper`
 LL |     LoudDropper.get()
    |     ^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
-note: these are the types and values with significant drop implementation
+note: these are the types and values with significant drop implementation that will be since Edition 2024 dropped earlier rather than later
   --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | struct LoudDropper;
    | ^^^^^^^^^^^^^^^^^^
-note: these are the types and values with significant drop implementation that are from Edition 2024 dropped earlier rather than later
-  --> $DIR/lint-tail-expr-drop-order.rs:10:1
-   |
-LL | struct LoudDropper;
-   | ^^^^^^^^^^^^^^^^^^
-note: these are the types and values with significant drop implementation that are from Edition 2024 dropped earlier rather than later
+note: these are the types and values with significant drop implementation that will be since Edition 2024 dropped earlier rather than later
   --> $DIR/lint-tail-expr-drop-order.rs:106:13
    |
 LL |         let x = LoudDropper;
    |             ^
-note: these are the types and values with significant drop implementation that are from Edition 2024 dropped earlier rather than later
+note: these are the types and values with significant drop implementation that will be since Edition 2024 dropped earlier rather than later
   --> $DIR/lint-tail-expr-drop-order.rs:107:9
    |
 LL |         f().await;

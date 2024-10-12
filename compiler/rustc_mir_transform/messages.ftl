@@ -25,10 +25,21 @@ mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspen
     .help = consider using a block (`{"{ ... }"}`) to shrink the value's scope, ending before the suspend point
 mir_transform_operation_will_panic = this operation will panic at runtime
 
-mir_transform_tail_expr_drop_order = this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type `{$ty}` drops `{$ty_drop_components}` while dropping
-    .label = this local binding may observe changes in drop order under Edition 2024, whose type `{$observer_ty}` drops `{$observer_ty_drop_components}` while dropping
+mir_transform_tail_expr_drop_order =
+    this value has significant drop implementation that will have a different drop order from that of Edition 2021, {
+        $ty_drop_components_size ->
+        [0] whose type is `{$ty}`
+        *[other] whose type `{$ty}` also needs to drop `{$ty_drop_components}`
+    }
+    .label =
+        this local binding may observe changes in drop order under Edition 2024, {
+            $observer_ty_drop_components_size ->
+            [0] whose type is `{$observer_ty}`
+            *[other] whose type `{$observer_ty}` also needs to drop `{$observer_ty_drop_components}`
+        }
     .note_ty = these are the types and values with significant drop implementation
-    .note_observer_ty = these are the types and values with significant drop implementation that are from Edition 2024 dropped earlier rather than later
+    .note_observer_ty =
+        these are the types and values with significant drop implementation that will be since Edition 2024 dropped earlier rather than later
 
 mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses

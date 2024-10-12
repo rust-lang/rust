@@ -142,8 +142,10 @@ fn extract_component_with_significant_dtor<'tcx>(
         ty::Param(_) => None,
     };
     let (tys, spans) = extract_component_raw(tcx, param_env, ty);
-    let ty_names = tys.iter().copied().map(print_ty_without_trimming).join(", ");
-    let ty_spans = tys.iter().copied().flat_map(ty_def_span).chain(spans).collect();
+    let ty_names =
+        tys.iter().copied().filter(|&oty| oty != ty).map(print_ty_without_trimming).join(", ");
+    let ty_spans =
+        tys.iter().copied().filter(|&oty| oty != ty).flat_map(ty_def_span).chain(spans).collect();
     (ty_names, ty_spans)
 }
 
@@ -261,6 +263,8 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
                         TailExprDropOrderLint {
                             span: observer_local_decl.source_info.span,
                             ty: print_ty_without_trimming(linted_local_decl.ty),
+                            ty_drop_components_size: ty_drop_components.len(),
+                            observer_ty_drop_components_size: observer_ty_drop_components.len(),
                             ty_spans,
                             observer_ty: print_ty_without_trimming(observer_ty),
                             ty_drop_components,
@@ -282,9 +286,11 @@ struct TailExprDropOrderLint {
     pub ty: String,
     pub observer_ty: String,
     pub ty_drop_components: String,
+    pub ty_drop_components_size: usize,
     #[note(mir_transform_note_ty)]
     pub ty_spans: Vec<Span>,
     pub observer_ty_drop_components: String,
+    pub observer_ty_drop_components_size: usize,
     #[note(mir_transform_note_observer_ty)]
     pub observer_ty_spans: Vec<Span>,
 }
