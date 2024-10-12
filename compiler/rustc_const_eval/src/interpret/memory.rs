@@ -993,11 +993,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         bytes
     }
 
-    /// Find leaked allocations. Allocations reachable from `static_roots` or a `Global` allocation
-    /// are not considered leaked, as well as leaks whose kind's `may_leak()` returns true.
-    pub fn find_leaked_allocations(
-        &self,
-        static_roots: &[AllocId],
+    /// Find leaked allocations, remove them from memory and return them. Allocations reachable from
+    /// `static_roots` or a `Global` allocation are not considered leaked, as well as leaks whose
+    /// kind's `may_leak()` returns true.
+    ///
+    /// This is highly destructive, no more execution can happen after this!
+    pub fn take_leaked_allocations(
+        &mut self,
+        static_roots: impl FnOnce(&Self) -> &[AllocId],
     ) -> Vec<(AllocId, MemoryKind<M::MemoryKind>, Allocation<M::Provenance, M::AllocExtra, M::Bytes>)>
     {
         // Collect the set of allocations that are *reachable* from `Global` allocations.
@@ -1008,7 +1011,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.memory.alloc_map.filter_map_collect(move |&id, &(kind, _)| {
                     if Some(kind) == global_kind { Some(id) } else { None }
                 });
-            todo.extend(static_roots);
+            todo.extend(static_roots(self));
             while let Some(id) = todo.pop() {
                 if reachable.insert(id) {
                     // This is a new allocation, add the allocation it points to `todo`.
@@ -1023,13 +1026,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         // All allocations that are *not* `reachable` and *not* `may_leak` are considered leaking.
-        self.memory.alloc_map.filter_map_collect(|id, (kind, alloc)| {
-            if kind.may_leak() || reachable.contains(id) {
-                None
-            } else {
-                Some((*id, *kind, alloc.clone()))
-            }
-        })
+        let leaked: Vec<_> = self.memory.alloc_map.filter_map_collect(|&id, &(kind, _)| {
+            if kind.may_leak() || reachable.contains(&id) { None } else { Some(id) }
+        });
+        let mut result = Vec::new();
+        for &id in leaked.iter() {
+            let (kind, alloc) = self.memory.alloc_map.remove(&id).unwrap();
+            result.push((id, kind, alloc));
+        }
+        result
     }
 
     /// Runs the closure in "validation" mode, which means the machine's memory read hooks will be
