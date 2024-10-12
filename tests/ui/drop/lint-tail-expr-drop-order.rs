@@ -114,4 +114,14 @@ fn should_lint_into_async_body() -> i32 {
     //~| WARN: this changes meaning in Rust 2024
 }
 
+fn should_lint_generics<T: Default>() -> &'static str {
+    fn extract<T>(_: &T) -> &'static str {
+        todo!()
+    }
+    let x = T::default();
+    extract(&T::default())
+    //~^ ERROR: this value has significant drop implementation that will have a different drop order from that of Edition 2021
+    //~| WARN: this changes meaning in Rust 2024
+}
+
 fn main() {}

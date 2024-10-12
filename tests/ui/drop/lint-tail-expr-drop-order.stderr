@@ -64,5 +64,16 @@ note: these are the types and values with significant drop implementation that w
 LL |         f().await;
    |         ^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type is `T`
+  --> $DIR/lint-tail-expr-drop-order.rs:122:14
+   |
+LL |     let x = T::default();
+   |         - this local binding may observe changes in drop order under Edition 2024, whose type is `T`
+LL |     extract(&T::default())
+   |              ^^^^^^^^^^^^
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+
+error: aborting due to 5 previous errors
 
