@@ -1795,6 +1795,59 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 
+    /// Returns `a * b + c` for `f16` values, non-deterministically executing
+    /// either a fused multiply-add or two operations with rounding of the
+    /// intermediate result.
+    ///
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions. It is unspecified whether or not a fused operation
+    /// is selected, and that may depend on optimization level and context, for
+    /// example.
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
+    /// Returns `a * b + c` for `f32` values, non-deterministically executing
+    /// either a fused multiply-add or two operations with rounding of the
+    /// intermediate result.
+    ///
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions. It is unspecified whether or not a fused operation
+    /// is selected, and that may depend on optimization level and context, for
+    /// example.
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
+    /// Returns `a * b + c` for `f64` values, non-deterministically executing
+    /// either a fused multiply-add or two operations with rounding of the
+    /// intermediate result.
+    ///
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions. It is unspecified whether or not a fused operation
+    /// is selected, and that may depend on optimization level and context, for
+    /// example.
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
+    /// Returns `a * b + c` for `f128` values, non-deterministically executing
+    /// either a fused multiply-add or two operations with rounding of the
+    /// intermediate result.
+    ///
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions. It is unspecified whether or not a fused operation
+    /// is selected, and that may depend on optimization level and context, for
+    /// example.
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
+
     /// Returns the absolute value of an `f16`.
     ///
     /// The stabilized version of this intrinsic is
