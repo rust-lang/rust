@@ -281,3 +281,12 @@ compile for a platform without host tools you must cross-compile.
 
 You may find that other platforms work, but these are our officially supported
 build environments that are most likely to work.
+
+## External LLVM Version Compatibility
+
+To build `rustc`, it is important to know which versions of LLVM are supported. As of Rust 1.82, the following external LLVM versions are supported:
+
+- **Minimum Supported Version**: LLVM 18
+- **Maximum Supported Version**: LLVM 19
+
+If you attempt to use LLVM versions outside this range, you may encounter compatibility issues when compiling `rustc`. Please ensure you are using a compatible version for your build.
