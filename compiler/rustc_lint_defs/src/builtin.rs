@@ -124,6 +124,7 @@ declare_lint_pass! {
         UNSTABLE_NAME_COLLISIONS,
         UNSTABLE_SYNTAX_PRE_EXPANSION,
         UNSUPPORTED_CALLING_CONVENTIONS,
+        UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
         UNUSED_ASSIGNMENTS,
         UNUSED_ASSOCIATED_TYPE_BOUNDS,
         UNUSED_ATTRIBUTES,
@@ -3836,6 +3837,50 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #87678 <https://github.com/rust-lang/rust/issues/87678>",
+    };
+}
+
+declare_lint! {
+    /// The `unsupported_fn_ptr_calling_conventions` lint is output whenever there is a use of
+    /// a target dependent calling convention on a target that does not support this calling
+    /// convention on a function pointer.
+    ///
+    /// For example `stdcall` does not make much sense for a x86_64 or, more apparently, powerpc
+    /// code, because this calling convention was never specified for those targets.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs specific targets)
+    /// fn stdcall_ptr(f: extern "stdcall" fn ()) {
+    ///     f()
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: use of calling convention not supported on this target on function pointer
+    ///   --> $DIR/unsupported.rs:34:15
+    ///    |
+    /// LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
+    ///    |               ^^^^^^^^^^^^^^^^^^^^^^^^
+    ///    |
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+    ///    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// On most of the targets the behaviour of `stdcall` and similar calling conventions is not
+    /// defined at all, but was previously accepted due to a bug in the implementation of the
+    /// compiler.
+    pub UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
+    Warn,
+    "use of unsupported calling convention for function pointer",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #130260 <https://github.com/rust-lang/rust/issues/130260>",
     };
 }
 
