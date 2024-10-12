@@ -414,9 +414,6 @@
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
 #![feature(const_hash)]
-#![feature(const_ip)]
-#![feature(const_ipv4)]
-#![feature(const_ipv6)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
