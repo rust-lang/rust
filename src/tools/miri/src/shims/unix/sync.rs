@@ -37,7 +37,7 @@ fn bytewise_equal_atomic_relaxed<'tcx>(
 /// If `init` is set to this, we consider the primitive initialized.
 const INIT_COOKIE: u32 = 0xcafe_affe;
 
-fn sync_create<'tcx, T: 'static + Copy>(
+fn sync_init<'tcx, T: 'static + Copy>(
     ecx: &mut MiriInterpCx<'tcx>,
     primitive: &MPlaceTy<'tcx>,
     init_offset: Size,
@@ -137,6 +137,28 @@ fn mutexattr_set_kind<'tcx>(
 /// field *not* PTHREAD_MUTEX_DEFAULT but this special flag.
 const PTHREAD_MUTEX_KIND_UNCHANGED: i32 = 0x8000000;
 
+/// Translates the mutex kind from what is stored in pthread_mutexattr_t to our enum.
+fn mutexattr_translate_kind<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
+    kind: i32,
+) -> InterpResult<'tcx, MutexKind> {
+    interp_ok(if kind == (ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL")) {
+        MutexKind::Normal
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK") {
+        MutexKind::ErrorCheck
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE") {
+        MutexKind::Recursive
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
+        || kind == PTHREAD_MUTEX_KIND_UNCHANGED
+    {
+        // We check this *last* since PTHREAD_MUTEX_DEFAULT may be numerically equal to one of the
+        // others, and we want an explicit `mutexattr_settype` to work as expected.
+        MutexKind::Default
+    } else {
+        throw_unsup_format!("unsupported type of mutex: {kind}");
+    })
+}
+
 // # pthread_mutex_t
 // We store some data directly inside the type, ignoring the platform layout:
 // - init: u32
@@ -170,7 +192,7 @@ fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size>
     let offset = Size::from_bytes(offset);
 
     // Sanity-check this against PTHREAD_MUTEX_INITIALIZER (but only once):
-    // the `init` field must start out not equal to MUTEX_INIT_COOKIE.
+    // the `init` field must start out not equal to INIT_COOKIE.
     static SANITY: AtomicBool = AtomicBool::new(false);
     if !SANITY.swap(true, Ordering::Relaxed) {
         let check_static_initializer = |name| {
@@ -208,7 +230,7 @@ fn mutex_create<'tcx>(
     let mutex = ecx.deref_pointer(mutex_ptr)?;
     let id = ecx.mutex_create();
     let data = MutexData { id, kind };
-    sync_create(ecx, &mutex, mutex_init_offset(ecx)?, data)?;
+    sync_init(ecx, &mutex, mutex_init_offset(ecx)?, data)?;
     interp_ok(data)
 }
 
@@ -259,37 +281,12 @@ fn mutex_kind_from_static_initializer<'tcx>(
             },
         _ => {}
     }
-    throw_unsup_format!("unsupported static initializer used for `pthread_mutex_t");
-}
-
-/// Translates the mutex kind from what is stored in pthread_mutexattr_t to our enum.
-fn mutex_translate_kind<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    kind: i32,
-) -> InterpResult<'tcx, MutexKind> {
-    interp_ok(if kind == (ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL")) {
-        MutexKind::Normal
-    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK") {
-        MutexKind::ErrorCheck
-    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE") {
-        MutexKind::Recursive
-    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
-        || kind == PTHREAD_MUTEX_KIND_UNCHANGED
-    {
-        // We check this *last* since PTHREAD_MUTEX_DEFAULT may be numerically equal to one of the
-        // others, and we want an explicit `mutexattr_settype` to work as expected.
-        MutexKind::Default
-    } else {
-        throw_unsup_format!("unsupported type of mutex: {kind}");
-    })
+    throw_unsup_format!("unsupported static initializer used for `pthread_mutex_t`");
 }
 
 // # pthread_rwlock_t
 // We store some data directly inside the type, ignoring the platform layout:
 // - init: u32
-
-/// If `init` is set to this, we consider the rwlock initialized.
-const RWLOCK_INIT_COOKIE: u32 = 0xcafe_affe;
 
 #[derive(Debug, Copy, Clone)]
 /// Additional data that we attach with each rwlock instance.
@@ -307,14 +304,14 @@ fn rwlock_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size
     let offset = Size::from_bytes(offset);
 
     // Sanity-check this against PTHREAD_RWLOCK_INITIALIZER (but only once):
-    // the `init` field must start out not equal to RWLOCK_INIT_COOKIE.
+    // the `init` field must start out not equal to INIT_COOKIE.
     static SANITY: AtomicBool = AtomicBool::new(false);
     if !SANITY.swap(true, Ordering::Relaxed) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]);
         let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
         let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
         assert_ne!(
-            init, RWLOCK_INIT_COOKIE,
+            init, INIT_COOKIE,
             "PTHREAD_RWLOCK_INITIALIZER is incompatible with our initialization cookie"
         );
     }
@@ -333,9 +330,16 @@ fn rwlock_get_data<'tcx>(
     {
         interp_ok(data)
     } else {
+        if !bytewise_equal_atomic_relaxed(
+            ecx,
+            &rwlock,
+            &ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]),
+        )? {
+            throw_unsup_format!("unsupported static initializer used for `pthread_rwlock_t`");
+        }
         let id = ecx.rwlock_create();
         let data = RwLockData { id };
-        sync_create(ecx, &rwlock, init_offset, data)?;
+        sync_init(ecx, &rwlock, init_offset, data)?;
         interp_ok(data)
     }
 }
@@ -366,19 +370,6 @@ fn condattr_get_clock_id<'tcx>(
     .to_i32()
 }
 
-fn cond_translate_clock_id<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    raw_id: i32,
-) -> InterpResult<'tcx, ClockId> {
-    interp_ok(if raw_id == ecx.eval_libc_i32("CLOCK_REALTIME") {
-        ClockId::Realtime
-    } else if raw_id == ecx.eval_libc_i32("CLOCK_MONOTONIC") {
-        ClockId::Monotonic
-    } else {
-        throw_unsup_format!("unsupported clock id: {raw_id}");
-    })
-}
-
 fn condattr_set_clock_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     attr_ptr: &OpTy<'tcx>,
@@ -393,30 +384,43 @@ fn condattr_set_clock_id<'tcx>(
     )
 }
 
+/// Translates the clock from what is stored in pthread_condattr_t to our enum.
+fn condattr_translate_clock_id<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
+    raw_id: i32,
+) -> InterpResult<'tcx, ClockId> {
+    interp_ok(if raw_id == ecx.eval_libc_i32("CLOCK_REALTIME") {
+        ClockId::Realtime
+    } else if raw_id == ecx.eval_libc_i32("CLOCK_MONOTONIC") {
+        ClockId::Monotonic
+    } else {
+        throw_unsup_format!("unsupported clock id: {raw_id}");
+    })
+}
+
 // # pthread_cond_t
 // We store some data directly inside the type, ignoring the platform layout:
-// - id: u32
+// - init: u32
 
-fn cond_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
+fn cond_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
     let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
-        // macOS stores a signature in the first bytes, so we have to move to offset 4.
+        // macOS stores a signature in the first bytes, so we move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_cond` is not supported on {os}"),
     };
+    let offset = Size::from_bytes(offset);
 
     // Sanity-check this against PTHREAD_COND_INITIALIZER (but only once):
-    // the id must start out as 0.
+    // the `init` field must start out not equal to INIT_COOKIE.
     static SANITY: AtomicBool = AtomicBool::new(false);
     if !SANITY.swap(true, Ordering::Relaxed) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]);
-        let id_field = static_initializer
-            .offset(Size::from_bytes(offset), ecx.machine.layouts.u32, ecx)
-            .unwrap();
-        let id = ecx.read_scalar(&id_field).unwrap().to_u32().unwrap();
-        assert_eq!(
-            id, 0,
-            "PTHREAD_COND_INITIALIZER is incompatible with our pthread_cond layout: id is not 0"
+        let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
+        let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
+        assert_ne!(
+            init, INIT_COOKIE,
+            "PTHREAD_COND_INITIALIZER is incompatible with our initialization cookie"
         );
     }
 
@@ -429,36 +433,45 @@ enum ClockId {
     Monotonic,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 /// Additional data that we attach with each cond instance.
-struct AdditionalCondData {
-    /// The address of the cond.
-    address: u64,
-
-    /// The clock id of the cond.
-    clock_id: ClockId,
+struct CondData {
+    id: CondvarId,
+    clock: ClockId,
 }
 
-fn cond_get_id<'tcx>(
+fn cond_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     cond_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, CondvarId> {
+    clock: ClockId,
+) -> InterpResult<'tcx, CondData> {
     let cond = ecx.deref_pointer(cond_ptr)?;
-    let address = cond.ptr().addr().bytes();
-    let id = ecx.condvar_get_or_create_id(&cond, cond_id_offset(ecx)?, |_ecx| {
+    let id = ecx.condvar_create();
+    let data = CondData { id, clock };
+    sync_init(ecx, &cond, cond_init_offset(ecx)?, data)?;
+    interp_ok(data)
+}
+
+fn cond_get_data<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    cond_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, CondData> {
+    let cond = ecx.deref_pointer(cond_ptr)?;
+    let init_offset = cond_init_offset(ecx)?;
+
+    if let Some(data) = sync_get_data::<CondData>(ecx, &cond, init_offset, "pthread_cond_t")? {
+        interp_ok(data)
+    } else {
         // This used the static initializer. The clock there is always CLOCK_REALTIME.
-        interp_ok(Some(Box::new(AdditionalCondData { address, clock_id: ClockId::Realtime })))
-    })?;
-
-    // Check that the mutex has not been moved since last use.
-    let data = ecx
-        .condvar_get_data::<AdditionalCondData>(id)
-        .expect("data should always exist for pthreads");
-    if data.address != address {
-        throw_ub_format!("pthread_cond_t can't be moved after first use")
+        if !bytewise_equal_atomic_relaxed(
+            ecx,
+            &cond,
+            &ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]),
+        )? {
+            throw_unsup_format!("unsupported static initializer used for `pthread_cond_t`");
+        }
+        cond_create(ecx, cond_ptr, ClockId::Realtime)
     }
-
-    interp_ok(id)
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -531,7 +544,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let kind = if this.ptr_is_null(attr)? {
             MutexKind::Default
         } else {
-            mutex_translate_kind(this, mutexattr_get_kind(this, attr_op)?)?
+            mutexattr_translate_kind(this, mutexattr_get_kind(this, attr_op)?)?
         };
 
         mutex_create(this, mutex_op, kind)?;
@@ -839,29 +852,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             condattr_get_clock_id(this, attr_op)?
         };
-        let clock_id = cond_translate_clock_id(this, clock_id)?;
+        let clock_id = condattr_translate_clock_id(this, clock_id)?;
 
-        let cond = this.deref_pointer(cond_op)?;
-        let address = cond.ptr().addr().bytes();
-        this.condvar_create(
-            &cond,
-            cond_id_offset(this)?,
-            Some(Box::new(AdditionalCondData { address, clock_id })),
-        )?;
+        cond_create(this, cond_op, clock_id)?;
 
         interp_ok(())
     }
 
     fn pthread_cond_signal(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-        let id = cond_get_id(this, cond_op)?;
+        let id = cond_get_data(this, cond_op)?.id;
         this.condvar_signal(id)?;
         interp_ok(())
     }
 
     fn pthread_cond_broadcast(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-        let id = cond_get_id(this, cond_op)?;
+        let id = cond_get_data(this, cond_op)?.id;
         while this.condvar_signal(id)? {}
         interp_ok(())
     }
@@ -874,11 +881,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = cond_get_id(this, cond_op)?;
+        let data = cond_get_data(this, cond_op)?;
         let mutex_id = mutex_get_data(this, mutex_op)?.id;
 
         this.condvar_wait(
-            id,
+            data.id,
             mutex_id,
             None, // no timeout
             Scalar::from_i32(0),
@@ -898,14 +905,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = cond_get_id(this, cond_op)?;
+        let data = cond_get_data(this, cond_op)?;
         let mutex_id = mutex_get_data(this, mutex_op)?.id;
 
         // Extract the timeout.
-        let clock_id = this
-            .condvar_get_data::<AdditionalCondData>(id)
-            .expect("additional data should always be present for pthreads")
-            .clock_id;
         let duration = match this
             .read_timespec(&this.deref_pointer_as(abstime_op, this.libc_ty_layout("timespec"))?)?
         {
@@ -916,7 +919,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(());
             }
         };
-        let timeout_clock = match clock_id {
+        let timeout_clock = match data.clock {
             ClockId::Realtime => {
                 this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
                 TimeoutClock::RealTime
@@ -925,7 +928,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         this.condvar_wait(
-            id,
+            data.id,
             mutex_id,
             Some((timeout_clock, TimeoutAnchor::Absolute, duration)),
             Scalar::from_i32(0),
@@ -941,7 +944,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Reading the field also has the side-effect that we detect double-`destroy`
         // since we make the field unint below.
-        let id = cond_get_id(this, cond_op)?;
+        let id = cond_get_data(this, cond_op)?.id;
         if this.condvar_is_awaited(id) {
             throw_ub_format!("destroying an awaited conditional variable");
         }
