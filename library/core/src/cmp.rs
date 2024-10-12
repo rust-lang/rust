@@ -655,7 +655,7 @@ impl Ordering {
 ///     }
 /// }
 /// ```
-#[stable(feature = "ordering_extra_impl", since = "1.85.0")]
+#[stable(feature = "ordering_extra_impl", since = "1.83.0")]
 impl ops::Try for Ordering {
     type Output = Self;
     type Residual = Self;
@@ -673,7 +673,7 @@ impl ops::Try for Ordering {
     }
 }
 
-#[stable(feature = "ordering_extra_impl", since = "1.85.0")]
+#[stable(feature = "ordering_extra_impl", since = "1.83.0")]
 impl ops::FromResidual for Ordering {
     #[inline]
     fn from_residual(residual: Self) -> Self {
@@ -719,7 +719,7 @@ impl ops::FromResidual for Ordering {
 /// #     assert!(a > b); assert!(c < b); assert!(b == b); assert!(c < d);
 /// # }
 /// ```
-#[stable(feature = "ordering_extra_impl", since = "1.85.0")]
+#[stable(feature = "ordering_extra_impl", since = "1.83.0")]
 impl FromIterator<Ordering> for Ordering {
     fn from_iter<I: IntoIterator<Item = Ordering>>(i: I) -> Ordering {
         for ord in i {
@@ -729,7 +729,7 @@ impl FromIterator<Ordering> for Ordering {
     }
 }
 
-#[stable(feature = "ordering_extra_impl", since = "1.85.0")]
+#[stable(feature = "ordering_extra_impl", since = "1.83.0")]
 /// Shorthand for [`Ordering::reverse`].
 impl ops::Neg for Ordering {
     type Output = Self;
