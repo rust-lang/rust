@@ -39,6 +39,7 @@ pub fn vec_iterator_cast_primitive(vec: Vec<i8>) -> Vec<u8> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
     // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: loop
     // CHECK-NOT: call
     vec.into_iter().map(|e| e as u8).collect()
@@ -49,6 +50,7 @@ pub fn vec_iterator_cast_primitive(vec: Vec<i8>) -> Vec<u8> {
 pub fn vec_iterator_cast_wrapper(vec: Vec<u8>) -> Vec<Wrapper<u8>> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: loop
     // CHECK-NOT: call
@@ -78,6 +80,7 @@ pub fn vec_iterator_cast_unwrap(vec: Vec<Wrapper<u8>>) -> Vec<u8> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
     // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: loop
     // CHECK-NOT: call
     vec.into_iter().map(|e| e.0).collect()
@@ -89,6 +92,7 @@ pub fn vec_iterator_cast_aggregate(vec: Vec<[u64; 4]>) -> Vec<Foo> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
     // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: loop
     // CHECK-NOT: call
     vec.into_iter().map(|e| unsafe { std::mem::transmute(e) }).collect()
@@ -99,6 +103,7 @@ pub fn vec_iterator_cast_aggregate(vec: Vec<[u64; 4]>) -> Vec<Foo> {
 pub fn vec_iterator_cast_deaggregate_tra(vec: Vec<Bar>) -> Vec<[u64; 4]> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: loop
     // CHECK-NOT: call
@@ -116,6 +121,7 @@ pub fn vec_iterator_cast_deaggregate_fold(vec: Vec<Baz>) -> Vec<[u64; 4]> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
     // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: loop
     // CHECK-NOT: call
 
@@ -132,8 +138,8 @@ pub fn vec_iterator_cast_unwrap_drop(vec: Vec<Wrapper<String>>) -> Vec<String> {
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: %{{.*}} = mul
     // CHECK-NOT: %{{.*}} = udiv
-    // CHECK: call
-    // CHECK-SAME: void @llvm.assume(i1 %{{.+}})
+    // CHECK: call void @llvm.assume(i1 %{{.+}})
+    // CHECK: call void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: call
     // CHECK-NOT: %{{.*}} = mul
@@ -149,8 +155,8 @@ pub fn vec_iterator_cast_wrap_drop(vec: Vec<String>) -> Vec<Wrapper<String>> {
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: %{{.*}} = mul
     // CHECK-NOT: %{{.*}} = udiv
-    // CHECK: call
-    // CHECK-SAME: void @llvm.assume(i1 %{{.+}})
+    // CHECK: void @llvm.assume(i1 %{{.+}})
+    // CHECK: void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: call
     // CHECK-NOT: %{{.*}} = mul

@@ -139,12 +139,12 @@ pub fn type_parameter   () {}
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(
     cfg = "cfail2",
-    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of"
+    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of, optimized_mir"
 )]
 #[rustc_clean(cfg = "cfail3")]
 #[rustc_clean(
     cfg = "cfail5",
-    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of"
+    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of, optimized_mir"
 )]
 #[rustc_clean(cfg = "cfail6")]
 pub fn type_parameter<T>() {}

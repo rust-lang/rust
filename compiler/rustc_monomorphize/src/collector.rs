@@ -1258,7 +1258,7 @@ fn collect_items_of_instance<'tcx>(
                 collector.visit_var_debug_info(var_debug_info);
             }
         }
-        for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+        for (bb, data) in traversal::reverse_postorder(body) {
             collector.visit_basic_block_data(bb, data)
         }
     }

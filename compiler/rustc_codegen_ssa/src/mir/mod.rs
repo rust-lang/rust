@@ -3,6 +3,7 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
@@ -127,12 +128,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     where
         T: Copy + TypeFoldable<TyCtxt<'tcx>>,
     {
-        debug!("monomorphize: self.instance={:?}", self.instance);
-        self.instance.instantiate_mir_and_normalize_erasing_regions(
-            self.cx.tcx(),
-            self.cx.typing_env(),
-            ty::EarlyBinder::bind(value),
-        )
+        value
     }
 }
 
@@ -170,7 +166,7 @@ impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 ///////////////////////////////////////////////////////////////////////////
 
 #[instrument(level = "debug", skip(cx))]
-pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
@@ -179,7 +175,12 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
-    let mut mir = tcx.instance_mir(instance.def);
+    let mut mir = match MonoItem::Fn(instance).instantiation_mode(tcx) {
+        InstantiationMode::LocalCopy => tcx.build_codegen_mir(instance),
+        InstantiationMode::GloballyShared { .. } => {
+            rustc_mir_transform::build_codegen_mir(tcx, instance)
+        }
+    };
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
@@ -244,7 +245,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
-    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
+    let traversal_order: Vec<_> =
+        traversal::reverse_postorder(mir).map(|(block, _data)| block).collect();
     let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
 
     // Allocate variable and temp allocas
@@ -300,20 +302,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
-    let mut unreached_blocks = DenseBitSet::new_filled(mir.basic_blocks.len());
     // Codegen the body of each reachable block using our reverse postorder list.
     for bb in traversal_order {
         fx.codegen_block(bb);
-        unreached_blocks.remove(bb);
-    }
-
-    // FIXME: These empty unreachable blocks are *mostly* a waste. They are occasionally
-    // targets for a SwitchInt terminator, but the reimplementation of the mono-reachable
-    // simplification in SwitchInt lowering sometimes misses cases that
-    // mono_reachable_reverse_postorder manages to figure out.
-    // The solution is to do something like post-mono GVN. But for now we have this hack.
-    for bb in unreached_blocks.iter() {
-        fx.codegen_block_as_unreachable(bb);
     }
 }
 
