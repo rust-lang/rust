@@ -234,8 +234,8 @@ pub fn lazy_sync_get_data<'tcx, T: 'static + Copy>(
             &init_field,
             &ImmTy::from_scalar(init_cookie, ecx.machine.layouts.u32),
             init_cookie,
-            AtomicRwOrd::Acquire,
-            AtomicReadOrd::Acquire,
+            AtomicRwOrd::Relaxed,
+            AtomicReadOrd::Relaxed,
             /* can_fail_spuriously */ false,
         )?
         .to_scalar_pair();
