@@ -5,7 +5,7 @@ use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{SpanlessEq, contains_name, higher, is_integer_const, sugg};
 use rustc_ast::ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_expr};
@@ -39,7 +39,7 @@ pub(super) fn check<'tcx>(
                 var: canonical_id,
                 indexed_mut: FxHashSet::default(),
                 indexed_indirectly: FxHashMap::default(),
-                indexed_directly: FxHashMap::default(),
+                indexed_directly: FxIndexMap::default(),
                 referenced: FxHashSet::default(),
                 nonindex: false,
                 prefer_mutable: false,
@@ -229,7 +229,7 @@ struct VarVisitor<'a, 'tcx> {
     indexed_indirectly: FxHashMap<Symbol, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
-    indexed_directly: FxHashMap<Symbol, (Option<region::Scope>, Ty<'tcx>)>,
+    indexed_directly: FxIndexMap<Symbol, (Option<region::Scope>, Ty<'tcx>)>,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
     referenced: FxHashSet<Symbol>,

@@ -11,22 +11,8 @@ help: you might have meant to use `Self` to refer to the implementing type
 LL |     fn f(a: Self) -> Self;
    |             ~~~~     ~~~~
 
-error[E0038]: the trait `A` cannot be made into an object
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:4:13
-   |
-LL |     fn f(a: A) -> A;
-   |             ^ `A` cannot be made into an object
-   |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:3:10
-   |
-LL | trait A: Sized {
-   |       -  ^^^^^ ...because it requires `Self: Sized`
-   |       |
-   |       this trait cannot be made into an object...
-
 error: associated item referring to unboxed trait object for its own trait
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:11:13
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:10:13
    |
 LL | trait B {
    |       - in this trait
@@ -38,30 +24,8 @@ help: you might have meant to use `Self` to refer to the implementing type
 LL |     fn f(b: Self) -> Self;
    |             ~~~~     ~~~~
 
-error[E0038]: the trait `B` cannot be made into an object
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:11:13
-   |
-LL |     fn f(b: B) -> B;
-   |             ^ `B` cannot be made into an object
-   |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:11:8
-   |
-LL | trait B {
-   |       - this trait cannot be made into an object...
-LL |     fn f(b: B) -> B;
-   |        ^ ...because associated function `f` has no `self` parameter
-help: consider turning `f` into a method by giving it a `&self` argument
-   |
-LL |     fn f(&self, b: B) -> B;
-   |          ++++++
-help: alternatively, consider constraining `f` so it does not apply to trait objects
-   |
-LL |     fn f(b: B) -> B where Self: Sized;
-   |                     +++++++++++++++++
-
 error: associated item referring to unboxed trait object for its own trait
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:18:20
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:16:20
    |
 LL | trait C {
    |       - in this trait
@@ -73,23 +37,7 @@ help: you might have meant to use `Self` to refer to the implementing type
 LL |     fn f(&self, c: Self) -> Self;
    |                    ~~~~     ~~~~
 
-error[E0038]: the trait `C` cannot be made into an object
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:18:20
-   |
-LL |     fn f(&self, c: C) -> C;
-   |          -----     ^ `C` cannot be made into an object
-   |          |
-   |          help: consider changing method `f`'s `self` parameter to be `&self` (notice the capitalization): `&Self`
-   |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:18:10
-   |
-LL | trait C {
-   |       - this trait cannot be made into an object...
-LL |     fn f(&self, c: C) -> C;
-   |          ^^^^^ ...because method `f`'s `self` parameter cannot be dispatched on
-
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:4:13
    |
 LL |     fn f(a: A) -> A;
@@ -105,7 +53,7 @@ help: you can also use an opaque type, but users won't be able to specify the ty
 LL |     fn f(a: impl A) -> A;
    |             ++++
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:4:19
    |
 LL |     fn f(a: A) -> A;
@@ -116,8 +64,8 @@ help: `A` is dyn-incompatible, use `impl A` to return an opaque type, as long as
 LL |     fn f(a: A) -> impl A;
    |                   ++++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:11:13
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:10:13
    |
 LL |     fn f(b: B) -> B;
    |             ^
@@ -132,8 +80,8 @@ help: you can also use an opaque type, but users won't be able to specify the ty
 LL |     fn f(b: impl B) -> B;
    |             ++++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:11:19
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:10:19
    |
 LL |     fn f(b: B) -> B;
    |                   ^
@@ -143,8 +91,8 @@ help: `B` is dyn-incompatible, use `impl B` to return an opaque type, as long as
 LL |     fn f(b: B) -> impl B;
    |                   ++++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:18:20
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:16:20
    |
 LL |     fn f(&self, c: C) -> C;
    |                    ^
@@ -159,8 +107,8 @@ help: you can also use an opaque type, but users won't be able to specify the ty
 LL |     fn f(&self, c: impl C) -> C;
    |                    ++++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:18:26
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:16:26
    |
 LL |     fn f(&self, c: C) -> C;
    |                          ^
@@ -170,7 +118,6 @@ help: `C` is dyn-incompatible, use `impl C` to return an opaque type, as long as
 LL |     fn f(&self, c: C) -> impl C;
    |                          ++++
 
-error: aborting due to 12 previous errors
+error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0038, E0782.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0782`.

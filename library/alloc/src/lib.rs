@@ -108,7 +108,6 @@
 #![feature(coerce_unsized)]
 #![feature(const_align_of_val)]
 #![feature(const_box)]
-#![feature(const_cow_is_borrowed)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
 #![feature(const_maybe_uninit_write)]

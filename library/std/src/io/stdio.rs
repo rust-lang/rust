@@ -370,7 +370,12 @@ impl Stdin {
     /// Locks this handle and reads a line of input, appending it to the specified buffer.
     ///
     /// For detailed semantics of this method, see the documentation on
-    /// [`BufRead::read_line`].
+    /// [`BufRead::read_line`]. In particular:
+    /// * Previous content of the buffer will be preserved. To avoid appending
+    ///   to the buffer, you need to [`clear`] it first.
+    /// * The trailing newline character, if any, is included in the buffer.
+    ///
+    /// [`clear`]: String::clear
     ///
     /// # Examples
     ///
