@@ -167,8 +167,10 @@ pub struct SynchronizationObjects {
     mutexes: IndexVec<MutexId, Mutex>,
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
-    futexes: FxHashMap<u64, Futex>,
     pub(super) init_onces: IndexVec<InitOnceId, InitOnce>,
+
+    /// Futex info for the futex at the given address.
+    futexes: FxHashMap<u64, Futex>,
 }
 
 // Private extension trait for local helper methods
@@ -277,17 +279,9 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Eagerly create and initialize a new mutex.
-    fn mutex_create(
-        &mut self,
-        lock: &MPlaceTy<'tcx>,
-        offset: u64,
-        data: Option<Box<dyn Any>>,
-    ) -> InterpResult<'tcx, MutexId> {
+    fn mutex_create(&mut self) -> MutexId {
         let this = self.eval_context_mut();
-        this.create_id(lock, offset, |ecx| &mut ecx.machine.sync.mutexes, Mutex {
-            data,
-            ..Default::default()
-        })
+        this.machine.sync.mutexes.push(Default::default())
     }
 
     /// Lazily create a new mutex.
