@@ -5,6 +5,7 @@ use rustc_abi as abi;
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{AddressSpace, HasDataLayout};
 use rustc_ast::Mutability;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
@@ -146,6 +147,10 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
+        debug_assert!(
+            self.type_kind(t) == TypeKind::Integer,
+            "only allows integer types in const_int"
+        );
         unsafe { llvm::LLVMConstInt(t, i as u64, True) }
     }
 
@@ -176,10 +181,18 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_uint(&self, t: &'ll Type, i: u64) -> &'ll Value {
+        debug_assert!(
+            self.type_kind(t) == TypeKind::Integer,
+            "only allows integer types in const_uint"
+        );
         unsafe { llvm::LLVMConstInt(t, i, False) }
     }
 
     fn const_uint_big(&self, t: &'ll Type, u: u128) -> &'ll Value {
+        debug_assert!(
+            self.type_kind(t) == TypeKind::Integer,
+            "only allows integer types in const_uint_big"
+        );
         unsafe {
             let words = [u as u64, (u >> 64) as u64];
             llvm::LLVMConstIntOfArbitraryPrecision(t, 2, words.as_ptr())
