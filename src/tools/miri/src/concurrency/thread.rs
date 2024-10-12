@@ -147,7 +147,7 @@ pub enum BlockReason {
     /// Blocked on a reader-writer lock.
     RwLock(RwLockId),
     /// Blocked on a Futex variable.
-    Futex { addr: u64 },
+    Futex,
     /// Blocked on an InitOnce.
     InitOnce(InitOnceId),
     /// Blocked on epoll.
