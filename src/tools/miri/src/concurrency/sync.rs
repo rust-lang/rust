@@ -11,11 +11,6 @@ use super::init_once::InitOnce;
 use super::vector_clock::VClock;
 use crate::*;
 
-pub trait SyncId {
-    fn from_u32(id: u32) -> Self;
-    fn to_u32(&self) -> u32;
-}
-
 /// We cannot use the `newtype_index!` macro because we have to use 0 as a
 /// sentinel value meaning that the identifier is not assigned. This is because
 /// the pthreads static initializers initialize memory with zeros (see the
@@ -26,16 +21,6 @@ macro_rules! declare_id {
         /// therefore, is not a valid identifier.
         #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
         pub struct $name(std::num::NonZero<u32>);
-
-        impl $crate::concurrency::sync::SyncId for $name {
-            // Panics if `id == 0`.
-            fn from_u32(id: u32) -> Self {
-                Self(std::num::NonZero::new(id).unwrap())
-            }
-            fn to_u32(&self) -> u32 {
-                self.0.get()
-            }
-        }
 
         impl $crate::VisitProvenance for $name {
             fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
@@ -53,12 +38,6 @@ macro_rules! declare_id {
                 // See the comment in `Self::new`.
                 // (This cannot underflow because `self.0` is `NonZero<u32>`.)
                 usize::try_from(self.0.get() - 1).unwrap()
-            }
-        }
-
-        impl $name {
-            pub fn to_u32_scalar(&self) -> Scalar {
-                Scalar::from_u32(self.0.get())
             }
         }
     };
@@ -166,56 +145,6 @@ pub struct SynchronizationObjects {
 // Private extension trait for local helper methods
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Lazily initialize the ID of this Miri sync structure.
-    /// If memory stores '0', that indicates uninit and we generate a new instance.
-    /// Returns `None` if memory stores a non-zero invalid ID.
-    ///
-    /// `get_objs` must return the `IndexVec` that stores all the objects of this type.
-    /// `create_obj` must create the new object if initialization is needed.
-    #[inline]
-    fn get_or_create_id<Id: SyncId + Idx, T>(
-        &mut self,
-        lock: &MPlaceTy<'tcx>,
-        offset: u64,
-        get_objs: impl for<'a> Fn(&'a mut MiriInterpCx<'tcx>) -> &'a mut IndexVec<Id, T>,
-        create_obj: impl for<'a> FnOnce(&'a mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
-    ) -> InterpResult<'tcx, Option<Id>> {
-        let this = self.eval_context_mut();
-        let offset = Size::from_bytes(offset);
-        assert!(lock.layout.size >= offset + this.machine.layouts.u32.size);
-        let id_place = lock.offset(offset, this.machine.layouts.u32, this)?;
-        let next_index = get_objs(this).next_index();
-
-        // Since we are lazy, this update has to be atomic.
-        let (old, success) = this
-            .atomic_compare_exchange_scalar(
-                &id_place,
-                &ImmTy::from_uint(0u32, this.machine.layouts.u32),
-                Scalar::from_u32(next_index.to_u32()),
-                AtomicRwOrd::Relaxed, // deliberately *no* synchronization
-                AtomicReadOrd::Relaxed,
-                false,
-            )?
-            .to_scalar_pair();
-
-        interp_ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
-            // We set the in-memory ID to `next_index`, now also create this object in the machine
-            // state.
-            let obj = create_obj(this)?;
-            let new_index = get_objs(this).push(obj);
-            assert_eq!(next_index, new_index);
-            Some(new_index)
-        } else {
-            let id = Id::from_u32(old.to_u32().expect("layout is u32"));
-            if get_objs(this).get(id).is_none() {
-                // The in-memory ID is invalid.
-                None
-            } else {
-                Some(id)
-            }
-        })
-    }
-
     fn condvar_reacquire_mutex(
         &mut self,
         mutex: MutexId,
@@ -247,6 +176,80 @@ impl SynchronizationObjects {
 
     pub fn condvar_create(&mut self) -> CondvarId {
         self.condvars.push(Default::default())
+    }
+
+    pub fn init_once_create(&mut self) -> InitOnceId {
+        self.init_onces.push(Default::default())
+    }
+}
+
+impl<'tcx> AllocExtra<'tcx> {
+    pub fn get_sync<T: 'static>(&self, offset: Size) -> Option<&T> {
+        self.sync.get(&offset).and_then(|s| s.downcast_ref::<T>())
+    }
+}
+
+/// We designate an `init`` field in all primitives.
+/// If `init` is set to this, we consider the primitive initialized.
+pub const LAZY_INIT_COOKIE: u32 = 0xcafe_affe;
+
+/// Helper for lazily initialized `alloc_extra.sync` data:
+/// this forces an immediate init.
+pub fn lazy_sync_init<'tcx, T: 'static + Copy>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    primitive: &MPlaceTy<'tcx>,
+    init_offset: Size,
+    data: T,
+) -> InterpResult<'tcx> {
+    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
+
+    let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
+    let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
+    alloc_extra.sync.insert(offset, Box::new(data));
+    // Mark this as "initialized".
+    ecx.write_scalar_atomic(
+        Scalar::from_u32(LAZY_INIT_COOKIE),
+        &init_field,
+        AtomicWriteOrd::Relaxed,
+    )?;
+    interp_ok(())
+}
+
+/// Helper for lazily initialized `alloc_extra.sync` data:
+/// Checks if the primitive is initialized, and return its associated data if so.
+/// Otherwise, return None.
+pub fn lazy_sync_get_data<'tcx, T: 'static + Copy>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    primitive: &MPlaceTy<'tcx>,
+    init_offset: Size,
+    name: &str,
+) -> InterpResult<'tcx, Option<T>> {
+    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
+    // Check if this is already initialized. Needs to be atomic because we can race with another
+    // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
+    // So we just try to replace MUTEX_INIT_COOKIE with itself.
+    let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
+    let (_init, success) = ecx
+        .atomic_compare_exchange_scalar(
+            &init_field,
+            &ImmTy::from_scalar(init_cookie, ecx.machine.layouts.u32),
+            init_cookie,
+            AtomicRwOrd::Acquire,
+            AtomicReadOrd::Acquire,
+            /* can_fail_spuriously */ false,
+        )?
+        .to_scalar_pair();
+    if success.to_bool()? {
+        // If it is initialized, it must be found in the "sync primitive" table,
+        // or else it has been moved illegally.
+        let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
+        let alloc_extra = ecx.get_alloc_extra(alloc)?;
+        let data = alloc_extra
+            .get_sync::<T>(offset)
+            .ok_or_else(|| err_ub_format!("`{name}` can't be moved after first use"))?;
+        interp_ok(Some(*data))
+    } else {
+        interp_ok(None)
     }
 }
 

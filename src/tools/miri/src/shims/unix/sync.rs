@@ -2,10 +2,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_target::abi::Size;
 
+use crate::concurrency::sync::{LAZY_INIT_COOKIE, lazy_sync_get_data, lazy_sync_init};
 use crate::*;
 
-/// Do a bytewise comparison of the two places, using relaxed atomic reads.
-/// This is used to check if a mutex matches its static initializer value.
+/// Do a bytewise comparison of the two places, using relaxed atomic reads. This is used to check if
+/// a synchronization primitive matches its static initializer value.
+///
+/// The reads happen in chunks of 4, so all racing accesses must also use that access size.
 fn bytewise_equal_atomic_relaxed<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     left: &MPlaceTy<'tcx>,
@@ -31,63 +34,6 @@ fn bytewise_equal_atomic_relaxed<'tcx>(
     }
 
     interp_ok(true)
-}
-
-/// We designate an `init`` field in all primitives.
-/// If `init` is set to this, we consider the primitive initialized.
-const INIT_COOKIE: u32 = 0xcafe_affe;
-
-fn sync_init<'tcx, T: 'static + Copy>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    primitive: &MPlaceTy<'tcx>,
-    init_offset: Size,
-    data: T,
-) -> InterpResult<'tcx> {
-    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
-
-    let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
-    let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
-    alloc_extra.sync.insert(offset, Box::new(data));
-    // Mark this as "initialized".
-    ecx.write_scalar_atomic(Scalar::from_u32(INIT_COOKIE), &init_field, AtomicWriteOrd::Relaxed)?;
-    interp_ok(())
-}
-
-/// Checks if the primitive is initialized, and return its associated data if so.
-/// Otherwise, return None.
-fn sync_get_data<'tcx, T: 'static + Copy>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    primitive: &MPlaceTy<'tcx>,
-    init_offset: Size,
-    name: &str,
-) -> InterpResult<'tcx, Option<T>> {
-    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
-    // Check if this is already initialized. Needs to be atomic because we can race with another
-    // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
-    // So we just try to replace MUTEX_INIT_COOKIE with itself.
-    let init_cookie = Scalar::from_u32(INIT_COOKIE);
-    let (_init, success) = ecx
-        .atomic_compare_exchange_scalar(
-            &init_field,
-            &ImmTy::from_scalar(init_cookie, ecx.machine.layouts.u32),
-            init_cookie,
-            AtomicRwOrd::Acquire,
-            AtomicReadOrd::Acquire,
-            /* can_fail_spuriously */ false,
-        )?
-        .to_scalar_pair();
-    if success.to_bool()? {
-        // If it is initialized, it must be found in the "sync primitive" table,
-        // or else it has been moved illegally.
-        let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
-        let alloc_extra = ecx.get_alloc_extra(alloc)?;
-        let data = alloc_extra
-            .get_sync::<T>(offset)
-            .ok_or_else(|| err_ub_format!("`{name}` can't be moved after first use"))?;
-        interp_ok(Some(*data))
-    } else {
-        interp_ok(None)
-    }
 }
 
 // # pthread_mutexattr_t
@@ -198,7 +144,10 @@ fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size>
             let init_field =
                 static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
             let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
-            assert_ne!(init, INIT_COOKIE, "{name} is incompatible with our initialization cookie");
+            assert_ne!(
+                init, LAZY_INIT_COOKIE,
+                "{name} is incompatible with our initialization cookie"
+            );
         };
 
         check_static_initializer("PTHREAD_MUTEX_INITIALIZER");
@@ -228,7 +177,7 @@ fn mutex_create<'tcx>(
     let mutex = ecx.deref_pointer(mutex_ptr)?;
     let id = ecx.machine.sync.mutex_create();
     let data = MutexData { id, kind };
-    sync_init(ecx, &mutex, mutex_init_offset(ecx)?, data)?;
+    lazy_sync_init(ecx, &mutex, mutex_init_offset(ecx)?, data)?;
     interp_ok(data)
 }
 
@@ -243,7 +192,7 @@ fn mutex_get_data<'tcx, 'a>(
     let mutex = ecx.deref_pointer(mutex_ptr)?;
 
     if let Some(data) =
-        sync_get_data::<MutexData>(ecx, &mutex, mutex_init_offset(ecx)?, "pthread_mutex_t")?
+        lazy_sync_get_data::<MutexData>(ecx, &mutex, mutex_init_offset(ecx)?, "pthread_mutex_t")?
     {
         interp_ok(data)
     } else {
@@ -302,14 +251,14 @@ fn rwlock_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size
     let offset = Size::from_bytes(offset);
 
     // Sanity-check this against PTHREAD_RWLOCK_INITIALIZER (but only once):
-    // the `init` field must start out not equal to INIT_COOKIE.
+    // the `init` field must start out not equal to LAZY_INIT_COOKIE.
     static SANITY: AtomicBool = AtomicBool::new(false);
     if !SANITY.swap(true, Ordering::Relaxed) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]);
         let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
         let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
         assert_ne!(
-            init, INIT_COOKIE,
+            init, LAZY_INIT_COOKIE,
             "PTHREAD_RWLOCK_INITIALIZER is incompatible with our initialization cookie"
         );
     }
@@ -324,7 +273,8 @@ fn rwlock_get_data<'tcx>(
     let rwlock = ecx.deref_pointer(rwlock_ptr)?;
     let init_offset = rwlock_init_offset(ecx)?;
 
-    if let Some(data) = sync_get_data::<RwLockData>(ecx, &rwlock, init_offset, "pthread_rwlock_t")?
+    if let Some(data) =
+        lazy_sync_get_data::<RwLockData>(ecx, &rwlock, init_offset, "pthread_rwlock_t")?
     {
         interp_ok(data)
     } else {
@@ -337,7 +287,7 @@ fn rwlock_get_data<'tcx>(
         }
         let id = ecx.machine.sync.rwlock_create();
         let data = RwLockData { id };
-        sync_init(ecx, &rwlock, init_offset, data)?;
+        lazy_sync_init(ecx, &rwlock, init_offset, data)?;
         interp_ok(data)
     }
 }
@@ -410,14 +360,14 @@ fn cond_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> 
     let offset = Size::from_bytes(offset);
 
     // Sanity-check this against PTHREAD_COND_INITIALIZER (but only once):
-    // the `init` field must start out not equal to INIT_COOKIE.
+    // the `init` field must start out not equal to LAZY_INIT_COOKIE.
     static SANITY: AtomicBool = AtomicBool::new(false);
     if !SANITY.swap(true, Ordering::Relaxed) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]);
         let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
         let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
         assert_ne!(
-            init, INIT_COOKIE,
+            init, LAZY_INIT_COOKIE,
             "PTHREAD_COND_INITIALIZER is incompatible with our initialization cookie"
         );
     }
@@ -446,7 +396,7 @@ fn cond_create<'tcx>(
     let cond = ecx.deref_pointer(cond_ptr)?;
     let id = ecx.machine.sync.condvar_create();
     let data = CondData { id, clock };
-    sync_init(ecx, &cond, cond_init_offset(ecx)?, data)?;
+    lazy_sync_init(ecx, &cond, cond_init_offset(ecx)?, data)?;
     interp_ok(data)
 }
 
@@ -457,7 +407,7 @@ fn cond_get_data<'tcx>(
     let cond = ecx.deref_pointer(cond_ptr)?;
     let init_offset = cond_init_offset(ecx)?;
 
-    if let Some(data) = sync_get_data::<CondData>(ecx, &cond, init_offset, "pthread_cond_t")? {
+    if let Some(data) = lazy_sync_get_data::<CondData>(ecx, &cond, init_offset, "pthread_cond_t")? {
         interp_ok(data)
     } else {
         // This used the static initializer. The clock there is always CLOCK_REALTIME.

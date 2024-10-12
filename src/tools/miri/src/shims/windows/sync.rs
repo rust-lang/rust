@@ -3,7 +3,13 @@ use std::time::Duration;
 use rustc_target::abi::Size;
 
 use crate::concurrency::init_once::InitOnceStatus;
+use crate::concurrency::sync::{lazy_sync_get_data, lazy_sync_init};
 use crate::*;
+
+#[derive(Copy, Clone)]
+struct InitOnceData {
+    id: InitOnceId,
+}
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -12,8 +18,21 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn init_once_get_id(&mut self, init_once_ptr: &OpTy<'tcx>) -> InterpResult<'tcx, InitOnceId> {
         let this = self.eval_context_mut();
+
         let init_once = this.deref_pointer(init_once_ptr)?;
-        this.init_once_get_or_create_id(&init_once, 0)
+        let init_offset = Size::ZERO;
+
+        if let Some(data) =
+            lazy_sync_get_data::<InitOnceData>(this, &init_once, init_offset, "INIT_ONCE")?
+        {
+            interp_ok(data.id)
+        } else {
+            // TODO: check that this is still all-zero.
+            let id = this.machine.sync.init_once_create();
+            let data = InitOnceData { id };
+            lazy_sync_init(this, &init_once, init_offset, data)?;
+            interp_ok(id)
+        }
     }
 
     /// Returns `true` if we were succssful, `false` if we would block.

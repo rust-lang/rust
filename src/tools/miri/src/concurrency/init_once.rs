@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 
 use rustc_index::Idx;
 
-use super::sync::EvalContextExtPriv as _;
 use super::vector_clock::VClock;
 use crate::*;
 
@@ -27,22 +26,6 @@ pub(super) struct InitOnce {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn init_once_get_or_create_id(
-        &mut self,
-        lock: &MPlaceTy<'tcx>,
-        offset: u64,
-    ) -> InterpResult<'tcx, InitOnceId> {
-        let this = self.eval_context_mut();
-        this.get_or_create_id(
-            lock,
-            offset,
-            |ecx| &mut ecx.machine.sync.init_onces,
-            |_| interp_ok(Default::default()),
-        )?
-        .ok_or_else(|| err_ub_format!("init_once has invalid ID"))
-        .into()
-    }
-
     #[inline]
     fn init_once_status(&mut self, id: InitOnceId) -> InitOnceStatus {
         let this = self.eval_context_ref();
