@@ -195,7 +195,7 @@ where
                         }
                     }
 
-                    _ if component.is_copy_modulo_regions(tcx, self.param_env) => (),
+                    _ if component.is_copy_modulo_regions(tcx, self.param_env) => {}
 
                     ty::Closure(_, args) => {
                         for upvar in args.as_closure().upvar_tys() {

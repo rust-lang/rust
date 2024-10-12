@@ -27,8 +27,8 @@ mir_transform_operation_will_panic = this operation will panic at runtime
 
 mir_transform_tail_expr_drop_order = this value has significant drop implementation that will have a different drop order from that of Edition 2021, whose type `{$ty}` drops `{$ty_drop_components}` while dropping
     .label = this local binding may observe changes in drop order under Edition 2024, whose type `{$observer_ty}` drops `{$observer_ty_drop_components}` while dropping
-    .note_ty = these are the types with significant drop implementation
-    .note_observer_ty = these are the types with significant drop implementation that may be sensitive the the change in the drop order
+    .note_ty = these are the types and values with significant drop implementation
+    .note_observer_ty = these are the types and values with significant drop implementation that are from Edition 2024 dropped earlier rather than later
 
 mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses

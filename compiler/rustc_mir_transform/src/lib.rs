@@ -359,7 +359,6 @@ fn mir_promoted(
         &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
-    lint_tail_expr_drop_order::run_lint(tcx, def, &body);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
@@ -416,6 +415,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     }
 
     let (body, _) = tcx.mir_promoted(def);
+    lint_tail_expr_drop_order::run_lint(tcx, def, &body.borrow());
     let mut body = body.steal();
 
     if let Some(error_reported) = tainted_by_errors {

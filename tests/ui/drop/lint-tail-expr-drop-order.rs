@@ -1,6 +1,8 @@
 // Edition 2024 lint for change in drop order at tail expression
 // This lint is to capture potential change in program semantics
 // due to implementation of RFC 3606 <https://github.com/rust-lang/rfcs/pull/3606>
+//@ edition: 2021
+//@ build-fail
 
 #![deny(tail_expr_drop_order)]
 #![feature(shorter_tail_lifetimes)]
@@ -96,6 +98,20 @@ fn should_not_lint_when_moved() -> i32 {
     drop(x);
     // Should not lint because `x` is not live
     LoudDropper.get()
+}
+
+fn should_lint_into_async_body() -> i32 {
+    async fn f() {
+        async fn f() {}
+        let x = LoudDropper;
+        f().await;
+        drop(x);
+    }
+
+    let future = f();
+    LoudDropper.get()
+    //~^ ERROR: this value has significant drop implementation that will have a different drop order from that of Edition 2021
+    //~| WARN: this changes meaning in Rust 2024
 }
 
 fn main() {}

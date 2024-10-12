@@ -13,6 +13,7 @@ use rustc_mir_dataflow::move_paths::{MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable};
 use rustc_session::lint;
 use rustc_span::Span;
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 fn place_has_common_prefix<'tcx>(left: &Place<'tcx>, right: &Place<'tcx>) -> bool {
@@ -69,6 +70,41 @@ fn print_ty_without_trimming(ty: Ty<'_>) -> String {
 }
 
 #[instrument(level = "debug", skip(tcx, param_env))]
+fn extract_component_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> (SmallVec<[Ty<'tcx>; 4]>, SmallVec<[Span; 4]>) {
+    // Droppiness does not depend on regions, so let us erase them.
+    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+
+    let Ok(tys) = tcx.list_significant_drop_tys(param_env.and(ty)) else {
+        return (smallvec![ty], smallvec![]);
+    };
+    debug!(?ty, "components");
+    let mut out_tys = smallvec![];
+    let mut out_spans = smallvec![];
+    for ty in tys {
+        if let ty::Coroutine(did, args) = ty.kind()
+            && let Some(witness) = tcx.mir_coroutine_witnesses(did)
+        {
+            for field in &witness.field_tys {
+                let (tys, spans) = extract_component_raw(
+                    tcx,
+                    param_env,
+                    ty::EarlyBinder::bind(field.ty).instantiate(tcx, args),
+                );
+                out_tys.extend(tys);
+                out_spans.extend([field.source_info.span].into_iter().chain(spans));
+            }
+        } else {
+            out_tys.push(ty);
+        }
+    }
+    (out_tys, out_spans)
+}
+
+#[instrument(level = "debug", skip(tcx, param_env))]
 fn extract_component_with_significant_dtor<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -105,20 +141,9 @@ fn extract_component_with_significant_dtor<'tcx>(
         // I honestly don't know how to extract the span reliably from a param arbitrarily nested
         ty::Param(_) => None,
     };
-    let Ok(tys) = tcx.list_significant_drop_tys(param_env.and(ty)) else {
-        return (print_ty_without_trimming(ty), vec![]);
-    };
-    debug!(?ty, "components");
-    for ty in tys {
-        match ty.kind() {
-            ty::Coroutine(def_id, _) => debug!(?def_id, "coroutine"),
-            ty::CoroutineWitness(def_id, _) => debug!(?def_id, "coroutine witness"),
-            ty::Adt(def_id, _) => debug!(?def_id, "adt"),
-            _ => {}
-        }
-    }
-    let ty_names = tys.iter().map(print_ty_without_trimming).join(", ");
-    let ty_spans = tys.iter().flat_map(ty_def_span).collect();
+    let (tys, spans) = extract_component_raw(tcx, param_env, ty);
+    let ty_names = tys.iter().copied().map(print_ty_without_trimming).join(", ");
+    let ty_spans = tys.iter().copied().flat_map(ty_def_span).chain(spans).collect();
     (ty_names, ty_spans)
 }
 
