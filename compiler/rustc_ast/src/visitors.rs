@@ -26,12 +26,10 @@ macro_rules! macro_if {
 
 macro_rules! make_ast_visitor {
     ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
-        #[allow(unused)]
         macro_rules! ref_t {
             ($t: ty) => { & $($lt)? $($mut)? $t };
         }
 
-        #[allow(unused)]
         macro_rules! result {
             ($V: ty) => {
                 macro_if!($($mut)? { () } else { <$V>::Result })
@@ -41,7 +39,6 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        #[allow(unused)]
         macro_rules! make_visit {
             (
                 $ty: ty
@@ -58,7 +55,6 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        #[allow(unused)]
         macro_rules! P {
             ($t: ty) => {
                 macro_if!{$($mut)? {
@@ -118,21 +114,50 @@ macro_rules! make_ast_visitor {
                 // field access version will continue working and it would be easy to
                 // forget to add handling for it.
 
-                fn visit_crate(&mut self, c: &mut Crate) {
-                    walk_crate(self, c)
-                }
+                make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
+                make_visit!{AnonConst; visit_anon_const, walk_anon_const}
+                make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
+                make_visit!{Attribute; visit_attribute, walk_attribute}
+                make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
+                make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
+                make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
+                make_visit!{Crate; visit_crate, walk_crate}
+                make_visit!{FnHeader; visit_fn_header, walk_fn_header}
+                make_visit!{ForeignMod; visit_foreign_mod, walk_foreign_mod}
+                make_visit!{FormatArgs; visit_format_args, walk_format_args}
+                make_visit!{GenericArg; visit_generic_arg, walk_generic_arg}
+                make_visit!{GenericArgs; visit_generic_args, walk_generic_args}
+                make_visit!{GenericBound, _ ctxt: BoundKind; visit_param_bound, walk_param_bound}
+                make_visit!{Generics; visit_generics, walk_generics}
+                make_visit!{Ident; visit_ident, walk_ident}
+                make_visit!{InlineAsm; visit_inline_asm, walk_inline_asm}
+                make_visit!{InlineAsmSym; visit_inline_asm_sym, walk_inline_asm_sym}
+                make_visit!{Label; visit_label, walk_label}
+                make_visit!{Lifetime; visit_lifetime, walk_lifetime}
+                make_visit!{MacCall; visit_mac_call, walk_mac}
+                make_visit!{MacroDef; visit_macro_def, walk_macro_def}
+                make_visit!{MetaItem; visit_meta_item, walk_meta_item}
+                make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
+                make_visit!{MutTy; visit_mt, walk_mt}
+                make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
+                make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
+                make_visit!{Path; visit_path, walk_path}
+                make_visit!{PathSegment; visit_path_segment, walk_path_segment}
+                make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
+                make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
+                make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
+                make_visit!{UseTree; visit_use_tree, walk_use_tree}
+                make_visit!{VariantData; visit_variant_data, walk_variant_data}
+                make_visit!{Visibility; visit_vis, walk_vis}
+                make_visit!{WhereClause; visit_where_clause, walk_where_clause}
+                make_visit!{WherePredicate; visit_where_predicate, walk_where_predicate}
 
-                fn visit_meta_list_item(&mut self, list_item: &mut MetaItemInner) {
-                    walk_meta_list_item(self, list_item);
-                }
-
-                fn visit_meta_item(&mut self, meta_item: &mut MetaItem) {
-                    walk_meta_item(self, meta_item);
-                }
-
-                fn visit_use_tree(&mut self, use_tree: &mut UseTree) {
-                    walk_use_tree(self, use_tree);
-                }
+                make_visit!{P!(Block); visit_block, walk_block}
+                make_visit!{P!(Expr); visit_expr, walk_expr}
+                make_visit!{P!(FnDecl); visit_fn_decl, walk_fn_decl}
+                make_visit!{P!(Local); visit_local, walk_local}
+                make_visit!{P!(Pat); visit_pat, walk_pat}
+                make_visit!{P!(Ty); visit_ty, walk_ty}
 
                 fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
                     walk_flat_map_item(self, ni)
@@ -140,10 +165,6 @@ macro_rules! make_ast_visitor {
 
                 fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
                     walk_flat_map_item(self, i)
-                }
-
-                fn visit_fn_header(&mut self, header: &mut FnHeader) {
-                    walk_fn_header(self, header);
                 }
 
                 fn flat_map_field_def(&mut self, fd: FieldDef) -> SmallVec<[FieldDef; 1]> {
@@ -158,25 +179,9 @@ macro_rules! make_ast_visitor {
                     walk_flat_map_item(self, i)
                 }
 
-                fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
-                    walk_fn_decl(self, d);
-                }
-
                 /// `Span` and `NodeId` are mutated at the caller site.
                 fn visit_fn(&mut self, fk: FnKind<'_>, _: Span, _: NodeId) {
                     walk_fn(self, fk)
-                }
-
-                fn visit_coroutine_kind(&mut self, a: &mut CoroutineKind) {
-                    walk_coroutine_kind(self, a);
-                }
-
-                fn visit_closure_binder(&mut self, b: &mut ClosureBinder) {
-                    walk_closure_binder(self, b);
-                }
-
-                fn visit_block(&mut self, b: &mut P<Block>) {
-                    walk_block(self, b);
                 }
 
                 fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
@@ -185,18 +190,6 @@ macro_rules! make_ast_visitor {
 
                 fn flat_map_arm(&mut self, arm: Arm) -> SmallVec<[Arm; 1]> {
                     walk_flat_map_arm(self, arm)
-                }
-
-                fn visit_pat(&mut self, p: &mut P<Pat>) {
-                    walk_pat(self, p);
-                }
-
-                fn visit_anon_const(&mut self, c: &mut AnonConst) {
-                    walk_anon_const(self, c);
-                }
-
-                fn visit_expr(&mut self, e: &mut P<Expr>) {
-                    walk_expr(self, e);
                 }
 
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
@@ -209,128 +202,20 @@ macro_rules! make_ast_visitor {
                     noop_filter_map_expr(self, e)
                 }
 
-                fn visit_generic_arg(&mut self, arg: &mut GenericArg) {
-                    walk_generic_arg(self, arg);
-                }
-
-                fn visit_ty(&mut self, t: &mut P<Ty>) {
-                    walk_ty(self, t);
-                }
-
-                fn visit_lifetime(&mut self, l: &mut Lifetime) {
-                    walk_lifetime(self, l);
-                }
-
-                fn visit_assoc_item_constraint(&mut self, c: &mut AssocItemConstraint) {
-                    walk_assoc_item_constraint(self, c);
-                }
-
-                fn visit_foreign_mod(&mut self, nm: &mut ForeignMod) {
-                    walk_foreign_mod(self, nm);
-                }
-
                 fn flat_map_variant(&mut self, v: Variant) -> SmallVec<[Variant; 1]> {
                     walk_flat_map_variant(self, v)
-                }
-
-                fn visit_ident(&mut self, i: &mut Ident) {
-                    walk_ident(self, i);
-                }
-
-                fn visit_path(&mut self, p: &mut Path) {
-                    walk_path(self, p);
-                }
-
-                fn visit_path_segment(&mut self, p: &mut PathSegment) {
-                    walk_path_segment(self, p)
-                }
-
-                fn visit_qself(&mut self, qs: &mut Option<P<QSelf>>) {
-                    walk_qself(self, qs);
-                }
-
-                fn visit_generic_args(&mut self, p: &mut GenericArgs) {
-                    walk_generic_args(self, p);
-                }
-
-                fn visit_angle_bracketed_parameter_data(&mut self, p: &mut AngleBracketedArgs) {
-                    walk_angle_bracketed_parameter_data(self, p);
-                }
-
-                fn visit_parenthesized_parameter_data(&mut self, p: &mut ParenthesizedArgs) {
-                    walk_parenthesized_parameter_data(self, p);
-                }
-
-                fn visit_local(&mut self, l: &mut P<Local>) {
-                    walk_local(self, l);
-                }
-
-                fn visit_mac_call(&mut self, mac: &mut MacCall) {
-                    walk_mac(self, mac);
-                }
-
-                fn visit_macro_def(&mut self, def: &mut MacroDef) {
-                    walk_macro_def(self, def);
-                }
-
-                fn visit_label(&mut self, label: &mut Label) {
-                    walk_label(self, label);
-                }
-
-                fn visit_attribute(&mut self, at: &mut Attribute) {
-                    walk_attribute(self, at);
                 }
 
                 fn flat_map_param(&mut self, param: Param) -> SmallVec<[Param; 1]> {
                     walk_flat_map_param(self, param)
                 }
 
-                fn visit_generics(&mut self, generics: &mut Generics) {
-                    walk_generics(self, generics);
-                }
-
-                fn visit_trait_ref(&mut self, tr: &mut TraitRef) {
-                    walk_trait_ref(self, tr);
-                }
-
-                fn visit_poly_trait_ref(&mut self, p: &mut PolyTraitRef) {
-                    walk_poly_trait_ref(self, p);
-                }
-
-                fn visit_variant_data(&mut self, vdata: &mut VariantData) {
-                    walk_variant_data(self, vdata);
-                }
-
                 fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
                     walk_flat_map_generic_param(self, param)
                 }
 
-                fn visit_param_bound(&mut self, tpb: &mut GenericBound, _ctxt: BoundKind) {
-                    walk_param_bound(self, tpb);
-                }
-
-                fn visit_precise_capturing_arg(&mut self, arg: &mut PreciseCapturingArg) {
-                    walk_precise_capturing_arg(self, arg);
-                }
-
-                fn visit_mt(&mut self, mt: &mut MutTy) {
-                    walk_mt(self, mt);
-                }
-
                 fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
                     walk_flat_map_expr_field(self, f)
-                }
-
-                fn visit_where_clause(&mut self, where_clause: &mut WhereClause) {
-                    walk_where_clause(self, where_clause);
-                }
-
-                fn visit_where_predicate(&mut self, where_predicate: &mut WherePredicate) {
-                    walk_where_predicate(self, where_predicate);
-                }
-
-                fn visit_vis(&mut self, vis: &mut Visibility) {
-                    walk_vis(self, vis);
                 }
 
                 fn visit_id(&mut self, _id: &mut NodeId) {
@@ -344,59 +229,56 @@ macro_rules! make_ast_visitor {
                 fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
                     walk_flat_map_pat_field(self, fp)
                 }
-
-                fn visit_inline_asm(&mut self, asm: &mut InlineAsm) {
-                    walk_inline_asm(self, asm)
-                }
-
-                fn visit_inline_asm_sym(&mut self, sym: &mut InlineAsmSym) {
-                    walk_inline_asm_sym(self, sym)
-                }
-
-                fn visit_format_args(&mut self, fmt: &mut FormatArgs) {
-                    walk_format_args(self, fmt)
-                }
-
-                fn visit_capture_by(&mut self, capture_by: &mut CaptureBy) {
-                    walk_capture_by(self, capture_by)
-                }
             } else {
                 /// The result type of the `visit_*` methods. Can be either `()`,
                 /// or `ControlFlow<T>`.
                 type Result: VisitorResult = ();
 
+                make_visit!{AnonConst; visit_anon_const, walk_anon_const}
+                make_visit!{Arm; visit_arm, walk_arm}
+                make_visit!{AssocItem, ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item}
+                make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
+                make_visit!{Attribute; visit_attribute, walk_attribute}
+                make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
+                make_visit!{Crate; visit_crate, walk_crate}
+                make_visit!{EnumDef; visit_enum_def, walk_enum_def}
+                make_visit!{ExprField; visit_expr_field, walk_expr_field}
+                make_visit!{FieldDef; visit_field_def, walk_field_def}
+                make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
+                make_visit!{ForeignItem; visit_foreign_item, walk_item}
+                make_visit!{FormatArgs; visit_format_args, walk_format_args}
+                make_visit!{GenericArg; visit_generic_arg, walk_generic_arg}
+                make_visit!{GenericArgs; visit_generic_args, walk_generic_args}
+                make_visit!{GenericBound, _ ctxt: BoundKind; visit_param_bound, walk_param_bound}
+                make_visit!{GenericParam; visit_generic_param, walk_generic_param}
+                make_visit!{Generics; visit_generics, walk_generics}
+                make_visit!{InlineAsm; visit_inline_asm, walk_inline_asm}
+                make_visit!{InlineAsmSym; visit_inline_asm_sym, walk_inline_asm_sym}
+                make_visit!{Item; visit_item, walk_item}
+                make_visit!{Label; visit_label, walk_label}
+                make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
+                make_visit!{MacCall; visit_mac_call, walk_mac}
+                make_visit!{Param; visit_param, walk_param}
+                make_visit!{PatField; visit_pat_field, walk_pat_field}
+                make_visit!{Path, _ id: NodeId; visit_path, walk_path}
+                make_visit!{PathSegment; visit_path_segment, walk_path_segment}
+                make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
+                make_visit!{Stmt; visit_stmt, walk_stmt}
+                make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
+                make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
+                make_visit!{Variant; visit_variant, walk_variant}
+                make_visit!{VariantData; visit_variant_data, walk_struct_def}
+                make_visit!{Visibility; visit_vis, walk_vis}
+                make_visit!{WherePredicate; visit_where_predicate, walk_where_predicate}
+
+                make_visit!{P!(Block); visit_block, walk_block}
+                make_visit!{P!(Expr); visit_expr, walk_expr}
+                make_visit!{P!(Local); visit_local, walk_local}
+                make_visit!{P!(Pat); visit_pat, walk_pat}
+                make_visit!{P!(Ty); visit_ty, walk_ty}
+
                 fn visit_ident(&mut self, _ident: Ident) -> Self::Result {
                     Self::Result::output()
-                }
-                fn visit_foreign_item(&mut self, i: &'ast ForeignItem) -> Self::Result {
-                    walk_item(self, i)
-                }
-                fn visit_item(&mut self, i: &'ast Item) -> Self::Result {
-                    walk_item(self, i)
-                }
-                fn visit_local(&mut self, l: &'ast Local) -> Self::Result {
-                    walk_local(self, l)
-                }
-                fn visit_block(&mut self, b: &'ast Block) -> Self::Result {
-                    walk_block(self, b)
-                }
-                fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
-                    walk_stmt(self, s)
-                }
-                fn visit_param(&mut self, param: &'ast Param) -> Self::Result {
-                    walk_param(self, param)
-                }
-                fn visit_arm(&mut self, a: &'ast Arm) -> Self::Result {
-                    walk_arm(self, a)
-                }
-                fn visit_pat(&mut self, p: &'ast Pat) -> Self::Result {
-                    walk_pat(self, p)
-                }
-                fn visit_anon_const(&mut self, c: &'ast AnonConst) -> Self::Result {
-                    walk_anon_const(self, c)
-                }
-                fn visit_expr(&mut self, ex: &'ast Expr) -> Self::Result {
-                    walk_expr(self, ex)
                 }
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
                 /// It can be removed once that feature is stabilized.
@@ -406,125 +288,20 @@ macro_rules! make_ast_visitor {
                 fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
                     Self::Result::output()
                 }
-                fn visit_ty(&mut self, t: &'ast Ty) -> Self::Result {
-                    walk_ty(self, t)
-                }
-                fn visit_generic_param(&mut self, param: &'ast GenericParam) -> Self::Result {
-                    walk_generic_param(self, param)
-                }
-                fn visit_generics(&mut self, g: &'ast Generics) -> Self::Result {
-                    walk_generics(self, g)
-                }
-                fn visit_closure_binder(&mut self, b: &'ast ClosureBinder) -> Self::Result {
-                    walk_closure_binder(self, b)
-                }
-                fn visit_where_predicate(&mut self, p: &'ast WherePredicate) -> Self::Result {
-                    walk_where_predicate(self, p)
-                }
                 fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
                     walk_fn(self, fk)
-                }
-                fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) -> Self::Result {
-                    walk_assoc_item(self, i, ctxt)
-                }
-                fn visit_trait_ref(&mut self, t: &'ast TraitRef) -> Self::Result {
-                    walk_trait_ref(self, t)
-                }
-                fn visit_param_bound(
-                    &mut self,
-                    bounds: &'ast GenericBound,
-                    _ctxt: BoundKind,
-                ) -> Self::Result {
-                    walk_param_bound(self, bounds)
                 }
                 fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
                     walk_precise_capturing_arg(self, arg);
                 }
-                fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef) -> Self::Result {
-                    walk_poly_trait_ref(self, t)
-                }
-                fn visit_variant_data(&mut self, s: &'ast VariantData) -> Self::Result {
-                    walk_struct_def(self, s)
-                }
-                fn visit_field_def(&mut self, s: &'ast FieldDef) -> Self::Result {
-                    walk_field_def(self, s)
-                }
-                fn visit_enum_def(&mut self, enum_definition: &'ast EnumDef) -> Self::Result {
-                    walk_enum_def(self, enum_definition)
-                }
-                fn visit_variant(&mut self, v: &'ast Variant) -> Self::Result {
-                    walk_variant(self, v)
-                }
                 fn visit_variant_discr(&mut self, discr: &'ast AnonConst) -> Self::Result {
                     self.visit_anon_const(discr)
-                }
-                fn visit_label(&mut self, label: &'ast Label) -> Self::Result {
-                    walk_label(self, label)
-                }
-                fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, _: LifetimeCtxt) -> Self::Result {
-                    walk_lifetime(self, lifetime)
-                }
-                fn visit_mac_call(&mut self, mac: &'ast MacCall) -> Self::Result {
-                    walk_mac(self, mac)
                 }
                 fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
                     Self::Result::output()
                 }
-                fn visit_path(&mut self, path: &'ast Path, _id: NodeId) -> Self::Result {
-                    walk_path(self, path)
-                }
-                fn visit_use_tree(
-                    &mut self,
-                    use_tree: &'ast UseTree,
-                    id: NodeId,
-                    _nested: bool,
-                ) -> Self::Result {
-                    walk_use_tree(self, use_tree, id)
-                }
-                fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) -> Self::Result {
-                    walk_path_segment(self, path_segment)
-                }
-                fn visit_generic_args(&mut self, generic_args: &'ast GenericArgs) -> Self::Result {
-                    walk_generic_args(self, generic_args)
-                }
-                fn visit_generic_arg(&mut self, generic_arg: &'ast GenericArg) -> Self::Result {
-                    walk_generic_arg(self, generic_arg)
-                }
-                fn visit_assoc_item_constraint(
-                    &mut self,
-                    constraint: &'ast AssocItemConstraint,
-                ) -> Self::Result {
-                    walk_assoc_item_constraint(self, constraint)
-                }
-                fn visit_attribute(&mut self, attr: &'ast Attribute) -> Self::Result {
-                    walk_attribute(self, attr)
-                }
-                fn visit_vis(&mut self, vis: &'ast Visibility) -> Self::Result {
-                    walk_vis(self, vis)
-                }
-                fn visit_fn_ret_ty(&mut self, ret_ty: &'ast FnRetTy) -> Self::Result {
-                    walk_fn_ret_ty(self, ret_ty)
-                }
                 fn visit_fn_header(&mut self, _header: &'ast FnHeader) -> Self::Result {
                     Self::Result::output()
-                }
-                fn visit_expr_field(&mut self, f: &'ast ExprField) -> Self::Result {
-                    walk_expr_field(self, f)
-                }
-                fn visit_pat_field(&mut self, fp: &'ast PatField) -> Self::Result {
-                    walk_pat_field(self, fp)
-                }
-                fn visit_crate(&mut self, krate: &'ast Crate) -> Self::Result {
-                    walk_crate(self, krate)
-                }
-                fn visit_inline_asm(&mut self, asm: &'ast InlineAsm) -> Self::Result {
-                    walk_inline_asm(self, asm)
-                }
-                fn visit_format_args(&mut self, fmt: &'ast FormatArgs) -> Self::Result {
-                    walk_format_args(self, fmt)
-                }
-                fn visit_inline_asm_sym(&mut self, sym: &'ast InlineAsmSym) -> Self::Result {
-                    walk_inline_asm_sym(self, sym)
                 }
                 fn visit_capture_by(&mut self, _capture_by: &'ast CaptureBy) -> Self::Result {
                     Self::Result::output()
