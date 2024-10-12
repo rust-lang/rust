@@ -1,7 +1,11 @@
 // 32-bit x86 returns `f32` and `f64` differently to avoid the x87 stack.
-//@ revisions: x86 other
+// 32-bit systems will return 128bit values using a return area pointer.
+//@ revisions: x86 bit32 bit64
 //@[x86] only-x86
-//@[other] ignore-x86
+//@[bit32] ignore-x86
+//@[bit32] only-32bit
+//@[bit64] ignore-x86
+//@[bit64] only-64bit
 
 // Verify that our intrinsics generate the correct LLVM calls for f16
 
@@ -145,23 +149,27 @@ pub fn f16_as_self(a: f16) -> f16 {
     a as f16
 }
 
-// other-LABEL: float @f16_as_f32(
 // x86-LABEL: i32 @f16_as_f32(
+// bit32-LABEL: float @f16_as_f32(
+// bit64-LABEL: float @f16_as_f32(
 #[no_mangle]
 pub fn f16_as_f32(a: f16) -> f32 {
     // CHECK: fpext half %{{.+}} to float
     a as f32
 }
 
-// other-LABEL: double @f16_as_f64(
 // x86-LABEL: void @f16_as_f64(
+// bit32-LABEL: double @f16_as_f64(
+// bit64-LABEL: double @f16_as_f64(
 #[no_mangle]
 pub fn f16_as_f64(a: f16) -> f64 {
     // CHECK: fpext half %{{.+}} to double
     a as f64
 }
 
-// CHECK-LABEL: fp128 @f16_as_f128(
+// x86-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f16_as_f128(
 #[no_mangle]
 pub fn f16_as_f128(a: f16) -> f128 {
     // CHECK: fpext half %{{.+}} to fp128
@@ -218,7 +226,9 @@ pub fn f16_as_u64(a: f16) -> u64 {
     a as u64
 }
 
-// CHECK-LABEL: i128 @f16_as_u128(
+// x86-LABEL: void @f16_as_u128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f16_as_u128({{.*}}sret([16 x i8])
+// bit64-LABEL: i128 @f16_as_u128(
 #[no_mangle]
 pub fn f16_as_u128(a: f16) -> u128 {
     // CHECK: call i128 @llvm.fptoui.sat.i128.f16(half %{{.+}})
@@ -252,7 +262,9 @@ pub fn f16_as_i64(a: f16) -> i64 {
     a as i64
 }
 
-// CHECK-LABEL: i128 @f16_as_i128(
+// x86-LABEL: void @f16_as_i128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f16_as_i128({{.*}}sret([16 x i8])
+// bit64-LABEL: i128 @f16_as_i128(
 #[no_mangle]
 pub fn f16_as_i128(a: f16) -> i128 {
     // CHECK: call i128 @llvm.fptosi.sat.i128.f16(half %{{.+}})
