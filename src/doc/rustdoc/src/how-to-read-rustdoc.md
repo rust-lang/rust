@@ -99,3 +99,13 @@ Pressing the enter or return key opens the highlighted result.
 
 When looking at the documentation for an item, the plus and minus keys expand
 and collapse all sections in the document.
+
+## LLVM Compatibility
+
+The Rust compiler (`rustc`) supports the following external LLVM versions:
+
+- **Minimum supported LLVM version:** 17
+- **Maximum supported LLVM version:** 19
+
+Ensure you have a compatible version of LLVM installed when building `rustc`.
+
