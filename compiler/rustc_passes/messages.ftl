@@ -739,6 +739,12 @@ passes_unrecognized_repr_hint =
     unrecognized representation hint
     .help = valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
 
+passes_unstable_attr_for_already_stable_feature =
+    can't mark as unstable using an already stable feature
+    .label = this feature is already stable
+    .item = the stability attribute annotates this item
+    .help = consider removing the attribute
+
 passes_unused =
     unused attribute
     .suggestion = remove this attribute
