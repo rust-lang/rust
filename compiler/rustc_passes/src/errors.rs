@@ -1481,6 +1481,17 @@ pub(crate) struct CannotStabilizeDeprecated {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_unstable_attr_for_already_stable_feature)]
+pub(crate) struct UnstableAttrForAlreadyStableFeature {
+    #[primary_span]
+    #[label]
+    #[help]
+    pub span: Span,
+    #[label(passes_item)]
+    pub item_sp: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_missing_stability_attr)]
 pub(crate) struct MissingStabilityAttr<'a> {
     #[primary_span]
