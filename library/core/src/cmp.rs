@@ -681,7 +681,7 @@ impl ops::FromResidual for Ordering {
     }
 }
 
-/// Implementation of `FromIterator` that returns the first unequal comparison, or [`Ordering::Equal`] if there are none.
+/// Implementation of `FromIterator` that returns on the first inequal comparison, or [`Ordering::Equal`] if there are none.
 ///
 /// # Example
 ///
