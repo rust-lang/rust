@@ -57,7 +57,7 @@ impl EarlyProps {
             &mut poisoned,
             testfile,
             rdr,
-            &mut |HeaderLine { directive: ln, .. }| {
+            &mut |DirectiveLine { directive: ln, .. }| {
                 parse_and_update_aux(config, ln, &mut props.aux);
                 config.parse_and_update_revisions(ln, &mut props.revisions);
             },
@@ -344,7 +344,7 @@ impl TestProps {
                 &mut poisoned,
                 testfile,
                 file,
-                &mut |HeaderLine { header_revision, directive: ln, .. }| {
+                &mut |DirectiveLine { header_revision, directive: ln, .. }| {
                     if header_revision.is_some() && header_revision != test_revision {
                         return;
                     }
@@ -738,17 +738,13 @@ const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
 /// ```text
 /// //@ compile-flags: -O
 ///     ^^^^^^^^^^^^^^^^^ directive
-/// ^^^^^^^^^^^^^^^^^^^^^ original_line
 ///
 /// //@ [foo] compile-flags: -O
 ///      ^^^                    header_revision
 ///           ^^^^^^^^^^^^^^^^^ directive
-/// ^^^^^^^^^^^^^^^^^^^^^^^^^^^ original_line
 /// ```
-struct HeaderLine<'ln> {
+struct DirectiveLine<'ln> {
     line_number: usize,
-    /// Raw line from the test file, including comment prefix and any revision.
-    original_line: &'ln str,
     /// Some header directives start with a revision name in square brackets
     /// (e.g. `[foo]`), and only apply to that revision of the test.
     /// If present, this field contains the revision name (e.g. `foo`).
@@ -803,7 +799,7 @@ fn iter_header(
     poisoned: &mut bool,
     testfile: &Path,
     rdr: impl Read,
-    it: &mut dyn FnMut(HeaderLine<'_>),
+    it: &mut dyn FnMut(DirectiveLine<'_>),
 ) {
     if testfile.is_dir() {
         return;
@@ -824,7 +820,7 @@ fn iter_header(
         ];
         // Process the extra implied directives, with a dummy line number of 0.
         for directive in extra_directives {
-            it(HeaderLine { line_number: 0, original_line: "", header_revision: None, directive });
+            it(DirectiveLine { line_number: 0, header_revision: None, directive });
         }
     }
 
@@ -841,11 +837,6 @@ fn iter_header(
         if rdr.read_line(&mut ln).unwrap() == 0 {
             break;
         }
-
-        // Assume that any directives will be found before the first
-        // module or function. This doesn't seem to be an optimization
-        // with a warm page cache. Maybe with a cold one.
-        let original_line = &ln;
         let ln = ln.trim();
 
         // Assume that any directives will be found before the first module or function. This
@@ -897,9 +888,8 @@ fn iter_header(
             }
         }
 
-        it(HeaderLine {
+        it(DirectiveLine {
             line_number,
-            original_line,
             header_revision,
             directive: non_revisioned_directive_line,
         });
@@ -1286,13 +1276,14 @@ pub fn make_test_description<R: Read>(
 
     let mut local_poisoned = false;
 
+    // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
     iter_header(
         config.mode,
         &config.suite,
         &mut local_poisoned,
         path,
         src,
-        &mut |HeaderLine { header_revision, original_line, directive: ln, line_number }| {
+        &mut |DirectiveLine { header_revision, directive: ln, line_number }| {
             if header_revision.is_some() && header_revision != test_revision {
                 return;
             }
@@ -1317,17 +1308,7 @@ pub fn make_test_description<R: Read>(
                 };
             }
 
-            if let Some((_, post)) = original_line.trim_start().split_once("//") {
-                let post = post.trim_start();
-                if post.starts_with("ignore-tidy") {
-                    // Not handled by compiletest.
-                } else {
-                    decision!(cfg::handle_ignore(config, ln));
-                }
-            } else {
-                decision!(cfg::handle_ignore(config, ln));
-            }
-
+            decision!(cfg::handle_ignore(config, ln));
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
             decision!(ignore_llvm(config, ln));
