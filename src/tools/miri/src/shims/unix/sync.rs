@@ -80,11 +80,9 @@ fn sync_get_data<'tcx, T: 'static + Copy>(
         // If it is initialized, it must be found in the "sync primitive" table,
         // or else it has been moved illegally.
         let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
-        let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
+        let alloc_extra = ecx.get_alloc_extra(alloc)?;
         let data = alloc_extra
-            .sync
-            .get(&offset)
-            .and_then(|s| s.downcast_ref::<T>())
+            .get_sync::<T>(offset)
             .ok_or_else(|| err_ub_format!("`{name}` can't be moved after first use"))?;
         interp_ok(Some(*data))
     } else {
@@ -174,7 +172,7 @@ enum MutexKind {
 
 #[derive(Debug, Clone, Copy)]
 /// Additional data that we attach with each mutex instance.
-pub struct MutexData {
+struct MutexData {
     id: MutexId,
     kind: MutexKind,
 }
@@ -228,7 +226,7 @@ fn mutex_create<'tcx>(
     kind: MutexKind,
 ) -> InterpResult<'tcx, MutexData> {
     let mutex = ecx.deref_pointer(mutex_ptr)?;
-    let id = ecx.mutex_create();
+    let id = ecx.machine.sync.mutex_create();
     let data = MutexData { id, kind };
     sync_init(ecx, &mutex, mutex_init_offset(ecx)?, data)?;
     interp_ok(data)
@@ -290,7 +288,7 @@ fn mutex_kind_from_static_initializer<'tcx>(
 
 #[derive(Debug, Copy, Clone)]
 /// Additional data that we attach with each rwlock instance.
-pub struct RwLockData {
+struct RwLockData {
     id: RwLockId,
 }
 
@@ -337,7 +335,7 @@ fn rwlock_get_data<'tcx>(
         )? {
             throw_unsup_format!("unsupported static initializer used for `pthread_rwlock_t`");
         }
-        let id = ecx.rwlock_create();
+        let id = ecx.machine.sync.rwlock_create();
         let data = RwLockData { id };
         sync_init(ecx, &rwlock, init_offset, data)?;
         interp_ok(data)
@@ -446,7 +444,7 @@ fn cond_create<'tcx>(
     clock: ClockId,
 ) -> InterpResult<'tcx, CondData> {
     let cond = ecx.deref_pointer(cond_ptr)?;
-    let id = ecx.condvar_create();
+    let id = ecx.machine.sync.condvar_create();
     let data = CondData { id, clock };
     sync_init(ecx, &cond, cond_init_offset(ecx)?, data)?;
     interp_ok(data)

@@ -362,6 +362,12 @@ impl VisitProvenance for AllocExtra<'_> {
     }
 }
 
+impl<'tcx> AllocExtra<'tcx> {
+    pub fn get_sync<T: 'static>(&self, offset: Size) -> Option<&T> {
+        self.sync.get(&offset).and_then(|s| s.downcast_ref::<T>())
+    }
+}
+
 /// Precomputed layouts of primitive types
 pub struct PrimitiveLayouts<'tcx> {
     pub unit: TyAndLayout<'tcx>,

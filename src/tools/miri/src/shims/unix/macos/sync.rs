@@ -12,15 +12,26 @@
 
 use crate::*;
 
+struct LockData {
+    id: MutexId,
+}
+
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_getid(&mut self, lock_ptr: &OpTy<'tcx>) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
         let lock = this.deref_pointer(lock_ptr)?;
-        // os_unfair_lock holds a 32-bit value, is initialized with zero and
-        // must be assumed to be opaque. Therefore, we can just store our
-        // internal mutex ID in the structure without anyone noticing.
-        this.mutex_get_or_create_id(&lock, /* offset */ 0)
+        // We store the mutex ID in the `sync` metadata. This means that when the lock is moved,
+        // that's just implicitly creating a new lock at the new location.
+        let (alloc, offset, _) = this.ptr_get_alloc_id(lock.ptr(), 0)?;
+        let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc)?;
+        if let Some(data) = alloc_extra.get_sync::<LockData>(offset) {
+            interp_ok(data.id)
+        } else {
+            let id = machine.sync.mutex_create();
+            alloc_extra.sync.insert(offset, Box::new(LockData { id }));
+            interp_ok(id)
+        }
     }
 }
 

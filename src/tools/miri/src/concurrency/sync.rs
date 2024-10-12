@@ -236,48 +236,26 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
+impl SynchronizationObjects {
+    pub fn mutex_create(&mut self) -> MutexId {
+        self.mutexes.push(Default::default())
+    }
+
+    pub fn rwlock_create(&mut self) -> RwLockId {
+        self.rwlocks.push(Default::default())
+    }
+
+    pub fn condvar_create(&mut self) -> CondvarId {
+        self.condvars.push(Default::default())
+    }
+}
+
 // Public interface to synchronization primitives. Please note that in most
 // cases, the function calls are infallible and it is the client's (shim
 // implementation's) responsibility to detect and deal with erroneous
 // situations.
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Eagerly create and initialize a new mutex.
-    fn mutex_create(&mut self) -> MutexId {
-        let this = self.eval_context_mut();
-        this.machine.sync.mutexes.push(Default::default())
-    }
-
-    /// Lazily create a new mutex.
-    /// `initialize_data` must return any additional data that a user wants to associate with the mutex.
-    fn mutex_get_or_create_id(
-        &mut self,
-        lock: &MPlaceTy<'tcx>,
-        offset: u64,
-    ) -> InterpResult<'tcx, MutexId> {
-        let this = self.eval_context_mut();
-        this.get_or_create_id(
-            lock,
-            offset,
-            |ecx| &mut ecx.machine.sync.mutexes,
-            |_ecx| interp_ok(Mutex::default()),
-        )?
-        .ok_or_else(|| err_ub_format!("mutex has invalid ID"))
-        .into()
-    }
-
-    /// Eagerly create and initialize a new rwlock.
-    fn rwlock_create(&mut self) -> RwLockId {
-        let this = self.eval_context_mut();
-        this.machine.sync.rwlocks.push(Default::default())
-    }
-
-    /// Eagerly create and initialize a new condvar.
-    fn condvar_create(&mut self) -> CondvarId {
-        let this = self.eval_context_mut();
-        this.machine.sync.condvars.push(Default::default())
-    }
-
     #[inline]
     /// Get the id of the thread that currently owns this lock.
     fn mutex_get_owner(&mut self, id: MutexId) -> ThreadId {
