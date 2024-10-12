@@ -34,6 +34,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, Span};
+use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -1785,7 +1786,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | Target::Union
                         | Target::Enum
                         | Target::Fn
-                        | Target::Method(_) => continue,
+                        | Target::Method(_) => {}
                         _ => {
                             self.dcx().emit_err(
                                 errors::AttrApplication::StructEnumFunctionMethodUnion {
@@ -1795,6 +1796,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             );
                         }
                     }
+
+                    self.check_align_value(hint);
                 }
                 sym::packed => {
                     if target != Target::Struct && target != Target::Union {
@@ -1889,6 +1892,45 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hint_spans.collect::<Vec<Span>>(),
                 errors::ReprConflictingLint,
             );
+        }
+    }
+
+    fn check_align_value(&self, item: &MetaItemInner) {
+        match item.singleton_lit_list() {
+            Some((
+                _,
+                MetaItemLit {
+                    kind: ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed), ..
+                },
+            )) => {
+                let val = literal.get() as u64;
+                if val > 2_u64.pow(29) {
+                    // for values greater than 2^29, a different error will be emitted, make sure that happens
+                    self.dcx().span_delayed_bug(
+                        item.span(),
+                        "alignment greater than 2^29 should be errored on elsewhere",
+                    );
+                } else {
+                    // only do this check when <= 2^29 to prevent duplicate errors:
+                    // alignment greater than 2^29 not supported
+                    // alignment is too large for the current target
+
+                    let max =
+                        Size::from_bits(self.tcx.sess.target.pointer_width).signed_int_max() as u64;
+                    if val > max {
+                        self.dcx().emit_err(errors::InvalidReprAlignForTarget {
+                            span: item.span(),
+                            size: max,
+                        });
+                    }
+                }
+            }
+
+            // if the attribute is malformed, singleton_lit_list may not be of the expected type or may be None
+            // but an error will have already been emitted, so this code should just skip such attributes
+            Some((_, _)) | None => {
+                self.dcx().span_delayed_bug(item.span(), "malformed repr(align(N))");
+            }
         }
     }
 

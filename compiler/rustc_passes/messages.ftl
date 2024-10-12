@@ -622,6 +622,10 @@ passes_remove_fields =
 passes_repr_align_function =
     `repr(align)` attributes on functions are unstable
 
+passes_repr_align_greater_than_target_max =
+    alignment must not be greater than `isize::MAX` bytes
+    .note = `isize::MAX` is {$size} for the current target
+
 passes_repr_conflicting =
     conflicting representation hints
 
