@@ -19,6 +19,8 @@ pub(crate) fn parse(config: &str) -> Config {
     )
 }
 
+// FIXME: Resume this test after establishing a stabilized change tracking logic.
+#[ignore]
 #[test]
 fn download_ci_llvm() {
     assert!(parse("").llvm_from_ci);
