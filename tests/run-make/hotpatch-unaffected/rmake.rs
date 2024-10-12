@@ -3,11 +3,9 @@
 use run_make_support::{assertion_helpers, llvm, rustc};
 
 fn main() {
-
     // hotpatch is only implemented for X86 and aarch64
     #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
     {
-
         fn base_rustc() -> rustc::Rustc {
             let mut rustc = rustc();
             rustc.input("lib.rs").crate_type("lib").opt_level("3");

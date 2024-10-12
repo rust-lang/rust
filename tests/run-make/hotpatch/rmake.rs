@@ -4,7 +4,6 @@
 use run_make_support::{llvm, rustc};
 
 fn main() {
-
     // hotpatch is only implemented for x86 and aarch64, but for aarch64 functions
     // are always hotpatchable so we don't need to check it
     #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]

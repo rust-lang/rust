@@ -4,9 +4,11 @@
 use run_make_support::{llvm, rustc};
 
 fn main() {
-
-    // Hotpatch is only implemented for x86 and aarch64
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
+    // PDBs are windows only and hotpatch is only implemented for x86 and aarch64
+    #[cfg(all(
+        target_os = "windows",
+        any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")
+    ))]
     {
         let output = rustc()
             .input("main.rs")
@@ -24,5 +26,5 @@ fn main() {
             .stdout_utf8();
 
         llvm::llvm_filecheck().patterns("main.rs").stdin_buf(&pdbutil_output).run();
-    }    
+    }
 }
