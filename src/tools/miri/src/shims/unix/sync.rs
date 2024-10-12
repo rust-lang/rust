@@ -33,6 +33,65 @@ fn bytewise_equal_atomic_relaxed<'tcx>(
     interp_ok(true)
 }
 
+/// We designate an `init`` field in all primitives.
+/// If `init` is set to this, we consider the primitive initialized.
+const INIT_COOKIE: u32 = 0xcafe_affe;
+
+fn sync_create<'tcx, T: 'static + Copy>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    primitive: &MPlaceTy<'tcx>,
+    init_offset: Size,
+    data: T,
+) -> InterpResult<'tcx> {
+    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
+
+    let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
+    let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
+    alloc_extra.sync.insert(offset, Box::new(data));
+    // Mark this as "initialized".
+    ecx.write_scalar_atomic(Scalar::from_u32(INIT_COOKIE), &init_field, AtomicWriteOrd::Relaxed)?;
+    interp_ok(())
+}
+
+/// Checks if the primitive is initialized, and return its associated data if so.
+/// Otherwise, return None.
+fn sync_get_data<'tcx, T: 'static + Copy>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    primitive: &MPlaceTy<'tcx>,
+    init_offset: Size,
+    name: &str,
+) -> InterpResult<'tcx, Option<T>> {
+    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
+    // Check if this is already initialized. Needs to be atomic because we can race with another
+    // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
+    // So we just try to replace MUTEX_INIT_COOKIE with itself.
+    let init_cookie = Scalar::from_u32(INIT_COOKIE);
+    let (_init, success) = ecx
+        .atomic_compare_exchange_scalar(
+            &init_field,
+            &ImmTy::from_scalar(init_cookie, ecx.machine.layouts.u32),
+            init_cookie,
+            AtomicRwOrd::Acquire,
+            AtomicReadOrd::Acquire,
+            /* can_fail_spuriously */ false,
+        )?
+        .to_scalar_pair();
+    if success.to_bool()? {
+        // If it is initialized, it must be found in the "sync primitive" table,
+        // or else it has been moved illegally.
+        let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
+        let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
+        let data = alloc_extra
+            .sync
+            .get(&offset)
+            .and_then(|s| s.downcast_ref::<T>())
+            .ok_or_else(|| err_ub_format!("`{name}` can't be moved after first use"))?;
+        interp_ok(Some(*data))
+    } else {
+        interp_ok(None)
+    }
+}
+
 // # pthread_mutexattr_t
 // We store some data directly inside the type, ignoring the platform layout:
 // - kind: i32
@@ -98,23 +157,20 @@ pub struct MutexData {
     kind: MutexKind,
 }
 
-/// If `init` is set to this, we consider the mutex initialized.
-const MUTEX_INIT_COOKIE: u32 = 0xcafe_affe;
-
 /// To ensure an initialized mutex that was moved somewhere else can be distinguished from
 /// a statically initialized mutex that is used the first time, we pick some offset within
 /// `pthread_mutex_t` and use it as an "initialized" flag.
 fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
     let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
-        // macOS stores a signature in the first bytes, so we have to move to offset 4.
+        // macOS stores a signature in the first bytes, so we move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
     };
     let offset = Size::from_bytes(offset);
 
     // Sanity-check this against PTHREAD_MUTEX_INITIALIZER (but only once):
-    // the `init` field start out as `false`.
+    // the `init` field must start out not equal to MUTEX_INIT_COOKIE.
     static SANITY: AtomicBool = AtomicBool::new(false);
     if !SANITY.swap(true, Ordering::Relaxed) {
         let check_static_initializer = |name| {
@@ -122,10 +178,7 @@ fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size>
             let init_field =
                 static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
             let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
-            assert_ne!(
-                init, MUTEX_INIT_COOKIE,
-                "{name} is incompatible with our pthread_mutex layout: `init` is equal to our cookie"
-            );
+            assert_ne!(init, INIT_COOKIE, "{name} is incompatible with our initialization cookie");
         };
 
         check_static_initializer("PTHREAD_MUTEX_INITIALIZER");
@@ -151,21 +204,12 @@ fn mutex_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     mutex_ptr: &OpTy<'tcx>,
     kind: MutexKind,
-) -> InterpResult<'tcx, MutexId> {
+) -> InterpResult<'tcx, MutexData> {
     let mutex = ecx.deref_pointer(mutex_ptr)?;
-    let init_field = mutex.offset(mutex_init_offset(ecx)?, ecx.machine.layouts.u32, ecx)?;
-
     let id = ecx.mutex_create();
-    let (alloc, offset, _) = ecx.ptr_get_alloc_id(mutex.ptr(), 0)?;
-    let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
-    alloc_extra.sync.insert(offset, Box::new(MutexData { id, kind }));
-    // Mark this as "initialized".
-    ecx.write_scalar_atomic(
-        Scalar::from_u32(MUTEX_INIT_COOKIE),
-        &init_field,
-        AtomicWriteOrd::Relaxed,
-    )?;
-    interp_ok(id)
+    let data = MutexData { id, kind };
+    sync_create(ecx, &mutex, mutex_init_offset(ecx)?, data)?;
+    interp_ok(data)
 }
 
 /// Returns the `MutexId` of the mutex stored at `mutex_op`.
@@ -177,42 +221,18 @@ fn mutex_get_data<'tcx, 'a>(
     mutex_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, MutexData> {
     let mutex = ecx.deref_pointer(mutex_ptr)?;
-    let init_field = mutex.offset(mutex_init_offset(ecx)?, ecx.machine.layouts.u32, ecx)?;
 
-    // Check if this is already initialized. Needs to be atomic because we can race with another
-    // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
-    // So we just try to replace MUTEX_INIT_COOKIE with itself.
-    let init_cookie = Scalar::from_u32(MUTEX_INIT_COOKIE);
-    let (_init, success) = ecx
-        .atomic_compare_exchange_scalar(
-            &init_field,
-            &ImmTy::from_scalar(init_cookie, ecx.machine.layouts.u32),
-            init_cookie,
-            AtomicRwOrd::Acquire,
-            AtomicReadOrd::Acquire,
-            /* can_fail_spuriously */ false,
-        )?
-        .to_scalar_pair();
-    if success.to_bool()? {
-        // If it is initialized, it must be found in the "sync primitive" table,
-        // or else it has been moved illegally.
-        let (alloc, offset, _) = ecx.ptr_get_alloc_id(mutex.ptr(), 0)?;
-        let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
-        alloc_extra
-            .sync
-            .get(&offset)
-            .and_then(|s| s.downcast_ref::<MutexData>())
-            .copied()
-            .ok_or_else(|| err_ub_format!("`pthread_mutex_t` can't be moved after first use"))
-            .into()
+    if let Some(data) =
+        sync_get_data::<MutexData>(ecx, &mutex, mutex_init_offset(ecx)?, "pthread_mutex_t")?
+    {
+        interp_ok(data)
     } else {
         // Not yet initialized. This must be a static initializer, figure out the kind
         // from that. We don't need to worry about races since we are the interpreter
         // and don't let any other tread take a step.
         let kind = mutex_kind_from_static_initializer(ecx, &mutex)?;
         // And then create the mutex like this.
-        let id = mutex_create(ecx, mutex_ptr, kind)?;
-        interp_ok(MutexData { id, kind })
+        mutex_create(ecx, mutex_ptr, kind)
     }
 }
 
@@ -266,61 +286,58 @@ fn mutex_translate_kind<'tcx>(
 
 // # pthread_rwlock_t
 // We store some data directly inside the type, ignoring the platform layout:
-// - id: u32
+// - init: u32
 
-#[derive(Debug)]
+/// If `init` is set to this, we consider the rwlock initialized.
+const RWLOCK_INIT_COOKIE: u32 = 0xcafe_affe;
+
+#[derive(Debug, Copy, Clone)]
 /// Additional data that we attach with each rwlock instance.
-pub struct AdditionalRwLockData {
-    /// The address of the rwlock.
-    pub address: u64,
+pub struct RwLockData {
+    id: RwLockId,
 }
 
-fn rwlock_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
+fn rwlock_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
     let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
-        // macOS stores a signature in the first bytes, so we have to move to offset 4.
+        // macOS stores a signature in the first bytes, so we move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_rwlock` is not supported on {os}"),
     };
+    let offset = Size::from_bytes(offset);
 
     // Sanity-check this against PTHREAD_RWLOCK_INITIALIZER (but only once):
-    // the id must start out as 0.
+    // the `init` field must start out not equal to RWLOCK_INIT_COOKIE.
     static SANITY: AtomicBool = AtomicBool::new(false);
     if !SANITY.swap(true, Ordering::Relaxed) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]);
-        let id_field = static_initializer
-            .offset(Size::from_bytes(offset), ecx.machine.layouts.u32, ecx)
-            .unwrap();
-        let id = ecx.read_scalar(&id_field).unwrap().to_u32().unwrap();
-        assert_eq!(
-            id, 0,
-            "PTHREAD_RWLOCK_INITIALIZER is incompatible with our pthread_rwlock layout: id is not 0"
+        let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
+        let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
+        assert_ne!(
+            init, RWLOCK_INIT_COOKIE,
+            "PTHREAD_RWLOCK_INITIALIZER is incompatible with our initialization cookie"
         );
     }
 
     interp_ok(offset)
 }
 
-fn rwlock_get_id<'tcx>(
+fn rwlock_get_data<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     rwlock_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, RwLockId> {
+) -> InterpResult<'tcx, RwLockData> {
     let rwlock = ecx.deref_pointer(rwlock_ptr)?;
-    let address = rwlock.ptr().addr().bytes();
+    let init_offset = rwlock_init_offset(ecx)?;
 
-    let id = ecx.rwlock_get_or_create_id(&rwlock, rwlock_id_offset(ecx)?, |_| {
-        interp_ok(Some(Box::new(AdditionalRwLockData { address })))
-    })?;
-
-    // Check that the rwlock has not been moved since last use.
-    let data = ecx
-        .rwlock_get_data::<AdditionalRwLockData>(id)
-        .expect("data should always exist for pthreads");
-    if data.address != address {
-        throw_ub_format!("pthread_rwlock_t can't be moved after first use")
+    if let Some(data) = sync_get_data::<RwLockData>(ecx, &rwlock, init_offset, "pthread_rwlock_t")?
+    {
+        interp_ok(data)
+    } else {
+        let id = ecx.rwlock_create();
+        let data = RwLockData { id };
+        sync_create(ecx, &rwlock, init_offset, data)?;
+        interp_ok(data)
     }
-
-    interp_ok(id)
 }
 
 // # pthread_condattr_t
@@ -640,7 +657,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_id(this, rwlock_op)?;
+        let id = rwlock_get_data(this, rwlock_op)?.id;
 
         if this.rwlock_is_write_locked(id) {
             this.rwlock_enqueue_and_block_reader(id, Scalar::from_i32(0), dest.clone());
@@ -655,7 +672,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_rwlock_tryrdlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_id(this, rwlock_op)?;
+        let id = rwlock_get_data(this, rwlock_op)?.id;
 
         if this.rwlock_is_write_locked(id) {
             interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
@@ -672,7 +689,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_id(this, rwlock_op)?;
+        let id = rwlock_get_data(this, rwlock_op)?.id;
 
         if this.rwlock_is_locked(id) {
             // Note: this will deadlock if the lock is already locked by this
@@ -699,7 +716,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_rwlock_trywrlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_id(this, rwlock_op)?;
+        let id = rwlock_get_data(this, rwlock_op)?.id;
 
         if this.rwlock_is_locked(id) {
             interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
@@ -712,7 +729,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_rwlock_unlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_id(this, rwlock_op)?;
+        let id = rwlock_get_data(this, rwlock_op)?.id;
 
         #[allow(clippy::if_same_then_else)]
         if this.rwlock_reader_unlock(id)? || this.rwlock_writer_unlock(id)? {
@@ -727,7 +744,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Reading the field also has the side-effect that we detect double-`destroy`
         // since we make the field unint below.
-        let id = rwlock_get_id(this, rwlock_op)?;
+        let id = rwlock_get_data(this, rwlock_op)?.id;
 
         if this.rwlock_is_locked(id) {
             throw_ub_format!("destroyed a locked rwlock");

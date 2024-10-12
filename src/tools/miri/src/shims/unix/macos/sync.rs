@@ -20,7 +20,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // os_unfair_lock holds a 32-bit value, is initialized with zero and
         // must be assumed to be opaque. Therefore, we can just store our
         // internal mutex ID in the structure without anyone noticing.
-        this.mutex_get_or_create_id(&lock, 0, |_| interp_ok(None))
+        this.mutex_get_or_create_id(&lock, /* offset */ 0)
     }
 }
 

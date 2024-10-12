@@ -79,9 +79,6 @@ struct Mutex {
     queue: VecDeque<ThreadId>,
     /// Mutex clock. This tracks the moment of the last unlock.
     clock: VClock,
-
-    /// Additional data that can be set by shim implementations.
-    data: Option<Box<dyn Any>>,
 }
 
 declare_id!(RwLockId);
@@ -118,9 +115,6 @@ struct RwLock {
     /// locks.
     /// This is only relevant when there is an active reader.
     clock_current_readers: VClock,
-
-    /// Additional data that can be set by shim implementations.
-    data: Option<Box<dyn Any>>,
 }
 
 declare_id!(CondvarId);
@@ -290,56 +284,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         lock: &MPlaceTy<'tcx>,
         offset: u64,
-        initialize_data: impl for<'a> FnOnce(
-            &'a mut MiriInterpCx<'tcx>,
-        ) -> InterpResult<'tcx, Option<Box<dyn Any>>>,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
             lock,
             offset,
             |ecx| &mut ecx.machine.sync.mutexes,
-            |ecx| initialize_data(ecx).map(|data| Mutex { data, ..Default::default() }),
+            |_ecx| interp_ok(Mutex::default()),
         )?
         .ok_or_else(|| err_ub_format!("mutex has invalid ID"))
         .into()
     }
 
-    /// Retrieve the additional data stored for a mutex.
-    fn mutex_get_data<'a, T: 'static>(&'a mut self, id: MutexId) -> Option<&'a T>
-    where
-        'tcx: 'a,
-    {
-        let this = self.eval_context_ref();
-        this.machine.sync.mutexes[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
-    }
-
-    fn rwlock_get_or_create_id(
-        &mut self,
-        lock: &MPlaceTy<'tcx>,
-        offset: u64,
-        initialize_data: impl for<'a> FnOnce(
-            &'a mut MiriInterpCx<'tcx>,
-        ) -> InterpResult<'tcx, Option<Box<dyn Any>>>,
-    ) -> InterpResult<'tcx, RwLockId> {
+    /// Eagerly create and initialize a new rwlock.
+    fn rwlock_create(&mut self) -> RwLockId {
         let this = self.eval_context_mut();
-        this.get_or_create_id(
-            lock,
-            offset,
-            |ecx| &mut ecx.machine.sync.rwlocks,
-            |ecx| initialize_data(ecx).map(|data| RwLock { data, ..Default::default() }),
-        )?
-        .ok_or_else(|| err_ub_format!("rwlock has invalid ID"))
-        .into()
-    }
-
-    /// Retrieve the additional data stored for a rwlock.
-    fn rwlock_get_data<'a, T: 'static>(&'a mut self, id: RwLockId) -> Option<&'a T>
-    where
-        'tcx: 'a,
-    {
-        let this = self.eval_context_ref();
-        this.machine.sync.rwlocks[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
+        this.machine.sync.rwlocks.push(Default::default())
     }
 
     /// Eagerly create and initialize a new condvar.
