@@ -7,7 +7,7 @@ use crate::concurrency::sync::lazy_sync_get_data;
 use crate::*;
 
 #[derive(Copy, Clone)]
-struct InitOnceData {
+struct WindowsInitOnce {
     id: InitOnceId,
 }
 
@@ -19,7 +19,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn init_once_get_data(
         &mut self,
         init_once_ptr: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, InitOnceData> {
+    ) -> InterpResult<'tcx, WindowsInitOnce> {
         let this = self.eval_context_mut();
 
         let init_once = this.deref_pointer(init_once_ptr)?;
@@ -28,7 +28,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         lazy_sync_get_data(this, &init_once, init_offset, "INIT_ONCE", |this| {
             // TODO: check that this is still all-zero.
             let id = this.machine.sync.init_once_create();
-            interp_ok(InitOnceData { id })
+            interp_ok(WindowsInitOnce { id })
         })
     }
 

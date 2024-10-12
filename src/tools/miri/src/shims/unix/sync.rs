@@ -117,8 +117,7 @@ enum MutexKind {
 }
 
 #[derive(Debug, Clone, Copy)]
-/// Additional data that we attach with each mutex instance.
-struct MutexData {
+struct PthreadMutex {
     id: MutexId,
     kind: MutexKind,
 }
@@ -173,10 +172,10 @@ fn mutex_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     mutex_ptr: &OpTy<'tcx>,
     kind: MutexKind,
-) -> InterpResult<'tcx, MutexData> {
+) -> InterpResult<'tcx, PthreadMutex> {
     let mutex = ecx.deref_pointer(mutex_ptr)?;
     let id = ecx.machine.sync.mutex_create();
-    let data = MutexData { id, kind };
+    let data = PthreadMutex { id, kind };
     lazy_sync_init(ecx, &mutex, mutex_init_offset(ecx)?, data)?;
     interp_ok(data)
 }
@@ -188,12 +187,12 @@ fn mutex_create<'tcx>(
 fn mutex_get_data<'tcx, 'a>(
     ecx: &'a mut MiriInterpCx<'tcx>,
     mutex_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, MutexData> {
+) -> InterpResult<'tcx, PthreadMutex> {
     let mutex = ecx.deref_pointer(mutex_ptr)?;
     lazy_sync_get_data(ecx, &mutex, mutex_init_offset(ecx)?, "pthread_mutex_t", |ecx| {
         let kind = mutex_kind_from_static_initializer(ecx, &mutex)?;
         let id = ecx.machine.sync.mutex_create();
-        interp_ok(MutexData { id, kind })
+        interp_ok(PthreadMutex { id, kind })
     })
 }
 
@@ -228,8 +227,7 @@ fn mutex_kind_from_static_initializer<'tcx>(
 // - init: u32
 
 #[derive(Debug, Copy, Clone)]
-/// Additional data that we attach with each rwlock instance.
-struct RwLockData {
+struct PthreadRwLock {
     id: RwLockId,
 }
 
@@ -261,7 +259,7 @@ fn rwlock_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size
 fn rwlock_get_data<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     rwlock_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, RwLockData> {
+) -> InterpResult<'tcx, PthreadRwLock> {
     let rwlock = ecx.deref_pointer(rwlock_ptr)?;
     lazy_sync_get_data(ecx, &rwlock, rwlock_init_offset(ecx)?, "pthread_rwlock_t", |ecx| {
         if !bytewise_equal_atomic_relaxed(
@@ -272,7 +270,7 @@ fn rwlock_get_data<'tcx>(
             throw_unsup_format!("unsupported static initializer used for `pthread_rwlock_t`");
         }
         let id = ecx.machine.sync.rwlock_create();
-        interp_ok(RwLockData { id })
+        interp_ok(PthreadRwLock { id })
     })
 }
 
@@ -366,8 +364,7 @@ enum ClockId {
 }
 
 #[derive(Debug, Copy, Clone)]
-/// Additional data that we attach with each cond instance.
-struct CondData {
+struct PthreadCondvar {
     id: CondvarId,
     clock: ClockId,
 }
@@ -376,10 +373,10 @@ fn cond_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     cond_ptr: &OpTy<'tcx>,
     clock: ClockId,
-) -> InterpResult<'tcx, CondData> {
+) -> InterpResult<'tcx, PthreadCondvar> {
     let cond = ecx.deref_pointer(cond_ptr)?;
     let id = ecx.machine.sync.condvar_create();
-    let data = CondData { id, clock };
+    let data = PthreadCondvar { id, clock };
     lazy_sync_init(ecx, &cond, cond_init_offset(ecx)?, data)?;
     interp_ok(data)
 }
@@ -387,7 +384,7 @@ fn cond_create<'tcx>(
 fn cond_get_data<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     cond_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, CondData> {
+) -> InterpResult<'tcx, PthreadCondvar> {
     let cond = ecx.deref_pointer(cond_ptr)?;
     lazy_sync_get_data(ecx, &cond, cond_init_offset(ecx)?, "pthread_cond_t", |ecx| {
         if !bytewise_equal_atomic_relaxed(
@@ -399,7 +396,7 @@ fn cond_get_data<'tcx>(
         }
         // This used the static initializer. The clock there is always CLOCK_REALTIME.
         let id = ecx.machine.sync.condvar_create();
-        interp_ok(CondData { id, clock: ClockId::Realtime })
+        interp_ok(PthreadCondvar { id, clock: ClockId::Realtime })
     })
 }
 

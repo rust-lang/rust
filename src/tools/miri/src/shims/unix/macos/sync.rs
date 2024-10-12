@@ -12,7 +12,7 @@
 
 use crate::*;
 
-struct LockData {
+struct MacOsUnfairLock {
     id: MutexId,
 }
 
@@ -25,11 +25,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // that's just implicitly creating a new lock at the new location.
         let (alloc, offset, _) = this.ptr_get_alloc_id(lock.ptr(), 0)?;
         let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc)?;
-        if let Some(data) = alloc_extra.get_sync::<LockData>(offset) {
+        if let Some(data) = alloc_extra.get_sync::<MacOsUnfairLock>(offset) {
             interp_ok(data.id)
         } else {
             let id = machine.sync.mutex_create();
-            alloc_extra.sync.insert(offset, Box::new(LockData { id }));
+            alloc_extra.sync.insert(offset, Box::new(MacOsUnfairLock { id }));
             interp_ok(id)
         }
     }
