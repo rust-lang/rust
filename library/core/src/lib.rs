@@ -131,7 +131,6 @@
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
-#![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_pin)]
 #![feature(const_pointer_is_aligned)]
