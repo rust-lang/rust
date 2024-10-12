@@ -1430,8 +1430,6 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                         );
                     }
                 }
-
-                diag.note(fluent::lint_non_local_definitions_deprecation);
             }
             NonLocalDefinitionsDiag::MacroRules {
                 depth,
@@ -1452,7 +1450,6 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 }
 
                 diag.note(fluent::lint_non_local);
-                diag.note(fluent::lint_non_local_definitions_deprecation);
 
                 if let Some(cargo_update) = cargo_update {
                     diag.subdiagnostic(cargo_update);
