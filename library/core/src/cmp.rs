@@ -25,8 +25,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-
-use crate::{iter::FromIterator, ops::{self, ControlFlow}};
+use crate::iter::FromIterator;
+use crate::ops::{self, ControlFlow};
 
 mod bytewise;
 pub(crate) use bytewise::BytewiseEq;
@@ -668,7 +668,7 @@ impl ops::Try for Ordering {
     fn branch(self) -> ControlFlow<Self, Self> {
         match self {
             Ordering::Equal => ControlFlow::Continue(self),
-            _ => ControlFlow::Break(self)
+            _ => ControlFlow::Break(self),
         }
     }
 }
@@ -703,7 +703,7 @@ impl ops::FromResidual for Ordering {
 ///             .zip(other.digits.iter().rev())
 ///             .map(|(left, right)| left.cmp(right))
 ///             .map(|mut ord| {
-///                  if self.is_negative { ord = ord.reverse(); } 
+///                  if self.is_negative { ord = ord.reverse() }
 ///                  ord
 ///             })
 ///             .collect()
