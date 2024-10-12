@@ -1,5 +1,5 @@
 //@ build-fail
-//~^ cycle detected when computing layout of `Wrapper<()>`
+//~^ ERROR: cycle detected when computing layout of
 
 trait Trait {
     type Assoc;

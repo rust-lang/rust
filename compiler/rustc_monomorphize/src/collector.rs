@@ -219,14 +219,14 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{CollectionMode, InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, MentionedItem, traversal};
+use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Interner, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, VtblEntry,
+    TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -625,38 +625,24 @@ struct MirUsedCollector<'a, 'tcx> {
     /// See the comment in `collect_items_of_instance` for the purpose of this set.
     /// Note that this contains *not-monomorphized* items!
     used_mentioned_items: &'a mut UnordSet<MentionedItem<'tcx>>,
-    instance: Instance<'tcx>,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
-    fn monomorphize<T>(&self, value: T) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        trace!("monomorphize: self.instance={:?}", self.instance);
-        self.instance.instantiate_mir_and_normalize_erasing_regions(
-            self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(value),
-        )
-    }
-
-    /// Evaluates a *not yet monomorphized* constant.
+    /// Evaluates a monomorphized constant.
     fn eval_constant(
         &mut self,
         constant: &mir::ConstOperand<'tcx>,
     ) -> Option<mir::ConstValue<'tcx>> {
-        let const_ = self.monomorphize(constant.const_);
         // Evaluate the constant. This makes const eval failure a collection-time error (rather than
         // a codegen-time error). rustc stops after collection if there was an error, so this
         // ensures codegen never has to worry about failing consts.
         // (codegen relies on this and ICEs will happen if this is violated.)
-        match const_.eval(self.tcx, ty::TypingEnv::fully_monomorphized(), constant.span) {
+        match constant.const_.eval(self.tcx, ty::TypingEnv::fully_monomorphized(), constant.span) {
             Ok(v) => Some(v),
             Err(ErrorHandled::TooGeneric(..)) => span_bug!(
                 constant.span,
                 "collection encountered polymorphic constant: {:?}",
-                const_
+                constant.const_
             ),
             Err(err @ ErrorHandled::Reported(..)) => {
                 err.emit_note(self.tcx);
@@ -686,8 +672,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items
                     .insert(MentionedItem::UnsizeCast { source_ty, target_ty });
-                let target_ty = self.monomorphize(target_ty);
-                let source_ty = self.monomorphize(source_ty);
                 let (source_ty, target_ty) =
                     find_vtable_types_for_unsizing(self.tcx.at(span), source_ty, target_ty);
                 // This could also be a different Unsize instruction, like
@@ -713,7 +697,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let fn_ty = operand.ty(self.body, self.tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(fn_ty));
-                let fn_ty = self.monomorphize(fn_ty);
                 visit_fn_use(self.tcx, fn_ty, false, span, self.used_items);
             }
             mir::Rvalue::Cast(
@@ -724,7 +707,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let source_ty = operand.ty(self.body, self.tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Closure(source_ty));
-                let source_ty = self.monomorphize(source_ty);
                 if let ty::Closure(def_id, args) = *source_ty.kind() {
                     let instance =
                         Instance::resolve_closure(self.tcx, def_id, args, ty::ClosureKind::FnOnce);
@@ -776,14 +758,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let callee_ty = func.ty(self.body, tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
-                let callee_ty = self.monomorphize(callee_ty);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Drop(ty));
-                let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, source, self.used_items);
             }
             mir::TerminatorKind::InlineAsm { ref operands, .. } => {
@@ -793,7 +773,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                             let fn_ty = value.const_.ty();
                             // *Before* monomorphizing, record that we already handled this mention.
                             self.used_mentioned_items.insert(MentionedItem::Fn(fn_ty));
-                            let fn_ty = self.monomorphize(fn_ty);
                             visit_fn_use(self.tcx, fn_ty, false, source, self.used_items);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
@@ -1221,10 +1200,7 @@ fn collect_items_of_instance<'tcx>(
     instance: Instance<'tcx>,
     mode: CollectionMode,
 ) -> (MonoItems<'tcx>, MonoItems<'tcx>) {
-    // This item is getting monomorphized, do mono-time checks.
-    tcx.ensure_ok().check_mono_item(instance);
-
-    let body = tcx.instance_mir(instance.def);
+    let body = tcx.codegen_mir(instance);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
     // visited, but at that point each mentioned item has been monomorphized, added to the
@@ -1243,11 +1219,10 @@ fn collect_items_of_instance<'tcx>(
         body,
         used_items: &mut used_items,
         used_mentioned_items: &mut used_mentioned_items,
-        instance,
     };
 
     if mode == CollectionMode::UsedItems {
-        for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
             collector.visit_basic_block_data(bb, data)
         }
     }
@@ -1264,8 +1239,7 @@ fn collect_items_of_instance<'tcx>(
     // `used_items` above.
     for item in body.mentioned_items() {
         if !collector.used_mentioned_items.contains(&item.node) {
-            let item_mono = collector.monomorphize(item.node);
-            visit_mentioned_item(tcx, &item_mono, item.span, &mut mentioned_items);
+            visit_mentioned_item(tcx, &item.node, item.span, &mut mentioned_items);
         }
     }
 

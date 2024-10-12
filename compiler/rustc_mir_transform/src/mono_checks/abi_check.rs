@@ -1,7 +1,7 @@
 //! This module ensures that if a function's ABI requires a particular target feature,
 //! that target feature is enabled both on the callee and all callers.
 use rustc_hir::CRATE_HIR_ID;
-use rustc_middle::mir::{self, traversal};
+use rustc_middle::mir::{self};
 use rustc_middle::ty::inherent::*;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_session::lint::builtin::ABI_UNSUPPORTED_VECTOR_TYPES;
@@ -144,7 +144,7 @@ fn check_call_site_abi<'tcx>(
 
 fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {
     // Check all function call terminators.
-    for (bb, _data) in traversal::mono_reachable(body, tcx, instance) {
+    for (bb, _data) in body.basic_blocks.iter_enumerated() {
         let terminator = body.basic_blocks[bb].terminator();
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, ref fn_span, .. }
@@ -165,7 +165,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
 pub(crate) fn check_feature_dependent_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    body: &'tcx mir::Body<'tcx>,
+    body: &mir::Body<'tcx>,
 ) {
     check_instance_abi(tcx, instance);
     check_callees_abi(tcx, instance, body);

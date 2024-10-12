@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rustc_macros::{Diagnostic, LintDiagnostic};
+use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -23,16 +23,6 @@ pub(crate) struct NoOptimizedMir {
     #[note]
     pub span: Span,
     pub crate_name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_large_assignments)]
-#[note]
-pub(crate) struct LargeAssignmentsLint {
-    #[label]
-    pub span: Span,
-    pub size: u64,
-    pub limit: u64,
 }
 
 #[derive(Diagnostic)]
@@ -66,36 +56,4 @@ pub(crate) struct StartNotFound;
 #[diag(monomorphize_unknown_cgu_collection_mode)]
 pub(crate) struct UnknownCguCollectionMode<'a> {
     pub mode: &'a str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_disabled_vector_type_def)]
-#[help]
-pub(crate) struct AbiErrorDisabledVectorTypeDef<'a> {
-    #[label]
-    pub span: Span,
-    pub required_feature: &'a str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_disabled_vector_type_call)]
-#[help]
-pub(crate) struct AbiErrorDisabledVectorTypeCall<'a> {
-    #[label]
-    pub span: Span,
-    pub required_feature: &'a str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_unsupported_vector_type_def)]
-pub(crate) struct AbiErrorUnsupportedVectorTypeDef {
-    #[label]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_unsupported_vector_type_call)]
-pub(crate) struct AbiErrorUnsupportedVectorTypeCall {
-    #[label]
-    pub span: Span,
 }

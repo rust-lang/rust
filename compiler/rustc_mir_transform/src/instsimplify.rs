@@ -15,6 +15,7 @@ use crate::take_array;
 pub(super) enum InstSimplify {
     BeforeInline,
     AfterSimplifyCfg,
+    PostMono,
 }
 
 impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
@@ -22,6 +23,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
         match self {
             InstSimplify::BeforeInline => "InstSimplify-before-inline",
             InstSimplify::AfterSimplifyCfg => "InstSimplify-after-simplifycfg",
+            InstSimplify::PostMono => "InstSimplify-post-mono",
         }
     }
 
@@ -30,13 +32,18 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let ctx = InstSimplifyContext {
-            tcx,
-            local_decls: &body.local_decls,
-            typing_env: body.typing_env(tcx),
+        let typing_env = if matches!(*self, InstSimplify::PostMono) {
+            ty::TypingEnv::fully_monomorphized()
+        } else {
+            body.typing_env(tcx)
         };
-        let preserve_ub_checks =
-            attr::contains_name(tcx.hir().krate_attrs(), sym::rustc_preserve_ub_checks);
+        let ctx = InstSimplifyContext { tcx, local_decls: &body.local_decls, typing_env };
+        let preserve_ub_checks = match self {
+            InstSimplify::PostMono => false,
+            InstSimplify::BeforeInline | InstSimplify::AfterSimplifyCfg => {
+                attr::contains_name(tcx.hir().krate_attrs(), sym::rustc_preserve_ub_checks)
+            }
+        };
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 match statement.kind {
@@ -50,6 +57,29 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
                         ctx.simplify_cast(rvalue);
                         ctx.simplify_repeated_aggregate(rvalue);
                         ctx.simplify_repeat_once(rvalue);
+                    }
+                    StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
+                        // UnreachablePropagation likes to generate this MIR:
+                        //
+                        // _1 = UbChecks();
+                        // assume(copy _1);
+                        // _2 = unreachable_unchecked::precondition_check() -> [return: bb2, unwind unreachable];
+                        //
+                        // Which is mind-bending but correct. When UbChecks is false, we
+                        // assume(false) which is unreachable, and we never hit the precondition
+                        // check. When UbChecks is true, we assume(true) and fall through to the
+                        // precondition check.
+                        //
+                        // So the branch on UbChecks is implicit, which is both clever and makes
+                        // the rest of MIR optimizations unable to delete this precondition check
+                        // call when UB checks are off.
+                        if let Some(ConstOperand { const_, .. }) = op.constant() {
+                            if let Some(false) = const_.try_to_bool() {
+                                block.statements.clear();
+                                block.terminator_mut().kind = TerminatorKind::Unreachable;
+                                break;
+                            }
+                        }
                     }
                     _ => {}
                 }

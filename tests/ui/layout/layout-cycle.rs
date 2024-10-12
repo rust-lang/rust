@@ -1,6 +1,5 @@
 //@ build-fail
-//~^ ERROR: a cycle occurred during layout computation
-//~| ERROR: cycle detected when computing layout of
+//~^ ERROR: cycle detected when computing layout of
 
 // Issue #111176 -- ensure that we do not emit ICE on layout cycles
 

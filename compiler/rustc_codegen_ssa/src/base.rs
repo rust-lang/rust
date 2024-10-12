@@ -417,7 +417,7 @@ pub(crate) fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     // release builds.
     info!("codegen_instance({})", instance);
 
-    mir::codegen_mir::<Bx>(cx, instance);
+    mir::lower_mir::<Bx>(cx, instance);
 }
 
 /// Creates the `main` function which will initialize the rust runtime and call

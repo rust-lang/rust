@@ -156,7 +156,7 @@ pub fn foo5(a: &dyn Trait5<Type5, 32>) {
     let b = &[Type5; 32];
     a.quux(&b);
     // CHECK-LABEL: define{{.*}}4foo5{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z](\.0)*|%_[0-9]+]}}, ptr align 1 {{%[a-z](\.0)*|%_[0-9]+}}){{.*}}[ "kcfi"(i32 [[TYPE5:[[:print:]]+]]) ]
+    // CHECK:       call void %{{[0-9]}}(ptr align 1 %a.0, ptr align 1 %_5){{.*}}[ "kcfi"(i32 [[TYPE5:[[:print:]]+]]) ]
 }
 
 pub fn bar5() {
@@ -165,7 +165,7 @@ pub fn bar5() {
     let b = &a as &dyn Trait5<Type5, 32>;
     b.quux(&a);
     // CHECK-LABEL: define{{.*}}4bar5{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z](\.0)*|%_[0-9]+]}}, ptr align 1 {{%[a-z](\.0)*|%_[0-9]+}}){{.*}}[ "kcfi"(i32 [[TYPE5:[[:print:]]+]]) ]
+    // CHECK:       call void %{{[0-9]}}(ptr align 1 %a, ptr align 1 %_9){{.*}}[ "kcfi"(i32 [[TYPE5:[[:print:]]+]]) ]
 }
 
 // CHECK: !{{[0-9]+}} = !{i32 [[TYPE1]]}

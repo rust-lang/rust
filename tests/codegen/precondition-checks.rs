@@ -1,4 +1,4 @@
-//@ compile-flags: -Cno-prepopulate-passes -Copt-level=0 -Cdebug-assertions=no
+//@ compile-flags: -Copt-level=0 -Cdebug-assertions=no
 
 // This test ensures that in a debug build which turns off debug assertions, we do not monomorphize
 // any of the standard library's unsafe precondition checks.
