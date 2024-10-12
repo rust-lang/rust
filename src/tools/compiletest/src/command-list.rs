@@ -115,6 +115,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-x86_64-unknown-linux-gnu",
     "incremental",
     "known-bug",
+    "legacy-makefile-test",
     "llvm-cov-flags",
     "min-cdb-version",
     "min-gdb-version",
