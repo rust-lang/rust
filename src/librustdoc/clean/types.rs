@@ -1450,7 +1450,7 @@ impl Trait {
     pub(crate) fn safety(&self, tcx: TyCtxt<'_>) -> hir::Safety {
         tcx.trait_def(self.def_id).safety
     }
-    pub(crate) fn is_object_safe(&self, tcx: TyCtxt<'_>) -> bool {
+    pub(crate) fn is_dyn_compatible(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.is_dyn_compatible(self.def_id)
     }
 }
