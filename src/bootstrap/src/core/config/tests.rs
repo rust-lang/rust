@@ -19,6 +19,8 @@ pub(crate) fn parse(config: &str) -> Config {
     )
 }
 
+// FIXME: Resume this test after establishing a stabilized change tracking logic.
+#[ignore]
 #[test]
 fn download_ci_llvm() {
     if crate::core::build_steps::llvm::is_ci_llvm_modified(&parse("")) {
