@@ -7,6 +7,7 @@ Language
 --------
 - [Don't make statement nonterminals match pattern nonterminals](https://github.com/rust-lang/rust/pull/120221/)
 - [Patterns matching empty types can now be omitted in common cases](https://github.com/rust-lang/rust/pull/122792)
+- [Enforce supertrait outlives obligations when using trait impls](https://github.com/rust-lang/rust/pull/124336)
 - [`addr_of(_mut)!` macros and the newly stabilized `&raw (const|mut)` are now safe to use with all static items](https://github.com/rust-lang/rust/pull/125834)
 - [size_of_val_raw: for length 0 this is safe to call](https://github.com/rust-lang/rust/pull/126152/)
 - [Reorder trait bound modifiers *after* `for<...>` binder in trait bounds](https://github.com/rust-lang/rust/pull/127054/)
@@ -27,6 +28,8 @@ Compiler
 --------
 - [Promote riscv64gc-unknown-linux-musl to tier 2](https://github.com/rust-lang/rust/pull/122049)
 - [Promote Mac Catalyst targets `aarch64-apple-ios-macabi` and `x86_64-apple-ios-macabi` to Tier 2, and ship them with rustup](https://github.com/rust-lang/rust/pull/126450)
+- [Add tier 3 NuttX based targets for RISC-V and ARM](https://github.com/rust-lang/rust/pull/127755)
+- [Add tier 3 powerpc-unknown-linux-muslspe target](https://github.com/rust-lang/rust/pull/127905)
 - [Improved diagnostics to explain why a pattern is unreachable](https://github.com/rust-lang/rust/pull/128034)
 - [The compiler now triggers the unreachable code warning properly for async functions that don't return/are `-> !`](https://github.com/rust-lang/rust/pull/128443)
 - [Promote `aarch64-apple-darwin` to Tier 1](https://github.com/rust-lang/rust/pull/128592)
@@ -41,7 +44,7 @@ Libraries
 - [Implement DoubleEnded and ExactSize for Take<Repeat> and Take<RepeatWith>](https://github.com/rust-lang/rust/pull/106943/)
 - [Stabilize Wasm relaxed SIMD](https://github.com/rust-lang/rust/pull/117468/)
 - [Stabilize const `{integer}::from_str_radix` i.e. `const_int_from_str`](https://github.com/rust-lang/rust/pull/124941/)
-- [CloneToUninit impls](https://github.com/rust-lang/rust/pull/126877/)
+- [Generalize `{Rc,Arc}::make_mut()` to `Path`, `OsStr`, and `CStr`.](https://github.com/rust-lang/rust/pull/126877)
 - [impl `Default` for collection iterators that don't already have it](https://github.com/rust-lang/rust/pull/128261/)
 
 
