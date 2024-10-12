@@ -1,31 +1,23 @@
 error[E0080]: evaluation of `<A<()> as Foo<()>>::BAR` failed
-  --> $DIR/issue-50814-2.rs:16:24
+  --> $DIR/issue-50814-2.rs:17:24
    |
 LL |     const BAR: usize = [5, 6, 7][T::BOO];
    |                        ^^^^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 42
 
 note: erroneous constant encountered
-  --> $DIR/issue-50814-2.rs:20:6
+  --> $DIR/issue-50814-2.rs:21:6
    |
 LL |     &<A<T> as Foo<T>>::BAR
    |      ^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/issue-50814-2.rs:20:5
+  --> $DIR/issue-50814-2.rs:21:5
    |
 LL |     &<A<T> as Foo<T>>::BAR
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-note: erroneous constant encountered
-  --> $DIR/issue-50814-2.rs:20:6
-   |
-LL |     &<A<T> as Foo<T>>::BAR
-   |      ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 note: the above error was encountered while instantiating `fn foo::<()>`
-  --> $DIR/issue-50814-2.rs:32:22
+  --> $DIR/issue-50814-2.rs:33:22
    |
 LL |     println!("{:x}", foo::<()>() as *const usize as usize);
    |                      ^^^^^^^^^^^
