@@ -39,6 +39,13 @@ macro_rules! make_ast_visitor {
             };
         }
 
+        #[allow(unused)]
+        macro_rules! return_result {
+            ($V: ty) => {
+                macro_if!($($mut)? { () } else { <$V>::Result::output() })
+            };
+        }
+
         macro_rules! make_visit {
             (
                 $ty: ty
@@ -62,6 +69,73 @@ macro_rules! make_ast_visitor {
                 } else {
                     $t
                 }}
+            };
+        }
+
+        #[allow(unused)]
+        macro_rules! deref_P {
+            ($p: expr) => {
+                macro_if!{$($mut)? {
+                    $p.deref_mut()
+                } else {
+                    $p
+                }}
+            };
+        }
+
+        #[allow(unused)]
+        macro_rules! visit_id {
+            ($vis: ident, $id: ident) => {
+                macro_if!{ $($mut)? {
+                    $vis.visit_id($id)
+                } else {
+                    // assign to _ to prevent unused_variable warnings
+                    {let _ = (&$vis, &$id);}
+                }}
+            };
+        }
+
+        #[allow(unused)]
+        macro_rules! visit_span {
+            ($vis: ident, $span: ident) => {
+                macro_if!{ $($mut)? {
+                    $vis.visit_span($span)
+                } else {
+                    // assign to _ to prevent unused_variable warnings
+                    {let _ = (&$vis, &$span);}
+                }}
+            };
+        }
+
+        #[allow(unused)]
+        macro_rules! try_v {
+            ($visit: expr) => {
+                macro_if!{$($mut)? { $visit } else { try_visit!($visit) }}
+            };
+        }
+
+        #[allow(unused)]
+        macro_rules! visit_o {
+            ($opt: expr, $fn: expr) => {
+                if let Some(elem) = $opt {
+                    try_v!($fn(elem))
+                }
+            };
+        }
+
+        #[allow(unused)]
+        macro_rules! visit_list {
+            ($visitor: expr, $visit: ident, $flat_map: ident, $list: expr $$(; $$($arg: expr),*)?) => {
+                macro_if!{$($mut)? {
+                    $list.flat_map_in_place(|x| $visitor.$flat_map(x $$(, $$($arg),*)?))
+                } else {
+                    visit_list!($visitor, $visit, $list $$(; $$($arg),*)?)
+                }}
+            };
+            ($visitor: expr, $visit: ident, $list: expr $$(; $$($arg: expr),*)?) => {
+                for elem in $list {
+                    try_v!($visitor.$visit(elem $$(, $$($arg),*)?));
+                }
             };
         }
 
