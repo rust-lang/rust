@@ -136,3 +136,15 @@ function releaseChannel {
         echo $RUST_CI_OVERRIDE_RELEASE_CHANNEL
     fi
 }
+
+# Parse values from src/stage0 file by key
+function parse_stage0_file_by_key {
+    local key="$1"
+    local file="$ci_dir/../stage0"
+    local value=$(awk -F= '{a[$1]=$2} END {print(a["'$key'"])}' $file)
+    if [ -z "$value" ]; then
+        echo "ERROR: Key '$key' not found in '$file'."
+        exit 1
+    fi
+    echo "$value"
+}
