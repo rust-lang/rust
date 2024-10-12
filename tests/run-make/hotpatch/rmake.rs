@@ -1,11 +1,12 @@
-// Check if hotpatch only makes the functions hotpachable that were not,
-// but leaving the other functions untouched
+// Check if hotpatch makes the functions hotpachable that were not
 // More details in lib.rs
 
 //@ revisions: x32 x64
 //@[x32] only-x86
 //@[x64] only-x86_64
-// Reason: hotpatch is only implemented for X86
+
+// Reason: hotpatch is only implemented for x86 and aarch64, but for aarch64 they
+// are always hotpatchable so we don't need to check it
 
 use run_make_support::{llvm, rustc};
 
@@ -18,7 +19,7 @@ fn main() {
 
     fn dump_lib(libname: &str) -> String {
         llvm::llvm_objdump()
-            .arg("--disassemble-symbols=tailcall_fn,empty_fn")
+            .arg("--disassemble-symbols=empty_fn")
             .input(libname)
             .run()
             .stdout_utf8()

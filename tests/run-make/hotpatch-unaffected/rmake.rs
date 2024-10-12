@@ -1,9 +1,11 @@
 // Check if hotpatch leaves the functions that are already hotpatchable untouched
 
-//@ revisions: x32 x64
+//@ revisions: x32 x64 aarch64
 //@[x32] only-x86
 //@[x64] only-x86_64
-// Reason: hotpatch is only implemented for X86
+//@[aarch64] only-aarch64
+
+// Reason: hotpatch is only implemented for X86 and aarch64
 
 use run_make_support::{assertion_helpers, llvm, rustc};
 
