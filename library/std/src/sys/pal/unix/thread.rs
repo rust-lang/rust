@@ -363,7 +363,6 @@ impl Thread {
     #[cfg(target_vendor = "apple")]
     pub fn sleep_until(deadline: crate::time::Instant) {
         use core::mem::MaybeUninit;
-
         use super::time::Timespec;
 
         let Timespec { tv_sec, tv_nsec } = deadline.into_inner().into_timespec();
@@ -379,14 +378,14 @@ impl Thread {
 
             loop {
                 // There are no docs on the mach_wait_until some details can be
-                // learned from the `Apple OSS Distributions` xnu source code.
-                // Specifically: xnu/osfmk/clock.h commit 94d3b45 on Github
+                // learned from the XNU source code:
+                // https://github.com/apple-oss-distributions/xnu/blob/94d3b452840153a99b38a3a9659680b2a006908e/osfmk/kern/clock.c#L1507-L1543
                 let ret = mach_wait_until(ticks);
-                if ret != KERN_ABORTED {
+                if ret == KERN_SUCCESS {
                     break;
                 }
+                assert_eq!(KERN_ABORTED, "mach_wait_until returned error, code: {ret}");
             }
-            assert_eq!(ret, KERN_SUCCESS);
         }
     }
 
@@ -405,13 +404,13 @@ impl Thread {
     }
 }
 
-// these come from the `Apple OSS Distributions` xnu source code.
-// Specifically: xnu/osfmk/mach/kern_return.h commit 94d3b45 on Github
+// See https://github.com/apple-oss-distributions/xnu/blob/94d3b452840153a99b38a3a9659680b2a006908e/osfmk/mach/kern_return.h
 #[cfg(target_vendor = "apple")]
 const KERN_SUCCESS: libc::c_int = 0;
 #[cfg(target_vendor = "apple")]
 const KERN_ABORTED: libc::c_int = 14;
 
+// See https://github.com/apple-oss-distributions/xnu/blob/94d3b452840153a99b38a3a9659680b2a006908e/osfmk/mach/mach_time.h
 #[cfg(target_vendor = "apple")]
 #[repr(C)]
 struct mach_timebase_info_type {
