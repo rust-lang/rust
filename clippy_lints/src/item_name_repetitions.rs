@@ -88,7 +88,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.33.0"]
     pub MODULE_NAME_REPETITIONS,
-    pedantic,
+    restriction,
     "type names prefixed/postfixed with their containing module's name"
 }
 
