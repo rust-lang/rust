@@ -271,7 +271,6 @@ macro_rules! make_ast_visitor {
 
                 make_visit!{Arm; visit_arm, walk_arm}
                 make_visit!{AssocItem, ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item}
-                make_visit!{EnumDef; visit_enum_def, walk_enum_def}
                 make_visit!{ExprField; visit_expr_field, walk_expr_field}
                 make_visit!{FieldDef; visit_field_def, walk_field_def}
                 make_visit!{ForeignItem; visit_foreign_item, walk_item}
@@ -317,6 +316,7 @@ macro_rules! make_ast_visitor {
             make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
             make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
             make_visit!{Crate; visit_crate, walk_crate}
+            make_visit!{EnumDef; visit_enum_def, walk_enum_def}
             make_visit!{FnDecl; visit_fn_decl, walk_fn_decl}
             make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
             make_visit!{FormatArgs; visit_format_args, walk_format_args}
@@ -396,6 +396,15 @@ macro_rules! make_ast_visitor {
                     try_v!(visit_span!(vis, span));
                 }
             }
+            return_result!(V)
+        }
+
+        pub fn walk_enum_def<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            enum_def: ref_t!(EnumDef)
+        ) -> result!(V) {
+            let EnumDef { variants } = enum_def;
+            visit_list!(vis, visit_variant, flat_map_variant, variants);
             return_result!(V)
         }
 
@@ -811,14 +820,6 @@ pub mod visit {
         item: &'a Item<impl WalkItemKind>,
     ) -> V::Result {
         walk_assoc_item(visitor, item, AssocCtxt::Trait /*ignored*/)
-    }
-
-    pub fn walk_enum_def<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        EnumDef { variants }: &'a EnumDef,
-    ) -> V::Result {
-        walk_list!(visitor, visit_variant, variants);
-        V::Result::output()
     }
 
     pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant) -> V::Result
@@ -2302,9 +2303,9 @@ pub mod mut_visit {
                     visit_opt(ty, |ty| vis.visit_ty(ty));
                     walk_ty_alias_where_clauses(vis, where_clauses);
                 }
-                ItemKind::Enum(EnumDef { variants }, generics) => {
+                ItemKind::Enum(enum_def, generics) => {
                     vis.visit_generics(generics);
-                    variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
+                    vis.visit_enum_def(enum_def);
                 }
                 ItemKind::Struct(variant_data, generics)
                 | ItemKind::Union(variant_data, generics) => {
