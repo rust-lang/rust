@@ -182,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
             // Iterate the bounds and add them to our seen hash
             // If we haven't yet seen it, add it to the fixed traits
-            for (bound, _) in bounds {
+            for bound in bounds {
                 let Some(def_id) = bound.trait_ref.trait_def_id() else {
                     continue;
                 };
@@ -197,9 +197,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             // If the number of unique traits isn't the same as the number of traits in the bounds,
             // there must be 1 or more duplicates
             if bounds.len() != unique_traits.len() {
-                let mut bounds_span = bounds[0].0.span;
+                let mut bounds_span = bounds[0].span;
 
-                for (bound, _) in bounds.iter().skip(1) {
+                for bound in bounds.iter().skip(1) {
                     bounds_span = bounds_span.to(bound.span);
                 }
 
@@ -229,7 +229,8 @@ impl TraitBounds {
     /// this MSRV? See <https://github.com/rust-lang/rust-clippy/issues/8772> for details.
     fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
         if !self.msrv.meets(msrvs::MAYBE_BOUND_IN_WHERE)
-            && let GenericBound::Trait(tr, TraitBoundModifier::Maybe) = bound
+            && let GenericBound::Trait(tr) = bound
+            && let TraitBoundModifier::Maybe = tr.modifiers
         {
             cx.tcx.lang_items().get(LangItem::Sized) == tr.trait_ref.path.res.opt_def_id()
         } else {
@@ -375,11 +376,11 @@ impl Default for ComparableTraitRef {
 }
 
 fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'a [PathSegment<'a>], Span)> {
-    if let GenericBound::Trait(t, tbm) = bound {
+    if let GenericBound::Trait(t) = bound {
         let trait_path = t.trait_ref.path;
         let trait_span = {
             let path_span = trait_path.span;
-            if let TraitBoundModifier::Maybe = tbm {
+            if let TraitBoundModifier::Maybe = t.modifiers {
                 path_span.with_lo(path_span.lo() - BytePos(1)) // include the `?`
             } else {
                 path_span
@@ -430,7 +431,7 @@ fn rollup_traits(
     let mut repeated_res = false;
 
     let only_comparable_trait_refs = |bound: &GenericBound<'_>| {
-        if let GenericBound::Trait(t, _) = bound {
+        if let GenericBound::Trait(t) = bound {
             Some((into_comparable_trait_ref(&t.trait_ref), t.span))
         } else {
             None
