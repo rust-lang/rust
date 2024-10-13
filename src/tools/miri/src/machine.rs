@@ -321,7 +321,7 @@ impl ProvenanceExtra {
 }
 
 /// Extra per-allocation data
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AllocExtra<'tcx> {
     /// Global state of the borrow tracker, if enabled.
     pub borrow_tracker: Option<borrow_tracker::AllocState>,
@@ -336,6 +336,14 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
+}
+
+// We need a `Clone` impl because the machine passes `Allocation` through `Cow`...
+// but that should never end up actually cloning our `AllocExtra`.
+impl<'tcx> Clone for AllocExtra<'tcx> {
+    fn clone(&self) -> Self {
+        panic!("our allocations should never be cloned");
+    }
 }
 
 impl VisitProvenance for AllocExtra<'_> {
