@@ -365,6 +365,17 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_fn_ret_ty<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            ret_ty: ref_t!(FnRetTy)
+        ) -> result!(V) {
+            match ret_ty {
+                FnRetTy::Default(span) => { try_v!(visit_span!(vis, span)) }
+                FnRetTy::Ty(output_ty) => { try_v!(vis.visit_ty(output_ty)) }
+            }
+            return_result!(V)
+        }
+
         pub fn walk_generic_args<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             generic_args: ref_t!(GenericArgs)
@@ -1036,14 +1047,6 @@ pub mod visit {
                 try_visit!(visitor.visit_ty(lhs_ty));
                 try_visit!(visitor.visit_ty(rhs_ty));
             }
-        }
-        V::Result::output()
-    }
-
-    pub fn walk_fn_ret_ty<'a, V: Visitor<'a>>(visitor: &mut V, ret_ty: &'a FnRetTy) -> V::Result {
-        match ret_ty {
-            FnRetTy::Default(_span) => {}
-            FnRetTy::Ty(output_ty) => try_visit!(visitor.visit_ty(output_ty)),
         }
         V::Result::output()
     }
@@ -2072,13 +2075,6 @@ pub mod mut_visit {
         let FnDecl { inputs, output } = decl.deref_mut();
         inputs.flat_map_in_place(|param| vis.flat_map_param(param));
         vis.visit_fn_ret_ty(output);
-    }
-
-    fn walk_fn_ret_ty<T: MutVisitor>(vis: &mut T, fn_ret_ty: &mut FnRetTy) {
-        match fn_ret_ty {
-            FnRetTy::Default(span) => vis.visit_span(span),
-            FnRetTy::Ty(ty) => vis.visit_ty(ty),
-        }
     }
 
     fn walk_param_bound<T: MutVisitor>(vis: &mut T, pb: &mut GenericBound) {
