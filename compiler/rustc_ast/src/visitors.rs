@@ -120,6 +120,7 @@ macro_rules! make_ast_visitor {
         }
 
         mut_only_visit!{visit_lazy_tts}
+        mut_only_visit!{visit_delim_args}
 
         macro_rules! try_v {
             ($visit: expr) => {
@@ -309,6 +310,7 @@ macro_rules! make_ast_visitor {
             make_visit!{AnonConst; visit_anon_const, walk_anon_const}
             make_visit!{Arm; visit_arm, walk_arm}
             make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
+            make_visit!{AttrArgs; visit_attr_args, walk_attr_args}
             make_visit!{Attribute; visit_attribute, walk_attribute}
             make_visit!{Block; visit_block, walk_block}
             make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
@@ -395,6 +397,26 @@ macro_rules! make_ast_visitor {
             visit_o!(guard, |guard| vis.visit_expr(guard));
             visit_o!(body, |body| vis.visit_expr(body));
             try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_attr_args<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            args: ref_t!(AttrArgs)
+        ) -> result!(V) {
+            match args {
+                AttrArgs::Empty => {}
+                AttrArgs::Delimited(args) => {
+                    visit_delim_args!(vis, args);
+                }
+                AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
+                    try_v!(vis.visit_expr(expr));
+                    try_v!(visit_span!(vis, eq_span));
+                }
+                AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
+                    unreachable!("in literal form when visiting mac args eq: {:?}", lit)
+                }
+            }
             return_result!(V)
         }
 
@@ -1640,21 +1662,9 @@ pub mod visit {
                 let NormalAttr { item, tokens: _ } = &**normal;
                 let AttrItem { unsafety: _, path, args, tokens: _ } = item;
                 try_visit!(visitor.visit_path(path, DUMMY_NODE_ID));
-                try_visit!(walk_attr_args(visitor, args));
+                try_visit!(visitor.visit_attr_args(args));
             }
             AttrKind::DocComment(_kind, _sym) => {}
-        }
-        V::Result::output()
-    }
-
-    pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) -> V::Result {
-        match args {
-            AttrArgs::Empty => {}
-            AttrArgs::Delimited(_args) => {}
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => try_visit!(visitor.visit_expr(expr)),
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when walking mac args eq: {:?}", lit)
-            }
         }
         V::Result::output()
     }
@@ -1754,21 +1764,6 @@ pub mod mut_visit {
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
     fn visit_bounds<T: MutVisitor>(vis: &mut T, bounds: &mut GenericBounds, ctxt: BoundKind) {
         visit_vec(bounds, |bound| vis.visit_param_bound(bound, ctxt));
-    }
-
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
-        match args {
-            AttrArgs::Empty => {}
-            AttrArgs::Delimited(args) => visit_delim_args(vis, args),
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
-                vis.visit_expr(expr);
-                vis.visit_span(eq_span);
-            }
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when visiting mac args eq: {:?}", lit)
-            }
-        }
     }
 
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -1891,7 +1886,7 @@ pub mod mut_visit {
                     tokens: attr_tokens,
                 } = &mut **normal;
                 vis.visit_path(path, DUMMY_NODE_ID);
-                visit_attr_args(vis, args);
+                vis.visit_attr_args(args);
                 visit_lazy_tts(vis, tokens);
                 visit_lazy_tts(vis, attr_tokens);
             }
@@ -2074,7 +2069,7 @@ pub mod mut_visit {
             token::NtMeta(item) => {
                 let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
                 vis.visit_path(path, DUMMY_NODE_ID);
-                visit_attr_args(vis, args);
+                vis.visit_attr_args(args);
                 visit_lazy_tts(vis, tokens);
             }
             token::NtPath(path) => vis.visit_path(path, DUMMY_NODE_ID),
