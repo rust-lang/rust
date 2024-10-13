@@ -142,7 +142,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 ty.peel_refs().is_slice() || get_adt_inherent_method(cx, ty, expected_method_name).is_some()
             })
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
-                if item.ident.name == sym!(IntoIter) {
+                if item.ident.name.as_str() == "IntoIter" {
                     Some(cx.tcx.hir().impl_item(item.id).expect_type().span)
                 } else {
                     None

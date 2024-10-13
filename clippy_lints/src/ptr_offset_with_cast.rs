@@ -96,7 +96,7 @@ fn expr_as_ptr_offset_call<'tcx>(
             if path_segment.ident.name == sym::offset {
                 return Some((arg_0, arg_1, Method::Offset));
             }
-            if path_segment.ident.name == sym!(wrapping_offset) {
+            if path_segment.ident.name.as_str() == "wrapping_offset" {
                 return Some((arg_0, arg_1, Method::WrappingOffset));
             }
         }

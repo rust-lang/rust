@@ -43,12 +43,12 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
         match &expr.kind {
             ExprKind::MethodCall(path, func, [param], _) => {
                 if let Some(adt) = cx.typeck_results().expr_ty(func).peel_refs().ty_adt_def()
-                    && ((path.ident.name == sym!(mode)
+                    && ((path.ident.name.as_str() == "mode"
                         && matches!(
                             cx.tcx.get_diagnostic_name(adt.did()),
                             Some(sym::FsOpenOptions | sym::DirBuilder)
                         ))
-                        || (path.ident.name == sym!(set_mode)
+                        || (path.ident.name.as_str() == "set_mode"
                             && cx.tcx.is_diagnostic_item(sym::FsPermissions, adt.did())))
                     && let ExprKind::Lit(_) = param.kind
                     && param.span.eq_ctxt(expr.span)

@@ -44,7 +44,7 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
             if let Some(parent) = get_parent_expr(cx, expr) {
                 let data = if let ExprKind::MethodCall(segment, recv, args, span) = parent.kind {
                     if args.is_empty()
-                        && segment.ident.name == sym!(parse)
+                        && segment.ident.name.as_str() == "parse"
                         && let parse_result_ty = cx.typeck_results().expr_ty(parent)
                         && is_type_diagnostic_item(cx, parse_result_ty, sym::Result)
                         && let ty::Adt(_, substs) = parse_result_ty.kind()
@@ -58,7 +58,7 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
                             "calling `.parse()` on a string without trimming the trailing newline character",
                             "checking",
                         ))
-                    } else if segment.ident.name == sym!(ends_with)
+                    } else if segment.ident.name.as_str() == "ends_with"
                         && recv.span == expr.span
                         && let [arg] = args
                         && expr_is_string_literal_without_trailing_newline(arg)

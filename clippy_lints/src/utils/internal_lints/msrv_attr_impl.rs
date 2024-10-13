@@ -42,7 +42,7 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                     .filter(|t| matches!(t.unpack(), GenericArgKind::Type(_)))
                     .any(|t| match_type(cx, t.expect_ty(), &paths::MSRV))
             })
-            && !items.iter().any(|item| item.ident.name == sym!(check_attributes))
+            && !items.iter().any(|item| item.ident.name.as_str() == "check_attributes")
         {
             let context = if is_late_pass { "LateContext" } else { "EarlyContext" };
             let lint_pass = if is_late_pass { "LateLintPass" } else { "EarlyLintPass" };

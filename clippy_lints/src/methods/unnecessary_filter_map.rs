@@ -78,7 +78,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             (true, true)
         },
         hir::ExprKind::MethodCall(segment, recv, [arg], _) => {
-            if segment.ident.name == sym!(then_some)
+            if segment.ident.name.as_str() == "then_some"
                 && cx.typeck_results().expr_ty(recv).is_bool()
                 && path_to_local_id(arg, arg_id)
             {
