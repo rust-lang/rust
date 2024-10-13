@@ -82,7 +82,6 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        #[allow(unused)]
         macro_rules! visit_id {
             ($vis: ident, $id: ident) => {
                 macro_if!{ $($mut)? {
@@ -190,7 +189,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
                 make_visit!{FnHeader; visit_fn_header, walk_fn_header}
                 make_visit!{ForeignMod; visit_foreign_mod, walk_foreign_mod}
-                make_visit!{Lifetime; visit_lifetime, walk_lifetime}
                 make_visit!{MacroDef; visit_macro_def, walk_macro_def}
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
@@ -285,7 +283,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{ForeignItem; visit_foreign_item, walk_item}
                 make_visit!{GenericParam; visit_generic_param, walk_generic_param}
                 make_visit!{Item; visit_item, walk_item}
-                make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
                 make_visit!{Param; visit_param, walk_param}
                 make_visit!{PatField; visit_pat_field, walk_pat_field}
                 make_visit!{Path, _ id: NodeId; visit_path, walk_path}
@@ -337,6 +334,7 @@ macro_rules! make_ast_visitor {
             make_visit!{InlineAsm; visit_inline_asm, walk_inline_asm}
             make_visit!{InlineAsmSym; visit_inline_asm_sym, walk_inline_asm_sym}
             make_visit!{Label; visit_label, walk_label}
+            make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
             make_visit!{MacCall; visit_mac_call, walk_mac}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
@@ -367,6 +365,16 @@ macro_rules! make_ast_visitor {
             label: ref_t!(Label)
         ) -> result!(V) {
             let Label { ident } = label;
+            try_v!(vis.visit_ident(ident));
+            return_result!(V)
+        }
+
+        pub fn walk_lifetime<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            lifetime: ref_t!(Lifetime)
+        ) -> result!(V) {
+            let Lifetime { id, ident } = lifetime;
+            try_v!(visit_id!(vis, id));
             try_v!(vis.visit_ident(ident));
             return_result!(V)
         }
@@ -513,11 +521,6 @@ pub mod visit {
             visit_opt!(visitor, visit_block, els);
         }
         V::Result::output()
-    }
-
-    pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime) -> V::Result {
-        let Lifetime { id: _, ident } = lifetime;
-        visitor.visit_ident(ident)
     }
 
     pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef) -> V::Result
@@ -1468,7 +1471,7 @@ pub mod mut_visit {
     //! that are created by the expansion of a macro.
 
     use super::*;
-    use crate::visit::{AssocCtxt, BoundKind};
+    use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
     pub trait ExpectOne<A: Array> {
         fn expect_one(self, err: &'static str) -> A::Item;
@@ -1655,7 +1658,7 @@ pub mod mut_visit {
             TyKind::Slice(ty) => vis.visit_ty(ty),
             TyKind::Ptr(mt) => vis.visit_mt(mt),
             TyKind::Ref(lt, mt) | TyKind::PinnedRef(lt, mt) => {
-                visit_opt(lt, |lt| vis.visit_lifetime(lt));
+                visit_opt(lt, |lt| vis.visit_lifetime(lt, LifetimeCtxt::Ref));
                 vis.visit_mt(mt);
             }
             TyKind::BareFn(bft) => {
@@ -1748,7 +1751,7 @@ pub mod mut_visit {
 
     fn walk_generic_arg<T: MutVisitor>(vis: &mut T, arg: &mut GenericArg) {
         match arg {
-            GenericArg::Lifetime(lt) => vis.visit_lifetime(lt),
+            GenericArg::Lifetime(lt) => vis.visit_lifetime(lt, LifetimeCtxt::GenericArg),
             GenericArg::Type(ty) => vis.visit_ty(ty),
             GenericArg::Const(ct) => vis.visit_anon_const(ct),
         }
@@ -2092,7 +2095,7 @@ pub mod mut_visit {
     fn walk_param_bound<T: MutVisitor>(vis: &mut T, pb: &mut GenericBound) {
         match pb {
             GenericBound::Trait(ty) => vis.visit_poly_trait_ref(ty),
-            GenericBound::Outlives(lifetime) => walk_lifetime(vis, lifetime),
+            GenericBound::Outlives(lifetime) => vis.visit_lifetime(lifetime, LifetimeCtxt::Bound),
             GenericBound::Use(args, span) => {
                 for arg in args {
                     vis.visit_precise_capturing_arg(arg);
@@ -2105,7 +2108,7 @@ pub mod mut_visit {
     fn walk_precise_capturing_arg<T: MutVisitor>(vis: &mut T, arg: &mut PreciseCapturingArg) {
         match arg {
             PreciseCapturingArg::Lifetime(lt) => {
-                vis.visit_lifetime(lt);
+                vis.visit_lifetime(lt, LifetimeCtxt::GenericArg);
             }
             PreciseCapturingArg::Arg(path, id) => {
                 vis.visit_id(id);
@@ -2140,11 +2143,6 @@ pub mod mut_visit {
         smallvec![param]
     }
 
-    fn walk_lifetime<T: MutVisitor>(vis: &mut T, Lifetime { id, ident }: &mut Lifetime) {
-        vis.visit_id(id);
-        vis.visit_ident(ident);
-    }
-
     fn walk_generics<T: MutVisitor>(vis: &mut T, generics: &mut Generics) {
         let Generics { params, where_clause, span } = generics;
         params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
@@ -2177,7 +2175,7 @@ pub mod mut_visit {
             }
             WherePredicate::RegionPredicate(rp) => {
                 let WhereRegionPredicate { span, lifetime, bounds } = rp;
-                vis.visit_lifetime(lifetime);
+                vis.visit_lifetime(lifetime, LifetimeCtxt::Bound);
                 visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
                 vis.visit_span(span);
             }
