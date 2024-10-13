@@ -1,6 +1,6 @@
 //@ add-core-stubs
 //@ assembly-output: emit-asm
-//@ compile-flags: --target avr-unknown-gnu-atmega328
+//@ compile-flags: --target avr-none -C target-cpu=atmega328p
 //@ needs-llvm-components: avr
 
 #![crate_type = "rlib"]

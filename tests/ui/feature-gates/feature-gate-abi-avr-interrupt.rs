@@ -1,5 +1,5 @@
 //@ needs-llvm-components: avr
-//@ compile-flags: --target=avr-unknown-gnu-atmega328 --crate-type=rlib
+//@ compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
 #[lang="sized"]
