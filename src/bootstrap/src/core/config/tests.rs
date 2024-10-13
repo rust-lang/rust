@@ -10,6 +10,7 @@ use serde::Deserialize;
 use super::flags::Flags;
 use super::{ChangeIdWrapper, Config};
 use crate::core::build_steps::clippy::get_clippy_rules_in_order;
+use crate::core::build_steps::llvm;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 
 pub(crate) fn parse(config: &str) -> Config {
@@ -19,13 +20,22 @@ pub(crate) fn parse(config: &str) -> Config {
     )
 }
 
-// FIXME: Resume this test after establishing a stabilized change tracking logic.
-#[ignore]
 #[test]
 fn download_ci_llvm() {
-    assert!(parse("").llvm_from_ci);
-    assert!(parse("llvm.download-ci-llvm = true").llvm_from_ci);
-    assert!(!parse("llvm.download-ci-llvm = false").llvm_from_ci);
+    let config = parse("");
+    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
+    if is_available {
+        assert!(config.llvm_from_ci);
+    }
+
+    let config = parse("llvm.download-ci-llvm = true");
+    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
+    if is_available {
+        assert!(config.llvm_from_ci);
+    }
+
+    let config = parse("llvm.download-ci-llvm = false");
+    assert!(!config.llvm_from_ci);
 
     let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
     if if_unchanged_config.llvm_from_ci {

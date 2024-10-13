@@ -346,7 +346,6 @@ pub fn abort_internal() -> ! {
     }
 }
 
-// miri is sensitive to changes here so check that miri is happy if touching this
 #[cfg(miri)]
 pub fn abort_internal() -> ! {
     crate::intrinsics::abort();
