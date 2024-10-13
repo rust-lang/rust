@@ -423,7 +423,7 @@ fn test_extract_version_range() {
 }
 
 #[test]
-#[should_panic(expected = "Duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
+#[should_panic(expected = "duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
     parse_rs(&config, "//@ revisions: rpass1 rpass1");
