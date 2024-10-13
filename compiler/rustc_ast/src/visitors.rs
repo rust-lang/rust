@@ -190,7 +190,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{MacroDef; visit_macro_def, walk_macro_def}
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
-                make_visit!{MutTy; visit_mt, walk_mt}
                 make_visit!{Path; visit_path, walk_path}
                 make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
                 make_visit!{UseTree; visit_use_tree, walk_use_tree}
@@ -334,6 +333,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Label; visit_label, walk_label}
             make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
             make_visit!{MacCall; visit_mac_call, walk_mac}
+            make_visit!{MutTy; visit_mt, walk_mt}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
             make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
@@ -453,6 +453,15 @@ macro_rules! make_ast_visitor {
             let Lifetime { id, ident } = lifetime;
             try_v!(visit_id!(vis, id));
             try_v!(vis.visit_ident(ident));
+            return_result!(V)
+        }
+
+        pub fn walk_mt<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            mt: ref_t!(MutTy)
+        ) -> result!(V) {
+            let MutTy { ty, mutbl: _ } = mt;
+            try_v!(vis.visit_ty(ty));
             return_result!(V)
         }
 
@@ -790,11 +799,10 @@ pub mod visit {
         let Ty { id, kind, span: _, tokens: _ } = typ;
         match kind {
             TyKind::Slice(ty) | TyKind::Paren(ty) => try_visit!(visitor.visit_ty(ty)),
-            TyKind::Ptr(MutTy { ty, mutbl: _ }) => try_visit!(visitor.visit_ty(ty)),
-            TyKind::Ref(opt_lifetime, MutTy { ty, mutbl: _ })
-            | TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl: _ }) => {
+            TyKind::Ptr(mt) => try_visit!(visitor.visit_mt(mt)),
+            TyKind::Ref(opt_lifetime, mt) | TyKind::PinnedRef(opt_lifetime, mt) => {
                 visit_opt!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Ref);
-                try_visit!(visitor.visit_ty(ty));
+                try_visit!(visitor.visit_mt(mt));
             }
             TyKind::Tup(tuple_element_types) => {
                 walk_list!(visitor, visit_ty, tuple_element_types);
@@ -2235,10 +2243,6 @@ pub mod mut_visit {
         vis.visit_expr(expr);
         vis.visit_span(span);
         smallvec![f]
-    }
-
-    fn walk_mt<T: MutVisitor>(vis: &mut T, MutTy { ty, mutbl: _ }: &mut MutTy) {
-        vis.visit_ty(ty);
     }
 
     pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
