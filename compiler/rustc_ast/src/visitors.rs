@@ -194,7 +194,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
                 make_visit!{UseTree; visit_use_tree, walk_use_tree}
                 make_visit!{VariantData; visit_variant_data, walk_variant_data}
-                make_visit!{WhereClause; visit_where_clause, walk_where_clause}
 
                 fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
                     walk_flat_map_item(self, ni)
@@ -341,6 +340,7 @@ macro_rules! make_ast_visitor {
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
             make_visit!{Visibility; visit_vis, walk_vis}
+            make_visit!{WhereClause; visit_where_clause, walk_where_clause}
             make_visit!{WherePredicate; visit_where_predicate, walk_where_predicate}
 
             make_visit!{P!(Block); visit_block, walk_block}
@@ -508,6 +508,16 @@ macro_rules! make_ast_visitor {
             let PolyTraitRef { bound_generic_params, trait_ref, span, modifiers: _ } = trait_ref;
             visit_list!(vis, visit_generic_param, flat_map_generic_param, bound_generic_params);
             try_v!(vis.visit_trait_ref(trait_ref));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_where_clause<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            wc: ref_t!(WhereClause)
+        ) -> result!(V) {
+            let WhereClause { has_where_token: _, predicates, span } = wc;
+            visit_list!(vis, visit_where_predicate, predicates);
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
@@ -1073,9 +1083,8 @@ pub mod visit {
 
     pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics) -> V::Result {
         let Generics { params, where_clause, span: _ } = generics;
-        let WhereClause { has_where_token: _, predicates, span: _ } = where_clause;
         walk_list!(visitor, visit_generic_param, params);
-        walk_list!(visitor, visit_where_predicate, predicates);
+        try_visit!(visitor.visit_where_clause(where_clause));
         V::Result::output()
     }
 
@@ -2151,12 +2160,6 @@ pub mod mut_visit {
         let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
         vis.visit_span(span_before);
         vis.visit_span(span_after);
-    }
-
-    fn walk_where_clause<T: MutVisitor>(vis: &mut T, wc: &mut WhereClause) {
-        let WhereClause { has_where_token: _, predicates, span } = wc;
-        visit_thin_vec(predicates, |predicate| vis.visit_where_predicate(predicate));
-        vis.visit_span(span);
     }
 
     fn walk_where_predicate<T: MutVisitor>(vis: &mut T, pred: &mut WherePredicate) {
