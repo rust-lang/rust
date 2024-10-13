@@ -333,7 +333,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Label; visit_label, walk_label}
             make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
             make_visit!{Local; visit_local, walk_local}
-            make_visit!{MacCall; visit_mac_call, walk_mac}
+            make_visit!{MacCall; visit_mac_call, walk_mac_call}
             make_visit!{MutTy; visit_mt, walk_mt}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
             make_visit!{Param; visit_param, walk_param}
@@ -767,6 +767,16 @@ macro_rules! make_ast_visitor {
             visit_lazy_tts!(vis, tokens);
             visit_o!(colon_sp, |sp| try_v!(visit_span!(vis, sp)));
             try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_mac_call<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            mac: ref_t!(MacCall)
+        ) -> result!(V) {
+            let MacCall { path, args } = mac;
+            try_v!(vis.visit_path(path, DUMMY_NODE_ID));
+            visit_delim_args!(vis, args);
             return_result!(V)
         }
 
@@ -1538,11 +1548,6 @@ pub mod visit {
         V::Result::output()
     }
 
-    pub fn walk_mac<'a, V: Visitor<'a>>(visitor: &mut V, mac: &'a MacCall) -> V::Result {
-        let MacCall { path, args: _ } = mac;
-        visitor.visit_path(path, DUMMY_NODE_ID)
-    }
-
     pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V::Result {
         let Expr { id, kind, span, attrs, tokens: _ } = expression;
         walk_list!(visitor, visit_attribute, attrs);
@@ -1871,12 +1876,6 @@ pub mod mut_visit {
             AttrKind::DocComment(_kind, _sym) => {}
         }
         vis.visit_span(span);
-    }
-
-    fn walk_mac<T: MutVisitor>(vis: &mut T, mac: &mut MacCall) {
-        let MacCall { path, args } = mac;
-        vis.visit_path(path, DUMMY_NODE_ID);
-        visit_delim_args(vis, args);
     }
 
     fn walk_macro_def<T: MutVisitor>(vis: &mut T, macro_def: &mut MacroDef) {
