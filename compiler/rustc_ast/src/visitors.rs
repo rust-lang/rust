@@ -202,7 +202,6 @@ macro_rules! make_ast_visitor {
 
                 make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
                 make_visit!{FnHeader; visit_fn_header, walk_fn_header}
-                make_visit!{ForeignMod; visit_foreign_mod, walk_foreign_mod}
                 make_visit!{MacroDef; visit_macro_def, walk_macro_def}
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
@@ -321,6 +320,7 @@ macro_rules! make_ast_visitor {
             make_visit!{FieldDef; visit_field_def, walk_field_def}
             make_visit!{FnDecl; visit_fn_decl, walk_fn_decl}
             make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
+            make_visit!{ForeignMod; visit_foreign_mod, walk_foreign_mod}
             make_visit!{FormatArgs; visit_format_args, walk_format_args}
             make_visit!{GenericArg; visit_generic_arg, walk_generic_arg}
             make_visit!{GenericArgs; visit_generic_args, walk_generic_args}
@@ -577,6 +577,16 @@ macro_rules! make_ast_visitor {
                 FnRetTy::Default(span) => { try_v!(visit_span!(vis, span)) }
                 FnRetTy::Ty(output_ty) => { try_v!(vis.visit_ty(output_ty)) }
             }
+            return_result!(V)
+        }
+
+        pub fn walk_foreign_mod<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            foreign_mod: ref_t!(ForeignMod)
+        ) -> result!(V) {
+            let ForeignMod { safety, abi: _, items } = foreign_mod;
+            try_v!(vis.visit_safety(safety));
+            visit_list!(vis, visit_foreign_item, flat_map_foreign_item, items);
             return_result!(V)
         }
 
@@ -1327,9 +1337,8 @@ pub mod visit {
                         ModKind::Unloaded => {}
                     }
                 }
-                ItemKind::ForeignMod(ForeignMod { safety, abi: _, items }) => {
-                    try_visit!(visitor.visit_safety(safety));
-                    walk_list!(visitor, visit_foreign_item, items);
+                ItemKind::ForeignMod(foreign_mod) => {
+                    try_visit!(visitor.visit_foreign_mod(foreign_mod));
                 }
                 ItemKind::GlobalAsm(asm) => try_visit!(visitor.visit_inline_asm(asm)),
                 ItemKind::TyAlias(box TyAlias {
@@ -1853,12 +1862,6 @@ pub mod mut_visit {
     pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
         vis.visit_arm(&mut arm);
         smallvec![arm]
-    }
-
-    fn walk_foreign_mod<T: MutVisitor>(vis: &mut T, foreign_mod: &mut ForeignMod) {
-        let ForeignMod { safety, abi: _, items } = foreign_mod;
-        vis.visit_safety(safety);
-        items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
     }
 
     pub fn walk_flat_map_variant<T: MutVisitor>(
