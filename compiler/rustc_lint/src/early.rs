@@ -168,7 +168,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         if let Some(ctor_node_id) = s.ctor_node_id() {
             self.check_id(ctor_node_id);
         }
-        ast_visit::walk_struct_def(self, s);
+        ast_visit::walk_variant_data(self, s);
     }
 
     fn visit_field_def(&mut self, s: &'a ast::FieldDef) {

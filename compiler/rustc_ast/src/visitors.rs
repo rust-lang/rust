@@ -192,7 +192,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{Path; visit_path, walk_path}
                 make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
                 make_visit!{UseTree; visit_use_tree, walk_use_tree}
-                make_visit!{VariantData; visit_variant_data, walk_variant_data}
 
                 fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
                     walk_flat_map_item(self, ni)
@@ -280,7 +279,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{Stmt; visit_stmt, walk_stmt}
                 make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
                 make_visit!{Variant; visit_variant, walk_variant}
-                make_visit!{VariantData; visit_variant_data, walk_struct_def}
 
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
                 /// It can be removed once that feature is stabilized.
@@ -336,6 +334,7 @@ macro_rules! make_ast_visitor {
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
+            make_visit!{VariantData; visit_variant_data, walk_variant_data}
             make_visit!{Visibility; visit_vis, walk_vis}
             make_visit!{WhereClause; visit_where_clause, walk_where_clause}
             make_visit!{WherePredicate; visit_where_predicate, walk_where_predicate}
@@ -565,6 +564,25 @@ macro_rules! make_ast_visitor {
             visit_list!(vis, visit_generic_param, flat_map_generic_param, bound_generic_params);
             try_v!(vis.visit_trait_ref(trait_ref));
             try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_variant_data<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            vdata: ref_t!(VariantData)
+        ) -> result!(V) {
+            match vdata {
+                VariantData::Struct { fields, recovered: _ } => {
+                    visit_list!(vis, visit_field_def, flat_map_field_def, fields);
+                }
+                VariantData::Tuple(fields, id) => {
+                    try_v!(visit_id!(vis, id));
+                    visit_list!(vis, visit_field_def, flat_map_field_def, fields);
+                }
+                VariantData::Unit(id) => {
+                    try_v!(visit_id!(vis, id));
+                }
+            }
             return_result!(V)
         }
 
@@ -1246,14 +1264,6 @@ pub mod visit {
         try_visit!(visitor.visit_vis(vis));
         try_visit!(visitor.visit_ident(ident));
         try_visit!(kind.walk(item, ctxt, visitor));
-        V::Result::output()
-    }
-
-    pub fn walk_struct_def<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        struct_definition: &'a VariantData,
-    ) -> V::Result {
-        walk_list!(visitor, visit_field_def, struct_definition.fields());
         V::Result::output()
     }
 
@@ -2169,19 +2179,6 @@ pub mod mut_visit {
         let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
         vis.visit_span(span_before);
         vis.visit_span(span_after);
-    }
-
-    fn walk_variant_data<T: MutVisitor>(vis: &mut T, vdata: &mut VariantData) {
-        match vdata {
-            VariantData::Struct { fields, recovered: _ } => {
-                fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
-            }
-            VariantData::Tuple(fields, id) => {
-                vis.visit_id(id);
-                fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
-            }
-            VariantData::Unit(id) => vis.visit_id(id),
-        }
     }
 
     fn walk_trait_ref<T: MutVisitor>(vis: &mut T, TraitRef { path, ref_id }: &mut TraitRef) {

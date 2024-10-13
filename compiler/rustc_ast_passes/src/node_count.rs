@@ -85,7 +85,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
     }
     fn visit_variant_data(&mut self, s: &VariantData) {
         self.count += 1;
-        walk_struct_def(self, s)
+        walk_variant_data(self, s)
     }
     fn visit_field_def(&mut self, s: &FieldDef) {
         self.count += 1;
