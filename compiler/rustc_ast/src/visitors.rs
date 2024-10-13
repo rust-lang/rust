@@ -386,6 +386,30 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_format_args<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            fmt: ref_t!(FormatArgs)
+        ) -> result!(V) {
+            // FIXME: visit the template exhaustively.
+            let FormatArgs { span, template: _, arguments } = fmt;
+            let arg_iter = macro_if!{$($mut)? {
+                    arguments.all_args_mut()
+                } else {
+                    arguments.all_args()
+                }};
+            for FormatArgument { kind, expr } in arg_iter {
+                match kind {
+                    FormatArgumentKind::Named(ident) | FormatArgumentKind::Captured(ident) => {
+                        try_v!(vis.visit_ident(ident));
+                    }
+                    FormatArgumentKind::Normal => {}
+                }
+                try_v!(vis.visit_expr(expr));
+            }
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         pub fn walk_generic_args<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             generic_args: ref_t!(GenericArgs)
@@ -1251,20 +1275,6 @@ pub mod visit {
     ) -> V::Result {
         try_visit!(visitor.visit_qself(qself));
         visitor.visit_path(path, *id)
-    }
-
-    pub fn walk_format_args<'a, V: Visitor<'a>>(visitor: &mut V, fmt: &'a FormatArgs) -> V::Result {
-        let FormatArgs { span: _, template: _, arguments } = fmt;
-        for FormatArgument { kind, expr } in arguments.all_args() {
-            match kind {
-                FormatArgumentKind::Named(ident) | FormatArgumentKind::Captured(ident) => {
-                    try_visit!(visitor.visit_ident(ident))
-                }
-                FormatArgumentKind::Normal => {}
-            }
-            try_visit!(visitor.visit_expr(expr));
-        }
-        V::Result::output()
     }
 
     pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V::Result {
@@ -2591,21 +2601,6 @@ pub mod mut_visit {
         vis.visit_id(id);
         vis.visit_qself(qself);
         vis.visit_path(path);
-    }
-
-    fn walk_format_args<T: MutVisitor>(vis: &mut T, fmt: &mut FormatArgs) {
-        // FIXME: visit the template exhaustively.
-        let FormatArgs { span, template: _, arguments } = fmt;
-        for FormatArgument { kind, expr } in arguments.all_args_mut() {
-            match kind {
-                FormatArgumentKind::Named(ident) | FormatArgumentKind::Captured(ident) => {
-                    vis.visit_ident(ident)
-                }
-                FormatArgumentKind::Normal => {}
-            }
-            vis.visit_expr(expr);
-        }
-        vis.visit_span(span);
     }
 
     pub fn walk_expr<T: MutVisitor>(
