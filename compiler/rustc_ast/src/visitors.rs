@@ -270,7 +270,6 @@ macro_rules! make_ast_visitor {
 
                 make_visit!{Arm; visit_arm, walk_arm}
                 make_visit!{AssocItem, ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item}
-                make_visit!{ExprField; visit_expr_field, walk_expr_field}
                 make_visit!{FieldDef; visit_field_def, walk_field_def}
                 make_visit!{ForeignItem; visit_foreign_item, walk_item}
                 make_visit!{GenericParam; visit_generic_param, walk_generic_param}
@@ -313,6 +312,7 @@ macro_rules! make_ast_visitor {
             make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
             make_visit!{Crate; visit_crate, walk_crate}
             make_visit!{EnumDef; visit_enum_def, walk_enum_def}
+            make_visit!{ExprField; visit_expr_field, walk_expr_field}
             make_visit!{FnDecl; visit_fn_decl, walk_fn_decl}
             make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
             make_visit!{FormatArgs; visit_format_args, walk_format_args}
@@ -404,6 +404,19 @@ macro_rules! make_ast_visitor {
         ) -> result!(V) {
             let EnumDef { variants } = enum_def;
             visit_list!(vis, visit_variant, flat_map_variant, variants);
+            return_result!(V)
+        }
+
+        pub fn walk_expr_field<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            f: ref_t!(ExprField)
+        ) -> result!(V) {
+            let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, attrs);
+            try_v!(vis.visit_ident(ident));
+            try_v!(vis.visit_expr(expr));
+            try_v!(visit_span!(vis, span));
             return_result!(V)
         }
 
@@ -905,15 +918,6 @@ pub mod visit {
         try_visit!(visitor.visit_ident(ident));
         try_visit!(visitor.visit_variant_data(data));
         visit_opt!(visitor, visit_variant_discr, disr_expr);
-        V::Result::output()
-    }
-
-    pub fn walk_expr_field<'a, V: Visitor<'a>>(visitor: &mut V, f: &'a ExprField) -> V::Result {
-        let ExprField { attrs, id: _, span: _, ident, expr, is_shorthand: _, is_placeholder: _ } =
-            f;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_ident(ident));
-        try_visit!(visitor.visit_expr(expr));
         V::Result::output()
     }
 
@@ -2204,12 +2208,7 @@ pub mod mut_visit {
         vis: &mut T,
         mut f: ExprField,
     ) -> SmallVec<[ExprField; 1]> {
-        let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_ident(ident);
-        vis.visit_expr(expr);
-        vis.visit_span(span);
+        vis.visit_expr_field(&mut f);
         smallvec![f]
     }
 
