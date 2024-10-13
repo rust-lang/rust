@@ -205,7 +205,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{MacroDef; visit_macro_def, walk_macro_def}
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
-                make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
 
                 fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
                     walk_flat_map_item(self, ni)
@@ -299,9 +298,6 @@ macro_rules! make_ast_visitor {
                 fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
                     walk_fn(self, fk)
                 }
-                fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
-                    walk_precise_capturing_arg(self, arg);
-                }
                 fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
                     Self::Result::output()
                 }
@@ -343,6 +339,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Path, _ id: NodeId; visit_path, walk_path}
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
+            make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
             make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
             make_visit!{Variant; visit_variant, walk_variant}
@@ -752,6 +749,22 @@ macro_rules! make_ast_visitor {
             visit_list!(vis, visit_generic_param, flat_map_generic_param, bound_generic_params);
             try_v!(vis.visit_trait_ref(trait_ref));
             try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_precise_capturing_arg<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            arg: ref_t!(PreciseCapturingArg)
+        ) -> result!(V) {
+            match arg {
+                PreciseCapturingArg::Lifetime(lt) => {
+                    try_v!(vis.visit_lifetime(lt, LifetimeCtxt::GenericArg));
+                }
+                PreciseCapturingArg::Arg(path, id) => {
+                    try_v!(visit_id!(vis, id));
+                    try_v!(vis.visit_path(path, *id));
+                }
+            }
             return_result!(V)
         }
 
@@ -1250,20 +1263,6 @@ pub mod visit {
                 }
             }
             V::Result::output()
-        }
-    }
-
-    pub fn walk_precise_capturing_arg<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        arg: &'a PreciseCapturingArg,
-    ) {
-        match arg {
-            PreciseCapturingArg::Lifetime(lt) => {
-                visitor.visit_lifetime(lt, LifetimeCtxt::GenericArg);
-            }
-            PreciseCapturingArg::Arg(path, id) => {
-                visitor.visit_path(path, *id);
-            }
         }
     }
 
@@ -2105,18 +2104,6 @@ pub mod mut_visit {
                 vis.visit_closure_binder(binder);
                 vis.visit_fn_decl(decl);
                 vis.visit_expr(body);
-            }
-        }
-    }
-
-    fn walk_precise_capturing_arg<T: MutVisitor>(vis: &mut T, arg: &mut PreciseCapturingArg) {
-        match arg {
-            PreciseCapturingArg::Lifetime(lt) => {
-                vis.visit_lifetime(lt, LifetimeCtxt::GenericArg);
-            }
-            PreciseCapturingArg::Arg(path, id) => {
-                vis.visit_id(id);
-                vis.visit_path(path, *id);
             }
         }
     }
