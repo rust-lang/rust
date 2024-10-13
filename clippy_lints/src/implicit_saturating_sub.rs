@@ -107,7 +107,9 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
         }) = higher::If::hir(expr)
             && let ExprKind::Binary(ref cond_op, cond_left, cond_right) = cond.kind
         {
-            check_manual_check(cx, cond_op, cond_left, cond_right, if_block, else_block, &self.msrv);
+            check_manual_check(
+                cx, expr, cond_op, cond_left, cond_right, if_block, else_block, &self.msrv,
+            );
         }
     }
 
@@ -117,6 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
 #[allow(clippy::too_many_arguments)]
 fn check_manual_check<'tcx>(
     cx: &LateContext<'tcx>,
+    expr: &Expr<'tcx>,
     condition: &BinOp,
     left_hand: &Expr<'tcx>,
     right_hand: &Expr<'tcx>,
@@ -127,12 +130,40 @@ fn check_manual_check<'tcx>(
     let ty = cx.typeck_results().expr_ty(left_hand);
     if ty.is_numeric() && !ty.is_signed() {
         match condition.node {
-            BinOpKind::Gt | BinOpKind::Ge => {
-                check_gt(cx, condition.span, left_hand, right_hand, if_block, else_block, msrv);
-            },
-            BinOpKind::Lt | BinOpKind::Le => {
-                check_gt(cx, condition.span, right_hand, left_hand, if_block, else_block, msrv);
-            },
+            BinOpKind::Gt | BinOpKind::Ge => check_gt(
+                cx,
+                condition.span,
+                expr.span,
+                left_hand,
+                right_hand,
+                if_block,
+                else_block,
+                msrv,
+                matches!(
+                    clippy_utils::get_parent_expr(cx, expr),
+                    Some(Expr {
+                        kind: ExprKind::If(..),
+                        ..
+                    })
+                ),
+            ),
+            BinOpKind::Lt | BinOpKind::Le => check_gt(
+                cx,
+                condition.span,
+                expr.span,
+                right_hand,
+                left_hand,
+                if_block,
+                else_block,
+                msrv,
+                matches!(
+                    clippy_utils::get_parent_expr(cx, expr),
+                    Some(Expr {
+                        kind: ExprKind::If(..),
+                        ..
+                    })
+                ),
+            ),
             _ => {},
         }
     }
@@ -142,16 +173,28 @@ fn check_manual_check<'tcx>(
 fn check_gt(
     cx: &LateContext<'_>,
     condition_span: Span,
+    expr_span: Span,
     big_var: &Expr<'_>,
     little_var: &Expr<'_>,
     if_block: &Expr<'_>,
     else_block: &Expr<'_>,
     msrv: &Msrv,
+    is_composited: bool,
 ) {
     if let Some(big_var) = Var::new(big_var)
         && let Some(little_var) = Var::new(little_var)
     {
-        check_subtraction(cx, condition_span, big_var, little_var, if_block, else_block, msrv);
+        check_subtraction(
+            cx,
+            condition_span,
+            expr_span,
+            big_var,
+            little_var,
+            if_block,
+            else_block,
+            msrv,
+            is_composited,
+        );
     }
 }
 
@@ -173,11 +216,13 @@ impl Var {
 fn check_subtraction(
     cx: &LateContext<'_>,
     condition_span: Span,
+    expr_span: Span,
     big_var: Var,
     little_var: Var,
     if_block: &Expr<'_>,
     else_block: &Expr<'_>,
     msrv: &Msrv,
+    is_composited: bool,
 ) {
     let if_block = peel_blocks(if_block);
     let else_block = peel_blocks(else_block);
@@ -189,7 +234,17 @@ fn check_subtraction(
         }
         // If the subtraction is done in the `else` block, then we need to also revert the two
         // variables as it means that the check was reverted too.
-        check_subtraction(cx, condition_span, little_var, big_var, else_block, if_block, msrv);
+        check_subtraction(
+            cx,
+            condition_span,
+            expr_span,
+            little_var,
+            big_var,
+            else_block,
+            if_block,
+            msrv,
+            is_composited,
+        );
         return;
     }
     if is_integer_literal(else_block, 0)
@@ -205,13 +260,18 @@ fn check_subtraction(
                 && let Some(little_var_snippet) = snippet_opt(cx, little_var.span)
                 && (!is_in_const_context(cx) || msrv.meets(msrvs::SATURATING_SUB_CONST))
             {
+                let sugg = format!(
+                    "{}{big_var_snippet}.saturating_sub({little_var_snippet}){}",
+                    if is_composited { "{ " } else { "" },
+                    if is_composited { " }" } else { "" }
+                );
                 span_lint_and_sugg(
                     cx,
                     IMPLICIT_SATURATING_SUB,
-                    else_block.span,
+                    expr_span,
                     "manual arithmetic check found",
                     "replace it with",
-                    format!("{big_var_snippet}.saturating_sub({little_var_snippet})"),
+                    sugg,
                     Applicability::MachineApplicable,
                 );
             }
