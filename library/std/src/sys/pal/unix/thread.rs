@@ -363,6 +363,7 @@ impl Thread {
     #[cfg(target_vendor = "apple")]
     pub fn sleep_until(deadline: crate::time::Instant) {
         use core::mem::MaybeUninit;
+
         use super::time::Timespec;
 
         let Timespec { tv_sec, tv_nsec } = deadline.into_inner().into_timespec();

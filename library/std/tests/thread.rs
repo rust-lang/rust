@@ -1,9 +1,8 @@
+#![feature(thread_sleep_until)]
 use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
-#[feature(thread_sleep_until)]
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[test]
 #[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
