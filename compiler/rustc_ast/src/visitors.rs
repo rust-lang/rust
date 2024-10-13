@@ -184,7 +184,6 @@ macro_rules! make_ast_visitor {
                 // field access version will continue working and it would be easy to
                 // forget to add handling for it.
 
-                make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
                 make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
                 make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
                 make_visit!{FnHeader; visit_fn_header, walk_fn_header}
@@ -319,6 +318,7 @@ macro_rules! make_ast_visitor {
                 }
             }}
 
+            make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
             make_visit!{AnonConst; visit_anon_const, walk_anon_const}
             make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
             make_visit!{Attribute; visit_attribute, walk_attribute}
@@ -349,6 +349,21 @@ macro_rules! make_ast_visitor {
             make_visit!{P!(Local); visit_local, walk_local}
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Ty); visit_ty, walk_ty}
+        }
+
+        pub fn walk_angle_bracketed_parameter_data<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            data: ref_t!(AngleBracketedArgs)
+        ) -> result!(V) {
+            let AngleBracketedArgs { args, span } = data;
+            for arg in args {
+                match arg {
+                    AngleBracketedArg::Arg(a) => try_v!(vis.visit_generic_arg(a)),
+                    AngleBracketedArg::Constraint(c) => try_v!(vis.visit_assoc_item_constraint(c)),
+                }
+            }
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
         }
 
         pub fn walk_ident<$($lt,)? V: $trait$(<$lt>)?>(
@@ -794,15 +809,8 @@ pub mod visit {
         V: Visitor<'a>,
     {
         match generic_args {
-            GenericArgs::AngleBracketed(AngleBracketedArgs { span: _, args }) => {
-                for arg in args {
-                    match arg {
-                        AngleBracketedArg::Arg(a) => try_visit!(visitor.visit_generic_arg(a)),
-                        AngleBracketedArg::Constraint(c) => {
-                            try_visit!(visitor.visit_assoc_item_constraint(c))
-                        }
-                    }
-                }
+            GenericArgs::AngleBracketed(args) => {
+                try_visit!(visitor.visit_angle_bracketed_parameter_data(args));
             }
             GenericArgs::Parenthesized(data) => {
                 let ParenthesizedArgs { span: _, inputs, inputs_span: _, output } = data;
@@ -1755,20 +1763,6 @@ pub mod mut_visit {
             GenericArg::Type(ty) => vis.visit_ty(ty),
             GenericArg::Const(ct) => vis.visit_anon_const(ct),
         }
-    }
-
-    fn walk_angle_bracketed_parameter_data<T: MutVisitor>(
-        vis: &mut T,
-        data: &mut AngleBracketedArgs,
-    ) {
-        let AngleBracketedArgs { args, span } = data;
-        visit_thin_vec(args, |arg| match arg {
-            AngleBracketedArg::Arg(arg) => vis.visit_generic_arg(arg),
-            AngleBracketedArg::Constraint(constraint) => {
-                vis.visit_assoc_item_constraint(constraint)
-            }
-        });
-        vis.visit_span(span);
     }
 
     fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut ParenthesizedArgs) {
