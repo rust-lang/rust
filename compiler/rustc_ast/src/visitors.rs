@@ -361,6 +361,15 @@ macro_rules! make_ast_visitor {
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
+
+        pub fn walk_label<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            label: ref_t!(Label)
+        ) -> result!(V) {
+            let Label { ident } = label;
+            try_v!(vis.visit_ident(ident));
+            return_result!(V)
+        }
     }
 }
 
@@ -504,13 +513,6 @@ pub mod visit {
             visit_opt!(visitor, visit_block, els);
         }
         V::Result::output()
-    }
-
-    pub fn walk_label<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        Label { ident }: &'a Label,
-    ) -> V::Result {
-        visitor.visit_ident(ident)
     }
 
     pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime) -> V::Result {
@@ -2136,10 +2138,6 @@ pub mod mut_visit {
             vis.visit_span(colon_span);
         }
         smallvec![param]
-    }
-
-    fn walk_label<T: MutVisitor>(vis: &mut T, Label { ident }: &mut Label) {
-        vis.visit_ident(ident);
     }
 
     fn walk_lifetime<T: MutVisitor>(vis: &mut T, Lifetime { id, ident }: &mut Lifetime) {
