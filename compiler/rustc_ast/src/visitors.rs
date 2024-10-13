@@ -276,7 +276,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{ForeignItem; visit_foreign_item, walk_item}
                 make_visit!{GenericParam; visit_generic_param, walk_generic_param}
                 make_visit!{Item; visit_item, walk_item}
-                make_visit!{Param; visit_param, walk_param}
                 make_visit!{Path, _ id: NodeId; visit_path, walk_path}
                 make_visit!{Stmt; visit_stmt, walk_stmt}
                 make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
@@ -331,6 +330,7 @@ macro_rules! make_ast_visitor {
             make_visit!{MacCall; visit_mac_call, walk_mac}
             make_visit!{MutTy; visit_mt, walk_mt}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
+            make_visit!{Param; visit_param, walk_param}
             make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
             make_visit!{PatField; visit_pat_field, walk_pat_field}
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
@@ -516,6 +516,19 @@ macro_rules! make_ast_visitor {
         ) -> result!(V) {
             let MutTy { ty, mutbl: _ } = mt;
             try_v!(vis.visit_ty(ty));
+            return_result!(V)
+        }
+
+        pub fn walk_param<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            param: ref_t!(Param)
+        ) -> result!(V) {
+            let Param { attrs, id, pat, span, ty, is_placeholder: _ } = param;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, attrs);
+            try_v!(vis.visit_pat(pat));
+            try_v!(vis.visit_ty(ty));
+            try_v!(visit_span!(vis, span));
             return_result!(V)
         }
 
@@ -1481,14 +1494,6 @@ pub mod visit {
         visitor.visit_expr_post(expression)
     }
 
-    pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) -> V::Result {
-        let Param { attrs, ty, pat, id: _, span: _, is_placeholder: _ } = param;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_pat(pat));
-        try_visit!(visitor.visit_ty(ty));
-        V::Result::output()
-    }
-
     pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) -> V::Result {
         let Arm { attrs, pat, guard, body, span: _, id: _, is_placeholder: _ } = arm;
         walk_list!(visitor, visit_attribute, attrs);
@@ -1891,12 +1896,7 @@ pub mod mut_visit {
         vis: &mut T,
         mut param: Param,
     ) -> SmallVec<[Param; 1]> {
-        let Param { attrs, id, pat, span, ty, is_placeholder: _ } = &mut param;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_pat(pat);
-        vis.visit_ty(ty);
-        vis.visit_span(span);
+        vis.visit_param(&mut param);
         smallvec![param]
     }
 
