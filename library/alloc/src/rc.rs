@@ -289,7 +289,7 @@ struct RcInner<T: ?Sized> {
 }
 
 /// Calculate layout for `RcInner<T>` using the inner value's layout
-fn rcbox_layout_for_value_layout(layout: Layout) -> Layout {
+fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
     // Calculate layout using the given value layout.
     // Previously, layout was calculated on the expression
     // `&*(ptr as *const RcInner<T>)`, but this created a misaligned
@@ -2009,17 +2009,17 @@ impl<T: ?Sized> Rc<T> {
     /// Allocates an `RcInner<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided.
     ///
-    /// The function `mem_to_rcbox` is called with the data pointer
+    /// The function `mem_to_rc_inner` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcInner<T>`.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcInner<T>,
+        mem_to_rc_inner: impl FnOnce(*mut u8) -> *mut RcInner<T>,
     ) -> *mut RcInner<T> {
-        let layout = rcbox_layout_for_value_layout(value_layout);
+        let layout = rc_inner_layout_for_value_layout(value_layout);
         unsafe {
-            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
+            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rc_inner)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
         }
     }
@@ -2028,21 +2028,21 @@ impl<T: ?Sized> Rc<T> {
     /// a possibly-unsized inner value where the value has the layout provided,
     /// returning an error if allocation fails.
     ///
-    /// The function `mem_to_rcbox` is called with the data pointer
+    /// The function `mem_to_rc_inner` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcInner<T>`.
     #[inline]
     unsafe fn try_allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcInner<T>,
+        mem_to_rc_inner: impl FnOnce(*mut u8) -> *mut RcInner<T>,
     ) -> Result<*mut RcInner<T>, AllocError> {
-        let layout = rcbox_layout_for_value_layout(value_layout);
+        let layout = rc_inner_layout_for_value_layout(value_layout);
 
         // Allocate for the layout.
         let ptr = allocate(layout)?;
 
         // Initialize the RcInner
-        let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
+        let inner = mem_to_rc_inner(ptr.as_non_null_ptr().as_ptr());
         unsafe {
             debug_assert_eq!(Layout::for_value_raw(inner), layout);
 
@@ -3784,7 +3784,7 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
         let ptr = unsafe {
             Rc::allocate_for_layout(
                 layout,
-                |layout_for_rcbox| alloc.allocate(layout_for_rcbox),
+                |layout_for_rc_inner| alloc.allocate(layout_for_rc_inner),
                 |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcInner<T>),
             )
         };
@@ -3820,10 +3820,10 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
         // * new() produced a pointer safe to deallocate.
         // * We own the pointer unless into_rc() was called, which forgets us.
         unsafe {
-            self.alloc
-                .take()
-                .unwrap()
-                .deallocate(self.ptr.cast(), rcbox_layout_for_value_layout(self.layout_for_value));
+            self.alloc.take().unwrap().deallocate(
+                self.ptr.cast(),
+                rc_inner_layout_for_value_layout(self.layout_for_value),
+            );
         }
     }
 }
