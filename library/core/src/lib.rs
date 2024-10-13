@@ -178,6 +178,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(const_mut_refs))]
 #![cfg_attr(bootstrap, feature(const_refs_to_cell))]
+#![cfg_attr(bootstrap, feature(const_refs_to_static))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
