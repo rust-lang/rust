@@ -532,6 +532,47 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_inline_asm<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            asm: ref_t!(InlineAsm)
+        ) -> result!(V) {
+            // FIXME: Visit spans inside all this currently ignored stuff.
+            let InlineAsm {
+                asm_macro: _,
+                template: _,
+                template_strs: _,
+                operands,
+                clobber_abis: _,
+                options: _,
+                line_spans: _,
+            } = asm;
+            for (op, span) in operands {
+                match op {
+                    InlineAsmOperand::In { expr, reg: _ }
+                    | InlineAsmOperand::Out { expr: Some(expr), reg: _, late: _ }
+                    | InlineAsmOperand::InOut { expr, reg: _, late: _ } => {
+                        try_v!(vis.visit_expr(expr));
+                    }
+                    InlineAsmOperand::Out { expr: None, reg: _, late: _ } => {}
+                    InlineAsmOperand::SplitInOut { in_expr, out_expr, reg: _, late: _ } => {
+                        try_v!(vis.visit_expr(in_expr));
+                        visit_o!(out_expr, |out_expr| vis.visit_expr(out_expr));
+                    }
+                    InlineAsmOperand::Const { anon_const } => {
+                        try_v!(vis.visit_anon_const(anon_const));
+                    }
+                    InlineAsmOperand::Sym { sym } => {
+                        try_v!(vis.visit_inline_asm_sym(sym));
+                    }
+                    InlineAsmOperand::Label { block } => {
+                        try_v!(vis.visit_block(block));
+                    }
+                }
+                try_v!(visit_span!(vis, span));
+            }
+            return_result!(V)
+        }
+
         pub fn walk_label<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             label: ref_t!(Label)
@@ -1331,38 +1372,6 @@ pub mod visit {
     pub fn walk_mac<'a, V: Visitor<'a>>(visitor: &mut V, mac: &'a MacCall) -> V::Result {
         let MacCall { path, args: _ } = mac;
         visitor.visit_path(path, DUMMY_NODE_ID)
-    }
-
-    pub fn walk_inline_asm<'a, V: Visitor<'a>>(visitor: &mut V, asm: &'a InlineAsm) -> V::Result {
-        let InlineAsm {
-            asm_macro: _,
-            template: _,
-            template_strs: _,
-            operands,
-            clobber_abis: _,
-            options: _,
-            line_spans: _,
-        } = asm;
-        for (op, _span) in operands {
-            match op {
-                InlineAsmOperand::In { expr, reg: _ }
-                | InlineAsmOperand::Out { expr: Some(expr), reg: _, late: _ }
-                | InlineAsmOperand::InOut { expr, reg: _, late: _ } => {
-                    try_visit!(visitor.visit_expr(expr))
-                }
-                InlineAsmOperand::Out { expr: None, reg: _, late: _ } => {}
-                InlineAsmOperand::SplitInOut { in_expr, out_expr, reg: _, late: _ } => {
-                    try_visit!(visitor.visit_expr(in_expr));
-                    visit_opt!(visitor, visit_expr, out_expr);
-                }
-                InlineAsmOperand::Const { anon_const } => {
-                    try_visit!(visitor.visit_anon_const(anon_const))
-                }
-                InlineAsmOperand::Sym { sym } => try_visit!(visitor.visit_inline_asm_sym(sym)),
-                InlineAsmOperand::Label { block } => try_visit!(visitor.visit_block(block)),
-            }
-        }
-        V::Result::output()
     }
 
     pub fn walk_inline_asm_sym<'a, V: Visitor<'a>>(
@@ -2514,37 +2523,6 @@ pub mod mut_visit {
         }
         visit_lazy_tts(vis, tokens);
         vis.visit_span(span);
-    }
-
-    fn walk_inline_asm<T: MutVisitor>(vis: &mut T, asm: &mut InlineAsm) {
-        // FIXME: Visit spans inside all this currently ignored stuff.
-        let InlineAsm {
-            asm_macro: _,
-            template: _,
-            template_strs: _,
-            operands,
-            clobber_abis: _,
-            options: _,
-            line_spans: _,
-        } = asm;
-        for (op, span) in operands {
-            match op {
-                InlineAsmOperand::In { expr, reg: _ }
-                | InlineAsmOperand::Out { expr: Some(expr), reg: _, late: _ }
-                | InlineAsmOperand::InOut { expr, reg: _, late: _ } => vis.visit_expr(expr),
-                InlineAsmOperand::Out { expr: None, reg: _, late: _ } => {}
-                InlineAsmOperand::SplitInOut { in_expr, out_expr, reg: _, late: _ } => {
-                    vis.visit_expr(in_expr);
-                    if let Some(out_expr) = out_expr {
-                        vis.visit_expr(out_expr);
-                    }
-                }
-                InlineAsmOperand::Const { anon_const } => vis.visit_anon_const(anon_const),
-                InlineAsmOperand::Sym { sym } => vis.visit_inline_asm_sym(sym),
-                InlineAsmOperand::Label { block } => vis.visit_block(block),
-            }
-            vis.visit_span(span);
-        }
     }
 
     fn walk_inline_asm_sym<T: MutVisitor>(
