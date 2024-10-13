@@ -1427,15 +1427,13 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from_segments([
-    ///     525u16, 524u16, 523u16, 522u16,
-    ///     521u16, 520u16, 519u16, 518u16,
+    ///     0x20du16, 0x20cu16, 0x20bu16, 0x20au16,
+    ///     0x209u16, 0x208u16, 0x207u16, 0x206u16,
     /// ]);
     /// assert_eq!(
     ///     Ipv6Addr::new(
-    ///         0x20d, 0x20c,
-    ///         0x20b, 0x20a,
-    ///         0x209, 0x208,
-    ///         0x207, 0x206
+    ///         0x20d, 0x20c, 0x20b, 0x20a,
+    ///         0x209, 0x208, 0x207, 0x206,
     ///     ),
     ///     addr
     /// );
@@ -1980,7 +1978,7 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).octets(),
-    ///            [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    ///            [0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     /// ```
     #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
     #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
@@ -1999,15 +1997,13 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from_octets([
-    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
-    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
+    ///     0x19u8, 0x18u8, 0x17u8, 0x16u8, 0x15u8, 0x14u8, 0x13u8, 0x12u8,
+    ///     0x11u8, 0x10u8, 0x0fu8, 0x0eu8, 0x0du8, 0x0cu8, 0x0bu8, 0x0au8,
     /// ]);
     /// assert_eq!(
     ///     Ipv6Addr::new(
-    ///         0x1918, 0x1716,
-    ///         0x1514, 0x1312,
-    ///         0x1110, 0x0f0e,
-    ///         0x0d0c, 0x0b0a
+    ///         0x1918, 0x1716, 0x1514, 0x1312,
+    ///         0x1110, 0x0f0e, 0x0d0c, 0x0b0a,
     ///     ),
     ///     addr
     /// );
@@ -2190,15 +2186,13 @@ impl From<[u8; 16]> for Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from([
-    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
-    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
+    ///     0x19u8, 0x18u8, 0x17u8, 0x16u8, 0x15u8, 0x14u8, 0x13u8, 0x12u8,
+    ///     0x11u8, 0x10u8, 0x0fu8, 0x0eu8, 0x0du8, 0x0cu8, 0x0bu8, 0x0au8,
     /// ]);
     /// assert_eq!(
     ///     Ipv6Addr::new(
-    ///         0x1918, 0x1716,
-    ///         0x1514, 0x1312,
-    ///         0x1110, 0x0f0e,
-    ///         0x0d0c, 0x0b0a
+    ///         0x1918, 0x1716, 0x1514, 0x1312,
+    ///         0x1110, 0x0f0e, 0x0d0c, 0x0b0a,
     ///     ),
     ///     addr
     /// );
@@ -2219,15 +2213,13 @@ impl From<[u16; 8]> for Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from([
-    ///     525u16, 524u16, 523u16, 522u16,
-    ///     521u16, 520u16, 519u16, 518u16,
+    ///     0x20du16, 0x20cu16, 0x20bu16, 0x20au16,
+    ///     0x209u16, 0x208u16, 0x207u16, 0x206u16,
     /// ]);
     /// assert_eq!(
     ///     Ipv6Addr::new(
-    ///         0x20d, 0x20c,
-    ///         0x20b, 0x20a,
-    ///         0x209, 0x208,
-    ///         0x207, 0x206
+    ///         0x20d, 0x20c, 0x20b, 0x20a,
+    ///         0x209, 0x208, 0x207, 0x206,
     ///     ),
     ///     addr
     /// );
@@ -2249,15 +2241,13 @@ impl From<[u8; 16]> for IpAddr {
     /// use std::net::{IpAddr, Ipv6Addr};
     ///
     /// let addr = IpAddr::from([
-    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
-    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
+    ///     0x19u8, 0x18u8, 0x17u8, 0x16u8, 0x15u8, 0x14u8, 0x13u8, 0x12u8,
+    ///     0x11u8, 0x10u8, 0x0fu8, 0x0eu8, 0x0du8, 0x0cu8, 0x0bu8, 0x0au8,
     /// ]);
     /// assert_eq!(
     ///     IpAddr::V6(Ipv6Addr::new(
-    ///         0x1918, 0x1716,
-    ///         0x1514, 0x1312,
-    ///         0x1110, 0x0f0e,
-    ///         0x0d0c, 0x0b0a
+    ///         0x1918, 0x1716, 0x1514, 0x1312,
+    ///         0x1110, 0x0f0e, 0x0d0c, 0x0b0a,
     ///     )),
     ///     addr
     /// );
@@ -2278,15 +2268,13 @@ impl From<[u16; 8]> for IpAddr {
     /// use std::net::{IpAddr, Ipv6Addr};
     ///
     /// let addr = IpAddr::from([
-    ///     525u16, 524u16, 523u16, 522u16,
-    ///     521u16, 520u16, 519u16, 518u16,
+    ///     0x20du16, 0x20cu16, 0x20bu16, 0x20au16,
+    ///     0x209u16, 0x208u16, 0x207u16, 0x206u16,
     /// ]);
     /// assert_eq!(
     ///     IpAddr::V6(Ipv6Addr::new(
-    ///         0x20d, 0x20c,
-    ///         0x20b, 0x20a,
-    ///         0x209, 0x208,
-    ///         0x207, 0x206
+    ///         0x20d, 0x20c, 0x20b, 0x20a,
+    ///         0x209, 0x208, 0x207, 0x206,
     ///     )),
     ///     addr
     /// );
