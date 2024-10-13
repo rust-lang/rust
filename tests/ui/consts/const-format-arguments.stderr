@@ -1,0 +1,20 @@
+error[E0658]: use of unstable library feature 'fmt_internals'
+  --> $DIR/const-format-arguments.rs:3:36
+   |
+LL |     const A: std::fmt::Arguments = std::fmt::Arguments::new_const(&[&"hola"]);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(fmt_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `Arguments::<'a>::new_const` is not yet stable as a const fn
+  --> $DIR/const-format-arguments.rs:3:36
+   |
+LL |     const A: std::fmt::Arguments = std::fmt::Arguments::new_const(&[&"hola"]);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(const_fmt_arguments_new)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
