@@ -1,4 +1,4 @@
-#![feature(custom_mir, core_intrinsics, strict_provenance)]
+#![feature(custom_mir, core_intrinsics)]
 use std::intrinsics::mir::*;
 
 // The `Drop` terminator on a type with no drop glue should be a NOP.

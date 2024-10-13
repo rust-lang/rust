@@ -1908,7 +1908,7 @@ symbols! {
         str_trim,
         str_trim_end,
         str_trim_start,
-        strict_provenance,
+        strict_provenance_lints,
         string_as_mut_str,
         string_as_str,
         string_deref_patterns,

@@ -1,4 +1,3 @@
-#![feature(strict_provenance)]
 use std::mem;
 
 #[repr(C, usize)]
