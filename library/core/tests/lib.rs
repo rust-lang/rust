@@ -50,6 +50,7 @@
 #![feature(hashmap_internals)]
 #![feature(int_roundings)]
 #![feature(ip)]
+#![feature(ip_from)]
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
 #![feature(iter_advance_by)]
