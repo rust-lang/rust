@@ -283,7 +283,6 @@ macro_rules! make_ast_visitor {
 
                 make_visit!{AssocItem, ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item}
                 make_visit!{ForeignItem; visit_foreign_item, walk_item}
-                make_visit!{GenericParam; visit_generic_param, walk_generic_param}
                 make_visit!{Item; visit_item, walk_item}
                 make_visit!{Stmt; visit_stmt, walk_stmt}
 
@@ -324,6 +323,7 @@ macro_rules! make_ast_visitor {
             make_visit!{GenericArg; visit_generic_arg, walk_generic_arg}
             make_visit!{GenericArgs; visit_generic_args, walk_generic_args}
             make_visit!{GenericBound, _ ctxt: BoundKind; visit_param_bound, walk_param_bound}
+            make_visit!{GenericParam; visit_generic_param, walk_generic_param}
             make_visit!{Generics; visit_generics, walk_generics}
             make_visit!{Ident; visit_ident, walk_ident}
             make_visit!{InlineAsm; visit_inline_asm, walk_inline_asm}
@@ -564,6 +564,30 @@ macro_rules! make_ast_visitor {
                     try_v!(visit_span!(vis, span))
                 }
             }
+            return_result!(V)
+        }
+
+        pub fn walk_generic_param<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            param: ref_t!(GenericParam)
+        ) -> result!(V) {
+            let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = param;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, attrs);
+            try_v!(vis.visit_ident(ident));
+            visit_list!(vis, visit_param_bound, bounds; BoundKind::Bound);
+            match kind {
+                GenericParamKind::Lifetime => {}
+                GenericParamKind::Type { default } => {
+                    visit_o!(default, |default| vis.visit_ty(default));
+                }
+                GenericParamKind::Const { ty, kw_span, default } => {
+                    try_v!(vis.visit_ty(ty));
+                    visit_o!(default, |default| vis.visit_anon_const(default));
+                    try_v!(visit_span!(vis, kw_span));
+                }
+            }
+            visit_o!(colon_span, |span| visit_span!(vis, span));
             return_result!(V)
         }
 
@@ -1317,26 +1341,6 @@ pub mod visit {
             }
             V::Result::output()
         }
-    }
-
-    pub fn walk_generic_param<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        param: &'a GenericParam,
-    ) -> V::Result {
-        let GenericParam { id: _, ident, attrs, bounds, is_placeholder: _, kind, colon_span: _ } =
-            param;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_ident(ident));
-        walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
-        match kind {
-            GenericParamKind::Lifetime => (),
-            GenericParamKind::Type { default } => visit_opt!(visitor, visit_ty, default),
-            GenericParamKind::Const { ty, default, kw_span: _ } => {
-                try_visit!(visitor.visit_ty(ty));
-                visit_opt!(visitor, visit_anon_const, default);
-            }
-        }
-        V::Result::output()
     }
 
     pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Result {
@@ -2140,25 +2144,7 @@ pub mod mut_visit {
         vis: &mut T,
         mut param: GenericParam,
     ) -> SmallVec<[GenericParam; 1]> {
-        let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } =
-            &mut param;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_ident(ident);
-        visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
-        match kind {
-            GenericParamKind::Lifetime => {}
-            GenericParamKind::Type { default } => {
-                visit_opt(default, |default| vis.visit_ty(default));
-            }
-            GenericParamKind::Const { ty, kw_span: _, default } => {
-                vis.visit_ty(ty);
-                visit_opt(default, |default| vis.visit_anon_const(default));
-            }
-        }
-        if let Some(colon_span) = colon_span {
-            vis.visit_span(colon_span);
-        }
+        vis.visit_generic_param(&mut param);
         smallvec![param]
     }
 
