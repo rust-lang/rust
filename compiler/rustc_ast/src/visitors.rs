@@ -768,6 +768,16 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_trait_ref<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            trait_ref: ref_t!(TraitRef)
+        ) -> result!(V) {
+            let TraitRef { path, ref_id } = trait_ref;
+            try_v!(visit_id!(vis, ref_id));
+            try_v!(vis.visit_path(path, *ref_id));
+            return_result!(V)
+        }
+
         pub fn walk_use_tree<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             use_tree: ref_t!(UseTree),
@@ -995,14 +1005,6 @@ pub mod visit {
         walk_list!(visitor, visit_attribute, attrs);
         walk_list!(visitor, visit_item, items);
         V::Result::output()
-    }
-
-    pub fn walk_trait_ref<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        trait_ref: &'a TraitRef,
-    ) -> V::Result {
-        let TraitRef { path, ref_id } = trait_ref;
-        visitor.visit_path(path, *ref_id)
     }
 
     impl WalkItemKind for ItemKind {
@@ -2140,11 +2142,6 @@ pub mod mut_visit {
         let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
         vis.visit_span(span_before);
         vis.visit_span(span_after);
-    }
-
-    fn walk_trait_ref<T: MutVisitor>(vis: &mut T, TraitRef { path, ref_id }: &mut TraitRef) {
-        vis.visit_id(ref_id);
-        vis.visit_path(path, *ref_id);
     }
 
     pub fn walk_flat_map_field_def<T: MutVisitor>(
