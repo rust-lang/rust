@@ -447,6 +447,29 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_attribute<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            attr: ref_t!(Attribute)
+        ) -> result!(V) {
+            let Attribute { kind, id:_, style: _, span } = attr;
+            match kind {
+                AttrKind::Normal(normal) => {
+                    let NormalAttr {
+                        item: AttrItem { unsafety, path, args, tokens },
+                        tokens: attr_tokens,
+                    } = &$($mut)? **normal;
+                    try_v!(vis.visit_safety(unsafety));
+                    try_v!(vis.visit_path(path, DUMMY_NODE_ID));
+                    try_v!(vis.visit_attr_args(args));
+                    visit_lazy_tts!(vis, tokens);
+                    visit_lazy_tts!(vis, attr_tokens);
+                }
+                AttrKind::DocComment(_kind, _sym) => {}
+            }
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         pub fn walk_block<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             block: ref_t!(Block)
@@ -1709,20 +1732,6 @@ pub mod visit {
 
         visitor.visit_expr_post(expression)
     }
-
-    pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) -> V::Result {
-        let Attribute { kind, id: _, style: _, span: _ } = attr;
-        match kind {
-            AttrKind::Normal(normal) => {
-                let NormalAttr { item, tokens: _ } = &**normal;
-                let AttrItem { unsafety: _, path, args, tokens: _ } = item;
-                try_visit!(visitor.visit_path(path, DUMMY_NODE_ID));
-                try_visit!(visitor.visit_attr_args(args));
-            }
-            AttrKind::DocComment(_kind, _sym) => {}
-        }
-        V::Result::output()
-    }
 }
 
 pub mod mut_visit {
@@ -1858,24 +1867,6 @@ pub mod mut_visit {
     ) -> SmallVec<[Variant; 1]> {
         visitor.visit_variant(&mut variant);
         smallvec![variant]
-    }
-
-    fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
-        let Attribute { kind, id: _, style: _, span } = attr;
-        match kind {
-            AttrKind::Normal(normal) => {
-                let NormalAttr {
-                    item: AttrItem { unsafety: _, path, args, tokens },
-                    tokens: attr_tokens,
-                } = &mut **normal;
-                vis.visit_path(path, DUMMY_NODE_ID);
-                vis.visit_attr_args(args);
-                visit_lazy_tts(vis, tokens);
-                visit_lazy_tts(vis, attr_tokens);
-            }
-            AttrKind::DocComment(_kind, _sym) => {}
-        }
-        vis.visit_span(span);
     }
 
     fn walk_macro_def<T: MutVisitor>(vis: &mut T, macro_def: &mut MacroDef) {
