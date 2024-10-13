@@ -577,6 +577,34 @@ macro_rules! make_ast_visitor {
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
+
+        pub fn walk_where_predicate<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            predicate: ref_t!(WherePredicate)
+        ) -> result!(V) {
+            match predicate {
+                WherePredicate::BoundPredicate(bp) => {
+                    let WhereBoundPredicate { span, bound_generic_params, bounded_ty, bounds } = bp;
+                    visit_list!(vis, visit_generic_param, flat_map_generic_param, bound_generic_params);
+                    try_v!(vis.visit_ty(bounded_ty));
+                    visit_list!(vis, visit_param_bound, bounds; BoundKind::Bound);
+                    try_v!(visit_span!(vis, span));
+                }
+                WherePredicate::RegionPredicate(rp) => {
+                    let WhereRegionPredicate { span, lifetime, bounds } = rp;
+                    try_v!(vis.visit_lifetime(lifetime, LifetimeCtxt::Bound));
+                    visit_list!(vis, visit_param_bound, bounds; BoundKind::Bound);
+                    try_v!(visit_span!(vis, span));
+                }
+                WherePredicate::EqPredicate(ep) => {
+                    let WhereEqPredicate { span, lhs_ty, rhs_ty } = ep;
+                    try_v!(vis.visit_ty(lhs_ty));
+                    try_v!(vis.visit_ty(rhs_ty));
+                    try_v!(visit_span!(vis, span));
+                }
+            }
+            return_result!(V)
+        }
     }
 }
 
@@ -1116,33 +1144,6 @@ pub mod visit {
             GenericParamKind::Const { ty, default, kw_span: _ } => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_anon_const, default);
-            }
-        }
-        V::Result::output()
-    }
-
-    pub fn walk_where_predicate<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        predicate: &'a WherePredicate,
-    ) -> V::Result {
-        match predicate {
-            WherePredicate::BoundPredicate(WhereBoundPredicate {
-                bounded_ty,
-                bounds,
-                bound_generic_params,
-                span: _,
-            }) => {
-                walk_list!(visitor, visit_generic_param, bound_generic_params);
-                try_visit!(visitor.visit_ty(bounded_ty));
-                walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
-            }
-            WherePredicate::RegionPredicate(WhereRegionPredicate { lifetime, bounds, span: _ }) => {
-                try_visit!(visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound));
-                walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
-            }
-            WherePredicate::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty, span: _ }) => {
-                try_visit!(visitor.visit_ty(lhs_ty));
-                try_visit!(visitor.visit_ty(rhs_ty));
             }
         }
         V::Result::output()
@@ -2168,30 +2169,6 @@ pub mod mut_visit {
         let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
         vis.visit_span(span_before);
         vis.visit_span(span_after);
-    }
-
-    fn walk_where_predicate<T: MutVisitor>(vis: &mut T, pred: &mut WherePredicate) {
-        match pred {
-            WherePredicate::BoundPredicate(bp) => {
-                let WhereBoundPredicate { span, bound_generic_params, bounded_ty, bounds } = bp;
-                bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-                vis.visit_ty(bounded_ty);
-                visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
-                vis.visit_span(span);
-            }
-            WherePredicate::RegionPredicate(rp) => {
-                let WhereRegionPredicate { span, lifetime, bounds } = rp;
-                vis.visit_lifetime(lifetime, LifetimeCtxt::Bound);
-                visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
-                vis.visit_span(span);
-            }
-            WherePredicate::EqPredicate(ep) => {
-                let WhereEqPredicate { span, lhs_ty, rhs_ty } = ep;
-                vis.visit_ty(lhs_ty);
-                vis.visit_ty(rhs_ty);
-                vis.visit_span(span);
-            }
-        }
     }
 
     fn walk_variant_data<T: MutVisitor>(vis: &mut T, vdata: &mut VariantData) {
