@@ -20,5 +20,5 @@ exit 1
 
 git clone https://github.com/emscripten-core/emsdk.git /emsdk-portable
 cd /emsdk-portable
-hide_output ./emsdk install 2.0.5
-./emsdk activate 2.0.5
+hide_output ./emsdk install 3.1.68
+./emsdk activate 3.1.68
