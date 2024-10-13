@@ -104,6 +104,22 @@ macro_rules! make_ast_visitor {
             };
         }
 
+        #[allow(unused)]
+        macro_rules! mut_only_visit {
+            ($name: ident) => {
+                macro_rules! $name {
+                    ($vis: expr, $arg: expr) => {
+                        macro_if!{ $($mut)? {
+                            $name($vis, $arg)
+                        } else {
+                            // assign to _ to prevent unused_variable warnings
+                            {let _ = (&$vis, &$arg);}
+                        }}
+                    };
+                }
+            };
+        }
+
         macro_rules! try_v {
             ($visit: expr) => {
                 macro_if!{$($mut)? { $visit } else { try_visit!($visit) }}
