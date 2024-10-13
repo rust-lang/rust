@@ -437,6 +437,20 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_crate<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            krate: ref_t!(Crate)
+        ) -> result!(V) {
+            let Crate { attrs, items, spans, id, is_placeholder: _ } = krate;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, attrs);
+            visit_list!(vis, visit_item, flat_map_item, items);
+            let ModSpans { inner_span, inject_use_span } = spans;
+            try_v!(visit_span!(vis, inner_span));
+            try_v!(visit_span!(vis, inject_use_span));
+            return_result!(V)
+        }
+
         pub fn walk_enum_def<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             enum_def: ref_t!(EnumDef)
@@ -1116,13 +1130,6 @@ pub mod visit {
     }
 
     make_ast_visitor!(Visitor<'ast>);
-
-    pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) -> V::Result {
-        let Crate { attrs, items, spans: _, id: _, is_placeholder: _ } = krate;
-        walk_list!(visitor, visit_attribute, attrs);
-        walk_list!(visitor, visit_item, items);
-        V::Result::output()
-    }
 
     impl WalkItemKind for ItemKind {
         fn walk<'a, V: Visitor<'a>>(
@@ -2385,16 +2392,6 @@ pub mod mut_visit {
         visit_constness(vis, constness);
         coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
         visit_safety(vis, safety);
-    }
-
-    pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
-        let Crate { attrs, items, spans, id, is_placeholder: _ } = krate;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        items.flat_map_in_place(|item| vis.flat_map_item(item));
-        let ModSpans { inner_span, inject_use_span } = spans;
-        vis.visit_span(inner_span);
-        vis.visit_span(inject_use_span);
     }
 
     /// Mutates one item, returning the item again.
