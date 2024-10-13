@@ -13,6 +13,7 @@ use rustc_target::abi::Size;
 
 use self::fd::FlockOp;
 use self::shims::time::system_time_to_duration;
+use crate::helpers::check_min_arg_count;
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::*;
@@ -433,12 +434,7 @@ fn maybe_sync_file(
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn open(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
-        let [path_raw, flag, ..] = args else {
-            throw_ub_format!(
-                "incorrect number of arguments for `open`: got {}, expected at least 2",
-                args.len()
-            );
-        };
+        let [path_raw, flag] = check_min_arg_count("open", args)?;
 
         let this = self.eval_context_mut();
 
@@ -492,14 +488,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
             // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
             // (see https://github.com/rust-lang/rust/issues/71915).
-            let mode = if let Some(arg) = args.get(2) {
-                this.read_scalar(arg)?.to_u32()?
-            } else {
-                throw_ub_format!(
-                    "incorrect number of arguments for `open` with `O_CREAT`: got {}, expected at least 3",
-                    args.len()
-                );
-            };
+            let [_, _, mode] = check_min_arg_count("open(pathname, O_CREAT, ...)", args)?;
+            let mode = this.read_scalar(mode)?.to_u32()?;
 
             #[cfg(unix)]
             {
