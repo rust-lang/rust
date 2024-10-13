@@ -886,6 +886,59 @@ macro_rules! make_ast_visitor {
             }
             return_result!(V)
         }
+
+        pub fn walk_pat<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            pattern: ref_t!(Pat)
+        ) -> result!(V) {
+            let Pat { id, kind, span, tokens } = pattern;
+            try_v!(visit_id!(vis, id));
+            match kind {
+                PatKind::Err(_guar) => {}
+                PatKind::Wild | PatKind::Rest | PatKind::Never => {}
+                PatKind::Ident(_binding_mode, ident, sub) => {
+                    try_v!(vis.visit_ident(ident));
+                    visit_o!(sub, |sub| vis.visit_pat(sub));
+                }
+                PatKind::Lit(e) => {
+                    try_v!(vis.visit_expr(e));
+                }
+                PatKind::TupleStruct(qself, path, elems) => {
+                    try_v!(vis.visit_qself(qself));
+                    try_v!(vis.visit_path(path, *id));
+                    visit_list!(vis, visit_pat, elems);
+                }
+                PatKind::Path(qself, path) => {
+                    try_v!(vis.visit_qself(qself));
+                    try_v!(vis.visit_path(path, *id));
+                }
+                PatKind::Struct(qself, path, fields, _etc) => {
+                    try_v!(vis.visit_qself(qself));
+                    try_v!(vis.visit_path(path, *id));
+                    visit_list!(vis, visit_pat_field, flat_map_pat_field, fields);
+                }
+                PatKind::Box(inner) | PatKind::Deref(inner) | PatKind::Paren(inner) => {
+                    try_v!(vis.visit_pat(inner));
+                }
+                PatKind::Ref(inner, _mutbl) => {
+                    try_v!(vis.visit_pat(inner));
+                }
+                PatKind::Range(e1, e2, Spanned { span, node: _ }) => {
+                    visit_o!(e1, |e| vis.visit_expr(e));
+                    visit_o!(e2, |e| vis.visit_expr(e));
+                    try_v!(visit_span!(vis, span));
+                }
+                PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
+                    visit_list!(vis, visit_pat, elems);
+                }
+                PatKind::MacCall(mac) => {
+                    try_v!(vis.visit_mac_call(mac));
+                }
+            }
+            visit_lazy_tts!(vis, tokens);
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
     }
 }
 
@@ -1197,48 +1250,6 @@ pub mod visit {
             AssocItemConstraintKind::Bound { bounds } => {
                 walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
             }
-        }
-        V::Result::output()
-    }
-
-    pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) -> V::Result {
-        let Pat { id, kind, span: _, tokens: _ } = pattern;
-        match kind {
-            PatKind::TupleStruct(opt_qself, path, elems) => {
-                try_visit!(visitor.visit_qself(opt_qself));
-                try_visit!(visitor.visit_path(path, *id));
-                walk_list!(visitor, visit_pat, elems);
-            }
-            PatKind::Path(opt_qself, path) => {
-                try_visit!(visitor.visit_qself(opt_qself));
-                try_visit!(visitor.visit_path(path, *id))
-            }
-            PatKind::Struct(opt_qself, path, fields, _rest) => {
-                try_visit!(visitor.visit_qself(opt_qself));
-                try_visit!(visitor.visit_path(path, *id));
-                walk_list!(visitor, visit_pat_field, fields);
-            }
-            PatKind::Box(subpattern) | PatKind::Deref(subpattern) | PatKind::Paren(subpattern) => {
-                try_visit!(visitor.visit_pat(subpattern));
-            }
-            PatKind::Ref(subpattern, _ /*mutbl*/) => {
-                try_visit!(visitor.visit_pat(subpattern));
-            }
-            PatKind::Ident(_bmode, ident, optional_subpattern) => {
-                try_visit!(visitor.visit_ident(ident));
-                visit_opt!(visitor, visit_pat, optional_subpattern);
-            }
-            PatKind::Lit(expression) => try_visit!(visitor.visit_expr(expression)),
-            PatKind::Range(lower_bound, upper_bound, _end) => {
-                visit_opt!(visitor, visit_expr, lower_bound);
-                visit_opt!(visitor, visit_expr, upper_bound);
-            }
-            PatKind::Wild | PatKind::Rest | PatKind::Never => {}
-            PatKind::Err(_guar) => {}
-            PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
-                walk_list!(visitor, visit_pat, elems);
-            }
-            PatKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
         }
         V::Result::output()
     }
@@ -2434,49 +2445,6 @@ pub mod mut_visit {
                 ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
             }
         }
-    }
-
-    pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
-        let Pat { id, kind, span, tokens } = pat.deref_mut();
-        vis.visit_id(id);
-        match kind {
-            PatKind::Err(_guar) => {}
-            PatKind::Wild | PatKind::Rest | PatKind::Never => {}
-            PatKind::Ident(_binding_mode, ident, sub) => {
-                vis.visit_ident(ident);
-                visit_opt(sub, |sub| vis.visit_pat(sub));
-            }
-            PatKind::Lit(e) => vis.visit_expr(e),
-            PatKind::TupleStruct(qself, path, elems) => {
-                vis.visit_qself(qself);
-                vis.visit_path(path, *id);
-                visit_thin_vec(elems, |elem| vis.visit_pat(elem));
-            }
-            PatKind::Path(qself, path) => {
-                vis.visit_qself(qself);
-                vis.visit_path(path, *id);
-            }
-            PatKind::Struct(qself, path, fields, _etc) => {
-                vis.visit_qself(qself);
-                vis.visit_path(path, *id);
-                fields.flat_map_in_place(|field| vis.flat_map_pat_field(field));
-            }
-            PatKind::Box(inner) => vis.visit_pat(inner),
-            PatKind::Deref(inner) => vis.visit_pat(inner),
-            PatKind::Ref(inner, _mutbl) => vis.visit_pat(inner),
-            PatKind::Range(e1, e2, Spanned { span: _, node: _ }) => {
-                visit_opt(e1, |e| vis.visit_expr(e));
-                visit_opt(e2, |e| vis.visit_expr(e));
-                vis.visit_span(span);
-            }
-            PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
-                visit_thin_vec(elems, |elem| vis.visit_pat(elem))
-            }
-            PatKind::Paren(inner) => vis.visit_pat(inner),
-            PatKind::MacCall(mac) => vis.visit_mac_call(mac),
-        }
-        visit_lazy_tts(vis, tokens);
-        vis.visit_span(span);
     }
 
     fn walk_inline_asm_sym<T: MutVisitor>(
