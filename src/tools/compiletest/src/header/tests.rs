@@ -465,7 +465,10 @@ fn profiler_runtime() {
 #[test]
 fn asm_support() {
     let asms = [
+        #[cfg(bootstrap)]
         ("avr-unknown-gnu-atmega328", false),
+        #[cfg(not(bootstrap))]
+        ("avr-none", false),
         ("i686-unknown-netbsd", true),
         ("riscv32gc-unknown-linux-gnu", true),
         ("riscv64imac-unknown-none-elf", true),
