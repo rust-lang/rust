@@ -342,6 +342,7 @@ macro_rules! make_ast_visitor {
             make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
             make_visit!{Safety; visit_safety, walk_safety}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
+            make_visit!{TyAliasWhereClauses; visit_ty_alias_where_clauses, walk_ty_alias_where_clauses}
             make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
             make_visit!{Variant; visit_variant, walk_variant}
             make_visit!{VariantData; visit_variant_data, walk_variant_data}
@@ -951,6 +952,18 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_ty_alias_where_clauses<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            tawcs: ref_t!(TyAliasWhereClauses)
+        ) -> result!(V) {
+            let TyAliasWhereClauses { before, after, split: _ } = tawcs;
+            let TyAliasWhereClause { has_where_token: _, span: span_before } = before;
+            let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
+            try_v!(visit_span!(vis, span_before));
+            try_v!(visit_span!(vis, span_after));
+            return_result!(V)
+        }
+
         pub fn walk_use_tree<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             use_tree: ref_t!(UseTree),
@@ -1352,11 +1365,12 @@ pub mod visit {
                     bounds,
                     ty,
                     defaultness: _,
-                    where_clauses: _,
+                    where_clauses,
                 }) => {
                     try_visit!(visitor.visit_generics(generics));
                     walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
                     visit_opt!(visitor, visit_ty, ty);
+                    try_visit!(visitor.visit_ty_alias_where_clauses(where_clauses));
                 }
                 ItemKind::Enum(enum_definition, generics) => {
                     try_visit!(visitor.visit_generics(generics));
@@ -1456,11 +1470,12 @@ pub mod visit {
                     bounds,
                     ty,
                     defaultness: _,
-                    where_clauses: _,
+                    where_clauses,
                 }) => {
                     try_visit!(visitor.visit_generics(generics));
                     walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
                     visit_opt!(visitor, visit_ty, ty);
+                    try_visit!(visitor.visit_ty_alias_where_clauses(where_clauses));
                 }
                 ForeignItemKind::MacCall(mac) => {
                     try_visit!(visitor.visit_mac_call(mac));
@@ -1512,11 +1527,12 @@ pub mod visit {
                     bounds,
                     ty,
                     defaultness: _,
-                    where_clauses: _,
+                    where_clauses,
                 }) => {
                     try_visit!(visitor.visit_generics(generics));
                     walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
                     visit_opt!(visitor, visit_ty, ty);
+                    try_visit!(visitor.visit_ty_alias_where_clauses(where_clauses));
                 }
                 AssocItemKind::MacCall(mac) => {
                     try_visit!(visitor.visit_mac_call(mac));
@@ -2113,14 +2129,6 @@ pub mod mut_visit {
         smallvec![param]
     }
 
-    fn walk_ty_alias_where_clauses<T: MutVisitor>(vis: &mut T, tawcs: &mut TyAliasWhereClauses) {
-        let TyAliasWhereClauses { before, after, split: _ } = tawcs;
-        let TyAliasWhereClause { has_where_token: _, span: span_before } = before;
-        let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
-        vis.visit_span(span_before);
-        vis.visit_span(span_after);
-    }
-
     pub fn walk_flat_map_field_def<T: MutVisitor>(
         visitor: &mut T,
         mut fd: FieldDef,
@@ -2190,7 +2198,7 @@ pub mod mut_visit {
                     vis.visit_generics(generics);
                     visit_bounds(vis, bounds, BoundKind::Bound);
                     visit_opt(ty, |ty| vis.visit_ty(ty));
-                    walk_ty_alias_where_clauses(vis, where_clauses);
+                    vis.visit_ty_alias_where_clauses(where_clauses);
                 }
                 ItemKind::Enum(enum_def, generics) => {
                     vis.visit_generics(generics);
@@ -2290,7 +2298,7 @@ pub mod mut_visit {
                     visitor.visit_generics(generics);
                     visit_bounds(visitor, bounds, BoundKind::Bound);
                     visit_opt(ty, |ty| visitor.visit_ty(ty));
-                    walk_ty_alias_where_clauses(visitor, where_clauses);
+                    visitor.visit_ty_alias_where_clauses(where_clauses);
                 }
                 AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
                 AssocItemKind::Delegation(box Delegation {
@@ -2390,7 +2398,7 @@ pub mod mut_visit {
                     visitor.visit_generics(generics);
                     visit_bounds(visitor, bounds, BoundKind::Bound);
                     visit_opt(ty, |ty| visitor.visit_ty(ty));
-                    walk_ty_alias_where_clauses(visitor, where_clauses);
+                    visitor.visit_ty_alias_where_clauses(where_clauses);
                 }
                 ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
             }
