@@ -365,6 +365,16 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_anon_const<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            anon_const: ref_t!(AnonConst)
+        ) -> result!(V) {
+            let AnonConst { id, value } = anon_const;
+            try_v!(visit_id!(vis, id));
+            try_v!(vis.visit_expr(value));
+            return_result!(V)
+        }
+
         pub fn walk_fn_ret_ty<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             ret_ty: ref_t!(FnRetTy)
@@ -1201,14 +1211,6 @@ pub mod visit {
     pub fn walk_mac<'a, V: Visitor<'a>>(visitor: &mut V, mac: &'a MacCall) -> V::Result {
         let MacCall { path, args: _ } = mac;
         visitor.visit_path(path, DUMMY_NODE_ID)
-    }
-
-    pub fn walk_anon_const<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        constant: &'a AnonConst,
-    ) -> V::Result {
-        let AnonConst { id: _, value } = constant;
-        visitor.visit_expr(value)
     }
 
     pub fn walk_inline_asm<'a, V: Visitor<'a>>(visitor: &mut V, asm: &'a InlineAsm) -> V::Result {
@@ -2549,11 +2551,6 @@ pub mod mut_visit {
         }
         visit_lazy_tts(vis, tokens);
         vis.visit_span(span);
-    }
-
-    fn walk_anon_const<T: MutVisitor>(vis: &mut T, AnonConst { id, value }: &mut AnonConst) {
-        vis.visit_id(id);
-        vis.visit_expr(value);
     }
 
     fn walk_inline_asm<T: MutVisitor>(vis: &mut T, asm: &mut InlineAsm) {
