@@ -1538,7 +1538,7 @@ impl fmt::Debug for File {
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
-        #[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
+        #[cfg(target_os = "freebsd")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let info = Box::<libc::kinfo_file>::new_zeroed();
             let mut info = unsafe { info.assume_init() };
@@ -1566,7 +1566,7 @@ impl fmt::Debug for File {
         #[cfg(not(any(
             target_os = "linux",
             target_os = "vxworks",
-            all(target_os = "freebsd", target_arch = "x86_64"),
+            target_os = "freebsd",
             target_os = "netbsd",
             target_os = "illumos",
             target_os = "solaris",
