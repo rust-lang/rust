@@ -400,6 +400,33 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_assoc_item_constraint<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            constraint: ref_t!(AssocItemConstraint)
+        ) -> result!(V) {
+            let AssocItemConstraint { id, ident, gen_args, kind, span } = constraint;
+            try_v!(visit_id!(vis, id));
+            try_v!(vis.visit_ident(ident));
+            visit_o!(gen_args, |gen_args| vis.visit_generic_args(gen_args));
+            match kind {
+                AssocItemConstraintKind::Equality { term } => {
+                    match term {
+                        Term::Ty(ty) => {
+                            try_v!(vis.visit_ty(ty));
+                        }
+                        Term::Const(c) => {
+                            try_v!(vis.visit_anon_const(c));
+                        }
+                    }
+                }
+                AssocItemConstraintKind::Bound { bounds } => {
+                    visit_list!(vis, visit_param_bound, bounds; BoundKind::Bound);
+                }
+            }
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         pub fn walk_attr_args<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             args: ref_t!(AttrArgs)
@@ -1358,25 +1385,6 @@ pub mod visit {
         walk_assoc_item(visitor, item, AssocCtxt::Trait /*ignored*/)
     }
 
-    pub fn walk_assoc_item_constraint<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        constraint: &'a AssocItemConstraint,
-    ) -> V::Result {
-        let AssocItemConstraint { id: _, ident, gen_args, kind, span: _ } = constraint;
-        try_visit!(visitor.visit_ident(ident));
-        visit_opt!(visitor, visit_generic_args, gen_args);
-        match kind {
-            AssocItemConstraintKind::Equality { term } => match term {
-                Term::Ty(ty) => try_visit!(visitor.visit_ty(ty)),
-                Term::Const(c) => try_visit!(visitor.visit_anon_const(c)),
-            },
-            AssocItemConstraintKind::Bound { bounds } => {
-                walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
-            }
-        }
-        V::Result::output()
-    }
-
     impl WalkItemKind for ForeignItemKind {
         fn walk<'a, V: Visitor<'a>>(
             &'a self,
@@ -1831,27 +1839,6 @@ pub mod mut_visit {
     pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
         vis.visit_arm(&mut arm);
         smallvec![arm]
-    }
-
-    fn walk_assoc_item_constraint<T: MutVisitor>(
-        vis: &mut T,
-        AssocItemConstraint { id, ident, gen_args, kind, span }: &mut AssocItemConstraint,
-    ) {
-        vis.visit_id(id);
-        vis.visit_ident(ident);
-        if let Some(gen_args) = gen_args {
-            vis.visit_generic_args(gen_args);
-        }
-        match kind {
-            AssocItemConstraintKind::Equality { term } => match term {
-                Term::Ty(ty) => vis.visit_ty(ty),
-                Term::Const(c) => vis.visit_anon_const(c),
-            },
-            AssocItemConstraintKind::Bound { bounds } => {
-                visit_bounds(vis, bounds, BoundKind::Bound)
-            }
-        }
-        vis.visit_span(span);
     }
 
     fn walk_foreign_mod<T: MutVisitor>(vis: &mut T, foreign_mod: &mut ForeignMod) {
