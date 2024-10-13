@@ -39,7 +39,6 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        #[allow(unused)]
         macro_rules! return_result {
             ($V: ty) => {
                 macro_if!($($mut)? { () } else { <$V>::Result::output() })
@@ -95,7 +94,6 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        #[allow(unused)]
         macro_rules! visit_span {
             ($vis: ident, $span: ident) => {
                 macro_if!{ $($mut)? {
@@ -107,7 +105,6 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        #[allow(unused)]
         macro_rules! try_v {
             ($visit: expr) => {
                 macro_if!{$($mut)? { $visit } else { try_visit!($visit) }}
@@ -193,7 +190,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
                 make_visit!{FnHeader; visit_fn_header, walk_fn_header}
                 make_visit!{ForeignMod; visit_foreign_mod, walk_foreign_mod}
-                make_visit!{Ident; visit_ident, walk_ident}
                 make_visit!{Lifetime; visit_lifetime, walk_lifetime}
                 make_visit!{MacroDef; visit_macro_def, walk_macro_def}
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
@@ -298,9 +294,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{Variant; visit_variant, walk_variant}
                 make_visit!{VariantData; visit_variant_data, walk_struct_def}
 
-                fn visit_ident(&mut self, _ident: &'ast Ident) -> Self::Result {
-                    Self::Result::output()
-                }
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
                 /// It can be removed once that feature is stabilized.
                 fn visit_method_receiver_expr(&mut self, ex: &'ast Expr) -> Self::Result {
@@ -340,6 +333,7 @@ macro_rules! make_ast_visitor {
             make_visit!{GenericArgs; visit_generic_args, walk_generic_args}
             make_visit!{GenericBound, _ ctxt: BoundKind; visit_param_bound, walk_param_bound}
             make_visit!{Generics; visit_generics, walk_generics}
+            make_visit!{Ident; visit_ident, walk_ident}
             make_visit!{InlineAsm; visit_inline_asm, walk_inline_asm}
             make_visit!{InlineAsmSym; visit_inline_asm_sym, walk_inline_asm_sym}
             make_visit!{Label; visit_label, walk_label}
@@ -357,6 +351,15 @@ macro_rules! make_ast_visitor {
             make_visit!{P!(Local); visit_local, walk_local}
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Ty); visit_ty, walk_ty}
+        }
+
+        pub fn walk_ident<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            ident: ref_t!(Ident)
+        ) -> result!(V) {
+            let Ident { name: _, span } = ident;
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
         }
     }
 }
@@ -1708,10 +1711,6 @@ pub mod mut_visit {
         visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
         visitor.visit_span(span);
         smallvec![variant]
-    }
-
-    fn walk_ident<T: MutVisitor>(vis: &mut T, Ident { name: _, span }: &mut Ident) {
-        vis.visit_span(span);
     }
 
     fn walk_path_segment<T: MutVisitor>(vis: &mut T, segment: &mut PathSegment) {
