@@ -16,16 +16,14 @@ const fn bitset_search<
     let bucket_idx = (needle / 64) as usize;
     let chunk_map_idx = bucket_idx / CHUNK_SIZE;
     let chunk_piece = bucket_idx % CHUNK_SIZE;
-    // FIXME: const-hack: Revert to `slice::get` after `const_slice_index`
-    // feature stabilizes.
+    // FIXME(const-hack): Revert to `slice::get` when slice indexing becomes possible in const.
     let chunk_idx = if chunk_map_idx < chunk_idx_map.len() {
         chunk_idx_map[chunk_map_idx]
     } else {
         return false;
     };
     let idx = bitset_chunk_idx[chunk_idx as usize][chunk_piece] as usize;
-    // FIXME: const-hack: Revert to `slice::get` after `const_slice_index`
-    // feature stabilizes.
+    // FIXME(const-hack): Revert to `slice::get` when slice indexing becomes possible in const.
     let word = if idx < bitset_canonical.len() {
         bitset_canonical[idx]
     } else {
