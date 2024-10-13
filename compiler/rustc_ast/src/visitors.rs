@@ -584,6 +584,17 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_path_segment<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            segment: ref_t!(PathSegment)
+        ) -> result!(V) {
+            let PathSegment { id, ident, args } = segment;
+            try_v!(visit_id!(vis, id));
+            try_v!(vis.visit_ident(ident));
+            visit_o!(args, |args| vis.visit_generic_args(args));
+            return_result!(V)
+        }
+
         pub fn walk_poly_trait_ref<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             trait_ref: ref_t!(PolyTraitRef)
@@ -1015,16 +1026,6 @@ pub mod visit {
                 }
             }
         }
-        V::Result::output()
-    }
-
-    pub fn walk_path_segment<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        segment: &'a PathSegment,
-    ) -> V::Result {
-        let PathSegment { ident, id: _, args } = segment;
-        try_visit!(visitor.visit_ident(ident));
-        visit_opt!(visitor, visit_generic_args, args);
         V::Result::output()
     }
 
@@ -1800,13 +1801,6 @@ pub mod mut_visit {
     ) -> SmallVec<[Variant; 1]> {
         visitor.visit_variant(&mut variant);
         smallvec![variant]
-    }
-
-    fn walk_path_segment<T: MutVisitor>(vis: &mut T, segment: &mut PathSegment) {
-        let PathSegment { ident, id, args } = segment;
-        vis.visit_id(id);
-        vis.visit_ident(ident);
-        visit_opt(args, |args| vis.visit_generic_args(args));
     }
 
     fn walk_path<T: MutVisitor>(vis: &mut T, Path { segments, span, tokens }: &mut Path) {
