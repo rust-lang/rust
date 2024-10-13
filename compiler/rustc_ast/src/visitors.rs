@@ -311,6 +311,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Arm; visit_arm, walk_arm}
             make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
             make_visit!{Attribute; visit_attribute, walk_attribute}
+            make_visit!{Block; visit_block, walk_block}
             make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
             make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
             make_visit!{Crate; visit_crate, walk_crate}
@@ -348,7 +349,6 @@ macro_rules! make_ast_visitor {
             make_visit!{WhereClause; visit_where_clause, walk_where_clause}
             make_visit!{WherePredicate; visit_where_predicate, walk_where_predicate}
 
-            make_visit!{P!(Block); visit_block, walk_block}
             make_visit!{P!(Expr); visit_expr, walk_expr}
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Ty); visit_ty, walk_ty}
@@ -394,6 +394,18 @@ macro_rules! make_ast_visitor {
             try_v!(vis.visit_pat(pat));
             visit_o!(guard, |guard| vis.visit_expr(guard));
             visit_o!(body, |body| vis.visit_expr(body));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_block<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            block: ref_t!(Block)
+        ) -> result!(V) {
+            let Block { id, stmts, rules: _, span, tokens, could_be_bare_literal: _ } = block;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_stmt, flat_map_stmt, stmts);
+            visit_lazy_tts!(vis, tokens);
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
@@ -1388,12 +1400,6 @@ pub mod visit {
         V::Result::output()
     }
 
-    pub fn walk_block<'a, V: Visitor<'a>>(visitor: &mut V, block: &'a Block) -> V::Result {
-        let Block { stmts, id: _, rules: _, span: _, tokens: _, could_be_bare_literal: _ } = block;
-        walk_list!(visitor, visit_stmt, stmts);
-        V::Result::output()
-    }
-
     pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V::Result {
         let Stmt { id: _, kind, span: _ } = statement;
         match kind {
@@ -2158,15 +2164,6 @@ pub mod mut_visit {
     ) -> SmallVec<[ExprField; 1]> {
         vis.visit_expr_field(&mut f);
         smallvec![f]
-    }
-
-    pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
-        let Block { id, stmts, rules: _, span, tokens, could_be_bare_literal: _ } =
-            block.deref_mut();
-        vis.visit_id(id);
-        stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
-        visit_lazy_tts(vis, tokens);
-        vis.visit_span(span);
     }
 
     pub fn walk_item_kind(
