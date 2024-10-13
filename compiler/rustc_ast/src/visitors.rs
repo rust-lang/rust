@@ -539,6 +539,25 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_param_bound<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            bound: ref_t!(GenericBound)
+        ) -> result!(V) {
+            match bound {
+                GenericBound::Trait(typ) => {
+                    try_v!(vis.visit_poly_trait_ref(typ));
+                }
+                GenericBound::Outlives(lifetime) => {
+                    try_v!(vis.visit_lifetime(lifetime, LifetimeCtxt::Bound));
+                }
+                GenericBound::Use(args, span) => {
+                    visit_list!(vis, visit_precise_capturing_arg, args);
+                    try_v!(visit_span!(vis, span))
+                }
+            }
+            return_result!(V)
+        }
+
         pub fn walk_generics<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             generics: ref_t!(Generics)
@@ -1231,22 +1250,6 @@ pub mod visit {
                 }
             }
             V::Result::output()
-        }
-    }
-
-    pub fn walk_param_bound<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        bound: &'a GenericBound,
-    ) -> V::Result {
-        match bound {
-            GenericBound::Trait(typ) => visitor.visit_poly_trait_ref(typ),
-            GenericBound::Outlives(lifetime) => {
-                visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound)
-            }
-            GenericBound::Use(args, _span) => {
-                walk_list!(visitor, visit_precise_capturing_arg, args);
-                V::Result::output()
-            }
         }
     }
 
@@ -2102,19 +2105,6 @@ pub mod mut_visit {
                 vis.visit_closure_binder(binder);
                 vis.visit_fn_decl(decl);
                 vis.visit_expr(body);
-            }
-        }
-    }
-
-    fn walk_param_bound<T: MutVisitor>(vis: &mut T, pb: &mut GenericBound) {
-        match pb {
-            GenericBound::Trait(ty) => vis.visit_poly_trait_ref(ty),
-            GenericBound::Outlives(lifetime) => vis.visit_lifetime(lifetime, LifetimeCtxt::Bound),
-            GenericBound::Use(args, span) => {
-                for arg in args {
-                    vis.visit_precise_capturing_arg(arg);
-                }
-                vis.visit_span(span);
             }
         }
     }
