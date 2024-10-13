@@ -119,7 +119,6 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        #[allow(unused)]
         macro_rules! visit_list {
             ($visitor: expr, $visit: ident, $flat_map: ident, $list: expr $$(; $$($arg: expr),*)?) => {
                 macro_if!{$($mut)? {
@@ -192,7 +191,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
                 make_visit!{MutTy; visit_mt, walk_mt}
-                make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
                 make_visit!{Path; visit_path, walk_path}
                 make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
                 make_visit!{UseTree; visit_use_tree, walk_use_tree}
@@ -337,6 +335,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
             make_visit!{MacCall; visit_mac_call, walk_mac}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
+            make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
@@ -391,6 +390,18 @@ macro_rules! make_ast_visitor {
             let Lifetime { id, ident } = lifetime;
             try_v!(visit_id!(vis, id));
             try_v!(vis.visit_ident(ident));
+            return_result!(V)
+        }
+
+        pub fn walk_parenthesized_parameter_data<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            args: ref_t!(ParenthesizedArgs)
+        ) -> result!(V) {
+            let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
+            visit_list!(vis, visit_ty, inputs);
+            try_v!(vis.visit_fn_ret_ty(output));
+            try_v!(visit_span!(vis, span));
+            try_v!(visit_span!(vis, inputs_span));
             return_result!(V)
         }
     }
@@ -812,10 +823,8 @@ pub mod visit {
             GenericArgs::AngleBracketed(args) => {
                 try_visit!(visitor.visit_angle_bracketed_parameter_data(args));
             }
-            GenericArgs::Parenthesized(data) => {
-                let ParenthesizedArgs { span: _, inputs, inputs_span: _, output } = data;
-                walk_list!(visitor, visit_ty, inputs);
-                try_visit!(visitor.visit_fn_ret_ty(output));
+            GenericArgs::Parenthesized(args) => {
+                try_visit!(visitor.visit_parenthesized_parameter_data(args));
             }
             GenericArgs::ParenthesizedElided(_span) => {}
         }
@@ -1763,14 +1772,6 @@ pub mod mut_visit {
             GenericArg::Type(ty) => vis.visit_ty(ty),
             GenericArg::Const(ct) => vis.visit_anon_const(ct),
         }
-    }
-
-    fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut ParenthesizedArgs) {
-        let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
-        visit_thin_vec(inputs, |input| vis.visit_ty(input));
-        vis.visit_fn_ret_ty(output);
-        vis.visit_span(span);
-        vis.visit_span(inputs_span);
     }
 
     fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
