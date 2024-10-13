@@ -277,7 +277,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{GenericParam; visit_generic_param, walk_generic_param}
                 make_visit!{Item; visit_item, walk_item}
                 make_visit!{Param; visit_param, walk_param}
-                make_visit!{PatField; visit_pat_field, walk_pat_field}
                 make_visit!{Path, _ id: NodeId; visit_path, walk_path}
                 make_visit!{Stmt; visit_stmt, walk_stmt}
                 make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
@@ -333,6 +332,7 @@ macro_rules! make_ast_visitor {
             make_visit!{MutTy; visit_mt, walk_mt}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
             make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
+            make_visit!{PatField; visit_pat_field, walk_pat_field}
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
@@ -528,6 +528,19 @@ macro_rules! make_ast_visitor {
             try_v!(vis.visit_fn_ret_ty(output));
             try_v!(visit_span!(vis, span));
             try_v!(visit_span!(vis, inputs_span));
+            return_result!(V)
+        }
+
+        pub fn walk_pat_field<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            fp: ref_t!(PatField)
+        ) -> result!(V) {
+            let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, attrs);
+            try_v!(vis.visit_ident(ident));
+            try_v!(vis.visit_pat(pat));
+            try_v!(visit_span!(vis, span));
             return_result!(V)
         }
 
@@ -842,14 +855,6 @@ pub mod visit {
         walk_list!(visitor, visit_attribute, attrs);
         try_visit!(visitor.visit_ident(ident));
         try_visit!(visitor.visit_expr(expr));
-        V::Result::output()
-    }
-
-    pub fn walk_pat_field<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a PatField) -> V::Result {
-        let PatField { ident, pat, is_shorthand: _, attrs, id: _, span: _, is_placeholder: _ } = fp;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_ident(ident));
-        try_visit!(visitor.visit_pat(pat));
         V::Result::output()
     }
 
@@ -1658,12 +1663,7 @@ pub mod mut_visit {
         vis: &mut T,
         mut fp: PatField,
     ) -> SmallVec<[PatField; 1]> {
-        let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = &mut fp;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_ident(ident);
-        vis.visit_pat(pat);
-        vis.visit_span(span);
+        vis.visit_pat_field(&mut fp);
         smallvec![fp]
     }
 
