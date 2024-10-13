@@ -9,11 +9,11 @@ use std::process::Command;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
+use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::header::cfg::{MatchOutcome, parse_cfg_name_directive};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
-use crate::{extract_cdb_version, extract_gdb_version};
 
 pub(crate) mod auxiliary;
 mod cfg;
