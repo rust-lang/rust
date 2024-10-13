@@ -613,26 +613,8 @@ impl Rewrite for ast::GenericBound {
             ast::GenericBound::Trait(ref poly_trait_ref) => {
                 let snippet = context.snippet(self.span());
                 let has_paren = snippet.starts_with('(') && snippet.ends_with(')');
-                let ast::TraitBoundModifiers {
-                    constness,
-                    asyncness,
-                    polarity,
-                } = poly_trait_ref.modifiers;
-                let mut constness = constness.as_str().to_string();
-                if !constness.is_empty() {
-                    constness.push(' ');
-                }
-                let mut asyncness = asyncness.as_str().to_string();
-                if !asyncness.is_empty() {
-                    asyncness.push(' ');
-                }
-                let polarity = polarity.as_str();
-                let shape = shape
-                    .offset_left(constness.len() + polarity.len())
-                    .max_width_error(shape.width, self.span())?;
                 poly_trait_ref
                     .rewrite_result(context, shape)
-                    .map(|s| format!("{constness}{asyncness}{polarity}{s}"))
                     .map(|s| if has_paren { format!("({})", s) } else { s })
             }
             ast::GenericBound::Use(ref args, span) => {
@@ -756,19 +738,41 @@ impl Rewrite for ast::PolyTraitRef {
     }
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
-        if let Some(lifetime_str) = rewrite_bound_params(context, shape, &self.bound_generic_params)
+        let (binder, shape) = if let Some(lifetime_str) =
+            rewrite_bound_params(context, shape, &self.bound_generic_params)
         {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let shape = shape
                 .offset_left(extra_offset)
                 .max_width_error(shape.width, self.span)?;
-            let path_str = self.trait_ref.rewrite_result(context, shape)?;
-
-            Ok(format!("for<{lifetime_str}> {path_str}"))
+            (format!("for<{lifetime_str}> "), shape)
         } else {
-            self.trait_ref.rewrite_result(context, shape)
+            (String::new(), shape)
+        };
+
+        let ast::TraitBoundModifiers {
+            constness,
+            asyncness,
+            polarity,
+        } = self.modifiers;
+        let mut constness = constness.as_str().to_string();
+        if !constness.is_empty() {
+            constness.push(' ');
         }
+        let mut asyncness = asyncness.as_str().to_string();
+        if !asyncness.is_empty() {
+            asyncness.push(' ');
+        }
+        let polarity = polarity.as_str();
+        let shape = shape
+            .offset_left(constness.len() + polarity.len())
+            .max_width_error(shape.width, self.span)?;
+
+        let path_str = self.trait_ref.rewrite_result(context, shape)?;
+        Ok(format!(
+            "{binder}{constness}{asyncness}{polarity}{path_str}"
+        ))
     }
 }
 
