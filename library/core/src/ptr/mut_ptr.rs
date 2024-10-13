@@ -54,7 +54,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// The resulting pointer will have provenance of `self`. This operation is semantically the
     /// same as creating a new pointer with the data pointer value of `self` but the metadata of
-    /// `meta`, being fat or thing depending on the `meta` operand.
+    /// `meta`, being fat or thin depending on the `meta` operand.
     ///
     /// # Examples
     ///
