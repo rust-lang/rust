@@ -291,9 +291,6 @@ macro_rules! make_ast_visitor {
                 fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
                     walk_precise_capturing_arg(self, arg);
                 }
-                fn visit_variant_discr(&mut self, discr: &'ast AnonConst) -> Self::Result {
-                    self.visit_anon_const(discr)
-                }
                 fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
                     Self::Result::output()
                 }
@@ -343,6 +340,11 @@ macro_rules! make_ast_visitor {
             make_visit!{P!(Local); visit_local, walk_local}
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Ty); visit_ty, walk_ty}
+
+
+            fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
+                self.visit_anon_const(discr)
+            }
         }
 
         pub fn walk_angle_bracketed_parameter_data<$($lt,)? V: $trait$(<$lt>)?>(
