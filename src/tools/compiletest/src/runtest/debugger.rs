@@ -4,7 +4,6 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use crate::common::Config;
-use crate::header::line_directive;
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
@@ -24,7 +23,6 @@ impl DebuggerCommands {
         file: &Path,
         config: &Config,
         debugger_prefixes: &[&str],
-        rev: Option<&str>,
     ) -> Result<Self, String> {
         let directives = debugger_prefixes
             .iter()
@@ -39,17 +37,16 @@ impl DebuggerCommands {
         for (line_no, line) in reader.lines().enumerate() {
             counter += 1;
             let line = line.map_err(|e| format!("Error while parsing debugger commands: {}", e))?;
-            let (lnrev, line) = line_directive("//", &line).unwrap_or((None, &line));
 
-            // Skip any revision specific directive that doesn't match the current
-            // revision being tested
-            if lnrev.is_some() && lnrev != rev {
+            // Breakpoints appear on lines with actual code, typically at the end of the line.
+            if line.contains("#break") {
+                breakpoint_lines.push(counter);
                 continue;
             }
 
-            if line.contains("#break") {
-                breakpoint_lines.push(counter);
-            }
+            let Some(line) = line.trim_start().strip_prefix("//").map(str::trim_start) else {
+                continue;
+            };
 
             for &(ref command_directive, ref check_directive) in &directives {
                 config
