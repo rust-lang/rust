@@ -59,7 +59,7 @@ impl EarlyProps {
             rdr,
             &mut |DirectiveLine { directive: ln, .. }| {
                 parse_and_update_aux(config, ln, &mut props.aux);
-                config.parse_and_update_revisions(ln, &mut props.revisions);
+                config.parse_and_update_revisions(testfile, ln, &mut props.revisions);
             },
         );
 
@@ -391,7 +391,7 @@ impl TestProps {
                         has_edition = true;
                     }
 
-                    config.parse_and_update_revisions(ln, &mut self.revisions);
+                    config.parse_and_update_revisions(testfile, ln, &mut self.revisions);
 
                     if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {
                         self.run_flags.extend(split_flags(&flags));
@@ -897,12 +897,21 @@ fn iter_header(
 }
 
 impl Config {
-    fn parse_and_update_revisions(&self, line: &str, existing: &mut Vec<String>) {
+    fn parse_and_update_revisions(&self, testfile: &Path, line: &str, existing: &mut Vec<String>) {
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
+            if self.mode == Mode::RunMake {
+                panic!("`run-make` tests do not support revisions: {}", testfile.display());
+            }
+
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
             for revision in raw.split_whitespace().map(|r| r.to_string()) {
                 if !duplicates.insert(revision.clone()) {
-                    panic!("Duplicate revision: `{}` in line `{}`", revision, raw);
+                    panic!(
+                        "duplicate revision: `{}` in line `{}`: {}",
+                        revision,
+                        raw,
+                        testfile.display()
+                    );
                 }
                 existing.push(revision);
             }
