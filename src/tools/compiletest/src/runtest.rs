@@ -318,10 +318,29 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn check_if_test_should_compile(&self, proc_res: &ProcRes, pm: Option<PassMode>) {
-        if self.should_compile_successfully(pm) {
+    fn check_if_test_should_compile(
+        &self,
+        fail_mode: Option<FailMode>,
+        pass_mode: Option<PassMode>,
+        proc_res: &ProcRes,
+    ) {
+        if self.should_compile_successfully(pass_mode) {
             if !proc_res.status.success() {
-                self.fatal_proc_rec("test compilation failed although it shouldn't!", proc_res);
+                match (fail_mode, pass_mode) {
+                    (Some(FailMode::Build), Some(PassMode::Check)) => {
+                        // A `build-fail` test needs to `check-pass`.
+                        self.fatal_proc_rec(
+                            "`build-fail` test is required to pass check build, but check build failed",
+                            proc_res,
+                        );
+                    }
+                    _ => {
+                        self.fatal_proc_rec(
+                            "test compilation failed although it shouldn't!",
+                            proc_res,
+                        );
+                    }
+                }
             }
         } else {
             if proc_res.status.success() {
