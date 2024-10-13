@@ -19,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             cx.typeck_results().expr_ty(expr),
         );
         lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
-    } else if let ExprKind::MethodCall(method_path, self_arg, ..) = &expr.kind {
+    } else if let ExprKind::MethodCall(method_path, self_arg, [], _) = &expr.kind {
         if method_path.ident.name == sym!(cast)
             && let Some(generic_args) = method_path.args
             && let [GenericArg::Type(cast_to)] = generic_args.args

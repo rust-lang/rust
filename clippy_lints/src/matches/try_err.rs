@@ -21,10 +21,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
     //         #[allow(unreachable_code)]
     //         val,
     // };
-    if let ExprKind::Call(match_fun, [try_arg, ..]) = scrutinee.kind
+    if let ExprKind::Call(match_fun, [try_arg]) = scrutinee.kind
         && let ExprKind::Path(ref match_fun_path) = match_fun.kind
         && matches!(match_fun_path, QPath::LangItem(LangItem::TryTraitBranch, ..))
-        && let ExprKind::Call(err_fun, [err_arg, ..]) = try_arg.kind
+        && let ExprKind::Call(err_fun, [err_arg]) = try_arg.kind
         && is_res_lang_ctor(cx, path_res(cx, err_fun), ResultErr)
         && let Some(return_ty) = find_return_type(cx, &expr.kind)
     {

@@ -259,7 +259,7 @@ fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>)
 
         if body.params.is_empty()
             && let hir::Expr { kind, .. } = &body.value
-            && let hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, self_arg, _, _) = kind
+            && let hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, self_arg, [], _) = kind
             && ident.name == sym::to_string
             && let hir::Expr { kind, .. } = self_arg
             && let hir::ExprKind::Lit(lit) = kind
