@@ -207,7 +207,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
                 make_visit!{Path; visit_path, walk_path}
                 make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
-                make_visit!{UseTree; visit_use_tree, walk_use_tree}
 
                 fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
                     walk_flat_map_item(self, ni)
@@ -290,7 +289,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{Item; visit_item, walk_item}
                 make_visit!{Path, _ id: NodeId; visit_path, walk_path}
                 make_visit!{Stmt; visit_stmt, walk_stmt}
-                make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
 
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
                 /// It can be removed once that feature is stabilized.
@@ -347,6 +345,7 @@ macro_rules! make_ast_visitor {
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
+            make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
             make_visit!{Variant; visit_variant, walk_variant}
             make_visit!{VariantData; visit_variant_data, walk_variant_data}
             make_visit!{Visibility; visit_vis, walk_vis}
@@ -711,6 +710,37 @@ macro_rules! make_ast_visitor {
             let PolyTraitRef { bound_generic_params, trait_ref, span, modifiers: _ } = trait_ref;
             visit_list!(vis, visit_generic_param, flat_map_generic_param, bound_generic_params);
             try_v!(vis.visit_trait_ref(trait_ref));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_use_tree<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            use_tree: ref_t!(UseTree),
+            id: NodeId,
+        ) -> result!(V) {
+            let UseTree { prefix, kind, span } = use_tree;
+            // TODO: Remove this after unifying visit_path
+            try_v!(macro_if!{$($mut)? {{
+                let _ = id;
+                vis.visit_path(prefix)
+            }} else {
+                vis.visit_path(prefix, id)
+            }});
+            match kind {
+                UseTreeKind::Simple(rename) => {
+                    // The extra IDs are handled during AST lowering.
+                    visit_o!(rename, |rename: ref_t!(Ident)| vis.visit_ident(rename));
+                }
+                UseTreeKind::Nested { items, span } => {
+                    for (tree, id) in items {
+                        try_v!(visit_id!(vis, id));
+                        vis.visit_use_tree(tree, *id, true);
+                    }
+                    try_v!(visit_span!(vis, span));
+                }
+                UseTreeKind::Glob => {}
+            }
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
@@ -1093,28 +1123,6 @@ pub mod visit {
     pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) -> V::Result {
         let Path { span: _, segments, tokens: _ } = path;
         walk_list!(visitor, visit_path_segment, segments);
-        V::Result::output()
-    }
-
-    pub fn walk_use_tree<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        use_tree: &'a UseTree,
-        id: NodeId,
-    ) -> V::Result {
-        let UseTree { prefix, kind, span: _ } = use_tree;
-        try_visit!(visitor.visit_path(prefix, id));
-        match kind {
-            UseTreeKind::Simple(rename) => {
-                // The extra IDs are handled during AST lowering.
-                visit_opt!(visitor, visit_ident, rename);
-            }
-            UseTreeKind::Glob => {}
-            UseTreeKind::Nested { ref items, span: _ } => {
-                for &(ref nested_tree, nested_id) in items {
-                    try_visit!(visitor.visit_use_tree(nested_tree, nested_id, true));
-                }
-            }
-        }
         V::Result::output()
     }
 
@@ -1743,23 +1751,6 @@ pub mod mut_visit {
         smallvec![fp]
     }
 
-    fn walk_use_tree<T: MutVisitor>(vis: &mut T, use_tree: &mut UseTree) {
-        let UseTree { prefix, kind, span } = use_tree;
-        vis.visit_path(prefix);
-        match kind {
-            UseTreeKind::Simple(rename) => visit_opt(rename, |rename| vis.visit_ident(rename)),
-            UseTreeKind::Nested { items, span } => {
-                for (tree, id) in items {
-                    vis.visit_id(id);
-                    vis.visit_use_tree(tree);
-                }
-                vis.visit_span(span);
-            }
-            UseTreeKind::Glob => {}
-        }
-        vis.visit_span(span);
-    }
-
     pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
         vis.visit_arm(&mut arm);
         smallvec![arm]
@@ -2234,7 +2225,7 @@ pub mod mut_visit {
         fn walk(&mut self, span: Span, id: NodeId, vis: &mut impl MutVisitor) {
             match self {
                 ItemKind::ExternCrate(_orig_name) => {}
-                ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
+                ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree, id, false),
                 ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                     vis.visit_ty(ty);
                     visit_opt(expr, |expr| vis.visit_expr(expr));
