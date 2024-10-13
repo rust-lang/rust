@@ -202,7 +202,6 @@ macro_rules! make_ast_visitor {
 
                 make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
                 make_visit!{FnHeader; visit_fn_header, walk_fn_header}
-                make_visit!{MacroDef; visit_macro_def, walk_macro_def}
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
 
@@ -297,9 +296,6 @@ macro_rules! make_ast_visitor {
                 fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
                     walk_fn(self, fk)
                 }
-                fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
-                    Self::Result::output()
-                }
                 fn visit_fn_header(&mut self, _header: &'ast FnHeader) -> Self::Result {
                     Self::Result::output()
                 }
@@ -334,6 +330,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
             make_visit!{Local; visit_local, walk_local}
             make_visit!{MacCall; visit_mac_call, walk_mac_call}
+            make_visit!{MacroDef, _ id: NodeId; visit_macro_def, walk_macro_def}
             make_visit!{MutTy; visit_mt, walk_mt}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
             make_visit!{Param; visit_param, walk_param}
@@ -810,6 +807,15 @@ macro_rules! make_ast_visitor {
             let MacCall { path, args } = mac;
             try_v!(vis.visit_path(path, DUMMY_NODE_ID));
             visit_delim_args!(vis, args);
+            return_result!(V)
+        }
+
+        pub fn walk_macro_def<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            macro_def: ref_t!(MacroDef),
+        ) -> result!(V) {
+            let MacroDef { body, macro_rules: _ } = macro_def;
+            visit_delim_args!(vis, body);
             return_result!(V)
         }
 
@@ -1388,7 +1394,7 @@ pub mod visit {
                     walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
                 }
                 ItemKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
-                ItemKind::MacroDef(ts) => try_visit!(visitor.visit_mac_def(ts, *id)),
+                ItemKind::MacroDef(ts) => try_visit!(visitor.visit_macro_def(ts, *id)),
                 ItemKind::Delegation(box Delegation {
                     id,
                     qself,
@@ -1872,11 +1878,6 @@ pub mod mut_visit {
         smallvec![variant]
     }
 
-    fn walk_macro_def<T: MutVisitor>(vis: &mut T, macro_def: &mut MacroDef) {
-        let MacroDef { body, macro_rules: _ } = macro_def;
-        visit_delim_args(vis, body);
-    }
-
     fn walk_meta_list_item<T: MutVisitor>(vis: &mut T, li: &mut MetaItemInner) {
         match li {
             MetaItemInner::MetaItem(mi) => vis.visit_meta_item(mi),
@@ -2230,7 +2231,7 @@ pub mod mut_visit {
                     visit_bounds(vis, bounds, BoundKind::Bound);
                 }
                 ItemKind::MacCall(m) => vis.visit_mac_call(m),
-                ItemKind::MacroDef(def) => vis.visit_macro_def(def),
+                ItemKind::MacroDef(def) => vis.visit_macro_def(def, id),
                 ItemKind::Delegation(box Delegation {
                     id,
                     qself,
