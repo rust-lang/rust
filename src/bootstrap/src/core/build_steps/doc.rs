@@ -718,6 +718,10 @@ fn doc_std(
         .arg("--target-dir")
         .arg(&*target_dir.to_string_lossy())
         .arg("-Zskip-rustdoc-fingerprint")
+        .arg("-Zrustdoc-map")
+        .rustdocflag("--extern-html-root-url")
+        .rustdocflag("std_detect=https://docs.rs/std_detect/latest/")
+        .rustdocflag("--extern-html-root-takes-precedence")
         .rustdocflag("--resource-suffix")
         .rustdocflag(&builder.version);
     for arg in extra_args {
