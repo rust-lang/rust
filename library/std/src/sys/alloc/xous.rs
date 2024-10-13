@@ -1,3 +1,6 @@
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use crate::alloc::{GlobalAlloc, Layout, System};
 
 #[cfg(not(test))]
