@@ -343,6 +343,7 @@ macro_rules! make_ast_visitor {
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
+            make_visit!{Safety; visit_safety, walk_safety}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
             make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
             make_visit!{Variant; visit_variant, walk_variant}
@@ -851,6 +852,20 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_safety<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            safety: ref_t!(Safety)
+        ) -> result!(V) {
+            match safety {
+                Safety::Unsafe(span)
+                | Safety::Safe(span) => {
+                    try_v!(visit_span!(vis, span))
+                }
+                Safety::Default => {}
+            }
+            return_result!(V)
+        }
+
         pub fn walk_trait_ref<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             trait_ref: ref_t!(TraitRef)
@@ -1177,13 +1192,17 @@ pub mod visit {
                     let kind = FnKind::Fn(FnCtxt::Free, ident, sig, vis, generics, body.as_deref());
                     try_visit!(visitor.visit_fn(kind, *span, *id));
                 }
-                ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
-                    ModKind::Loaded(items, _inline, _inner_span) => {
-                        walk_list!(visitor, visit_item, items);
+                ItemKind::Mod(safety, mod_kind) => {
+                    try_visit!(visitor.visit_safety(safety));
+                    match mod_kind {
+                        ModKind::Loaded(items, _inline, _inner_span) => {
+                            walk_list!(visitor, visit_item, items);
+                        }
+                        ModKind::Unloaded => {}
                     }
-                    ModKind::Unloaded => {}
-                },
-                ItemKind::ForeignMod(ForeignMod { safety: _, abi: _, items }) => {
+                }
+                ItemKind::ForeignMod(ForeignMod { safety, abi: _, items }) => {
+                    try_visit!(visitor.visit_safety(safety));
                     walk_list!(visitor, visit_foreign_item, items);
                 }
                 ItemKind::GlobalAsm(asm) => try_visit!(visitor.visit_inline_asm(asm)),
@@ -1204,7 +1223,7 @@ pub mod visit {
                 }
                 ItemKind::Impl(box Impl {
                     defaultness: _,
-                    safety: _,
+                    safety,
                     generics,
                     constness: _,
                     polarity: _,
@@ -1212,6 +1231,7 @@ pub mod visit {
                     self_ty,
                     items,
                 }) => {
+                    try_visit!(visitor.visit_safety(safety));
                     try_visit!(visitor.visit_generics(generics));
                     visit_opt!(visitor, visit_trait_ref, of_trait);
                     try_visit!(visitor.visit_ty(self_ty));
@@ -1222,7 +1242,8 @@ pub mod visit {
                     try_visit!(visitor.visit_generics(generics));
                     try_visit!(visitor.visit_variant_data(struct_definition));
                 }
-                ItemKind::Trait(box Trait { safety: _, is_auto: _, generics, bounds, items }) => {
+                ItemKind::Trait(box Trait { safety, is_auto: _, generics, bounds, items }) => {
+                    try_visit!(visitor.visit_safety(safety));
                     try_visit!(visitor.visit_generics(generics));
                     walk_list!(visitor, visit_param_bound, bounds, BoundKind::SuperTraits);
                     walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Trait);
@@ -1284,8 +1305,9 @@ pub mod visit {
                 walk_list!(visitor, visit_ty, tuple_element_types);
             }
             TyKind::BareFn(function_declaration) => {
-                let BareFnTy { safety: _, ext: _, generic_params, decl, decl_span: _ } =
+                let BareFnTy { safety, ext: _, generic_params, decl, decl_span: _ } =
                     &**function_declaration;
+                try_visit!(visitor.visit_safety(safety));
                 walk_list!(visitor, visit_generic_param, generic_params);
                 try_visit!(visitor.visit_fn_decl(decl));
             }
@@ -1830,7 +1852,7 @@ pub mod mut_visit {
             }
             TyKind::BareFn(bft) => {
                 let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
-                visit_safety(vis, safety);
+                vis.visit_safety(safety);
                 generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
                 vis.visit_fn_decl(decl);
                 vis.visit_span(decl_span);
@@ -1865,7 +1887,7 @@ pub mod mut_visit {
 
     fn walk_foreign_mod<T: MutVisitor>(vis: &mut T, foreign_mod: &mut ForeignMod) {
         let ForeignMod { safety, abi: _, items } = foreign_mod;
-        visit_safety(vis, safety);
+        vis.visit_safety(safety);
         items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
     }
 
@@ -2086,15 +2108,6 @@ pub mod mut_visit {
     }
 
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_safety<T: MutVisitor>(vis: &mut T, safety: &mut Safety) {
-        match safety {
-            Safety::Unsafe(span) => vis.visit_span(span),
-            Safety::Safe(span) => vis.visit_span(span),
-            Safety::Default => {}
-        }
-    }
-
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
     fn visit_polarity<T: MutVisitor>(vis: &mut T, polarity: &mut ImplPolarity) {
         match polarity {
             ImplPolarity::Positive => {}
@@ -2200,7 +2213,7 @@ pub mod mut_visit {
                     vis.visit_fn(FnKind::Fn(sig, generics, body), span, id);
                 }
                 ItemKind::Mod(safety, mod_kind) => {
-                    visit_safety(vis, safety);
+                    vis.visit_safety(safety);
                     match mod_kind {
                         ModKind::Loaded(
                             items,
@@ -2249,7 +2262,7 @@ pub mod mut_visit {
                     items,
                 }) => {
                     visit_defaultness(vis, defaultness);
-                    visit_safety(vis, safety);
+                    vis.visit_safety(safety);
                     vis.visit_generics(generics);
                     visit_constness(vis, constness);
                     visit_polarity(vis, polarity);
@@ -2258,7 +2271,7 @@ pub mod mut_visit {
                     items.flat_map_in_place(|item| vis.flat_map_assoc_item(item, AssocCtxt::Impl));
                 }
                 ItemKind::Trait(box Trait { safety, is_auto: _, generics, bounds, items }) => {
-                    visit_safety(vis, safety);
+                    vis.visit_safety(safety);
                     vis.visit_generics(generics);
                     visit_bounds(vis, bounds, BoundKind::Bound);
                     items.flat_map_in_place(|item| vis.flat_map_assoc_item(item, AssocCtxt::Trait));
@@ -2386,7 +2399,7 @@ pub mod mut_visit {
         let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
         visit_constness(vis, constness);
         coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
-        visit_safety(vis, safety);
+        vis.visit_safety(safety);
     }
 
     /// Mutates one item, returning the item again.
