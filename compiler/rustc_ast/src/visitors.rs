@@ -321,6 +321,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Attribute; visit_attribute, walk_attribute}
             make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
             make_visit!{Crate; visit_crate, walk_crate}
+            make_visit!{FnDecl; visit_fn_decl, walk_fn_decl}
             make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
             make_visit!{FormatArgs; visit_format_args, walk_format_args}
             make_visit!{GenericArg; visit_generic_arg, walk_generic_arg}
@@ -344,7 +345,6 @@ macro_rules! make_ast_visitor {
 
             make_visit!{P!(Block); visit_block, walk_block}
             make_visit!{P!(Expr); visit_expr, walk_expr}
-            make_visit!{P!(FnDecl); visit_fn_decl, walk_fn_decl}
             make_visit!{P!(Local); visit_local, walk_local}
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Ty); visit_ty, walk_ty}
@@ -386,6 +386,16 @@ macro_rules! make_ast_visitor {
                     try_v!(visit_span!(vis, span));
                 }
             }
+            return_result!(V)
+        }
+
+        pub fn walk_fn_decl<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            decl: ref_t!(FnDecl)
+        ) -> result!(V) {
+            let FnDecl { inputs, output } = decl;
+            visit_list!(vis, visit_param, flat_map_param, inputs);
+            try_v!(vis.visit_fn_ret_ty(output));
             return_result!(V)
         }
 
@@ -1092,14 +1102,6 @@ pub mod visit {
             }
         }
         V::Result::output()
-    }
-
-    pub fn walk_fn_decl<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        FnDecl { inputs, output }: &'a FnDecl,
-    ) -> V::Result {
-        walk_list!(visitor, visit_param, inputs);
-        visitor.visit_fn_ret_ty(output)
     }
 
     pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Result {
@@ -2081,12 +2083,6 @@ pub mod mut_visit {
                 vis.visit_expr(body);
             }
         }
-    }
-
-    fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
-        let FnDecl { inputs, output } = decl.deref_mut();
-        inputs.flat_map_in_place(|param| vis.flat_map_param(param));
-        vis.visit_fn_ret_ty(output);
     }
 
     fn walk_param_bound<T: MutVisitor>(vis: &mut T, pb: &mut GenericBound) {
