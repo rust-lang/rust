@@ -860,6 +860,23 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_vis<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            visibility: ref_t!(Visibility)
+        ) -> result!(V) {
+            let Visibility { kind, span, tokens } = visibility;
+            match kind {
+                VisibilityKind::Public | VisibilityKind::Inherited => {}
+                VisibilityKind::Restricted { path, id, shorthand: _ } => {
+                    try_v!(visit_id!(vis, id));
+                    try_v!(vis.visit_path(path, *id));
+                }
+            }
+            visit_lazy_tts!(vis, tokens);
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         pub fn walk_where_clause<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             wc: ref_t!(WhereClause)
@@ -1603,17 +1620,6 @@ pub mod visit {
         }
 
         visitor.visit_expr_post(expression)
-    }
-
-    pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) -> V::Result {
-        let Visibility { kind, span: _, tokens: _ } = vis;
-        match kind {
-            VisibilityKind::Restricted { path, id, shorthand: _ } => {
-                try_visit!(visitor.visit_path(path, *id));
-            }
-            VisibilityKind::Public | VisibilityKind::Inherited => {}
-        }
-        V::Result::output()
     }
 
     pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) -> V::Result {
@@ -2690,19 +2696,6 @@ pub mod mut_visit {
                 smallvec![StmtKind::MacCall(mac)]
             }
         }
-    }
-
-    fn walk_vis<T: MutVisitor>(vis: &mut T, visibility: &mut Visibility) {
-        let Visibility { kind, span, tokens } = visibility;
-        match kind {
-            VisibilityKind::Public | VisibilityKind::Inherited => {}
-            VisibilityKind::Restricted { path, id, shorthand: _ } => {
-                vis.visit_id(id);
-                vis.visit_path(path, *id);
-            }
-        }
-        visit_lazy_tts(vis, tokens);
-        vis.visit_span(span);
     }
 
     /// Some value for the AST node that is valid but possibly meaningless. Similar
