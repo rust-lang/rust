@@ -1327,14 +1327,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             // takes care of rejecting invalid modifier combinations and
                             // const trait bounds in trait object types.
                             GenericBound::Trait(ty, modifiers) => {
-                                // Still, don't pass along the constness here; we don't want to
-                                // synthesize any host effect args, it'd only cause problems.
-                                let modifiers = TraitBoundModifiers {
-                                    constness: BoundConstness::Never,
-                                    ..*modifiers
-                                };
-                                let trait_ref = this.lower_poly_trait_ref(ty, itctx, modifiers);
-                                let polarity = this.lower_trait_bound_modifiers(modifiers);
+                                let trait_ref = this.lower_poly_trait_ref(ty, itctx, *modifiers);
+                                let polarity = this.lower_trait_bound_modifiers(*modifiers);
                                 Some((trait_ref, polarity))
                             }
                             GenericBound::Outlives(lifetime) => {
