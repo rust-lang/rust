@@ -275,7 +275,6 @@ macro_rules! make_ast_visitor {
                 make_visit!{Path, _ id: NodeId; visit_path, walk_path}
                 make_visit!{Stmt; visit_stmt, walk_stmt}
                 make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
-                make_visit!{Variant; visit_variant, walk_variant}
 
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
                 /// It can be removed once that feature is stabilized.
@@ -330,6 +329,7 @@ macro_rules! make_ast_visitor {
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
+            make_visit!{Variant; visit_variant, walk_variant}
             make_visit!{VariantData; visit_variant_data, walk_variant_data}
             make_visit!{Visibility; visit_vis, walk_vis}
             make_visit!{WhereClause; visit_where_clause, walk_where_clause}
@@ -592,6 +592,21 @@ macro_rules! make_ast_visitor {
             visit_list!(vis, visit_generic_param, flat_map_generic_param, bound_generic_params);
             try_v!(vis.visit_trait_ref(trait_ref));
             try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_variant<$($lt,)? V: $trait$(<$lt>)?>(
+            visitor: &mut V,
+            variant: ref_t!(Variant)
+        ) -> result!(V) {
+            let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = variant;
+            try_v!(visit_id!(visitor, id));
+            visit_list!(visitor, visit_attribute, attrs);
+            try_v!(visitor.visit_vis(vis));
+            try_v!(visitor.visit_ident(ident));
+            try_v!(visitor.visit_variant_data(data));
+            visit_o!(disr_expr, |disr_expr| visitor.visit_variant_discr(disr_expr));
+            try_v!(visit_span!(visitor, span));
             return_result!(V)
         }
 
@@ -920,20 +935,6 @@ pub mod visit {
         item: &'a Item<impl WalkItemKind>,
     ) -> V::Result {
         walk_assoc_item(visitor, item, AssocCtxt::Trait /*ignored*/)
-    }
-
-    pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant) -> V::Result
-    where
-        V: Visitor<'a>,
-    {
-        let Variant { attrs, id: _, span: _, vis, ident, data, disr_expr, is_placeholder: _ } =
-            variant;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_vis(vis));
-        try_visit!(visitor.visit_ident(ident));
-        try_visit!(visitor.visit_variant_data(data));
-        visit_opt!(visitor, visit_variant_discr, disr_expr);
-        V::Result::output()
     }
 
     pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
@@ -1797,15 +1798,7 @@ pub mod mut_visit {
         visitor: &mut T,
         mut variant: Variant,
     ) -> SmallVec<[Variant; 1]> {
-        let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } =
-            &mut variant;
-        visitor.visit_id(id);
-        visit_attrs(visitor, attrs);
-        visitor.visit_vis(vis);
-        visitor.visit_ident(ident);
-        visitor.visit_variant_data(data);
-        visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
-        visitor.visit_span(span);
+        visitor.visit_variant(&mut variant);
         smallvec![variant]
     }
 
