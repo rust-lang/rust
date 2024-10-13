@@ -44,10 +44,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
         let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
             for hir_bound in hir_bounds {
-                let hir::GenericBound::Trait(ptr, modifier) = hir_bound else {
+                let hir::GenericBound::Trait(ptr) = hir_bound else {
                     continue;
                 };
-                match modifier {
+                match ptr.modifiers {
                     hir::TraitBoundModifier::Maybe => unbounds.push(ptr),
                     hir::TraitBoundModifier::Negative => {
                         if let Some(sized_def_id) = sized_def_id
@@ -156,8 +156,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     {
         for hir_bound in hir_bounds {
             match hir_bound {
-                hir::GenericBound::Trait(poly_trait_ref, modifier) => {
-                    let (constness, polarity) = match modifier {
+                hir::GenericBound::Trait(poly_trait_ref) => {
+                    let (constness, polarity) = match poly_trait_ref.modifiers {
                         hir::TraitBoundModifier::Const => {
                             (ty::BoundConstness::Const, ty::PredicatePolarity::Positive)
                         }

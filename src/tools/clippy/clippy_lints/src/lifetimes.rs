@@ -163,7 +163,7 @@ fn check_fn_inner<'tcx>(
                 if visitor.lts.iter().any(|lt| matches!(lt.res, LifetimeName::Param(_))) {
                     return;
                 }
-                if let GenericBound::Trait(ref trait_ref, _) = *bound {
+                if let GenericBound::Trait(ref trait_ref) = *bound {
                     let params = &trait_ref
                         .trait_ref
                         .path
@@ -438,7 +438,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }
-                for (bound, _) in bounds {
+                for bound in bounds {
                     self.visit_poly_trait_ref(bound);
                 }
             },
