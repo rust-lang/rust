@@ -1010,6 +1010,7 @@ impl<'a> Builder<'a> {
                 run::GenerateCopyright,
                 run::GenerateWindowsSys,
                 run::GenerateCompletions,
+                run::UnicodeTableGenerator,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
