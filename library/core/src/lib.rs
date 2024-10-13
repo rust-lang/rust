@@ -124,8 +124,6 @@
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_index_range_slice_index)]
-#![feature(const_ipv4)]
-#![feature(const_ipv6)]
 #![feature(const_likely)]
 #![feature(const_make_ascii)]
 #![feature(const_nonnull_new)]
