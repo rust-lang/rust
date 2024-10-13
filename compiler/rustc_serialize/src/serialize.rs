@@ -8,7 +8,6 @@ use std::marker::PhantomData;
 use std::num::NonZero;
 use std::path;
 use std::rc::Rc;
-use std::sync::Arc;
 
 use smallvec::{Array, SmallVec};
 use thin_vec::ThinVec;
@@ -474,15 +473,17 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for RefCell<T> {
     }
 }
 
-impl<S: Encoder, T: Encodable<S>> Encodable<S> for Arc<T> {
+#[cfg(parallel_compiler)]
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for triomphe::Arc<T> {
     fn encode(&self, s: &mut S) {
         (**self).encode(s);
     }
 }
 
-impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<T> {
-    fn decode(d: &mut D) -> Arc<T> {
-        Arc::new(Decodable::decode(d))
+#[cfg(parallel_compiler)]
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for triomphe::Arc<T> {
+    fn decode(d: &mut D) -> triomphe::Arc<T> {
+        triomphe::Arc::new(Decodable::decode(d))
     }
 }
 
@@ -703,15 +704,17 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<[T]> {
     }
 }
 
-impl<E: Encoder, T: Encodable<E>> Encodable<E> for Arc<[T]> {
+#[cfg(parallel_compiler)]
+impl<E: Encoder, T: Encodable<E>> Encodable<E> for triomphe::Arc<[T]> {
     fn encode(&self, s: &mut E) {
         let slice: &[T] = self;
         slice.encode(s);
     }
 }
 
-impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<[T]> {
-    fn decode(d: &mut D) -> Arc<[T]> {
+#[cfg(parallel_compiler)]
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for triomphe::Arc<[T]> {
+    fn decode(d: &mut D) -> triomphe::Arc<[T]> {
         let vec: Vec<T> = Decodable::decode(d);
         vec.into()
     }

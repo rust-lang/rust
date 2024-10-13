@@ -22,5 +22,8 @@ tracing = "0.1"
 
 [features]
 # tidy-alphabetical-start
-rustc_use_parallel_compiler = ["rustc_query_system/rustc_use_parallel_compiler"]
+rustc_use_parallel_compiler = [
+    "rustc_query_system/rustc_use_parallel_compiler",
+    "rustc_serialize/rustc_use_parallel_compiler",
+]
 # tidy-alphabetical-end

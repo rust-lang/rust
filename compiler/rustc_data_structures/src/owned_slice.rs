@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
 use std::ops::Deref;
 
+use unsize::{CoerceUnsize, Coercion};
+
 // Use our fake Send/Sync traits when on not parallel compiler,
 // so that `OwnedSlice` only implements/requires Send/Sync
 // for parallel compiler builds.
@@ -89,7 +91,8 @@ where
     let owner = Lrc::new(owner);
     let bytes = slicer(&*owner)?;
 
-    Ok(OwnedSlice { bytes, owner })
+    let owner_unsized = owner.clone().unsize(Coercion!(to dyn sync::Send + sync::Sync));
+    Ok(OwnedSlice { bytes, owner: owner_unsized })
 }
 
 impl OwnedSlice {

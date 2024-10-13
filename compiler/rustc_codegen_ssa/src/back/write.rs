@@ -44,7 +44,7 @@ use super::symbol_export::symbol_name_for_instance_in_crate;
 use crate::errors::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
+    CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, Lrc, ModuleCodegen, ModuleKind,
     errors,
 };
 
@@ -349,7 +349,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
-    pub output_filenames: Arc<OutputFilenames>,
+    pub output_filenames: Lrc<OutputFilenames>,
     pub regular_module_config: Arc<ModuleConfig>,
     pub metadata_module_config: Arc<ModuleConfig>,
     pub allocator_module_config: Arc<ModuleConfig>,
@@ -2037,7 +2037,7 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub crate_info: CrateInfo,
     pub codegen_worker_receive: Receiver<CguMessage>,
     pub shared_emitter_main: SharedEmitterMain,
-    pub output_filenames: Arc<OutputFilenames>,
+    pub output_filenames: Lrc<OutputFilenames>,
     pub coordinator: Coordinator<B>,
 }
 

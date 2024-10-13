@@ -49,6 +49,7 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_traits = { path = "../rustc_traits" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 tracing = "0.1"
+unsize = "1.1"
 # tidy-alphabetical-end
 
 [features]
@@ -58,6 +59,6 @@ rustc_use_parallel_compiler = [
     'dep:rustc-rayon',
     'dep:rustc-rayon-core',
     'rustc_query_impl/rustc_use_parallel_compiler',
-    'rustc_errors/rustc_use_parallel_compiler'
+    'rustc_errors/rustc_use_parallel_compiler',
 ]
 # tidy-alphabetical-end

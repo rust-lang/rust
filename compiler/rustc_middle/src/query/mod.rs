@@ -9,7 +9,6 @@
 use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use rustc_arena::TypedArena;
 use rustc_ast::expand::StrippedCfgItem;
@@ -1993,7 +1992,7 @@ rustc_queries! {
     ///
     /// This query returns an `&Arc` because codegen backends need the value even after the `TyCtxt`
     /// has been destroyed.
-    query output_filenames(_: ()) -> &'tcx Arc<OutputFilenames> {
+    query output_filenames(_: ()) -> &'tcx Lrc<OutputFilenames> {
         feedable
         desc { "getting output filenames" }
         arena_cache
