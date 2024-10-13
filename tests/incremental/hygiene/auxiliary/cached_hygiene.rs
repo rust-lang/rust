@@ -9,7 +9,7 @@
 #[allow(unused)]
 macro_rules! first_macro {
     () => {
-        println!("New call!");
+        println!("{}", "hola");
     }
 }
 

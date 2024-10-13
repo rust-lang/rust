@@ -9,16 +9,13 @@ Number of file 0 mappings: 2
 Highest counter ID seen: c0
 
 Function name: bad_counter_ids::eq_bad_message
-Raw bytes (21): 0x[01, 01, 01, 01, 00, 03, 01, 29, 01, 02, 0f, 02, 02, 20, 00, 2b, 00, 01, 01, 00, 02]
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 29, 01, 02, 2c, 00, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 1
-- expression 0 operands: lhs = Counter(0), rhs = Zero
-Number of file 0 mappings: 3
-- Code(Counter(0)) at (prev + 41, 1) to (start + 2, 15)
-- Code(Expression(0, Sub)) at (prev + 2, 32) to (start + 0, 43)
-    = (c0 - Zero)
-- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 41, 1) to (start + 2, 44)
+- Code(Zero) at (prev + 3, 1) to (start + 0, 2)
 Highest counter ID seen: c0
 
 Function name: bad_counter_ids::eq_good
@@ -32,14 +29,13 @@ Number of file 0 mappings: 2
 Highest counter ID seen: c1
 
 Function name: bad_counter_ids::eq_good_message
-Raw bytes (19): 0x[01, 01, 00, 03, 01, 15, 01, 02, 0f, 00, 02, 20, 00, 2b, 05, 01, 01, 00, 02]
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 15, 01, 02, 2c, 05, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
-Number of file 0 mappings: 3
-- Code(Counter(0)) at (prev + 21, 1) to (start + 2, 15)
-- Code(Zero) at (prev + 2, 32) to (start + 0, 43)
-- Code(Counter(1)) at (prev + 1, 1) to (start + 0, 2)
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 21, 1) to (start + 2, 44)
+- Code(Counter(1)) at (prev + 3, 1) to (start + 0, 2)
 Highest counter ID seen: c1
 
 Function name: bad_counter_ids::ne_bad
@@ -53,15 +49,14 @@ Number of file 0 mappings: 2
 Highest counter ID seen: c0
 
 Function name: bad_counter_ids::ne_bad_message
-Raw bytes (19): 0x[01, 01, 00, 03, 01, 33, 01, 02, 0f, 05, 02, 20, 00, 2b, 00, 01, 01, 00, 02]
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 33, 01, 02, 2c, 00, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
-Number of file 0 mappings: 3
-- Code(Counter(0)) at (prev + 51, 1) to (start + 2, 15)
-- Code(Counter(1)) at (prev + 2, 32) to (start + 0, 43)
-- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
-Highest counter ID seen: c1
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 51, 1) to (start + 2, 44)
+- Code(Zero) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: bad_counter_ids::ne_good
 Raw bytes (16): 0x[01, 01, 01, 01, 00, 02, 01, 1a, 01, 02, 1f, 02, 03, 01, 00, 02]
@@ -76,15 +71,14 @@ Number of file 0 mappings: 2
 Highest counter ID seen: c0
 
 Function name: bad_counter_ids::ne_good_message
-Raw bytes (21): 0x[01, 01, 01, 01, 00, 03, 01, 1f, 01, 02, 0f, 00, 02, 20, 00, 2b, 02, 01, 01, 00, 02]
+Raw bytes (16): 0x[01, 01, 01, 01, 00, 02, 01, 1f, 01, 02, 2c, 02, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Zero
-Number of file 0 mappings: 3
-- Code(Counter(0)) at (prev + 31, 1) to (start + 2, 15)
-- Code(Zero) at (prev + 2, 32) to (start + 0, 43)
-- Code(Expression(0, Sub)) at (prev + 1, 1) to (start + 0, 2)
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 31, 1) to (start + 2, 44)
+- Code(Expression(0, Sub)) at (prev + 3, 1) to (start + 0, 2)
     = (c0 - Zero)
 Highest counter ID seen: c0
 

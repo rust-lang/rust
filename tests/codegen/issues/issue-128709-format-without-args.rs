@@ -3,7 +3,7 @@
 #![crate_type = "lib"]
 
 // String formating macros without any arguments should compile
-// to a `memcpy` followed by a call to `std::io::stdio::_print`.
+// to a `memcpy` followed by a call to a library function.
 
 #[no_mangle]
 pub fn code() {

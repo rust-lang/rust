@@ -2,7 +2,7 @@
 //@ compile-flags: -Zpolymorphize=on
 
 trait Foo<T> {
-    fn print<'a>(&'a self) where T: 'a { println!("foo"); }
+    fn print<'a>(&'a self) where T: 'a { println!("{}", "foo"); }
 }
 
 impl<'a> Foo<&'a ()> for () { }

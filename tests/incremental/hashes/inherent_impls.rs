@@ -83,7 +83,7 @@ impl Foo {
     //--------------------------
     #[inline]
     pub fn method_body_inlined() {
-        // -----------------------
+        // ---------------------
     }
 }
 
@@ -105,7 +105,7 @@ impl Foo {
     #[rustc_clean(cfg="cfail6")]
     #[inline]
     pub fn method_body_inlined() {
-        println!("Hello, world!");
+        println!("{}", "Hello");
     }
 }
 

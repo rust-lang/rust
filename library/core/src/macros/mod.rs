@@ -1024,7 +1024,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "format_args_macro")]
     #[allow_internal_unsafe]
-    #[allow_internal_unstable(fmt_internals)]
+    #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! format_args {
@@ -1053,7 +1053,7 @@ pub(crate) mod builtin {
         reason = "`format_args_nl` is only for internal \
                   language use and is subject to change"
     )]
-    #[allow_internal_unstable(fmt_internals)]
+    #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! format_args_nl {
