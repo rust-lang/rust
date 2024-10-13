@@ -31,4 +31,15 @@ const _: () = {
     };
 };
 
+// https://github.com/rust-lang/rust/issues/131643
+const _: () = {
+    const _: () = {
+        impl tmp::InnerTest {}
+    };
+
+    mod tmp {
+        pub(super) struct InnerTest;
+    }
+};
+
 fn main() {}
