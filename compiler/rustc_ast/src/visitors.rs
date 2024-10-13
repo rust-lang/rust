@@ -183,7 +183,6 @@ macro_rules! make_ast_visitor {
                 // field access version will continue working and it would be easy to
                 // forget to add handling for it.
 
-                make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
                 make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
                 make_visit!{FnHeader; visit_fn_header, walk_fn_header}
                 make_visit!{ForeignMod; visit_foreign_mod, walk_foreign_mod}
@@ -309,15 +308,13 @@ macro_rules! make_ast_visitor {
                 fn visit_fn_header(&mut self, _header: &'ast FnHeader) -> Self::Result {
                     Self::Result::output()
                 }
-                fn visit_capture_by(&mut self, _capture_by: &'ast CaptureBy) -> Self::Result {
-                    Self::Result::output()
-                }
             }}
 
             make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
             make_visit!{AnonConst; visit_anon_const, walk_anon_const}
             make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
             make_visit!{Attribute; visit_attribute, walk_attribute}
+            make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
             make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
             make_visit!{Crate; visit_crate, walk_crate}
             make_visit!{FnDecl; visit_fn_decl, walk_fn_decl}
@@ -372,6 +369,19 @@ macro_rules! make_ast_visitor {
             let AnonConst { id, value } = anon_const;
             try_v!(visit_id!(vis, id));
             try_v!(vis.visit_expr(value));
+            return_result!(V)
+        }
+
+        pub fn walk_capture_by<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            capture_by: ref_t!(CaptureBy)
+        ) -> result!(V) {
+            match capture_by {
+                CaptureBy::Ref => {}
+                CaptureBy::Value { move_kw } => {
+                    try_v!(visit_span!(vis, move_kw))
+                }
+            }
             return_result!(V)
         }
 
@@ -2843,15 +2853,6 @@ pub mod mut_visit {
         }
         visit_lazy_tts(vis, tokens);
         vis.visit_span(span);
-    }
-
-    fn walk_capture_by<T: MutVisitor>(vis: &mut T, capture_by: &mut CaptureBy) {
-        match capture_by {
-            CaptureBy::Ref => {}
-            CaptureBy::Value { move_kw } => {
-                vis.visit_span(move_kw);
-            }
-        }
     }
 
     /// Some value for the AST node that is valid but possibly meaningless. Similar
