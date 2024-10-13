@@ -110,7 +110,6 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        #[allow(unused)]
         macro_rules! visit_o {
             ($opt: expr, $fn: expr) => {
                 if let Some(elem) = $opt {
@@ -268,7 +267,6 @@ macro_rules! make_ast_visitor {
                 /// or `ControlFlow<T>`.
                 type Result: VisitorResult = ();
 
-                make_visit!{Arm; visit_arm, walk_arm}
                 make_visit!{AssocItem, ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item}
                 make_visit!{FieldDef; visit_field_def, walk_field_def}
                 make_visit!{ForeignItem; visit_foreign_item, walk_item}
@@ -306,6 +304,7 @@ macro_rules! make_ast_visitor {
 
             make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
             make_visit!{AnonConst; visit_anon_const, walk_anon_const}
+            make_visit!{Arm; visit_arm, walk_arm}
             make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
             make_visit!{Attribute; visit_attribute, walk_attribute}
             make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
@@ -368,6 +367,20 @@ macro_rules! make_ast_visitor {
             let AnonConst { id, value } = anon_const;
             try_v!(visit_id!(vis, id));
             try_v!(vis.visit_expr(value));
+            return_result!(V)
+        }
+
+        pub fn walk_arm<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            arm: ref_t!(Arm)
+        ) -> result!(V) {
+            let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, attrs);
+            try_v!(vis.visit_pat(pat));
+            visit_o!(guard, |guard| vis.visit_expr(guard));
+            visit_o!(body, |body| vis.visit_expr(body));
+            try_v!(visit_span!(vis, span));
             return_result!(V)
         }
 
@@ -1509,15 +1522,6 @@ pub mod visit {
         visitor.visit_expr_post(expression)
     }
 
-    pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) -> V::Result {
-        let Arm { attrs, pat, guard, body, span: _, id: _, is_placeholder: _ } = arm;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_pat(pat));
-        visit_opt!(visitor, visit_expr, guard);
-        visit_opt!(visitor, visit_expr, body);
-        V::Result::output()
-    }
-
     pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) -> V::Result {
         let Visibility { kind, span: _, tokens: _ } = vis;
         match kind {
@@ -1705,13 +1709,7 @@ pub mod mut_visit {
     }
 
     pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
-        let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = &mut arm;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_pat(pat);
-        visit_opt(guard, |guard| vis.visit_expr(guard));
-        visit_opt(body, |body| vis.visit_expr(body));
-        vis.visit_span(span);
+        vis.visit_arm(&mut arm);
         smallvec![arm]
     }
 
