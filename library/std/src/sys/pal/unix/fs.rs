@@ -899,7 +899,7 @@ impl DirEntry {
             target_os = "android",
             target_os = "hurd"
         ),
-        not(miri)
+        not(miri) // no dirfd on Miri
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
