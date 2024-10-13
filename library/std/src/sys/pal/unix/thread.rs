@@ -385,7 +385,7 @@ impl Thread {
                 if ret == KERN_SUCCESS {
                     break;
                 }
-                assert_eq!(KERN_ABORTED, "mach_wait_until returned error");
+                assert_eq!(ret, KERN_ABORTED, "mach_wait_until returned error, code: {}", ret);
             }
         }
     }
