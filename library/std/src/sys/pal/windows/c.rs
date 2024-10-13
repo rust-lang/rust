@@ -175,9 +175,9 @@ extern "system" {
     pub fn WakeByAddressAll(address: *const c_void);
 }
 
+// These are loaded by `load_synch_functions`.
 #[cfg(target_vendor = "win7")]
 compat_fn_optional! {
-    crate::sys::compat::load_synch_functions();
     pub fn WaitOnAddress(
         address: *const c_void,
         compareaddress: *const c_void,
