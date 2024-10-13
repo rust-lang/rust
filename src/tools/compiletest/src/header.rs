@@ -678,28 +678,35 @@ impl TestProps {
     }
 }
 
-/// Extract an `(Option<line_revision>, directive)` directive from a line if comment is present.
-///
-/// See [`DirectiveLine`] for a diagram.
-pub fn line_directive<'line>(
+/// If the given line begins with the appropriate comment prefix for a directive,
+/// returns a struct containing various parts of the directive.
+fn line_directive<'line>(
+    line_number: usize,
     comment: &str,
     original_line: &'line str,
-) -> Option<(Option<&'line str>, &'line str)> {
+) -> Option<DirectiveLine<'line>> {
     // Ignore lines that don't start with the comment prefix.
     let after_comment = original_line.trim_start().strip_prefix(comment)?.trim_start();
 
+    let revision;
+    let raw_directive;
+
     if let Some(after_open_bracket) = after_comment.strip_prefix('[') {
         // A comment like `//@[foo]` only applies to revision `foo`.
-        let Some((line_revision, directive)) = after_open_bracket.split_once(']') else {
+        let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
             panic!(
                 "malformed condition directive: expected `{comment}[foo]`, found `{original_line}`"
             )
         };
 
-        Some((Some(line_revision), directive.trim_start()))
+        revision = Some(line_revision);
+        raw_directive = after_close_bracket.trim_start();
     } else {
-        Some((None, after_comment))
-    }
+        revision = None;
+        raw_directive = after_comment;
+    };
+
+    Some(DirectiveLine { line_number, revision, raw_directive })
 }
 
 // To prevent duplicating the list of commmands between `compiletest`,`htmldocck` and `jsondocck`,
@@ -856,23 +863,21 @@ fn iter_header(
             return;
         }
 
-        let Some((revision, raw_directive)) = line_directive(comment, ln) else {
+        let Some(directive_line) = line_directive(line_number, comment, ln) else {
             continue;
         };
 
         // Perform unknown directive check on Rust files.
         if testfile.extension().map(|e| e == "rs").unwrap_or(false) {
-            let directive_ln = raw_directive.trim();
-
             let CheckDirectiveResult { is_known_directive, trailing_directive } =
-                check_directive(directive_ln, mode, ln);
+                check_directive(directive_line.raw_directive, mode, ln);
 
             if !is_known_directive {
                 *poisoned = true;
 
                 eprintln!(
                     "error: detected unknown compiletest test directive `{}` in {}:{}",
-                    directive_ln,
+                    directive_line.raw_directive,
                     testfile.display(),
                     line_number,
                 );
@@ -896,7 +901,7 @@ fn iter_header(
             }
         }
 
-        it(DirectiveLine { line_number, revision, raw_directive });
+        it(directive_line);
     }
 }
 
