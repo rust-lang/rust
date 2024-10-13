@@ -452,6 +452,17 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_generics<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            generics: ref_t!(Generics)
+        ) -> result!(V) {
+            let Generics { params, where_clause, span } = generics;
+            visit_list!(vis, visit_generic_param, flat_map_generic_param, params);
+            try_v!(vis.visit_where_clause(where_clause));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         pub fn walk_ident<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             ident: ref_t!(Ident)
@@ -1078,13 +1089,6 @@ pub mod visit {
                 visit_opt!(visitor, visit_anon_const, default);
             }
         }
-        V::Result::output()
-    }
-
-    pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics) -> V::Result {
-        let Generics { params, where_clause, span: _ } = generics;
-        walk_list!(visitor, visit_generic_param, params);
-        try_visit!(visitor.visit_where_clause(where_clause));
         V::Result::output()
     }
 
@@ -2145,13 +2149,6 @@ pub mod mut_visit {
             vis.visit_span(colon_span);
         }
         smallvec![param]
-    }
-
-    fn walk_generics<T: MutVisitor>(vis: &mut T, generics: &mut Generics) {
-        let Generics { params, where_clause, span } = generics;
-        params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-        vis.visit_where_clause(where_clause);
-        vis.visit_span(span);
     }
 
     fn walk_ty_alias_where_clauses<T: MutVisitor>(vis: &mut T, tawcs: &mut TyAliasWhereClauses) {
