@@ -327,6 +327,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Block; visit_block, walk_block}
             make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
             make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
+            make_visit!{Const; visit_constness, walk_constness}
             make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
             make_visit!{Crate; visit_crate, walk_crate}
             make_visit!{EnumDef; visit_enum_def, walk_enum_def}
@@ -529,6 +530,19 @@ macro_rules! make_ast_visitor {
                     visit_list!(vis, visit_generic_param, flat_map_generic_param, generic_params);
                     try_v!(visit_span!(vis, span));
                 }
+            }
+            return_result!(V)
+        }
+
+        pub fn walk_constness<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            constness: ref_t!(Const)
+        ) -> result!(V) {
+            match constness {
+                Const::Yes(span) => {
+                    try_v!(visit_span!(vis, span));
+                }
+                Const::No => {}
             }
             return_result!(V)
         }
@@ -1454,7 +1468,7 @@ pub mod visit {
                     defaultness: _,
                     safety,
                     generics,
-                    constness: _,
+                    constness,
                     polarity: _,
                     of_trait,
                     self_ty,
@@ -1462,6 +1476,7 @@ pub mod visit {
                 }) => {
                     try_visit!(visitor.visit_safety(safety));
                     try_visit!(visitor.visit_generics(generics));
+                    try_visit!(visitor.visit_constness(constness));
                     visit_opt!(visitor, visit_trait_ref, of_trait);
                     try_visit!(visitor.visit_ty(self_ty));
                     walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Impl);
@@ -1713,13 +1728,14 @@ pub mod visit {
                 binder,
                 capture_clause,
                 coroutine_kind,
-                constness: _,
+                constness,
                 movability: _,
                 fn_decl,
                 body,
                 fn_decl_span: _,
                 fn_arg_span: _,
             }) => {
+                try_visit!(visitor.visit_constness(constness));
                 try_visit!(visitor.visit_capture_by(capture_clause));
                 try_visit!(visitor.visit_fn(
                     FnKind::Closure(binder, coroutine_kind, fn_decl, body),
@@ -2107,14 +2123,6 @@ pub mod mut_visit {
         }
     }
 
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_constness<T: MutVisitor>(vis: &mut T, constness: &mut Const) {
-        match constness {
-            Const::Yes(span) => vis.visit_span(span),
-            Const::No => {}
-        }
-    }
-
     pub fn walk_flat_map_generic_param<T: MutVisitor>(
         vis: &mut T,
         mut param: GenericParam,
@@ -2222,7 +2230,7 @@ pub mod mut_visit {
                     visit_defaultness(visitor, defaultness);
                     visitor.visit_safety(safety);
                     visitor.visit_generics(generics);
-                    visit_constness(visitor, constness);
+                    visitor.visit_constness(constness);
                     visit_polarity(visitor, polarity);
                     visit_opt(of_trait, |trait_ref| visitor.visit_trait_ref(trait_ref));
                     visitor.visit_ty(self_ty);
@@ -2293,7 +2301,7 @@ pub mod mut_visit {
 
     fn walk_fn_header<T: MutVisitor>(vis: &mut T, header: &mut FnHeader) {
         let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
-        visit_constness(vis, constness);
+        vis.visit_constness(constness);
         coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
         vis.visit_safety(safety);
     }
@@ -2519,7 +2527,7 @@ pub mod mut_visit {
                 fn_decl_span,
                 fn_arg_span,
             }) => {
-                visit_constness(vis, constness);
+                vis.visit_constness(constness);
                 vis.visit_capture_by(capture_clause);
                 vis.visit_fn(FnKind::Closure(binder, coroutine_kind, fn_decl, body), *span, *id);
                 vis.visit_span(fn_decl_span);
