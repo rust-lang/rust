@@ -64,6 +64,7 @@ impl AArch64InlineAsmRegClass {
                 neon: I8, I16, I32, I64, F16, F32, F64, F128,
                     VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF16(4), VecF32(2), VecF64(1),
                     VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
+                // Note: When adding support for SVE vector types, they must be rejected for Arm64EC.
             },
             Self::preg => &[],
         }
@@ -96,7 +97,7 @@ fn restricted_for_arm64ec(
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if arch == InlineAsmArch::Arm64EC {
-        Err("x13, x14, x23, x24, x28, v16-v31 cannot be used for Arm64EC")
+        Err("x13, x14, x23, x24, x28, v16-v31, p*, ffr cannot be used for Arm64EC")
     } else {
         Ok(())
     }
@@ -165,23 +166,23 @@ def_regs! {
         v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29", "z29"] % restricted_for_arm64ec,
         v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30", "z30"] % restricted_for_arm64ec,
         v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31", "z31"] % restricted_for_arm64ec,
-        p0: preg = ["p0"],
-        p1: preg = ["p1"],
-        p2: preg = ["p2"],
-        p3: preg = ["p3"],
-        p4: preg = ["p4"],
-        p5: preg = ["p5"],
-        p6: preg = ["p6"],
-        p7: preg = ["p7"],
-        p8: preg = ["p8"],
-        p9: preg = ["p9"],
-        p10: preg = ["p10"],
-        p11: preg = ["p11"],
-        p12: preg = ["p12"],
-        p13: preg = ["p13"],
-        p14: preg = ["p14"],
-        p15: preg = ["p15"],
-        ffr: preg = ["ffr"],
+        p0: preg = ["p0"] % restricted_for_arm64ec,
+        p1: preg = ["p1"] % restricted_for_arm64ec,
+        p2: preg = ["p2"] % restricted_for_arm64ec,
+        p3: preg = ["p3"] % restricted_for_arm64ec,
+        p4: preg = ["p4"] % restricted_for_arm64ec,
+        p5: preg = ["p5"] % restricted_for_arm64ec,
+        p6: preg = ["p6"] % restricted_for_arm64ec,
+        p7: preg = ["p7"] % restricted_for_arm64ec,
+        p8: preg = ["p8"] % restricted_for_arm64ec,
+        p9: preg = ["p9"] % restricted_for_arm64ec,
+        p10: preg = ["p10"] % restricted_for_arm64ec,
+        p11: preg = ["p11"] % restricted_for_arm64ec,
+        p12: preg = ["p12"] % restricted_for_arm64ec,
+        p13: preg = ["p13"] % restricted_for_arm64ec,
+        p14: preg = ["p14"] % restricted_for_arm64ec,
+        p15: preg = ["p15"] % restricted_for_arm64ec,
+        ffr: preg = ["ffr"] % restricted_for_arm64ec,
         #error = ["x19", "w19"] =>
             "x19 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x29", "w29", "fp", "wfp"] =>
@@ -200,12 +201,66 @@ impl AArch64InlineAsmReg {
         _arch: InlineAsmArch,
         modifier: Option<char>,
     ) -> fmt::Result {
-        let (prefix, index) = if (self as u32) < Self::v0 as u32 {
-            (modifier.unwrap_or('x'), self as u32 - Self::x0 as u32)
+        let (prefix, index) = if let Some(index) = self.reg_index() {
+            (modifier.unwrap_or('x'), index)
+        } else if let Some(index) = self.vreg_index() {
+            (modifier.unwrap_or('v'), index)
         } else {
-            (modifier.unwrap_or('v'), self as u32 - Self::v0 as u32)
+            return out.write_str(self.name());
         };
         assert!(index < 32);
         write!(out, "{prefix}{index}")
+    }
+
+    /// If the register is an integer register then return its index.
+    pub fn reg_index(self) -> Option<u32> {
+        // Unlike `vreg_index`, we can't subtract `x0` to get the u32 because
+        // `x19` and `x29` are missing and the integer constants for the
+        // `x0`..`x30` enum variants don't all match the register number. E.g. the
+        // integer constant for `x18` is 18, but the constant for `x20` is 19.
+        use AArch64InlineAsmReg::*;
+        Some(match self {
+            x0 => 0,
+            x1 => 1,
+            x2 => 2,
+            x3 => 3,
+            x4 => 4,
+            x5 => 5,
+            x6 => 6,
+            x7 => 7,
+            x8 => 8,
+            x9 => 9,
+            x10 => 10,
+            x11 => 11,
+            x12 => 12,
+            x13 => 13,
+            x14 => 14,
+            x15 => 15,
+            x16 => 16,
+            x17 => 17,
+            x18 => 18,
+            // x19 is reserved
+            x20 => 20,
+            x21 => 21,
+            x22 => 22,
+            x23 => 23,
+            x24 => 24,
+            x25 => 25,
+            x26 => 26,
+            x27 => 27,
+            x28 => 28,
+            // x29 is reserved
+            x30 => 30,
+            _ => return None,
+        })
+    }
+
+    /// If the register is a vector register then return its index.
+    pub fn vreg_index(self) -> Option<u32> {
+        use AArch64InlineAsmReg::*;
+        if self as u32 >= v0 as u32 && self as u32 <= v31 as u32 {
+            return Some(self as u32 - v0 as u32);
+        }
+        None
     }
 }
