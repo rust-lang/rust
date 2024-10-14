@@ -180,6 +180,7 @@ impl InferenceContext<'_> {
                 self.infer_mut_expr(index, Mutability::Not);
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
+                let mut mutability = mutability;
                 if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
                     if mutability == Mutability::Mut {
                         if let Some(deref_trait) = self
@@ -187,7 +188,17 @@ impl InferenceContext<'_> {
                             .lang_item(self.table.trait_env.krate, LangItem::DerefMut)
                             .and_then(|l| l.as_trait())
                         {
-                            if let Some(deref_fn) = self
+                            let ty = self.result.type_of_expr.get(*expr);
+                            let is_mut_ptr = ty.is_some_and(|ty| {
+                                let ty = self.table.resolve_ty_shallow(ty);
+                                matches!(
+                                    ty.kind(Interner),
+                                    chalk_ir::TyKind::Raw(Mutability::Mut, _)
+                                )
+                            });
+                            if is_mut_ptr {
+                                mutability = Mutability::Not;
+                            } else if let Some(deref_fn) = self
                                 .db
                                 .trait_data(deref_trait)
                                 .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))
