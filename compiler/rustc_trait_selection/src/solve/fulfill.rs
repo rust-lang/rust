@@ -465,13 +465,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     polarity: ty::PredicatePolarity::Positive,
                 }))
             }
-            ty::PredicateKind::Clause(
-                ty::ClauseKind::WellFormed(_) | ty::ClauseKind::Projection(..),
-            )
-            | ty::PredicateKind::AliasRelate(..) => ChildMode::PassThrough,
-            _ => {
-                return ControlFlow::Break(self.obligation.clone());
-            }
+            _ => ChildMode::PassThrough,
         };
 
         let mut impl_where_bound_count = 0;
