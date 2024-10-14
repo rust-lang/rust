@@ -122,6 +122,13 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
             exhaustive,
         }
     }
+
+    /// Called when `ty` is found to always require drop.
+    /// If the exhaustive flag is true, then `Ok(ty)` is returned like any other type.
+    /// Otherwise, `Err(AlwaysRequireDrop)` is returned, which will cause iteration to abort.
+    fn always_drop_component(&self, ty: Ty<'tcx>) -> NeedsDropResult<Ty<'tcx>> {
+        if self.exhaustive { Ok(ty) } else { Err(AlwaysRequiresDrop) }
+    }
 }
 
 impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
@@ -142,14 +149,11 @@ where
                 // recursion limit error as well.
                 debug!("needs_drop_components: recursion limit exceeded");
                 tcx.dcx().emit_err(NeedsDropOverflow { query_ty: self.query_ty });
-                if self.exhaustive {
-                    return Some(Ok(ty));
-                }
-                return Some(Err(AlwaysRequiresDrop));
+                return Some(self.always_drop_component(ty));
             }
 
             let components = match needs_drop_components(tcx, ty) {
-                Err(e) => return if self.exhaustive { Some(Ok(ty)) } else { Some(Err(e)) },
+                Err(AlwaysRequiresDrop) => return Some(self.always_drop_component(ty)),
                 Ok(components) => components,
             };
             debug!("needs_drop_components({:?}) = {:?}", ty, components);
@@ -176,11 +180,8 @@ where
                     ty::Coroutine(_, args) => {
                         if self.reveal_coroutine_witnesses {
                             queue_type(self, args.as_coroutine().witness());
-                        } else if self.exhaustive {
-                            return Some(Ok(ty));
                         } else {
-                            debug!("needs_drop_components: refuse to reveal coroutine witness");
-                            return Some(Err(AlwaysRequiresDrop));
+                            return Some(self.always_drop_component(ty));
                         }
                     }
                     ty::CoroutineWitness(def_id, args) => {
@@ -214,7 +215,9 @@ where
                     // impl then check whether the field types need `Drop`.
                     ty::Adt(adt_def, args) => {
                         let tys = match (self.adt_components)(adt_def, args) {
-                            Err(e) => return Some(Err(e)),
+                            Err(AlwaysRequiresDrop) => {
+                                return Some(self.always_drop_component(ty));
+                            }
                             Ok(tys) => tys,
                         };
                         for required_ty in tys {
@@ -240,11 +243,7 @@ where
 
                     ty::Foreign(_) | ty::Dynamic(..) => {
                         debug!("needs_drop_components: foreign or dynamic");
-                        return if self.exhaustive {
-                            Some(Ok(ty))
-                        } else {
-                            Some(Err(AlwaysRequiresDrop))
-                        };
+                        return Some(self.always_drop_component(ty));
                     }
 
                     ty::Bool
