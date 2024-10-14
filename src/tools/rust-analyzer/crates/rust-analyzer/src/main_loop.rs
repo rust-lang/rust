@@ -23,7 +23,8 @@ use crate::{
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
     flycheck::{self, FlycheckMessage},
     global_state::{
-        file_id_to_url, url_to_file_id, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
+        file_id_to_url, url_to_file_id, FetchBuildDataResponse, FetchWorkspaceRequest,
+        FetchWorkspaceResponse, GlobalState,
     },
     hack_recover_crate_name,
     handlers::dispatch::{NotificationDispatcher, RequestDispatcher},
@@ -738,8 +739,10 @@ impl GlobalState {
                 let (state, msg) = match progress {
                     BuildDataProgress::Begin => (Some(Progress::Begin), None),
                     BuildDataProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
-                    BuildDataProgress::End(build_data_result) => {
-                        self.fetch_build_data_queue.op_completed(build_data_result);
+                    BuildDataProgress::End((workspaces, build_scripts)) => {
+                        let resp = FetchBuildDataResponse { workspaces, build_scripts };
+                        self.fetch_build_data_queue.op_completed(resp);
+
                         if let Err(e) = self.fetch_build_data_error() {
                             error!("FetchBuildDataError: {e}");
                         }
