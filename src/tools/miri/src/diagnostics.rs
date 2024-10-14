@@ -473,14 +473,14 @@ pub fn report_leaks<'tcx>(
     leaks: Vec<(AllocId, MemoryKind, Allocation<Provenance, AllocExtra<'tcx>, MiriAllocBytes>)>,
 ) {
     let mut any_pruned = false;
-    for (id, kind, mut alloc) in leaks {
+    for (id, kind, alloc) in leaks {
         let mut title = format!(
             "memory leaked: {id:?} ({}, size: {:?}, align: {:?})",
             kind,
             alloc.size().bytes(),
             alloc.align.bytes()
         );
-        let Some(backtrace) = alloc.extra.backtrace.take() else {
+        let Some(backtrace) = alloc.extra.backtrace else {
             ecx.tcx.dcx().err(title);
             continue;
         };
