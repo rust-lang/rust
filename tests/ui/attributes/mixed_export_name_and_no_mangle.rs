@@ -1,5 +1,6 @@
-#![deny(mixed_export_name_and_no_mangle)]
 // issue: rust-lang/rust#47446
+
+#![deny(mixed_export_name_and_no_mangle)]
 
 #[no_mangle]
 #[export_name = "foo"]

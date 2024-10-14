@@ -809,15 +809,14 @@ impl LinterStateMixedExportNameAndNoMangle {
         if let (Some(export_name), Some(no_mangle), Some(hir_id)) =
             (self.export_name, self.no_mangle, self.hir_id)
         {
-            tcx.node_span_lint(
+            tcx.emit_node_span_lint(
                 lint::builtin::MIXED_EXPORT_NAME_AND_NO_MANGLE,
                 hir_id,
                 export_name,
-                |lint| {
-                    lint.primary_message("the attribute `export_name` may not be used in combination with `no_mangle`")
-                        .span_label(export_name, "`export_name` takes precedence")
-                        .span_note(no_mangle.clone(), "the `no_mangle` attribute is ignored")
-                        .span_suggestion_verbose(no_mangle, "remove the `no_mangle` attribtute", "", lint::Applicability::MachineApplicable);
+                errors::BuiltinMixedExportNameAndNoMangle {
+                    export_name,
+                    no_mangle: no_mangle.clone(),
+                    removal_span: no_mangle,
                 },
             );
         }
