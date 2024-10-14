@@ -9,20 +9,6 @@ help: consider restricting type parameter `T`
 LL | fn test_poly<T: Trait>() {
    |               +++++++
 
-error[E0271]: type mismatch resolving `<T as Trait>::Assoc normalizes-to <T as Trait>::Assoc`
-  --> $DIR/projection-trait-ref.rs:8:12
-   |
-LL |     let x: <T as Trait>::Assoc = ();
-   |            ^^^^^^^^^^^^^^^^^^^ types differ
-
-error[E0271]: type mismatch resolving `<T as Trait>::Assoc normalizes-to <T as Trait>::Assoc`
-  --> $DIR/projection-trait-ref.rs:8:12
-   |
-LL |     let x: <T as Trait>::Assoc = ();
-   |            ^^^^^^^^^^^^^^^^^^^ types differ
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 error[E0277]: the trait bound `i32: Trait` is not satisfied
   --> $DIR/projection-trait-ref.rs:13:12
    |
@@ -35,21 +21,6 @@ help: this trait has no implementations, consider adding one
 LL | trait Trait {
    | ^^^^^^^^^^^
 
-error[E0271]: type mismatch resolving `<i32 as Trait>::Assoc normalizes-to <i32 as Trait>::Assoc`
-  --> $DIR/projection-trait-ref.rs:13:12
-   |
-LL |     let x: <i32 as Trait>::Assoc = ();
-   |            ^^^^^^^^^^^^^^^^^^^^^ types differ
+error: aborting due to 2 previous errors
 
-error[E0271]: type mismatch resolving `<i32 as Trait>::Assoc normalizes-to <i32 as Trait>::Assoc`
-  --> $DIR/projection-trait-ref.rs:13:12
-   |
-LL |     let x: <i32 as Trait>::Assoc = ();
-   |            ^^^^^^^^^^^^^^^^^^^^^ types differ
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0271, E0277.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0277`.

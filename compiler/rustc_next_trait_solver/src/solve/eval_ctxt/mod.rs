@@ -983,7 +983,7 @@ where
             hidden_ty,
             &mut goals,
         );
-        self.add_goals(GoalSource::Misc, goals);
+        self.add_goals(GoalSource::AliasWellFormed, goals);
     }
 
     // Do something for each opaque/hidden pair defined with `def_id` in the

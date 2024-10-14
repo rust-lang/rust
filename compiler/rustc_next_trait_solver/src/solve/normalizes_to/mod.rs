@@ -37,10 +37,12 @@ where
         match normalize_result {
             Ok(res) => Ok(res),
             Err(NoSolution) => {
-                let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
-                self.relate_rigid_alias_non_alias(param_env, alias, ty::Invariant, term)?;
-                self.add_rigid_constraints(param_env, alias)?;
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                self.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
+                    let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
+                    this.add_rigid_constraints(param_env, alias)?;
+                    this.relate_rigid_alias_non_alias(param_env, alias, ty::Invariant, term)?;
+                    this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
             }
         }
     }
@@ -59,11 +61,13 @@ where
         param_env: I::ParamEnv,
         rigid_alias: ty::AliasTerm<I>,
     ) -> Result<(), NoSolution> {
-        match rigid_alias.kind(self.cx()) {
-            // Projections are rigid only if their trait ref holds.
+        let cx = self.cx();
+        match rigid_alias.kind(cx) {
+            // Projections are rigid only if their trait ref holds,
+            // and the GAT where-clauses hold.
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                let trait_ref = rigid_alias.trait_ref(self.cx());
-                self.add_goal(GoalSource::Misc, Goal::new(self.cx(), param_env, trait_ref));
+                let trait_ref = rigid_alias.trait_ref(cx);
+                self.add_goal(GoalSource::AliasWellFormed, Goal::new(cx, param_env, trait_ref));
                 Ok(())
             }
             ty::AliasTermKind::OpaqueTy => {

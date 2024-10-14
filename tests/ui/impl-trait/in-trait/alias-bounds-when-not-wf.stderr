@@ -7,32 +7,42 @@ LL | #![feature(lazy_type_alias)]
    = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0271]: type mismatch resolving `A<usize> normalizes-to _`
+error[E0277]: the trait bound `usize: Foo` is not satisfied
   --> $DIR/alias-bounds-when-not-wf.rs:16:13
    |
 LL | fn hello(_: W<A<usize>>) {}
-   |             ^^^^^^^^^^^ types differ
+   |             ^^^^^^^^^^^ the trait `Foo` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
 
-error[E0271]: type mismatch resolving `A<usize> normalizes-to _`
+error[E0277]: the trait bound `usize: Foo` is not satisfied
   --> $DIR/alias-bounds-when-not-wf.rs:16:10
    |
 LL | fn hello(_: W<A<usize>>) {}
-   |          ^ types differ
-
-error[E0271]: type mismatch resolving `A<usize> normalizes-to _`
-  --> $DIR/alias-bounds-when-not-wf.rs:16:10
+   |          ^ the trait `Foo` is not implemented for `usize`
    |
-LL | fn hello(_: W<A<usize>>) {}
-   |          ^ types differ
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL | trait Foo {}
+   | ^^^^^^^^^
 
-error[E0271]: type mismatch resolving `A<usize> normalizes-to _`
+error[E0277]: the trait bound `usize: Foo` is not satisfied
   --> $DIR/alias-bounds-when-not-wf.rs:16:1
    |
 LL | fn hello(_: W<A<usize>>) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0277`.

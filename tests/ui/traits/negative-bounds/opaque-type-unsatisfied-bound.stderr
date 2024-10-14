@@ -1,14 +1,18 @@
-error[E0271]: type mismatch resolving `weird0::{opaque#0} normalizes-to _`
+error[E0277]: the size for values of type `()` cannot be known at compilation time
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:16
    |
 LL | fn weird0() -> impl Sized + !Sized {}
-   |                ^^^^^^^^^^^^^^^^^^^ types differ
+   |                ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
-error[E0271]: type mismatch resolving `weird0::{opaque#0} normalizes-to _`
+error[E0277]: the size for values of type `()` cannot be known at compilation time
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:36
    |
 LL | fn weird0() -> impl Sized + !Sized {}
-   |                                    ^^ types differ
+   |                                    ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the size for values of type `impl !Sized + Sized` cannot be known at compilation time
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:16
@@ -19,26 +23,32 @@ LL | fn weird0() -> impl Sized + !Sized {}
    = help: the trait `Sized` is not implemented for `impl !Sized + Sized`
    = note: the return type of a function must have a statically known size
 
-error[E0271]: type mismatch resolving `weird0::{opaque#0} normalizes-to _`
+error[E0277]: the size for values of type `()` cannot be known at compilation time
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:1
    |
 LL | fn weird0() -> impl Sized + !Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
-error[E0271]: type mismatch resolving `weird1::{opaque#0} normalizes-to _`
-  --> $DIR/opaque-type-unsatisfied-bound.rs:17:16
+error[E0277]: the size for values of type `()` cannot be known at compilation time
+  --> $DIR/opaque-type-unsatisfied-bound.rs:20:16
    |
 LL | fn weird1() -> impl !Sized + Sized {}
-   |                ^^^^^^^^^^^^^^^^^^^ types differ
+   |                ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
-error[E0271]: type mismatch resolving `weird1::{opaque#0} normalizes-to _`
-  --> $DIR/opaque-type-unsatisfied-bound.rs:17:36
+error[E0277]: the size for values of type `()` cannot be known at compilation time
+  --> $DIR/opaque-type-unsatisfied-bound.rs:20:36
    |
 LL | fn weird1() -> impl !Sized + Sized {}
-   |                                    ^^ types differ
+   |                                    ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the size for values of type `impl !Sized + Sized` cannot be known at compilation time
-  --> $DIR/opaque-type-unsatisfied-bound.rs:17:16
+  --> $DIR/opaque-type-unsatisfied-bound.rs:20:16
    |
 LL | fn weird1() -> impl !Sized + Sized {}
    |                ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -46,26 +56,32 @@ LL | fn weird1() -> impl !Sized + Sized {}
    = help: the trait `Sized` is not implemented for `impl !Sized + Sized`
    = note: the return type of a function must have a statically known size
 
-error[E0271]: type mismatch resolving `weird1::{opaque#0} normalizes-to _`
-  --> $DIR/opaque-type-unsatisfied-bound.rs:17:1
+error[E0277]: the size for values of type `()` cannot be known at compilation time
+  --> $DIR/opaque-type-unsatisfied-bound.rs:20:1
    |
 LL | fn weird1() -> impl !Sized + Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
-error[E0271]: type mismatch resolving `weird2::{opaque#0} normalizes-to _`
-  --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
+error[E0277]: the size for values of type `()` cannot be known at compilation time
+  --> $DIR/opaque-type-unsatisfied-bound.rs:25:16
    |
 LL | fn weird2() -> impl !Sized {}
-   |                ^^^^^^^^^^^ types differ
+   |                ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
-error[E0271]: type mismatch resolving `weird2::{opaque#0} normalizes-to _`
-  --> $DIR/opaque-type-unsatisfied-bound.rs:19:28
+error[E0277]: the size for values of type `()` cannot be known at compilation time
+  --> $DIR/opaque-type-unsatisfied-bound.rs:25:28
    |
 LL | fn weird2() -> impl !Sized {}
-   |                            ^^ types differ
+   |                            ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the size for values of type `impl !Sized` cannot be known at compilation time
-  --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
+  --> $DIR/opaque-type-unsatisfied-bound.rs:25:16
    |
 LL | fn weird2() -> impl !Sized {}
    |                ^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -73,11 +89,13 @@ LL | fn weird2() -> impl !Sized {}
    = help: the trait `Sized` is not implemented for `impl !Sized`
    = note: the return type of a function must have a statically known size
 
-error[E0271]: type mismatch resolving `weird2::{opaque#0} normalizes-to _`
-  --> $DIR/opaque-type-unsatisfied-bound.rs:19:1
+error[E0277]: the size for values of type `()` cannot be known at compilation time
+  --> $DIR/opaque-type-unsatisfied-bound.rs:25:1
    |
 LL | fn weird2() -> impl !Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the trait bound `impl !Trait: Trait` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:12:13
@@ -95,5 +113,4 @@ LL | fn consume(_: impl Trait) {}
 
 error: aborting due to 13 previous errors
 
-Some errors have detailed explanations: E0271, E0277.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0277`.

@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+  --> $DIR/ambig-hr-projection-issue-93340.rs:17:5
    |
 LL |     cmp_eq
    |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`

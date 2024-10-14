@@ -4,21 +4,6 @@ error[E0282]: type annotations needed
 LL |         self.bar.next().unwrap();
    |         ^^^^^^^^ cannot infer type
 
-error[E0271]: type mismatch resolving `Tait normalizes-to _`
-  --> $DIR/method_resolution_trait_method_from_opaque.rs:26:9
-   |
-LL |         self.bar.next().unwrap();
-   |         ^^^^^^^^ types differ
+error: aborting due to 1 previous error
 
-error[E0271]: type mismatch resolving `Tait normalizes-to _`
-  --> $DIR/method_resolution_trait_method_from_opaque.rs:26:9
-   |
-LL |         self.bar.next().unwrap();
-   |         ^^^^^^^^ types differ
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0271, E0282.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0282`.

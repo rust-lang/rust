@@ -25,8 +25,6 @@ impl Foo {
         //[current]~^ ERROR: item does not constrain
         self.bar.next().unwrap();
         //[next]~^ ERROR: type annotations needed
-        //[next]~| ERROR type mismatch resolving `Tait normalizes-to _`
-        //[next]~| ERROR type mismatch resolving `Tait normalizes-to _`
     }
 }
 
