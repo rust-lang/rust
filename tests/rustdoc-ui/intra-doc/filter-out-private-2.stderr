@@ -1,4 +1,4 @@
-error: all items matching `Thing` are either private or doc(hidden)
+error: all items matching `Thing` are private or doc(hidden)
   --> $DIR/filter-out-private-2.rs:13:21
    |
 LL | /// Do stuff with [`Thing`].

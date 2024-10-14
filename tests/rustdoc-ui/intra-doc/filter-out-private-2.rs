@@ -11,5 +11,5 @@ pub struct Thing {}
 pub fn Thing() {}
 
 /// Do stuff with [`Thing`].
-//~^ ERROR all items matching `Thing` are either private or doc(hidden)
+//~^ ERROR all items matching `Thing` are private or doc(hidden)
 pub fn repro(_: Thing) {}

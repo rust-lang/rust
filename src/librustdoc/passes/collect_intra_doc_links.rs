@@ -288,14 +288,16 @@ pub(crate) struct LinkCollector<'a, 'tcx> {
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
     pub(crate) visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
-    /// These links are ambiguous. We need for the cache to have its paths filled. Unfortunately,
-    /// if we run the `LinkCollector` pass after `Cache::populate`, a lot of items that we need
-    /// to go through will be removed, making a lot of intra-doc links to not be inferred.
+    /// According to `rustc_resolve`, these links are ambiguous.
     ///
-    /// So instead, we store the ambiguous links and we wait for cache paths to be filled before
-    /// inferring them (if possible).
+    /// However, we cannot link to an item that has been stripped from the documentation. If all
+    /// but one of the "possibilities" are stripped, then there is no real ambiguity. To determine
+    /// if an ambiguity is real, we delay resolving them until after `Cache::populate`, then filter
+    /// every item that doesn't have a cached path.
     ///
-    /// Key is `(item ID, path str)`.
+    /// We could get correct results by simply delaying everything. This would have fewer happy
+    /// codepaths, but we want to distinguish different kinds of error conditions, and this is easy
+    /// to do by resolving links as soon as possible.
     pub(crate) ambiguous_links: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
 }
 
@@ -1187,9 +1189,7 @@ impl LinkCollector<'_, '_> {
                         report_diagnostic(
                             self.cx.tcx,
                             BROKEN_INTRA_DOC_LINKS,
-                            format!(
-                                "all items matching `{path_str}` are either private or doc(hidden)"
-                            ),
+                            format!("all items matching `{path_str}` are private or doc(hidden)"),
                             &diag_info,
                             |diag, sp, _| {
                                 if let Some(sp) = sp {
