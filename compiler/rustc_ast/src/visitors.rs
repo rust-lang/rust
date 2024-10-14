@@ -253,32 +253,8 @@ macro_rules! make_ast_visitor {
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
 
-                fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-                    walk_flat_map_foreign_item(self, ni)
-                }
-
-                fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
-                    walk_flat_map_item(self, i)
-                }
-
-                fn flat_map_field_def(&mut self, fd: FieldDef) -> SmallVec<[FieldDef; 1]> {
-                    walk_flat_map_field_def(self, fd)
-                }
-
-                fn flat_map_assoc_item(
-                    &mut self,
-                    i: P<AssocItem>,
-                    ctxt: AssocCtxt,
-                ) -> SmallVec<[P<AssocItem>; 1]> {
-                    walk_flat_map_assoc_item(self, i, ctxt)
-                }
-
                 fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
                     walk_flat_map_stmt(self, s)
-                }
-
-                fn flat_map_arm(&mut self, arm: Arm) -> SmallVec<[Arm; 1]> {
-                    walk_flat_map_arm(self, arm)
                 }
 
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
@@ -291,32 +267,12 @@ macro_rules! make_ast_visitor {
                     noop_filter_map_expr(self, e)
                 }
 
-                fn flat_map_variant(&mut self, v: Variant) -> SmallVec<[Variant; 1]> {
-                    walk_flat_map_variant(self, v)
-                }
-
-                fn flat_map_param(&mut self, param: Param) -> SmallVec<[Param; 1]> {
-                    walk_flat_map_param(self, param)
-                }
-
-                fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
-                    walk_flat_map_generic_param(self, param)
-                }
-
-                fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
-                    walk_flat_map_expr_field(self, f)
-                }
-
                 fn visit_id(&mut self, _id: &mut NodeId) {
                     // Do nothing.
                 }
 
                 fn visit_span(&mut self, _sp: &mut Span) {
                     // Do nothing.
-                }
-
-                fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
-                    walk_flat_map_pat_field(self, fp)
                 }
             } else {
                 /// The result type of the `visit_*` methods. Can be either `()`,
@@ -334,7 +290,7 @@ macro_rules! make_ast_visitor {
 
             make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
             make_visit!{AnonConst; visit_anon_const, walk_anon_const}
-            make_visit!{Arm; visit_arm, walk_arm}
+            make_visit!{Arm; visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
             make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
             make_visit!{AttrArgs; visit_attr_args, walk_attr_args}
             make_visit!{Attribute; visit_attribute, walk_attribute}
@@ -346,8 +302,8 @@ macro_rules! make_ast_visitor {
             make_visit!{Crate; visit_crate, walk_crate}
             make_visit!{Defaultness; visit_defaultness, walk_defaultness}
             make_visit!{EnumDef; visit_enum_def, walk_enum_def}
-            make_visit!{ExprField; visit_expr_field, walk_expr_field}
-            make_visit!{FieldDef; visit_field_def, walk_field_def}
+            make_visit!{ExprField; visit_expr_field, walk_expr_field, flat_map_expr_field, walk_flat_map_expr_field}
+            make_visit!{FieldDef; visit_field_def, walk_field_def, flat_map_field_def, walk_flat_map_field_def}
             make_visit!{FnDecl; visit_fn_decl, walk_fn_decl}
             make_visit!{FnHeader; visit_fn_header, walk_fn_header}
             make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
@@ -356,7 +312,7 @@ macro_rules! make_ast_visitor {
             make_visit!{GenericArg; visit_generic_arg, walk_generic_arg}
             make_visit!{GenericArgs; visit_generic_args, walk_generic_args}
             make_visit!{GenericBound, _ ctxt: BoundKind; visit_param_bound, walk_param_bound}
-            make_visit!{GenericParam; visit_generic_param, walk_generic_param}
+            make_visit!{GenericParam; visit_generic_param, walk_generic_param, flat_map_generic_param, walk_flat_map_generic_param}
             make_visit!{Generics; visit_generics, walk_generics}
             make_visit!{Ident; visit_ident, walk_ident}
             make_visit!{ImplPolarity; visit_impl_polarity, walk_impl_polarity}
@@ -369,9 +325,9 @@ macro_rules! make_ast_visitor {
             make_visit!{MacroDef, _ id: NodeId; visit_macro_def, walk_macro_def}
             make_visit!{MutTy; visit_mt, walk_mt}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
-            make_visit!{Param; visit_param, walk_param}
+            make_visit!{Param; visit_param, walk_param, flat_map_param, walk_flat_map_param}
             make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
-            make_visit!{PatField; visit_pat_field, walk_pat_field}
+            make_visit!{PatField; visit_pat_field, walk_pat_field, flat_map_pat_field, walk_flat_map_pat_field}
             make_visit!{Path, _ id: NodeId; visit_path, walk_path}
             make_visit!{PathSegment; visit_path_segment, walk_path_segment}
             make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
@@ -380,7 +336,7 @@ macro_rules! make_ast_visitor {
             make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
             make_visit!{TyAliasWhereClauses; visit_ty_alias_where_clauses, walk_ty_alias_where_clauses}
             make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
-            make_visit!{Variant; visit_variant, walk_variant}
+            make_visit!{Variant; visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
             make_visit!{VariantData; visit_variant_data, walk_variant_data}
             make_visit!{Visibility; visit_vis, walk_vis}
             make_visit!{WhereClause; visit_where_clause, walk_where_clause}
@@ -391,9 +347,9 @@ macro_rules! make_ast_visitor {
             make_visit!{P!(Ty); visit_ty, walk_ty}
 
             // Item variants
-            make_visit!{Item; visit_item, walk_item}
-            make_visit!{AssocItem, ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item}
-            make_visit!{ForeignItem; visit_foreign_item, walk_item}
+            make_visit!{P!(Item); visit_item, walk_item, flat_map_item, walk_flat_map_item}
+            make_visit!{P!(AssocItem), ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item, flat_map_assoc_item, walk_flat_map_assoc_item}
+            make_visit!{P!(ForeignItem); visit_foreign_item, walk_item, flat_map_foreign_item, walk_flat_map_foreign_item}
 
             fn visit_fn(&mut self, fn_kind: FnKind!(), _span: Span, _id: NodeId) -> result!() {
                 walk_fn(self, fn_kind)
