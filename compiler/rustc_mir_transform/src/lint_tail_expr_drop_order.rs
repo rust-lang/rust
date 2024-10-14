@@ -94,8 +94,13 @@ fn extract_component_raw<'tcx>(
                     param_env,
                     ty::EarlyBinder::bind(field.ty).instantiate(tcx, args),
                 );
+                if !tys.is_empty() {
+                    debug!(?field.ty, "including span for field of type");
+                    out_spans.extend([field.source_info.span].into_iter().chain(spans));
+                } else {
+                    assert!(spans.is_empty());
+                }
                 out_tys.extend(tys);
-                out_spans.extend([field.source_info.span].into_iter().chain(spans));
             }
         } else {
             out_tys.push(ty);
