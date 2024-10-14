@@ -1,15 +1,14 @@
-use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sys::pi_futex as pi;
 
 pub struct Mutex {
-    futex: AtomicU32,
+    futex: pi::Futex,
 }
 
 impl Mutex {
     #[inline]
     pub const fn new() -> Self {
-        Self { futex: AtomicU32::new(pi::unlocked()) }
+        Self { futex: pi::Futex::new() }
     }
 
     #[inline]
@@ -46,7 +45,7 @@ impl Mutex {
         }
     }
 
-    fn spin(&self) -> u32 {
+    fn spin(&self) -> pi::State {
         let mut spin = 100;
         loop {
             // We only use `load` (and not `swap` or `compare_exchange`)
