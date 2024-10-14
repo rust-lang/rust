@@ -59,6 +59,28 @@ macro_rules! make_ast_visitor {
                     $walk(self, node $$($$(, $arg)?)*)
                 }
             };
+            (
+                $ty: ty
+                $$(, $$($arg: ident)? $$(_ $ignored_arg: ident)?: $arg_ty: ty)*;
+                $visit: ident, $walk: ident,
+                $flat_map: ident, $walk_flat_map: ident
+            ) => {
+                make_visit!{
+                    $ty
+                    $$(, $$($arg)? $$(_ $ignored_arg)?: $arg_ty)*;
+                    $visit, $walk
+                }
+
+                macro_if!{$($mut)? {
+                    fn $flat_map(
+                        &mut self,
+                        node: $ty
+                        $$(, $$($arg)? $$($ignored_arg)?: $arg_ty)*
+                    ) -> SmallVec<[$ty; 1]> {
+                        $walk_flat_map(self, node $$(, $$($arg)? $$($ignored_arg)?)*)
+                    }
+                }}
+            };
         }
 
         macro_rules! P {
