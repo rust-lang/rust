@@ -1771,6 +1771,38 @@ macro_rules! make_ast_visitor {
             }
             return_result!(V)
         }
+
+        macro_if!{$($mut)? {
+            macro_rules! make_walk_flat_map {
+                (
+                    $ty: ty
+                    $$(, $arg: ident : $arg_ty: ty)*;
+                    $walk_flat_map: ident,
+                    $visit: ident
+                ) => {
+                    pub fn $walk_flat_map(
+                        vis: &mut impl $trait$(<$lt>)?,
+                        mut arg: $ty
+                        $$(, $arg: $arg_ty)*
+                    ) -> SmallVec<[$ty; 1]> {
+                        vis.$visit(&mut arg $$(, $arg)*);
+                        smallvec![arg]
+                    }
+                }
+            }
+
+            make_walk_flat_map!{Arm; walk_flat_map_arm, visit_arm}
+            make_walk_flat_map!{ExprField; walk_flat_map_expr_field, visit_expr_field}
+            make_walk_flat_map!{FieldDef; walk_flat_map_field_def, visit_field_def}
+            make_walk_flat_map!{GenericParam; walk_flat_map_generic_param, visit_generic_param}
+            make_walk_flat_map!{Param; walk_flat_map_param, visit_param}
+            make_walk_flat_map!{PatField; walk_flat_map_pat_field, visit_pat_field}
+            make_walk_flat_map!{Variant; walk_flat_map_variant, visit_variant}
+
+            make_walk_flat_map!{P<Item>; walk_flat_map_item, visit_item}
+            make_walk_flat_map!{P<AssocItem>, ctxt: AssocCtxt; walk_flat_map_assoc_item, visit_assoc_item}
+            make_walk_flat_map!{P<ForeignItem>; walk_flat_map_foreign_item, visit_foreign_item}
+        }}
     }
 }
 
@@ -1979,27 +2011,6 @@ pub mod mut_visit {
         vis.visit_span(close);
     }
 
-    pub fn walk_flat_map_pat_field<T: MutVisitor>(
-        vis: &mut T,
-        mut fp: PatField,
-    ) -> SmallVec<[PatField; 1]> {
-        vis.visit_pat_field(&mut fp);
-        smallvec![fp]
-    }
-
-    pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
-        vis.visit_arm(&mut arm);
-        smallvec![arm]
-    }
-
-    pub fn walk_flat_map_variant<T: MutVisitor>(
-        visitor: &mut T,
-        mut variant: Variant,
-    ) -> SmallVec<[Variant; 1]> {
-        visitor.visit_variant(&mut variant);
-        smallvec![variant]
-    }
-
     fn walk_meta_list_item<T: MutVisitor>(vis: &mut T, li: &mut MetaItemInner) {
         match li {
             MetaItemInner::MetaItem(mi) => vis.visit_meta_item(mi),
@@ -2015,14 +2026,6 @@ pub mod mut_visit {
             MetaItemKind::NameValue(_s) => {}
         }
         vis.visit_span(span);
-    }
-
-    pub fn walk_flat_map_param<T: MutVisitor>(
-        vis: &mut T,
-        mut param: Param,
-    ) -> SmallVec<[Param; 1]> {
-        vis.visit_param(&mut param);
-        smallvec![param]
     }
 
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -2171,59 +2174,8 @@ pub mod mut_visit {
         }
     }
 
-    pub fn walk_flat_map_generic_param<T: MutVisitor>(
-        vis: &mut T,
-        mut param: GenericParam,
-    ) -> SmallVec<[GenericParam; 1]> {
-        vis.visit_generic_param(&mut param);
-        smallvec![param]
-    }
-
-    pub fn walk_flat_map_field_def<T: MutVisitor>(
-        visitor: &mut T,
-        mut fd: FieldDef,
-    ) -> SmallVec<[FieldDef; 1]> {
-        visitor.visit_field_def(&mut fd);
-        smallvec![fd]
-    }
-
-    pub fn walk_flat_map_expr_field<T: MutVisitor>(
-        vis: &mut T,
-        mut f: ExprField,
-    ) -> SmallVec<[ExprField; 1]> {
-        vis.visit_expr_field(&mut f);
-        smallvec![f]
-    }
-
     pub fn walk_item_kind(item: &mut Item<impl WalkItemKind>, vis: &mut impl MutVisitor) {
         item.kind.walk(item.id, item.span, &mut item.vis, &mut item.ident, vis)
-    }
-
-    /// Mutates one item, returning the item again.
-    pub fn walk_flat_map_item(
-        vis: &mut impl MutVisitor,
-        mut item: P<Item>,
-    ) -> SmallVec<[P<Item>; 1]> {
-        vis.visit_item(&mut item);
-        smallvec![item]
-    }
-
-    pub fn walk_flat_map_foreign_item(
-        vis: &mut impl MutVisitor,
-        mut item: P<ForeignItem>,
-    ) -> SmallVec<[P<ForeignItem>; 1]> {
-        vis.visit_foreign_item(&mut item);
-        smallvec![item]
-    }
-
-    /// Mutates one item, returning the item again.
-    pub fn walk_flat_map_assoc_item(
-        vis: &mut impl MutVisitor,
-        mut item: P<AssocItem>,
-        ctxt: AssocCtxt,
-    ) -> SmallVec<[P<AssocItem>; 1]> {
-        vis.visit_assoc_item(&mut item, ctxt);
-        smallvec![item]
     }
 
     pub fn noop_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Option<P<Expr>> {
