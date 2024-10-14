@@ -206,7 +206,7 @@ macro_rules! make_ast_visitor {
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
 
                 fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-                    walk_flat_map_item(self, ni)
+                    walk_flat_map_foreign_item(self, ni)
                 }
 
                 fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
@@ -281,8 +281,6 @@ macro_rules! make_ast_visitor {
                 type Result: VisitorResult = ();
 
                 make_visit!{AssocItem, ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item}
-                make_visit!{ForeignItem; visit_foreign_item, walk_item}
-                make_visit!{Item; visit_item, walk_item}
                 make_visit!{Stmt; visit_stmt, walk_stmt}
 
                 /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
@@ -353,6 +351,10 @@ macro_rules! make_ast_visitor {
             make_visit!{P!(Expr); visit_expr, walk_expr}
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Ty); visit_ty, walk_ty}
+
+            // Default implementations are generic over WalkItemKind
+            make_visit!{ForeignItem; visit_foreign_item, walk_item}
+            make_visit!{Item; visit_item, walk_item}
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
                 self.visit_anon_const(discr)
@@ -1208,6 +1210,21 @@ macro_rules! make_ast_visitor {
                 visitor: &mut V,
             ) -> result!(V);
         }
+
+        pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
+            visitor: &mut V,
+            item: ref_t!(Item<impl WalkItemKind>),
+        ) -> result!(V) {
+            let Item { id, span, ident, vis, attrs, kind, tokens } = item;
+            try_v!(visit_id!(visitor, id));
+            visit_list!(visitor, visit_attribute, attrs);
+            try_v!(visitor.visit_vis(vis));
+            try_v!(visitor.visit_ident(ident));
+            try_v!(kind.walk(*id, *span, vis, ident, visitor));
+            visit_lazy_tts!(visitor, tokens);
+            try_v!(visit_span!(visitor, span));
+            return_result!(V)
+        }
     }
 }
 
@@ -1441,18 +1458,6 @@ pub mod visit {
             }
             V::Result::output()
         }
-    }
-
-    pub fn walk_item<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        item: &'a Item<impl WalkItemKind>,
-    ) -> V::Result {
-        let Item { id, span, ident, vis, attrs, kind, tokens: _ } = item;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_vis(vis));
-        try_visit!(visitor.visit_ident(ident));
-        try_visit!(kind.walk(*id, *span, vis, ident, visitor));
-        V::Result::output()
     }
 
     impl WalkItemKind for ForeignItemKind {
@@ -2288,18 +2293,19 @@ pub mod mut_visit {
     }
 
     /// Mutates one item, returning the item again.
-    pub fn walk_flat_map_item<K: WalkItemKind>(
-        visitor: &mut impl MutVisitor,
-        mut item: P<Item<K>>,
-    ) -> SmallVec<[P<Item<K>>; 1]> {
-        let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
-        visitor.visit_id(id);
-        visit_attrs(visitor, attrs);
-        visitor.visit_vis(vis);
-        visitor.visit_ident(ident);
-        kind.walk(*id, *span, vis, ident, visitor);
-        visit_lazy_tts(visitor, tokens);
-        visitor.visit_span(span);
+    pub fn walk_flat_map_item(
+        vis: &mut impl MutVisitor,
+        mut item: P<Item>,
+    ) -> SmallVec<[P<Item>; 1]> {
+        vis.visit_item(&mut item);
+        smallvec![item]
+    }
+
+    pub fn walk_flat_map_foreign_item(
+        vis: &mut impl MutVisitor,
+        mut item: P<ForeignItem>,
+    ) -> SmallVec<[P<ForeignItem>; 1]> {
+        vis.visit_foreign_item(&mut item);
         smallvec![item]
     }
 
