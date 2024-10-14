@@ -612,6 +612,9 @@ impl Target {
         if triple.contains("-none") || triple.contains("nvptx") || triple.contains("switch") {
             target.no_std = true;
         }
+        if triple.contains("emscripten") {
+            target.runner = Some("node".into());
+        }
         target
     }
 }
