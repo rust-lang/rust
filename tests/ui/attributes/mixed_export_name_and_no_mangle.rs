@@ -3,6 +3,7 @@
 
 #[no_mangle]
 #[export_name = "foo"]
+//~^ ERROR the attribute `export_name` may not be used in combination with `no_mangle`
 pub fn bar() {}
 
 fn main() {}
