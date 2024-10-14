@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitSet;
@@ -146,11 +147,13 @@ fn extract_component_with_significant_dtor<'tcx>(
         // I honestly don't know how to extract the span reliably from a param arbitrarily nested
         ty::Param(_) => None,
     };
-    let (tys, spans) = extract_component_raw(tcx, param_env, ty);
+    let (mut tys, spans) = extract_component_raw(tcx, param_env, ty);
+    drop(spans); // HACK: Ignore the field spans.
+    let mut deduplicate = FxHashSet::default();
+    tys.retain(|ty| deduplicate.insert(*ty));
     let ty_names =
         tys.iter().copied().filter(|&oty| oty != ty).map(print_ty_without_trimming).join(", ");
-    let ty_spans =
-        tys.iter().copied().filter(|&oty| oty != ty).flat_map(ty_def_span).chain(spans).collect();
+    let ty_spans = tys.iter().copied().filter(|&oty| oty != ty).flat_map(ty_def_span).collect();
     (ty_names, ty_spans)
 }
 
