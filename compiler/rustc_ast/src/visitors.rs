@@ -308,9 +308,6 @@ macro_rules! make_ast_visitor {
                 fn visit_method_receiver_expr(&mut self, ex: &'ast Expr) -> Self::Result {
                     self.visit_expr(ex)
                 }
-                fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
-                    Self::Result::output()
-                }
             }}
 
             make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
@@ -1877,7 +1874,7 @@ pub mod visit {
             ExprKind::Dummy => {}
         }
 
-        visitor.visit_expr_post(expression)
+        V::Result::output()
     }
 }
 
