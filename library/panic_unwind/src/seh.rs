@@ -288,8 +288,6 @@ cfg_if::cfg_if! {
    }
 }
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#[allow(static_mut_refs)]
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     use core::intrinsics::atomic_store_seqcst;
 
