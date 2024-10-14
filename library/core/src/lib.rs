@@ -127,7 +127,6 @@
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
 #![feature(const_likely)]
-#![feature(const_make_ascii)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
