@@ -676,7 +676,6 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
     #[inline]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     pub const fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
         unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
@@ -1284,7 +1283,6 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     pub const fn make_ascii_uppercase(&mut self) {
         *self = self.to_ascii_uppercase();
     }
@@ -1311,7 +1309,6 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     pub const fn make_ascii_lowercase(&mut self) {
         *self = self.to_ascii_lowercase();
     }
@@ -1777,7 +1774,6 @@ const fn len_utf16(code: u32) -> usize {
 #[doc(hidden)]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
-#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
 pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
     const fn panic_at_const(_code: u32, _len: usize, _dst_len: usize) {
         // Note that we cannot format in constant expressions.

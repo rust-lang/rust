@@ -394,7 +394,6 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     #[rustc_const_stable(feature = "const_ptr_as_ref", since = "1.83.0")]
     #[must_use]
     #[inline(always)]

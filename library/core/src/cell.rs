@@ -2181,7 +2181,6 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     #[rustc_const_stable(feature = "const_unsafecell_get_mut", since = "1.83.0")]
     pub const fn get_mut(&mut self) -> &mut T {
         &mut self.value

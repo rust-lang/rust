@@ -1,8 +1,5 @@
 //@ compile-flags: -Z unstable-options
 
-// #[cfg(bootstrap)]: We can stop ignoring next beta bump; afterward this ALWAYS should run.
-//@ ignore-stage1
-
 #![feature(rustc_private)]
 #![deny(rustc::usage_of_type_ir_inherent)]
 

@@ -723,7 +723,6 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn as_mut(&mut self) -> Option<&mut T> {
         match *self {
@@ -1716,7 +1715,6 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn take(&mut self) -> Option<T> {
         // FIXME(const-hack) replace `mem::replace` by `mem::take` when the latter is const ready
@@ -1775,7 +1773,6 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_replace", since = "1.31.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
@@ -1937,7 +1934,6 @@ impl<T> Option<&mut T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn copied(self) -> Option<T>
     where
