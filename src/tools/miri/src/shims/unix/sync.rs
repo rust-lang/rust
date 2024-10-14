@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_target::abi::Size;
 
-use crate::concurrency::sync::{LAZY_INIT_COOKIE, lazy_sync_get_data, lazy_sync_init};
+use crate::concurrency::sync::LAZY_INIT_COOKIE;
 use crate::*;
 
 /// Do a bytewise comparison of the two places, using relaxed atomic reads. This is used to check if
@@ -176,7 +176,7 @@ fn mutex_create<'tcx>(
     let mutex = ecx.deref_pointer(mutex_ptr)?;
     let id = ecx.machine.sync.mutex_create();
     let data = PthreadMutex { id, kind };
-    lazy_sync_init(ecx, &mutex, mutex_init_offset(ecx)?, data)?;
+    ecx.lazy_sync_init(&mutex, mutex_init_offset(ecx)?, data)?;
     interp_ok(data)
 }
 
@@ -189,11 +189,16 @@ fn mutex_get_data<'tcx, 'a>(
     mutex_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, PthreadMutex> {
     let mutex = ecx.deref_pointer(mutex_ptr)?;
-    lazy_sync_get_data(ecx, &mutex, mutex_init_offset(ecx)?, "pthread_mutex_t", |ecx| {
-        let kind = mutex_kind_from_static_initializer(ecx, &mutex)?;
-        let id = ecx.machine.sync.mutex_create();
-        interp_ok(PthreadMutex { id, kind })
-    })
+    ecx.lazy_sync_get_data(
+        &mutex,
+        mutex_init_offset(ecx)?,
+        || throw_ub_format!("`pthread_mutex_t` can't be moved after first use"),
+        |ecx| {
+            let kind = mutex_kind_from_static_initializer(ecx, &mutex)?;
+            let id = ecx.machine.sync.mutex_create();
+            interp_ok(PthreadMutex { id, kind })
+        },
+    )
 }
 
 /// Returns the kind of a static initializer.
@@ -261,17 +266,22 @@ fn rwlock_get_data<'tcx>(
     rwlock_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, PthreadRwLock> {
     let rwlock = ecx.deref_pointer(rwlock_ptr)?;
-    lazy_sync_get_data(ecx, &rwlock, rwlock_init_offset(ecx)?, "pthread_rwlock_t", |ecx| {
-        if !bytewise_equal_atomic_relaxed(
-            ecx,
-            &rwlock,
-            &ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]),
-        )? {
-            throw_unsup_format!("unsupported static initializer used for `pthread_rwlock_t`");
-        }
-        let id = ecx.machine.sync.rwlock_create();
-        interp_ok(PthreadRwLock { id })
-    })
+    ecx.lazy_sync_get_data(
+        &rwlock,
+        rwlock_init_offset(ecx)?,
+        || throw_ub_format!("`pthread_rwlock_t` can't be moved after first use"),
+        |ecx| {
+            if !bytewise_equal_atomic_relaxed(
+                ecx,
+                &rwlock,
+                &ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]),
+            )? {
+                throw_unsup_format!("unsupported static initializer used for `pthread_rwlock_t`");
+            }
+            let id = ecx.machine.sync.rwlock_create();
+            interp_ok(PthreadRwLock { id })
+        },
+    )
 }
 
 // # pthread_condattr_t
@@ -377,7 +387,7 @@ fn cond_create<'tcx>(
     let cond = ecx.deref_pointer(cond_ptr)?;
     let id = ecx.machine.sync.condvar_create();
     let data = PthreadCondvar { id, clock };
-    lazy_sync_init(ecx, &cond, cond_init_offset(ecx)?, data)?;
+    ecx.lazy_sync_init(&cond, cond_init_offset(ecx)?, data)?;
     interp_ok(data)
 }
 
@@ -386,18 +396,23 @@ fn cond_get_data<'tcx>(
     cond_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, PthreadCondvar> {
     let cond = ecx.deref_pointer(cond_ptr)?;
-    lazy_sync_get_data(ecx, &cond, cond_init_offset(ecx)?, "pthread_cond_t", |ecx| {
-        if !bytewise_equal_atomic_relaxed(
-            ecx,
-            &cond,
-            &ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]),
-        )? {
-            throw_unsup_format!("unsupported static initializer used for `pthread_cond_t`");
-        }
-        // This used the static initializer. The clock there is always CLOCK_REALTIME.
-        let id = ecx.machine.sync.condvar_create();
-        interp_ok(PthreadCondvar { id, clock: ClockId::Realtime })
-    })
+    ecx.lazy_sync_get_data(
+        &cond,
+        cond_init_offset(ecx)?,
+        || throw_ub_format!("`pthread_cond_t` can't be moved after first use"),
+        |ecx| {
+            if !bytewise_equal_atomic_relaxed(
+                ecx,
+                &cond,
+                &ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]),
+            )? {
+                throw_unsup_format!("unsupported static initializer used for `pthread_cond_t`");
+            }
+            // This used the static initializer. The clock there is always CLOCK_REALTIME.
+            let id = ecx.machine.sync.condvar_create();
+            interp_ok(PthreadCondvar { id, clock: ClockId::Realtime })
+        },
+    )
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
