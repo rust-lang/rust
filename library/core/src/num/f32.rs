@@ -828,8 +828,9 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the operation, without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn recip(self) -> f32 {
+    pub const fn recip(self) -> f32 {
         1.0 / self
     }
 
@@ -845,8 +846,9 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn to_degrees(self) -> f32 {
+    pub const fn to_degrees(self) -> f32 {
         // Use a constant for better precision.
         const PIS_IN_180: f32 = 57.2957795130823208767981548141051703_f32;
         self * PIS_IN_180
@@ -864,8 +866,9 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn to_radians(self) -> f32 {
+    pub const fn to_radians(self) -> f32 {
         const RADS_PER_DEG: f32 = consts::PI / 180.0;
         self * RADS_PER_DEG
     }
@@ -885,8 +888,9 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn max(self, other: f32) -> f32 {
+    pub const fn max(self, other: f32) -> f32 {
         intrinsics::maxnumf32(self, other)
     }
 
@@ -905,8 +909,9 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn min(self, other: f32) -> f32 {
+    pub const fn min(self, other: f32) -> f32 {
         intrinsics::minnumf32(self, other)
     }
 
@@ -933,7 +938,7 @@ impl f32 {
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
-    pub fn maximum(self, other: f32) -> f32 {
+    pub const fn maximum(self, other: f32) -> f32 {
         if self > other {
             self
         } else if other > self {
@@ -968,7 +973,7 @@ impl f32 {
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
-    pub fn minimum(self, other: f32) -> f32 {
+    pub const fn minimum(self, other: f32) -> f32 {
         if self < other {
             self
         } else if other < self {
@@ -1401,9 +1406,19 @@ impl f32 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn clamp(mut self, min: f32, max: f32) -> f32 {
-        assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
+    pub const fn clamp(mut self, min: f32, max: f32) -> f32 {
+        const fn assert_at_const(min: f32, max: f32) {
+            // Note that we cannot format in constant expressions.
+            assert!(min <= max, "min > max, or either was NaN");
+        }
+        #[inline] // inline to avoid codegen regression
+        fn assert_at_rt(min: f32, max: f32) {
+            assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
+        }
+        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
+        intrinsics::const_eval_select((min, max), assert_at_const, assert_at_rt);
         if self < min {
             self = min;
         }
