@@ -9,6 +9,6 @@ fn main() {
         // Move rwlock
         let mut rw2 = rw;
 
-        libc::pthread_rwlock_unlock(&mut rw2 as *mut _); //~ ERROR: pthread_rwlock_t can't be moved after first use
+        libc::pthread_rwlock_unlock(&mut rw2 as *mut _); //~ ERROR: can't be moved after first use
     }
 }

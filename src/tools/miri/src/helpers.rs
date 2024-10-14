@@ -223,14 +223,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Evaluates the scalar at the specified path.
-    fn eval_path(&self, path: &[&str]) -> OpTy<'tcx> {
+    fn eval_path(&self, path: &[&str]) -> MPlaceTy<'tcx> {
         let this = self.eval_context_ref();
         let instance = resolve_path(*this.tcx, path, Namespace::ValueNS);
         // We don't give a span -- this isn't actually used directly by the program anyway.
-        let const_val = this.eval_global(instance).unwrap_or_else(|err| {
+        this.eval_global(instance).unwrap_or_else(|err| {
             panic!("failed to evaluate required Rust item: {path:?}\n{err:?}")
-        });
-        const_val.into()
+        })
     }
     fn eval_path_scalar(&self, path: &[&str]) -> Scalar {
         let this = self.eval_context_ref();
