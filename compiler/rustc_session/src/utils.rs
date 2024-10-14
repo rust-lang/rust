@@ -137,7 +137,7 @@ pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
             let content = if arg.len() == a.len() {
                 // A space-separated option, like `-C incremental=foo` or `--crate-type rlib`
                 match args.next() {
-                    Some(arg) => arg.to_string(),
+                    Some(arg) => arg,
                     None => continue,
                 }
             } else if arg.get(a.len()..a.len() + 1) == Some("=") {

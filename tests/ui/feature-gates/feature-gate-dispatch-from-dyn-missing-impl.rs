@@ -1,4 +1,4 @@
-// Check that a self parameter type requires a DispatchFromDyn impl to be object safe
+// Check that a self parameter type requires a DispatchFromDyn impl to be dyn-compatible.
 
 #![feature(arbitrary_self_types, unsize, coerce_unsized)]
 

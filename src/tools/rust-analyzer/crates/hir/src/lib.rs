@@ -144,9 +144,9 @@ pub use {
     hir_ty::{
         consteval::ConstEvalError,
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
+        dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
-        object_safety::{MethodViolationCode, ObjectSafetyViolation},
         CastError, FnAbi, PointerCast, Safety,
     },
     // FIXME: Properly encapsulate mir
@@ -497,10 +497,9 @@ impl Module {
 
     /// Finds a parent module.
     pub fn parent(self, db: &dyn HirDatabase) -> Option<Module> {
-        // FIXME: handle block expressions as modules (their parent is in a different DefMap)
         let def_map = self.id.def_map(db.upcast());
-        let parent_id = def_map[self.id.local_id].parent?;
-        Some(Module { id: def_map.module_id(parent_id) })
+        let parent_id = def_map.containing_module(self.id.local_id)?;
+        Some(Module { id: parent_id })
     }
 
     /// Finds nearest non-block ancestor `Module` (`self` included).
@@ -557,7 +556,7 @@ impl Module {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        let _p = tracing::info_span!("Module::diagnostics", name = ?self.name(db)).entered();
+        let _p = tracing::info_span!("diagnostics", name = ?self.name(db)).entered();
         let edition = db.crate_graph()[self.id.krate()].edition;
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
@@ -2690,8 +2689,8 @@ impl Trait {
             .count()
     }
 
-    pub fn object_safety(&self, db: &dyn HirDatabase) -> Option<ObjectSafetyViolation> {
-        hir_ty::object_safety::object_safety(db, self.id)
+    pub fn dyn_compatibility(&self, db: &dyn HirDatabase) -> Option<DynCompatibilityViolation> {
+        hir_ty::dyn_compatibility::dyn_compatibility(db, self.id)
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {

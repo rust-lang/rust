@@ -46,6 +46,11 @@ pub(crate) struct FetchWorkspaceRequest {
     pub(crate) force_crate_graph_reload: bool,
 }
 
+pub(crate) struct FetchWorkspaceResponse {
+    pub(crate) workspaces: Vec<anyhow::Result<ProjectWorkspace>>,
+    pub(crate) force_crate_graph_reload: bool,
+}
+
 // Enforces drop order
 pub(crate) struct Handle<H, C> {
     pub(crate) handle: H,
@@ -111,6 +116,9 @@ pub(crate) struct GlobalState {
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
     pub(crate) vfs_done: bool,
+    // used to track how long VFS loading takes. this can't be on `vfs::loader::Handle`,
+    // as that handle's lifetime is the same as `GlobalState` itself.
+    pub(crate) vfs_span: Option<tracing::span::EnteredSpan>,
     pub(crate) wants_to_switch: Option<Cause>,
 
     /// `workspaces` field stores the data we actually use, while the `OpQueue`
@@ -143,8 +151,7 @@ pub(crate) struct GlobalState {
     pub(crate) detached_files: FxHashSet<ManifestPath>,
 
     // op queues
-    pub(crate) fetch_workspaces_queue:
-        OpQueue<FetchWorkspaceRequest, Option<(Vec<anyhow::Result<ProjectWorkspace>>, bool)>>,
+    pub(crate) fetch_workspaces_queue: OpQueue<FetchWorkspaceRequest, FetchWorkspaceResponse>,
     pub(crate) fetch_build_data_queue:
         OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
     pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
@@ -253,6 +260,7 @@ impl GlobalState {
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
+            vfs_span: None,
             vfs_done: true,
             wants_to_switch: None,
 
@@ -498,7 +506,7 @@ impl GlobalState {
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
             proc_macros_loaded: !self.config.expand_proc_macros()
-                || *self.fetch_proc_macros_queue.last_op_result(),
+                || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false),
             flycheck: self.flycheck.clone(),
         }
     }

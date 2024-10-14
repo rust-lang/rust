@@ -29,13 +29,12 @@ use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Instant, SystemTime};
 use std::{env, str};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
-use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::profiling::{
     TimePassesFormat, get_resident_set_size, print_time_passes_entry,
 };
@@ -1577,8 +1576,8 @@ pub fn install_ctrlc_handler() {
         // time to check CTRL_C_RECEIVED and run its own shutdown logic, but after a short amount
         // of time exit the process. This sleep+exit ensures that even if nobody is checking
         // CTRL_C_RECEIVED, the compiler exits reasonably promptly.
-        CTRL_C_RECEIVED.store(true, Ordering::Relaxed);
-        std::thread::sleep(Duration::from_millis(100));
+        rustc_const_eval::CTRL_C_RECEIVED.store(true, Ordering::Relaxed);
+        std::thread::sleep(std::time::Duration::from_millis(100));
         std::process::exit(1);
     })
     .expect("Unable to install ctrlc handler");

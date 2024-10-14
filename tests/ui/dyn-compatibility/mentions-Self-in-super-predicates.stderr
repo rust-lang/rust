@@ -1,0 +1,48 @@
+error[E0038]: the trait `Expr` cannot be made into an object
+  --> $DIR/mentions-Self-in-super-predicates.rs:12:23
+   |
+LL |     elements: Vec<Box<dyn Expr + 'x>>,
+   |                       ^^^^^^^^^^^^^ `Expr` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/mentions-Self-in-super-predicates.rs:5:21
+   |
+LL | trait Expr: Debug + PartialEq {
+   |       ----          ^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait cannot be made into an object...
+   = help: only type `SExpr<'x>` implements the trait, consider using it directly instead
+
+error[E0038]: the trait `Expr` cannot be made into an object
+  --> $DIR/mentions-Self-in-super-predicates.rs:38:16
+   |
+LL |     let a: Box<dyn Expr> = Box::new(SExpr::new());
+   |                ^^^^^^^^ `Expr` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/mentions-Self-in-super-predicates.rs:5:21
+   |
+LL | trait Expr: Debug + PartialEq {
+   |       ----          ^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait cannot be made into an object...
+   = help: only type `SExpr<'x>` implements the trait, consider using it directly instead
+
+error[E0038]: the trait `Expr` cannot be made into an object
+  --> $DIR/mentions-Self-in-super-predicates.rs:40:16
+   |
+LL |     let b: Box<dyn Expr> = Box::new(SExpr::new());
+   |                ^^^^^^^^ `Expr` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/mentions-Self-in-super-predicates.rs:5:21
+   |
+LL | trait Expr: Debug + PartialEq {
+   |       ----          ^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait cannot be made into an object...
+   = help: only type `SExpr<'x>` implements the trait, consider using it directly instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

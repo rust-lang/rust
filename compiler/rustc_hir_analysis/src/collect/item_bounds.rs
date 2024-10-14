@@ -335,8 +335,7 @@ pub(super) fn explicit_item_bounds_with_filter(
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
-            let item = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_item();
-            let opaque_ty = item.expect_opaque_ty();
+            let opaque_ty = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_opaque_ty();
             let item_ty = Ty::new_projection_from_args(
                 tcx,
                 def_id.to_def_id(),
@@ -347,7 +346,7 @@ pub(super) fn explicit_item_bounds_with_filter(
                 opaque_def_id.expect_local(),
                 opaque_ty.bounds,
                 item_ty,
-                item.span,
+                opaque_ty.span,
                 filter,
             );
             assert_only_contains_predicates_from(filter, bounds, item_ty);
@@ -369,11 +368,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             span,
             ..
         }) => associated_type_bounds(tcx, def_id, bounds, *span, filter),
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, origin, .. }),
-            span,
-            ..
-        }) => match origin {
+        hir::Node::OpaqueTy(hir::OpaqueTy { bounds, origin, span, .. }) => match origin {
             // Since RPITITs are lowered as projections in `<dyn HirTyLowerer>::lower_ty`,
             // when we're asking for the item bounds of the *opaques* in a trait's default
             // method signature, we need to map these projections back to opaques.
@@ -412,7 +407,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             }
         },
         hir::Node::Item(hir::Item { kind: hir::ItemKind::TyAlias(..), .. }) => &[],
-        _ => bug!("item_bounds called on {:?}", def_id),
+        node => bug!("item_bounds called on {def_id:?} => {node:?}"),
     };
 
     ty::EarlyBinder::bind(bounds)

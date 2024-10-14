@@ -19,20 +19,6 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::{self, MaybeUninit};
 #[cfg(not(no_global_oom_handling))]
 use core::ptr;
-#[cfg(not(no_global_oom_handling))]
-use core::slice::sort;
-
-use crate::alloc::Allocator;
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::Global;
-#[cfg(not(no_global_oom_handling))]
-use crate::borrow::ToOwned;
-use crate::boxed::Box;
-use crate::vec::Vec;
-
-#[cfg(test)]
-mod tests;
-
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use core::slice::ArrayChunks;
 #[unstable(feature = "array_chunks", issue = "74985")]
@@ -43,6 +29,8 @@ pub use core::slice::ArrayWindows;
 pub use core::slice::EscapeAscii;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
+#[cfg(not(no_global_oom_handling))]
+use core::slice::sort;
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use core::slice::{ChunkBy, ChunkByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -82,6 +70,14 @@ pub use hack::into_vec;
 // N.B., see the `hack` module in this file for more details.
 #[cfg(test)]
 pub use hack::to_vec;
+
+use crate::alloc::Allocator;
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::Global;
+#[cfg(not(no_global_oom_handling))]
+use crate::borrow::ToOwned;
+use crate::boxed::Box;
+use crate::vec::Vec;
 
 // HACK(japaric): With cfg(test) `impl [T]` is not available, these three
 // functions are actually methods that are in `impl [T]` but not in

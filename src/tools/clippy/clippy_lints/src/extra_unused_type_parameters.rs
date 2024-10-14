@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_impl_item, walk_item, walk_param_bound, walk_ty};
 use rustc_hir::{
     BodyId, ExprKind, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item, ItemKind,
-    PredicateOrigin, Ty, TyKind, WherePredicate,
+    PredicateOrigin, Ty, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
@@ -199,12 +199,6 @@ impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
         if let Some((def_id, _)) = t.peel_refs().as_generic_param() {
             self.ty_params.remove(&def_id);
-        } else if let TyKind::OpaqueDef(id, _) = t.kind {
-            // Explicitly walk OpaqueDef. Normally `walk_ty` would do the job, but it calls
-            // `visit_nested_item`, which checks that `Self::NestedFilter::INTER` is set. We're
-            // using `OnlyBodies`, so the check ends up failing and the type isn't fully walked.
-            let item = self.nested_visit_map().item(id);
-            walk_item(self, item);
         } else {
             walk_ty(self, t);
         }

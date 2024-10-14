@@ -13,6 +13,7 @@ use rustc_middle::ty::{
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
+use rustc_type_ir::elaborate::ClauseWithSupertraitSpan;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -124,16 +125,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .into_iter()
             .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
-        for (base_trait_ref, span) in regular_traits_refs_spans {
+        for (base_trait_ref, original_span) in regular_traits_refs_spans {
             let base_pred: ty::Predicate<'tcx> = base_trait_ref.upcast(tcx);
-            for pred in traits::elaborate(tcx, [base_pred]).filter_only_self() {
+            for ClauseWithSupertraitSpan { pred, original_span, supertrait_span } in
+                traits::elaborate(tcx, [ClauseWithSupertraitSpan::new(base_pred, original_span)])
+                    .filter_only_self()
+            {
                 debug!("observing object predicate `{pred:?}`");
 
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                         let pred = bound_predicate.rebind(pred);
-                        associated_types.entry(span).or_default().extend(
+                        associated_types.entry(original_span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
@@ -172,8 +176,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // the discussion in #56288 for alternatives.
                         if !references_self {
                             // Include projections defined on supertraits.
-                            projection_bounds.push((pred, span));
+                            projection_bounds.push((pred, original_span));
                         }
+
+                        self.check_elaborated_projection_mentions_input_lifetimes(
+                            pred,
+                            original_span,
+                            supertrait_span,
+                        );
                     }
                     _ => (),
                 }
@@ -359,6 +369,56 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?region_bound);
 
         Ty::new_dynamic(tcx, existential_predicates, region_bound, representation)
+    }
+
+    /// Check that elaborating the principal of a trait ref doesn't lead to projections
+    /// that are unconstrained. This can happen because an otherwise unconstrained
+    /// *type variable* can be substituted with a type that has late-bound regions. See
+    /// `elaborated-predicates-unconstrained-late-bound.rs` for a test.
+    fn check_elaborated_projection_mentions_input_lifetimes(
+        &self,
+        pred: ty::PolyProjectionPredicate<'tcx>,
+        span: Span,
+        supertrait_span: Span,
+    ) {
+        let tcx = self.tcx();
+
+        // Find any late-bound regions declared in `ty` that are not
+        // declared in the trait-ref or assoc_item. These are not well-formed.
+        //
+        // Example:
+        //
+        //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
+        //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+        let late_bound_in_projection_term =
+            tcx.collect_constrained_late_bound_regions(pred.map_bound(|pred| pred.projection_term));
+        let late_bound_in_term =
+            tcx.collect_referenced_late_bound_regions(pred.map_bound(|pred| pred.term));
+        debug!(?late_bound_in_projection_term);
+        debug!(?late_bound_in_term);
+
+        // FIXME: point at the type params that don't have appropriate lifetimes:
+        // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
+        //                         ----  ----     ^^^^^^^
+        // NOTE(associated_const_equality): This error should be impossible to trigger
+        //                                  with associated const equality constraints.
+        self.validate_late_bound_regions(
+            late_bound_in_projection_term,
+            late_bound_in_term,
+            |br_name| {
+                let item_name = tcx.item_name(pred.projection_def_id());
+                struct_span_code_err!(
+                    self.dcx(),
+                    span,
+                    E0582,
+                    "binding for associated type `{}` references {}, \
+                             which does not appear in the trait input types",
+                    item_name,
+                    br_name
+                )
+                .with_span_label(supertrait_span, "due to this supertrait")
+            },
+        );
     }
 }
 

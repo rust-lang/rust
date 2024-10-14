@@ -9,7 +9,6 @@ impl<const N: usize> [u8; N] {
     ///
     /// ```
     /// #![feature(ascii_char)]
-    /// #![feature(const_option)]
     ///
     /// const HEX_DIGITS: [std::ascii::Char; 16] =
     ///     *b"0123456789abcdef".as_ascii().unwrap();

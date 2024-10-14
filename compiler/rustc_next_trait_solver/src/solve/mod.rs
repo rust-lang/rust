@@ -10,9 +10,6 @@
 //!
 //! For a high-level overview of how this solver works, check out the relevant
 //! section of the rustc-dev-guide.
-//!
-//! FIXME(@lcnr): Write that section. If you read this before then ask me
-//! about it on zulip.
 
 mod alias_relate;
 mod assembly;
@@ -46,6 +43,14 @@ const FIXPOINT_STEP_LIMIT: usize = 8;
 enum GoalEvaluationKind {
     Root,
     Nested,
+}
+
+/// Whether evaluating this goal ended up changing the
+/// inference state.
+#[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
+pub enum HasChanged {
+    Yes,
+    No,
 }
 
 // FIXME(trait-system-refactor-initiative#117): we don't detect whether a response

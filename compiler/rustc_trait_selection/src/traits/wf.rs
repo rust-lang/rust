@@ -829,7 +829,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // obligations that don't refer to Self and
                 // checking those
 
-                let defer_to_coercion = tcx.features().object_safe_for_dispatch;
+                let defer_to_coercion = tcx.features().dyn_compatible_for_dispatch;
 
                 if !defer_to_coercion {
                     if let Some(principal) = data.principal_def_id() {

@@ -23,10 +23,11 @@ export async function bootstrap(
 
     if (!isValidExecutable(path, config.serverExtraEnv)) {
         throw new Error(
-            `Failed to execute ${path} --version.` + config.serverPath
-                ? `\`config.server.path\` or \`config.serverPath\` has been set explicitly.\
+            `Failed to execute ${path} --version.` +
+                (config.serverPath
+                    ? `\`config.server.path\` or \`config.serverPath\` has been set explicitly.\
             Consider removing this config or making a valid server binary available at that path.`
-                : "",
+                    : ""),
         );
     }
 

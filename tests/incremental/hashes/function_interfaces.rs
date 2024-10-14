@@ -318,9 +318,9 @@ pub fn change_return_impl_trait() -> impl Clone {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
+#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes")]
 #[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5", except = "typeck")]
+#[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg = "cfail6")]
 pub fn change_return_impl_trait() -> impl  Copy {
     0u32

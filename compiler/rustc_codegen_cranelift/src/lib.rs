@@ -15,6 +15,7 @@
 extern crate jobserver;
 #[macro_use]
 extern crate rustc_middle;
+extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;

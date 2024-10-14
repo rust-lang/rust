@@ -116,8 +116,8 @@ fn get_skip_names(kind: &str, attrs: &[ast::Attribute]) -> Vec<String> {
         }
 
         if let Some(list) = attr.meta_item_list() {
-            for nested_meta_item in list {
-                if let Some(name) = nested_meta_item.ident() {
+            for meta_item_inner in list {
+                if let Some(name) = meta_item_inner.ident() {
                     skip_names.push(name.to_string());
                 }
             }

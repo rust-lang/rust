@@ -862,6 +862,27 @@ mod prim_array {}
 /// assert_eq!(x, &[1, 7, 3]);
 /// ```
 ///
+/// It is possible to slice empty subranges of slices by using empty ranges (including `slice.len()..slice.len()`):
+/// ```
+/// let x = [1, 2, 3];
+/// let empty = &x[0..0];   // subslice before the first element
+/// assert_eq!(empty, &[]);
+/// let empty = &x[..0];    // same as &x[0..0]
+/// assert_eq!(empty, &[]);
+/// let empty = &x[1..1];   // empty subslice in the middle
+/// assert_eq!(empty, &[]);
+/// let empty = &x[3..3];   // subslice after the last element
+/// assert_eq!(empty, &[]);
+/// let empty = &x[3..];    // same as &x[3..3]
+/// assert_eq!(empty, &[]);
+/// ```
+///
+/// It is not allowed to use subranges that start with lower bound bigger than `slice.len()`:
+/// ```should_panic
+/// let x = vec![1, 2, 3];
+/// let _ = &x[4..4];
+/// ```
+///
 /// As slices store the length of the sequence they refer to, they have twice
 /// the size of pointers to [`Sized`](marker/trait.Sized.html) types.
 /// Also see the reference on
@@ -1251,7 +1272,7 @@ mod prim_f16 {}
 ///   - **Unchanged NaN propagation**: The quiet bit and payload are copied from any input operand
 ///     that is a NaN. If the inputs and outputs do not have the same size (i.e., for `as` casts), the
 ///     same rules as for "quieting NaN propagation" apply, with one caveat: if the output is smaller
-///     than the input, droppig the low-order bits may result in a payload of 0; a payload of 0 is not
+///     than the input, dropping the low-order bits may result in a payload of 0; a payload of 0 is not
 ///     possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
 ///     propagation cannot occur with some inputs.
 ///   - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific

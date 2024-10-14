@@ -1828,13 +1828,8 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             Array(Box::new(clean_ty(ty, cx)), length.into())
         }
         TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
-        TyKind::OpaqueDef(item_id, _) => {
-            let item = cx.tcx.hir().item(item_id);
-            if let hir::ItemKind::OpaqueTy(ty) = item.kind {
-                ImplTrait(ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect())
-            } else {
-                unreachable!()
-            }
+        TyKind::OpaqueDef(ty, _) => {
+            ImplTrait(ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect())
         }
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, lifetime, _) => {
@@ -2736,9 +2731,6 @@ fn clean_maybe_renamed_item<'tcx>(
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },
             })),
-            // clean_ty changes types which reference an OpaqueTy item to instead be
-            // an ImplTrait, so it's ok to return nothing here.
-            ItemKind::OpaqueTy(_) => return vec![],
             ItemKind::TyAlias(hir_ty, generics) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
                 let rustdoc_ty = clean_ty(hir_ty, cx);

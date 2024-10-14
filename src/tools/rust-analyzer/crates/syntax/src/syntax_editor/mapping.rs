@@ -7,8 +7,6 @@ use rustc_hash::FxHashMap;
 
 use crate::{SyntaxElement, SyntaxNode};
 
-use super::SyntaxEditor;
-
 #[derive(Debug, Default)]
 pub struct SyntaxMapping {
     // important information to keep track of:
@@ -209,7 +207,7 @@ impl SyntaxMapping {
         Some(output)
     }
 
-    fn add_mapping(&mut self, syntax_mapping: SyntaxMappingBuilder) {
+    pub fn add_mapping(&mut self, syntax_mapping: SyntaxMappingBuilder) {
         let SyntaxMappingBuilder { parent_node, node_mappings } = syntax_mapping;
 
         let parent_entry: u32 = self.entry_parents.len().try_into().unwrap();
@@ -257,8 +255,8 @@ impl SyntaxMappingBuilder {
         }
     }
 
-    pub fn finish(self, editor: &mut SyntaxEditor) {
-        editor.mappings.add_mapping(self);
+    pub fn finish(self, mappings: &mut SyntaxMapping) {
+        mappings.add_mapping(self);
     }
 }
 

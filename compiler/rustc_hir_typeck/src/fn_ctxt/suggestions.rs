@@ -847,11 +847,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
             hir::FnRetTy::Return(hir_ty) => {
-                if let hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
+                if let hir::TyKind::OpaqueDef(op_ty, ..) = hir_ty.kind
                     // FIXME: account for RPITIT.
-                    && let hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::OpaqueTy(op_ty), ..
-                    }) = self.tcx.hir_node(item_id.hir_id())
                     && let [hir::GenericBound::Trait(trait_ref, _)] = op_ty.bounds
                     && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
                         trait_ref.trait_ref.path.segments.last()
@@ -1462,7 +1459,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn suggest_deref_unwrap_or(
         &self,
         err: &mut Diag<'_>,
-        error_span: Span,
         callee_ty: Option<Ty<'tcx>>,
         call_ident: Option<Ident>,
         expected_ty: Ty<'tcx>,
@@ -2612,7 +2608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     if let hir::ExprKind::Unary(hir::UnOp::Deref, inner) = expr.kind
-                        && let Some(1) = self.deref_steps(expected, checked_ty)
+                        && let Some(1) = self.deref_steps_for_suggestion(expected, checked_ty)
                     {
                         // We have `*&T`, check if what was expected was `&T`.
                         // If so, we may want to suggest removing a `*`.
@@ -2742,7 +2738,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             (_, &ty::RawPtr(ty_b, mutbl_b), &ty::Ref(_, ty_a, mutbl_a)) => {
-                if let Some(steps) = self.deref_steps(ty_a, ty_b)
+                if let Some(steps) = self.deref_steps_for_suggestion(ty_a, ty_b)
                     // Only suggest valid if dereferencing needed.
                     && steps > 0
                     // The pointer type implements `Copy` trait so the suggestion is always valid.
@@ -2786,7 +2782,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             _ if sp == expr.span => {
-                if let Some(mut steps) = self.deref_steps(checked_ty, expected) {
+                if let Some(mut steps) = self.deref_steps_for_suggestion(checked_ty, expected) {
                     let mut expr = expr.peel_blocks();
                     let mut prefix_span = expr.span.shrink_to_lo();
                     let mut remove = String::new();

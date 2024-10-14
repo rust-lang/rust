@@ -9,7 +9,22 @@ use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::{self as ty, Interner};
 
+pub mod combine;
+pub mod solver_relating;
+
 pub type RelateResult<I, T> = Result<T, TypeError<I>>;
+
+/// Whether aliases should be related structurally or not. Used
+/// to adjust the behavior of generalization and combine.
+///
+/// This should always be `No` unless in a few special-cases when
+/// instantiating canonical responses and in the new solver. Each
+/// such case should have a comment explaining why it is used.
+#[derive(Debug, Copy, Clone)]
+pub enum StructurallyRelateAliases {
+    Yes,
+    No,
+}
 
 /// Extra information about why we ended up with a particular variance.
 /// This is only used to add more information to error messages, and
@@ -239,6 +254,16 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                     b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
                 )?,
+                ty::Projection if relation.cx().is_impl_trait_in_trait(a.def_id) => {
+                    relate_args_with_variances(
+                        relation,
+                        a.def_id,
+                        relation.cx().variances_of(a.def_id),
+                        a.args,
+                        b.args,
+                        false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+                    )?
+                }
                 ty::Projection | ty::Weak | ty::Inherent => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }

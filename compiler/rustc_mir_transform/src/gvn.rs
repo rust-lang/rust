@@ -103,7 +103,7 @@ use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{self, Abi, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
+use rustc_target::abi::{self, Abi, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
@@ -568,13 +568,29 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 CastKind::Transmute => {
                     let value = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    // `offset` for immediates only supports scalar/scalar-pair ABIs,
-                    // so bail out if the target is not one.
+                    // `offset` for immediates generally only supports projections that match the
+                    // type of the immediate. However, as a HACK, we exploit that it can also do
+                    // limited transmutes: it only works between types with the same layout, and
+                    // cannot transmute pointers to integers.
                     if value.as_mplace_or_imm().is_right() {
-                        match (value.layout.abi, to.abi) {
-                            (Abi::Scalar(..), Abi::Scalar(..)) => {}
-                            (Abi::ScalarPair(..), Abi::ScalarPair(..)) => {}
-                            _ => return None,
+                        let can_transmute = match (value.layout.abi, to.abi) {
+                            (Abi::Scalar(s1), Abi::Scalar(s2)) => {
+                                s1.size(&self.ecx) == s2.size(&self.ecx)
+                                    && !matches!(s1.primitive(), Primitive::Pointer(..))
+                            }
+                            (Abi::ScalarPair(a1, b1), Abi::ScalarPair(a2, b2)) => {
+                                a1.size(&self.ecx) == a2.size(&self.ecx) &&
+                                b1.size(&self.ecx) == b2.size(&self.ecx) &&
+                                // The alignment of the second component determines its offset, so that also needs to match.
+                                b1.align(&self.ecx) == b2.align(&self.ecx) &&
+                                // None of the inputs may be a pointer.
+                                !matches!(a1.primitive(), Primitive::Pointer(..))
+                                    && !matches!(b1.primitive(), Primitive::Pointer(..))
+                            }
+                            _ => false,
+                        };
+                        if !can_transmute {
+                            return None;
                         }
                     }
                     value.offset(Size::ZERO, to, &self.ecx).discard_err()?
@@ -1137,7 +1153,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (UnOp::PtrMetadata, Value::Aggregate(AggregateTy::RawPtr { .. }, _, fields)) => {
                 return Some(fields[1]);
             }
-            // We have an unsizing cast, which assigns the length to fat pointer metadata.
+            // We have an unsizing cast, which assigns the length to wide pointer metadata.
             (
                 UnOp::PtrMetadata,
                 Value::Cast {
@@ -1421,7 +1437,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let mut inner = self.simplify_place_value(place, location)?;
 
-        // The length information is stored in the fat pointer.
+        // The length information is stored in the wide pointer.
         // Reborrowing copies length information from one pointer to the other.
         while let Value::Address { place: borrowed, .. } = self.get(inner)
             && let [PlaceElem::Deref] = borrowed.projection[..]
@@ -1430,7 +1446,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             inner = borrowed;
         }
 
-        // We have an unsizing cast, which assigns the length to fat pointer metadata.
+        // We have an unsizing cast, which assigns the length to wide pointer metadata.
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
             && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
             && let Some(from) = from.builtin_deref(true)

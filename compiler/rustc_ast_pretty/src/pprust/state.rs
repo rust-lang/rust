@@ -1174,14 +1174,6 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            ast::TyKind::AnonStruct(_, fields) => {
-                self.head("struct");
-                self.print_record_struct_body(fields, ty.span);
-            }
-            ast::TyKind::AnonUnion(_, fields) => {
-                self.head("union");
-                self.print_record_struct_body(fields, ty.span);
-            }
             ast::TyKind::Paren(typ) => {
                 self.popen();
                 self.print_type(typ);
@@ -2006,10 +1998,10 @@ impl<'a> State<'a> {
         self.print_attribute_inline(attr, false)
     }
 
-    fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
+    fn print_meta_list_item(&mut self, item: &ast::MetaItemInner) {
         match item {
-            ast::NestedMetaItem::MetaItem(mi) => self.print_meta_item(mi),
-            ast::NestedMetaItem::Lit(lit) => self.print_meta_item_lit(lit),
+            ast::MetaItemInner::MetaItem(mi) => self.print_meta_item(mi),
+            ast::MetaItemInner::Lit(lit) => self.print_meta_item_lit(lit),
         }
     }
 
@@ -2054,7 +2046,7 @@ impl<'a> State<'a> {
         Self::to_string(|s| s.print_path_segment(p, false))
     }
 
-    pub(crate) fn meta_list_item_to_string(&self, li: &ast::NestedMetaItem) -> String {
+    pub(crate) fn meta_list_item_to_string(&self, li: &ast::MetaItemInner) -> String {
         Self::to_string(|s| s.print_meta_list_item(li))
     }
 

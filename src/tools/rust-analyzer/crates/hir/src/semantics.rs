@@ -24,6 +24,7 @@ use hir_expand::{
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::InRealFile,
+    hygiene::SyntaxContextExt as _,
     inert_attr_macro::find_builtin_attr_idx,
     name::AsName,
     FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
@@ -32,13 +33,13 @@ use intern::Symbol;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::{EditionedFileId, FileId, HirFileIdRepr};
+use span::{EditionedFileId, FileId, HirFileIdRepr, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody, IsString as _},
-    match_ast, AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
-    TextRange, TextSize,
+    ast::{self, HasAttrs as _, HasGenericParams, IsString as _},
+    AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
+    TextSize,
 };
 
 use crate::{
@@ -608,7 +609,7 @@ impl<'db> SemanticsImpl<'db> {
         let quote = string.open_quote_text_range()?;
 
         let token = self.wrap_token_infile(string.syntax().clone()).into_real_file().ok()?;
-        self.descend_into_macros_breakable(token, |token| {
+        self.descend_into_macros_breakable(token, |token, _| {
             (|| {
                 let token = token.value;
                 let string = ast::String::cast(token)?;
@@ -655,7 +656,7 @@ impl<'db> SemanticsImpl<'db> {
         let original_string = ast::String::cast(original_token.clone())?;
         let original_token = self.wrap_token_infile(original_token).into_real_file().ok()?;
         let quote = original_string.open_quote_text_range()?;
-        self.descend_into_macros_breakable(original_token, |token| {
+        self.descend_into_macros_breakable(original_token, |token, _| {
             (|| {
                 let token = token.value;
                 self.resolve_offset_in_format_args(
@@ -718,7 +719,7 @@ impl<'db> SemanticsImpl<'db> {
             // node is just the token, so descend the token
             self.descend_into_macros_impl(
                 InRealFile::new(file_id, first),
-                &mut |InFile { value, .. }| {
+                &mut |InFile { value, .. }, _ctx| {
                     if let Some(node) = value
                         .parent_ancestors()
                         .take_while(|it| it.text_range() == value.text_range())
@@ -732,7 +733,7 @@ impl<'db> SemanticsImpl<'db> {
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(InRealFile::new(file_id, first), &mut |token| {
+            self.descend_into_macros_impl(InRealFile::new(file_id, first), &mut |token, _ctx| {
                 scratch.push(token);
                 CONTINUE_NO_BREAKS
             });
@@ -740,7 +741,7 @@ impl<'db> SemanticsImpl<'db> {
             let mut scratch = scratch.into_iter();
             self.descend_into_macros_impl(
                 InRealFile::new(file_id, last),
-                &mut |InFile { value: last, file_id: last_fid }| {
+                &mut |InFile { value: last, file_id: last_fid }, _ctx| {
                     if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
                         if first_fid == last_fid {
                             if let Some(p) = first.parent() {
@@ -763,7 +764,9 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    fn is_inside_macro_call(token: &SyntaxToken) -> bool {
+    // FIXME: This isn't quite right wrt to inner attributes
+    /// Does a syntactic traversal to check whether this token might be inside a macro call
+    pub fn might_be_inside_macro_call(&self, token: &SyntaxToken) -> bool {
         token.parent_ancestors().any(|ancestor| {
             if ast::MacroCall::can_cast(ancestor.kind()) {
                 return true;
@@ -781,25 +784,14 @@ impl<'db> SemanticsImpl<'db> {
         })
     }
 
-    pub fn descend_into_macros_exact_if_in_macro(
-        &self,
-        token: SyntaxToken,
-    ) -> SmallVec<[SyntaxToken; 1]> {
-        if Self::is_inside_macro_call(&token) {
-            self.descend_into_macros_exact(token)
-        } else {
-            smallvec![token]
-        }
-    }
-
     pub fn descend_into_macros_cb(
         &self,
         token: SyntaxToken,
-        mut cb: impl FnMut(InFile<SyntaxToken>),
+        mut cb: impl FnMut(InFile<SyntaxToken>, SyntaxContextId),
     ) {
         if let Ok(token) = self.wrap_token_infile(token).into_real_file() {
-            self.descend_into_macros_impl(token, &mut |t| {
-                cb(t);
+            self.descend_into_macros_impl(token, &mut |t, ctx| {
+                cb(t, ctx);
                 CONTINUE_NO_BREAKS
             });
         }
@@ -808,8 +800,25 @@ impl<'db> SemanticsImpl<'db> {
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
         if let Ok(token) = self.wrap_token_infile(token.clone()).into_real_file() {
-            self.descend_into_macros_impl(token, &mut |t| {
+            self.descend_into_macros_impl(token, &mut |t, _ctx| {
                 res.push(t.value);
+                CONTINUE_NO_BREAKS
+            });
+        }
+        if res.is_empty() {
+            res.push(token);
+        }
+        res
+    }
+
+    pub fn descend_into_macros_no_opaque(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+        let mut res = smallvec![];
+        if let Ok(token) = self.wrap_token_infile(token.clone()).into_real_file() {
+            self.descend_into_macros_impl(token, &mut |t, ctx| {
+                if !ctx.is_opaque(self.db.upcast()) {
+                    // Don't descend into opaque contexts
+                    res.push(t.value);
+                }
                 CONTINUE_NO_BREAKS
             });
         }
@@ -822,7 +831,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn descend_into_macros_breakable<T>(
         &self,
         token: InRealFile<SyntaxToken>,
-        mut cb: impl FnMut(InFile<SyntaxToken>) -> ControlFlow<T>,
+        mut cb: impl FnMut(InFile<SyntaxToken>, SyntaxContextId) -> ControlFlow<T>,
     ) -> Option<T> {
         self.descend_into_macros_impl(token.clone(), &mut cb)
     }
@@ -834,10 +843,12 @@ impl<'db> SemanticsImpl<'db> {
         let text = token.text();
         let kind = token.kind();
 
-        self.descend_into_macros_cb(token.clone(), |InFile { value, file_id: _ }| {
+        self.descend_into_macros_cb(token.clone(), |InFile { value, file_id: _ }, ctx| {
             let mapped_kind = value.kind();
             let any_ident_match = || kind.is_any_identifier() && value.kind().is_any_identifier();
-            let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();
+            let matches = (kind == mapped_kind || any_ident_match())
+                && text == value.text()
+                && !ctx.is_opaque(self.db.upcast());
             if matches {
                 r.push(value);
             }
@@ -854,17 +865,21 @@ impl<'db> SemanticsImpl<'db> {
         let text = token.text();
         let kind = token.kind();
         if let Ok(token) = self.wrap_token_infile(token.clone()).into_real_file() {
-            self.descend_into_macros_breakable(token.clone(), |InFile { value, file_id: _ }| {
-                let mapped_kind = value.kind();
-                let any_ident_match =
-                    || kind.is_any_identifier() && value.kind().is_any_identifier();
-                let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();
-                if matches {
-                    ControlFlow::Break(value)
-                } else {
-                    ControlFlow::Continue(())
-                }
-            })
+            self.descend_into_macros_breakable(
+                token.clone(),
+                |InFile { value, file_id: _ }, _ctx| {
+                    let mapped_kind = value.kind();
+                    let any_ident_match =
+                        || kind.is_any_identifier() && value.kind().is_any_identifier();
+                    let matches =
+                        (kind == mapped_kind || any_ident_match()) && text == value.text();
+                    if matches {
+                        ControlFlow::Break(value)
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                },
+            )
         } else {
             None
         }
@@ -874,7 +889,7 @@ impl<'db> SemanticsImpl<'db> {
     fn descend_into_macros_impl<T>(
         &self,
         InRealFile { value: token, file_id }: InRealFile<SyntaxToken>,
-        f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<T>,
+        f: &mut dyn FnMut(InFile<SyntaxToken>, SyntaxContextId) -> ControlFlow<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
         let (sa, span, file_id) = token
@@ -898,7 +913,8 @@ impl<'db> SemanticsImpl<'db> {
         // These are tracked to know which macro calls we still have to look into
         // the tokens themselves aren't that interesting as the span that is being used to map
         // things down never changes.
-        let mut stack: Vec<(_, SmallVec<[_; 2]>)> = vec![(file_id, smallvec![token])];
+        let mut stack: Vec<(_, SmallVec<[_; 2]>)> =
+            vec![(file_id, smallvec![(token, SyntaxContextId::ROOT)])];
 
         // Process the expansion of a call, pushing all tokens with our span in the expansion back onto our stack
         let process_expansion_for_token = |stack: &mut Vec<_>, macro_file| {
@@ -921,11 +937,11 @@ impl<'db> SemanticsImpl<'db> {
         // Filters out all tokens that contain the given range (usually the macro call), any such
         // token is redundant as the corresponding macro call has already been processed
         let filter_duplicates = |tokens: &mut SmallVec<_>, range: TextRange| {
-            tokens.retain(|t: &mut SyntaxToken| !range.contains_range(t.text_range()))
+            tokens.retain(|(t, _): &mut (SyntaxToken, _)| !range.contains_range(t.text_range()))
         };
 
         while let Some((expansion, ref mut tokens)) = stack.pop() {
-            while let Some(token) = tokens.pop() {
+            while let Some((token, ctx)) = tokens.pop() {
                 let was_not_remapped = (|| {
                     // First expand into attribute invocations
                     let containing_attribute_macro_call = self.with_ctx(|ctx| {
@@ -1036,7 +1052,7 @@ impl<'db> SemanticsImpl<'db> {
                                             let text_range = attr.syntax().text_range();
                                             // remove any other token in this macro input, all their mappings are the
                                             // same as this
-                                            tokens.retain(|t| {
+                                            tokens.retain(|(t, _)| {
                                                 !text_range.contains_range(t.text_range())
                                             });
                                             return process_expansion_for_token(
@@ -1093,7 +1109,7 @@ impl<'db> SemanticsImpl<'db> {
                 .is_none();
 
                 if was_not_remapped {
-                    if let ControlFlow::Break(b) = f(InFile::new(expansion, token)) {
+                    if let ControlFlow::Break(b) = f(InFile::new(expansion, token), ctx) {
                         return Some(b);
                     }
                 }
@@ -1221,26 +1237,10 @@ impl<'db> SemanticsImpl<'db> {
         ToDef::to_def(self, src.as_ref())
     }
 
-    pub fn resolve_label(&self, lifetime: &ast::Lifetime) -> Option<Label> {
-        let text = lifetime.text();
-        let label = lifetime.syntax().ancestors().find_map(|syn| {
-            let label = match_ast! {
-                match syn {
-                    ast::ForExpr(it) => it.label(),
-                    ast::WhileExpr(it) => it.label(),
-                    ast::LoopExpr(it) => it.label(),
-                    ast::BlockExpr(it) => it.label(),
-                    _ => None,
-                }
-            };
-            label.filter(|l| {
-                l.lifetime()
-                    .and_then(|lt| lt.lifetime_ident_token())
-                    .map_or(false, |lt| lt.text() == text)
-            })
-        })?;
-        let src = self.wrap_node_infile(label);
-        ToDef::to_def(self, src.as_ref())
+    pub fn resolve_label(&self, label: &ast::Lifetime) -> Option<Label> {
+        let (parent, label_id) = self
+            .with_ctx(|ctx| ctx.label_ref_to_def(self.wrap_node_infile(label.clone()).as_ref()))?;
+        Some(Label { parent, label_id })
     }
 
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {

@@ -5,7 +5,7 @@
 // be marked as cold.
 // See https://github.com/rust-lang/rust/pull/60262
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 //@ ignore-cross-compile
 
 use run_make_support::{

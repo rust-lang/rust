@@ -1,0 +1,40 @@
+error[E0284]: type annotations needed
+  --> $DIR/dyn-compatibility-ok-infer-err.rs:19:5
+   |
+LL |     use_dyn(&());
+   |     ^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `use_dyn`
+   |
+note: required by a const generic parameter in `use_dyn`
+  --> $DIR/dyn-compatibility-ok-infer-err.rs:14:12
+   |
+LL | fn use_dyn<const N: usize>(v: &dyn Foo<N>) where [u8; N + 1]: Sized {
+   |            ^^^^^^^^^^^^^^ required by this const generic parameter in `use_dyn`
+help: consider specifying the generic argument
+   |
+LL |     use_dyn::<N>(&());
+   |            +++++
+
+error[E0284]: type annotations needed
+  --> $DIR/dyn-compatibility-ok-infer-err.rs:19:5
+   |
+LL |     use_dyn(&());
+   |     ^^^^^^^ --- type must be known at this point
+   |     |
+   |     cannot infer the value of the const parameter `N` declared on the function `use_dyn`
+   |
+note: required for `()` to implement `Foo<_>`
+  --> $DIR/dyn-compatibility-ok-infer-err.rs:8:22
+   |
+LL | impl<const N: usize> Foo<N> for () {
+   |      --------------  ^^^^^^     ^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: required for the cast from `&()` to `&dyn Foo<_>`
+help: consider specifying the generic argument
+   |
+LL |     use_dyn::<N>(&());
+   |            +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

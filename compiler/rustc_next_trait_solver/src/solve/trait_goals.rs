@@ -108,7 +108,6 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         _guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolution> {
-        // FIXME: don't need to enter a probe here.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -463,7 +462,6 @@ where
         // Async coroutine unconditionally implement `Future`
         // Technically, we need to check that the future output type is Sized,
         // but that's already proven by the coroutine being WF.
-        // FIXME: use `consider_implied`
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -489,7 +487,6 @@ where
         // Gen coroutines unconditionally implement `Iterator`
         // Technically, we need to check that the iterator output type is Sized,
         // but that's already proven by the coroutines being WF.
-        // FIXME: use `consider_implied`
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -512,8 +509,7 @@ where
             return Err(NoSolution);
         }
 
-        // Gen coroutines unconditionally implement `FusedIterator`
-        // FIXME: use `consider_implied`
+        // Gen coroutines unconditionally implement `FusedIterator`.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -539,7 +535,6 @@ where
         // Gen coroutines unconditionally implement `Iterator`
         // Technically, we need to check that the iterator output type is Sized,
         // but that's already proven by the coroutines being WF.
-        // FIXME: use `consider_implied`
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -610,7 +605,7 @@ where
             return Err(NoSolution);
         }
 
-        // FIXME(-Znext-solver): Implement this when we get const working in the new solver
+        // FIXME(effects): Implement this when we get const working in the new solver
 
         // `Destruct` is automatically implemented for every type in
         // non-const environments.
@@ -631,8 +626,6 @@ where
             return Err(NoSolution);
         }
 
-        // FIXME: This actually should destructure the `Result` we get from transmutability and
-        // register candidates. We probably need to register >1 since we may have an OR of ANDs.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let certainty = ecx.is_transmutable(
                 goal.param_env,

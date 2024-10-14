@@ -248,8 +248,6 @@ hir_analysis_invalid_union_field =
 hir_analysis_invalid_union_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
-hir_analysis_invalid_unnamed_field_ty = unnamed fields can only have struct or union types
-
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
     .label = const parameter declared here
 
@@ -258,6 +256,9 @@ hir_analysis_late_bound_lifetime_in_apit = `impl Trait` can only mention lifetim
 
 hir_analysis_late_bound_type_in_apit = `impl Trait` can only mention type parameters from an fn or impl
     .label = type parameter declared here
+
+hir_analysis_lifetime_implicitly_captured = `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
+    .param_label = all lifetime parameters originating from a trait are captured implicitly
 
 hir_analysis_lifetime_must_be_first = lifetime parameter `{$name}` must be listed before non-lifetime parameters
     .label = move the lifetime before this parameter
@@ -534,19 +535,6 @@ hir_analysis_unconstrained_generic_parameter = the {$param_def_kind} `{$param_na
 
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
-
-hir_analysis_unnamed_fields_repr_field_defined = unnamed field defined here
-
-hir_analysis_unnamed_fields_repr_field_missing_repr_c =
-    named type of unnamed field must have `#[repr(C)]` representation
-    .label = unnamed field defined here
-    .field_ty_label = `{$field_ty}` defined here
-    .suggestion = add `#[repr(C)]` to this {$field_adt_kind}
-
-hir_analysis_unnamed_fields_repr_missing_repr_c =
-    {$adt_kind} with unnamed fields must have `#[repr(C)]` representation
-    .label = {$adt_kind} `{$adt_name}` defined here
-    .suggestion = add `#[repr(C)]` to this {$adt_kind}
 
 hir_analysis_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`

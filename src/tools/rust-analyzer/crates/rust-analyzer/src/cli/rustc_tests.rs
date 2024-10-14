@@ -70,6 +70,7 @@ impl Tester {
         let cargo_config = CargoConfig {
             sysroot: Some(RustLibSource::Discover),
             all_targets: true,
+            set_test: true,
             ..Default::default()
         };
 
@@ -85,6 +86,7 @@ impl Tester {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
                 cargo: None,
                 cargo_config_extra_env: Default::default(),
+                set_test: true,
             },
             sysroot,
             rustc_cfg: vec![],

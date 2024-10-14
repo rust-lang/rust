@@ -20,7 +20,6 @@
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
 #![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::potential_query_instability)]
 #![allow(rustc::untranslatable_diagnostic)]
 
 extern crate thin_vec;
@@ -99,7 +98,7 @@ use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 /// Commas between elements are required (even if the expression is a block).
 macro_rules! map {
     ($( $key: expr => $val: expr ),* $(,)*) => {{
-        let mut map = ::rustc_data_structures::fx::FxHashMap::default();
+        let mut map = ::rustc_data_structures::fx::FxIndexMap::default();
         $( map.insert($key, $val); )*
         map
     }}

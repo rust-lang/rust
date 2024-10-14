@@ -11,7 +11,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind, ForeignItemKind,
-    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem,
+    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind,
     NodeId, PatKind, StmtKind, TyKind,
 };
 use rustc_ast_pretty::pprust;
@@ -1863,8 +1863,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .iter()
                         .filter(|a| a.has_name(sym::derive))
                         .flat_map(|a| a.meta_item_list().unwrap_or_default())
-                        .filter_map(|nested_meta| match nested_meta {
-                            NestedMetaItem::MetaItem(ast::MetaItem {
+                        .filter_map(|meta_item_inner| match meta_item_inner {
+                            MetaItemInner::MetaItem(ast::MetaItem {
                                 kind: MetaItemKind::Word,
                                 path,
                                 ..

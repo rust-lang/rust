@@ -209,36 +209,32 @@ fn lint_nan<'tcx>(
     }
 
     fn eq_ne(
-        cx: &LateContext<'_>,
         e: &hir::Expr<'_>,
         l: &hir::Expr<'_>,
         r: &hir::Expr<'_>,
         f: impl FnOnce(Span, Span) -> InvalidNanComparisonsSuggestion,
     ) -> InvalidNanComparisons {
-        // FIXME(#72505): This suggestion can be restored if `f{32,64}::is_nan` is made const.
-        let suggestion = (!cx.tcx.hir().is_inside_const_context(e.hir_id)).then(|| {
-            if let Some(l_span) = l.span.find_ancestor_inside(e.span)
-                && let Some(r_span) = r.span.find_ancestor_inside(e.span)
-            {
-                f(l_span, r_span)
-            } else {
-                InvalidNanComparisonsSuggestion::Spanless
-            }
-        });
+        let suggestion = if let Some(l_span) = l.span.find_ancestor_inside(e.span)
+            && let Some(r_span) = r.span.find_ancestor_inside(e.span)
+        {
+            f(l_span, r_span)
+        } else {
+            InvalidNanComparisonsSuggestion::Spanless
+        };
 
         InvalidNanComparisons::EqNe { suggestion }
     }
 
     let lint = match binop.node {
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, l) => {
-            eq_ne(cx, e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
+            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.until(r_span),
                 float: r_span.shrink_to_hi(),
                 neg: (binop.node == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
             })
         }
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, r) => {
-            eq_ne(cx, e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
+            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.shrink_to_hi().to(r_span),
                 float: l_span.shrink_to_hi(),
                 neg: (binop.node == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
@@ -1423,7 +1419,6 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
             hir::ItemKind::Impl(..)
             | hir::ItemKind::TraitAlias(..)
             | hir::ItemKind::Trait(..)
-            | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Mod(..)

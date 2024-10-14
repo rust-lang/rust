@@ -2148,7 +2148,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         match self.maybe_resolve_path(&segments, Some(ns), &parent_scope, None) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
-            PathResult::NonModule(path_res) => path_res.full_res(),
+            PathResult::NonModule(path_res) => {
+                path_res.full_res().filter(|res| !matches!(res, Res::Def(DefKind::Ctor(..), _)))
+            }
             PathResult::Module(ModuleOrUniformRoot::ExternPrelude) | PathResult::Failed { .. } => {
                 None
             }

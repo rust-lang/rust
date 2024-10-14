@@ -5,10 +5,11 @@ use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
+use rustc_ast::MetaItemInner;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -113,7 +114,7 @@ impl From<DefId> for ItemId {
 pub(crate) struct Crate {
     pub(crate) module: Item,
     /// Only here so that they can be filtered through the rustdoc passes.
-    pub(crate) external_traits: Box<FxHashMap<DefId, Trait>>,
+    pub(crate) external_traits: Box<FxIndexMap<DefId, Trait>>,
 }
 
 impl Crate {
@@ -952,7 +953,7 @@ pub(crate) struct Module {
 }
 
 pub(crate) trait AttributesExt {
-    type AttributeIterator<'a>: Iterator<Item = ast::NestedMetaItem>
+    type AttributeIterator<'a>: Iterator<Item = ast::MetaItemInner>
     where
         Self: 'a;
     type Attributes<'a>: Iterator<Item = &'a ast::Attribute>
@@ -986,7 +987,7 @@ pub(crate) trait AttributesExt {
                 .peekable();
             if doc_cfg.peek().is_some() && doc_cfg_active {
                 doc_cfg
-                    .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
+                    .filter_map(|attr| Cfg::parse(&attr).ok())
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             } else if doc_auto_cfg_active {
                 // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
@@ -1042,7 +1043,7 @@ pub(crate) trait AttributesExt {
                     let mut meta = attr.meta_item().unwrap().clone();
                     meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                    if let Ok(feat_cfg) = Cfg::parse(&meta) {
+                    if let Ok(feat_cfg) = Cfg::parse(&MetaItemInner::MetaItem(meta)) {
                         cfg &= feat_cfg;
                     }
                 }
@@ -1054,7 +1055,7 @@ pub(crate) trait AttributesExt {
 }
 
 impl AttributesExt for [ast::Attribute] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
+    type AttributeIterator<'a> = impl Iterator<Item = ast::MetaItemInner> + 'a;
     type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
@@ -1071,7 +1072,7 @@ impl AttributesExt for [ast::Attribute] {
 
 impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
     type AttributeIterator<'a>
-        = impl Iterator<Item = ast::NestedMetaItem> + 'a
+        = impl Iterator<Item = ast::MetaItemInner> + 'a
     where
         Self: 'a;
     type Attributes<'a>
@@ -1105,11 +1106,11 @@ pub(crate) trait NestedAttributesExt {
 
     /// Returns `Some(attr)` if the attribute list contains 'attr'
     /// corresponding to a specific `word`
-    fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem>;
+    fn get_word_attr(self, word: Symbol) -> Option<ast::MetaItemInner>;
 }
 
-impl<I: Iterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
-    fn get_word_attr(mut self, word: Symbol) -> Option<ast::NestedMetaItem> {
+impl<I: Iterator<Item = ast::MetaItemInner>> NestedAttributesExt for I {
+    fn get_word_attr(mut self, word: Symbol) -> Option<ast::MetaItemInner> {
         self.find(|attr| attr.is_word() && attr.has_name(word))
     }
 }
@@ -1156,7 +1157,7 @@ pub(crate) struct Attributes {
 }
 
 impl Attributes {
-    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::NestedMetaItem> + '_ {
+    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> + '_ {
         self.other_attrs.lists(name)
     }
 
@@ -1222,7 +1223,7 @@ impl Attributes {
     }
 
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
-        let mut aliases = FxHashSet::default();
+        let mut aliases = FxIndexSet::default();
 
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
             if let Some(values) = attr.meta_item_list() {
@@ -1758,7 +1759,7 @@ pub(crate) enum PrimitiveType {
     Never,
 }
 
-type SimplifiedTypes = FxHashMap<PrimitiveType, ArrayVec<SimplifiedType, 3>>;
+type SimplifiedTypes = FxIndexMap<PrimitiveType, ArrayVec<SimplifiedType, 3>>;
 impl PrimitiveType {
     pub(crate) fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
         use ast::{FloatTy, IntTy, UintTy};
@@ -1926,10 +1927,10 @@ impl PrimitiveType {
     /// In particular, if a crate depends on both `std` and another crate that also defines
     /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
     /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
-    pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxHashMap<PrimitiveType, DefId> {
-        static PRIMITIVE_LOCATIONS: OnceCell<FxHashMap<PrimitiveType, DefId>> = OnceCell::new();
+    pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxIndexMap<PrimitiveType, DefId> {
+        static PRIMITIVE_LOCATIONS: OnceCell<FxIndexMap<PrimitiveType, DefId>> = OnceCell::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {
-            let mut primitive_locations = FxHashMap::default();
+            let mut primitive_locations = FxIndexMap::default();
             // NOTE: technically this misses crates that are only passed with `--extern` and not loaded when checking the crate.
             // This is a degenerate case that I don't plan to support.
             for &crate_num in tcx.crates(()) {
@@ -2459,7 +2460,7 @@ pub(crate) struct Impl {
 }
 
 impl Impl {
-    pub(crate) fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxHashSet<Symbol> {
+    pub(crate) fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxIndexSet<Symbol> {
         self.trait_
             .as_ref()
             .map(|t| t.def_id())

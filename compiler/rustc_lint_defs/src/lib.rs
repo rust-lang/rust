@@ -614,6 +614,8 @@ pub enum BuiltinLintDiag {
     ReservedPrefix(Span, String),
     /// `'r#` in edition < 2021.
     RawPrefix(Span),
+    /// `##` or `#"` is edition < 2024.
+    ReservedString(Span),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
@@ -720,8 +722,6 @@ pub enum BuiltinLintDiag {
     UnnameableTestItems,
     DuplicateMacroAttribute,
     CfgAttrNoAttributes,
-    CrateTypeInCfgAttr,
-    CrateNameInCfgAttr,
     MissingFragmentSpecifier,
     MetaVariableStillRepeating(MacroRulesNormalizedIdent),
     MetaVariableWrongOperator,

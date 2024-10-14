@@ -37,8 +37,8 @@ use test_fixture::ChangeFixture;
 use test_utils::assert_eq_text;
 
 use crate::{
-    resolve_completion_edits, CallableSnippets, CompletionConfig, CompletionItem,
-    CompletionItemKind,
+    resolve_completion_edits, CallableSnippets, CompletionConfig, CompletionFieldsToResolve,
+    CompletionItem, CompletionItemKind,
 };
 
 /// Lots of basic item definitions
@@ -84,6 +84,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     prefer_absolute: false,
     snippets: Vec::new(),
     limit: None,
+    fields_to_resolve: CompletionFieldsToResolve::empty(),
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {

@@ -404,11 +404,13 @@ impl<'a> GccLinker<'a> {
     fn build_dylib(&mut self, crate_type: CrateType, out_filename: &Path) {
         // On mac we need to tell the linker to let this library be rpathed
         if self.sess.target.is_like_osx {
-            if !self.is_ld {
+            if self.is_cc() {
+                // `-dynamiclib` makes `cc` pass `-dylib` to the linker.
                 self.cc_arg("-dynamiclib");
+            } else {
+                self.link_arg("-dylib");
+                // Clang also sets `-dynamic`, but that's implied by `-dylib`, so unnecessary.
             }
-
-            self.link_arg("-dylib");
 
             // Note that the `osx_rpath_install_name` option here is a hack
             // purely to support bootstrap right now, we should get a more

@@ -76,9 +76,9 @@ pub trait MirVisitor {
         self.super_place(place, ptx, location)
     }
 
-    fn visit_projection_elem<'a>(
+    fn visit_projection_elem(
         &mut self,
-        place_ref: PlaceRef<'a>,
+        place_ref: PlaceRef<'_>,
         elem: &ProjectionElem,
         ptx: PlaceContext,
         location: Location,

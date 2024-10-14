@@ -6,7 +6,7 @@
 // See https://github.com/rust-lang/rust/pull/42433
 
 //@ ignore-cross-compile
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 
 use run_make_support::{path, run, rustc};
 

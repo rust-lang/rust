@@ -1,5 +1,5 @@
 error[E0277]: `?` couldn't convert the error to `u8`
-  --> $DIR/bad-interconversion.rs:6:20
+  --> $DIR/bad-interconversion.rs:4:20
    |
 LL | fn result_to_result() -> Result<u64, u8> {
    |                          --------------- expected `u8` because of this
@@ -15,7 +15,7 @@ LL |     Ok(Err(123_i32)?)
    = note: required for `Result<u64, u8>` to implement `FromResidual<Result<Infallible, i32>>`
 
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
-  --> $DIR/bad-interconversion.rs:11:12
+  --> $DIR/bad-interconversion.rs:9:12
    |
 LL | fn option_to_result() -> Result<u64, String> {
    | -------------------------------------------- this function returns a `Result`
@@ -26,7 +26,7 @@ LL |     Some(3)?;
    = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
 
 error[E0277]: the `?` operator can only be used on `Result`s in a function that returns `Result`
-  --> $DIR/bad-interconversion.rs:17:31
+  --> $DIR/bad-interconversion.rs:15:31
    |
 LL | fn control_flow_to_result() -> Result<u64, String> {
    | -------------------------------------------------- this function returns a `Result`
@@ -37,7 +37,7 @@ LL |     Ok(ControlFlow::Break(123)?)
    = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
 
 error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
-  --> $DIR/bad-interconversion.rs:22:22
+  --> $DIR/bad-interconversion.rs:20:22
    |
 LL | fn result_to_option() -> Option<u16> {
    | ------------------------------------ this function returns an `Option`
@@ -48,7 +48,7 @@ LL |     Some(Err("hello")?)
    = help: the trait `FromResidual<Option<Infallible>>` is implemented for `Option<T>`
 
 error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
-  --> $DIR/bad-interconversion.rs:27:33
+  --> $DIR/bad-interconversion.rs:25:33
    |
 LL | fn control_flow_to_option() -> Option<u64> {
    | ------------------------------------------ this function returns an `Option`
@@ -59,7 +59,7 @@ LL |     Some(ControlFlow::Break(123)?)
    = help: the trait `FromResidual<Option<Infallible>>` is implemented for `Option<T>`
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
-  --> $DIR/bad-interconversion.rs:32:39
+  --> $DIR/bad-interconversion.rs:30:39
    |
 LL | fn result_to_control_flow() -> ControlFlow<String> {
    | -------------------------------------------------- this function returns a `ControlFlow`
@@ -71,7 +71,7 @@ LL |     ControlFlow::Continue(Err("hello")?)
    = help: for that trait implementation, expected `ControlFlow<String, Infallible>`, found `Result<Infallible, &str>`
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
-  --> $DIR/bad-interconversion.rs:37:12
+  --> $DIR/bad-interconversion.rs:35:12
    |
 LL | fn option_to_control_flow() -> ControlFlow<u64> {
    | ----------------------------------------------- this function returns a `ControlFlow`
@@ -83,7 +83,7 @@ LL |     Some(3)?;
    = help: for that trait implementation, expected `ControlFlow<u64, Infallible>`, found `Option<Infallible>`
 
 error[E0277]: the `?` operator in a function that returns `ControlFlow<B, _>` can only be used on other `ControlFlow<B, _>`s (with the same Break type)
-  --> $DIR/bad-interconversion.rs:43:29
+  --> $DIR/bad-interconversion.rs:41:29
    |
 LL | fn control_flow_to_control_flow() -> ControlFlow<i64> {
    | ----------------------------------------------------- this function returns a `ControlFlow`

@@ -51,6 +51,7 @@ mod add_subtyping_projections;
 mod check_alignment;
 mod check_const_item_mutation;
 mod check_packed_ref;
+mod check_undefined_transmutes;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod cleanup_post_borrowck;
 mod copy_prop;
@@ -298,6 +299,7 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(check_packed_ref::CheckPackedRef),
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
+            &Lint(check_undefined_transmutes::CheckUndefinedTransmutes),
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::Initial,
             &Lint(sanity_check::SanityCheck),

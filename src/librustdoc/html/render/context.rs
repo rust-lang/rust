@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{Receiver, channel};
 
 use rinja::Template;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -69,16 +69,16 @@ pub(crate) struct Context<'tcx> {
     /// `true`.
     pub(crate) include_sources: bool,
     /// Collection of all types with notable traits referenced in the current module.
-    pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
+    pub(crate) types_with_notable_traits: FxIndexSet<clean::Type>,
     /// Field used during rendering, to know if we're inside an inlined item.
     pub(crate) is_inside_inlined_module: bool,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(not(windows), target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 160);
+rustc_data_structures::static_assert_size!(Context<'_>, 184);
 #[cfg(all(windows, target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 168);
+rustc_data_structures::static_assert_size!(Context<'_>, 192);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
@@ -90,7 +90,7 @@ pub(crate) struct SharedContext<'tcx> {
     /// creation of the context (contains info like the favicon and added html).
     pub(crate) layout: layout::Layout,
     /// The local file sources we've emitted and their respective url-paths.
-    pub(crate) local_sources: FxHashMap<PathBuf, String>,
+    pub(crate) local_sources: FxIndexMap<PathBuf, String>,
     /// Show the memory layout of types in the docs.
     pub(super) show_type_layout: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
@@ -567,7 +567,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             deref_id_map: Default::default(),
             shared: Rc::new(scx),
             include_sources,
-            types_with_notable_traits: FxHashSet::default(),
+            types_with_notable_traits: FxIndexSet::default(),
             is_inside_inlined_module: false,
         };
 
@@ -591,7 +591,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
-            types_with_notable_traits: FxHashSet::default(),
+            types_with_notable_traits: FxIndexSet::default(),
             is_inside_inlined_module: self.is_inside_inlined_module,
         }
     }

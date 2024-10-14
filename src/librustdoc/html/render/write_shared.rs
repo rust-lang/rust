@@ -28,7 +28,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use regex::Regex;
 use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_span::Symbol;
@@ -505,8 +505,8 @@ createSrcSidebar();",
 struct Hierarchy {
     parent: Weak<Self>,
     elem: OsString,
-    children: RefCell<FxHashMap<OsString, Rc<Self>>>,
-    elems: RefCell<FxHashSet<OsString>>,
+    children: RefCell<FxIndexMap<OsString, Rc<Self>>>,
+    elems: RefCell<FxIndexSet<OsString>>,
 }
 
 impl Hierarchy {
@@ -961,8 +961,8 @@ impl Serialize for AliasSerializableImpl {
 fn get_path_parts<T: CciPart>(
     dst: &Path,
     crates_info: &[CrateInfo],
-) -> FxHashMap<PathBuf, Vec<String>> {
-    let mut templates: FxHashMap<PathBuf, Vec<String>> = FxHashMap::default();
+) -> FxIndexMap<PathBuf, Vec<String>> {
+    let mut templates: FxIndexMap<PathBuf, Vec<String>> = FxIndexMap::default();
     crates_info
         .iter()
         .map(|crate_info| T::from_crate_info(crate_info).parts.iter())

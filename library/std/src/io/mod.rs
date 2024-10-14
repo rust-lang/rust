@@ -2382,8 +2382,6 @@ pub trait BufRead: Read {
     /// about Ferris from a binary string, skipping the fun fact:
     ///
     /// ```
-    /// #![feature(bufread_skip_until)]
-    ///
     /// use std::io::{self, BufRead};
     ///
     /// let mut cursor = io::Cursor::new(b"Ferris\0Likes long walks on the beach\0Crustacean\0");
@@ -2407,7 +2405,7 @@ pub trait BufRead: Read {
     /// assert_eq!(num_bytes, 11);
     /// assert_eq!(animal, b"Crustacean\0");
     /// ```
-    #[unstable(feature = "bufread_skip_until", issue = "111735")]
+    #[stable(feature = "bufread_skip_until", since = "CURRENT_RUSTC_VERSION")]
     fn skip_until(&mut self, byte: u8) -> Result<usize> {
         skip_until(self, byte)
     }

@@ -1,3 +1,12 @@
+error[E0119]: conflicting implementations of trait `Trait<Bar, _>`
+  --> $DIR/issue-84660-unsoundness.rs:29:1
+   |
+LL | impl<In, Out> Trait<Bar, In> for Out {
+   | ------------------------------------ first implementation here
+...
+LL | impl<In, Out> Trait<(), In> for Out {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
 error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
   --> $DIR/issue-84660-unsoundness.rs:22:8
    |
@@ -10,15 +19,6 @@ note: this opaque type is in the signature
    |
 LL | type Bar = impl Foo;
    |            ^^^^^^^^
-
-error[E0119]: conflicting implementations of trait `Trait<Bar, _>`
-  --> $DIR/issue-84660-unsoundness.rs:29:1
-   |
-LL | impl<In, Out> Trait<Bar, In> for Out {
-   | ------------------------------------ first implementation here
-...
-LL | impl<In, Out> Trait<(), In> for Out {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
 error: aborting due to 2 previous errors
 

@@ -21,6 +21,7 @@ use rustc_target::spec::abi;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use tracing::instrument;
 use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
 use super::GenericParamDefKind;
@@ -500,6 +501,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    #[instrument(level = "debug", skip(tcx))]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         Ty::new_alias(tcx, ty::Opaque, AliasTy::new_from_args(tcx, def_id, args))
     }
@@ -582,6 +584,16 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_imm_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         Ty::new_ref(tcx, r, ty, hir::Mutability::Not)
+    }
+
+    pub fn new_pinned_ref(
+        tcx: TyCtxt<'tcx>,
+        r: Region<'tcx>,
+        ty: Ty<'tcx>,
+        mutbl: ty::Mutability,
+    ) -> Ty<'tcx> {
+        let pin = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, None));
+        Ty::new_adt(tcx, pin, tcx.mk_args(&[Ty::new_ref(tcx, r, ty, mutbl).into()]))
     }
 
     #[inline]
@@ -1589,7 +1601,7 @@ impl<'tcx> Ty<'tcx> {
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
     }
 
-    /// Returns the type of metadata for (potentially fat) pointers to this type,
+    /// Returns the type of metadata for (potentially wide) pointers to this type,
     /// or the struct tail if the metadata type cannot be determined.
     pub fn ptr_metadata_ty_or_tail(
         self,
@@ -1648,7 +1660,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    /// Returns the type of metadata for (potentially wide) pointers to this type.
     /// Causes an ICE if the metadata type cannot be determined.
     pub fn ptr_metadata_ty(
         self,

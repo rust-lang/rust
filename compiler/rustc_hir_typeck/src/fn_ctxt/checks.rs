@@ -984,7 +984,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             self.suggest_deref_unwrap_or(
                 &mut err,
-                error_span,
                 callee_ty,
                 call_ident,
                 expected_ty,

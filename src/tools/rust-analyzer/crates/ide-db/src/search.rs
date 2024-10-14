@@ -529,9 +529,13 @@ impl<'a> FindUsages<'a> {
             })
             .into_iter()
             .flat_map(move |token| {
-                sema.descend_into_macros_exact_if_in_macro(token)
-                    .into_iter()
-                    .filter_map(|it| it.parent())
+                if sema.might_be_inside_macro_call(&token) {
+                    sema.descend_into_macros_exact(token)
+                } else {
+                    <_>::from([token])
+                }
+                .into_iter()
+                .filter_map(|it| it.parent())
             })
     }
 

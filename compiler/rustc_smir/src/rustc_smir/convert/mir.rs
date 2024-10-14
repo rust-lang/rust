@@ -655,6 +655,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 }
             }
             mir::TerminatorKind::InlineAsm {
+                asm_macro: _,
                 template,
                 operands,
                 options,

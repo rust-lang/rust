@@ -58,35 +58,35 @@ LL | pub union Union<T> {
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:15:27
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |                           ^^^^^^^^^^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL | impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
    |                           +++
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:19:25
    |
 LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
    |                         ^^^^^^^^^^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL | impl<'a, T> Enum<T> for dyn Trait<'a, T> {}
    |                         +++
 
-error[E0782]: trait objects must include the `dyn` keyword
+error[E0782]: expected a type, found a trait
   --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:23:26
    |
 LL | impl<'a, T> Union<T> for Trait<'a, T> {}
    |                          ^^^^^^^^^^^^
    |
-help: add `dyn` keyword before this trait
+help: you can add the `dyn` keyword if you want a trait object
    |
 LL | impl<'a, T> Union<T> for dyn Trait<'a, T> {}
    |                          +++

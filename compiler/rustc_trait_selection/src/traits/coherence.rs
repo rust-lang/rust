@@ -19,6 +19,7 @@ use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 pub use rustc_next_trait_solver::coherence::*;
+use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, warn};
@@ -28,7 +29,7 @@ use crate::error_reporting::traits::suggest_new_overflow_limit;
 use crate::infer::InferOk;
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use crate::solve::{deeply_normalize_for_diagnostics, inspect};
+use crate::solve::{SolverDelegate, deeply_normalize_for_diagnostics, inspect};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{
@@ -333,6 +334,16 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     let infcx = selcx.infcx;
 
     if infcx.next_trait_solver() {
+        // A fast path optimization, try evaluating all goals with
+        // a very low recursion depth and bail if any of them don't
+        // hold.
+        if !obligations.iter().all(|o| {
+            <&SolverDelegate<'tcx>>::from(infcx)
+                .root_goal_may_hold_with_depth(8, Goal::new(infcx.tcx, o.param_env, o.predicate))
+        }) {
+            return IntersectionHasImpossibleObligations::Yes;
+        }
+
         let ocx = ObligationCtxt::new_with_diagnostics(infcx);
         ocx.register_obligations(obligations.iter().cloned());
         let errors_and_ambiguities = ocx.select_all_or_error();

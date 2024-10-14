@@ -134,14 +134,16 @@ const_eval_incompatible_return_types =
 const_eval_incompatible_types =
     calling a function with argument of type {$callee_ty} passing data of type {$caller_ty}
 
-const_eval_interior_mutable_data_refer =
+const_eval_interior_mutable_ref_escaping =
     {const_eval_const_context}s cannot refer to interior mutable data
     .label = this borrow of an interior mutable value may end up in the final value
     .help = to fix this, the value can be extracted to a separate `static` item and then referenced
     .teach_note =
-        A constant containing interior mutable data behind a reference can allow you to modify that data.
-        This would make multiple uses of a constant to be able to see different values and allow circumventing
-        the `Send` and `Sync` requirements for shared mutable data, which is unsound.
+        References that escape into the final value of a constant or static must be immutable.
+        This is to avoid accidentally creating shared mutable state.
+
+
+        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
 
 const_eval_intern_kind = {$kind ->
     [static] static
@@ -228,6 +230,24 @@ const_eval_modified_global =
     modifying a static's initial value from another static's initializer
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
+
+const_eval_mutable_raw_escaping =
+    raw mutable pointers are not allowed in the final value of {const_eval_const_context}s
+    .teach_note =
+        Pointers that escape into the final value of a constant or static must be immutable.
+        This is to avoid accidentally creating shared mutable state.
+
+
+        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
+
+const_eval_mutable_ref_escaping =
+    mutable references are not allowed in the final value of {const_eval_const_context}s
+    .teach_note =
+        References that escape into the final value of a constant or static must be immutable.
+        This is to avoid accidentally creating shared mutable state.
+
+
+        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
 
 const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
 const_eval_non_const_fmt_macro_call =
@@ -364,30 +384,11 @@ const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in
 const_eval_unallowed_heap_allocations =
     allocations are not allowed in {const_eval_const_context}s
     .label = allocation not allowed in {const_eval_const_context}s
-    .teach_note = The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
+    .teach_note =
+        The runtime heap is not yet available at compile-time, so no runtime heap allocations can be created.
 
 const_eval_unallowed_inline_asm =
     inline assembly is not allowed in {const_eval_const_context}s
-const_eval_unallowed_mutable_raw =
-    raw mutable pointers are not allowed in the final value of {const_eval_const_context}s
-    .teach_note =
-        References in statics and constants may only refer to immutable values.
-
-
-        Statics are shared everywhere, and if they refer to mutable data one might violate memory
-        safety since holding multiple mutable references to shared data is not allowed.
-
-
-        If you really want global mutable state, try using static mut or a global UnsafeCell.
-
-const_eval_unallowed_mutable_refs =
-    mutable references are not allowed in the final value of {const_eval_const_context}s
-    .teach_note =
-        Statics are shared everywhere, and if they refer to mutable data one might violate memory
-        safety since holding multiple mutable references to shared data is not allowed.
-
-
-        If you really want global mutable state, try using static mut or a global UnsafeCell.
 
 const_eval_unallowed_op_in_const_context =
     {$msg}

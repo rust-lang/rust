@@ -9,7 +9,7 @@ use std::ops::Range;
 
 use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir::def::Namespace::*;
@@ -778,9 +778,9 @@ fn trait_impls_for<'a>(
     cx: &mut DocContext<'a>,
     ty: Ty<'a>,
     module: DefId,
-) -> FxHashSet<(DefId, DefId)> {
+) -> FxIndexSet<(DefId, DefId)> {
     let tcx = cx.tcx;
-    let mut impls = FxHashSet::default();
+    let mut impls = FxIndexSet::default();
 
     for &trait_ in tcx.doc_link_traits_in_scope(module) {
         tcx.for_each_relevant_impl(trait_, ty, |impl_| {
@@ -1040,21 +1040,6 @@ impl LinkCollector<'_, '_> {
             false,
         )?;
 
-        if ori_link.display_text.is_some() {
-            self.resolve_display_text(
-                path_str,
-                ResolutionInfo {
-                    item_id,
-                    module_id,
-                    dis: disambiguator,
-                    path_str: ori_link.display_text.clone()?.into_boxed_str(),
-                    extra_fragment: extra_fragment.clone(),
-                },
-                &ori_link,
-                &diag_info,
-            );
-        }
-
         // Check for a primitive which might conflict with a module
         // Report the ambiguity and require that the user specify which one they meant.
         // FIXME: could there ever be a primitive not in the type namespace?
@@ -1088,7 +1073,7 @@ impl LinkCollector<'_, '_> {
                     // valid omission. See https://github.com/rust-lang/rust/pull/80660#discussion_r551585677
                     // for discussion on the matter.
                     let kind = self.cx.tcx.def_kind(id);
-                    self.verify_disambiguator(path_str, kind, id, disambiguator, item, &diag_info)?;
+                    self.verify_disambiguator(path_str, kind, id, disambiguator, &diag_info)?;
                 } else {
                     match disambiguator {
                         Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
@@ -1117,7 +1102,6 @@ impl LinkCollector<'_, '_> {
                     kind_for_dis,
                     id_for_dis,
                     disambiguator,
-                    item,
                     &diag_info,
                 )?;
 
@@ -1138,7 +1122,6 @@ impl LinkCollector<'_, '_> {
         kind: DefKind,
         id: DefId,
         disambiguator: Option<Disambiguator>,
-        item: &Item,
         diag_info: &DiagnosticInfo<'_>,
     ) -> Option<()> {
         debug!("intra-doc link to {path_str} resolved to {:?}", (kind, id));
@@ -1165,7 +1148,7 @@ impl LinkCollector<'_, '_> {
 
         // item can be non-local e.g. when using `#[rustc_doc_primitive = "pointer"]`
         if let Some((src_id, dst_id)) = id.as_local().and_then(|dst_id| {
-            item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
+            diag_info.item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
         }) {
             if self.cx.tcx.effective_visibilities(()).is_exported(src_id)
                 && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
@@ -1396,58 +1379,6 @@ impl LinkCollector<'_, '_> {
                     }
                 }
             }
-        }
-    }
-
-    /// Resolve display text if the provided link has separated parts of links.
-    ///
-    /// For example:
-    /// Inline link `[display_text](dest_link)` and reference link `[display_text][reference_link]` has
-    /// separated parts of links.
-    fn resolve_display_text(
-        &mut self,
-        explicit_link: &Box<str>,
-        display_res_info: ResolutionInfo,
-        ori_link: &MarkdownLink,
-        diag_info: &DiagnosticInfo<'_>,
-    ) {
-        // Check if explicit resolution's path is same as resolution of original link's display text path, see
-        // tests/rustdoc-ui/lint/redundant_explicit_links.rs for more cases.
-        //
-        // To avoid disambiguator from panicking, we check if display text path is possible to be disambiguated
-        // into explicit path.
-        if !matches!(
-            ori_link.kind,
-            LinkType::Inline | LinkType::Reference | LinkType::ReferenceUnknown
-        ) {
-            return;
-        }
-
-        // Algorithm to check if display text could possibly be the explicit link:
-        //
-        // Consider 2 links which are display text and explicit link, pick the shorter
-        // one as symbol and longer one as full qualified path, and tries to match symbol
-        // to the full qualified path's last symbol.
-        //
-        // Otherwise, check if 2 links are same, if so, skip the resolve process.
-        //
-        // Notice that this algorithm is passive, might possibly miss actual redundant cases.
-        let explicit_link = explicit_link.to_string();
-        let display_text = ori_link.display_text.as_ref().unwrap();
-
-        if display_text.len() == explicit_link.len() {
-            // Whether they are same or not, skip the resolve process.
-            return;
-        }
-
-        if explicit_link.ends_with(&display_text[..]) || display_text.ends_with(&explicit_link[..])
-        {
-            self.resolve_with_disambiguator_cached(
-                display_res_info,
-                diag_info.clone(), // this struct should really be Copy, but Range is not :(
-                false,
-                true,
-            );
         }
     }
 }
@@ -1996,11 +1927,22 @@ fn resolution_failure(
                             &diag_info,
                         );
 
-                        format!(
-                            "this link resolves to {}, which is not in the {} namespace",
-                            item(res),
-                            expected_ns.descr()
-                        )
+                        if let Some(disambiguator) = disambiguator
+                            && !matches!(disambiguator, Disambiguator::Namespace(..))
+                        {
+                            format!(
+                                "this link resolves to {}, which is not {} {}",
+                                item(res),
+                                disambiguator.article(),
+                                disambiguator.descr()
+                            )
+                        } else {
+                            format!(
+                                "this link resolves to {}, which is not in the {} namespace",
+                                item(res),
+                                expected_ns.descr()
+                            )
+                        }
                     }
                 };
                 if let Some(span) = sp {

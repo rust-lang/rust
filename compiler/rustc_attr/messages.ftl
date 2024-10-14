@@ -107,6 +107,8 @@ attr_unknown_version_literal =
 attr_unstable_cfg_target_compact =
     compact `cfg(target(..))` is experimental and subject to change
 
+attr_unsupported_literal_cfg_boolean =
+    literal in `cfg` predicate value must be a boolean
 attr_unsupported_literal_cfg_string =
     literal in `cfg` predicate value must be a string
 attr_unsupported_literal_deprecated_kv_pair =

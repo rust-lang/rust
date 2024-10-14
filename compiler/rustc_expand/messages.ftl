@@ -27,6 +27,12 @@ expand_collapse_debuginfo_illegal =
 expand_count_repetition_misplaced =
     `count` can not be placed inside the inner-most repetition
 
+expand_crate_name_in_cfg_attr =
+    `crate_name` within an `#![cfg_attr]` attribute is forbidden
+
+expand_crate_type_in_cfg_attr =
+    `crate_type` within an `#![cfg_attr]` attribute is forbidden
+
 expand_custom_attribute_panicked =
     custom attribute panicked
     .help = message: {$message}

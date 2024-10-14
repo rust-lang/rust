@@ -13,8 +13,6 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use build_helper::git::warn_old_master_branch;
-
 use crate::Build;
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::builder::Builder;
@@ -37,6 +35,9 @@ pub struct Finder {
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
     "armv7-rtems-eabihf",
+    "riscv32e-unknown-none-elf",
+    "riscv32em-unknown-none-elf",
+    "riscv32emc-unknown-none-elf",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -379,6 +380,4 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     if let Some(ref s) = build.config.ccache {
         cmd_finder.must_have(s);
     }
-
-    warn_old_master_branch(&build.config.git_config(), &build.config.src);
 }

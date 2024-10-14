@@ -1,4 +1,4 @@
-error[E0532]: expected tuple struct or tuple variant, found function `foo`
+error[E0532]: expected a pattern, found a function call
   --> $DIR/issue-10200.rs:6:9
    |
 LL | struct Foo(bool);
@@ -6,6 +6,8 @@ LL | struct Foo(bool);
 ...
 LL |         foo(x)
    |         ^^^ help: a tuple struct with a similar name exists (notice the capitalization): `Foo`
+   |
+   = note: function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 
 error: aborting due to 1 previous error
 

@@ -42,12 +42,6 @@ pub struct TypeckResults<'tcx> {
     /// belongs, but it may not exist if it's a tuple field (`tuple.0`).
     field_indices: ItemLocalMap<FieldIdx>,
 
-    /// Resolved types and indices for the nested fields' accesses of `obj.field` (expanded
-    /// to `obj._(1)._(2).field` in THIR). This map only stores the intermediate type
-    /// of `obj._(1)` and index of `_(1)._(2)`, and the type of `_(1)._(2)`, and the index of
-    /// `_(2).field`.
-    nested_fields: ItemLocalMap<Vec<(Ty<'tcx>, FieldIdx)>>,
-
     /// Stores the types for various nodes in the AST. Note that this table
     /// is not guaranteed to be populated outside inference. See
     /// typeck::check::fn_ctxt for details.
@@ -225,7 +219,6 @@ impl<'tcx> TypeckResults<'tcx> {
             hir_owner,
             type_dependent_defs: Default::default(),
             field_indices: Default::default(),
-            nested_fields: Default::default(),
             user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
             node_types: Default::default(),
@@ -297,18 +290,6 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn opt_field_index(&self, id: HirId) -> Option<FieldIdx> {
         self.field_indices().get(id).cloned()
-    }
-
-    pub fn nested_fields(&self) -> LocalTableInContext<'_, Vec<(Ty<'tcx>, FieldIdx)>> {
-        LocalTableInContext { hir_owner: self.hir_owner, data: &self.nested_fields }
-    }
-
-    pub fn nested_fields_mut(&mut self) -> LocalTableInContextMut<'_, Vec<(Ty<'tcx>, FieldIdx)>> {
-        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.nested_fields }
-    }
-
-    pub fn nested_field_tys_and_indices(&self, id: HirId) -> &[(Ty<'tcx>, FieldIdx)] {
-        self.nested_fields().get(id).map_or(&[], Vec::as_slice)
     }
 
     pub fn user_provided_types(&self) -> LocalTableInContext<'_, CanonicalUserType<'tcx>> {

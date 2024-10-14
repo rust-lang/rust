@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Index;
 
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
@@ -173,6 +173,7 @@ pub struct ClosureExpr<'tcx> {
 
 #[derive(Clone, Debug, HashStable)]
 pub struct InlineAsmExpr<'tcx> {
+    pub asm_macro: AsmMacro,
     pub template: &'tcx [InlineAsmTemplatePiece],
     pub operands: Box<[InlineAsmOperand<'tcx>]>,
     pub options: InlineAsmOptions,

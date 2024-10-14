@@ -78,7 +78,7 @@ pub(crate) enum OverflowableItem<'a> {
     Expr(&'a ast::Expr),
     GenericParam(&'a ast::GenericParam),
     MacroArg(&'a MacroArg),
-    NestedMetaItem(&'a ast::NestedMetaItem),
+    MetaItemInner(&'a ast::MetaItemInner),
     SegmentParam(&'a SegmentParam<'a>),
     FieldDef(&'a ast::FieldDef),
     TuplePatField(&'a TuplePatField<'a>),
@@ -123,7 +123,7 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::Expr(expr) => f(*expr),
             OverflowableItem::GenericParam(gp) => f(*gp),
             OverflowableItem::MacroArg(macro_arg) => f(*macro_arg),
-            OverflowableItem::NestedMetaItem(nmi) => f(*nmi),
+            OverflowableItem::MetaItemInner(nmi) => f(*nmi),
             OverflowableItem::SegmentParam(sp) => f(*sp),
             OverflowableItem::FieldDef(sf) => f(*sf),
             OverflowableItem::TuplePatField(pat) => f(*pat),
@@ -138,9 +138,9 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::Expr(expr) => is_simple_expr(expr),
             OverflowableItem::MacroArg(MacroArg::Keyword(..)) => true,
             OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_simple_expr(expr),
-            OverflowableItem::NestedMetaItem(nested_meta_item) => match nested_meta_item {
-                ast::NestedMetaItem::Lit(..) => true,
-                ast::NestedMetaItem::MetaItem(ref meta_item) => {
+            OverflowableItem::MetaItemInner(meta_item_inner) => match meta_item_inner {
+                ast::MetaItemInner::Lit(..) => true,
+                ast::MetaItemInner::MetaItem(ref meta_item) => {
                     matches!(meta_item.kind, ast::MetaItemKind::Word)
                 }
             },
@@ -184,12 +184,10 @@ impl<'a> OverflowableItem<'a> {
                 MacroArg::Item(..) => len == 1,
                 MacroArg::Keyword(..) => false,
             },
-            OverflowableItem::NestedMetaItem(nested_meta_item) if len == 1 => {
-                match nested_meta_item {
-                    ast::NestedMetaItem::Lit(..) => false,
-                    ast::NestedMetaItem::MetaItem(..) => true,
-                }
-            }
+            OverflowableItem::MetaItemInner(meta_item_inner) if len == 1 => match meta_item_inner {
+                ast::MetaItemInner::Lit(..) => false,
+                ast::MetaItemInner::MetaItem(..) => true,
+            },
             OverflowableItem::SegmentParam(SegmentParam::Type(ty)) => {
                 can_be_overflowed_type(context, ty, len)
             }
@@ -202,7 +200,7 @@ impl<'a> OverflowableItem<'a> {
     fn special_cases(&self, config: &Config) -> impl Iterator<Item = &(&'static str, usize)> {
         let base_cases = match self {
             OverflowableItem::MacroArg(..) => SPECIAL_CASE_MACROS,
-            OverflowableItem::NestedMetaItem(..) => SPECIAL_CASE_ATTR,
+            OverflowableItem::MetaItemInner(..) => SPECIAL_CASE_ATTR,
             _ => &[],
         };
         let additional_cases = match self {
@@ -261,7 +259,7 @@ macro_rules! impl_into_overflowable_item_for_rustfmt_types {
 impl_into_overflowable_item_for_ast_node!(
     Expr,
     GenericParam,
-    NestedMetaItem,
+    MetaItemInner,
     FieldDef,
     Ty,
     Pat,
