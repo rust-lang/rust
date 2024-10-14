@@ -222,7 +222,6 @@ macro_rules! make_ast_visitor {
                 // field access version will continue working and it would be easy to
                 // forget to add handling for it.
 
-                make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
                 make_visit!{FnHeader; visit_fn_header, walk_fn_header}
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
@@ -330,6 +329,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Block; visit_block, walk_block}
             make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
             make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
+            make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
             make_visit!{Crate; visit_crate, walk_crate}
             make_visit!{EnumDef; visit_enum_def, walk_enum_def}
             make_visit!{ExprField; visit_expr_field, walk_expr_field}
@@ -525,6 +525,22 @@ macro_rules! make_ast_visitor {
                 ClosureBinder::NotPresent => {}
                 ClosureBinder::For { generic_params, span } => {
                     visit_list!(vis, visit_generic_param, flat_map_generic_param, generic_params);
+                    try_v!(visit_span!(vis, span));
+                }
+            }
+            return_result!(V)
+        }
+
+        pub fn walk_coroutine_kind<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            coroutine_kind: ref_t!(CoroutineKind)
+        ) -> result!(V) {
+            match coroutine_kind {
+                CoroutineKind::Async { span, closure_id, return_impl_trait_id }
+                | CoroutineKind::Gen { span, closure_id, return_impl_trait_id }
+                | CoroutineKind::AsyncGen { span, closure_id, return_impl_trait_id } => {
+                    try_v!(visit_id!(vis, closure_id));
+                    try_v!(visit_id!(vis, return_impl_trait_id));
                     try_v!(visit_span!(vis, span));
                 }
             }
@@ -2089,18 +2105,6 @@ pub mod mut_visit {
         match constness {
             Const::Yes(span) => vis.visit_span(span),
             Const::No => {}
-        }
-    }
-
-    fn walk_coroutine_kind<T: MutVisitor>(vis: &mut T, coroutine_kind: &mut CoroutineKind) {
-        match coroutine_kind {
-            CoroutineKind::Async { span, closure_id, return_impl_trait_id }
-            | CoroutineKind::Gen { span, closure_id, return_impl_trait_id }
-            | CoroutineKind::AsyncGen { span, closure_id, return_impl_trait_id } => {
-                vis.visit_id(closure_id);
-                vis.visit_id(return_impl_trait_id);
-                vis.visit_span(span);
-            }
         }
     }
 
