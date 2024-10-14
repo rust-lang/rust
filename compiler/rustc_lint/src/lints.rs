@@ -3057,16 +3057,3 @@ pub(crate) struct ReservedString {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_mixed_export_name_and_no_mangle)]
-pub(crate) struct BuiltinMixedExportNameAndNoMangle {
-    #[label]
-    pub export_name: Span,
-
-    #[note]
-    pub no_mangle: Span,
-
-    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub removal_span: Span,
-}

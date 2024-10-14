@@ -3,11 +3,10 @@ use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_nam
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
-use rustc_hir::{LangItem, lang_items};
+use rustc_hir::{self as hir, HirId, LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
@@ -78,6 +77,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut inline_span = None;
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
+    let mut mixed_export_name_no_mangle_linter = LinterStateMixedExportNameAndNoMangle::new();
 
     for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
@@ -116,7 +116,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::naked => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
             sym::no_mangle => {
                 if tcx.opt_item_name(did.to_def_id()).is_some() {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+                    mixed_export_name_no_mangle_linter.track_no_mangle(attr.span);
                 } else {
                     tcx.dcx()
                         .struct_span_err(
@@ -240,6 +241,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .emit();
                     }
                     codegen_fn_attrs.export_name = Some(s);
+                    mixed_export_name_no_mangle_linter
+                        .track_export_name(attr.span, tcx.local_def_id_to_hir_id(did));
                 }
             }
             sym::target_feature => {
@@ -513,6 +516,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
+    mixed_export_name_no_mangle_linter.emit_diagnostics_in_case(tcx);
+
     codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
         if !attr.has_name(sym::inline) {
             return ia;
@@ -776,6 +781,46 @@ fn check_link_name_xor_ordinal(
         tcx.dcx().span_err(span, msg);
     } else {
         tcx.dcx().err(msg);
+    }
+}
+
+struct LinterStateMixedExportNameAndNoMangle {
+    export_name: Option<Span>,
+    hir_id: Option<HirId>,
+    no_mangle: Option<Span>,
+}
+
+impl LinterStateMixedExportNameAndNoMangle {
+    fn new() -> Self {
+        Self { export_name: None, hir_id: None, no_mangle: None }
+    }
+
+    fn track_export_name(&mut self, span: Span, hir_id: HirId) {
+        self.export_name = Some(span);
+        self.hir_id = Some(hir_id);
+    }
+
+    fn track_no_mangle(&mut self, span: Span) {
+        self.no_mangle = Some(span.clone());
+    }
+
+    /// Emit diagnostics if the lint condition is met.
+    fn emit_diagnostics_in_case(self, tcx: TyCtxt<'_>) {
+        if let (Some(export_name), Some(no_mangle), Some(hir_id)) =
+            (self.export_name, self.no_mangle, self.hir_id)
+        {
+            tcx.node_span_lint(
+                lint::builtin::MIXED_EXPORT_NAME_AND_NO_MANGLE,
+                hir_id,
+                export_name,
+                |lint| {
+                    lint.primary_message("the attribute `export_name` may not be used in combination with `no_mangle`")
+                        .span_label(export_name, "`export_name` takes precedence")
+                        .span_note(no_mangle.clone(), "the `no_mangle` attribute is ignored")
+                        .span_suggestion_verbose(no_mangle, "remove the `no_mangle` attribtute", "", lint::Applicability::MachineApplicable);
+                },
+            );
+        }
     }
 }
 

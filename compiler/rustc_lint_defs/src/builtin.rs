@@ -5082,3 +5082,31 @@ declare_lint! {
     };
     crate_level_only
 }
+
+declare_lint! {
+    /// The `mixed_export_name_and_no_mangle` lint detects mixed usage of `export_name` and `no_mangle`
+    /// where `no_mangle` is not used by the compiler.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(mixed_export_name_and_no_mangle)]
+    ///
+    /// #[no_mangle]
+    /// #[export_name = "foo"]
+    /// pub fn bar() {}
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler will not use the `no_mangle` attribute when generating the symbol name for the function,
+    /// as the `export_name` attribute is used instead. This can lead to confusion and is unnecessary.
+    ///
+    pub MIXED_EXPORT_NAME_AND_NO_MANGLE,
+    Warn,
+    "mixed usage of export_name and no_mangle, where no_mangle is not used by the compiler"
+}

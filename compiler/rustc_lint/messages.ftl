@@ -117,11 +117,6 @@ lint_builtin_missing_debug_impl =
 
 lint_builtin_missing_doc = missing documentation for {$article} {$desc}
 
-lint_builtin_mixed_export_name_and_no_mangle = the attribute `export_name` may not be used in combination with `no_mangle`
-    .label = `export_name` takes precedence
-    .note = the `no_mangle` attribute is ignored
-    .suggestion = remove the `no_mangle` attribute
-
 lint_builtin_mutable_transmutes =
     transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
 
