@@ -171,6 +171,30 @@ pub(crate) fn get_single_str_spanned_from_tts(
     tts: TokenStream,
     name: &str,
 ) -> ExpandResult<Result<(Symbol, Span), ErrorGuaranteed>, ()> {
+    let ExpandResult::Ready(ret) = get_single_expr_from_tts(cx, span, tts, name) else {
+        return ExpandResult::Retry(());
+    };
+    let ret = match ret {
+        Ok(ret) => ret,
+        Err(e) => return ExpandResult::Ready(Err(e)),
+    };
+    expr_to_spanned_string(cx, ret, "argument must be a string literal").map(|res| {
+        res.map_err(|err| match err {
+            Ok((err, _)) => err.emit(),
+            Err(guar) => guar,
+        })
+        .map(|(symbol, _style, span)| (symbol, span))
+    })
+}
+
+/// Interpreting `tts` as a comma-separated sequence of expressions,
+/// expect exactly one expression, or emit an error and return `Err`.
+pub(crate) fn get_single_expr_from_tts(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    tts: TokenStream,
+    name: &str,
+) -> ExpandResult<Result<P<ast::Expr>, ErrorGuaranteed>, ()> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
         let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
@@ -185,13 +209,7 @@ pub(crate) fn get_single_str_spanned_from_tts(
     if p.token != token::Eof {
         cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
     }
-    expr_to_spanned_string(cx, ret, "argument must be a string literal").map(|res| {
-        res.map_err(|err| match err {
-            Ok((err, _)) => err.emit(),
-            Err(guar) => guar,
-        })
-        .map(|(symbol, _style, span)| (symbol, span))
-    })
+    ExpandResult::Ready(Ok(ret))
 }
 
 /// Extracts comma-separated expressions from `tts`.
