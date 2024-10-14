@@ -448,7 +448,7 @@
 
 use crate::cmp::Ordering;
 use crate::marker::FnPtr;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::{fmt, hash, intrinsics, ub_checks};
 
 mod alignment;
@@ -1165,10 +1165,12 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             size: usize = size_of::<T>(),
             align: usize = align_of::<T>(),
             count: usize = count,
-        ) =>
-        ub_checks::is_aligned_and_not_null(x, align)
-            && ub_checks::is_aligned_and_not_null(y, align)
-            && ub_checks::is_nonoverlapping(x, y, size, count)
+        ) => {
+            let zero_size = size == 0 || count == 0;
+            ub_checks::is_aligned_and_not_null(x, align, zero_size)
+                && ub_checks::is_aligned_and_not_null(y, align, zero_size)
+                && ub_checks::is_nonoverlapping(x, y, size, count)
+        }
     );
 
     // Split up the slice into small power-of-two-sized chunks that LLVM is able
@@ -1278,7 +1280,8 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
             (
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         mem::replace(&mut *dst, src)
     }
@@ -1430,7 +1433,8 @@ pub const unsafe fn read<T>(src: *const T) -> T {
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         crate::intrinsics::read_via_copy(src)
     }
@@ -1635,7 +1639,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::write_via_move(dst, src)
     }
@@ -1808,7 +1813,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::volatile_load(src)
     }
@@ -1887,7 +1893,8 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::volatile_store(dst, src);
     }
