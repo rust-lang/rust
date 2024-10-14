@@ -1272,7 +1272,7 @@ impl DefCollector<'_> {
                         _ => return Resolved::No,
                     };
 
-                    // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
+                    // Skip #[test]/#[bench]/#[test_case] expansion, which would merely result in more memory usage
                     // due to duplicating functions into macro expansions, but only if `cfg(test)` is active,
                     // otherwise they are expanded to nothing and this can impact e.g. diagnostics (due to things
                     // being cfg'ed out).
@@ -1281,7 +1281,7 @@ impl DefCollector<'_> {
                     if matches!(
                         def.kind,
                         MacroDefKind::BuiltInAttr(_, expander)
-                        if expander.is_test() || expander.is_bench()
+                        if expander.is_test() || expander.is_bench() || expander.is_test_case()
                     ) {
                         let test_is_active =
                             self.cfg_options.check_atom(&CfgAtom::Flag(sym::test.clone()));
