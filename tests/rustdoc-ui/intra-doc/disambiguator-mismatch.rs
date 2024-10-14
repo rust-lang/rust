@@ -91,7 +91,7 @@ struct X {
 //~| HELP prefix with `field@`
 
 /// Link to [field@S::A]
-//~^ ERROR incompatible link kind for `S::A`
-//~| NOTE this link resolved
+//~^ ERROR unresolved link to `S::A`
+//~| NOTE this link resolves
 //~| HELP prefix with `variant@`
 pub fn f() {}

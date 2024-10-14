@@ -92,6 +92,8 @@ pr:
   - image: x86_64-gnu-llvm-18
     env:
       ENABLE_GCC_CODEGEN: "1"
+      # We are adding (temporarily) a dummy commit on the compiler
+      READ_ONLY_SRC: "0"
     <<: *job-linux-16c
   - image: x86_64-gnu-tools
     <<: *job-linux-16c
@@ -259,6 +261,7 @@ auto:
   - image: x86_64-gnu-llvm-18
     env:
       RUST_BACKTRACE: 1
+      READ_ONLY_SRC: "0"
     <<: *job-linux-8c
 
   - image: x86_64-gnu-nopt

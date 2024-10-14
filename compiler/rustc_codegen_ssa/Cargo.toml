@@ -14,6 +14,7 @@ itertools = "0.12"
 jobserver = "0.1.28"
 pathdiff = "0.2.0"
 regex = "1.4"
+rustc_abi = { path = "../rustc_abi" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }

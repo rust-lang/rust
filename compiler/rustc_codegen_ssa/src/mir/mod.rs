@@ -133,9 +133,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 enum LocalRef<'tcx, V> {
     Place(PlaceRef<'tcx, V>),
     /// `UnsizedPlace(p)`: `p` itself is a thin pointer (indirect place).
-    /// `*p` is the fat pointer that references the actual unsized place.
+    /// `*p` is the wide pointer that references the actual unsized place.
     /// Every time it is initialized, we have to reallocate the place
-    /// and update the fat pointer. That's the reason why it is indirect.
+    /// and update the wide pointer. That's the reason why it is indirect.
     UnsizedPlace(PlaceRef<'tcx, V>),
     /// The backend [`OperandValue`] has already been generated.
     Operand(OperandRef<'tcx, V>),
@@ -429,7 +429,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // Unsized indirect qrguments
                 PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                     // As the storage for the indirect argument lives during
-                    // the whole function call, we just copy the fat pointer.
+                    // the whole function call, we just copy the wide pointer.
                     let llarg = bx.get_param(llarg_idx);
                     llarg_idx += 1;
                     let llextra = bx.get_param(llarg_idx);

@@ -104,8 +104,9 @@ impl<'tcx> LateLintPass<'tcx> for AsyncFnInTrait {
                 return;
             }
 
-            let hir::FnRetTy::Return(hir::Ty { kind: hir::TyKind::OpaqueDef(def, ..), .. }) =
-                sig.decl.output
+            let hir::FnRetTy::Return(hir::Ty {
+                kind: hir::TyKind::OpaqueDef(opaq_def, ..), ..
+            }) = sig.decl.output
             else {
                 // This should never happen, but let's not ICE.
                 return;
@@ -114,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncFnInTrait {
                 cx.tcx,
                 sig,
                 body,
-                def.owner_id.def_id,
+                opaq_def.def_id,
                 " + Send",
             );
             cx.tcx.emit_node_span_lint(

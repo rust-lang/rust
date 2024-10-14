@@ -29,6 +29,7 @@ Number of file 0 mappings: 9
     false = c4
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = ((c2 + c3) + c4)
+Highest counter ID seen: c4
 
 Function name: conditions::assign_3_or_and
 Raw bytes (73): 0x[01, 01, 09, 05, 07, 0b, 11, 09, 0d, 01, 05, 01, 05, 22, 11, 01, 05, 22, 11, 01, 05, 09, 01, 17, 01, 00, 2f, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 22, 00, 0d, 00, 0e, 22, 00, 12, 00, 13, 20, 1e, 11, 00, 12, 00, 13, 1e, 00, 17, 00, 18, 20, 09, 0d, 00, 17, 00, 18, 03, 01, 05, 01, 02]
@@ -64,6 +65,7 @@ Number of file 0 mappings: 9
     false = c3
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = (c1 + ((c2 + c3) + c4))
+Highest counter ID seen: c4
 
 Function name: conditions::assign_and
 Raw bytes (51): 0x[01, 01, 04, 07, 0e, 09, 0d, 01, 05, 01, 05, 07, 01, 0d, 01, 00, 21, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 0e, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 20, 09, 0d, 00, 12, 00, 13, 03, 01, 05, 01, 02]
@@ -88,6 +90,7 @@ Number of file 0 mappings: 7
     false = c3
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = ((c2 + c3) + (c0 - c1))
+Highest counter ID seen: c3
 
 Function name: conditions::assign_or
 Raw bytes (51): 0x[01, 01, 04, 07, 0d, 05, 09, 01, 05, 01, 05, 07, 01, 12, 01, 00, 20, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 0e, 00, 0d, 00, 0e, 0e, 00, 12, 00, 13, 20, 09, 0d, 00, 12, 00, 13, 03, 01, 05, 01, 02]
@@ -113,6 +116,7 @@ Number of file 0 mappings: 7
     false = c3
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
     = ((c1 + c2) + c3)
+Highest counter ID seen: c3
 
 Function name: conditions::foo
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 21, 01, 02, 02]
@@ -121,6 +125,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 33, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: conditions::func_call
 Raw bytes (39): 0x[01, 01, 03, 01, 05, 0b, 02, 09, 0d, 05, 01, 25, 01, 01, 0a, 20, 05, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 0f, 20, 09, 0d, 00, 0e, 00, 0f, 07, 01, 01, 00, 02]
@@ -141,6 +146,7 @@ Number of file 0 mappings: 5
     false = c3
 - Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
     = ((c2 + c3) + (c0 - c1))
+Highest counter ID seen: c3
 
 Function name: conditions::simple_assign
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 08, 01, 03, 02]
@@ -149,4 +155,5 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 8, 1) to (start + 3, 2)
+Highest counter ID seen: c0
 

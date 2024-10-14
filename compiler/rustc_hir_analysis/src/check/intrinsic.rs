@@ -357,6 +357,19 @@ pub fn check_intrinsic_type(
                 (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
             }
 
+            sym::fmuladdf16 => {
+                (0, 0, vec![tcx.types.f16, tcx.types.f16, tcx.types.f16], tcx.types.f16)
+            }
+            sym::fmuladdf32 => {
+                (0, 0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32)
+            }
+            sym::fmuladdf64 => {
+                (0, 0, vec![tcx.types.f64, tcx.types.f64, tcx.types.f64], tcx.types.f64)
+            }
+            sym::fmuladdf128 => {
+                (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
+            }
+
             sym::fabsf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
             sym::fabsf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
             sym::fabsf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),

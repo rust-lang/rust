@@ -191,6 +191,8 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sm4", Stable, &["neon"]),
     // FEAT_SME
     ("sme", Unstable(sym::aarch64_unstable_target_feature), &["bf16"]),
+    // FEAT_SME_B16B16
+    ("sme-b16b16", Unstable(sym::aarch64_unstable_target_feature), &["bf16", "sme2", "sve-b16b16"]),
     // FEAT_SME_F16F16
     ("sme-f16f16", Unstable(sym::aarch64_unstable_target_feature), &["sme2"]),
     // FEAT_SME_F64F64
@@ -227,7 +229,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     //
     // "For backwards compatibility, Neon and VFP are required in the latest architectures."
     ("sve", Stable, &["neon"]),
-    // FEAT_SVE_B16B16 (SVE or SME Instructions)
+    // FEAT_SVE_B16B16 (SVE or SME Z-targeting instructions)
     ("sve-b16b16", Unstable(sym::aarch64_unstable_target_feature), &["bf16"]),
     // FEAT_SVE2
     ("sve2", Stable, &["sve"]),

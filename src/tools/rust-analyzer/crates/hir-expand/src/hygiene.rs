@@ -151,6 +151,7 @@ pub trait SyntaxContextExt {
     fn remove_mark(&mut self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency);
     fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency);
     fn marks(self, db: &dyn ExpandDatabase) -> Vec<(MacroCallId, Transparency)>;
+    fn is_opaque(self, db: &dyn ExpandDatabase) -> bool;
 }
 
 impl SyntaxContextExt for SyntaxContextId {
@@ -176,6 +177,9 @@ impl SyntaxContextExt for SyntaxContextId {
         let mut marks = marks_rev(self, db).collect::<Vec<_>>();
         marks.reverse();
         marks
+    }
+    fn is_opaque(self, db: &dyn ExpandDatabase) -> bool {
+        !self.is_root() && db.lookup_intern_syntax_context(self).outer_transparency.is_opaque()
     }
 }
 

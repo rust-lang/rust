@@ -7175,7 +7175,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: Yes
+            // Dyn Compatible: Yes
             trait T {}
             ```
         "#]],
@@ -7195,7 +7195,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: Yes
+            // Dyn Compatible: Yes
             trait T {}
             ```
         "#]],
@@ -7219,7 +7219,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: No
+            // Dyn Compatible: No
             // - Reason: has a method `func` that is non dispatchable because of:
             //   - missing a receiver
             trait T { /* … */ }
@@ -7245,7 +7245,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: No
+            // Dyn Compatible: No
             // - Reason: has a method `func` that is non dispatchable because of:
             //   - missing a receiver
             trait T {
@@ -7275,7 +7275,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: No
+            // Dyn Compatible: No
             // - Reason: has a method `func` that is non dispatchable because of:
             //   - missing a receiver
             trait T {
@@ -7305,7 +7305,7 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Object Safety: No
+            // Dyn Compatible: No
             // - Reason: has a method `func` that is non dispatchable because of:
             //   - missing a receiver
             trait T {
@@ -8958,6 +8958,32 @@ fn test_hover_function_with_pat_param() {
 
             ```rust
             fn test_10(Foo { a, b: mut b }: Foo)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_path_inside_block_scope() {
+    check(
+        r#"
+mod m {
+    const _: () = {
+        mod m2 {
+            const C$0: () = ();
+        }
+    };
+}
+"#,
+        expect![[r#"
+            *C*
+
+            ```rust
+            test::m::m2
+            ```
+
+            ```rust
+            const C: () = ()
             ```
         "#]],
     );

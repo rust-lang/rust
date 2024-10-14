@@ -443,6 +443,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         self.suggest_bare_struct_literal(&mut err);
         self.suggest_changing_type_to_const_param(&mut err, res, source, span);
+        self.explain_functions_in_pattern(&mut err, res, source);
 
         if self.suggest_pattern_match_with_let(&mut err, source, span) {
             // Fallback label.
@@ -1164,6 +1165,18 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 Applicability::HasPlaceholders,
             );
         }
+    }
+
+    fn explain_functions_in_pattern(
+        &mut self,
+        err: &mut Diag<'_>,
+        res: Option<Res>,
+        source: PathSource<'_>,
+    ) {
+        let PathSource::TupleStruct(_, _) = source else { return };
+        let Some(Res::Def(DefKind::Fn, _)) = res else { return };
+        err.primary_message("expected a pattern, found a function call");
+        err.note("function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>");
     }
 
     fn suggest_changing_type_to_const_param(

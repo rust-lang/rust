@@ -265,6 +265,11 @@ impl ProjectFolders {
                 entries.push(manifest.to_owned());
             }
 
+            for buildfile in ws.buildfiles() {
+                file_set_roots.push(VfsPath::from(buildfile.to_owned()));
+                entries.push(buildfile.to_owned());
+            }
+
             // In case of detached files we do **not** look for a rust-analyzer.toml.
             if !matches!(ws.kind, ProjectWorkspaceKind::DetachedFile { .. }) {
                 let ws_root = ws.workspace_root();
@@ -521,7 +526,7 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let cargo_config = CargoConfig::default();
+        let cargo_config = CargoConfig { set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,

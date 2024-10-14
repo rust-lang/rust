@@ -86,6 +86,11 @@ fn get_simple_intrinsic<'ll>(
         sym::fmaf64 => "llvm.fma.f64",
         sym::fmaf128 => "llvm.fma.f128",
 
+        sym::fmuladdf16 => "llvm.fmuladd.f16",
+        sym::fmuladdf32 => "llvm.fmuladd.f32",
+        sym::fmuladdf64 => "llvm.fmuladd.f64",
+        sym::fmuladdf128 => "llvm.fmuladd.f128",
+
         sym::fabsf16 => "llvm.fabs.f16",
         sym::fabsf32 => "llvm.fabs.f32",
         sym::fabsf64 => "llvm.fabs.f64",
@@ -2185,7 +2190,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                require!(metadata.is_unit(), InvalidMonomorphization::CastFatPointer {
+                require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
                     name,
                     ty: in_elem
@@ -2200,7 +2205,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                require!(metadata.is_unit(), InvalidMonomorphization::CastFatPointer {
+                require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
                     name,
                     ty: out_elem

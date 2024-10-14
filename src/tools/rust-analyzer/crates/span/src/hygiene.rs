@@ -142,3 +142,12 @@ pub enum Transparency {
     /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
     Opaque,
 }
+
+impl Transparency {
+    /// Returns `true` if the transparency is [`Opaque`].
+    ///
+    /// [`Opaque`]: Transparency::Opaque
+    pub fn is_opaque(&self) -> bool {
+        matches!(self, Self::Opaque)
+    }
+}

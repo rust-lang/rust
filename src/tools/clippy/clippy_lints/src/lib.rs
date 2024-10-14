@@ -1,7 +1,6 @@
 #![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
@@ -27,8 +26,6 @@
     unused_qualifications,
     rustc::internal
 )]
-// Disable this rustc lint for now, as it was also done in rustc
-#![allow(rustc::potential_query_instability)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)

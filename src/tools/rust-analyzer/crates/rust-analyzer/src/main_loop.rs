@@ -22,7 +22,9 @@ use crate::{
     diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
     flycheck::{self, FlycheckMessage},
-    global_state::{file_id_to_url, url_to_file_id, FetchWorkspaceRequest, GlobalState},
+    global_state::{
+        file_id_to_url, url_to_file_id, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
+    },
     hack_recover_crate_name,
     handlers::dispatch::{NotificationDispatcher, RequestDispatcher},
     lsp::{
@@ -695,9 +697,9 @@ impl GlobalState {
                 let (state, msg) = match progress {
                     ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
                     ProjectWorkspaceProgress::Report(msg) => (Progress::Report, Some(msg)),
-                    ProjectWorkspaceProgress::End(workspaces, force_reload_crate_graph) => {
-                        self.fetch_workspaces_queue
-                            .op_completed(Some((workspaces, force_reload_crate_graph)));
+                    ProjectWorkspaceProgress::End(workspaces, force_crate_graph_reload) => {
+                        let resp = FetchWorkspaceResponse { workspaces, force_crate_graph_reload };
+                        self.fetch_workspaces_queue.op_completed(resp);
                         if let Err(e) = self.fetch_workspace_error() {
                             error!("FetchWorkspaceError: {e}");
                         }
@@ -794,13 +796,20 @@ impl GlobalState {
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
-                let _p = tracing::info_span!("GlobalState::handle_vfs_mgs/progress").entered();
+                let _p = span!(Level::INFO, "GlobalState::handle_vfs_mgs/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
                 let (n_done, state) = match n_done {
-                    LoadingProgress::Started => (0, Progress::Begin),
+                    LoadingProgress::Started => {
+                        self.vfs_span =
+                            Some(span!(Level::INFO, "vfs_load", total = n_total).entered());
+                        (0, Progress::Begin)
+                    }
                     LoadingProgress::Progress(n_done) => (n_done.min(n_total), Progress::Report),
-                    LoadingProgress::Finished => (n_total, Progress::End),
+                    LoadingProgress::Finished => {
+                        self.vfs_span = None;
+                        (n_total, Progress::End)
+                    }
                 };
 
                 self.vfs_progress_config_version = config_version;
@@ -881,6 +890,7 @@ impl GlobalState {
             .expect("No title could be found; this is a bug");
         match message {
             DiscoverProjectMessage::Finished { project, buildfile } => {
+                self.discover_handle = None;
                 self.report_progress(&title, Progress::End, None, None, None);
                 self.discover_workspace_queue.op_completed(());
 
@@ -892,6 +902,7 @@ impl GlobalState {
                 self.report_progress(&title, Progress::Report, Some(message), None, None)
             }
             DiscoverProjectMessage::Error { error, source } => {
+                self.discover_handle = None;
                 let message = format!("Project discovery failed: {error}");
                 self.discover_workspace_queue.op_completed(());
                 self.show_and_log_error(message.clone(), source);

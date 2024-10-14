@@ -78,6 +78,7 @@ pub enum ProjectWorkspaceKind {
         rustc: Result<Box<(CargoWorkspace, WorkspaceBuildScripts)>, Option<String>>,
         /// Environment variables set in the `.cargo/config` file.
         cargo_config_extra_env: FxHashMap<String, String>,
+        set_test: bool,
     },
     /// Project workspace was specified using a `rust-project.json` file.
     Json(ProjectJson),
@@ -98,6 +99,7 @@ pub enum ProjectWorkspaceKind {
         cargo: Option<(CargoWorkspace, WorkspaceBuildScripts, Option<Arc<anyhow::Error>>)>,
         /// Environment variables set in the `.cargo/config` file.
         cargo_config_extra_env: FxHashMap<String, String>,
+        set_test: bool,
     },
 }
 
@@ -112,6 +114,7 @@ impl fmt::Debug for ProjectWorkspace {
                 build_scripts,
                 rustc,
                 cargo_config_extra_env,
+                set_test,
             } => f
                 .debug_struct("Cargo")
                 .field("root", &cargo.workspace_root().file_name())
@@ -126,6 +129,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
                 .field("cargo_config_extra_env", &cargo_config_extra_env)
+                .field("set_test", set_test)
                 .field("build_scripts", &build_scripts.error().unwrap_or("ok"))
                 .finish(),
             ProjectWorkspaceKind::Json(project) => {
@@ -137,12 +141,14 @@ impl fmt::Debug for ProjectWorkspace {
                     .field("toolchain", &toolchain)
                     .field("data_layout", &target_layout)
                     .field("n_cfg_overrides", &cfg_overrides.len());
+
                 debug_struct.finish()
             }
             ProjectWorkspaceKind::DetachedFile {
                 file,
                 cargo: cargo_script,
                 cargo_config_extra_env,
+                set_test,
             } => f
                 .debug_struct("DetachedFiles")
                 .field("file", &file)
@@ -154,6 +160,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("data_layout", &target_layout)
                 .field("n_cfg_overrides", &cfg_overrides.len())
                 .field("cargo_config_extra_env", &cargo_config_extra_env)
+                .field("set_test", set_test)
                 .finish(),
         }
     }
@@ -329,6 +336,7 @@ impl ProjectWorkspace {
                         rustc,
                         cargo_config_extra_env,
                         error: error.map(Arc::new),
+                        set_test: config.set_test,
                     },
                     sysroot,
                     rustc_cfg,
@@ -423,6 +431,7 @@ impl ProjectWorkspace {
                 file: detached_file.to_owned(),
                 cargo: cargo_script,
                 cargo_config_extra_env,
+                set_test: config.set_test,
             },
             sysroot,
             rustc_cfg,
@@ -539,6 +548,17 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn buildfiles(&self) -> Vec<AbsPathBuf> {
+        match &self.kind {
+            ProjectWorkspaceKind::Json(project) => project
+                .crates()
+                .filter_map(|(_, krate)| krate.build.as_ref().map(|build| build.build_file.clone()))
+                .map(AbsPathBuf::assert)
+                .collect(),
+            _ => vec![],
+        }
+    }
+
     pub fn find_sysroot_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
         self.sysroot.discover_proc_macro_srv()
     }
@@ -598,6 +618,7 @@ impl ProjectWorkspace {
                 build_scripts,
                 cargo_config_extra_env: _,
                 error: _,
+                set_test: _,
             } => {
                 cargo
                     .packages()
@@ -739,6 +760,7 @@ impl ProjectWorkspace {
                 build_scripts,
                 cargo_config_extra_env: _,
                 error: _,
+                set_test,
             } => (
                 cargo_to_crate_graph(
                     load,
@@ -748,10 +770,11 @@ impl ProjectWorkspace {
                     rustc_cfg.clone(),
                     cfg_overrides,
                     build_scripts,
+                    *set_test,
                 ),
                 sysroot,
             ),
-            ProjectWorkspaceKind::DetachedFile { file, cargo: cargo_script, .. } => (
+            ProjectWorkspaceKind::DetachedFile { file, cargo: cargo_script, set_test, .. } => (
                 if let Some((cargo, build_scripts, _)) = cargo_script {
                     cargo_to_crate_graph(
                         &mut |path| load(path),
@@ -761,6 +784,7 @@ impl ProjectWorkspace {
                         rustc_cfg.clone(),
                         cfg_overrides,
                         build_scripts,
+                        *set_test,
                     )
                 } else {
                     detached_file_to_crate_graph(
@@ -769,6 +793,7 @@ impl ProjectWorkspace {
                         file,
                         sysroot,
                         cfg_overrides,
+                        *set_test,
                     )
                 },
                 sysroot,
@@ -802,6 +827,7 @@ impl ProjectWorkspace {
                     cargo_config_extra_env,
                     build_scripts: _,
                     error: _,
+                    set_test: _,
                 },
                 ProjectWorkspaceKind::Cargo {
                     cargo: o_cargo,
@@ -809,6 +835,7 @@ impl ProjectWorkspace {
                     cargo_config_extra_env: o_cargo_config_extra_env,
                     build_scripts: _,
                     error: _,
+                    set_test: _,
                 },
             ) => {
                 cargo == o_cargo
@@ -823,11 +850,13 @@ impl ProjectWorkspace {
                     file,
                     cargo: Some((cargo_script, _, _)),
                     cargo_config_extra_env,
+                    set_test: _,
                 },
                 ProjectWorkspaceKind::DetachedFile {
                     file: o_file,
                     cargo: Some((o_cargo_script, _, _)),
                     cargo_config_extra_env: o_cargo_config_extra_env,
+                    set_test: _,
                 },
             ) => {
                 file == o_file
@@ -976,6 +1005,7 @@ fn cargo_to_crate_graph(
     rustc_cfg: Vec<CfgAtom>,
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
+    set_test: bool,
 ) -> (CrateGraph, ProcMacroPaths) {
     let _p = tracing::info_span!("cargo_to_crate_graph").entered();
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
@@ -1000,8 +1030,10 @@ fn cargo_to_crate_graph(
             let mut cfg_options = cfg_options.clone();
 
             if cargo[pkg].is_local {
-                // Add test cfg for local crates
-                cfg_options.insert_atom(sym::test.clone());
+                if set_test {
+                    // Add test cfg for local crates
+                    cfg_options.insert_atom(sym::test.clone());
+                }
                 cfg_options.insert_atom(sym::rust_analyzer.clone());
             }
 
@@ -1162,6 +1194,7 @@ fn detached_file_to_crate_graph(
     detached_file: &ManifestPath,
     sysroot: &Sysroot,
     override_cfg: &CfgOverrides,
+    set_test: bool,
 ) -> (CrateGraph, ProcMacroPaths) {
     let _p = tracing::info_span!("detached_file_to_crate_graph").entered();
     let mut crate_graph = CrateGraph::default();
@@ -1169,7 +1202,9 @@ fn detached_file_to_crate_graph(
         sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load);
 
     let mut cfg_options = CfgOptions::from_iter(rustc_cfg);
-    cfg_options.insert_atom(sym::test.clone());
+    if set_test {
+        cfg_options.insert_atom(sym::test.clone());
+    }
     cfg_options.insert_atom(sym::rust_analyzer.clone());
     override_cfg.apply(&mut cfg_options, "");
     let cfg_options = Arc::new(cfg_options);
@@ -1415,6 +1450,7 @@ fn sysroot_to_crate_graph(
                     ..Default::default()
                 },
                 &WorkspaceBuildScripts::default(),
+                false,
             );
 
             let mut pub_deps = vec![];

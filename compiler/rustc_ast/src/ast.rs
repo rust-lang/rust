@@ -511,7 +511,7 @@ pub enum MetaItemKind {
     /// List meta item.
     ///
     /// E.g., `#[derive(..)]`, where the field represents the `..`.
-    List(ThinVec<NestedMetaItem>),
+    List(ThinVec<MetaItemInner>),
 
     /// Name value meta item.
     ///
@@ -523,7 +523,7 @@ pub enum MetaItemKind {
 ///
 /// E.g., each of `Clone`, `Copy` in `#[derive(Clone, Copy)]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum NestedMetaItem {
+pub enum MetaItemInner {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
 
@@ -2167,10 +2167,6 @@ pub enum TyKind {
     Never,
     /// A tuple (`(A, B, C, D,...)`).
     Tup(ThinVec<P<Ty>>),
-    /// An anonymous struct type i.e. `struct { foo: Type }`.
-    AnonStruct(NodeId, ThinVec<FieldDef>),
-    /// An anonymous union type i.e. `union { bar: Type }`.
-    AnonUnion(NodeId, ThinVec<FieldDef>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -2227,10 +2223,6 @@ impl TyKind {
             None
         }
     }
-
-    pub fn is_anon_adt(&self) -> bool {
-        matches!(self, TyKind::AnonStruct(..) | TyKind::AnonUnion(..))
-    }
 }
 
 /// Syntax used to declare a trait object.
@@ -2278,7 +2270,7 @@ impl InlineAsmOptions {
     pub const COUNT: usize = Self::all().bits().count_ones() as usize;
 
     pub const GLOBAL_OPTIONS: Self = Self::ATT_SYNTAX.union(Self::RAW);
-    pub const NAKED_OPTIONS: Self = Self::ATT_SYNTAX.union(Self::RAW).union(Self::NORETURN);
+    pub const NAKED_OPTIONS: Self = Self::ATT_SYNTAX.union(Self::RAW);
 
     pub fn human_readable_names(&self) -> Vec<&'static str> {
         let mut options = vec![];
@@ -2432,6 +2424,32 @@ pub enum AsmMacro {
     GlobalAsm,
     /// The `naked_asm!` macro
     NakedAsm,
+}
+
+impl AsmMacro {
+    pub const fn macro_name(self) -> &'static str {
+        match self {
+            AsmMacro::Asm => "asm",
+            AsmMacro::GlobalAsm => "global_asm",
+            AsmMacro::NakedAsm => "naked_asm",
+        }
+    }
+
+    pub const fn is_supported_option(self, option: InlineAsmOptions) -> bool {
+        match self {
+            AsmMacro::Asm => true,
+            AsmMacro::GlobalAsm => InlineAsmOptions::GLOBAL_OPTIONS.contains(option),
+            AsmMacro::NakedAsm => InlineAsmOptions::NAKED_OPTIONS.contains(option),
+        }
+    }
+
+    pub const fn diverges(self, options: InlineAsmOptions) -> bool {
+        match self {
+            AsmMacro::Asm => options.contains(InlineAsmOptions::NORETURN),
+            AsmMacro::GlobalAsm => true,
+            AsmMacro::NakedAsm => true,
+        }
+    }
 }
 
 /// Inline assembly.

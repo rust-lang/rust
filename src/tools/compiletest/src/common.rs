@@ -53,7 +53,6 @@ macro_rules! string_enum {
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum Mode {
-        RunPassValgrind => "run-pass-valgrind",
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
@@ -206,13 +205,6 @@ pub struct Config {
 
     /// Path to LLVM's bin directory.
     pub llvm_bin_dir: Option<PathBuf>,
-
-    /// The valgrind path.
-    pub valgrind_path: Option<String>,
-
-    /// Whether to fail if we can't run run-pass-valgrind tests under valgrind
-    /// (or, alternatively, to silently run them like regular run-pass tests).
-    pub force_valgrind: bool,
 
     /// The path to the Clang executable to run Clang-based tests with. If
     /// `None` then these tests will be ignored.
@@ -393,8 +385,8 @@ pub struct Config {
     pub git_merge_commit_email: String,
 
     /// True if the profiler runtime is enabled for this target.
-    /// Used by the "needs-profiler-support" header in test files.
-    pub profiler_support: bool,
+    /// Used by the "needs-profiler-runtime" directive in test files.
+    pub profiler_runtime: bool,
 }
 
 impl Config {

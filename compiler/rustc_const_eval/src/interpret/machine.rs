@@ -395,7 +395,7 @@ pub trait Machine<'tcx>: Sized {
     ///
     /// This should take care of jumping to the next block (one of `targets`) when asm goto
     /// is triggered, `targets[0]` when the assembly falls through, or diverge in case of
-    /// `InlineAsmOptions::NORETURN` being set.
+    /// naked_asm! or `InlineAsmOptions::NORETURN` being set.
     fn eval_inline_asm(
         _ecx: &mut InterpCx<'tcx, Self>,
         _template: &'tcx [InlineAsmTemplatePiece],

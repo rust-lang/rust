@@ -1430,8 +1430,6 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                         );
                     }
                 }
-
-                diag.note(fluent::lint_non_local_definitions_deprecation);
             }
             NonLocalDefinitionsDiag::MacroRules {
                 depth,
@@ -1452,7 +1450,6 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 }
 
                 diag.note(fluent::lint_non_local);
-                diag.note(fluent::lint_non_local_definitions_deprecation);
 
                 if let Some(cargo_update) = cargo_update {
                     diag.subdiagnostic(cargo_update);
@@ -1703,7 +1700,7 @@ pub(crate) enum InvalidNanComparisons {
     #[diag(lint_invalid_nan_comparisons_eq_ne)]
     EqNe {
         #[subdiagnostic]
-        suggestion: Option<InvalidNanComparisonsSuggestion>,
+        suggestion: InvalidNanComparisonsSuggestion,
     },
     #[diag(lint_invalid_nan_comparisons_lt_le_gt_ge)]
     LtLeGtGe,
@@ -2442,14 +2439,6 @@ pub(crate) struct DuplicateMacroAttribute;
 pub(crate) struct CfgAttrNoAttributes;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_crate_type_in_cfg_attr_deprecated)]
-pub(crate) struct CrateTypeInCfgAttr;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_crate_name_in_cfg_attr_deprecated)]
-pub(crate) struct CrateNameInCfgAttr;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_missing_fragment_specifier)]
 pub(crate) struct MissingFragmentSpecifier;
 
@@ -3061,3 +3050,10 @@ pub(crate) enum MutRefSugg {
 #[derive(LintDiagnostic)]
 #[diag(lint_unqualified_local_imports)]
 pub(crate) struct UnqualifiedLocalImportsDiag {}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_reserved_string)]
+pub(crate) struct ReservedString {
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}

@@ -380,7 +380,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                     if id == flycheck.id() {
                         updated = true;
                         match package.filter(|_| {
-                            !world.config.flycheck_workspace(source_root_id) || target.is_some()
+                            !world.config.flycheck_workspace(source_root_id) && target.is_some()
                         }) {
                             Some(package) => flycheck
                                 .restart_for_package(package, target.clone().map(TupleExt::head)),

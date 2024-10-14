@@ -921,8 +921,8 @@ cc = ["@kobzol"]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
+    "BoxyUwU",
     "fmease",
-    "jhpratt",
     "jyn514",
     "oli-obk",
 ]
@@ -938,7 +938,6 @@ compiler-team = [
     "@oli-obk",
     "@pnkfelix",
     "@wesleywiser",
-    "@michaelwoerister",
 ]
 compiler-team-contributors = [
     "@TaKO8Ki",
@@ -971,6 +970,7 @@ bootstrap = [
     "@albertlarsan68",
     "@onur-ozkan",
     "@kobzol",
+    "@jieyouxu",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -989,7 +989,6 @@ query-system = [
     "@cjgillot",
 ]
 incremental = [
-    "@michaelwoerister",
     "@wesleywiser",
 ]
 diagnostics = [
@@ -1048,7 +1047,6 @@ ast_lowering = [
     "@spastorino",
 ]
 debuginfo = [
-    "@michaelwoerister",
     "@davidtwco"
 ]
 fallback = [

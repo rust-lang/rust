@@ -295,7 +295,6 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -348,7 +347,6 @@ impl IpAddr {
     ///     true
     /// );
     /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -600,6 +598,24 @@ impl Ipv4Addr {
         self.octets
     }
 
+    /// Creates an `Ipv4Addr` from a four element byte array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_from)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::from_octets([13u8, 12u8, 11u8, 10u8]);
+    /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
+    /// ```
+    #[unstable(feature = "ip_from", issue = "131360")]
+    #[must_use]
+    #[inline]
+    pub const fn from_octets(octets: [u8; 4]) -> Ipv4Addr {
+        Ipv4Addr { octets }
+    }
+
     /// Returns [`true`] for the special 'unspecified' address (`0.0.0.0`).
     ///
     /// This property is defined in _UNIX Network Programming, Second Edition_,
@@ -776,7 +792,6 @@ impl Ipv4Addr {
     ///
     /// // For a complete overview see the IANA IPv4 Special-Purpose Address Registry.
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -813,7 +828,6 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
     /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -841,7 +855,6 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
     /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -878,7 +891,6 @@ impl Ipv4Addr {
     /// // The broadcast address is not considered as reserved for future use by this implementation
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1400,6 +1412,34 @@ impl Ipv6Addr {
         ]
     }
 
+    /// Creates an `Ipv6Addr` from an eight element 16-bit array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_from)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from_segments([
+    ///     0x20du16, 0x20cu16, 0x20bu16, 0x20au16,
+    ///     0x209u16, 0x208u16, 0x207u16, 0x206u16,
+    /// ]);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x20d, 0x20c, 0x20b, 0x20a,
+    ///         0x209, 0x208, 0x207, 0x206,
+    ///     ),
+    ///     addr
+    /// );
+    /// ```
+    #[unstable(feature = "ip_from", issue = "131360")]
+    #[must_use]
+    #[inline]
+    pub const fn from_segments(segments: [u16; 8]) -> Ipv6Addr {
+        let [a, b, c, d, e, f, g, h] = segments;
+        Ipv6Addr::new(a, b, c, d, e, f, g, h)
+    }
+
     /// Returns [`true`] for the special 'unspecified' address (`::`).
     ///
     /// This property is defined in [IETF RFC 4291].
@@ -1510,7 +1550,6 @@ impl Ipv6Addr {
     ///
     /// // For a complete overview see the IANA IPv6 Special-Purpose Address Registry.
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1562,7 +1601,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1591,7 +1629,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast(), true);
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_unicast(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1643,7 +1680,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1668,7 +1704,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1729,7 +1764,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1758,7 +1792,6 @@ impl Ipv6Addr {
     /// );
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1818,7 +1851,6 @@ impl Ipv6Addr {
     ///
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_ipv4_mapped(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1932,7 +1964,7 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).octets(),
-    ///            [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    ///            [0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     /// ```
     #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
     #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
@@ -1940,6 +1972,33 @@ impl Ipv6Addr {
     #[inline]
     pub const fn octets(&self) -> [u8; 16] {
         self.octets
+    }
+
+    /// Creates an `Ipv6Addr` from a sixteen element byte array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_from)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from_octets([
+    ///     0x19u8, 0x18u8, 0x17u8, 0x16u8, 0x15u8, 0x14u8, 0x13u8, 0x12u8,
+    ///     0x11u8, 0x10u8, 0x0fu8, 0x0eu8, 0x0du8, 0x0cu8, 0x0bu8, 0x0au8,
+    /// ]);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x1918, 0x1716, 0x1514, 0x1312,
+    ///         0x1110, 0x0f0e, 0x0d0c, 0x0b0a,
+    ///     ),
+    ///     addr
+    /// );
+    /// ```
+    #[unstable(feature = "ip_from", issue = "131360")]
+    #[must_use]
+    #[inline]
+    pub const fn from_octets(octets: [u8; 16]) -> Ipv6Addr {
+        Ipv6Addr { octets }
     }
 }
 
@@ -2113,15 +2172,13 @@ impl From<[u8; 16]> for Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from([
-    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
-    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
+    ///     0x19u8, 0x18u8, 0x17u8, 0x16u8, 0x15u8, 0x14u8, 0x13u8, 0x12u8,
+    ///     0x11u8, 0x10u8, 0x0fu8, 0x0eu8, 0x0du8, 0x0cu8, 0x0bu8, 0x0au8,
     /// ]);
     /// assert_eq!(
     ///     Ipv6Addr::new(
-    ///         0x1918, 0x1716,
-    ///         0x1514, 0x1312,
-    ///         0x1110, 0x0f0e,
-    ///         0x0d0c, 0x0b0a
+    ///         0x1918, 0x1716, 0x1514, 0x1312,
+    ///         0x1110, 0x0f0e, 0x0d0c, 0x0b0a,
     ///     ),
     ///     addr
     /// );
@@ -2142,15 +2199,13 @@ impl From<[u16; 8]> for Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from([
-    ///     525u16, 524u16, 523u16, 522u16,
-    ///     521u16, 520u16, 519u16, 518u16,
+    ///     0x20du16, 0x20cu16, 0x20bu16, 0x20au16,
+    ///     0x209u16, 0x208u16, 0x207u16, 0x206u16,
     /// ]);
     /// assert_eq!(
     ///     Ipv6Addr::new(
-    ///         0x20d, 0x20c,
-    ///         0x20b, 0x20a,
-    ///         0x209, 0x208,
-    ///         0x207, 0x206
+    ///         0x20d, 0x20c, 0x20b, 0x20a,
+    ///         0x209, 0x208, 0x207, 0x206,
     ///     ),
     ///     addr
     /// );
@@ -2172,15 +2227,13 @@ impl From<[u8; 16]> for IpAddr {
     /// use std::net::{IpAddr, Ipv6Addr};
     ///
     /// let addr = IpAddr::from([
-    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
-    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
+    ///     0x19u8, 0x18u8, 0x17u8, 0x16u8, 0x15u8, 0x14u8, 0x13u8, 0x12u8,
+    ///     0x11u8, 0x10u8, 0x0fu8, 0x0eu8, 0x0du8, 0x0cu8, 0x0bu8, 0x0au8,
     /// ]);
     /// assert_eq!(
     ///     IpAddr::V6(Ipv6Addr::new(
-    ///         0x1918, 0x1716,
-    ///         0x1514, 0x1312,
-    ///         0x1110, 0x0f0e,
-    ///         0x0d0c, 0x0b0a
+    ///         0x1918, 0x1716, 0x1514, 0x1312,
+    ///         0x1110, 0x0f0e, 0x0d0c, 0x0b0a,
     ///     )),
     ///     addr
     /// );
@@ -2201,15 +2254,13 @@ impl From<[u16; 8]> for IpAddr {
     /// use std::net::{IpAddr, Ipv6Addr};
     ///
     /// let addr = IpAddr::from([
-    ///     525u16, 524u16, 523u16, 522u16,
-    ///     521u16, 520u16, 519u16, 518u16,
+    ///     0x20du16, 0x20cu16, 0x20bu16, 0x20au16,
+    ///     0x209u16, 0x208u16, 0x207u16, 0x206u16,
     /// ]);
     /// assert_eq!(
     ///     IpAddr::V6(Ipv6Addr::new(
-    ///         0x20d, 0x20c,
-    ///         0x20b, 0x20a,
-    ///         0x209, 0x208,
-    ///         0x207, 0x206
+    ///         0x20d, 0x20c, 0x20b, 0x20a,
+    ///         0x209, 0x208, 0x207, 0x206,
     ///     )),
     ///     addr
     /// );

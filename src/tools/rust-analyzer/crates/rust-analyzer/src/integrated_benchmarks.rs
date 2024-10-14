@@ -12,7 +12,8 @@
 
 use hir::ChangeWithProcMacros;
 use ide::{
-    AnalysisHost, CallableSnippets, CompletionConfig, DiagnosticsConfig, FilePosition, TextSize,
+    AnalysisHost, CallableSnippets, CompletionConfig, CompletionFieldsToResolve, DiagnosticsConfig,
+    FilePosition, TextSize,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -36,6 +37,8 @@ fn integrated_highlighting_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
@@ -102,6 +105,8 @@ fn integrated_completion_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
@@ -168,6 +173,7 @@ fn integrated_completion_benchmark() {
             snippets: Vec::new(),
             limit: None,
             add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -215,6 +221,7 @@ fn integrated_completion_benchmark() {
             snippets: Vec::new(),
             limit: None,
             add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -260,6 +267,7 @@ fn integrated_completion_benchmark() {
             snippets: Vec::new(),
             limit: None,
             add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -279,6 +287,8 @@ fn integrated_diagnostics_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {

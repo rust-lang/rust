@@ -84,8 +84,11 @@ fn issue_10449() {
 }
 
 // Pointers cannot be cast to integers in const contexts
+#[allow(ptr_to_integer_transmute_in_consts, reason = "This is tested in the compiler test suite")]
 const fn issue_12402<P>(ptr: *const P) {
-    unsafe { transmute::<*const i32, usize>(&42i32) };
-    unsafe { transmute::<fn(*const P), usize>(issue_12402) };
-    let _ = unsafe { transmute::<_, usize>(ptr) };
+    // This test exists even though the compiler lints against it
+    // to test that clippy's transmute lints do not trigger on this.
+    unsafe { std::mem::transmute::<*const i32, usize>(&42i32) };
+    unsafe { std::mem::transmute::<fn(*const P), usize>(issue_12402) };
+    let _ = unsafe { std::mem::transmute::<_, usize>(ptr) };
 }

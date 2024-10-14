@@ -1830,6 +1830,7 @@ supported_targets! {
 
     ("armv7-unknown-trusty", armv7_unknown_trusty),
     ("aarch64-unknown-trusty", aarch64_unknown_trusty),
+    ("x86_64-unknown-trusty", x86_64_unknown_trusty),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32im-risc0-zkvm-elf", riscv32im_risc0_zkvm_elf),
@@ -1839,6 +1840,10 @@ supported_targets! {
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
     ("riscv32imafc-esp-espidf", riscv32imafc_esp_espidf),
+
+    ("riscv32e-unknown-none-elf", riscv32e_unknown_none_elf),
+    ("riscv32em-unknown-none-elf", riscv32em_unknown_none_elf),
+    ("riscv32emc-unknown-none-elf", riscv32emc_unknown_none_elf),
 
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32imafc-unknown-none-elf", riscv32imafc_unknown_none_elf),

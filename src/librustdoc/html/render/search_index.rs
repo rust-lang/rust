@@ -774,7 +774,7 @@ pub(crate) fn get_function_type_for_search<'tcx>(
 fn get_index_type(
     clean_type: &clean::Type,
     generics: Vec<RenderType>,
-    rgen: &mut FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
+    rgen: &mut FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)>,
 ) -> RenderType {
     RenderType {
         id: get_index_type_id(clean_type, rgen),
@@ -785,7 +785,7 @@ fn get_index_type(
 
 fn get_index_type_id(
     clean_type: &clean::Type,
-    rgen: &mut FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
+    rgen: &mut FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)>,
 ) -> Option<RenderTypeId> {
     use rustc_hir::def::{DefKind, Res};
     match *clean_type {
@@ -854,7 +854,7 @@ fn simplify_fn_type<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<RenderType>,
-    rgen: &mut FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
+    rgen: &mut FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)>,
     is_return: bool,
     cache: &Cache,
 ) {
@@ -1198,7 +1198,7 @@ fn simplify_fn_constraint<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<(RenderTypeId, Vec<RenderType>)>,
-    rgen: &mut FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
+    rgen: &mut FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)>,
     is_return: bool,
     cache: &Cache,
 ) {
@@ -1285,7 +1285,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
 ) -> (Vec<RenderType>, Vec<RenderType>, Vec<Vec<RenderType>>) {
     let decl = &func.decl;
 
-    let mut rgen: FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
+    let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
 
     let combined_generics;
     let (self_, generics) = if let Some((impl_self, impl_generics)) = impl_or_trait_generics {

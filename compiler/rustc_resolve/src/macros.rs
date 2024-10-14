@@ -129,8 +129,8 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
     for attr in attr::filter_by_name(pre_configured_attrs, sym::register_tool) {
-        for nested_meta in attr.meta_item_list().unwrap_or_default() {
-            match nested_meta.ident() {
+        for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
+            match meta_item_inner.ident() {
                 Some(ident) => {
                     if let Some(old_ident) = registered_tools.replace(ident) {
                         tcx.dcx().emit_err(errors::ToolWasAlreadyRegistered {
@@ -142,7 +142,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                 }
                 None => {
                     tcx.dcx().emit_err(errors::ToolOnlyAcceptsIdentifiers {
-                        span: nested_meta.span(),
+                        span: meta_item_inner.span(),
                         tool: sym::register_tool,
                     });
                 }

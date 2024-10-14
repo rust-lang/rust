@@ -219,7 +219,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         panic!("collect-trait-impls can't run");
     };
 
-    krate.external_traits.extend(cx.external_traits.drain());
+    krate.external_traits.extend(cx.external_traits.drain(..));
 
     krate
 }

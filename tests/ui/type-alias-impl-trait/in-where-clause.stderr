@@ -1,30 +1,3 @@
-error[E0391]: cycle detected when computing type of `Bar::{opaque#0}`
-  --> $DIR/in-where-clause.rs:5:12
-   |
-LL | type Bar = impl Sized;
-   |            ^^^^^^^^^^
-   |
-note: ...which requires computing type of opaque `Bar::{opaque#0}`...
-  --> $DIR/in-where-clause.rs:5:12
-   |
-LL | type Bar = impl Sized;
-   |            ^^^^^^^^^^
-note: ...which requires type-checking `foo`...
-  --> $DIR/in-where-clause.rs:8:1
-   |
-LL | / fn foo() -> Bar
-LL | | where
-LL | |     Bar: Send,
-   | |______________^
-   = note: ...which requires revealing opaque types in `[Binder { value: TraitPredicate(<Bar as core::marker::Send>, polarity:Positive), bound_vars: [] }]`...
-   = note: ...which again requires computing type of `Bar::{opaque#0}`, completing the cycle
-note: cycle used when checking that `Bar::{opaque#0}` is well-formed
-  --> $DIR/in-where-clause.rs:5:12
-   |
-LL | type Bar = impl Sized;
-   |            ^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-
 error[E0283]: type annotations needed: cannot satisfy `Bar: Send`
   --> $DIR/in-where-clause.rs:12:9
    |
@@ -40,6 +13,29 @@ LL | fn foo() -> Bar
 LL | where
 LL |     Bar: Send,
    |          ^^^^ required by this bound in `foo`
+
+error[E0391]: cycle detected when computing type of opaque `Bar::{opaque#0}`
+  --> $DIR/in-where-clause.rs:5:12
+   |
+LL | type Bar = impl Sized;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires type-checking `foo`...
+  --> $DIR/in-where-clause.rs:8:1
+   |
+LL | / fn foo() -> Bar
+LL | | where
+LL | |     Bar: Send,
+   | |______________^
+   = note: ...which requires revealing opaque types in `[Binder { value: TraitPredicate(<Bar as core::marker::Send>, polarity:Positive), bound_vars: [] }]`...
+note: ...which requires computing type of `Bar::{opaque#0}`...
+  --> $DIR/in-where-clause.rs:5:12
+   |
+LL | type Bar = impl Sized;
+   |            ^^^^^^^^^^
+   = note: ...which again requires computing type of opaque `Bar::{opaque#0}`, completing the cycle
+   = note: cycle used when evaluating trait selection obligation `Bar: core::marker::Send`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 2 previous errors
 

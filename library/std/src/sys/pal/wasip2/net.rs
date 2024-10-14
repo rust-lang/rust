@@ -2,13 +2,12 @@
 
 use libc::{c_int, c_void, size_t};
 
-use super::fd::WasiFd;
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
-use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
+use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::unsupported;
-use crate::sys_common::net::{TcpListener, getsockopt, setsockopt, sockaddr_to_addr};
+use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::{Duration, Instant};
 use crate::{cmp, mem, str};
@@ -71,7 +70,9 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 
 pub fn init() {}
 
-pub struct Socket(WasiFd);
+pub struct WasiSocket(OwnedFd);
+
+pub struct Socket(WasiSocket);
 
 impl Socket {
     pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
@@ -327,22 +328,66 @@ impl Socket {
     }
 }
 
-impl AsInner<WasiFd> for Socket {
+impl AsInner<OwnedFd> for WasiSocket {
     #[inline]
-    fn as_inner(&self) -> &WasiFd {
+    fn as_inner(&self) -> &OwnedFd {
         &self.0
     }
 }
 
-impl IntoInner<WasiFd> for Socket {
-    fn into_inner(self) -> WasiFd {
+impl IntoInner<OwnedFd> for WasiSocket {
+    fn into_inner(self) -> OwnedFd {
         self.0
     }
 }
 
-impl FromInner<WasiFd> for Socket {
-    fn from_inner(inner: WasiFd) -> Socket {
-        Socket(inner)
+impl FromInner<OwnedFd> for WasiSocket {
+    fn from_inner(owned_fd: OwnedFd) -> Self {
+        Self(owned_fd)
+    }
+}
+
+impl AsFd for WasiSocket {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
+}
+
+impl AsRawFd for WasiSocket {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        self.0.as_raw_fd()
+    }
+}
+
+impl IntoRawFd for WasiSocket {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_raw_fd()
+    }
+}
+
+impl FromRawFd for WasiSocket {
+    unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        unsafe { Self(FromRawFd::from_raw_fd(raw_fd)) }
+    }
+}
+
+impl AsInner<WasiSocket> for Socket {
+    #[inline]
+    fn as_inner(&self) -> &WasiSocket {
+        &self.0
+    }
+}
+
+impl IntoInner<WasiSocket> for Socket {
+    fn into_inner(self) -> WasiSocket {
+        self.0
+    }
+}
+
+impl FromInner<WasiSocket> for Socket {
+    fn from_inner(sock: WasiSocket) -> Socket {
+        Socket(sock)
     }
 }
 
@@ -368,12 +413,5 @@ impl IntoRawFd for Socket {
 impl FromRawFd for Socket {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
         unsafe { Self(FromRawFd::from_raw_fd(raw_fd)) }
-    }
-}
-
-impl AsInner<Socket> for TcpListener {
-    #[inline]
-    fn as_inner(&self) -> &Socket {
-        &self.socket()
     }
 }

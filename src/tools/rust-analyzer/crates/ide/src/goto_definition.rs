@@ -83,7 +83,7 @@ pub(crate) fn goto_definition(
     }
 
     let navs = sema
-        .descend_into_macros(original_token.clone())
+        .descend_into_macros_no_opaque(original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
@@ -2654,6 +2654,24 @@ fn foo() {
             }
             break$0 'outer;
         }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn label_inside_macro() {
+        check(
+            r#"
+macro_rules! m {
+    ($s:stmt) => { $s };
+}
+
+fn foo() {
+    'label: loop {
+ // ^^^^^^
+        m!(continue 'label$0);
     }
 }
 "#,

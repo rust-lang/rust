@@ -658,7 +658,11 @@ where
                 // Things can ge wrong in quite weird ways when this is violated.
                 // Unfortunately this is too expensive to do in release builds.
                 if cfg!(debug_assertions) {
-                    src.assert_matches_abi(local_layout.abi, self);
+                    src.assert_matches_abi(
+                        local_layout.abi,
+                        "invalid immediate for given destination place",
+                        self,
+                    );
                 }
             }
             Left(mplace) => {
@@ -679,7 +683,7 @@ where
     ) -> InterpResult<'tcx> {
         // We use the sizes from `value` below.
         // Ensure that matches the type of the place it is written to.
-        value.assert_matches_abi(layout.abi, self);
+        value.assert_matches_abi(layout.abi, "invalid immediate for given destination place", self);
         // Note that it is really important that the type here is the right one, and matches the
         // type things are read at. In case `value` is a `ScalarPair`, we don't do any magic here
         // to handle padding properly, which is only correct if we never look at this data with the

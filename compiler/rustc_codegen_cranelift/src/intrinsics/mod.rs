@@ -328,6 +328,9 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::fabsf64 => ("fabs", 1, fx.tcx.types.f64, types::F64),
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
+        // FIXME: calling `fma` from libc without FMA target feature uses expensive sofware emulation
+        sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f32
+        sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f64
         sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
         sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
         sym::floorf32 => ("floorf", 1, fx.tcx.types.f32, types::F32),
@@ -381,7 +384,7 @@ fn codegen_float_intrinsic_call<'tcx>(
 
     let layout = fx.layout_of(ty);
     let res = match intrinsic {
-        sym::fmaf32 | sym::fmaf64 => {
+        sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
             CValue::by_val(fx.bcx.ins().fma(args[0], args[1], args[2]), layout)
         }
         sym::copysignf32 | sym::copysignf64 => {

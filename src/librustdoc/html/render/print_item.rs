@@ -6,7 +6,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use rinja::Template;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
@@ -932,7 +932,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
     let cloned_shared = Rc::clone(&cx.shared);
     let cache = &cloned_shared.cache;
-    let mut extern_crates = FxHashSet::default();
+    let mut extern_crates = FxIndexSet::default();
 
     if !t.is_object_safe(cx.tcx()) {
         write_section_heading(

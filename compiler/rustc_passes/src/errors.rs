@@ -1187,27 +1187,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_functions_operands, code = E0787)]
-pub(crate) struct NakedFunctionsOperands {
+#[diag(passes_naked_functions_must_naked_asm, code = E0787)]
+pub(crate) struct NakedFunctionsMustNakedAsm {
     #[primary_span]
-    pub unsupported_operands: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_naked_functions_asm_options, code = E0787)]
-pub(crate) struct NakedFunctionsAsmOptions {
-    #[primary_span]
+    #[label]
     pub span: Span,
-    pub unsupported_options: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_naked_functions_must_use_noreturn, code = E0787)]
-pub(crate) struct NakedFunctionsMustUseNoreturn {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion(code = ", options(noreturn)", applicability = "machine-applicable")]
-    pub last_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1491,6 +1475,17 @@ pub(crate) struct UselessStability {
 pub(crate) struct CannotStabilizeDeprecated {
     #[primary_span]
     #[label]
+    pub span: Span,
+    #[label(passes_item)]
+    pub item_sp: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_unstable_attr_for_already_stable_feature)]
+pub(crate) struct UnstableAttrForAlreadyStableFeature {
+    #[primary_span]
+    #[label]
+    #[help]
     pub span: Span,
     #[label(passes_item)]
     pub item_sp: Span,

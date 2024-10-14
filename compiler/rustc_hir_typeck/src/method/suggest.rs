@@ -183,7 +183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn report_method_error(
+    pub(crate) fn report_method_error(
         &self,
         call_id: HirId,
         rcvr_ty: Ty<'tcx>,

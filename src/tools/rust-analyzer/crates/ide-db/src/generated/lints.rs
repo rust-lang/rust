@@ -7081,8 +7081,8 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 "##,
     },
     Lint {
-        label: "object_safe_for_dispatch",
-        description: r##"# `object_safe_for_dispatch`
+        label: "dyn_compatible_for_dispatch",
+        description: r##"# `dyn_compatible_for_dispatch`
 
 The tracking issue for this feature is: [#43561]
 

@@ -95,7 +95,6 @@ fn main() {
     // When statically linking `std` into `rustc_driver`, remove `-C prefer-dynamic`
     if env::var("RUSTC_LINK_STD_INTO_RUSTC_DRIVER").unwrap() == "1"
         && crate_name == Some("rustc_driver")
-        && stage != "0"
     {
         if let Some(pos) = args.iter().enumerate().position(|(i, a)| {
             a == "-C" && args.get(i + 1).map(|a| a == "prefer-dynamic").unwrap_or(false)
@@ -135,6 +134,12 @@ fn main() {
 
     if let Ok(lint_flags) = env::var("RUSTC_LINT_FLAGS") {
         cmd.args(lint_flags.split_whitespace());
+    }
+
+    // Conditionally pass `-Zon-broken-pipe=kill` to underlying rustc. Not all binaries want
+    // `-Zon-broken-pipe=kill`, which includes cargo itself.
+    if env::var_os("FORCE_ON_BROKEN_PIPE_KILL").is_some() {
+        cmd.arg("-Z").arg("on-broken-pipe=kill");
     }
 
     if target.is_some() {

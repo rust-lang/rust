@@ -39,20 +39,20 @@ LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    = help: to use an async block, remove the `||`: `async {`
 
 error[E0658]: use of unstable library feature 'async_closure'
-  --> $DIR/edition-2015.rs:1:22
+  --> $DIR/edition-2015.rs:1:42
    |
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
-   |                      ^^^^
+   |                                          ^^^^
    |
    = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
    = help: add `#![feature(async_closure)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature 'async_closure'
-  --> $DIR/edition-2015.rs:1:42
+  --> $DIR/edition-2015.rs:1:22
    |
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
-   |                                          ^^^^
+   |                      ^^^^
    |
    = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
    = help: add `#![feature(async_closure)]` to the crate attributes to enable

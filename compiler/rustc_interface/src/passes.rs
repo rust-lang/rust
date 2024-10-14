@@ -470,7 +470,6 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             })
         }
 
-        #[allow(rustc::potential_query_instability)]
         let extra_tracked_files = hash_iter_files(
             file_depinfo.iter().map(|path_sym| normalize_path(PathBuf::from(path_sym.as_str()))),
             checksum_hash_algo,

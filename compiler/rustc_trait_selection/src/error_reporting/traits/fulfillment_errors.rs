@@ -1,6 +1,7 @@
 use core::ops::ControlFlow;
 use std::borrow::Cow;
 
+use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
@@ -573,7 +574,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     ty::PredicateKind::DynCompatible(trait_def_id) => {
                         let violations = self.tcx.dyn_compatibility_violations(trait_def_id);
-                        report_dyn_incompatibility(self.tcx, span, None, trait_def_id, violations)
+                        let mut err = report_dyn_incompatibility(
+                            self.tcx,
+                            span,
+                            None,
+                            trait_def_id,
+                            violations,
+                        );
+                        if let hir::Node::Item(item) =
+                            self.tcx.hir_node_by_def_id(obligation.cause.body_id)
+                            && let hir::ItemKind::Impl(impl_) = item.kind
+                            && let None = impl_.of_trait
+                            && let hir::TyKind::TraitObject(_, _, syntax) = impl_.self_ty.kind
+                            && let TraitObjectSyntax::None = syntax
+                            && impl_.self_ty.span.edition().at_least_rust_2021()
+                        {
+                            // Silence the dyn-compatibility error in favor of the missing dyn on
+                            // self type error. #131051.
+                            err.downgrade_to_delayed_bug();
+                        }
+                        err
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {

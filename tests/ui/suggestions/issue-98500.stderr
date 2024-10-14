@@ -5,7 +5,7 @@ LL | struct S(Box<dyn B>);
    |              ^^^^^ `B` cannot be made into an object
    |
 note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/auxiliary/not-object-safe.rs:4:8
+  --> $DIR/auxiliary/dyn-incompatible.rs:4:8
    |
 LL |     fn f();
    |        ^ ...because associated function `f` has no `self` parameter

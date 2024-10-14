@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 34;
+pub const FORMAT_VERSION: u32 = 35;
 
 /// The root of the emitted JSON blob.
 ///
@@ -296,9 +296,9 @@ pub enum AssocItemConstraintKind {
 /// Rustdoc makes no guarantees about the inner value of Id's. Applications
 /// should treat them as opaque keys to lookup items, and avoid attempting
 /// to parse them, or otherwise depend on any implementation details.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 // FIXME(aDotInTheVoid): Consider making this non-public in rustdoc-types.
-pub struct Id(pub String);
+pub struct Id(pub u32);
 
 /// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any aditional info.
 ///
@@ -677,7 +677,7 @@ pub struct FunctionHeader {
 /// on unwinding for more info.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Abi {
-    // We only have a concrete listing here for stable ABI's because their are so many
+    // We only have a concrete listing here for stable ABI's because there are so many
     // See rustc_ast_passes::feature_gate::PostExpansionVisitor::check_abi for the list
     /// The default ABI, but that can also be written explicitly with `extern "Rust"`.
     Rust,

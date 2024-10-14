@@ -16,7 +16,10 @@ use crate::{
     cfg_process,
     declarative::DeclarativeMacroExpander,
     fixup::{self, SyntaxFixupUndoInfo},
-    hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
+    hygiene::{
+        span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt,
+        SyntaxContextExt as _,
+    },
     proc_macro::ProcMacros,
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
@@ -300,14 +303,16 @@ pub fn expand_speculative(
         token_tree_to_syntax_node(&speculative_expansion.value, expand_to, loc.def.edition);
 
     let syntax_node = node.syntax_node();
-    let token = rev_tmap
+    let (token, _) = rev_tmap
         .ranges_with_span(span_map.span_for_range(token_to_map.text_range()))
-        .filter_map(|range| syntax_node.covering_element(range).into_token())
-        .min_by_key(|t| {
-            // prefer tokens of the same kind and text
+        .filter_map(|(range, ctx)| syntax_node.covering_element(range).into_token().zip(Some(ctx)))
+        .min_by_key(|(t, ctx)| {
+            // prefer tokens of the same kind and text, as well as non opaque marked ones
             // Note the inversion of the score here, as we want to prefer the first token in case
             // of all tokens having the same score
-            (t.kind() != token_to_map.kind()) as u8 + 2 * ((t.text() != token_to_map.text()) as u8)
+            ctx.is_opaque(db) as u8
+                + 2 * (t.kind() != token_to_map.kind()) as u8
+                + 4 * ((t.text() != token_to_map.text()) as u8)
         })?;
     Some((node.syntax_node(), token))
 }

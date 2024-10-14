@@ -49,6 +49,8 @@ pub fn exe(name: &str, target: &str) -> String {
         format!("{name}.exe")
     } else if target.contains("uefi") {
         format!("{name}.efi")
+    } else if target.contains("wasm") {
+        format!("{name}.wasm")
     } else {
         name.to_string()
     }

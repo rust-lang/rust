@@ -6,7 +6,7 @@ LL |   #[repr(C)]
 ...
 LL | / extern "C" fn example1() {
 LL | |
-LL | |     unsafe { asm!("", options(noreturn)) }
+LL | |     unsafe { naked_asm!("") }
 LL | | }
    | |_- not a struct, enum, or union
 
@@ -18,7 +18,7 @@ LL |   #[repr(transparent)]
 ...
 LL | / extern "C" fn example2() {
 LL | |
-LL | |     unsafe { asm!("", options(noreturn)) }
+LL | |     unsafe { naked_asm!("") }
 LL | | }
    | |_- not a struct, enum, or union
 
@@ -30,7 +30,7 @@ LL |   #[repr(align(16), C)]
 ...
 LL | / extern "C" fn example3() {
 LL | |
-LL | |     unsafe { asm!("", options(noreturn)) }
+LL | |     unsafe { naked_asm!("") }
 LL | | }
    | |_- not a struct, enum, or union
 
@@ -43,7 +43,7 @@ LL |   #[repr(C, packed)]
 LL | / extern "C" fn example4() {
 LL | |
 LL | |
-LL | |     unsafe { asm!("", options(noreturn)) }
+LL | |     unsafe { naked_asm!("") }
 LL | | }
    | |_- not a struct, enum, or union
 
@@ -56,7 +56,7 @@ LL |   #[repr(C, packed)]
 LL | / extern "C" fn example4() {
 LL | |
 LL | |
-LL | |     unsafe { asm!("", options(noreturn)) }
+LL | |     unsafe { naked_asm!("") }
 LL | | }
    | |_- not a struct or union
 
@@ -68,7 +68,7 @@ LL |   #[repr(u8)]
 ...
 LL | / extern "C" fn example5() {
 LL | |
-LL | |     unsafe { asm!("", options(noreturn)) }
+LL | |     unsafe { naked_asm!("") }
 LL | | }
    | |_- not an enum
 

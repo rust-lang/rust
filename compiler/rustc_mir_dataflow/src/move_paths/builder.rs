@@ -481,6 +481,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 }
             }
             TerminatorKind::InlineAsm {
+                asm_macro: _,
                 template: _,
                 ref operands,
                 options: _,

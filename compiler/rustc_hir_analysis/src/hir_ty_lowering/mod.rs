@@ -53,6 +53,7 @@ use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::{debug, debug_span, instrument};
 
 use crate::bounds::Bounds;
+use crate::check::check_abi_fn_ptr;
 use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, WildPatTy};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
@@ -2063,13 +2064,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
-                self.prohibit_or_lint_bare_trait_object_ty(hir_ty);
-
-                let repr = match repr {
-                    TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
-                    TraitObjectSyntax::DynStar => ty::DynStar,
-                };
-                self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
+                if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
+                    // Don't continue with type analysis if the `dyn` keyword is missing
+                    // It generates confusing errors, especially if the user meant to use another
+                    // keyword like `impl`
+                    Ty::new_error(tcx, guar)
+                } else {
+                    let repr = match repr {
+                        TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
+                        TraitObjectSyntax::DynStar => ty::DynStar,
+                    };
+                    self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
+                }
             }
             // If we encounter a fully qualified path with RTN generics, then it must have
             // *not* gone through `lower_ty_maybe_return_type_notation`, and therefore
@@ -2087,43 +2093,36 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
                 self.lower_path(opt_self_ty, path, hir_ty.hir_id, false)
             }
-            &hir::TyKind::OpaqueDef(item_id, lifetimes) => {
-                let opaque_ty = tcx.hir().item(item_id);
+            &hir::TyKind::OpaqueDef(opaque_ty, lifetimes) => {
+                let local_def_id = opaque_ty.def_id;
 
-                match opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(&hir::OpaqueTy { origin, .. }) => {
-                        let local_def_id = item_id.owner_id.def_id;
-                        // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
-                        // generate the def_id of an associated type for the trait and return as
-                        // type a projection.
-                        match origin {
-                            hir::OpaqueTyOrigin::FnReturn {
-                                in_trait_or_impl: Some(hir::RpitContext::Trait),
-                                ..
-                            }
-                            | hir::OpaqueTyOrigin::AsyncFn {
-                                in_trait_or_impl: Some(hir::RpitContext::Trait),
-                                ..
-                            } => self.lower_opaque_ty(
-                                tcx.associated_type_for_impl_trait_in_trait(local_def_id)
-                                    .to_def_id(),
-                                lifetimes,
-                                true,
-                            ),
-                            hir::OpaqueTyOrigin::FnReturn {
-                                in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
-                                ..
-                            }
-                            | hir::OpaqueTyOrigin::AsyncFn {
-                                in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
-                                ..
-                            }
-                            | hir::OpaqueTyOrigin::TyAlias { .. } => {
-                                self.lower_opaque_ty(local_def_id.to_def_id(), lifetimes, false)
-                            }
-                        }
+                // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
+                // generate the def_id of an associated type for the trait and return as
+                // type a projection.
+                match opaque_ty.origin {
+                    hir::OpaqueTyOrigin::FnReturn {
+                        in_trait_or_impl: Some(hir::RpitContext::Trait),
+                        ..
                     }
-                    ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
+                    | hir::OpaqueTyOrigin::AsyncFn {
+                        in_trait_or_impl: Some(hir::RpitContext::Trait),
+                        ..
+                    } => self.lower_opaque_ty(
+                        tcx.associated_type_for_impl_trait_in_trait(local_def_id).to_def_id(),
+                        lifetimes,
+                        true,
+                    ),
+                    hir::OpaqueTyOrigin::FnReturn {
+                        in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+                        ..
+                    }
+                    | hir::OpaqueTyOrigin::AsyncFn {
+                        in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
+                        ..
+                    }
+                    | hir::OpaqueTyOrigin::TyAlias { .. } => {
+                        self.lower_opaque_ty(local_def_id.to_def_id(), lifetimes, false)
+                    }
                 }
             }
             // If we encounter a type relative path with RTN generics, then it must have
@@ -2289,7 +2288,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     span_bug!(
                         tcx.def_span(param.def_id),
                         "only expected lifetime for opaque's own generics, got {:?}",
-                        param.kind
+                        param
                     );
                 };
                 let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else {
@@ -2343,6 +2342,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
+
+        if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(bare_fn_ty), span, .. }) =
+            tcx.hir_node(hir_id)
+        {
+            check_abi_fn_ptr(tcx, hir_id, *span, bare_fn_ty.abi);
+        }
 
         // reject function types that violate cmse ABI requirements
         cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, bare_fn_ty);

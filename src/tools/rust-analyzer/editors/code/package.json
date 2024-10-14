@@ -512,6 +512,11 @@
                         "type": "boolean",
                         "default": false
                     },
+                    "rust-analyzer.debug.buildBeforeRestart": {
+                        "markdownDescription": "Whether to rebuild the project modules before debugging the same test again",
+                        "type": "boolean",
+                        "default": false
+                    },
                     "rust-analyzer.debug.engineSettings": {
                         "type": "object",
                         "default": {},
@@ -845,6 +850,16 @@
                                 "type": "string"
                             }
                         ]
+                    }
+                }
+            },
+            {
+                "title": "cfg",
+                "properties": {
+                    "rust-analyzer.cfg.setTest": {
+                        "markdownDescription": "Set `cfg(test)` for local crates. Defaults to true.",
+                        "default": true,
+                        "type": "boolean"
                     }
                 }
             },

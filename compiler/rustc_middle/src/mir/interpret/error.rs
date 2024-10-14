@@ -754,6 +754,7 @@ impl Drop for Guard {
 ///
 /// We also make things panic if this type is ever implicitly dropped.
 #[derive(Debug)]
+#[must_use]
 pub struct InterpResult_<'tcx, T> {
     res: Result<T, InterpErrorInfo<'tcx>>,
     guard: Guard,

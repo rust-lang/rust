@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir};
@@ -102,8 +102,8 @@ pub(crate) struct CallData {
     pub(crate) is_bin: bool,
 }
 
-pub(crate) type FnCallLocations = FxHashMap<PathBuf, CallData>;
-pub(crate) type AllCallLocations = FxHashMap<DefPathHash, FnCallLocations>;
+pub(crate) type FnCallLocations = FxIndexMap<PathBuf, CallData>;
+pub(crate) type AllCallLocations = FxIndexMap<DefPathHash, FnCallLocations>;
 
 /// Visitor for traversing a crate and finding instances of function calls.
 struct FindCalls<'a, 'tcx> {
@@ -293,7 +293,7 @@ pub(crate) fn run(
         debug!("Scrape examples target_crates: {target_crates:?}");
 
         // Run call-finder on all items
-        let mut calls = FxHashMap::default();
+        let mut calls = FxIndexMap::default();
         let mut finder =
             FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates, bin_crate };
         tcx.hir().visit_all_item_likes_in_crate(&mut finder);
@@ -332,7 +332,7 @@ pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     dcx: DiagCtxtHandle<'_>,
 ) -> AllCallLocations {
-    let mut all_calls: AllCallLocations = FxHashMap::default();
+    let mut all_calls: AllCallLocations = FxIndexMap::default();
     for path in with_examples {
         let bytes = match fs::read(&path) {
             Ok(bytes) => bytes,

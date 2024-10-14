@@ -137,6 +137,7 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
         chalk_filter: env::var("CHALK_DEBUG").ok(),
         profile_filter: env::var("RA_PROFILE").ok(),
+        json_profile_filter: std::env::var("RA_PROFILE_JSON").ok(),
     }
     .init()?;
 

@@ -8,7 +8,7 @@
 #![no_core]
 
 #[rustc_builtin_macro]
-macro_rules! asm {
+macro_rules! naked_asm {
     () => {};
 }
 
@@ -19,12 +19,12 @@ trait Sized {}
 #[naked]
 #[instruction_set(arm::t32)]
 unsafe extern "C" fn test_thumb() {
-    asm!("bx lr", options(noreturn));
+    naked_asm!("bx lr");
 }
 
 #[no_mangle]
 #[naked]
 #[instruction_set(arm::t32)]
 unsafe extern "C" fn test_arm() {
-    asm!("bx lr", options(noreturn));
+    naked_asm!("bx lr");
 }

@@ -382,8 +382,9 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
 
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<Interner>) -> bool {
+        // FIXME: When cargo is updated, change to dyn_compatibility
         let trait_ = from_chalk_trait_id(trait_id);
-        crate::object_safety::object_safety(self.db, trait_).is_none()
+        crate::dyn_compatibility::dyn_compatibility(self.db, trait_).is_none()
     }
 
     fn closure_kind(

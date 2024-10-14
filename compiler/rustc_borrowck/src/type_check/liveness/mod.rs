@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use itertools::{Either, Itertools};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::visit::{TyContext, Visitor};
@@ -33,7 +31,7 @@ mod trace;
 pub(super) fn generate<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
-    elements: &Rc<DenseLocationMap>,
+    elements: &DenseLocationMap,
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
