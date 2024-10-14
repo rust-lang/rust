@@ -4,8 +4,8 @@ use super::ty::{
     Allocation, Binder, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
     MirConst, Promoted, Region, RigidTy, TermKind, Ty, UnevaluatedConst,
 };
-use crate::Opaque;
 use crate::ty::TyConst;
+use crate::Opaque;
 
 pub trait Visitor: Sized {
     type Break;
@@ -35,8 +35,7 @@ impl Visitable for Ty {
         match self.kind() {
             super::ty::TyKind::RigidTy(ty) => ty.visit(visitor)?,
             super::ty::TyKind::Alias(_, alias) => alias.args.visit(visitor)?,
-            super::ty::TyKind::Param(_)
-            | super::ty::TyKind::Bound(_, _) => {}
+            super::ty::TyKind::Param(_) | super::ty::TyKind::Bound(_, _) => {}
         }
         ControlFlow::Continue(())
     }
@@ -48,8 +47,7 @@ impl Visitable for TyConst {
     }
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         match &self.kind {
-            crate::ty::TyConstKind::Param(_)
-            | crate::ty::TyConstKind::Bound(_, _) => {}
+            crate::ty::TyConstKind::Param(_) | crate::ty::TyConstKind::Bound(_, _) => {}
             crate::ty::TyConstKind::Unevaluated(_, args) => args.visit(visitor)?,
             crate::ty::TyConstKind::Value(ty, alloc) => {
                 alloc.visit(visitor)?;

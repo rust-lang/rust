@@ -7,7 +7,7 @@ use fmt::{Display, Formatter};
 use super::{AssertMessage, BinOp, BorrowKind, FakeBorrowKind, TerminatorKind};
 use crate::mir::{Operand, Place, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents};
 use crate::ty::{IndexedVal, MirConst, Ty, TyConst};
-use crate::{Body, Mutability, with};
+use crate::{with, Body, Mutability};
 
 impl Display for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -191,8 +191,7 @@ fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
     match terminator {
         Call { target: None, unwind: UnwindAction::Cleanup(_), .. }
         | InlineAsm { destination: None, .. } => vec!["unwind".into()],
-        Resume | Abort | Return | Unreachable
-        | Call { target: None, unwind: _, .. } => vec![],
+        Resume | Abort | Return | Unreachable | Call { target: None, unwind: _, .. } => vec![],
         Goto { .. } => vec!["".to_string()],
         SwitchInt { targets, .. } => targets
             .branches()
@@ -203,8 +202,7 @@ fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
         Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
             vec!["return".into(), "unwind".into()]
         }
-        Drop { unwind: _, .. }
-        | Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
+        Drop { unwind: _, .. } | Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
         Assert { unwind: UnwindAction::Cleanup(_), .. } => {
             vec!["success".into(), "unwind".into()]
         }

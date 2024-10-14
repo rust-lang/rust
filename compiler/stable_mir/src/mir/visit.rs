@@ -194,8 +194,7 @@ pub trait MirVisitor {
                 self.visit_place(place, PlaceContext::MUTATING, location);
                 self.visit_rvalue(rvalue, location);
             }
-            StatementKind::FakeRead(_, place)
-            | StatementKind::PlaceMention(place) => {
+            StatementKind::FakeRead(_, place) | StatementKind::PlaceMention(place) => {
                 self.visit_place(place, PlaceContext::NON_MUTATING, location);
             }
             StatementKind::SetDiscriminant { place, .. }
@@ -203,8 +202,7 @@ pub trait MirVisitor {
             | StatementKind::Retag(_, place) => {
                 self.visit_place(place, PlaceContext::MUTATING, location);
             }
-            StatementKind::StorageLive(local)
-            | StatementKind::StorageDead(local) => {
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 self.visit_local(local, PlaceContext::NON_USE, location);
             }
             StatementKind::AscribeUserType { place, projections, variance: _ } => {
@@ -226,8 +224,7 @@ pub trait MirVisitor {
                     self.visit_operand(count, location);
                 }
             },
-            StatementKind::ConstEvalCounter
-            | StatementKind::Nop => {}
+            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
         }
     }
 
@@ -302,8 +299,9 @@ pub trait MirVisitor {
             | ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
             ProjectionElem::Field(_idx, ty) => self.visit_ty(ty, location),
             ProjectionElem::Index(local) => self.visit_local(local, ptx, location),
-            ProjectionElem::OpaqueCast(ty)
-            | ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
+            ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => {
+                self.visit_ty(ty, location)
+            }
         }
     }
 
