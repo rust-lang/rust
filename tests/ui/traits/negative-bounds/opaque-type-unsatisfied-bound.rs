@@ -15,15 +15,12 @@ fn main() {
 fn weird0() -> impl Sized + !Sized {}
 //~^ ERROR the size for values of type `()` cannot be known at compilation time [E0277]
 //~| ERROR the size for values of type `()` cannot be known at compilation time [E0277]
-//~| ERROR the size for values of type `impl !Sized + Sized` cannot be known at compilation time [E0277]
 //~| ERROR the size for values of type `()` cannot be known at compilation time [E0277]
 fn weird1() -> impl !Sized + Sized {}
 //~^ ERROR the size for values of type `()` cannot be known at compilation time [E0277]
 //~| ERROR the size for values of type `()` cannot be known at compilation time [E0277]
-//~| ERROR the size for values of type `impl !Sized + Sized` cannot be known at compilation time [E0277]
 //~| ERROR the size for values of type `()` cannot be known at compilation time [E0277]
 fn weird2() -> impl !Sized {}
 //~^ ERROR the size for values of type `()` cannot be known at compilation time [E0277]
 //~| ERROR the size for values of type `()` cannot be known at compilation time [E0277]
-//~| ERROR the size for values of type `impl !Sized` cannot be known at compilation time [E0277]
 //~| ERROR the size for values of type `()` cannot be known at compilation time [E0277]

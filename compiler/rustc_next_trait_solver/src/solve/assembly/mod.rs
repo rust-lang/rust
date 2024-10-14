@@ -6,6 +6,7 @@ use derive_where::derive_where;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::inspect;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, Upcast as _, elaborate};
 use tracing::{debug, instrument};
@@ -288,6 +289,25 @@ where
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
+            // FIXME: We register a fake candidate when normalization fails so that
+            // we can point at the reason for *why*. I'm tempted to say that this
+            // is the wrong way to do this, though.
+            let result =
+                self.probe(|&result| inspect::ProbeKind::RigidAlias { result }).enter(|this| {
+                    let normalized_ty = this.next_ty_infer();
+                    let alias_relate_goal = Goal::new(
+                        this.cx(),
+                        goal.param_env,
+                        ty::PredicateKind::AliasRelate(
+                            goal.predicate.self_ty().into(),
+                            normalized_ty.into(),
+                            ty::AliasRelationDirection::Equate,
+                        ),
+                    );
+                    this.add_goal(GoalSource::AliasWellFormed, alias_relate_goal);
+                    this.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                });
+            assert_eq!(result, Err(NoSolution));
             return vec![];
         };
 

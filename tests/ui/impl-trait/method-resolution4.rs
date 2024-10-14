@@ -9,11 +9,9 @@
 //@[current] check-pass
 
 fn foo(b: bool) -> impl Iterator<Item = ()> {
-    //[next]~^ ERROR the size for values of type `impl Iterator<Item = ()>` cannot be known at compilation time
     if b {
         foo(false).next().unwrap();
         //[next]~^ type annotations needed
-        //[next]~| ERROR the size for values of type `impl Iterator<Item = ()>` cannot be known at compilation time
     }
     std::iter::empty()
 }
