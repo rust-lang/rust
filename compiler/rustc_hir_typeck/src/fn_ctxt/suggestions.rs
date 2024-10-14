@@ -849,7 +849,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::FnRetTy::Return(hir_ty) => {
                 if let hir::TyKind::OpaqueDef(op_ty, ..) = hir_ty.kind
                     // FIXME: account for RPITIT.
-                    && let [hir::GenericBound::Trait(trait_ref, _)] = op_ty.bounds
+                    && let [hir::GenericBound::Trait(trait_ref)] = op_ty.bounds
                     && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
                         trait_ref.trait_ref.path.segments.last()
                     && let [constraint] = generic_args.constraints
@@ -1035,7 +1035,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // extract all bounds from the source code using their spans
         let all_matching_bounds_strs = predicates_from_where
             .filter_map(|bound| match bound {
-                GenericBound::Trait(_, _) => {
+                GenericBound::Trait(_) => {
                     self.tcx.sess.source_map().span_to_snippet(bound.span()).ok()
                 }
                 _ => None,

@@ -40,7 +40,6 @@ struct Bound<'tcx> {
     ident: Ident,
 
     trait_bound: &'tcx PolyTraitRef<'tcx>,
-    modifier: TraitBoundModifier,
 
     predicate_pos: usize,
     bound_pos: usize,
@@ -65,11 +64,10 @@ fn type_param_bounds<'tcx>(generics: &'tcx Generics<'tcx>) -> impl Iterator<Item
                     .iter()
                     .enumerate()
                     .filter_map(move |(bound_pos, bound)| match bound {
-                        &GenericBound::Trait(ref trait_bound, modifier) => Some(Bound {
+                        &GenericBound::Trait(ref trait_bound) => Some(Bound {
                             param,
                             ident,
                             trait_bound,
-                            modifier,
                             predicate_pos,
                             bound_pos,
                         }),
@@ -120,13 +118,13 @@ impl LateLintPass<'_> for NeedlessMaybeSized {
         let maybe_sized_params: DefIdMap<_> = type_param_bounds(generics)
             .filter(|bound| {
                 bound.trait_bound.trait_ref.trait_def_id() == Some(sized_trait)
-                    && bound.modifier == TraitBoundModifier::Maybe
+                    && bound.trait_bound.modifiers == TraitBoundModifier::Maybe
             })
             .map(|bound| (bound.param, bound))
             .collect();
 
         for bound in type_param_bounds(generics) {
-            if bound.modifier == TraitBoundModifier::None
+            if bound.trait_bound.modifiers == TraitBoundModifier::None
                 && let Some(sized_bound) = maybe_sized_params.get(&bound.param)
                 && let Some(path) = path_to_sized_bound(cx, bound.trait_bound)
             {

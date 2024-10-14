@@ -740,9 +740,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| match (
                         left, right,
                     ) {
-                        (hir::GenericBound::Trait(tl, ml), hir::GenericBound::Trait(tr, mr))
+                        // FIXME: Suspicious
+                        (hir::GenericBound::Trait(tl), hir::GenericBound::Trait(tr))
                             if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
-                                && ml == mr =>
+                                && tl.modifiers == tr.modifiers =>
                         {
                             true
                         }

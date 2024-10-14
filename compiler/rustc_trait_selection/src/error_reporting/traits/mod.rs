@@ -439,7 +439,7 @@ pub fn report_dyn_incompatibility<'tcx>(
         if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
             // Do not suggest `impl Trait` when dealing with things like super-traits.
             err.span_suggestion_verbose(
-                ty.span.until(trait_ref.0.span),
+                ty.span.until(trait_ref.span),
                 "consider using an opaque type instead",
                 "impl ",
                 Applicability::MaybeIncorrect,
