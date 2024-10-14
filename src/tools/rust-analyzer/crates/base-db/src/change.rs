@@ -3,8 +3,8 @@
 
 use std::fmt;
 
+use ra_salsa::Durability;
 use rustc_hash::FxHashMap;
-use salsa::Durability;
 use triomphe::Arc;
 use vfs::FileId;
 

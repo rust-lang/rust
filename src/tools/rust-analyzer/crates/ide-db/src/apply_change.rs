@@ -1,7 +1,7 @@
 //! Applies changes to the IDE state transactionally.
 
 use base_db::{
-    salsa::{
+    ra_salsa::{
         debug::{DebugQueryTable, TableEntry},
         Database, Durability, Query, QueryTable,
     },

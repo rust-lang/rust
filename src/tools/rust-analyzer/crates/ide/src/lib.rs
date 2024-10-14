@@ -64,7 +64,7 @@ use fetch_crates::CrateInfo;
 use hir::{sym, ChangeWithProcMacros};
 use ide_db::{
     base_db::{
-        salsa::{self, ParallelDatabase},
+        ra_salsa::{self, ParallelDatabase},
         CrateOrigin, CrateWorkspaceData, Env, FileLoader, FileSet, SourceDatabase,
         SourceRootDatabase, VfsPath,
     },
@@ -218,7 +218,7 @@ impl Default for AnalysisHost {
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    db: salsa::Snapshot<RootDatabase>,
+    db: ra_salsa::Snapshot<RootDatabase>,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent

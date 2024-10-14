@@ -22,7 +22,7 @@ use ide::{
 };
 use ide_db::{
     base_db::{
-        salsa::{self, debug::DebugQueryTable, ParallelDatabase},
+        ra_salsa::{self, debug::DebugQueryTable, ParallelDatabase},
         SourceDatabase, SourceRootDatabase,
     },
     EditionedFileId, LineIndexDatabase, SnippetCap,
@@ -46,8 +46,8 @@ use crate::cli::{
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
-impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
-    fn clone(&self) -> Snap<salsa::Snapshot<DB>> {
+impl<DB: ParallelDatabase> Clone for Snap<ra_salsa::Snapshot<DB>> {
+    fn clone(&self) -> Snap<ra_salsa::Snapshot<DB>> {
         Snap(self.0.snapshot())
     }
 }

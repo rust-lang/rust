@@ -10,7 +10,7 @@ use hir::db::DefDatabase;
 
 use crate::{
     base_db::{
-        salsa::{Database, ParallelDatabase, Snapshot},
+        ra_salsa::{Database, ParallelDatabase, Snapshot},
         Cancelled, CrateId, SourceDatabase, SourceRootDatabase,
     },
     symbol_index::SymbolsDatabase,
