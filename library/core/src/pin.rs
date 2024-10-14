@@ -1422,7 +1422,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     /// move in the future, and this method does not enable the pointee to move. "Malicious"
     /// implementations of `Ptr::DerefMut` are likewise ruled out by the contract of
     /// `Pin::new_unchecked`.
-    #[unstable(feature = "pin_deref_mut", issue = "86918")]
+    #[stable(feature = "pin_deref_mut", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
     pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target> {
