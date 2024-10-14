@@ -210,8 +210,9 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn abs(self) -> Self {
+    pub const fn abs(self) -> Self {
         // FIXME(f16_f128): replace with `intrinsics::fabsf16` when available
         Self::from_bits(self.to_bits() & !(1 << 15))
     }
@@ -239,8 +240,9 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn signum(self) -> f16 {
+    pub const fn signum(self) -> f16 {
         if self.is_nan() { Self::NAN } else { 1.0_f16.copysign(self) }
     }
 
@@ -277,8 +279,9 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn copysign(self, sign: f16) -> f16 {
+    pub const fn copysign(self, sign: f16) -> f16 {
         unsafe { intrinsics::copysignf16(self, sign) }
     }
 
