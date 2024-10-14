@@ -264,18 +264,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match self.resolver.get_partial_res(p.id).map(|d| d.expect_full_res()) {
             // `None` can occur in body-less function signatures
             res @ (None | Some(Res::Local(_))) => {
-                let canonical_id = match res {
-                    Some(Res::Local(id)) => id,
-                    _ => p.id,
-                };
-                // All identifiers resolves to this canonical identifier share its `HirId`.
-                let binding_id = if canonical_id == p.id {
-                    self.ident_and_label_to_local_id.insert(canonical_id, hir_id.local_id);
-                    hir_id
-                } else {
-                    hir::HirId {
-                        owner: self.current_hir_id_owner,
-                        local_id: self.ident_and_label_to_local_id[&canonical_id],
+                let binding_id = match res {
+                    Some(Res::Local(id)) => {
+                        // In `Or` patterns like `VariantA(s) | VariantB(s, _)`, multiple identifier patterns
+                        // will be resolved to the same `Res::Local`. Thus they just share a single
+                        // `HirId`.
+                        if id == p.id {
+                            self.ident_and_label_to_local_id.insert(id, hir_id.local_id);
+                            hir_id
+                        } else {
+                            hir::HirId {
+                                owner: self.current_hir_id_owner,
+                                local_id: self.ident_and_label_to_local_id[&id],
+                            }
+                        }
+                    }
+                    _ => {
+                        self.ident_and_label_to_local_id.insert(p.id, hir_id.local_id);
+                        hir_id
                     }
                 };
                 hir::PatKind::Binding(

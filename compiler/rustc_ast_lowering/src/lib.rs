@@ -141,6 +141,7 @@ struct LoweringContext<'a, 'hir> {
     /// NodeIds of pattern identifiers and labelled nodes that are lowered inside the current HIR owner.
     ident_and_label_to_local_id: NodeMap<hir::ItemLocalId>,
     /// NodeIds that are lowered inside the current HIR owner. Only used for duplicate lowering check.
+    #[cfg(debug_assertions)]
     node_id_to_local_id: NodeMap<hir::ItemLocalId>,
 
     allow_try_trait: Lrc<[Symbol]>,
@@ -172,6 +173,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             current_def_id_parent: CRATE_DEF_ID,
             item_local_id_counter: hir::ItemLocalId::ZERO,
             ident_and_label_to_local_id: Default::default(),
+            #[cfg(debug_assertions)]
             node_id_to_local_id: Default::default(),
             trait_map: Default::default(),
 
@@ -591,6 +593,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_ident_and_label_to_local_id =
             std::mem::take(&mut self.ident_and_label_to_local_id);
+
+        #[cfg(debug_assertions)]
         let current_node_id_to_local_id = std::mem::take(&mut self.node_id_to_local_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
         let current_owner =
@@ -605,8 +609,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
 
         // Always allocate the first `HirId` for the owner itself.
-        let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
-        debug_assert_eq!(_old, None);
+        #[cfg(debug_assertions)]
+        {
+            let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
+            debug_assert_eq!(_old, None);
+        }
 
         let item = self.with_def_id_parent(def_id, f);
         debug_assert_eq!(def_id, item.def_id().def_id);
@@ -618,7 +625,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.attrs = current_attrs;
         self.bodies = current_bodies;
         self.ident_and_label_to_local_id = current_ident_and_label_to_local_id;
-        self.node_id_to_local_id = current_node_id_to_local_id;
+
+        #[cfg(debug_assertions)]
+        {
+            self.node_id_to_local_id = current_node_id_to_local_id;
+        }
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
