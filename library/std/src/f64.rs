@@ -194,8 +194,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn abs(self) -> f64 {
+    pub const fn abs(self) -> f64 {
         unsafe { intrinsics::fabsf64(self) }
     }
 
@@ -218,8 +219,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn signum(self) -> f64 {
+    pub const fn signum(self) -> f64 {
         if self.is_nan() { Self::NAN } else { 1.0_f64.copysign(self) }
     }
 
@@ -252,8 +254,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "copysign", since = "1.35.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn copysign(self, sign: f64) -> f64 {
+    pub const fn copysign(self, sign: f64) -> f64 {
         unsafe { intrinsics::copysignf64(self, sign) }
     }
 
