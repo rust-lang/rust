@@ -228,7 +228,6 @@ macro_rules! make_ast_visitor {
                 // field access version will continue working and it would be easy to
                 // forget to add handling for it.
 
-                make_visit!{FnHeader; visit_fn_header, walk_fn_header}
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
 
@@ -313,9 +312,6 @@ macro_rules! make_ast_visitor {
                 fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
                     Self::Result::output()
                 }
-                fn visit_fn_header(&mut self, _header: &'ast FnHeader) -> Self::Result {
-                    Self::Result::output()
-                }
             }}
 
             make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
@@ -334,6 +330,7 @@ macro_rules! make_ast_visitor {
             make_visit!{ExprField; visit_expr_field, walk_expr_field}
             make_visit!{FieldDef; visit_field_def, walk_field_def}
             make_visit!{FnDecl; visit_fn_decl, walk_fn_decl}
+            make_visit!{FnHeader; visit_fn_header, walk_fn_header}
             make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
             make_visit!{ForeignMod; visit_foreign_mod, walk_foreign_mod}
             make_visit!{FormatArgs; visit_format_args, walk_format_args}
@@ -620,6 +617,17 @@ macro_rules! make_ast_visitor {
             let FnDecl { inputs, output } = decl;
             visit_list!(vis, visit_param, flat_map_param, inputs);
             try_v!(vis.visit_fn_ret_ty(output));
+            return_result!(V)
+        }
+
+        pub fn walk_fn_header<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            header: ref_t!(FnHeader)
+        ) -> result!(V) {
+            let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
+            try_v!(vis.visit_constness(constness));
+            visit_o!(coroutine_kind, |ck| vis.visit_coroutine_kind(ck));
+            try_v!(vis.visit_safety(safety));
             return_result!(V)
         }
 
@@ -2297,13 +2305,6 @@ pub mod mut_visit {
         visitor.visit_generics(generics);
         visitor.visit_ty(ty);
         visit_opt(expr, |expr| visitor.visit_expr(expr));
-    }
-
-    fn walk_fn_header<T: MutVisitor>(vis: &mut T, header: &mut FnHeader) {
-        let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
-        vis.visit_constness(constness);
-        coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
-        vis.visit_safety(safety);
     }
 
     /// Mutates one item, returning the item again.
