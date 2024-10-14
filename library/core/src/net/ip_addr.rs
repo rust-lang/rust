@@ -295,7 +295,6 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -348,7 +347,6 @@ impl IpAddr {
     ///     true
     /// );
     /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -794,7 +792,6 @@ impl Ipv4Addr {
     ///
     /// // For a complete overview see the IANA IPv4 Special-Purpose Address Registry.
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -831,7 +828,6 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
     /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -859,7 +855,6 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
     /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -896,7 +891,6 @@ impl Ipv4Addr {
     /// // The broadcast address is not considered as reserved for future use by this implementation
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1556,7 +1550,6 @@ impl Ipv6Addr {
     ///
     /// // For a complete overview see the IANA IPv6 Special-Purpose Address Registry.
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1608,7 +1601,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1637,7 +1629,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast(), true);
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_unicast(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1689,7 +1680,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1714,7 +1704,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1775,7 +1764,6 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1804,7 +1792,6 @@ impl Ipv6Addr {
     /// );
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
@@ -1864,7 +1851,6 @@ impl Ipv6Addr {
     ///
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_ipv4_mapped(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
