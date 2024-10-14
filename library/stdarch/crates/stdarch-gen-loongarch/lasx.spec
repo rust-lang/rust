@@ -1648,6 +1648,26 @@ name = lasx_xvfrecip_d
 asm-fmts = xd, xj
 data-types = V4DF, V4DF
 
+/// lasx_xvfrecipe_s
+name = lasx_xvfrecipe_s
+asm-fmts = xd, xj
+data-types = V8SF, V8SF
+
+/// lasx_xvfrecipe_d
+name = lasx_xvfrecipe_d
+asm-fmts = xd, xj
+data-types = V4DF, V4DF
+
+/// lasx_xvfrsqrte_s
+name = lasx_xvfrsqrte_s
+asm-fmts = xd, xj
+data-types = V8SF, V8SF
+
+/// lasx_xvfrsqrte_d
+name = lasx_xvfrsqrte_d
+asm-fmts = xd, xj
+data-types = V4DF, V4DF
+
 /// lasx_xvfrint_s
 name = lasx_xvfrint_s
 asm-fmts = xd, xj

@@ -1,10 +1,10 @@
 /*
- * https://gcc.gnu.org/git/?p=gcc.git;a=blob_plain;f=gcc/config/loongarch/lasxintrin.h;hb=4912418dc1b51d49aca5982c6a2061bb912b92b7
+ * https://gcc.gnu.org/git/?p=gcc.git;a=blob_plain;f=gcc/config/loongarch/lasxintrin.h;hb=61f1001f2f4ab9128e5eb6e9a4adbbb0f9f0bc75
  */
 
 /* LARCH Loongson ASX intrinsics include file.
 
-   Copyright (C) 2018 Free Software Foundation, Inc.
+   Copyright (C) 2018-2024 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -2402,6 +2402,40 @@ __m256d __lasx_xvfrecip_d (__m256d _1)
 {
   return (__m256d)__builtin_lasx_xvfrecip_d ((v4f64)_1);
 }
+
+#if defined(__loongarch_frecipe)
+/* Assembly instruction format: xd, xj.  */
+/* Data types in instruction templates:  V8SF, V8SF.  */
+extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+__m256 __lasx_xvfrecipe_s (__m256 _1)
+{
+  return (__m256)__builtin_lasx_xvfrecipe_s ((v8f32)_1);
+}
+
+/* Assembly instruction format: xd, xj.  */
+/* Data types in instruction templates:  V4DF, V4DF.  */
+extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+__m256d __lasx_xvfrecipe_d (__m256d _1)
+{
+  return (__m256d)__builtin_lasx_xvfrecipe_d ((v4f64)_1);
+}
+
+/* Assembly instruction format: xd, xj.  */
+/* Data types in instruction templates:  V8SF, V8SF.  */
+extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+__m256 __lasx_xvfrsqrte_s (__m256 _1)
+{
+  return (__m256)__builtin_lasx_xvfrsqrte_s ((v8f32)_1);
+}
+
+/* Assembly instruction format: xd, xj.  */
+/* Data types in instruction templates:  V4DF, V4DF.  */
+extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+__m256d __lasx_xvfrsqrte_d (__m256d _1)
+{
+  return (__m256d)__builtin_lasx_xvfrsqrte_d ((v4f64)_1);
+}
+#endif
 
 /* Assembly instruction format:	xd, xj.  */
 /* Data types in instruction templates:  V8SF, V8SF.  */

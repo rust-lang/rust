@@ -53,28 +53,36 @@ impl TargetFeature {
     }
 
     /// A string for use with `#[target_feature(...)]`.
-    fn as_target_feature_arg_loongarch64(&self) -> &str {
-        match *self {
+    fn as_target_feature_arg(&self, ins: &str) -> String {
+        let vec = match *self {
             // Features included with LoongArch64 LSX and LASX.
             Self::Lsx => "lsx",
             Self::Lasx => "lasx",
-        }
+        };
+        let frecipe = match ins {
+            "lsx_vfrecipe_s" | "lsx_vfrecipe_d" | "lsx_vfrsqrte_s" | "lsx_vfrsqrte_d"
+            | "lasx_xvfrecipe_s" | "lasx_xvfrecipe_d" | "lasx_xvfrsqrte_s" | "lasx_xvfrsqrte_d" => {
+                ",frecipe"
+            }
+            _ => "",
+        };
+        format!("{vec}{frecipe}")
     }
 
     fn attr(name: &str, value: impl fmt::Display) -> String {
         format!(r#"#[{name}(enable = "{value}")]"#)
     }
 
-    /// Generate a target_feature attribute for a test that will compile only for "loongarch64".
-    fn to_target_feature_attr_loongarch64(self) -> Lines {
+    /// Generate a target_feature attribute
+    fn to_target_feature_attr(&self, ins: &str) -> Lines {
         Lines::single(Self::attr(
             "target_feature",
-            self.as_target_feature_arg_loongarch64(),
+            self.as_target_feature_arg(ins),
         ))
     }
 
-    fn bytes(self) -> u8 {
-        match self {
+    fn bytes(&self) -> u8 {
+        match *self {
             // Features included with LoongArch64 LSX and LASX.
             Self::Lsx => 16,
             Self::Lasx => 32,
@@ -531,7 +539,7 @@ fn gen_bind_body(
     {call_params}
 }}
 "#,
-            target_feature = target.to_target_feature_attr_loongarch64()
+            target_feature = target.to_target_feature_attr(current_name)
         )
     } else {
         format!(
@@ -542,7 +550,7 @@ fn gen_bind_body(
     {call_params}
 }}
 "#,
-            target_feature = target.to_target_feature_attr_loongarch64()
+            target_feature = target.to_target_feature_attr(current_name)
         )
     };
     (link_function, function)
@@ -1491,7 +1499,7 @@ static void {current_name}(void)
     printf("}}\n");
 }}
 "#,
-            target.as_target_feature_arg_loongarch64()
+            target.as_target_feature_arg(current_name)
         )
     };
     let call_function = format!("    {current_name}();\n");

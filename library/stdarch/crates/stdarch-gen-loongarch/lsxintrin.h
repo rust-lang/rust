@@ -1,10 +1,10 @@
 /*
- * https://gcc.gnu.org/git/?p=gcc.git;a=blob_plain;f=gcc/config/loongarch/lsxintrin.h;hb=4912418dc1b51d49aca5982c6a2061bb912b92b7
+ * https://gcc.gnu.org/git/?p=gcc.git;a=blob_plain;f=gcc/config/loongarch/lsxintrin.h;hb=61f1001f2f4ab9128e5eb6e9a4adbbb0f9f0bc75
  */
 
 /* LARCH Loongson SX intrinsics include file.
 
-   Copyright (C) 2018 Free Software Foundation, Inc.
+   Copyright (C) 2018-2024 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -2483,6 +2483,40 @@ __m128d __lsx_vfrecip_d (__m128d _1)
 {
   return (__m128d)__builtin_lsx_vfrecip_d ((v2f64)_1);
 }
+
+#if defined(__loongarch_frecipe)
+/* Assembly instruction format: vd, vj.  */
+/* Data types in instruction templates:  V4SF, V4SF.  */
+extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+__m128 __lsx_vfrecipe_s (__m128 _1)
+{
+  return (__m128)__builtin_lsx_vfrecipe_s ((v4f32)_1);
+}
+
+/* Assembly instruction format: vd, vj.  */
+/* Data types in instruction templates:  V2DF, V2DF.  */
+extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+__m128d __lsx_vfrecipe_d (__m128d _1)
+{
+  return (__m128d)__builtin_lsx_vfrecipe_d ((v2f64)_1);
+}
+
+/* Assembly instruction format: vd, vj.  */
+/* Data types in instruction templates:  V4SF, V4SF.  */
+extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+__m128 __lsx_vfrsqrte_s (__m128 _1)
+{
+  return (__m128)__builtin_lsx_vfrsqrte_s ((v4f32)_1);
+}
+
+/* Assembly instruction format: vd, vj.  */
+/* Data types in instruction templates:  V2DF, V2DF.  */
+extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+__m128d __lsx_vfrsqrte_d (__m128d _1)
+{
+  return (__m128d)__builtin_lsx_vfrsqrte_d ((v2f64)_1);
+}
+#endif
 
 /* Assembly instruction format:	vd, vj.  */
 /* Data types in instruction templates:  V4SF, V4SF.  */
