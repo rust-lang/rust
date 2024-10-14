@@ -173,6 +173,12 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        macro_rules! FnKind {
+            () => {
+                macro_if!{$($lt)? { FnKind<$($lt)?> } else { FnKind<'_> }}
+            };
+        }
+
         /// Each method of the traits `Visitor` and `MutVisitor` trait is a hook
         /// to be potentially overridden. Each method's default implementation
         /// recursively visits the substructure of the input via the corresponding
@@ -246,11 +252,6 @@ macro_rules! make_ast_visitor {
                     walk_flat_map_assoc_item(self, i, ctxt)
                 }
 
-                /// `Span` and `NodeId` are mutated at the caller site.
-                fn visit_fn(&mut self, fk: FnKind<'_>, _: Span, _: NodeId) {
-                    walk_fn(self, fk)
-                }
-
                 fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
                     walk_flat_map_stmt(self, s)
                 }
@@ -311,9 +312,6 @@ macro_rules! make_ast_visitor {
                 }
                 fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
                     Self::Result::output()
-                }
-                fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
-                    walk_fn(self, fk)
                 }
                 fn visit_fn_header(&mut self, _header: &'ast FnHeader) -> Self::Result {
                     Self::Result::output()
@@ -377,6 +375,10 @@ macro_rules! make_ast_visitor {
             // Default implementations are generic over WalkItemKind
             make_visit!{ForeignItem; visit_foreign_item, walk_item}
             make_visit!{Item; visit_item, walk_item}
+
+            fn visit_fn(&mut self, fn_kind: FnKind!(), _span: Span, _id: NodeId) -> result!() {
+                walk_fn(self, fn_kind)
+            }
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
                 self.visit_anon_const(discr)
@@ -1263,6 +1265,29 @@ macro_rules! make_ast_visitor {
             try_v!(visit_span!(visitor, span));
             return_result!(V)
         }
+
+        pub fn walk_fn<$($lt,)? V: $trait$(<$lt>)?>(
+            visitor: &mut V,
+            kind: FnKind!()
+        ) -> result!(V) {
+            match kind {
+                FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span }, _vis, generics, body) => {
+                    // Identifier and visibility are visited as a part of the item.
+                    try_v!(visitor.visit_fn_header(header));
+                    try_v!(visitor.visit_generics(generics));
+                    try_v!(visitor.visit_fn_decl(decl));
+                    visit_o!(body, |body| visitor.visit_block(body));
+                    try_v!(visit_span!(visitor, span))
+                }
+                FnKind::Closure(binder, coroutine_kind, decl, body) => {
+                    visit_o!(coroutine_kind, |ck| visitor.visit_coroutine_kind(ck));
+                    try_v!(visitor.visit_closure_binder(binder));
+                    try_v!(visitor.visit_fn_decl(decl));
+                    try_v!(visitor.visit_expr(body));
+                }
+            }
+            return_result!(V)
+        }
     }
 }
 
@@ -1525,24 +1550,6 @@ pub mod visit {
             }
             V::Result::output()
         }
-    }
-
-    pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Result {
-        match kind {
-            FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span: _ }, _vis, generics, body) => {
-                // Identifier and visibility are visited as a part of the item.
-                try_visit!(visitor.visit_fn_header(header));
-                try_visit!(visitor.visit_generics(generics));
-                try_visit!(visitor.visit_fn_decl(decl));
-                visit_opt!(visitor, visit_block, body);
-            }
-            FnKind::Closure(binder, _coroutine_kind, decl, body) => {
-                try_visit!(visitor.visit_closure_binder(binder));
-                try_visit!(visitor.visit_fn_decl(decl));
-                try_visit!(visitor.visit_expr(body));
-            }
-        }
-        V::Result::output()
     }
 
     pub fn walk_assoc_item<'a, V: Visitor<'a>>(
@@ -2105,27 +2112,6 @@ pub mod mut_visit {
         match constness {
             Const::Yes(span) => vis.visit_span(span),
             Const::No => {}
-        }
-    }
-
-    fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
-        match kind {
-            FnKind::Fn(_, _, FnSig { header, decl, span }, _, generics, body) => {
-                // Identifier and visibility are visited as a part of the item.
-                vis.visit_fn_header(header);
-                vis.visit_generics(generics);
-                vis.visit_fn_decl(decl);
-                if let Some(body) = body {
-                    vis.visit_block(body);
-                }
-                vis.visit_span(span);
-            }
-            FnKind::Closure(binder, coroutine_kind, decl, body) => {
-                coroutine_kind.as_mut().map(|ck| vis.visit_coroutine_kind(ck));
-                vis.visit_closure_binder(binder);
-                vis.visit_fn_decl(decl);
-                vis.visit_expr(body);
-            }
         }
     }
 
