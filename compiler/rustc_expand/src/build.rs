@@ -143,24 +143,25 @@ impl<'a> ExtCtxt<'a> {
         ast::TraitRef { path, ref_id: ast::DUMMY_NODE_ID }
     }
 
-    pub fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {
+    pub fn poly_trait_ref(&self, span: Span, path: ast::Path, is_const: bool) -> ast::PolyTraitRef {
         ast::PolyTraitRef {
             bound_generic_params: ThinVec::new(),
+            modifiers: ast::TraitBoundModifiers {
+                polarity: ast::BoundPolarity::Positive,
+                constness: if is_const {
+                    ast::BoundConstness::Maybe(DUMMY_SP)
+                } else {
+                    ast::BoundConstness::Never
+                },
+                asyncness: ast::BoundAsyncness::Normal,
+            },
             trait_ref: self.trait_ref(path),
             span,
         }
     }
 
     pub fn trait_bound(&self, path: ast::Path, is_const: bool) -> ast::GenericBound {
-        ast::GenericBound::Trait(self.poly_trait_ref(path.span, path), ast::TraitBoundModifiers {
-            polarity: ast::BoundPolarity::Positive,
-            constness: if is_const {
-                ast::BoundConstness::Maybe(DUMMY_SP)
-            } else {
-                ast::BoundConstness::Never
-            },
-            asyncness: ast::BoundAsyncness::Normal,
-        })
+        ast::GenericBound::Trait(self.poly_trait_ref(path.span, path, is_const))
     }
 
     pub fn lifetime(&self, span: Span, ident: Ident) -> ast::Lifetime {
