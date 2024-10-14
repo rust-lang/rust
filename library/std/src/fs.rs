@@ -1146,8 +1146,8 @@ impl OpenOptions {
     ///
     /// This option, when true, means that writes will append to a file instead
     /// of overwriting previous contents.
-    /// Note that setting `.write(true).append(true)` has the same effect as
-    /// setting only `.append(true)`.
+    /// Note that, expect a [bug](https://man7.org/linux/man-pages/man2/pwrite.2.html#BUGS),
+    /// setting `.write(true).append(true)` has the same effect as setting only `.append(true)`.
     ///
     /// Append mode guarantees that writes will be positioned at the current end of file,
     /// even when there are other processes or threads appending to the same file. This is
