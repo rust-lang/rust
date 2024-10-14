@@ -95,10 +95,10 @@ pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast) -
             DiagnosticCode::RustcHardError("E0605"),
             format_ty!(ctx, "non-primitive cast: `{}` as `{}`", d.expr_ty, d.cast_ty),
         ),
-        CastError::UnknownCastPtrKind | CastError::UnknownExprPtrKind => (
-            DiagnosticCode::RustcHardError("E0641"),
-            "cannot cast to a pointer of an unknown kind".to_owned(),
-        ),
+        // CastError::UnknownCastPtrKind | CastError::UnknownExprPtrKind => (
+        //     DiagnosticCode::RustcHardError("E0641"),
+        //     "cannot cast to a pointer of an unknown kind".to_owned(),
+        // ),
     };
     Diagnostic::new(code, message, display_range)
 }
@@ -457,20 +457,20 @@ fn foo<T: ?Sized>() {
         );
     }
 
-    #[test]
-    fn order_dependent_cast_inference() {
-        check_diagnostics(
-            r#"
-//- minicore: sized
-fn main() {
-    let x = &"hello";
-    let mut y = 0 as *const _;
-              //^^^^^^^^^^^^^ error: cannot cast to a pointer of an unknown kind
-    y = x as *const _;
-}
-"#,
-        );
-    }
+    //     #[test]
+    //     fn order_dependent_cast_inference() {
+    //         check_diagnostics(
+    //             r#"
+    // //- minicore: sized
+    // fn main() {
+    //     let x = &"hello";
+    //     let mut y = 0 as *const _;
+    //               //^^^^^^^^^^^^^ error: cannot cast to a pointer of an unknown kind
+    //     y = x as *const _;
+    // }
+    // "#,
+    //         );
+    //     }
 
     #[test]
     fn ptr_to_ptr_different_regions() {
@@ -1109,6 +1109,24 @@ fn foo() {
     0 as char;
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn cast_isize_to_infer_pointer() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized
+struct Foo {}
+
+struct Wrap<'a>(&'a mut Foo);
+
+fn main() {
+    let lparam: isize = 0;
+
+    let _wrap = Wrap(unsafe { &mut *(lparam as *mut _) });
+}
+        "#,
         );
     }
 }
