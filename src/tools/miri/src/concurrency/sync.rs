@@ -193,75 +193,104 @@ impl<'tcx> AllocExtra<'tcx> {
 /// If `init` is set to this, we consider the primitive initialized.
 pub const LAZY_INIT_COOKIE: u32 = 0xcafe_affe;
 
-/// Helper for lazily initialized `alloc_extra.sync` data:
-/// this forces an immediate init.
-pub fn lazy_sync_init<'tcx, T: 'static + Copy>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    primitive: &MPlaceTy<'tcx>,
-    init_offset: Size,
-    data: T,
-) -> InterpResult<'tcx> {
-    let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
-    let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc)?;
-    alloc_extra.sync.insert(offset, Box::new(data));
-    // Mark this as "initialized".
-    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
-    ecx.write_scalar_atomic(
-        Scalar::from_u32(LAZY_INIT_COOKIE),
-        &init_field,
-        AtomicWriteOrd::Relaxed,
-    )?;
-    interp_ok(())
-}
-
-/// Helper for lazily initialized `alloc_extra.sync` data:
-/// Checks if the primitive is initialized, and return its associated data if so.
-/// Otherwise, calls `new_data` to initialize the primitive.
-pub fn lazy_sync_get_data<'tcx, T: 'static + Copy>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    primitive: &MPlaceTy<'tcx>,
-    init_offset: Size,
-    name: &str,
-    new_data: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
-) -> InterpResult<'tcx, T> {
-    // Check if this is already initialized. Needs to be atomic because we can race with another
-    // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
-    // So we just try to replace MUTEX_INIT_COOKIE with itself.
-    let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
-    let init_field = primitive.offset(init_offset, ecx.machine.layouts.u32, ecx)?;
-    let (_init, success) = ecx
-        .atomic_compare_exchange_scalar(
-            &init_field,
-            &ImmTy::from_scalar(init_cookie, ecx.machine.layouts.u32),
-            init_cookie,
-            AtomicRwOrd::Relaxed,
-            AtomicReadOrd::Relaxed,
-            /* can_fail_spuriously */ false,
-        )?
-        .to_scalar_pair();
-
-    if success.to_bool()? {
-        // If it is initialized, it must be found in the "sync primitive" table,
-        // or else it has been moved illegally.
-        let (alloc, offset, _) = ecx.ptr_get_alloc_id(primitive.ptr(), 0)?;
-        let alloc_extra = ecx.get_alloc_extra(alloc)?;
-        let data = alloc_extra
-            .get_sync::<T>(offset)
-            .ok_or_else(|| err_ub_format!("`{name}` can't be moved after first use"))?;
-        interp_ok(*data)
-    } else {
-        let data = new_data(ecx)?;
-        lazy_sync_init(ecx, primitive, init_offset, data)?;
-        interp_ok(data)
-    }
-}
-
 // Public interface to synchronization primitives. Please note that in most
 // cases, the function calls are infallible and it is the client's (shim
 // implementation's) responsibility to detect and deal with erroneous
 // situations.
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Helper for lazily initialized `alloc_extra.sync` data:
+    /// this forces an immediate init.
+    fn lazy_sync_init<T: 'static + Copy>(
+        &mut self,
+        primitive: &MPlaceTy<'tcx>,
+        init_offset: Size,
+        data: T,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let (alloc, offset, _) = this.ptr_get_alloc_id(primitive.ptr(), 0)?;
+        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
+        alloc_extra.sync.insert(offset, Box::new(data));
+        // Mark this as "initialized".
+        let init_field = primitive.offset(init_offset, this.machine.layouts.u32, this)?;
+        this.write_scalar_atomic(
+            Scalar::from_u32(LAZY_INIT_COOKIE),
+            &init_field,
+            AtomicWriteOrd::Relaxed,
+        )?;
+        interp_ok(())
+    }
+
+    /// Helper for lazily initialized `alloc_extra.sync` data:
+    /// Checks if the primitive is initialized, and return its associated data if so.
+    /// Otherwise, calls `new_data` to initialize the primitive.
+    fn lazy_sync_get_data<T: 'static + Copy>(
+        &mut self,
+        primitive: &MPlaceTy<'tcx>,
+        init_offset: Size,
+        name: &str,
+        new_data: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
+    ) -> InterpResult<'tcx, T> {
+        let this = self.eval_context_mut();
+
+        // Check if this is already initialized. Needs to be atomic because we can race with another
+        // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
+        // So we just try to replace MUTEX_INIT_COOKIE with itself.
+        let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
+        let init_field = primitive.offset(init_offset, this.machine.layouts.u32, this)?;
+        let (_init, success) = this
+            .atomic_compare_exchange_scalar(
+                &init_field,
+                &ImmTy::from_scalar(init_cookie, this.machine.layouts.u32),
+                init_cookie,
+                AtomicRwOrd::Relaxed,
+                AtomicReadOrd::Relaxed,
+                /* can_fail_spuriously */ false,
+            )?
+            .to_scalar_pair();
+
+        if success.to_bool()? {
+            // If it is initialized, it must be found in the "sync primitive" table,
+            // or else it has been moved illegally.
+            let (alloc, offset, _) = this.ptr_get_alloc_id(primitive.ptr(), 0)?;
+            let alloc_extra = this.get_alloc_extra(alloc)?;
+            let data = alloc_extra
+                .get_sync::<T>(offset)
+                .ok_or_else(|| err_ub_format!("`{name}` can't be moved after first use"))?;
+            interp_ok(*data)
+        } else {
+            let data = new_data(this)?;
+            this.lazy_sync_init(primitive, init_offset, data)?;
+            interp_ok(data)
+        }
+    }
+
+    /// Get the synchronization primitive associated with the given pointer,
+    /// or initialize a new one.
+    fn get_sync_or_init<'a, T: 'static>(
+        &'a mut self,
+        ptr: Pointer,
+        new: impl FnOnce(&'a mut MiriMachine<'tcx>) -> InterpResult<'tcx, T>,
+    ) -> InterpResult<'tcx, &'a T>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_mut();
+        // Ensure there is memory behind this pointer, so that this allocation
+        // is truly the only place where the data could be stored.
+        this.check_ptr_access(ptr, Size::from_bytes(1), CheckInAllocMsg::InboundsTest)?;
+
+        let (alloc, offset, _) = this.ptr_get_alloc_id(ptr, 0)?;
+        let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc)?;
+        // Due to borrow checker reasons, we have to do the lookup twice.
+        if alloc_extra.get_sync::<T>(offset).is_none() {
+            let new = new(machine)?;
+            alloc_extra.sync.insert(offset, Box::new(new));
+        }
+        interp_ok(alloc_extra.get_sync::<T>(offset).unwrap())
+    }
+
     #[inline]
     /// Get the id of the thread that currently owns this lock.
     fn mutex_get_owner(&mut self, id: MutexId) -> ThreadId {

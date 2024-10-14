@@ -23,15 +23,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let lock = this.deref_pointer(lock_ptr)?;
         // We store the mutex ID in the `sync` metadata. This means that when the lock is moved,
         // that's just implicitly creating a new lock at the new location.
-        let (alloc, offset, _) = this.ptr_get_alloc_id(lock.ptr(), 0)?;
-        let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc)?;
-        if let Some(data) = alloc_extra.get_sync::<MacOsUnfairLock>(offset) {
-            interp_ok(data.id)
-        } else {
+        let data = this.get_sync_or_init(lock.ptr(), |machine| {
             let id = machine.sync.mutex_create();
-            alloc_extra.sync.insert(offset, Box::new(MacOsUnfairLock { id }));
-            interp_ok(id)
-        }
+            interp_ok(MacOsUnfairLock { id })
+        })?;
+        interp_ok(data.id)
     }
 }
 
