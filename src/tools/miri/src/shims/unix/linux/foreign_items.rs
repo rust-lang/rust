@@ -150,7 +150,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     // `futex` is used by some synchronization primitives.
                     num if num == sys_futex => {
-                        futex(this, &args[1..], dest)?;
+                        futex(this, args, dest)?;
                     }
                     num if num == sys_eventfd2 => {
                         let [_, initval, flags] =
