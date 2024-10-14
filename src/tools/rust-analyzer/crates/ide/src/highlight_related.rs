@@ -281,99 +281,95 @@ fn highlight_references(
     }
 }
 
-// If `file_id` is None,
-pub(crate) fn highlight_exit_points(
+fn hl_exit_points(
     sema: &Semantics<'_, RootDatabase>,
-    token: SyntaxToken,
-) -> FxHashMap<EditionedFileId, Vec<HighlightedRange>> {
-    fn hl(
-        sema: &Semantics<'_, RootDatabase>,
-        def_token: Option<SyntaxToken>,
-        body: ast::Expr,
-    ) -> Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>> {
-        let mut highlights: FxHashMap<EditionedFileId, FxHashSet<_>> = FxHashMap::default();
+    def_token: Option<SyntaxToken>,
+    body: ast::Expr,
+) -> Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>> {
+    let mut highlights: FxHashMap<EditionedFileId, FxHashSet<_>> = FxHashMap::default();
 
-        let mut push_to_highlights = |file_id, range| {
-            if let Some(FileRange { file_id, range }) = original_frange(sema.db, file_id, range) {
-                let hrange = HighlightedRange { category: ReferenceCategory::empty(), range };
-                highlights.entry(file_id).or_default().insert(hrange);
+    let mut push_to_highlights = |file_id, range| {
+        if let Some(FileRange { file_id, range }) = original_frange(sema.db, file_id, range) {
+            let hrange = HighlightedRange { category: ReferenceCategory::empty(), range };
+            highlights.entry(file_id).or_default().insert(hrange);
+        }
+    };
+
+    if let Some(tok) = def_token {
+        let file_id = sema.hir_file_for(&tok.parent()?);
+        let range = Some(tok.text_range());
+        push_to_highlights(file_id, range);
+    }
+
+    WalkExpandedExprCtx::new(sema).walk(&body, &mut |_, expr| {
+        let file_id = sema.hir_file_for(expr.syntax());
+
+        let range = match &expr {
+            ast::Expr::TryExpr(try_) => try_.question_mark_token().map(|token| token.text_range()),
+            ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroExpr(_)
+                if sema.type_of_expr(&expr).map_or(false, |ty| ty.original.is_never()) =>
+            {
+                Some(expr.syntax().text_range())
             }
+            _ => None,
         };
 
-        if let Some(tok) = def_token {
-            let file_id = sema.hir_file_for(&tok.parent()?);
-            let range = Some(tok.text_range());
-            push_to_highlights(file_id, range);
-        }
+        push_to_highlights(file_id, range);
+    });
 
-        WalkExpandedExprCtx::new(sema).walk(&body, &mut |_, expr| {
+    // We should handle `return` separately, because when it is used in a `try` block,
+    // it will exit the outside function instead of the block itself.
+    WalkExpandedExprCtx::new(sema)
+        .with_check_ctx(&WalkExpandedExprCtx::is_async_const_block_or_closure)
+        .walk(&body, &mut |_, expr| {
             let file_id = sema.hir_file_for(expr.syntax());
 
             let range = match &expr {
-                ast::Expr::TryExpr(try_) => {
-                    try_.question_mark_token().map(|token| token.text_range())
-                }
-                ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroExpr(_)
-                    if sema.type_of_expr(&expr).map_or(false, |ty| ty.original.is_never()) =>
-                {
-                    Some(expr.syntax().text_range())
-                }
+                ast::Expr::ReturnExpr(expr) => expr.return_token().map(|token| token.text_range()),
                 _ => None,
             };
 
             push_to_highlights(file_id, range);
         });
 
-        // We should handle `return` separately, because when it is used in a `try` block,
-        // it will exit the outside function instead of the block itself.
-        WalkExpandedExprCtx::new(sema)
-            .with_check_ctx(&WalkExpandedExprCtx::is_async_const_block_or_closure)
-            .walk(&body, &mut |_, expr| {
-                let file_id = sema.hir_file_for(expr.syntax());
+    let tail = match body {
+        ast::Expr::BlockExpr(b) => b.tail_expr(),
+        e => Some(e),
+    };
 
-                let range = match &expr {
-                    ast::Expr::ReturnExpr(expr) => {
-                        expr.return_token().map(|token| token.text_range())
-                    }
-                    _ => None,
-                };
-
-                push_to_highlights(file_id, range);
-            });
-
-        let tail = match body {
-            ast::Expr::BlockExpr(b) => b.tail_expr(),
-            e => Some(e),
-        };
-
-        if let Some(tail) = tail {
-            for_each_tail_expr(&tail, &mut |tail| {
-                let file_id = sema.hir_file_for(tail.syntax());
-                let range = match tail {
-                    ast::Expr::BreakExpr(b) => b
-                        .break_token()
-                        .map_or_else(|| tail.syntax().text_range(), |tok| tok.text_range()),
-                    _ => tail.syntax().text_range(),
-                };
-                push_to_highlights(file_id, Some(range));
-            });
-        }
-        Some(highlights)
+    if let Some(tail) = tail {
+        for_each_tail_expr(&tail, &mut |tail| {
+            let file_id = sema.hir_file_for(tail.syntax());
+            let range = match tail {
+                ast::Expr::BreakExpr(b) => b
+                    .break_token()
+                    .map_or_else(|| tail.syntax().text_range(), |tok| tok.text_range()),
+                _ => tail.syntax().text_range(),
+            };
+            push_to_highlights(file_id, Some(range));
+        });
     }
+    Some(highlights)
+}
 
+// If `file_id` is None,
+pub(crate) fn highlight_exit_points(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+) -> FxHashMap<EditionedFileId, Vec<HighlightedRange>> {
     let mut res = FxHashMap::default();
     for def in goto_definition::find_fn_or_blocks(sema, &token) {
         let new_map = match_ast! {
             match def {
-                ast::Fn(fn_) => fn_.body().and_then(|body| hl(sema, fn_.fn_token(), body.into())),
+                ast::Fn(fn_) => fn_.body().and_then(|body| hl_exit_points(sema, fn_.fn_token(), body.into())),
                 ast::ClosureExpr(closure) => {
                     let pipe_tok = closure.param_list().and_then(|p| p.pipe_token());
-                    closure.body().and_then(|body| hl(sema, pipe_tok, body))
+                    closure.body().and_then(|body| hl_exit_points(sema, pipe_tok, body))
                 },
                 ast::BlockExpr(blk) => match blk.modifier() {
-                    Some(ast::BlockModifier::Async(t)) => hl(sema, Some(t), blk.into()),
+                    Some(ast::BlockModifier::Async(t)) => hl_exit_points(sema, Some(t), blk.into()),
                     Some(ast::BlockModifier::Try(t)) if token.kind() != T![return] => {
-                        hl(sema, Some(t), blk.into())
+                        hl_exit_points(sema, Some(t), blk.into())
                     },
                     _ => continue,
                 },
@@ -517,10 +513,23 @@ pub(crate) fn highlight_yield_points(
             match anc {
                 ast::Fn(fn_) => hl(sema, fn_.async_token(), fn_.body().map(ast::Expr::BlockExpr)),
                 ast::BlockExpr(block_expr) => {
-                    if block_expr.async_token().is_none() {
+                    let Some(async_token) = block_expr.async_token() else {
                         continue;
+                    };
+
+                    // Async blocks act similar to closures. So we want to
+                    // highlight their exit points too, but only if we are on
+                    // the async token.
+                    if async_token == token {
+                        let exit_points = hl_exit_points(
+                            sema,
+                            Some(async_token.clone()),
+                            block_expr.clone().into(),
+                        );
+                        merge_map(&mut res, exit_points);
                     }
-                    hl(sema, block_expr.async_token(), Some(block_expr.into()))
+
+                    hl(sema, Some(async_token), Some(block_expr.into()))
                 },
                 ast::ClosureExpr(closure) => hl(sema, closure.async_token(), closure.body()),
                 _ => continue,
@@ -877,6 +886,27 @@ pub async$0 fn foo() {
     }
 
     #[test]
+    fn test_hl_exit_points_of_async_blocks() {
+        check(
+            r#"
+pub fn foo() {
+    let x = async$0 {
+         // ^^^^^
+        0.await;
+       // ^^^^^
+       0?;
+     // ^
+       return 0;
+    // ^^^^^^
+       0
+    // ^
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_hl_let_else_yield_points() {
         check(
             r#"
@@ -925,11 +955,9 @@ async fn foo() {
 async fn foo() {
     (async {
   // ^^^^^
-        (async {
-           0.await
-        }).await$0 }
-        // ^^^^^
-    ).await;
+        (async { 0.await }).await$0
+                         // ^^^^^
+    }).await;
 }
 "#,
         );
