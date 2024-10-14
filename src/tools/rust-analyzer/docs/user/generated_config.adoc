@@ -852,7 +852,7 @@ Exclude imports from find-all-references.
 [[rust-analyzer.references.excludeTests]]rust-analyzer.references.excludeTests (default: `false`)::
 +
 --
-Exclude tests from find-all-references.
+Exclude tests from find-all-references and call-hierarchy.
 --
 [[rust-analyzer.runnables.command]]rust-analyzer.runnables.command (default: `null`)::
 +

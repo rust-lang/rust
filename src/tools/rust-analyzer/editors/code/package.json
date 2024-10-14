@@ -2333,7 +2333,7 @@
                 "title": "references",
                 "properties": {
                     "rust-analyzer.references.excludeTests": {
-                        "markdownDescription": "Exclude tests from find-all-references.",
+                        "markdownDescription": "Exclude tests from find-all-references and call-hierarchy.",
                         "default": false,
                         "type": "boolean"
                     }
