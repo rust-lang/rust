@@ -39,7 +39,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         stmt: &Statement<'tcx>,
         _: Location,
@@ -83,7 +83,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         stmt: &Statement<'tcx>,
         _: Location,
@@ -131,7 +131,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     }
 
     fn apply_before_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         stmt: &Statement<'tcx>,
         loc: Location,
@@ -163,19 +163,14 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         }
     }
 
-    fn apply_statement_effect(
-        &mut self,
-        trans: &mut Self::Domain,
-        _: &Statement<'tcx>,
-        loc: Location,
-    ) {
+    fn apply_statement_effect(&self, trans: &mut Self::Domain, _: &Statement<'tcx>, loc: Location) {
         // If we move from a place then it only stops needing storage *after*
         // that statement.
         self.check_for_move(trans, loc);
     }
 
     fn apply_before_terminator_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &Terminator<'tcx>,
         loc: Location,
@@ -230,7 +225,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     }
 
     fn apply_terminator_effect<'t>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'t Terminator<'tcx>,
         loc: Location,
@@ -271,7 +266,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,

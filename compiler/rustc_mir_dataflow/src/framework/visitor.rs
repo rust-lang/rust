@@ -99,28 +99,28 @@ pub trait ResultsVisitable<'tcx> {
     fn reset_to_block_entry(&self, state: &mut Self::Domain, block: BasicBlock);
 
     fn reconstruct_before_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     );
 
     fn reconstruct_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     );
 
     fn reconstruct_before_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     );
 
     fn reconstruct_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -143,7 +143,7 @@ where
     }
 
     fn reconstruct_before_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -152,7 +152,7 @@ where
     }
 
     fn reconstruct_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -161,7 +161,7 @@ where
     }
 
     fn reconstruct_before_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
@@ -170,7 +170,7 @@ where
     }
 
     fn reconstruct_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,

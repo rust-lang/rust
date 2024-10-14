@@ -136,7 +136,7 @@ pub trait Analysis<'tcx> {
 
     /// Updates the current dataflow state with the effect of evaluating a statement.
     fn apply_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -149,7 +149,7 @@ pub trait Analysis<'tcx> {
     /// *part* of the effect of a statement (e.g. for two-phase borrows). As a general rule,
     /// analyses should not implement this without also implementing `apply_statement_effect`.
     fn apply_before_statement_effect(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -163,7 +163,7 @@ pub trait Analysis<'tcx> {
     /// `InitializedPlaces` analyses, the return place for a function call is not marked as
     /// initialized here.
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
@@ -178,7 +178,7 @@ pub trait Analysis<'tcx> {
     /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
     /// analyses should not implement this without also implementing `apply_terminator_effect`.
     fn apply_before_terminator_effect(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -193,7 +193,7 @@ pub trait Analysis<'tcx> {
     /// This is separate from `apply_terminator_effect` to properly track state across unwind
     /// edges.
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
@@ -214,7 +214,7 @@ pub trait Analysis<'tcx> {
     /// engine doesn't need to clone the exit state for a block unless
     /// `SwitchIntEdgeEffects::apply` is actually called.
     fn apply_switch_int_edge_effects(
-        &mut self,
+        &self,
         _block: BasicBlock,
         _discr: &mir::Operand<'tcx>,
         _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,

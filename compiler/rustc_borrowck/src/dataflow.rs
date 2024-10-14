@@ -44,7 +44,7 @@ impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
     }
 
     fn reconstruct_before_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -55,7 +55,7 @@ impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
     }
 
     fn reconstruct_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -66,7 +66,7 @@ impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
     }
 
     fn reconstruct_before_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
@@ -77,7 +77,7 @@ impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
     }
 
     fn reconstruct_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
@@ -511,7 +511,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_before_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -520,7 +520,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
@@ -568,7 +568,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_before_terminator_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -577,7 +577,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,

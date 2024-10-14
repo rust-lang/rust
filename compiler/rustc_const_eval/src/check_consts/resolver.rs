@@ -330,7 +330,7 @@ where
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -339,7 +339,7 @@ where
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -349,7 +349,7 @@ where
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,

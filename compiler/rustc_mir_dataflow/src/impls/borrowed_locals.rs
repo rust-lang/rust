@@ -34,7 +34,7 @@ impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         statement: &Statement<'tcx>,
         location: Location,
@@ -43,7 +43,7 @@ impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         location: Location,

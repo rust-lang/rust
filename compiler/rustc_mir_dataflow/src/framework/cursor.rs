@@ -93,11 +93,6 @@ where
         &self.results.analysis
     }
 
-    /// Returns the `Analysis` used to generate the underlying `Results`.
-    pub fn mut_analysis(&mut self) -> &mut A {
-        &mut self.results.analysis
-    }
-
     /// Resets the cursor to hold the entry set for the given basic block.
     ///
     /// For forward dataflow analyses, this is the dataflow state prior to the first statement.
@@ -199,7 +194,7 @@ where
         let target_effect_index = effect.at_index(target.statement_index);
 
         A::Direction::apply_effects_in_range(
-            &mut self.results.analysis,
+            &self.results.analysis,
             &mut self.state,
             target.block,
             block_data,
@@ -214,8 +209,8 @@ where
     ///
     /// This can be used, e.g., to apply the call return effect directly to the cursor without
     /// creating an extra copy of the dataflow state.
-    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&mut A, &mut A::Domain)) {
-        f(&mut self.results.analysis, &mut self.state);
+    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&A, &mut A::Domain)) {
+        f(&self.results.analysis, &mut self.state);
         self.state_needs_reset = true;
     }
 }

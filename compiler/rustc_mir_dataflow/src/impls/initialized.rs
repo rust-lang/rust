@@ -328,7 +328,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -352,7 +352,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -372,7 +372,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -391,7 +391,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_switch_int_edge_effects(
-        &mut self,
+        &self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
@@ -457,7 +457,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -471,7 +471,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -489,7 +489,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -508,7 +508,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_switch_int_edge_effects(
-        &mut self,
+        &self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
@@ -576,7 +576,7 @@ impl<'a, 'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -587,7 +587,7 @@ impl<'a, 'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -599,7 +599,7 @@ impl<'a, 'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -638,7 +638,7 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
     #[instrument(skip(self, trans), level = "debug")]
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
@@ -666,7 +666,7 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
     #[instrument(skip(self, trans, terminator), level = "debug")]
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -688,7 +688,7 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         block: mir::BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,

@@ -116,7 +116,7 @@ where
     where
         A::Domain: DebugWithContext<A>,
     {
-        let Engine { mut analysis, body, mut entry_sets, tcx, pass_name } = self;
+        let Engine { analysis, body, mut entry_sets, tcx, pass_name } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
 
@@ -146,10 +146,10 @@ where
 
             // Apply the block transfer function, using the cached one if it exists.
             let edges =
-                A::Direction::apply_effects_in_block(&mut analysis, &mut state, bb, bb_data);
+                A::Direction::apply_effects_in_block(&analysis, &mut state, bb, bb_data);
 
             A::Direction::join_state_into_successors_of(
-                &mut analysis,
+                &analysis,
                 body,
                 &mut state,
                 bb,

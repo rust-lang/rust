@@ -41,7 +41,7 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -50,7 +50,7 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -60,7 +60,7 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -233,7 +233,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -268,7 +268,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -278,7 +278,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
