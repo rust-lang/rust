@@ -223,13 +223,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Helper for lazily initialized `alloc_extra.sync` data:
-    /// Checks if the primitive is initialized, and return its associated data if so.
-    /// Otherwise, calls `new_data` to initialize the primitive.
+    /// Checks if the primitive is initialized:
+    /// - If yes, fetches the data from `alloc_extra.sync`, or calls `missing_data` if that fails
+    ///   and stores that in `alloc_extra.sync`.
+    /// - Otherwise, calls `new_data` to initialize the primitive.
     fn lazy_sync_get_data<T: 'static + Copy>(
         &mut self,
         primitive: &MPlaceTy<'tcx>,
         init_offset: Size,
-        name: &str,
+        missing_data: impl FnOnce() -> InterpResult<'tcx, T>,
         new_data: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
     ) -> InterpResult<'tcx, T> {
         let this = self.eval_context_mut();
@@ -254,11 +256,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If it is initialized, it must be found in the "sync primitive" table,
             // or else it has been moved illegally.
             let (alloc, offset, _) = this.ptr_get_alloc_id(primitive.ptr(), 0)?;
-            let alloc_extra = this.get_alloc_extra(alloc)?;
-            let data = alloc_extra
-                .get_sync::<T>(offset)
-                .ok_or_else(|| err_ub_format!("`{name}` can't be moved after first use"))?;
-            interp_ok(*data)
+            let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
+            if let Some(data) = alloc_extra.get_sync::<T>(offset) {
+                interp_ok(*data)
+            } else {
+                let data = missing_data()?;
+                alloc_extra.sync.insert(offset, Box::new(data));
+                interp_ok(data)
+            }
         } else {
             let data = new_data(this)?;
             this.lazy_sync_init(primitive, init_offset, data)?;

@@ -24,11 +24,16 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let init_once = this.deref_pointer(init_once_ptr)?;
         let init_offset = Size::ZERO;
 
-        this.lazy_sync_get_data(&init_once, init_offset, "INIT_ONCE", |this| {
-            // TODO: check that this is still all-zero.
-            let id = this.machine.sync.init_once_create();
-            interp_ok(WindowsInitOnce { id })
-        })
+        this.lazy_sync_get_data(
+            &init_once,
+            init_offset,
+            || throw_ub_format!("`INIT_ONCE` can't be moved after first use"),
+            |this| {
+                // TODO: check that this is still all-zero.
+                let id = this.machine.sync.init_once_create();
+                interp_ok(WindowsInitOnce { id })
+            },
+        )
     }
 
     /// Returns `true` if we were succssful, `false` if we would block.

@@ -59,7 +59,7 @@ macro_rules! callback {
         @unblock = |$this:ident| $unblock:block
     ) => {
         callback!(
-            @capture<$tcx, $($lft),*> { $($name: $type),+ }
+            @capture<$tcx, $($lft),*> { $($name: $type),* }
             @unblock = |$this| $unblock
             @timeout = |_this| {
                 unreachable!(
