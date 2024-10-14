@@ -515,7 +515,7 @@ impl<T> Cell<T> {
     /// assert_eq!(five, 5);
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value.into_inner()
@@ -864,7 +864,7 @@ impl<T> RefCell<T> {
     /// let five = c.into_inner();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     #[inline]
     pub const fn into_inner(self) -> T {
@@ -2108,7 +2108,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value
@@ -2182,7 +2182,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[inline(always)]
     #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
     #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-    #[rustc_const_stable(feature = "const_unsafecell_get_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_unsafecell_get_mut", since = "1.83.0")]
     pub const fn get_mut(&mut self) -> &mut T {
         &mut self.value
     }

@@ -517,7 +517,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
@@ -550,7 +550,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_infinite(self) -> bool {
         // Getting clever with transmutation can result in incorrect answers on some FPUs
@@ -575,7 +575,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
@@ -603,7 +603,7 @@ impl f32 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[must_use]
     #[stable(feature = "is_subnormal", since = "1.53.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
@@ -630,7 +630,7 @@ impl f32 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
@@ -650,7 +650,7 @@ impl f32 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     pub const fn classify(self) -> FpCategory {
         // We used to have complicated logic here that avoids the simple bit-based tests to work
         // around buggy codegen for x87 targets (see
@@ -686,7 +686,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
@@ -711,7 +711,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
@@ -1088,7 +1088,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_bits(self) -> u32 {
         // SAFETY: `u32` is a plain old datatype so we can always transmute to it.
@@ -1132,7 +1132,7 @@ impl f32 {
     /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_bits(v: u32) -> Self {
@@ -1156,7 +1156,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_be_bytes(self) -> [u8; 4] {
         self.to_bits().to_be_bytes()
@@ -1177,7 +1177,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_le_bytes(self) -> [u8; 4] {
         self.to_bits().to_le_bytes()
@@ -1211,7 +1211,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 4] {
         self.to_bits().to_ne_bytes()
@@ -1229,7 +1229,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_be_bytes(bytes: [u8; 4]) -> Self {
@@ -1248,7 +1248,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_le_bytes(bytes: [u8; 4]) -> Self {
@@ -1278,7 +1278,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_ne_bytes(bytes: [u8; 4]) -> Self {

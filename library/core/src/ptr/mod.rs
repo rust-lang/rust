@@ -992,7 +992,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     from_raw_parts_mut(data, len)
@@ -1264,7 +1264,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-#[rustc_const_stable(feature = "const_replace", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_replace"]
 pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
@@ -1612,7 +1612,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_write"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write<T>(dst: *mut T, src: T) {
@@ -1721,7 +1721,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_refs_to_cell))]
-#[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
