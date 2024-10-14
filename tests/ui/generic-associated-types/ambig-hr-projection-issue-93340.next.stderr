@@ -15,6 +15,14 @@ help: consider specifying the generic arguments
 LL |     cmp_eq::<A, B, O>
    |           +++++++++++
 
-error: aborting due to 1 previous error
+error[E0271]: type mismatch resolving `build_expression<A, B, O>::{opaque#0} normalizes-to _`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:14:1
+   |
+LL | / fn build_expression<A: Scalar, B: Scalar, O: Scalar>(
+LL | | ) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
+   | |_________________________________________________^ types differ
 
-For more information about this error, try `rustc --explain E0283`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0283.
+For more information about an error, try `rustc --explain E0271`.

@@ -15,7 +15,7 @@ use crate::solve::assembly::{self, Candidate};
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, QueryResult,
+    NoSolution, QueryResult, Reveal,
 };
 
 impl<D, I> EvalCtxt<'_, D>
@@ -39,8 +39,55 @@ where
             Err(NoSolution) => {
                 let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
                 self.relate_rigid_alias_non_alias(param_env, alias, ty::Invariant, term)?;
+                self.add_rigid_constraints(param_env, alias)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
+        }
+    }
+
+    /// Register any obligations that are used to validate that an alias should be
+    /// treated as rigid.
+    ///
+    /// An alias may be considered rigid if it fails normalization, but we also don't
+    /// want to consider aliases that are not well-formed to be rigid simply because
+    /// they fail normalization.
+    ///
+    /// For example, some `<T as Trait>::Assoc` where `T: Trait` does not hold, or an
+    /// opaque type whose hidden type doesn't actually satisfy the opaque item bounds.
+    fn add_rigid_constraints(
+        &mut self,
+        param_env: I::ParamEnv,
+        rigid_alias: ty::AliasTerm<I>,
+    ) -> Result<(), NoSolution> {
+        match rigid_alias.kind(self.cx()) {
+            // Projections are rigid only if their trait ref holds.
+            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                let trait_ref = rigid_alias.trait_ref(self.cx());
+                self.add_goal(GoalSource::Misc, Goal::new(self.cx(), param_env, trait_ref));
+                Ok(())
+            }
+            ty::AliasTermKind::OpaqueTy => {
+                match param_env.reveal() {
+                    // In user-facing mode, paques are only rigid if we may not define it.
+                    Reveal::UserFacing => {
+                        if rigid_alias
+                            .def_id
+                            .as_local()
+                            .is_some_and(|def_id| self.can_define_opaque_ty(def_id))
+                        {
+                            Err(NoSolution)
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    // Opaques are never rigid in reveal-all mode.
+                    Reveal::All => Err(NoSolution),
+                }
+            }
+            // FIXME(generic_const_exprs): we would need to support generic consts here
+            ty::AliasTermKind::UnevaluatedConst => Err(NoSolution),
+            // Inherent and weak types are never rigid. This type must not be well-formed.
+            ty::AliasTermKind::WeakTy | ty::AliasTermKind::InherentTy => Err(NoSolution),
         }
     }
 
@@ -124,6 +171,7 @@ where
                     ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
 
                     // Add GAT where clauses from the trait's definition
+                    // FIXME: We don't need these, since these are the type's own WF obligations.
                     ecx.add_goals(
                         GoalSource::Misc,
                         cx.own_predicates_of(goal.predicate.def_id())
@@ -179,7 +227,8 @@ where
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
-            // Add GAT where clauses from the trait's definition
+            // Add GAT where clauses from the trait's definition.
+            // FIXME: We don't need these, since these are the type's own WF obligations.
             ecx.add_goals(
                 GoalSource::Misc,
                 cx.own_predicates_of(goal.predicate.def_id())

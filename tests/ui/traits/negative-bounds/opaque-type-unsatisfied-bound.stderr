@@ -1,20 +1,68 @@
-error[E0271]: type mismatch resolving `impl !Sized + Sized == ()`
+error[E0271]: type mismatch resolving `weird0::{opaque#0} normalizes-to _`
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:16
    |
 LL | fn weird0() -> impl Sized + !Sized {}
    |                ^^^^^^^^^^^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `impl !Sized + Sized == ()`
+error[E0271]: type mismatch resolving `weird0::{opaque#0} normalizes-to _`
+  --> $DIR/opaque-type-unsatisfied-bound.rs:15:36
+   |
+LL | fn weird0() -> impl Sized + !Sized {}
+   |                                    ^^ types differ
+
+error[E0277]: the size for values of type `impl !Sized + Sized` cannot be known at compilation time
+  --> $DIR/opaque-type-unsatisfied-bound.rs:15:16
+   |
+LL | fn weird0() -> impl Sized + !Sized {}
+   |                ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `impl !Sized + Sized`
+   = note: the return type of a function must have a statically known size
+
+error[E0271]: type mismatch resolving `weird0::{opaque#0} normalizes-to _`
+  --> $DIR/opaque-type-unsatisfied-bound.rs:15:1
+   |
+LL | fn weird0() -> impl Sized + !Sized {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `weird1::{opaque#0} normalizes-to _`
   --> $DIR/opaque-type-unsatisfied-bound.rs:17:16
    |
 LL | fn weird1() -> impl !Sized + Sized {}
    |                ^^^^^^^^^^^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `impl !Sized == ()`
+error[E0271]: type mismatch resolving `weird1::{opaque#0} normalizes-to _`
+  --> $DIR/opaque-type-unsatisfied-bound.rs:17:36
+   |
+LL | fn weird1() -> impl !Sized + Sized {}
+   |                                    ^^ types differ
+
+error[E0277]: the size for values of type `impl !Sized + Sized` cannot be known at compilation time
+  --> $DIR/opaque-type-unsatisfied-bound.rs:17:16
+   |
+LL | fn weird1() -> impl !Sized + Sized {}
+   |                ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `impl !Sized + Sized`
+   = note: the return type of a function must have a statically known size
+
+error[E0271]: type mismatch resolving `weird1::{opaque#0} normalizes-to _`
+  --> $DIR/opaque-type-unsatisfied-bound.rs:17:1
+   |
+LL | fn weird1() -> impl !Sized + Sized {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `weird2::{opaque#0} normalizes-to _`
   --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
    |
 LL | fn weird2() -> impl !Sized {}
    |                ^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `weird2::{opaque#0} normalizes-to _`
+  --> $DIR/opaque-type-unsatisfied-bound.rs:19:28
+   |
+LL | fn weird2() -> impl !Sized {}
+   |                            ^^ types differ
 
 error[E0277]: the size for values of type `impl !Sized` cannot be known at compilation time
   --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
@@ -24,6 +72,12 @@ LL | fn weird2() -> impl !Sized {}
    |
    = help: the trait `Sized` is not implemented for `impl !Sized`
    = note: the return type of a function must have a statically known size
+
+error[E0271]: type mismatch resolving `weird2::{opaque#0} normalizes-to _`
+  --> $DIR/opaque-type-unsatisfied-bound.rs:19:1
+   |
+LL | fn weird2() -> impl !Sized {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
 
 error[E0277]: the trait bound `impl !Trait: Trait` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:12:13
@@ -39,7 +93,7 @@ note: required by a bound in `consume`
 LL | fn consume(_: impl Trait) {}
    |                    ^^^^^ required by this bound in `consume`
 
-error: aborting due to 5 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0271, E0277.
 For more information about an error, try `rustc --explain E0271`.
