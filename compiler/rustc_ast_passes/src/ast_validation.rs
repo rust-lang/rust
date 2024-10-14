@@ -524,21 +524,24 @@ impl<'a> AstValidator<'a> {
         // Deconstruct to ensure exhaustiveness
         FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
-        let report_err = |span| {
-            self.dcx()
-                .emit_err(errors::FnQualifierInExtern { span, block: self.current_extern_span() });
+        let report_err = |span, kw| {
+            self.dcx().emit_err(errors::FnQualifierInExtern {
+                span,
+                kw,
+                block: self.current_extern_span(),
+            });
         };
         match coroutine_kind {
-            Some(knd) => report_err(knd.span()),
+            Some(kind) => report_err(kind.span(), kind.as_str()),
             None => (),
         }
         match constness {
-            Const::Yes(span) => report_err(span),
+            Const::Yes(span) => report_err(span, "const"),
             Const::No => (),
         }
         match ext {
             Extern::None => (),
-            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span),
+            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span, "extern"),
         }
     }
 
