@@ -1498,15 +1498,59 @@ pub enum TagEncoding<VariantIdx: Idx> {
     Direct,
 
     /// Niche (values invalid for a type) encoding the discriminant:
-    /// Discriminant and variant index coincide.
+    /// Discriminant and variant index doesn't always coincide.
+    ///
     /// The variant `untagged_variant` contains a niche at an arbitrary
     /// offset (field `tag_field` of the enum), which for a variant with
-    /// discriminant `d` is set to
-    /// `(d - niche_variants.start).wrapping_add(niche_start)`.
+    /// discriminant `d` is set to `d.wrapping_add(niche_start)`.
     ///
-    /// For example, `Option<(usize, &T)>`  is represented such that
-    /// `None` has a null pointer for the second tuple field, and
-    /// `Some` is the identity function (with a non-null reference).
+    /// As for how to compute the discriminant, we have an optimization here that we allocate discriminant
+    /// value starting from the variant after the `untagged_variant` when the `untagged_variant` is
+    /// contained in `niche_variants`' range. Thus the `untagged_variant` won't be allocated with a
+    /// unneeded discriminant. Motivation for this is issue #117238.
+    /// For example,
+    /// ```
+    /// enum SomeEnum {
+    ///     A,       // 1
+    ///     B,       // 2
+    ///     C(bool), // untagged_variant, no discriminant
+    ///     D,       // has a discriminant of 0
+    /// }
+    /// ```
+    /// The algorithm is as follows:
+    /// ```rust,ignore (pseudo-code)
+    /// // We ignore leading and trailing variants that don't need discriminants.
+    /// adjusted_len = niche_variants.end - niche_variants.start + 1
+    /// adjusted_index = variant_index - niche_variants.start
+    /// d = if niche_variants.contains(untagged_variant) {
+    ///     adjusted_untagged_index = untagged_variant - niche_variants.start
+    ///     (adjusted_index + adjusted_len - adjusted_untagged_index) % adjusted_len - 1
+    /// } else {
+    ///     adjusted_index
+    /// }
+    /// tag_value = d.wrapping_add(niche_start)
+    /// ```
+    /// To load variant index from tag value:
+    /// ```rust,ignore (pseudo-code)
+    /// adjusted_len = niche_variants.end - niche_variants.start + 1
+    /// d = tag_value.wrapping_sub(niche_start)
+    /// variant_index = if niche_variants.contains(untagged_variant) {
+    ///     if d < adjusted_len - 1 {
+    ///         adjusted_untagged_index = untagged_variant - niche_variants.start
+    ///         (d + 1 + adjusted_untagged_index) % adjusted_len + niche_variants.start
+    ///     } else {
+    ///         // When the discriminant is larger than the number of variants having
+    ///         // discriminant, we know it represents the untagged_variant.
+    ///         untagged_variant
+    ///     }
+    /// } else {
+    ///     if d < adjusted_len {
+    ///         d + niche_variants.start
+    ///     } else {
+    ///         untagged_variant
+    ///     }
+    /// }
+    /// ```
     Niche {
         untagged_variant: VariantIdx,
         niche_variants: RangeInclusive<VariantIdx>,

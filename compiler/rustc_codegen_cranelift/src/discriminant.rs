@@ -52,10 +52,20 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             variants: _,
         } => {
             if variant_index != untagged_variant {
+                let discr_len = niche_variants.end().index() - niche_variants.start().index() + 1;
+                let adj_idx = variant_index.index() - niche_variants.start().index();
+
                 let niche = place.place_field(fx, FieldIdx::new(tag_field));
                 let niche_type = fx.clif_type(niche.layout().ty).unwrap();
-                let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
-                let niche_value = (niche_value as u128).wrapping_add(niche_start);
+
+                let discr = if niche_variants.contains(&untagged_variant) {
+                    let adj_untagged_idx =
+                        untagged_variant.index() - niche_variants.start().index();
+                    (adj_idx + discr_len - adj_untagged_idx) % discr_len - 1
+                } else {
+                    adj_idx
+                };
+                let niche_value = (discr as u128).wrapping_add(niche_start);
                 let niche_value = match niche_type {
                     types::I128 => {
                         let lsb = fx.bcx.ins().iconst(types::I64, niche_value as u64 as i64);
@@ -131,72 +141,91 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             dest.write_cvalue(fx, res);
         }
         TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
-            let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
+            // See the algorithm explanation in the definition of `TagEncoding::Niche`.
+            let discr_len = niche_variants.end().index() - niche_variants.start().index() + 1;
 
-            // We have a subrange `niche_start..=niche_end` inside `range`.
-            // If the value of the tag is inside this subrange, it's a
-            // "niche value", an increment of the discriminant. Otherwise it
-            // indicates the untagged variant.
-            // A general algorithm to extract the discriminant from the tag
-            // is:
-            // relative_tag = tag - niche_start
-            // is_niche = relative_tag <= (ule) relative_max
-            // discr = if is_niche {
-            //     cast(relative_tag) + niche_variants.start()
-            // } else {
-            //     untagged_variant
-            // }
-            // However, we will likely be able to emit simpler code.
+            let niche_start_value = match fx.bcx.func.dfg.value_type(tag) {
+                types::I128 => {
+                    let lsb = fx.bcx.ins().iconst(types::I64, niche_start as u64 as i64);
+                    let msb = fx.bcx.ins().iconst(types::I64, (niche_start >> 64) as u64 as i64);
+                    fx.bcx.ins().iconcat(lsb, msb)
+                }
+                ty => fx.bcx.ins().iconst(ty, niche_start as i64),
+            };
 
-            let (is_niche, tagged_discr, delta) = if relative_max == 0 {
-                // Best case scenario: only one tagged variant. This will
-                // likely become just a comparison and a jump.
-                // The algorithm is:
-                // is_niche = tag == niche_start
-                // discr = if is_niche {
-                //     niche_start
-                // } else {
-                //     untagged_variant
-                // }
+            let (is_niche, tagged_discr) = if discr_len == 1 {
+                // Special case where we only have a single tagged variant.
+                // The untagged variant can't be contained in niche_variant's range in this case.
+                // Thus the discriminant of the only tagged variant is 0 and its variant index
+                // is the start of niche_variants.
                 let is_niche = codegen_icmp_imm(fx, IntCC::Equal, tag, niche_start as i128);
                 let tagged_discr =
                     fx.bcx.ins().iconst(cast_to, niche_variants.start().as_u32() as i64);
-                (is_niche, tagged_discr, 0)
+                (is_niche, tagged_discr)
             } else {
-                // The special cases don't apply, so we'll have to go with
-                // the general algorithm.
-                let niche_start = match fx.bcx.func.dfg.value_type(tag) {
-                    types::I128 => {
-                        let lsb = fx.bcx.ins().iconst(types::I64, niche_start as u64 as i64);
-                        let msb =
-                            fx.bcx.ins().iconst(types::I64, (niche_start >> 64) as u64 as i64);
-                        fx.bcx.ins().iconcat(lsb, msb)
-                    }
-                    ty => fx.bcx.ins().iconst(ty, niche_start as i64),
-                };
-                let relative_discr = fx.bcx.ins().isub(tag, niche_start);
-                let cast_tag = clif_intcast(fx, relative_discr, cast_to, false);
-                let is_niche = crate::common::codegen_icmp_imm(
-                    fx,
-                    IntCC::UnsignedLessThanOrEqual,
-                    relative_discr,
-                    i128::from(relative_max),
-                );
-                (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
-            };
+                // General case.
+                let discr = fx.bcx.ins().isub(tag, niche_start_value);
+                let tagged_discr = clif_intcast(fx, discr, cast_to, false);
+                if niche_variants.contains(&untagged_variant) {
+                    let is_niche = crate::common::codegen_icmp_imm(
+                        fx,
+                        IntCC::UnsignedLessThan,
+                        discr,
+                        (discr_len - 1) as i128,
+                    );
+                    let adj_untagged_idx =
+                        untagged_variant.index() - niche_variants.start().index();
+                    let untagged_delta = 1 + adj_untagged_idx;
+                    let untagged_delta = match cast_to {
+                        types::I128 => {
+                            let lsb = fx.bcx.ins().iconst(types::I64, untagged_delta as i64);
+                            let msb = fx.bcx.ins().iconst(types::I64, 0);
+                            fx.bcx.ins().iconcat(lsb, msb)
+                        }
+                        ty => fx.bcx.ins().iconst(ty, untagged_delta as i64),
+                    };
+                    let tagged_discr = fx.bcx.ins().iadd(tagged_discr, untagged_delta);
 
-            let tagged_discr = if delta == 0 {
-                tagged_discr
-            } else {
-                let delta = match cast_to {
-                    types::I128 => {
-                        let lsb = fx.bcx.ins().iconst(types::I64, delta as u64 as i64);
-                        let msb = fx.bcx.ins().iconst(types::I64, (delta >> 64) as u64 as i64);
-                        fx.bcx.ins().iconcat(lsb, msb)
-                    }
-                    ty => fx.bcx.ins().iconst(ty, delta as i64),
-                };
-                fx.bcx.ins().iadd(tagged_discr, delta)
+                    let discr_len = match cast_to {
+                        types::I128 => {
+                            let lsb = fx.bcx.ins().iconst(types::I64, discr_len as i64);
+                            let msb = fx.bcx.ins().iconst(types::I64, 0);
+                            fx.bcx.ins().iconcat(lsb, msb)
+                        }
+                        ty => fx.bcx.ins().iconst(ty, discr_len as i64),
+                    };
+                    let tagged_discr = fx.bcx.ins().urem(tagged_discr, discr_len);
+
+                    let niche_variants_start = niche_variants.start().index();
+                    let niche_variants_start = match cast_to {
+                        types::I128 => {
+                            let lsb = fx.bcx.ins().iconst(types::I64, niche_variants_start as i64);
+                            let msb = fx.bcx.ins().iconst(types::I64, 0);
+                            fx.bcx.ins().iconcat(lsb, msb)
+                        }
+                        ty => fx.bcx.ins().iconst(ty, niche_variants_start as i64),
+                    };
+                    let tagged_discr = fx.bcx.ins().iadd(tagged_discr, niche_variants_start);
+                    (is_niche, tagged_discr)
+                } else {
+                    let is_niche = crate::common::codegen_icmp_imm(
+                        fx,
+                        IntCC::UnsignedLessThan,
+                        discr,
+                        (discr_len - 1) as i128,
+                    );
+                    let niche_variants_start = niche_variants.start().index();
+                    let niche_variants_start = match cast_to {
+                        types::I128 => {
+                            let lsb = fx.bcx.ins().iconst(types::I64, niche_variants_start as i64);
+                            let msb = fx.bcx.ins().iconst(types::I64, 0);
+                            fx.bcx.ins().iconcat(lsb, msb)
+                        }
+                        ty => fx.bcx.ins().iconst(ty, niche_variants_start as i64),
+                    };
+                    let tagged_discr = fx.bcx.ins().iadd(tagged_discr, niche_variants_start);
+                    (is_niche, tagged_discr)
+                }
             };
 
             let untagged_variant = if cast_to == types::I128 {
