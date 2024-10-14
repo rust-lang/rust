@@ -340,6 +340,7 @@ macro_rules! make_ast_visitor {
             make_visit!{GenericParam; visit_generic_param, walk_generic_param}
             make_visit!{Generics; visit_generics, walk_generics}
             make_visit!{Ident; visit_ident, walk_ident}
+            make_visit!{ImplPolarity; visit_impl_polarity, walk_impl_polarity}
             make_visit!{InlineAsm; visit_inline_asm, walk_inline_asm}
             make_visit!{InlineAsmSym; visit_inline_asm_sym, walk_inline_asm_sym}
             make_visit!{Label; visit_label, walk_label}
@@ -766,6 +767,19 @@ macro_rules! make_ast_visitor {
         ) -> result!(V) {
             let Ident { name: _, span } = ident;
             try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_impl_polarity<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            polarity: ref_t!(ImplPolarity)
+        ) -> result!(V) {
+            match polarity {
+                ImplPolarity::Positive => {}
+                ImplPolarity::Negative(span) => {
+                    try_v!(visit_span!(vis, span));
+                }
+            }
             return_result!(V)
         }
 
@@ -1477,7 +1491,7 @@ pub mod visit {
                     safety,
                     generics,
                     constness,
-                    polarity: _,
+                    polarity,
                     of_trait,
                     self_ty,
                     items,
@@ -1485,6 +1499,7 @@ pub mod visit {
                     try_visit!(visitor.visit_safety(safety));
                     try_visit!(visitor.visit_generics(generics));
                     try_visit!(visitor.visit_constness(constness));
+                    try_visit!(visitor.visit_impl_polarity(polarity));
                     visit_opt!(visitor, visit_trait_ref, of_trait);
                     try_visit!(visitor.visit_ty(self_ty));
                     walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Impl);
@@ -2123,14 +2138,6 @@ pub mod mut_visit {
         }
     }
 
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_polarity<T: MutVisitor>(vis: &mut T, polarity: &mut ImplPolarity) {
-        match polarity {
-            ImplPolarity::Positive => {}
-            ImplPolarity::Negative(span) => vis.visit_span(span),
-        }
-    }
-
     pub fn walk_flat_map_generic_param<T: MutVisitor>(
         vis: &mut T,
         mut param: GenericParam,
@@ -2239,7 +2246,7 @@ pub mod mut_visit {
                     visitor.visit_safety(safety);
                     visitor.visit_generics(generics);
                     visitor.visit_constness(constness);
-                    visit_polarity(visitor, polarity);
+                    visitor.visit_impl_polarity(polarity);
                     visit_opt(of_trait, |trait_ref| visitor.visit_trait_ref(trait_ref));
                     visitor.visit_ty(self_ty);
                     items.flat_map_in_place(|item| {
