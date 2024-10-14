@@ -201,12 +201,66 @@ impl AArch64InlineAsmReg {
         _arch: InlineAsmArch,
         modifier: Option<char>,
     ) -> fmt::Result {
-        let (prefix, index) = if (self as u32) < Self::v0 as u32 {
-            (modifier.unwrap_or('x'), self as u32 - Self::x0 as u32)
+        let (prefix, index) = if let Some(index) = self.reg_index() {
+            (modifier.unwrap_or('x'), index)
+        } else if let Some(index) = self.vreg_index() {
+            (modifier.unwrap_or('v'), index)
         } else {
-            (modifier.unwrap_or('v'), self as u32 - Self::v0 as u32)
+            return out.write_str(self.name());
         };
         assert!(index < 32);
         write!(out, "{prefix}{index}")
+    }
+
+    /// If the register is an integer register then return its index.
+    pub fn reg_index(self) -> Option<u32> {
+        // Unlike `vreg_index`, we can't subtract `x0` to get the u32 because
+        // `x19` and `x29` are missing and the integer constants for the
+        // `x0`..`x30` enum variants don't all match the register number. E.g. the
+        // integer constant for `x18` is 18, but the constant for `x20` is 19.
+        use AArch64InlineAsmReg::*;
+        Some(match self {
+            x0 => 0,
+            x1 => 1,
+            x2 => 2,
+            x3 => 3,
+            x4 => 4,
+            x5 => 5,
+            x6 => 6,
+            x7 => 7,
+            x8 => 8,
+            x9 => 9,
+            x10 => 10,
+            x11 => 11,
+            x12 => 12,
+            x13 => 13,
+            x14 => 14,
+            x15 => 15,
+            x16 => 16,
+            x17 => 17,
+            x18 => 18,
+            // x19 is reserved
+            x20 => 20,
+            x21 => 21,
+            x22 => 22,
+            x23 => 23,
+            x24 => 24,
+            x25 => 25,
+            x26 => 26,
+            x27 => 27,
+            x28 => 28,
+            // x29 is reserved
+            x30 => 30,
+            _ => return None,
+        })
+    }
+
+    /// If the register is a vector register then return its index.
+    pub fn vreg_index(self) -> Option<u32> {
+        use AArch64InlineAsmReg::*;
+        if self as u32 >= v0 as u32 && self as u32 <= v31 as u32 {
+            return Some(self as u32 - v0 as u32);
+        }
+        None
     }
 }
