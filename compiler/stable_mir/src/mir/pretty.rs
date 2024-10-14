@@ -7,7 +7,7 @@ use fmt::{Display, Formatter};
 use super::{AssertMessage, BinOp, BorrowKind, FakeBorrowKind, TerminatorKind};
 use crate::mir::{Operand, Place, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents};
 use crate::ty::{IndexedVal, MirConst, Ty, TyConst};
-use crate::{with, Body, Mutability};
+use crate::{Body, Mutability, with};
 
 impl Display for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
