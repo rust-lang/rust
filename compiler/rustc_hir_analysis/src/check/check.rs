@@ -61,9 +61,9 @@ pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
         Some(true) => (),
         Some(false) | None => {
             tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message(
-                    "use of calling convention not supported on this target on function pointer",
-                );
+                lint.primary_message(format!(
+                    "the calling convention {abi} is not supported on this target"
+                ));
             });
         }
     }
