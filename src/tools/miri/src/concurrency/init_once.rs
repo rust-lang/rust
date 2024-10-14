@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use rustc_index::Idx;
 
+use super::thread::DynUnblockCallback;
 use super::vector_clock::VClock;
 use crate::*;
 
@@ -34,11 +35,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Put the thread into the queue waiting for the initialization.
     #[inline]
-    fn init_once_enqueue_and_block(
-        &mut self,
-        id: InitOnceId,
-        callback: impl UnblockCallback<'tcx> + 'tcx,
-    ) {
+    fn init_once_enqueue_and_block(&mut self, id: InitOnceId, callback: DynUnblockCallback<'tcx>) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
         let init_once = &mut this.machine.sync.init_onces[id];
