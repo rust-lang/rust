@@ -144,7 +144,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
-            walk_item_kind(&mut item.kind, item.span, item.id, self);
+            walk_item_kind(item, self);
             self.add_test_cases(item.id, span, prev_tests);
         } else {
             // But in those cases, we emit a lint to warn the user of these missing tests.

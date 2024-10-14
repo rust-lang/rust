@@ -286,7 +286,7 @@ impl MutVisitor for PlaceholderExpander {
                     AssocCtxt::Impl => it.make_impl_items(),
                 }
             }
-            _ => walk_flat_map_item(self, item),
+            _ => walk_flat_map_assoc_item(self, item, ctxt),
         }
     }
 
