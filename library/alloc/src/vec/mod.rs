@@ -478,6 +478,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[cfg_attr(not(test), rustc_diagnostic_item = "vec_with_capacity")]
+    #[track_caller]
     pub fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
     }
@@ -797,6 +798,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[track_caller]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
     }
@@ -1264,6 +1266,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
     }
@@ -1294,6 +1297,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.buf.reserve_exact(self.len, additional);
     }
@@ -1397,6 +1401,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     #[inline]
     pub fn shrink_to_fit(&mut self) {
         // The capacity is never less than the length, and there's nothing to do when
@@ -1427,6 +1432,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "shrink_to", since = "1.56.0")]
+    #[track_caller]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         if self.capacity() > min_capacity {
             self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
@@ -1460,6 +1466,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn into_boxed_slice(mut self) -> Box<[T], A> {
         unsafe {
             self.shrink_to_fit();
@@ -1958,6 +1965,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// the insertion index is 0.
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn insert(&mut self, index: usize, element: T) {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
@@ -2397,6 +2405,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push_back", "put", "append")]
+    #[track_caller]
     pub fn push(&mut self, value: T) {
         // Inform codegen that the length does not change across grow_one().
         let len = self.len;
@@ -2538,6 +2547,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
+    #[track_caller]
     pub fn append(&mut self, other: &mut Self) {
         unsafe {
             self.append_elements(other.as_slice() as _);
@@ -2548,6 +2558,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Appends elements to `self` from other buffer.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[track_caller]
     unsafe fn append_elements(&mut self, other: *const [T]) {
         let count = unsafe { (*other).len() };
         self.reserve(count);
@@ -2711,6 +2722,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
+    #[track_caller]
     pub fn split_off(&mut self, at: usize) -> Self
     where
         A: Clone,
@@ -2768,6 +2780,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
+    #[track_caller]
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
     where
         F: FnMut() -> T,
@@ -2973,6 +2986,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_resize", since = "1.5.0")]
+    #[track_caller]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
 
@@ -3004,6 +3018,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// [`extend`]: Vec::extend
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
+    #[track_caller]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
     }
@@ -3031,6 +3046,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_within", since = "1.53.0")]
+    #[track_caller]
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
@@ -3091,6 +3107,7 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
+    #[track_caller]
     /// Extend the vector by `n` clones of value.
     fn extend_with(&mut self, n: usize, value: T) {
         self.reserve(n);
@@ -3151,6 +3168,7 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_from_elem")]
+#[track_caller]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
 }
@@ -3158,6 +3176,7 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
+#[track_caller]
 pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
     <T as SpecFromElem>::from_elem(elem, n, alloc)
 }
@@ -3249,6 +3268,7 @@ unsafe impl<T, A: Allocator> ops::DerefPure for Vec<T, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     #[cfg(not(test))]
+    #[track_caller]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
         <[T]>::to_vec_in(&**self, alloc)
@@ -3286,6 +3306,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     /// // And no reallocation occurred
     /// assert_eq!(yp, y.as_ptr());
     /// ```
+    #[track_caller]
     fn clone_from(&mut self, source: &Self) {
         crate::slice::SpecCloneIntoVec::clone_into(source.as_slice(), self);
     }
@@ -3384,6 +3405,7 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
+    #[track_caller]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
@@ -3452,16 +3474,19 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for Vec<T, A> {
     #[inline]
+    #[track_caller]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
     }
 
     #[inline]
+    #[track_caller]
     fn extend_one(&mut self, item: T) {
         self.push(item);
     }
 
     #[inline]
+    #[track_caller]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
@@ -3481,6 +3506,7 @@ impl<T, A: Allocator> Vec<T, A> {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
     #[cfg(not(no_global_oom_handling))]
+    #[track_caller]
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
         //
@@ -3508,6 +3534,7 @@ impl<T, A: Allocator> Vec<T, A> {
     // specific extend for `TrustedLen` iterators, called both by the specializations
     // and internal places where resolving specialization makes compilation slower
     #[cfg(not(no_global_oom_handling))]
+    #[track_caller]
     fn extend_trusted(&mut self, iterator: impl iter::TrustedLen<Item = T>) {
         let (low, high) = iterator.size_hint();
         if let Some(additional) = high {
@@ -3658,16 +3685,19 @@ impl<T, A: Allocator> Vec<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: Copy + 'a, A: Allocator> Extend<&'a T> for Vec<T, A> {
+    #[track_caller]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter())
     }
 
     #[inline]
+    #[track_caller]
     fn extend_one(&mut self, &item: &'a T) {
         self.push(item);
     }
 
     #[inline]
+    #[track_caller]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
@@ -3778,6 +3808,7 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     /// assert_eq!(Vec::from(&[1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
     #[cfg(not(test))]
+    #[track_caller]
     fn from(s: &[T]) -> Vec<T> {
         s.to_vec()
     }
@@ -3798,6 +3829,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     /// assert_eq!(Vec::from(&mut [1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
     #[cfg(not(test))]
+    #[track_caller]
     fn from(s: &mut [T]) -> Vec<T> {
         s.to_vec()
     }
@@ -3817,6 +3849,7 @@ impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
     /// ```
     /// assert_eq!(Vec::from(&[1, 2, 3]), vec![1, 2, 3]);
     /// ```
+    #[track_caller]
     fn from(s: &[T; N]) -> Vec<T> {
         Self::from(s.as_slice())
     }
@@ -3832,6 +3865,7 @@ impl<T: Clone, const N: usize> From<&mut [T; N]> for Vec<T> {
     /// ```
     /// assert_eq!(Vec::from(&mut [1, 2, 3]), vec![1, 2, 3]);
     /// ```
+    #[track_caller]
     fn from(s: &mut [T; N]) -> Vec<T> {
         Self::from(s.as_mut_slice())
     }
@@ -3848,6 +3882,7 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     /// assert_eq!(Vec::from([1, 2, 3]), vec![1, 2, 3]);
     /// ```
     #[cfg(not(test))]
+    #[track_caller]
     fn from(s: [T; N]) -> Vec<T> {
         <[T]>::into_vec(Box::new(s))
     }
@@ -3877,6 +3912,7 @@ where
     /// let b: Cow<'_, [i32]> = Cow::Borrowed(&[1, 2, 3]);
     /// assert_eq!(Vec::from(o), Vec::from(b));
     /// ```
+    #[track_caller]
     fn from(s: Cow<'a, [T]>) -> Vec<T> {
         s.into_owned()
     }
@@ -3925,6 +3961,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     ///
     /// assert_eq!(Box::from(vec), vec![1, 2, 3].into_boxed_slice());
     /// ```
+    #[track_caller]
     fn from(v: Vec<T, A>) -> Self {
         v.into_boxed_slice()
     }
@@ -3940,6 +3977,7 @@ impl From<&str> for Vec<u8> {
     /// ```
     /// assert_eq!(Vec::from("123"), vec![b'1', b'2', b'3']);
     /// ```
+    #[track_caller]
     fn from(s: &str) -> Vec<u8> {
         From::from(s.as_bytes())
     }
