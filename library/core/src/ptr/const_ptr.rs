@@ -92,7 +92,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[unstable(feature = "set_ptr_value", issue = "75091")]
-    #[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_metadata_const", since = "1.83.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *const U
@@ -1278,7 +1278,7 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1298,7 +1298,7 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

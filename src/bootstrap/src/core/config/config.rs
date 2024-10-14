@@ -2748,13 +2748,18 @@ impl Config {
             }
         };
 
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[
+        let files_to_track = &[
             self.src.join("compiler"),
             self.src.join("library"),
-        ])
-        .unwrap();
+            self.src.join("src/version"),
+            self.src.join("src/stage0"),
+            self.src.join("src/ci/channel"),
+        ];
+
+        // Look for a version to compare to based on the current commit.
+        // Only commits merged by bors will have CI artifacts.
+        let commit =
+            get_closest_merge_commit(Some(&self.src), &self.git_config(), files_to_track).unwrap();
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");
             println!("HELP: maybe your repository history is too shallow?");
@@ -2780,7 +2785,7 @@ impl Config {
         let has_changes = !t!(helpers::git(Some(&self.src))
             .args(["diff-index", "--quiet", &commit])
             .arg("--")
-            .args([self.src.join("compiler"), self.src.join("library")])
+            .args(files_to_track)
             .as_command_mut()
             .status())
         .success();

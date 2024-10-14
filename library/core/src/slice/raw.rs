@@ -171,7 +171,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
 #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
 #[must_use]
 #[rustc_diagnostic_item = "slice_from_raw_parts_mut"]
@@ -204,7 +204,7 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_stable(feature = "const_slice_from_ref", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_slice_from_ref", since = "1.83.0")]
 #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
 #[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {

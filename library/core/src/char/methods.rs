@@ -36,7 +36,7 @@ impl char {
     /// let value_at_min = u32::from(char::MIN);
     /// assert_eq!(char::from_u32(value_at_min), Some('\0'));
     /// ```
-    #[stable(feature = "char_min", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "char_min", since = "1.83.0")]
     pub const MIN: char = '\0';
 
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
@@ -674,7 +674,7 @@ impl char {
     /// 'ß'.encode_utf8(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
-    #[rustc_const_stable(feature = "const_char_encode_utf8", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
     #[inline]
     #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     pub const fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
@@ -1771,7 +1771,7 @@ const fn len_utf16(code: u32) -> usize {
 /// Panics if the buffer is not large enough.
 /// A buffer of length four is large enough to encode any `char`.
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-#[rustc_const_stable(feature = "const_char_encode_utf8", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
 #[doc(hidden)]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
