@@ -3308,6 +3308,38 @@ unsafe fn test_lsx_vfrecip_d() {
     assert_eq!(r, transmute(lsx_vfrecip_d(transmute(a))));
 }
 
+#[simd_test(enable = "lsx,frecipe")]
+unsafe fn test_lsx_vfrecipe_s() {
+    let a = u32x4::new(1057583779, 1062308847, 1060089100, 1048454688);
+    let r = i64x2::new(4583644530211711115, 4647978179615164140);
+
+    assert_eq!(r, transmute(lsx_vfrecipe_s(transmute(a))));
+}
+
+#[simd_test(enable = "lsx,frecipe")]
+unsafe fn test_lsx_vfrecipe_d() {
+    let a = u64x2::new(4605515926442181274, 4605369703273365674);
+    let r = i64x2::new(4608204937770303488, 4608317161507651584);
+
+    assert_eq!(r, transmute(lsx_vfrecipe_d(transmute(a))));
+}
+
+#[simd_test(enable = "lsx,frecipe")]
+unsafe fn test_lsx_vfrsqrte_s() {
+    let a = u32x4::new(1064377488, 1055815904, 1056897740, 1064016656);
+    let r = i64x2::new(4592421282989204764, 4577184195020153336);
+
+    assert_eq!(r, transmute(lsx_vfrsqrte_s(transmute(a))));
+}
+
+#[simd_test(enable = "lsx,frecipe")]
+unsafe fn test_lsx_vfrsqrte_d() {
+    let a = u64x2::new(4602766865443628663, 4605323203937791867);
+    let r = i64x2::new(4608986772678901760, 4607734355383549952);
+
+    assert_eq!(r, transmute(lsx_vfrsqrte_d(transmute(a))));
+}
+
 #[simd_test(enable = "lsx")]
 unsafe fn test_lsx_vfrint_s() {
     let a = u32x4::new(1062138521, 1056849108, 1034089720, 1038314384);

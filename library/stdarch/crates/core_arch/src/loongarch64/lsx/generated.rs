@@ -698,6 +698,14 @@ extern "unadjusted" {
     fn __lsx_vfrecip_s(a: v4f32) -> v4f32;
     #[link_name = "llvm.loongarch.lsx.vfrecip.d"]
     fn __lsx_vfrecip_d(a: v2f64) -> v2f64;
+    #[link_name = "llvm.loongarch.lsx.vfrecipe.s"]
+    fn __lsx_vfrecipe_s(a: v4f32) -> v4f32;
+    #[link_name = "llvm.loongarch.lsx.vfrecipe.d"]
+    fn __lsx_vfrecipe_d(a: v2f64) -> v2f64;
+    #[link_name = "llvm.loongarch.lsx.vfrsqrte.s"]
+    fn __lsx_vfrsqrte_s(a: v4f32) -> v4f32;
+    #[link_name = "llvm.loongarch.lsx.vfrsqrte.d"]
+    fn __lsx_vfrsqrte_d(a: v2f64) -> v2f64;
     #[link_name = "llvm.loongarch.lsx.vfrint.s"]
     fn __lsx_vfrint_s(a: v4f32) -> v4f32;
     #[link_name = "llvm.loongarch.lsx.vfrint.d"]
@@ -959,13 +967,13 @@ extern "unadjusted" {
     #[link_name = "llvm.loongarch.lsx.vfrintrm.d"]
     fn __lsx_vfrintrm_d(a: v2f64) -> v2f64;
     #[link_name = "llvm.loongarch.lsx.vstelm.b"]
-    fn __lsx_vstelm_b(a: v16i8, b: *mut i8, c: i32, d: u32) ;
+    fn __lsx_vstelm_b(a: v16i8, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lsx.vstelm.h"]
-    fn __lsx_vstelm_h(a: v8i16, b: *mut i8, c: i32, d: u32) ;
+    fn __lsx_vstelm_h(a: v8i16, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lsx.vstelm.w"]
-    fn __lsx_vstelm_w(a: v4i32, b: *mut i8, c: i32, d: u32) ;
+    fn __lsx_vstelm_w(a: v4i32, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lsx.vstelm.d"]
-    fn __lsx_vstelm_d(a: v2i64, b: *mut i8, c: i32, d: u32) ;
+    fn __lsx_vstelm_d(a: v2i64, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lsx.vaddwev.d.w"]
     fn __lsx_vaddwev_d_w(a: v4i32, b: v4i32) -> v2i64;
     #[link_name = "llvm.loongarch.lsx.vaddwev.w.h"]
@@ -1301,7 +1309,7 @@ extern "unadjusted" {
     #[link_name = "llvm.loongarch.lsx.vld"]
     fn __lsx_vld(a: *const i8, b: i32) -> v16i8;
     #[link_name = "llvm.loongarch.lsx.vst"]
-    fn __lsx_vst(a: v16i8, b: *mut i8, c: i32) ;
+    fn __lsx_vst(a: v16i8, b: *mut i8, c: i32);
     #[link_name = "llvm.loongarch.lsx.vssrlrn.b.h"]
     fn __lsx_vssrlrn_b_h(a: v8i16, b: v8i16) -> v16i8;
     #[link_name = "llvm.loongarch.lsx.vssrlrn.h.w"]
@@ -1323,7 +1331,7 @@ extern "unadjusted" {
     #[link_name = "llvm.loongarch.lsx.vldx"]
     fn __lsx_vldx(a: *const i8, b: i64) -> v16i8;
     #[link_name = "llvm.loongarch.lsx.vstx"]
-    fn __lsx_vstx(a: v16i8, b: *mut i8, c: i64) ;
+    fn __lsx_vstx(a: v16i8, b: *mut i8, c: i64);
     #[link_name = "llvm.loongarch.lsx.vextl.qu.du"]
     fn __lsx_vextl_qu_du(a: v2u64) -> v2u64;
     #[link_name = "llvm.loongarch.lsx.bnz.b"]
@@ -4066,6 +4074,34 @@ pub unsafe fn lsx_vfrecip_s(a: v4f32) -> v4f32 {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lsx_vfrecip_d(a: v2f64) -> v2f64 {
     __lsx_vfrecip_d(a)
+}
+
+#[inline]
+#[target_feature(enable = "lsx,frecipe")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub unsafe fn lsx_vfrecipe_s(a: v4f32) -> v4f32 {
+    __lsx_vfrecipe_s(a)
+}
+
+#[inline]
+#[target_feature(enable = "lsx,frecipe")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub unsafe fn lsx_vfrecipe_d(a: v2f64) -> v2f64 {
+    __lsx_vfrecipe_d(a)
+}
+
+#[inline]
+#[target_feature(enable = "lsx,frecipe")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub unsafe fn lsx_vfrsqrte_s(a: v4f32) -> v4f32 {
+    __lsx_vfrsqrte_s(a)
+}
+
+#[inline]
+#[target_feature(enable = "lsx,frecipe")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub unsafe fn lsx_vfrsqrte_d(a: v2f64) -> v2f64 {
+    __lsx_vfrsqrte_d(a)
 }
 
 #[inline]

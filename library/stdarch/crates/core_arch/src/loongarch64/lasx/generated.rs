@@ -668,6 +668,14 @@ extern "unadjusted" {
     fn __lasx_xvfrecip_s(a: v8f32) -> v8f32;
     #[link_name = "llvm.loongarch.lasx.xvfrecip.d"]
     fn __lasx_xvfrecip_d(a: v4f64) -> v4f64;
+    #[link_name = "llvm.loongarch.lasx.xvfrecipe.s"]
+    fn __lasx_xvfrecipe_s(a: v8f32) -> v8f32;
+    #[link_name = "llvm.loongarch.lasx.xvfrecipe.d"]
+    fn __lasx_xvfrecipe_d(a: v4f64) -> v4f64;
+    #[link_name = "llvm.loongarch.lasx.xvfrsqrte.s"]
+    fn __lasx_xvfrsqrte_s(a: v8f32) -> v8f32;
+    #[link_name = "llvm.loongarch.lasx.xvfrsqrte.d"]
+    fn __lasx_xvfrsqrte_d(a: v4f64) -> v4f64;
     #[link_name = "llvm.loongarch.lasx.xvfrint.s"]
     fn __lasx_xvfrint_s(a: v8f32) -> v8f32;
     #[link_name = "llvm.loongarch.lasx.xvfrint.d"]
@@ -941,15 +949,15 @@ extern "unadjusted" {
     #[link_name = "llvm.loongarch.lasx.xvld"]
     fn __lasx_xvld(a: *const i8, b: i32) -> v32i8;
     #[link_name = "llvm.loongarch.lasx.xvst"]
-    fn __lasx_xvst(a: v32i8, b: *mut i8, c: i32) ;
+    fn __lasx_xvst(a: v32i8, b: *mut i8, c: i32);
     #[link_name = "llvm.loongarch.lasx.xvstelm.b"]
-    fn __lasx_xvstelm_b(a: v32i8, b: *mut i8, c: i32, d: u32) ;
+    fn __lasx_xvstelm_b(a: v32i8, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lasx.xvstelm.h"]
-    fn __lasx_xvstelm_h(a: v16i16, b: *mut i8, c: i32, d: u32) ;
+    fn __lasx_xvstelm_h(a: v16i16, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lasx.xvstelm.w"]
-    fn __lasx_xvstelm_w(a: v8i32, b: *mut i8, c: i32, d: u32) ;
+    fn __lasx_xvstelm_w(a: v8i32, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lasx.xvstelm.d"]
-    fn __lasx_xvstelm_d(a: v4i64, b: *mut i8, c: i32, d: u32) ;
+    fn __lasx_xvstelm_d(a: v4i64, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lasx.xvinsve0.w"]
     fn __lasx_xvinsve0_w(a: v8i32, b: v8i32, c: u32) -> v8i32;
     #[link_name = "llvm.loongarch.lasx.xvinsve0.d"]
@@ -977,7 +985,7 @@ extern "unadjusted" {
     #[link_name = "llvm.loongarch.lasx.xvldx"]
     fn __lasx_xvldx(a: *const i8, b: i64) -> v32i8;
     #[link_name = "llvm.loongarch.lasx.xvstx"]
-    fn __lasx_xvstx(a: v32i8, b: *mut i8, c: i64) ;
+    fn __lasx_xvstx(a: v32i8, b: *mut i8, c: i64);
     #[link_name = "llvm.loongarch.lasx.xvextl.qu.du"]
     fn __lasx_xvextl_qu_du(a: v4u64) -> v4u64;
     #[link_name = "llvm.loongarch.lasx.xvinsgr2vr.w"]
@@ -3977,6 +3985,34 @@ pub unsafe fn lasx_xvfrecip_s(a: v8f32) -> v8f32 {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvfrecip_d(a: v4f64) -> v4f64 {
     __lasx_xvfrecip_d(a)
+}
+
+#[inline]
+#[target_feature(enable = "lasx,frecipe")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub unsafe fn lasx_xvfrecipe_s(a: v8f32) -> v8f32 {
+    __lasx_xvfrecipe_s(a)
+}
+
+#[inline]
+#[target_feature(enable = "lasx,frecipe")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub unsafe fn lasx_xvfrecipe_d(a: v4f64) -> v4f64 {
+    __lasx_xvfrecipe_d(a)
+}
+
+#[inline]
+#[target_feature(enable = "lasx,frecipe")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub unsafe fn lasx_xvfrsqrte_s(a: v8f32) -> v8f32 {
+    __lasx_xvfrsqrte_s(a)
+}
+
+#[inline]
+#[target_feature(enable = "lasx,frecipe")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub unsafe fn lasx_xvfrsqrte_d(a: v4f64) -> v4f64 {
+    __lasx_xvfrsqrte_d(a)
 }
 
 #[inline]
