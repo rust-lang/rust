@@ -1252,8 +1252,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
         let (expected_found, exp_found, is_simple_error, values) = match values {
             None => (None, Mismatch::Fixed("type"), false, None),
-            Some(ty::ParamEnvAnd { param_env: _, value: values }) => {
+            Some(ty::ParamEnvAnd { param_env, value: values }) => {
                 let mut values = self.resolve_vars_if_possible(values);
+                if self.next_trait_solver() {
+                    values = deeply_normalize_for_diagnostics(self, param_env, values);
+                }
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Terms(ExpectedFound { expected, found }) => {
                         match (expected.unpack(), found.unpack()) {
