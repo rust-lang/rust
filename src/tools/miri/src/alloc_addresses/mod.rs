@@ -453,7 +453,7 @@ impl<'tcx> MiriMachine<'tcx> {
         let thread = self.threads.active_thread();
         global_state.reuse.add_addr(rng, addr, size, align, kind, thread, || {
             if let Some(data_race) = &self.data_race {
-                data_race.release_clock(&self.threads).clone()
+                data_race.release_clock(&self.threads, |clock| clock.clone())
             } else {
                 VClock::default()
             }

@@ -377,7 +377,7 @@ dependencies = [
  "cargo_metadata",
  "directories",
  "rustc-build-sysroot",
- "rustc_tools_util",
+ "rustc_tools_util 0.4.0",
  "rustc_version",
  "serde",
  "serde_json",
@@ -552,7 +552,7 @@ dependencies = [
  "parking_lot",
  "quote",
  "regex",
- "rustc_tools_util",
+ "rustc_tools_util 0.3.0",
  "serde",
  "serde_json",
  "syn 2.0.79",
@@ -4464,6 +4464,12 @@ name = "rustc_tools_util"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ba09476327c4b70ccefb6180f046ef588c26a24cf5d269a9feba316eb4f029f"
+
+[[package]]
+name = "rustc_tools_util"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3316159ab19e19d1065ecc49278e87f767a9dae9fae80348d2b4d4fa4ae02d4d"
 
 [[package]]
 name = "rustc_trait_selection"

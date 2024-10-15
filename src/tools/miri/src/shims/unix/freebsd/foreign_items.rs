@@ -34,11 +34,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_get_name_np" => {
                 let [thread, name, len] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                // FreeBSD's pthread_get_name_np does not return anything.
+                // FreeBSD's pthread_get_name_np does not return anything
+                // and uses strlcpy, which truncates the resulting value,
+                // but always adds a null terminator (except for zero-sized buffers).
+                // https://github.com/freebsd/freebsd-src/blob/c2d93a803acef634bd0eede6673aeea59e90c277/lib/libthr/thread/thr_info.c#L119-L144
                 this.pthread_getname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     this.read_scalar(len)?,
+                    /* truncate */ true,
                 )?;
             }
 

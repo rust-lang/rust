@@ -5,15 +5,35 @@ use rustc_target::abi::Size;
 use crate::concurrency::init_once::InitOnceStatus;
 use crate::*;
 
+#[derive(Copy, Clone)]
+struct WindowsInitOnce {
+    id: InitOnceId,
+}
+
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Windows sync primitives are pointer sized.
     // We only use the first 4 bytes for the id.
 
-    fn init_once_get_id(&mut self, init_once_ptr: &OpTy<'tcx>) -> InterpResult<'tcx, InitOnceId> {
+    fn init_once_get_data(
+        &mut self,
+        init_once_ptr: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, WindowsInitOnce> {
         let this = self.eval_context_mut();
+
         let init_once = this.deref_pointer(init_once_ptr)?;
-        this.init_once_get_or_create_id(&init_once, 0)
+        let init_offset = Size::ZERO;
+
+        this.lazy_sync_get_data(
+            &init_once,
+            init_offset,
+            || throw_ub_format!("`INIT_ONCE` can't be moved after first use"),
+            |this| {
+                // TODO: check that this is still all-zero.
+                let id = this.machine.sync.init_once_create();
+                interp_ok(WindowsInitOnce { id })
+            },
+        )
     }
 
     /// Returns `true` if we were succssful, `false` if we would block.
@@ -55,7 +75,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = this.init_once_get_id(init_once_op)?;
+        let id = this.init_once_get_data(init_once_op)?.id;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
         let pending_place = this.deref_pointer(pending_op)?;
         let context = this.read_pointer(context_op)?;
@@ -101,7 +121,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let id = this.init_once_get_id(init_once_op)?;
+        let id = this.init_once_get_data(init_once_op)?.id;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
         let context = this.read_pointer(context_op)?;
 

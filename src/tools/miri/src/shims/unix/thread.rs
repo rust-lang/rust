@@ -63,38 +63,41 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_uint(thread_id.to_u32(), this.libc_ty_layout("pthread_t").size))
     }
 
-    /// Set the name of the current thread. `max_name_len` is the maximal length of the name
-    /// including the null terminator.
+    /// Set the name of the specified thread. If the name including the null terminator
+    /// is longer than `name_max_len`, then `false` is returned.
     fn pthread_setname_np(
         &mut self,
         thread: Scalar,
         name: Scalar,
-        max_name_len: usize,
-    ) -> InterpResult<'tcx, Scalar> {
+        name_max_len: usize,
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
         let thread = ThreadId::try_from(thread).unwrap();
         let name = name.to_pointer(this)?;
-
         let name = this.read_c_str(name)?.to_owned();
 
         // Comparing with `>=` to account for null terminator.
-        if name.len() >= max_name_len {
-            return interp_ok(this.eval_libc("ERANGE"));
+        if name.len() >= name_max_len {
+            return interp_ok(false);
         }
 
         this.set_thread_name(thread, name);
 
-        interp_ok(Scalar::from_u32(0))
+        interp_ok(true)
     }
 
+    /// Get the name of the specified thread. If the thread name doesn't fit
+    /// the buffer, then if `truncate` is set the truncated name is written out,
+    /// otherwise `false` is returned.
     fn pthread_getname_np(
         &mut self,
         thread: Scalar,
         name_out: Scalar,
         len: Scalar,
-    ) -> InterpResult<'tcx, Scalar> {
+        truncate: bool,
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
@@ -104,9 +107,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // FIXME: we should use the program name if the thread name is not set
         let name = this.get_thread_name(thread).unwrap_or(b"<unnamed>").to_owned();
-        let (success, _written) = this.write_c_str(&name, name_out, len)?;
+        let name = match truncate {
+            true => &name[..name.len().min(len.try_into().unwrap_or(usize::MAX).saturating_sub(1))],
+            false => &name,
+        };
 
-        interp_ok(if success { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") })
+        let (success, _written) = this.write_c_str(name, name_out, len)?;
+
+        interp_ok(success)
     }
 
     fn sched_yield(&mut self) -> InterpResult<'tcx, ()> {
