@@ -337,11 +337,13 @@ macro_rules! make_ast_visitor {
             make_visit!{WhereClause; visit_where_clause, walk_where_clause}
             make_visit!{WherePredicate; visit_where_predicate, walk_where_predicate}
 
+            // FIXME: Remove these P!s
             make_visit!{P!(Expr); visit_expr, walk_expr}
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Ty); visit_ty, walk_ty}
 
             // Item variants
+            // FIXME: Remove these P!s
             make_visit!{P!(Item); visit_item, walk_item, flat_map_item, walk_flat_map_item}
             make_visit!{P!(AssocItem), ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item, flat_map_assoc_item, walk_flat_map_assoc_item}
             make_visit!{P!(ForeignItem); visit_foreign_item, walk_item, flat_map_foreign_item, walk_flat_map_foreign_item}
