@@ -57,7 +57,7 @@ use crate::{
     db::HirDatabase,
     fold_tys,
     generics::Generics,
-    infer::{coerce::CoerceMany, unify::InferenceTable},
+    infer::{coerce::CoerceMany, expr::ExprIsRead, unify::InferenceTable},
     lower::ImplTraitLoweringMode,
     mir::MirSpan,
     to_assoc_type_id,
@@ -1154,6 +1154,7 @@ impl<'a> InferenceContext<'a> {
                 _ = self.infer_expr_coerce(
                     self.body.body_expr,
                     &Expectation::has_type(self.return_ty.clone()),
+                    ExprIsRead::Yes,
                 )
             }
         }

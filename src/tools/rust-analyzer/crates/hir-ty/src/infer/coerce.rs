@@ -139,8 +139,8 @@ impl CoerceMany {
         };
         if let Some(sig) = sig {
             let target_ty = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
-            let result1 = ctx.table.coerce_inner(self.merged_ty(), &target_ty);
-            let result2 = ctx.table.coerce_inner(expr_ty.clone(), &target_ty);
+            let result1 = ctx.table.coerce_inner(self.merged_ty(), &target_ty, CoerceNever::Yes);
+            let result2 = ctx.table.coerce_inner(expr_ty.clone(), &target_ty, CoerceNever::Yes);
             if let (Ok(result1), Ok(result2)) = (result1, result2) {
                 ctx.table.register_infer_ok(InferOk { value: (), goals: result1.goals });
                 for &e in &self.expressions {
@@ -159,9 +159,9 @@ impl CoerceMany {
         // type is a type variable and the new one is `!`, trying it the other
         // way around first would mean we make the type variable `!`, instead of
         // just marking it as possibly diverging.
-        if let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty()) {
+        if let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty(), CoerceNever::Yes) {
             self.final_ty = Some(res);
-        } else if let Ok(res) = ctx.coerce(expr, &self.merged_ty(), &expr_ty) {
+        } else if let Ok(res) = ctx.coerce(expr, &self.merged_ty(), &expr_ty, CoerceNever::Yes) {
             self.final_ty = Some(res);
         } else {
             match cause {
@@ -197,7 +197,7 @@ pub(crate) fn coerce(
     let vars = table.fresh_subst(tys.binders.as_slice(Interner));
     let ty1_with_vars = vars.apply(tys.value.0.clone(), Interner);
     let ty2_with_vars = vars.apply(tys.value.1.clone(), Interner);
-    let (adjustments, ty) = table.coerce(&ty1_with_vars, &ty2_with_vars)?;
+    let (adjustments, ty) = table.coerce(&ty1_with_vars, &ty2_with_vars, CoerceNever::Yes)?;
     // default any type vars that weren't unified back to their original bound vars
     // (kind of hacky)
     let find_var = |iv| {
@@ -219,6 +219,12 @@ pub(crate) fn coerce(
     Ok((adjustments, table.resolve_with_fallback(ty, &fallback)))
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CoerceNever {
+    Yes,
+    No,
+}
+
 impl InferenceContext<'_> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
@@ -227,10 +233,16 @@ impl InferenceContext<'_> {
         expr: Option<ExprId>,
         from_ty: &Ty,
         to_ty: &Ty,
+        // [Comment from rustc](https://github.com/rust-lang/rust/blob/4cc494bbfe9911d24f3ee521f98d5c6bb7e3ffe8/compiler/rustc_hir_typeck/src/coercion.rs#L85-L89)
+        // Whether we allow `NeverToAny` coercions. This is unsound if we're
+        // coercing a place expression without it counting as a read in the MIR.
+        // This is a side-effect of HIR not really having a great distinction
+        // between places and values.
+        coerce_never: CoerceNever,
     ) -> Result<Ty, TypeError> {
         let from_ty = self.resolve_ty_shallow(from_ty);
         let to_ty = self.resolve_ty_shallow(to_ty);
-        let (adjustments, ty) = self.table.coerce(&from_ty, &to_ty)?;
+        let (adjustments, ty) = self.table.coerce(&from_ty, &to_ty, coerce_never)?;
         if let Some(expr) = expr {
             self.write_expr_adj(expr, adjustments);
         }
@@ -245,10 +257,11 @@ impl InferenceTable<'_> {
         &mut self,
         from_ty: &Ty,
         to_ty: &Ty,
+        coerce_never: CoerceNever,
     ) -> Result<(Vec<Adjustment>, Ty), TypeError> {
         let from_ty = self.resolve_ty_shallow(from_ty);
         let to_ty = self.resolve_ty_shallow(to_ty);
-        match self.coerce_inner(from_ty, &to_ty) {
+        match self.coerce_inner(from_ty, &to_ty, coerce_never) {
             Ok(InferOk { value: (adjustments, ty), goals }) => {
                 self.register_infer_ok(InferOk { value: (), goals });
                 Ok((adjustments, ty))
@@ -260,19 +273,23 @@ impl InferenceTable<'_> {
         }
     }
 
-    fn coerce_inner(&mut self, from_ty: Ty, to_ty: &Ty) -> CoerceResult {
+    fn coerce_inner(&mut self, from_ty: Ty, to_ty: &Ty, coerce_never: CoerceNever) -> CoerceResult {
         if from_ty.is_never() {
-            // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
-            // type variable, we want `?T` to fallback to `!` if not
-            // otherwise constrained. An example where this arises:
-            //
-            //     let _: Option<?T> = Some({ return; });
-            //
-            // here, we would coerce from `!` to `?T`.
             if let TyKind::InferenceVar(tv, TyVariableKind::General) = to_ty.kind(Interner) {
                 self.set_diverging(*tv, true);
             }
-            return success(simple(Adjust::NeverToAny)(to_ty.clone()), to_ty.clone(), vec![]);
+            if coerce_never == CoerceNever::Yes {
+                // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
+                // type variable, we want `?T` to fallback to `!` if not
+                // otherwise constrained. An example where this arises:
+                //
+                //     let _: Option<?T> = Some({ return; });
+                //
+                // here, we would coerce from `!` to `?T`.
+                return success(simple(Adjust::NeverToAny)(to_ty.clone()), to_ty.clone(), vec![]);
+            } else {
+                return self.unify_and(&from_ty, to_ty, identity);
+            }
         }
 
         // If we are coercing into a TAIT, coerce into its proxy inference var, instead.
