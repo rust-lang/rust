@@ -1934,7 +1934,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && fn_sig.inputs()[1..]
                                 .iter()
                                 .zip(args.into_iter())
-                                .all(|(expected, found)| self.can_coerce(*expected, *found))
+                                .all(|(expected, found)| self.may_coerce(*expected, *found))
                             && fn_sig.inputs()[1..].len() == args.len()
                         {
                             err.span_suggestion_verbose(
@@ -4148,7 +4148,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
 
-        if !self.can_coerce(output, expected) {
+        if !self.may_coerce(output, expected) {
             return false;
         }
 
