@@ -1091,16 +1091,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// This should only be used for diagnostics.
     pub(crate) fn may_coerce(&self, expr_ty: Ty<'tcx>, target_ty: Ty<'tcx>) -> bool {
-        // FIXME(-Znext-solver): We need to structurally resolve both types here.
-        let source = self.resolve_vars_with_obligations(expr_ty);
-        debug!("coercion::can_with_predicates({:?} -> {:?})", source, target_ty);
-
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion.
         // We also just always set `coerce_never` to true, since this is a heuristic.
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
         self.probe(|_| {
-            let Ok(ok) = coerce.coerce(source, target_ty) else {
+            let Ok(ok) = coerce.coerce(expr_ty, target_ty) else {
                 return false;
             };
             let ocx = ObligationCtxt::new(self);
