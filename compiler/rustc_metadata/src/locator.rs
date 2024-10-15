@@ -726,22 +726,36 @@ impl<'a> CrateLocator<'a> {
             let Some(file) = loc_orig.file_name().and_then(|s| s.to_str()) else {
                 return Err(CrateError::ExternLocationNotFile(self.crate_name, loc_orig.clone()));
             };
-            if file.starts_with("lib") && (file.ends_with(".rlib") || file.ends_with(".rmeta"))
-                || file.starts_with(self.target.dll_prefix.as_ref())
-                    && file.ends_with(self.target.dll_suffix.as_ref())
-            {
-                let loc_canon = loc_canon.clone();
-                if file.ends_with(".rlib") {
-                    rlibs.insert(loc_canon, PathKind::ExternFlag);
-                } else if file.ends_with(".rmeta") {
-                    rmetas.insert(loc_canon, PathKind::ExternFlag);
-                } else {
-                    dylibs.insert(loc_canon, PathKind::ExternFlag);
+            // FnMut cannot return reference to captured value, so references
+            // must be taken outside the closure.
+            let rlibs = &mut rlibs;
+            let rmetas = &mut rmetas;
+            let dylibs = &mut dylibs;
+            let type_via_filename = (|| {
+                if file.starts_with("lib") {
+                    if file.ends_with(".rlib") {
+                        return Some(rlibs);
+                    }
+                    if file.ends_with(".rmeta") {
+                        return Some(rmetas);
+                    }
                 }
-            } else {
-                self.crate_rejections
-                    .via_filename
-                    .push(CrateMismatch { path: loc_orig.clone(), got: String::new() });
+                let dll_prefix = self.target.dll_prefix.as_ref();
+                let dll_suffix = self.target.dll_suffix.as_ref();
+                if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
+                    return Some(dylibs);
+                }
+                None
+            })();
+            match type_via_filename {
+                Some(type_via_filename) => {
+                    type_via_filename.insert(loc_canon.clone(), PathKind::ExternFlag);
+                }
+                None => {
+                    self.crate_rejections
+                        .via_filename
+                        .push(CrateMismatch { path: loc_orig.clone(), got: String::new() });
+                }
             }
         }
 
