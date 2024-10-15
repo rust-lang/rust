@@ -4,7 +4,7 @@
 
 #[no_mangle]
 #[export_name = "foo"]
-//~^ WARN the attribute `export_name` may not be used in combination with `no_mangle`
+//~^ WARN the `#[export_name]` attribute may not be used in combination with `#[no_mangle]`
 pub fn bar() {}
 
 fn main() {}
