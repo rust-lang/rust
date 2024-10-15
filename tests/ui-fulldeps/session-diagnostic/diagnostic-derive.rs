@@ -178,7 +178,7 @@ struct ErrorWithNonexistentField {
 }
 
 #[derive(Diagnostic)]
-//~^ ERROR invalid format string: expected `'}'`
+//~^ ERROR invalid format string: expected `}`
 #[diag(no_crate_example, code = E0123)]
 struct ErrorMissingClosingBrace {
     #[suggestion(no_crate_suggestion, code = "{name")]

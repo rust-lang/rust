@@ -4,5 +4,5 @@
 
 fn main() {
     println!("Hello, world! {0:}<3", 2);
-    //~^ ERROR invalid format string: expected `'}'` but string was terminated
+    //~^ ERROR invalid format string: expected `}` but string was terminated
 }
