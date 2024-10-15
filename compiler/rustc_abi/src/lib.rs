@@ -1489,6 +1489,29 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     },
 }
 
+impl<FieldIdx: Idx, VariantIdx: Idx> Variants<FieldIdx, VariantIdx> {
+    // Returns niches for the discriminants.
+    pub fn niches(&self) -> Option<impl Iterator<Item = u128> + '_> {
+        match self {
+            &Variants::Multiple {
+                tag_encoding:
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
+                ref variants,
+                ..
+            } => Some(variants.iter_enumerated().filter_map(move |(variant_idx, variant)| {
+                if untagged_variant == variant_idx || variant.abi.is_uninhabited() {
+                    None
+                } else {
+                    let niche = ((variant_idx.index() - niche_variants.start().index()) as u128)
+                        .wrapping_add(niche_start);
+                    Some(niche)
+                }
+            })),
+            _ => None,
+        }
+    }
+}
+
 // NOTE: This struct is generic over the VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]

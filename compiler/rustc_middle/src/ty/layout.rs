@@ -999,7 +999,7 @@ where
             }
 
             _ => {
-                let mut data_variant = match this.variants {
+                let (mut data_variant, niche_align) = match this.variants {
                     // Within the discriminant field, only the niche itself is
                     // always initialized, so we only check for a pointer at its
                     // offset.
@@ -1016,9 +1016,16 @@ where
                         tag_field,
                         ..
                     } if this.fields.offset(tag_field) == offset => {
-                        Some(this.for_variant(cx, untagged_variant))
+                        // When a non-null niche is passed in, we might pass an unaligned value.
+                        // Calculates a maximum alignment that matches all niches.
+                        let niche_align = this.variants.niches().map(|niches| {
+                            niches.fold(Align::MAX, |align, niche| {
+                                align.restrict_for_offset(Size::from_bytes(niche))
+                            })
+                        });
+                        (Some(this.for_variant(cx, untagged_variant)), niche_align)
                     }
-                    _ => Some(this),
+                    _ => (Some(this), None),
                 };
 
                 if let Some(variant) = data_variant {
@@ -1055,19 +1062,23 @@ where
                     }
                 }
 
-                // Fixup info for the first field of a `Box`. Recursive traversal will have found
-                // the raw pointer, so size and align are set to the boxed type, but `pointee.safe`
-                // will still be `None`.
                 if let Some(ref mut pointee) = result {
                     if offset.bytes() == 0
                         && let Some(boxed_ty) = this.ty.boxed_ty()
                     {
+                        // Fixup info for the first field of a `Box`. Recursive traversal will have found
+                        // the raw pointer, so size and align are set to the boxed type, but `pointee.safe`
+                        // will still be `None`.
                         debug_assert!(pointee.safe.is_none());
                         let optimize = tcx.sess.opts.optimize != OptLevel::No;
                         pointee.safe = Some(PointerKind::Box {
                             unpin: optimize && boxed_ty.is_unpin(tcx, cx.param_env()),
                             global: this.ty.is_box_global(tcx),
                         });
+                    }
+                    if let Some(align) = niche_align {
+                        // Takes the minimum alignment of the pointer and niches to ensure that the alignment is legal.
+                        pointee.align = pointee.align.min(align);
                     }
                 }
 
