@@ -302,7 +302,6 @@ pub(crate) struct LinkCollector<'a, 'tcx> {
 }
 
 pub(crate) struct AmbiguousLinks {
-    disambiguator: Option<Disambiguator>,
     link_text: Box<str>,
     diag_info: OwnedDiagnosticInfo,
     resolved: Vec<(Res, Option<UrlFragment>)>,
@@ -1097,7 +1096,6 @@ impl LinkCollector<'_, '_> {
 
         if resolved.len() > 1 {
             let links = AmbiguousLinks {
-                disambiguator,
                 link_text: link_text.clone(),
                 diag_info: diag_info.into(),
                 resolved,
@@ -1178,7 +1176,7 @@ impl LinkCollector<'_, '_> {
                             res,
                             fragment,
                             path_str,
-                            info.disambiguator,
+                            None,
                             diag_info,
                             &info.link_text,
                         ) {
