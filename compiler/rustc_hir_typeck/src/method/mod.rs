@@ -199,6 +199,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty, segment, span, call_expr, self_expr, &pick, args,
         );
 
+        // NOTE: on the failure path, we also record the possibly-used trait methods
+        // since an unused import warning is kinda distracting from the method error.
         for &import_id in &pick.import_ids {
             debug!("used_trait_import: {:?}", import_id);
             self.typeck_results.borrow_mut().used_trait_imports.insert(import_id);
