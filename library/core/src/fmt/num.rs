@@ -31,22 +31,11 @@ macro_rules! impl_int {
       })*
     )
 }
-macro_rules! impl_uint {
-    ($($t:ident)*) => (
-      $(impl DisplayInt for $t {
-          fn zero() -> Self { 0 }
-          fn from_u8(u: u8) -> Self { u as Self }
-          fn to_u8(&self) -> u8 { *self as u8 }
-          #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
-          fn to_u32(&self) -> u32 { *self as u32 }
-          fn to_u64(&self) -> u64 { *self as u64 }
-          fn to_u128(&self) -> u128 { *self as u128 }
-      })*
-    )
-}
 
-impl_int! { i8 i16 i32 i64 i128 isize }
-impl_uint! { u8 u16 u32 u64 u128 usize }
+impl_int! {
+    i8 i16 i32 i64 i128 isize
+    u8 u16 u32 u64 u128 usize
+}
 
 /// A type that represents a specific radix
 ///
