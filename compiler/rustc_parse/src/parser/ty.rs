@@ -420,8 +420,13 @@ impl<'a> Parser<'a> {
         lo: Span,
         parse_plus: bool,
     ) -> PResult<'a, TyKind> {
-        let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_token.span));
-        let bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifiers::NONE)];
+        let poly_trait_ref = PolyTraitRef::new(
+            generic_params,
+            path,
+            TraitBoundModifiers::NONE,
+            lo.to(self.prev_token.span),
+        );
+        let bounds = vec![GenericBound::Trait(poly_trait_ref)];
         self.parse_remaining_bounds(bounds, parse_plus)
     }
 
@@ -1117,8 +1122,9 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_token.span));
-        Ok(GenericBound::Trait(poly_trait, modifiers))
+        let poly_trait =
+            PolyTraitRef::new(lifetime_defs, path, modifiers, lo.to(self.prev_token.span));
+        Ok(GenericBound::Trait(poly_trait))
     }
 
     // recovers a `Fn(..)` parenthesized-style path from `fn(..)`

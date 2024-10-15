@@ -308,7 +308,7 @@ impl TraitBoundModifiers {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum GenericBound {
-    Trait(PolyTraitRef, TraitBoundModifiers),
+    Trait(PolyTraitRef),
     Outlives(Lifetime),
     /// Precise capturing syntax: `impl Sized + use<'a>`
     Use(ThinVec<PreciseCapturingArg>, Span),
@@ -1213,10 +1213,12 @@ impl Expr {
 
     pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
-            ExprKind::Path(None, path) => Some(GenericBound::Trait(
-                PolyTraitRef::new(ThinVec::new(), path.clone(), self.span),
+            ExprKind::Path(None, path) => Some(GenericBound::Trait(PolyTraitRef::new(
+                ThinVec::new(),
+                path.clone(),
                 TraitBoundModifiers::NONE,
-            )),
+                self.span,
+            ))),
             _ => None,
         }
     }
@@ -2972,6 +2974,9 @@ pub struct PolyTraitRef {
     /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: ThinVec<GenericParam>,
 
+    // Optional constness, asyncness, or polarity.
+    pub modifiers: TraitBoundModifiers,
+
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef,
 
@@ -2979,9 +2984,15 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(generic_params: ThinVec<GenericParam>, path: Path, span: Span) -> Self {
+    pub fn new(
+        generic_params: ThinVec<GenericParam>,
+        path: Path,
+        modifiers: TraitBoundModifiers,
+        span: Span,
+    ) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
+            modifiers,
             trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
             span,
         }

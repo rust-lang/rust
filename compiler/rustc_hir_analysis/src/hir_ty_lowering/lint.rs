@@ -50,7 +50,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .ok()
                 .is_some_and(|s| s.trim_end().ends_with('<'));
 
-        let is_global = poly_trait_ref.0.trait_ref.path.is_global();
+        let is_global = poly_trait_ref.trait_ref.path.is_global();
 
         let mut sugg = vec![(
             self_ty.span.shrink_to_lo(),
@@ -211,7 +211,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Check if trait object is safe for suggesting dynamic dispatch.
         let is_dyn_compatible = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
-                objects.iter().all(|(o, _)| match o.trait_ref.path.res {
+                objects.iter().all(|o| match o.trait_ref.path.res {
                     Res::Def(DefKind::Trait, id) => tcx.is_dyn_compatible(id),
                     _ => false,
                 })

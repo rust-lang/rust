@@ -519,7 +519,7 @@ pub enum TraitBoundModifier {
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
-    Trait(PolyTraitRef<'hir>, TraitBoundModifier),
+    Trait(PolyTraitRef<'hir>),
     Outlives(&'hir Lifetime),
     Use(&'hir [PreciseCapturingArg<'hir>], Span),
 }
@@ -527,7 +527,7 @@ pub enum GenericBound<'hir> {
 impl GenericBound<'_> {
     pub fn trait_ref(&self) -> Option<&TraitRef<'_>> {
         match self {
-            GenericBound::Trait(data, _) => Some(&data.trait_ref),
+            GenericBound::Trait(data) => Some(&data.trait_ref),
             _ => None,
         }
     }
@@ -2873,11 +2873,7 @@ pub enum TyKind<'hir> {
     OpaqueDef(&'hir OpaqueTy<'hir>, &'hir [GenericArg<'hir>]),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(
-        &'hir [(PolyTraitRef<'hir>, TraitBoundModifier)],
-        &'hir Lifetime,
-        TraitObjectSyntax,
-    ),
+    TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
     /// Unused for now.
     Typeof(&'hir AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
@@ -3180,6 +3176,11 @@ impl TraitRef<'_> {
 pub struct PolyTraitRef<'hir> {
     /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
+
+    /// The constness and polarity of the trait ref.
+    ///
+    /// The `async` modifier is lowered directly into a different trait for now.
+    pub modifiers: TraitBoundModifier,
 
     /// The `Foo<&'a T>` in `for<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef<'hir>,

@@ -30,7 +30,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_trait_bounds: &[(hir::PolyTraitRef<'tcx>, hir::TraitBoundModifier)],
+        hir_trait_bounds: &[hir::PolyTraitRef<'tcx>],
         lifetime: &hir::Lifetime,
         representation: DynKind,
     ) -> Ty<'tcx> {
@@ -39,8 +39,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        for (trait_bound, modifier) in hir_trait_bounds.iter().rev() {
-            if *modifier == hir::TraitBoundModifier::Maybe {
+        for trait_bound in hir_trait_bounds.iter().rev() {
+            // FIXME: This doesn't handle `? const`.
+            if trait_bound.modifiers == hir::TraitBoundModifier::Maybe {
                 continue;
             }
             if let GenericArgCountResult {
@@ -263,7 +264,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let args = tcx.mk_args(&args);
 
                 let span = i.bottom().1;
-                let empty_generic_args = hir_trait_bounds.iter().any(|(hir_bound, _)| {
+                let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });

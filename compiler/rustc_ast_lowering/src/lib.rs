@@ -1224,13 +1224,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let bound = this.lower_poly_trait_ref(
                     &PolyTraitRef {
                         bound_generic_params: ThinVec::new(),
+                        modifiers: TraitBoundModifiers::NONE,
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
                         span: t.span,
                     },
                     itctx,
-                    TraitBoundModifiers::NONE,
                 );
-                let bound = (bound, hir::TraitBoundModifier::None);
                 let bounds = this.arena.alloc_from_iter([bound]);
                 let lifetime_bound = this.elided_dyn_bound(t.span);
                 (bounds, lifetime_bound)
@@ -1357,10 +1356,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             // We can safely ignore constness here since AST validation
                             // takes care of rejecting invalid modifier combinations and
                             // const trait bounds in trait object types.
-                            GenericBound::Trait(ty, modifiers) => {
-                                let trait_ref = this.lower_poly_trait_ref(ty, itctx, *modifiers);
-                                let polarity = this.lower_trait_bound_modifiers(*modifiers);
-                                Some((trait_ref, polarity))
+                            GenericBound::Trait(ty) => {
+                                let trait_ref = this.lower_poly_trait_ref(ty, itctx);
+                                Some(trait_ref)
                             }
                             GenericBound::Outlives(lifetime) => {
                                 if lifetime_bound.is_none() {
@@ -1993,21 +1991,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span_ext: DUMMY_SP,
         });
 
-        hir::GenericBound::Trait(
-            hir::PolyTraitRef {
-                bound_generic_params: &[],
-                trait_ref: hir::TraitRef {
-                    path: self.make_lang_item_path(
-                        trait_lang_item,
-                        opaque_ty_span,
-                        Some(bound_args),
-                    ),
-                    hir_ref_id: self.next_id(),
-                },
-                span: opaque_ty_span,
+        hir::GenericBound::Trait(hir::PolyTraitRef {
+            bound_generic_params: &[],
+            modifiers: hir::TraitBoundModifier::None,
+            trait_ref: hir::TraitRef {
+                path: self.make_lang_item_path(trait_lang_item, opaque_ty_span, Some(bound_args)),
+                hir_ref_id: self.next_id(),
             },
-            hir::TraitBoundModifier::None,
-        )
+            span: opaque_ty_span,
+        })
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -2017,10 +2009,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         match tpb {
-            GenericBound::Trait(p, modifiers) => hir::GenericBound::Trait(
-                self.lower_poly_trait_ref(p, itctx, *modifiers),
-                self.lower_trait_bound_modifiers(*modifiers),
-            ),
+            GenericBound::Trait(p) => hir::GenericBound::Trait(self.lower_poly_trait_ref(p, itctx)),
             GenericBound::Outlives(lifetime) => {
                 hir::GenericBound::Outlives(self.lower_lifetime(lifetime))
             }
@@ -2224,12 +2213,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         p: &PolyTraitRef,
         itctx: ImplTraitContext,
-        modifiers: ast::TraitBoundModifiers,
     ) -> hir::PolyTraitRef<'hir> {
         let bound_generic_params =
             self.lower_lifetime_binder(p.trait_ref.ref_id, &p.bound_generic_params);
-        let trait_ref = self.lower_trait_ref(modifiers, &p.trait_ref, itctx);
-        hir::PolyTraitRef { bound_generic_params, trait_ref, span: self.lower_span(p.span) }
+        let trait_ref = self.lower_trait_ref(p.modifiers, &p.trait_ref, itctx);
+        let modifiers = self.lower_trait_bound_modifiers(p.modifiers);
+        hir::PolyTraitRef {
+            bound_generic_params,
+            modifiers,
+            trait_ref,
+            span: self.lower_span(p.span),
+        }
     }
 
     fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext) -> hir::MutTy<'hir> {
@@ -2669,10 +2663,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: &[],
+                            modifiers: hir::TraitBoundModifier::None,
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },
                             span: self.lower_span(span),
                         };
-                        let principal = (principal, hir::TraitBoundModifier::None);
 
                         // The original ID is taken by the `PolyTraitRef`,
                         // so the `Ty` itself needs a different one.

@@ -329,7 +329,7 @@ pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef) 
 where
     V: Visitor<'a>,
 {
-    let PolyTraitRef { bound_generic_params, trait_ref, span: _ } = trait_ref;
+    let PolyTraitRef { bound_generic_params, modifiers: _, trait_ref, span: _ } = trait_ref;
     walk_list!(visitor, visit_generic_param, bound_generic_params);
     visitor.visit_trait_ref(trait_ref)
 }
@@ -721,7 +721,7 @@ impl WalkItemKind for ForeignItemKind {
 
 pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericBound) -> V::Result {
     match bound {
-        GenericBound::Trait(typ, _modifier) => visitor.visit_poly_trait_ref(typ),
+        GenericBound::Trait(trait_ref) => visitor.visit_poly_trait_ref(trait_ref),
         GenericBound::Outlives(lifetime) => visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound),
         GenericBound::Use(args, _span) => {
             walk_list!(visitor, visit_precise_capturing_arg, args);

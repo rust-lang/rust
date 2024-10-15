@@ -718,7 +718,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
         potential_assoc_types: Vec<usize>,
-        trait_bounds: &[(hir::PolyTraitRef<'_>, hir::TraitBoundModifier)],
+        trait_bounds: &[hir::PolyTraitRef<'_>],
     ) {
         if associated_types.values().all(|v| v.is_empty()) {
             return;
@@ -764,12 +764,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // related to issue #91997, turbofishes added only when in an expr or pat
         let mut in_expr_or_pat = false;
         if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
-            let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.0.trait_ref.hir_ref_id));
+            let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.trait_ref.hir_ref_id));
             in_expr_or_pat = match grandparent {
                 hir::Node::Expr(_) | hir::Node::Pat(_) => true,
                 _ => false,
             };
-            match bound.0.trait_ref.path.segments {
+            match bound.trait_ref.path.segments {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
@@ -810,7 +810,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // and we can then use their span to indicate this to the user.
         let bound_names = trait_bounds
             .iter()
-            .filter_map(|(poly_trait_ref, _)| {
+            .filter_map(|poly_trait_ref| {
                 let path = poly_trait_ref.trait_ref.path.segments.last()?;
                 let args = path.args?;
 
