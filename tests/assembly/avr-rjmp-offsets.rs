@@ -21,6 +21,12 @@ macro_rules! asm {
 use minicore::ptr;
 
 // CHECK-LABEL: pin_toggling
+// CHECK: .LBB0_1:
+// CHECK-NEXT: out 5, r17
+// CHECK-NEXT: call delay
+// CHECK-NEXT: out 5, r16
+// CHECK-NEXT: call delay
+// CHECK-NEXT: rjmp .LBB0_1
 #[no_mangle]
 pub fn pin_toggling() {
     let port_b = 0x25 as *mut u8; // the I/O-address of PORTB
@@ -33,6 +39,7 @@ pub fn pin_toggling() {
 }
 
 #[inline(never)]
+#[no_mangle]
 fn delay(_: u32) {
     unsafe { asm!("nop") };
 }
