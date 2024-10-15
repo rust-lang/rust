@@ -17,6 +17,13 @@ fn main() {
         .opt_level("s")
         .panic("abort")
         .target("avr-unknown-gnu-atmega328")
+        // normally one links with `avr-gcc`, but this is not available in CI,
+        // hence this test diverges from the default behavior to enable linking
+        // at all, which is necessary for the test (to resolve the labels). To
+        // not depend on a special linker script, the main-function is marked as
+        // the entry function, causing the linker to not remove it.
+        .linker("rust-lld")
+        .link_arg("--entry=main")
         .output("compiled")
         .run();
 
@@ -35,6 +42,7 @@ fn main() {
     // fore the relative jump has an impact on the label offset. Old versions
     // of the Rust compiler did produce a label `rjmp .-4` (misses the first
     // instruction in the loop).
+    assert!(disassembly.contains("<main>"), "no main function in output");
     disassembly
         .trim()
         .lines()
