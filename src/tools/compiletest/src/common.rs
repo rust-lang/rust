@@ -759,14 +759,8 @@ pub fn output_testname_unique(
 /// test/revision should reside. Example:
 ///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
 pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
-    // In run-make tests, constructing a relative path + unique testname causes a double layering
-    // since revisions are not supported, causing unnecessary nesting.
-    if config.mode == Mode::RunMake {
-        output_relative_path(config, &testpaths.relative_dir)
-    } else {
-        output_relative_path(config, &testpaths.relative_dir)
-            .join(output_testname_unique(config, testpaths, revision))
-    }
+    output_relative_path(config, &testpaths.relative_dir)
+        .join(output_testname_unique(config, testpaths, revision))
 }
 
 /// Absolute path to the base filename used as output for the given
