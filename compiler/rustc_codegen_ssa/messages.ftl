@@ -190,10 +190,10 @@ codegen_ssa_missing_memory_ordering = Atomic intrinsic missing memory ordering
 codegen_ssa_missing_query_depgraph =
     found CGU-reuse attribute but `-Zquery-dep-graph` was not specified
 
-codegen_ssa_mixed_export_name_and_no_mangle = the attribute `export_name` may not be used in combination with `no_mangle`
-    .label = `export_name` takes precedence
-    .note = the `no_mangle` attribute is ignored
-    .suggestion = remove the `no_mangle` attribute
+codegen_ssa_mixed_export_name_and_no_mangle = the `#[export_name]` attribute may not be used in combination with `#[no_mangle]`
+    .label = `#[export_name]` takes precedence
+    .note = `#[no_mangle]` is ignored
+    .suggestion = remove the `#[no_mangle]` attribute
 
 codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but `link.exe` was not found
 

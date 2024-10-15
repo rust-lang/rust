@@ -5085,8 +5085,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `mixed_export_name_and_no_mangle` lint detects mixed usage of `export_name` and `no_mangle`
-    /// where `no_mangle` is not used by the compiler.
+    /// The `mixed_export_name_and_no_mangle` lint detects usage of both
+    /// `#[export_name]` and `#[no_mangle]` on the same item which result
+    /// on `#[no_mangle]` being ignored.
     ///
     /// ### Example
     ///
@@ -5109,5 +5110,5 @@ declare_lint! {
     ///
     pub MIXED_EXPORT_NAME_AND_NO_MANGLE,
     Warn,
-    "mixed usage of export_name and no_mangle, where no_mangle is not used by the compiler"
+    "mixed usage of `#[export_name]` and `#[no_mangle]`, where `#[export_name]` takes precedence"
 }

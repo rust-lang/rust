@@ -784,7 +784,7 @@ fn check_link_name_xor_ordinal(
     }
 }
 
-struct LinterStateMixedExportNameAndNoMangle {
+struct MixedExportNameAndNoMangleState {
     export_name: Option<Span>,
     hir_id: Option<HirId>,
     no_mangle: Option<Span>,
@@ -801,13 +801,16 @@ impl LinterStateMixedExportNameAndNoMangle {
     }
 
     fn track_no_mangle(&mut self, span: Span) {
-        self.no_mangle = Some(span.clone());
+        self.no_mangle = Some(span);
     }
 
     /// Emit diagnostics if the lint condition is met.
-    fn emit_diagnostics_in_case(self, tcx: TyCtxt<'_>) {
-        if let (Some(export_name), Some(no_mangle), Some(hir_id)) =
-            (self.export_name, self.no_mangle, self.hir_id)
+    fn lint_if_mixed(self, tcx: TyCtxt<'_>) {
+        if let Self {
+            export_name: Some(export_name),
+            no_mangle: Some(no_mangle),
+            hir_id: Some(hir_id),
+        } = self
         {
             tcx.emit_node_span_lint(
                 lint::builtin::MIXED_EXPORT_NAME_AND_NO_MANGLE,
