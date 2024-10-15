@@ -2,7 +2,7 @@ error: this `.filter_map` can be written more simply
   --> tests/ui/unnecessary_filter_map.rs:5:13
    |
 LL |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing with `.filter`: `filter`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `filter`
    |
    = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_filter_map)]`
@@ -18,7 +18,7 @@ LL | |             return Some(x);
 LL | |         };
 LL | |         None
 LL | |     });
-   | |______^ help: try replacing with `.filter`: `filter`
+   | |______^ help: try instead: `filter`
 
 error: this `.filter_map` can be written more simply
   --> tests/ui/unnecessary_filter_map.rs:15:13
@@ -29,13 +29,13 @@ LL | |
 LL | |         0 | 1 => None,
 LL | |         _ => Some(x),
 LL | |     });
-   | |______^ help: try replacing with `.filter`: `filter`
+   | |______^ help: try instead: `filter`
 
 error: this `.filter_map` can be written more simply
   --> tests/ui/unnecessary_filter_map.rs:21:13
    |
 LL |     let _ = (0..4).filter_map(|x| Some(x + 1));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing with `.map`: `map`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `map`
 
 error: redundant closure
   --> tests/ui/unnecessary_filter_map.rs:28:57
@@ -56,13 +56,13 @@ error: this `.filter_map` can be written more simply
   --> tests/ui/unnecessary_filter_map.rs:28:13
    |
 LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing with `.map`: `map`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `map`
 
 error: this `.filter_map` can be written more simply
   --> tests/ui/unnecessary_filter_map.rs:165:14
    |
 LL |     let _x = std::iter::once(1).filter_map(|n| (n > 1).then_some(n));
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing with `.filter`: `filter`
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `filter`
 
 error: aborting due to 8 previous errors
 

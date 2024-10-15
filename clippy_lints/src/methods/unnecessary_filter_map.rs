@@ -79,7 +79,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
             },
             expr.span,
             format!("this `.{name}` can be written more simply"),
-            format!("try replacing with `.{sugg}`"),
+            format!("try instead"),
             sugg.to_string(),
             Applicability::MaybeIncorrect,
         );
