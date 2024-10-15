@@ -257,12 +257,6 @@ macro_rules! make_ast_visitor {
                     walk_flat_map_stmt(self, s)
                 }
 
-                /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
-                /// It can be removed once that feature is stabilized.
-                fn visit_method_receiver_expr(&mut self, ex: &mut P<Expr>) {
-                    self.visit_expr(ex)
-                }
-
                 fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
                     noop_filter_map_expr(self, e)
                 }
@@ -280,12 +274,6 @@ macro_rules! make_ast_visitor {
                 type Result: VisitorResult = ();
 
                 make_visit!{Stmt; visit_stmt, walk_stmt}
-
-                /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
-                /// It can be removed once that feature is stabilized.
-                fn visit_method_receiver_expr(&mut self, ex: &'ast Expr) -> Self::Result {
-                    self.visit_expr(ex)
-                }
             }}
 
             make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
@@ -353,6 +341,12 @@ macro_rules! make_ast_visitor {
 
             fn visit_fn(&mut self, fn_kind: FnKind!(), _span: Span, _id: NodeId) -> result!() {
                 walk_fn(self, fn_kind)
+            }
+
+            /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
+            /// It can be removed once that feature is stabilized.
+            fn visit_method_receiver_expr(&mut self, ex: ref_t!(P!(Expr))) -> result!() {
+                self.visit_expr(ex)
             }
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
