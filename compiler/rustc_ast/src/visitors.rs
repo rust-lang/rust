@@ -211,44 +211,51 @@ macro_rules! make_ast_visitor {
         /// future changes to this trait in case a new method with a new default
         /// implementation gets introduced.)
         pub trait $trait$(<$lt>)?: Sized {
+
+
+            // Methods in these traits have the form:
+            //
+            //   fn visit_t(&mut self, t: ref_t!(T)) -> result!();
+            //
+            // In addition to those the mutable version also has methods of the form:
+            //
+            //   fn flat_map_t(&mut self, t: T) -> SmallVec<[T; 1]>;
+            //   fn filter_map_t(&mut self, t: T) -> Option<T>;
+            //
+            // Any additions to this trait should happen in form of a call to a public
+            // `walk_*` function that only calls out to the visitor again, not other
+            // `walk_*` functions. This is a necessary API workaround to the problem of
+            // not being able to call out to the default implementation of an overridden
+            // method.
+            //
+            // When writing these methods, it is better to use destructuring like this:
+            //
+            //   fn walk_abc(&mut self, abc: &mut ABC) {
+            //       let ABC { a, b, c: _ } = abc;
+            //       visit_a(a);
+            //       visit_b(b);
+            //   }
+            //
+            // than to use field access like this:
+            //
+            //   fn walk_abc(&mut self, abc: &mut ABC) {
+            //       visit_a(&mut abc.a);
+            //       visit_b(&mut abc.b);
+            //       // ignore abc.c
+            //   }
+            //
+            // As well as being more concise, the former is explicit about which fields
+            // are skipped. Furthermore, if a new field is added, the destructuring
+            // version will cause a compile error, which is good. In comparison, the
+            // field access version will continue working and it would be easy to
+            // forget to add handling for it.
+
+
             macro_if!{$($mut)? {
                 /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
                 /// used otherwise. Token visitor would be entirely separate from the regular visitor if
                 /// the marker didn't have to visit AST fragments in nonterminal tokens.
                 const VISIT_TOKENS: bool = false;
-
-                // Methods in this trait have one of three forms:
-                //
-                //   fn visit_t(&mut self, t: &mut T);                      // common
-                //   fn flat_map_t(&mut self, t: T) -> SmallVec<[T; 1]>;    // rare
-                //   fn filter_map_t(&mut self, t: T) -> Option<T>;         // rarest
-                //
-                // Any additions to this trait should happen in form of a call to a public
-                // `noop_*` function that only calls out to the visitor again, not other
-                // `noop_*` functions. This is a necessary API workaround to the problem of
-                // not being able to call out to the super default method in an overridden
-                // default method.
-                //
-                // When writing these methods, it is better to use destructuring like this:
-                //
-                //   fn visit_abc(&mut self, ABC { a, b, c: _ }: &mut ABC) {
-                //       visit_a(a);
-                //       visit_b(b);
-                //   }
-                //
-                // than to use field access like this:
-                //
-                //   fn visit_abc(&mut self, abc: &mut ABC) {
-                //       visit_a(&mut abc.a);
-                //       visit_b(&mut abc.b);
-                //       // ignore abc.c
-                //   }
-                //
-                // As well as being more concise, the former is explicit about which fields
-                // are skipped. Furthermore, if a new field is added, the destructuring
-                // version will cause a compile error, which is good. In comparison, the
-                // field access version will continue working and it would be easy to
-                // forget to add handling for it.
 
                 make_visit!{MetaItem; visit_meta_item, walk_meta_item}
                 make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
