@@ -34,20 +34,20 @@ Installing <path-to-rust-analyzer-binary>
 Installed package `rust-analyzer v0.0.0 (<path-to-rust-analyzer-binary>)` (executable `rust-analyzer.exe`)
 ```
 
-In Visual Studio Code Insiders, you will want to open your User Settings (JSON) from the Command Palette. From there you should ensure that the `rust-anaylzer.server.path` key is set to the `<path-to-rust-analyzer-binary>`. This will tell Visual Studio Code Insiders to use the locally installed version that you can debug.
+In Visual Studio Code Insiders, you will want to open your User Settings (JSON) from the Command Palette. From there you should ensure that the `rust-analyzer.server.path` key is set to the `<path-to-rust-analyzer-binary>`. This will tell Visual Studio Code Insiders to use the locally installed version that you can debug.
 
 The User Settings (JSON) file should contain the following:
 
 ```json
 {
-    "rust-analyzer.server.path": "<path-to-rust-anaylzer-binary>"
+    "rust-analyzer.server.path": "<path-to-rust-analyzer-binary>"
 }
 ```
 
 Now you should be able to make changes to rust-analyzer in Visual Studio Code and then view the changes in Visual Studio Code Insiders.
 
 ## Debugging rust-analyzer
-The simplist way to debug rust-analyzer is to use the `eprintln!` macro. The reason why we use `eprintln!` instead of `println!` is because the language server uses `stdout` to send messages. So instead we will debug using `stderr`.
+The simplest way to debug rust-analyzer is to use the `eprintln!` macro. The reason why we use `eprintln!` instead of `println!` is because the language server uses `stdout` to send messages. So instead we will debug using `stderr`.
 
 An example debugging statement could go into the `main_loop.rs` file which can be found at `crates/rust-analyzer/src/main_loop.rs`. Inside the `main_loop` we will add the following `eprintln!` to test debugging rust-analyzer:
 
