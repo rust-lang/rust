@@ -784,6 +784,7 @@ fn check_link_name_xor_ordinal(
     }
 }
 
+#[derive(Default)]
 struct MixedExportNameAndNoMangleState {
     export_name: Option<Span>,
     hir_id: Option<HirId>,
@@ -792,7 +793,7 @@ struct MixedExportNameAndNoMangleState {
 
 impl LinterStateMixedExportNameAndNoMangle {
     fn new() -> Self {
-        Self { export_name: None, hir_id: None, no_mangle: None }
+        Self::default()
     }
 
     fn track_export_name(&mut self, span: Span, hir_id: HirId) {
