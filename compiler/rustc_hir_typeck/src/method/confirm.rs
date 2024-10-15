@@ -538,7 +538,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 // to the feature, like the self type can't reference method args.
                 if self.tcx.features().arbitrary_self_types() {
                     self.err_ctxt()
-                        .report_mismatched_types(&cause, method_self_ty, self_ty, terr)
+                        .report_mismatched_types(
+                            &cause,
+                            self.param_env,
+                            method_self_ty,
+                            self_ty,
+                            terr,
+                        )
                         .emit();
                 } else {
                     // This has/will have errored in wfcheck, which we cannot depend on from here, as typeck on functions
