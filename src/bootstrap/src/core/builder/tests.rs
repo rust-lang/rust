@@ -637,7 +637,7 @@ mod dist {
         assert_eq!(first(builder.cache.all::<test::Crate>()), &[test::Crate {
             compiler: Compiler { host, stage: 0 },
             target: host,
-            mode: Mode::Std,
+            mode: crate::Mode::Std,
             crates: vec!["std".to_owned()],
         },]);
     }
