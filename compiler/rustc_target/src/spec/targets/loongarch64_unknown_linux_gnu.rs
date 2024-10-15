@@ -23,6 +23,7 @@ pub(crate) fn target() -> Target {
                 | SanitizerSet::LEAK
                 | SanitizerSet::MEMORY
                 | SanitizerSet::THREAD,
+            supports_xray: true,
             direct_access_external_data: Some(false),
             ..base::linux_gnu::opts()
         },
