@@ -710,7 +710,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     None,
                     TypeError::Sorts(ty::error::ExpectedFound::new(true, expected_ty, ct_ty)),
                     false,
-                    false,
                 );
                 diag
             }
@@ -1435,6 +1434,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 cx.into_buffer()
                             }
                         ))),
+                        true,
                     )),
                     _ => None,
                 }
@@ -1452,7 +1452,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ))
                 }),
                 err,
-                true,
                 false,
             );
             self.note_obligation_cause(&mut diag, obligation);
