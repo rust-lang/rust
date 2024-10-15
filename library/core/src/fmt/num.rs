@@ -167,7 +167,8 @@ integer! { i16, u16 }
 integer! { i32, u32 }
 integer! { i64, u64 }
 integer! { i128, u128 }
-macro_rules! debug {
+
+macro_rules! impl_Debug {
     ($($T:ident)*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
@@ -183,10 +184,6 @@ macro_rules! debug {
             }
         }
     )*};
-}
-debug! {
-  i8 i16 i32 i64 i128 isize
-  u8 u16 u32 u64 u128 usize
 }
 
 // 2 digit decimal look up table
@@ -508,6 +505,11 @@ macro_rules! impl_Exp {
                 }
             })*
     };
+}
+
+impl_Debug! {
+  i8 i16 i32 i64 i128 isize
+  u8 u16 u32 u64 u128 usize
 }
 
 // Include wasm32 in here since it doesn't reflect the native pointer size, and
