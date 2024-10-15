@@ -992,10 +992,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match op.val {
                     Pair(data_ptr, meta) => {
                         // In the case of Rc<Self>, we need to explicitly pass a
-                        // *mut RcBox<Self> with a Scalar (not ScalarPair) ABI. This is a hack
+                        // *mut RcInner<Self> with a Scalar (not ScalarPair) ABI. This is a hack
                         // that is understood elsewhere in the compiler as a method on
                         // `dyn Trait`.
-                        // To get a `*mut RcBox<Self>`, we just keep unwrapping newtypes until
+                        // To get a `*mut RcInner<Self>`, we just keep unwrapping newtypes until
                         // we get a value of a built-in pointer type.
                         //
                         // This is also relevant for `Pin<&mut Self>`, where we need to peel the

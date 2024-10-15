@@ -193,11 +193,11 @@
 //! use std::marker::PhantomData;
 //!
 //! struct Rc<T: ?Sized> {
-//!     ptr: NonNull<RcBox<T>>,
-//!     phantom: PhantomData<RcBox<T>>,
+//!     ptr: NonNull<RcInner<T>>,
+//!     phantom: PhantomData<RcInner<T>>,
 //! }
 //!
-//! struct RcBox<T: ?Sized> {
+//! struct RcInner<T: ?Sized> {
 //!     strong: Cell<usize>,
 //!     refcount: Cell<usize>,
 //!     value: T,
@@ -213,9 +213,9 @@
 //!     }
 //! }
 //!
-//! trait RcBoxPtr<T: ?Sized> {
+//! trait RcInnerPtr<T: ?Sized> {
 //!
-//!     fn inner(&self) -> &RcBox<T>;
+//!     fn inner(&self) -> &RcInner<T>;
 //!
 //!     fn strong(&self) -> usize {
 //!         self.inner().strong.get()
@@ -230,8 +230,8 @@
 //!     }
 //! }
 //!
-//! impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
-//!    fn inner(&self) -> &RcBox<T> {
+//! impl<T: ?Sized> RcInnerPtr<T> for Rc<T> {
+//!    fn inner(&self) -> &RcInner<T> {
 //!        unsafe {
 //!            self.ptr.as_ref()
 //!        }
