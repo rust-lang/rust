@@ -21,10 +21,12 @@ macro_rules! asm {
 use minicore::ptr;
 
 // CHECK-LABEL: pin_toggling
+// CHECK: ldi [[REG_1:r[0-9]+]], 1
+// CHECK: ldi [[REG_2:r[0-9]+]], 2
 // CHECK: .LBB0_1:
-// CHECK-NEXT: out 5, r17
+// CHECK-NEXT: out 5, [[REG_1]]
 // CHECK-NEXT: call delay
-// CHECK-NEXT: out 5, r16
+// CHECK-NEXT: out 5, [[REG_2]]
 // CHECK-NEXT: call delay
 // CHECK-NEXT: rjmp .LBB0_1
 #[no_mangle]
