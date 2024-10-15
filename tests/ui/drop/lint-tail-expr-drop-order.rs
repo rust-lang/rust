@@ -26,7 +26,7 @@ fn should_lint() -> i32 {
     let x = LoudDropper;
     // Should lint
     x.get() + LoudDropper.get()
-    //~^ ERROR: this value has significant drop implementation that will have a different drop order from that of Edition 2021
+    //~^ ERROR: the type of this value has a custom destructor that will observe a order of calls to destructors that is different from that of Edition 2021
     //~| WARN: this changes meaning in Rust 2024
 }
 
@@ -44,7 +44,7 @@ fn should_lint_in_nested_items() {
         let x = LoudDropper;
         // Should lint
         x.get() + LoudDropper.get()
-        //~^ ERROR: this value has significant drop implementation that will have a different drop order from that of Edition 2021
+        //~^ ERROR: the type of this value has a custom destructor that will observe a order of calls to destructors that is different from that of Edition 2021
         //~| WARN: this changes meaning in Rust 2024
     }
 }
@@ -64,7 +64,7 @@ fn should_not_lint() -> i32 {
 fn should_lint_in_nested_block() -> i32 {
     let x = LoudDropper;
     { LoudDropper.get() }
-    //~^ ERROR: this value has significant drop implementation that will have a different drop order from that of Edition 2021
+    //~^ ERROR: the type of this value has a custom destructor that will observe a order of calls to destructors that is different from that of Edition 2021
     //~| WARN: this changes meaning in Rust 2024
 }
 
@@ -110,7 +110,7 @@ fn should_lint_into_async_body() -> i32 {
 
     let future = f();
     LoudDropper.get()
-    //~^ ERROR: this value has significant drop implementation that will have a different drop order from that of Edition 2021
+    //~^ ERROR: the type of this value has a custom destructor that will observe a order of calls to destructors that is different from that of Edition 2021
     //~| WARN: this changes meaning in Rust 2024
 }
 
@@ -120,8 +120,20 @@ fn should_lint_generics<T: Default>() -> &'static str {
     }
     let x = T::default();
     extract(&T::default())
-    //~^ ERROR: this value has significant drop implementation that will have a different drop order from that of Edition 2021
+    //~^ ERROR: the type of this value has a custom destructor that will observe a order of calls to destructors that is different from that of Edition 2021
     //~| WARN: this changes meaning in Rust 2024
+}
+
+fn should_lint_adt() -> i32 {
+    let x: Result<LoudDropper, ()> = Ok(LoudDropper);
+    LoudDropper.get()
+    //~^ ERROR: the type of this value has a custom destructor that will observe a order of calls to destructors that is different from that of Edition 2021
+    //~| WARN: this changes meaning in Rust 2024
+}
+
+fn should_not_lint_insign_dtor() -> i32 {
+    let x = String::new();
+    LoudDropper.get()
 }
 
 fn main() {}

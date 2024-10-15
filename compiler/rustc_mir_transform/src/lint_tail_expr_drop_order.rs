@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitSet;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::{
@@ -116,7 +116,7 @@ fn extract_component_with_significant_dtor<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> (String, Vec<Span>) {
-    let ty_def_span = |ty: Ty<'_>| match ty.kind() {
+    let ty_dtor_span = |ty: Ty<'_>| match ty.kind() {
         ty::Bool
         | ty::Char
         | ty::Int(_)
@@ -137,14 +137,33 @@ fn extract_component_with_significant_dtor<'tcx>(
         | ty::Infer(_)
         | ty::Slice(_)
         | ty::Array(_, _) => None,
-        ty::Adt(adt_def, _) => Some(tcx.def_span(adt_def.did())),
-        ty::Coroutine(did, _)
-        | ty::CoroutineWitness(did, _)
-        | ty::CoroutineClosure(did, _)
-        | ty::Closure(did, _)
-        | ty::FnDef(did, _)
-        | ty::Foreign(did) => Some(tcx.def_span(did)),
-        // I honestly don't know how to extract the span reliably from a param arbitrarily nested
+        ty::Adt(adt_def, _) => {
+            let did = adt_def.did();
+            let try_local_did_span = |did: DefId| {
+                if let Some(local) = did.as_local() {
+                    tcx.source_span(local)
+                } else {
+                    tcx.def_span(did)
+                }
+            };
+            let dtor = if let Some(dtor) = tcx.adt_destructor(did) {
+                dtor.did
+            } else if let Some(dtor) = tcx.adt_async_destructor(did) {
+                dtor.future
+            } else {
+                return Some(try_local_did_span(did));
+            };
+            let def_key = tcx.def_key(dtor);
+            let Some(parent_index) = def_key.parent else { return Some(try_local_did_span(dtor)) };
+            let parent_did = DefId { index: parent_index, krate: dtor.krate };
+            Some(try_local_did_span(parent_did))
+        }
+        ty::Coroutine(_did, _)
+        | ty::CoroutineWitness(_did, _)
+        | ty::CoroutineClosure(_did, _)
+        | ty::Closure(_did, _)
+        | ty::FnDef(_did, _)
+        | ty::Foreign(_did) => None,
         ty::Param(_) => None,
     };
     let (mut tys, spans) = extract_component_raw(tcx, param_env, ty);
@@ -153,7 +172,7 @@ fn extract_component_with_significant_dtor<'tcx>(
     tys.retain(|ty| deduplicate.insert(*ty));
     let ty_names =
         tys.iter().copied().filter(|&oty| oty != ty).map(print_ty_without_trimming).join(", ");
-    let ty_spans = tys.iter().copied().filter(|&oty| oty != ty).flat_map(ty_def_span).collect();
+    let ty_spans = tys.iter().copied().filter(|&oty| oty != ty).flat_map(ty_dtor_span).collect();
     (ty_names, ty_spans)
 }
 
