@@ -1094,12 +1094,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion.
         // We also just always set `coerce_never` to true, since this is a heuristic.
-        let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
+        let coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         self.probe(|_| {
+            // Make sure to structurally resolve the types, since we use
+            // the `TyKind`s heavily in coercion.
+            let ocx = ObligationCtxt::new(self);
+            let structurally_resolve = |ty| {
+                let ty = self.shallow_resolve(ty);
+                if self.next_trait_solver()
+                    && let ty::Alias(..) = ty.kind()
+                {
+                    ocx.structurally_normalize(&cause, self.param_env, ty)
+                } else {
+                    Ok(ty)
+                }
+            };
+            let Ok(expr_ty) = structurally_resolve(expr_ty) else {
+                return false;
+            };
+            let Ok(target_ty) = structurally_resolve(target_ty) else {
+                return false;
+            };
+
             let Ok(ok) = coerce.coerce(expr_ty, target_ty) else {
                 return false;
             };
-            let ocx = ObligationCtxt::new(self);
             ocx.register_obligations(ok.obligations);
             ocx.select_where_possible().is_empty()
         })
