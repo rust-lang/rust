@@ -177,16 +177,8 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
             )
         };
 
-        // SAFETY: `convert_device_path_to_text` returns a pointer to a null-terminated UTF-16
-        // string, and that string cannot be deallocated prior to dropping the `WStrUnits`, so
-        // it's safe for `WStrUnits` to use.
-        let path_len = unsafe {
-            WStrUnits::new(path_ptr)
-                .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?
-                .count()
-        };
-
-        let path = OsString::from_wide(unsafe { slice::from_raw_parts(path_ptr.cast(), path_len) });
+        let path = os_string_from_raw(path_ptr)
+            .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
 
         if let Some(boot_services) = crate::os::uefi::env::boot_services() {
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
@@ -419,4 +411,16 @@ impl<T> Drop for OwnedTable<T> {
     fn drop(&mut self) {
         unsafe { crate::alloc::dealloc(self.ptr as *mut u8, self.layout) };
     }
+}
+
+/// Create OsString from a pointer to NULL terminated UTF-16 string
+pub(crate) fn os_string_from_raw(ptr: *mut r_efi::efi::Char16) -> Option<OsString> {
+    let path_len = unsafe { WStrUnits::new(ptr)?.count() };
+    Some(OsString::from_wide(unsafe { slice::from_raw_parts(ptr.cast(), path_len) }))
+}
+
+/// Create NULL terminated UTF-16 string
+pub(crate) fn os_string_to_raw(s: &OsStr) -> Option<Box<[r_efi::efi::Char16]>> {
+    let temp = s.encode_wide().chain(Some(0)).collect::<Box<[r_efi::efi::Char16]>>();
+    if temp[..temp.len() - 1].contains(&0) { None } else { Some(temp) }
 }
