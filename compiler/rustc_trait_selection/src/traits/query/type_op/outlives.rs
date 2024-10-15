@@ -1,7 +1,7 @@
 use rustc_middle::traits::query::{DropckOutlivesResult, NoSolution};
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 
-use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
+use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
 use crate::traits::ObligationCtxt;
 use crate::traits::query::dropck_outlives::{
     compute_dropck_outlives_inner, trivial_dropck_outlives,
@@ -20,7 +20,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
         tcx.dropck_outlives(canonicalized)
     }
