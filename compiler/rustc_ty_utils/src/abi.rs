@@ -822,10 +822,10 @@ fn make_thin_self_ptr<'tcx>(
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 
-        // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
+        // In the case of Rc<Self>, we need to explicitly pass a *mut RcInner<Self>
         // with a Scalar (not ScalarPair) ABI. This is a hack that is understood
         // elsewhere in the compiler as a method on a `dyn Trait`.
-        // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
+        // To get the type `*mut RcInner<Self>`, we just keep unwrapping newtypes until we
         // get a built-in pointer type
         let mut wide_pointer_layout = layout;
         while !wide_pointer_layout.ty.is_unsafe_ptr() && !wide_pointer_layout.ty.is_ref() {
@@ -838,7 +838,7 @@ fn make_thin_self_ptr<'tcx>(
         wide_pointer_layout.ty
     };
 
-    // we now have a type like `*mut RcBox<dyn Trait>`
+    // we now have a type like `*mut RcInner<dyn Trait>`
     // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
     // this is understood as a special case elsewhere in the compiler
     let unit_ptr_ty = Ty::new_mut_ptr(tcx, tcx.types.unit);

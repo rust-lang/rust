@@ -202,7 +202,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             notes,
                             parent_label,
                             append_const_msg,
-                        } = self.on_unimplemented_note(main_trait_ref, o, &mut long_ty_file);
+                        } = self.on_unimplemented_note(main_trait_predicate, o, &mut long_ty_file);
 
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try_conversion = self.is_try_conversion(span, main_trait_ref.def_id());

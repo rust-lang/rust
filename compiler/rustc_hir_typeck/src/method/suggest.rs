@@ -960,7 +960,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         continue;
                     }
                     unimplemented_traits.entry(p.trait_ref.def_id).or_insert((
-                        predicate.kind().rebind(p.trait_ref),
+                        predicate.kind().rebind(p),
                         Obligation {
                             cause: cause.clone(),
                             param_env: self.param_env,

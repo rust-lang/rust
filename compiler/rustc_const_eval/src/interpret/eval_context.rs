@@ -599,6 +599,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         Frame::generate_stacktrace_from_stack(self.stack())
     }
+
+    pub fn adjust_nan<F1, F2>(&self, f: F2, inputs: &[F1]) -> F2
+    where
+        F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>,
+        F2: rustc_apfloat::Float,
+    {
+        if f.is_nan() { M::generate_nan(self, inputs) } else { f }
+    }
 }
 
 #[doc(hidden)]
