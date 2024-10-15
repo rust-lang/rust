@@ -1,16 +1,11 @@
 //! This test case is a `#![no_core]`-version of the MVCE presented in #129301.
 //!
-//! The function [`delay()`] is minimized and does not actually contain a loop
-//! in order to remove the need for additional lang items.
-#![feature(no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
+//! The function [`delay()`] is removed, as it is not necessary to trigger the
+//! wrong behavior and would require some additional lang items.
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![no_main]
 #![allow(internal_features)]
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
 
 use minicore::ptr;
 
@@ -23,16 +18,8 @@ pub fn main() -> ! {
     // sions did place it after the first loop instruction, causing unsoundness)
     loop {
         unsafe { ptr::write_volatile(port_b, 1) };
-        delay(500_0000);
         unsafe { ptr::write_volatile(port_b, 2) };
-        delay(500_0000);
     }
-}
-
-#[inline(never)]
-#[no_mangle]
-fn delay(_: u32) {
-    unsafe { asm!("nop") };
 }
 
 // FIXME: replace with proper minicore once available (#130693)

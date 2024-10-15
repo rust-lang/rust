@@ -20,9 +20,32 @@ fn main() {
         .output("compiled")
         .run();
 
-    llvm_objdump()
-        .disassemble()
-        .input("compiled")
-        .run()
-        .assert_stdout_contains_regex(r"rjmp.*\.-14");
+    let disassembly = llvm_objdump().disassemble().input("compiled").run().stdout_utf8();
+
+    // search for the following instruction sequence:
+    // ```disassembly
+    // 00000080 <main>:
+    // 80: 81 e0         ldi     r24, 0x1
+    // 82: 92 e0         ldi     r25, 0x2
+    // 84: 85 b9         out     0x5, r24
+    // 86: 95 b9         out     0x5, r25
+    // 88: fd cf         rjmp    .-6
+    // ```
+    // This matches on all instructions, since the size of the instructions be-
+    // fore the relative jump has an impact on the label offset. Old versions
+    // of the Rust compiler did produce a label `rjmp .-4` (misses the first
+    // instruction in the loop).
+    disassembly
+        .trim()
+        .lines()
+        .skip_while(|&line| !line.contains("<main>"))
+        .inspect(|line| println!("{line}"))
+        .skip(1)
+        .zip(["ldi\t", "ldi\t", "out\t", "out\t", "rjmp\t.-6"])
+        .for_each(|(line, expected_instruction)| {
+            assert!(
+                line.contains(expected_instruction),
+                "expected instruction `{expected_instruction}`, got `{line}`"
+            );
+        });
 }
