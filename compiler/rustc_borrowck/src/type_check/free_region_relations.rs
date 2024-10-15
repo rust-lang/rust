@@ -373,7 +373,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     ) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
         let TypeOpOutput { output: bounds, constraints, .. } = self
             .param_env
-            .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
+            .and(type_op::ImpliedOutlivesBounds { ty })
             .fully_perform(self.infcx, span)
             .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
             .ok()?;

@@ -70,6 +70,11 @@ pub mod type_op {
             Self { value }
         }
     }
+
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
+    pub struct ImpliedOutlivesBounds<'tcx> {
+        pub ty: Ty<'tcx>,
+    }
 }
 
 pub type CanonicalAliasGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
@@ -91,6 +96,9 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
+
+pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::ImpliedOutlivesBounds<'tcx>>>;
 
 #[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {
