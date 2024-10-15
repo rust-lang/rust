@@ -7,7 +7,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 /// Ensures that Constant-time Function Evaluation is being done (specifically, MIR lint passes).
-/// See rust-lang/rust#125116 for more info.
+/// As Clippy deactivates codegen, this lint ensures that CTFE (used in hard errors) is still ran.
 #[clippy::version = "1.82.0"]
 pub static CLIPPY_CTFE: &Lint = &Lint {
     name: &"clippy::CLIPPY_CTFE",
