@@ -845,8 +845,9 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the operation, without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn recip(self) -> f64 {
+    pub const fn recip(self) -> f64 {
         1.0 / self
     }
 
@@ -862,8 +863,9 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn to_degrees(self) -> f64 {
+    pub const fn to_degrees(self) -> f64 {
         // The division here is correctly rounded with respect to the true
         // value of 180/π. (This differs from f32, where a constant must be
         // used to ensure a correctly rounded result.)
@@ -882,8 +884,9 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn to_radians(self) -> f64 {
+    pub const fn to_radians(self) -> f64 {
         const RADS_PER_DEG: f64 = consts::PI / 180.0;
         self * RADS_PER_DEG
     }
@@ -903,8 +906,9 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn max(self, other: f64) -> f64 {
+    pub const fn max(self, other: f64) -> f64 {
         intrinsics::maxnumf64(self, other)
     }
 
@@ -923,8 +927,9 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn min(self, other: f64) -> f64 {
+    pub const fn min(self, other: f64) -> f64 {
         intrinsics::minnumf64(self, other)
     }
 
@@ -951,7 +956,7 @@ impl f64 {
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
-    pub fn maximum(self, other: f64) -> f64 {
+    pub const fn maximum(self, other: f64) -> f64 {
         if self > other {
             self
         } else if other > self {
@@ -986,7 +991,7 @@ impl f64 {
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
-    pub fn minimum(self, other: f64) -> f64 {
+    pub const fn minimum(self, other: f64) -> f64 {
         if self < other {
             self
         } else if other < self {
@@ -1401,9 +1406,19 @@ impl f64 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[inline]
-    pub fn clamp(mut self, min: f64, max: f64) -> f64 {
-        assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
+    pub const fn clamp(mut self, min: f64, max: f64) -> f64 {
+        const fn assert_at_const(min: f64, max: f64) {
+            // Note that we cannot format in constant expressions.
+            assert!(min <= max, "min > max, or either was NaN");
+        }
+        #[inline] // inline to avoid codegen regression
+        fn assert_at_rt(min: f64, max: f64) {
+            assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
+        }
+        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
+        intrinsics::const_eval_select((min, max), assert_at_const, assert_at_rt);
         if self < min {
             self = min;
         }
