@@ -23,7 +23,7 @@ use std::{cmp, fmt, mem};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
-pub use rustc_ast_ir::{Movability, Mutability};
+pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -2161,6 +2161,10 @@ pub enum TyKind {
     Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`).
     Ref(Option<Lifetime>, MutTy),
+    /// A pinned reference (`&'a pin const T` or `&'a pin mut T`).
+    ///
+    /// Desugars into `Pin<&'a T>` or `Pin<&'a mut T>`.
+    PinnedRef(Option<Lifetime>, MutTy),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(P<BareFnTy>),
     /// The never type (`!`).
@@ -2501,7 +2505,10 @@ impl Param {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Ref(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
+                    TyKind::Ref(lt, MutTy { ref ty, mutbl })
+                    | TyKind::PinnedRef(lt, MutTy { ref ty, mutbl })
+                        if ty.kind.is_implicit_self() =>
+                    {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
                     _ => Some(respan(
