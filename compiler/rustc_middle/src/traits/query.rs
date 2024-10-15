@@ -11,7 +11,7 @@ use rustc_span::Span;
 pub use rustc_type_ir::solve::NoSolution;
 
 use crate::error::DropCheckOverflow;
-use crate::infer::canonical::{Canonical, QueryResponse};
+use crate::infer::canonical::{Canonical, CanonicalQueryInput, QueryResponse};
 use crate::ty::{self, GenericArg, Ty, TyCtxt};
 
 pub mod type_op {
@@ -58,31 +58,34 @@ pub mod type_op {
     }
 }
 
-pub type CanonicalAliasGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
+pub type CanonicalAliasGoal<'tcx> =
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
 
-pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
+pub type CanonicalTyGoal<'tcx> = CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
 
-pub type CanonicalPredicateGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
+pub type CanonicalPredicateGoal<'tcx> =
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
 
 pub type CanonicalTypeOpAscribeUserTypeGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>;
 
-pub type CanonicalTypeOpEqGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Eq<'tcx>>>;
+pub type CanonicalTypeOpEqGoal<'tcx> =
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Eq<'tcx>>>;
 
 pub type CanonicalTypeOpSubtypeGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Subtype<'tcx>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Subtype<'tcx>>>;
 
 pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::ProvePredicate<'tcx>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ProvePredicate<'tcx>>>;
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
 
 pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::ImpliedOutlivesBounds<'tcx>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ImpliedOutlivesBounds<'tcx>>>;
 
 pub type CanonicalDropckOutlivesGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::DropckOutlives<'tcx>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::DropckOutlives<'tcx>>>;
 
 #[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {

@@ -1,4 +1,4 @@
-use rustc_infer::infer::canonical::Canonical;
+use rustc_infer::infer::canonical::CanonicalQueryInput;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
@@ -33,7 +33,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
         if tcx.sess.opts.unstable_opts.no_implied_bounds_compat {
             tcx.implied_outlives_bounds(canonicalized)

@@ -2011,7 +2011,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{}`", goal.value.value }
+        desc { "normalizing `{}`", goal.canonical.value.value }
     }
 
     /// <div class="warning">
@@ -2025,7 +2025,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{}`", goal.value.value }
+        desc { "normalizing `{}`", goal.canonical.value.value }
     }
 
     /// <div class="warning">
@@ -2039,7 +2039,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{}`", goal.value.value }
+        desc { "normalizing `{}`", goal.canonical.value.value }
     }
 
     /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
@@ -2055,7 +2055,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
-        desc { "computing implied outlives bounds for `{}`", goal.value.value.ty }
+        desc { "computing implied outlives bounds for `{}`", goal.canonical.value.value.ty }
     }
 
     query implied_outlives_bounds(
@@ -2064,7 +2064,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
-        desc { "computing implied outlives bounds v2 for `{}`", goal.value.value.ty }
+        desc { "computing implied outlives bounds v2 for `{}`", goal.canonical.value.value.ty }
     }
 
     /// Do not call this query directly:
@@ -2075,7 +2075,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>,
         NoSolution,
     > {
-        desc { "computing dropck types for `{}`", goal.value.value.dropped_ty }
+        desc { "computing dropck types for `{}`", goal.canonical.value.value.dropped_ty }
     }
 
     /// Do not call this query directly: invoke `infcx.predicate_may_hold()` or
@@ -2083,7 +2083,7 @@ rustc_queries! {
     query evaluate_obligation(
         goal: CanonicalPredicateGoal<'tcx>
     ) -> Result<EvaluationResult, OverflowError> {
-        desc { "evaluating trait selection obligation `{}`", goal.value.value }
+        desc { "evaluating trait selection obligation `{}`", goal.canonical.value.value }
     }
 
     /// Do not call this query directly: part of the `Eq` type-op
@@ -2093,7 +2093,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
         NoSolution,
     > {
-        desc { "evaluating `type_op_ascribe_user_type` `{:?}`", goal.value.value }
+        desc { "evaluating `type_op_ascribe_user_type` `{:?}`", goal.canonical.value.value }
     }
 
     /// Do not call this query directly: part of the `ProvePredicate` type-op
@@ -2103,7 +2103,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
         NoSolution,
     > {
-        desc { "evaluating `type_op_prove_predicate` `{:?}`", goal.value.value }
+        desc { "evaluating `type_op_prove_predicate` `{:?}`", goal.canonical.value.value }
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -2113,7 +2113,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Ty<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{}`", goal.value.value.value }
+        desc { "normalizing `{}`", goal.canonical.value.value.value }
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -2123,7 +2123,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Clause<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{:?}`", goal.value.value.value }
+        desc { "normalizing `{:?}`", goal.canonical.value.value.value }
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -2133,7 +2133,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::PolyFnSig<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{:?}`", goal.value.value.value }
+        desc { "normalizing `{:?}`", goal.canonical.value.value.value }
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -2143,7 +2143,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::FnSig<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{:?}`", goal.value.value.value }
+        desc { "normalizing `{:?}`", goal.canonical.value.value.value }
     }
 
     query instantiate_and_check_impossible_predicates(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
@@ -2164,7 +2164,7 @@ rustc_queries! {
     query method_autoderef_steps(
         goal: CanonicalTyGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
-        desc { "computing autoderef types for `{}`", goal.value.value }
+        desc { "computing autoderef types for `{}`", goal.canonical.value.value }
     }
 
     query supported_target_features(_: CrateNum) -> &'tcx UnordMap<String, Option<Symbol>> {
