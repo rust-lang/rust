@@ -65,8 +65,8 @@ use crate::query::plumbing::{
     CyclePlaceholder, DynamicQuery, query_ensure, query_ensure_error_guaranteed, query_get_at,
 };
 use crate::traits::query::{
-    CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalAliasGoal, CanonicalImpliedOutlivesBoundsGoal, CanonicalPredicateGoal,
+    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, DropckConstraint, DropckOutlivesResult,
     MethodAutoderefStepsResult, NoSolution, NormalizationResult, OutlivesBound,
 };
@@ -2049,21 +2049,21 @@ rustc_queries! {
     }
 
     query implied_outlives_bounds_compat(
-        goal: CanonicalTyGoal<'tcx>
+        goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
-        desc { "computing implied outlives bounds for `{}`", goal.value.value }
+        desc { "computing implied outlives bounds for `{}`", goal.value.value.ty }
     }
 
     query implied_outlives_bounds(
-        goal: CanonicalTyGoal<'tcx>
+        goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
-        desc { "computing implied outlives bounds v2 for `{}`", goal.value.value }
+        desc { "computing implied outlives bounds v2 for `{}`", goal.value.value.ty }
     }
 
     /// Do not call this query directly:
