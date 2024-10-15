@@ -610,16 +610,14 @@ impl Rewrite for ast::GenericBound {
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match *self {
-            ast::GenericBound::Trait(
-                ref poly_trait_ref,
-                ast::TraitBoundModifiers {
+            ast::GenericBound::Trait(ref poly_trait_ref) => {
+                let snippet = context.snippet(self.span());
+                let has_paren = snippet.starts_with('(') && snippet.ends_with(')');
+                let ast::TraitBoundModifiers {
                     constness,
                     asyncness,
                     polarity,
-                },
-            ) => {
-                let snippet = context.snippet(self.span());
-                let has_paren = snippet.starts_with('(') && snippet.ends_with(')');
+                } = poly_trait_ref.modifiers;
                 let mut constness = constness.as_str().to_string();
                 if !constness.is_empty() {
                     constness.push(' ');
