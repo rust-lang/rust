@@ -499,8 +499,11 @@ impl<'a> CrateLocator<'a> {
         dylibs: FxIndexMap<PathBuf, PathKind>,
     ) -> Result<Option<(Svh, Library)>, CrateError> {
         let mut slot = None;
-        // Order here matters, rmeta should come first. See comment in
-        // `extract_one` below.
+        // Order here matters, rmeta should come first.
+        //
+        // Make sure there's at most one rlib and at most one dylib.
+        //
+        // See comment in `extract_one` below.
         let source = CrateSource {
             rmeta: self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot)?,
             rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)?,
@@ -729,7 +732,6 @@ impl<'a> CrateLocator<'a> {
                 || file.starts_with(self.target.dll_prefix.as_ref())
                     && file.ends_with(self.target.dll_suffix.as_ref())
             {
-                // Make sure there's at most one rlib and at most one dylib.
                 // Note to take care and match against the non-canonicalized name:
                 // some systems save build artifacts into content-addressed stores
                 // that do not preserve extensions, and then link to them using
