@@ -16,7 +16,7 @@ Current stable, released 2024-10-17
 
 ### New Lints
 
-* Added [`too_long_first_doc_paragraph`] to `style`
+* Added [`too_long_first_doc_paragraph`] to `nursery`
   [#12993](https://github.com/rust-lang/rust-clippy/pull/12993)
 * Added [`unused_result_ok`] to `restriction`
   [#12150](https://github.com/rust-lang/rust-clippy/pull/12150)
