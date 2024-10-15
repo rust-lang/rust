@@ -446,6 +446,7 @@
 // There are many unsafe functions taking pointers that don't dereference them.
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
+use crate::arch::asm;
 use crate::cmp::Ordering;
 use crate::marker::FnPtr;
 use crate::mem::{self, MaybeUninit};
@@ -2440,4 +2441,34 @@ pub macro addr_of($place:expr) {
 #[rustc_macro_transparency = "semitransparent"]
 pub macro addr_of_mut($place:expr) {
     &raw mut $place
+}
+
+/// Simulate a realloc to a new address
+///
+/// Intended for use with pointer tagging architecture features such as AArch64 TBI.
+/// This function creates a new pointer with the address `new_address` and a brand new provenance,
+/// simulating a realloc from the original address to the new address.
+/// Note that this is only a simulated realloc - nothing actually gets moved or reallocated.
+///
+/// SAFETY: Users *must* ensure that `new_address` actually contains the same memory as the original.
+/// The primary use-case is working with various architecture pointer tagging schemes, where two
+/// different 64-bit addresses can point to the same chunk of memory due to some bits being ignored.
+/// When used incorrectly, this function can be used to violate the memory model in arbitrary ways.
+/// Furthermore, after using this function, users must ensure that the underlying memory is only ever
+/// accessed through the newly created pointer. Any accesses through the original pointer
+/// (or any pointers derived from it) would be Undefined Behaviour.
+#[inline(never)]
+#[unstable(feature = "ptr_simulate_realloc", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_simulate_allocator)]
+#[allow(fuzzy_provenance_casts)]
+pub unsafe fn simulate_realloc<T>(original: *mut T, new_address: usize) -> *mut T {
+    // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+    let mut ptr = new_address as *mut T;
+    // SAFETY: This does not do anything
+    unsafe {
+        asm!("/* simulate realloc from {original} to {ptr} */",
+         original = in(reg) original, ptr = inout(reg) ptr);
+    }
+    // FIXME: call Miri hooks to update the address of the original allocation
+    ptr
 }

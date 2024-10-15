@@ -691,6 +691,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_allocator_zeroed, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, IMPL_DETAIL
     ),
+    rustc_attr!(
+        rustc_simulate_allocator, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::No, IMPL_DETAIL
+    ),
     gated!(
         default_lib_allocator, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, allocator_internals, experimental!(default_lib_allocator),
