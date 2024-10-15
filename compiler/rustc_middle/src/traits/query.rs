@@ -51,6 +51,11 @@ pub mod type_op {
     pub struct ImpliedOutlivesBounds<'tcx> {
         pub ty: Ty<'tcx>,
     }
+
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
+    pub struct DropckOutlives<'tcx> {
+        pub dropped_ty: Ty<'tcx>,
+    }
 }
 
 pub type CanonicalAliasGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
@@ -75,6 +80,9 @@ pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
 
 pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::ImpliedOutlivesBounds<'tcx>>>;
+
+pub type CanonicalDropckOutlivesGoal<'tcx> =
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::DropckOutlives<'tcx>>>;
 
 #[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {
