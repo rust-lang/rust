@@ -15,23 +15,14 @@ use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::{self, GenericArg, Ty, TyCtxt};
 
 pub mod type_op {
-    use std::fmt;
-
     use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 
-    use crate::ty::fold::TypeFoldable;
-    use crate::ty::{Predicate, Ty, TyCtxt, UserType};
+    use crate::ty::{Predicate, Ty, UserType};
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {
         pub mir_ty: Ty<'tcx>,
         pub user_ty: UserType<'tcx>,
-    }
-
-    impl<'tcx> AscribeUserType<'tcx> {
-        pub fn new(mir_ty: Ty<'tcx>, user_ty: UserType<'tcx>) -> Self {
-            Self { mir_ty, user_ty }
-        }
     }
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
@@ -51,24 +42,9 @@ pub mod type_op {
         pub predicate: Predicate<'tcx>,
     }
 
-    impl<'tcx> ProvePredicate<'tcx> {
-        pub fn new(predicate: Predicate<'tcx>) -> Self {
-            ProvePredicate { predicate }
-        }
-    }
-
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
     pub struct Normalize<T> {
         pub value: T,
-    }
-
-    impl<'tcx, T> Normalize<T>
-    where
-        T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
-    {
-        pub fn new(value: T) -> Self {
-            Self { value }
-        }
     }
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
