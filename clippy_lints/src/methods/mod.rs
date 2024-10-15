@@ -4046,7 +4046,7 @@ declare_clippy_lint! {
     /// Checks the usage of `.get().is_some()` or `.get().is_none()` on std map types.
     ///
     /// ### Why is this bad?
-    /// It can be done in one call with `.contains()`/`.contains_keys()`.
+    /// It can be done in one call with `.contains()`/`.contains_key()`.
     ///
     /// ### Example
     /// ```no_run
