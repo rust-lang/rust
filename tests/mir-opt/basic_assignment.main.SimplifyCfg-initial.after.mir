@@ -1,8 +1,8 @@
 // MIR for `main` after SimplifyCfg-initial
 
 | User Type Annotations
-| 0: user_ty: Canonical { value: Ty(std::option::Option<std::boxed::Box<u32>>), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/basic_assignment.rs:38:17: 38:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
-| 1: user_ty: Canonical { value: Ty(std::option::Option<std::boxed::Box<u32>>), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/basic_assignment.rs:38:17: 38:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
+| 0: user_ty: Canonical { value: Ty(std::option::Option<std::boxed::Box<u32>>), max_universe: U0, variables: [] }, span: $DIR/basic_assignment.rs:38:17: 38:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
+| 1: user_ty: Canonical { value: Ty(std::option::Option<std::boxed::Box<u32>>), max_universe: U0, variables: [] }, span: $DIR/basic_assignment.rs:38:17: 38:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
 |
 fn main() -> () {
     let mut _0: ();
