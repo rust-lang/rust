@@ -77,7 +77,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut inline_span = None;
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
-    let mut mixed_export_name_no_mangle_linter = LinterStateMixedExportNameAndNoMangle::new();
+    let mut mixed_export_name_no_mangle_lint_state = MixedExportNameAndNoMangleState::default();
 
     for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
@@ -117,7 +117,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::no_mangle => {
                 if tcx.opt_item_name(did.to_def_id()).is_some() {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-                    mixed_export_name_no_mangle_linter.track_no_mangle(attr.span);
+                    mixed_export_name_no_mangle_lint_state.track_no_mangle(attr.span);
                 } else {
                     tcx.dcx()
                         .struct_span_err(
@@ -241,7 +241,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .emit();
                     }
                     codegen_fn_attrs.export_name = Some(s);
-                    mixed_export_name_no_mangle_linter
+                    mixed_export_name_no_mangle_lint_state
                         .track_export_name(attr.span, tcx.local_def_id_to_hir_id(did));
                 }
             }
@@ -516,7 +516,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    mixed_export_name_no_mangle_linter.emit_diagnostics_in_case(tcx);
+    mixed_export_name_no_mangle_lint_state.lint_if_mixed(tcx);
 
     codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
         if !attr.has_name(sym::inline) {
@@ -791,11 +791,7 @@ struct MixedExportNameAndNoMangleState {
     no_mangle: Option<Span>,
 }
 
-impl LinterStateMixedExportNameAndNoMangle {
-    fn new() -> Self {
-        Self::default()
-    }
-
+impl MixedExportNameAndNoMangleState {
     fn track_export_name(&mut self, span: Span, hir_id: HirId) {
         self.export_name = Some(span);
         self.hir_id = Some(hir_id);
@@ -817,7 +813,7 @@ impl LinterStateMixedExportNameAndNoMangle {
                 lint::builtin::MIXED_EXPORT_NAME_AND_NO_MANGLE,
                 hir_id,
                 export_name,
-                errors::BuiltinMixedExportNameAndNoMangle {
+                errors::MixedExportNameAndNoMangle {
                     export_name,
                     no_mangle: no_mangle.clone(),
                     removal_span: no_mangle,
