@@ -968,14 +968,3 @@ macro_rules! declare_lint_pass {
         $crate::impl_lint_pass!($name => [$($lint),*]);
     };
 }
-
-#[allow(rustc::lint_pass_impl_without_macro)]
-impl<P: LintPass + ?Sized> LintPass for Box<P> {
-    fn name(&self) -> &'static str {
-        (**self).name()
-    }
-
-    fn get_lints(&self) -> LintVec {
-        (**self).get_lints()
-    }
-}

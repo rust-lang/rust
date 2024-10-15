@@ -432,7 +432,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     let mut filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
         .into_iter()
         .filter(|pass| {
-            let lints = LintPass::get_lints(pass);
+            let lints = (**pass).get_lints();
             !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
         })
         .collect();
