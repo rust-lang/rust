@@ -3859,7 +3859,7 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// warning: use of calling convention not supported on this target on function pointer
+    /// warning: the calling convention `"stdcall"` is not supported on this target
     ///   --> $DIR/unsupported.rs:34:15
     ///    |
     /// LL | fn stdcall_ptr(f: extern "stdcall" fn()) {

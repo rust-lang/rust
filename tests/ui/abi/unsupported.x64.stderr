@@ -1,4 +1,4 @@
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "ptx-kernel" is not supported on this target
   --> $DIR/unsupported.rs:35:15
    |
 LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
@@ -14,7 +14,7 @@ error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
 LL | extern "ptx-kernel" {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "aapcs" is not supported on this target
   --> $DIR/unsupported.rs:49:17
    |
 LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
@@ -29,7 +29,7 @@ error[E0570]: `"aapcs"` is not a supported ABI for the current target
 LL | extern "aapcs" {}
    | ^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "msp430-interrupt" is not supported on this target
   --> $DIR/unsupported.rs:71:18
    |
 LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
@@ -44,7 +44,7 @@ error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
 LL | extern "msp430-interrupt" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "avr-interrupt" is not supported on this target
   --> $DIR/unsupported.rs:81:15
    |
 LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
@@ -59,7 +59,7 @@ error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
 LL | extern "avr-interrupt" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "riscv-interrupt-m" is not supported on this target
   --> $DIR/unsupported.rs:94:17
    |
 LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
@@ -74,7 +74,7 @@ error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current targe
 LL | extern "riscv-interrupt-m" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "thiscall" is not supported on this target
   --> $DIR/unsupported.rs:139:20
    |
 LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
@@ -89,7 +89,7 @@ error[E0570]: `"thiscall"` is not a supported ABI for the current target
 LL | extern "thiscall" {}
    | ^^^^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "stdcall" is not supported on this target
   --> $DIR/unsupported.rs:170:19
    |
 LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
@@ -108,7 +108,7 @@ LL | extern "stdcall" {}
    = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
   --> $DIR/unsupported.rs:195:21
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
@@ -117,7 +117,7 @@ LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
-warning: use of calling convention not supported on this target on function pointer
+warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
   --> $DIR/unsupported.rs:203:22
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
