@@ -49,6 +49,10 @@ passes_attr_crate_level =
 passes_attr_only_in_functions =
     `{$attr}` attribute can only be used on functions
 
+passes_autodiff_attr =
+    `#[autodiff]` should be applied to a function
+    .label = not a function
+
 passes_both_ffi_const_and_pure =
     `#[ffi_const]` function cannot be `#[ffi_pure]`
 

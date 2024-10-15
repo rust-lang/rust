@@ -69,6 +69,15 @@ builtin_macros_assert_requires_boolean = macro requires a boolean expression as 
 builtin_macros_assert_requires_expression = macro requires an expression as an argument
     .suggestion = try removing semicolon
 
+builtin_macros_autodiff = autodiff must be applied to function
+builtin_macros_autodiff_missing_config = autodiff requires at least a name and mode
+builtin_macros_autodiff_mode = unknown Mode: `{$mode}`. Use `Forward` or `Reverse`
+builtin_macros_autodiff_mode_activity = {$act} can not be used in {$mode} Mode
+builtin_macros_autodiff_not_build = this rustc version does not support autodiff
+builtin_macros_autodiff_number_activities = expected {$expected} activities, but found {$found}
+builtin_macros_autodiff_ty_activity = {$act} can not be used for this type
+
+builtin_macros_autodiff_unknown_activity = did not recognize Activity: `{$act}`
 builtin_macros_bad_derive_target = `derive` may only be applied to `struct`s, `enum`s and `union`s
     .label = not applicable here
     .label2 = not a `struct`, `enum` or `union`
