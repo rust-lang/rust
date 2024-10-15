@@ -1,17 +1,11 @@
-//@ compile-flags: -Copt-level=s --target=avr-unknown-gnu-atmega328 -C panic=abort
-//@ needs-llvm-components: avr
-//@ assembly-output: emit-asm
-
-#![feature(
-    no_core,
-    lang_items,
-    intrinsics,
-    rustc_attrs,
-    arbitrary_self_types,
-    asm_experimental_arch
-)]
-#![crate_type = "rlib"]
+//! This test case is a `#![no_core]`-version of the MVCE presented in #129301.
+//!
+//! The function [`delay()`] is minimized and does not actually contain a loop
+//! in order to remove the need for additional lang items.
+#![feature(no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
 #![no_core]
+#![no_main]
+#![allow(internal_features)]
 
 #[rustc_builtin_macro]
 macro_rules! asm {
@@ -20,18 +14,13 @@ macro_rules! asm {
 
 use minicore::ptr;
 
-// CHECK-LABEL: pin_toggling
-// CHECK: ldi [[REG_1:r[0-9]+]], 1
-// CHECK: ldi [[REG_2:r[0-9]+]], 2
-// CHECK: .LBB0_1:
-// CHECK-NEXT: out 5, [[REG_1]]
-// CHECK-NEXT: call delay
-// CHECK-NEXT: out 5, [[REG_2]]
-// CHECK-NEXT: call delay
-// CHECK-NEXT: rjmp .LBB0_1
 #[no_mangle]
-pub fn pin_toggling() {
+pub fn main() -> ! {
     let port_b = 0x25 as *mut u8; // the I/O-address of PORTB
+
+    // a simple loop with some trivial instructions within. This loop label has
+    // to be placed correctly before the `ptr::write_volatile()` (some LLVM ver-
+    // sions did place it after the first loop instruction, causing unsoundness)
     loop {
         unsafe { ptr::write_volatile(port_b, 1) };
         delay(500_0000);
