@@ -18,6 +18,7 @@ pub(crate) fn target() -> Target {
             os: "vexos".into(),
             is_like_vexos: true,
             vendor: "vex".into(),
+            env: "v5".into(),
             cpu: "cortex-a9".into(),
             abi: "eabihf".into(),
             features: "+v7,+neon,+vfp3,+thumb2".into(),
