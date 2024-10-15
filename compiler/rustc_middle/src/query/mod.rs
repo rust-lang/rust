@@ -65,10 +65,11 @@ use crate::query::plumbing::{
     CyclePlaceholder, DynamicQuery, query_ensure, query_ensure_error_guaranteed, query_get_at,
 };
 use crate::traits::query::{
-    CanonicalAliasGoal, CanonicalImpliedOutlivesBoundsGoal, CanonicalPredicateGoal,
-    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, DropckConstraint, DropckOutlivesResult,
-    MethodAutoderefStepsResult, NoSolution, NormalizationResult, OutlivesBound,
+    CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
+    CanonicalPredicateGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
+    CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal, DropckConstraint,
+    DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
+    OutlivesBound,
 };
 use crate::traits::{
     CodegenObligationError, DynCompatibilityViolation, EvaluationResult, ImplSource,
@@ -2069,12 +2070,12 @@ rustc_queries! {
     /// Do not call this query directly:
     /// invoke `DropckOutlives::new(dropped_ty)).fully_perform(typeck.infcx)` instead.
     query dropck_outlives(
-        goal: CanonicalTyGoal<'tcx>
+        goal: CanonicalDropckOutlivesGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>,
         NoSolution,
     > {
-        desc { "computing dropck types for `{}`", goal.value.value }
+        desc { "computing dropck types for `{}`", goal.value.value.dropped_ty }
     }
 
     /// Do not call this query directly: invoke `infcx.predicate_may_hold()` or

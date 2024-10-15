@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_infer::traits::query::type_op::DropckOutlives;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
 use rustc_span::{DUMMY_SP, Span};
@@ -88,10 +89,10 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 
 pub fn compute_dropck_outlives_inner<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
-    goal: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
 ) -> Result<DropckOutlivesResult<'tcx>, NoSolution> {
     let tcx = ocx.infcx.tcx;
-    let ParamEnvAnd { param_env, value: for_ty } = goal;
+    let ParamEnvAnd { param_env, value: DropckOutlives { dropped_ty } } = goal;
 
     let mut result = DropckOutlivesResult { kinds: vec![], overflows: vec![] };
 
@@ -99,7 +100,7 @@ pub fn compute_dropck_outlives_inner<'tcx>(
     // something from the stack and invoke
     // `dtorck_constraint_for_ty_inner`. This may produce new types that
     // have to be pushed on the stack. This continues until we have explored
-    // all the reachable types from the type `for_ty`.
+    // all the reachable types from the type `dropped_ty`.
     //
     // Example: Imagine that we have the following code:
     //
@@ -129,7 +130,7 @@ pub fn compute_dropck_outlives_inner<'tcx>(
     // lead to us trying to push `A` a second time -- to prevent
     // infinite recursion, we notice that `A` was already pushed
     // once and stop.
-    let mut ty_stack = vec![(for_ty, 0)];
+    let mut ty_stack = vec![(dropped_ty, 0)];
 
     // Set used to detect infinite recursion.
     let mut ty_set = FxHashSet::default();
