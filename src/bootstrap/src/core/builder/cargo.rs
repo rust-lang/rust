@@ -98,7 +98,8 @@ pub struct Cargo {
 }
 
 impl Cargo {
-    /// Calls `Builder::cargo` and `Cargo::configure_linker` to prepare an invocation of `cargo` to be run.
+    /// Calls [`Builder::cargo`] and [`Cargo::configure_linker`] to prepare an invocation of `cargo`
+    /// to be run.
     pub fn new(
         builder: &Builder<'_>,
         compiler: Compiler,
@@ -125,7 +126,8 @@ impl Cargo {
         self.into()
     }
 
-    /// Same as `Cargo::new` except this one doesn't configure the linker with `Cargo::configure_linker`
+    /// Same as [`Cargo::new`] except this one doesn't configure the linker with
+    /// [`Cargo::configure_linker`].
     pub fn new_for_mir_opt_tests(
         builder: &Builder<'_>,
         compiler: Compiler,
@@ -163,8 +165,10 @@ impl Cargo {
         self
     }
 
+    /// Add an env var to the cargo command instance. Note that `RUSTFLAGS`/`RUSTDOCFLAGS` must go
+    /// through [`Cargo::rustdocflags`] and [`Cargo::rustflags`] because inconsistent `RUSTFLAGS`
+    /// and `RUSTDOCFLAGS` usages will trigger spurious rebuilds.
     pub fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
-        // These are managed through rustflag/rustdocflag interfaces.
         assert_ne!(key.as_ref(), "RUSTFLAGS");
         assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
         self.command.env(key.as_ref(), value.as_ref());
@@ -182,8 +186,8 @@ impl Cargo {
 
     /// Adds nightly-only features that this invocation is allowed to use.
     ///
-    /// By default, all nightly features are allowed. Once this is called, it
-    /// will be restricted to the given set.
+    /// By default, all nightly features are allowed. Once this is called, it will be restricted to
+    /// the given set.
     pub fn allow_features(&mut self, features: &str) -> &mut Cargo {
         if !self.allow_features.is_empty() {
             self.allow_features.push(',');
@@ -351,7 +355,7 @@ impl From<Cargo> for BootstrapCommand {
 }
 
 impl Builder<'_> {
-    /// Like `cargo`, but only passes flags that are valid for all commands.
+    /// Like [`Builder::cargo`], but only passes flags that are valid for all commands.
     pub fn bare_cargo(
         &self,
         compiler: Compiler,
@@ -429,12 +433,11 @@ impl Builder<'_> {
         cargo
     }
 
-    /// This will create a `Command` that represents a pending execution of
-    /// Cargo. This cargo will be configured to use `compiler` as the actual
-    /// rustc compiler, its output will be scoped by `mode`'s output directory,
-    /// it will pass the `--target` flag for the specified `target`, and will be
-    /// executing the Cargo command `cmd`. `cmd` can be `miri-cmd` for commands
-    /// to be run with Miri.
+    /// This will create a [`BootstrapCommand`] that represents a pending execution of cargo. This
+    /// cargo will be configured to use `compiler` as the actual rustc compiler, its output will be
+    /// scoped by `mode`'s output directory, it will pass the `--target` flag for the specified
+    /// `target`, and will be executing the Cargo command `cmd`. `cmd` can be `miri-cmd` for
+    /// commands to be run with Miri.
     fn cargo(
         &self,
         compiler: Compiler,
