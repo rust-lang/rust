@@ -55,8 +55,8 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::{
-    self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, MissingLifetimeKind, ParamName,
-    TraitCandidate,
+    self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, MissingLifetimeKind,
+    ParamName, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -765,8 +765,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         res
     }
 
-    fn make_lang_item_qpath(&mut self, lang_item: hir::LangItem, span: Span) -> hir::QPath<'hir> {
-        hir::QPath::Resolved(None, self.make_lang_item_path(lang_item, span, None))
+    fn make_lang_item_qpath(
+        &mut self,
+        lang_item: hir::LangItem,
+        span: Span,
+        args: Option<&'hir hir::GenericArgs<'hir>>,
+    ) -> hir::QPath<'hir> {
+        hir::QPath::Resolved(None, self.make_lang_item_path(lang_item, span, args))
     }
 
     fn make_lang_item_path(
@@ -1276,6 +1281,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 });
                 let lifetime = self.lower_lifetime(&region);
                 hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx))
+            }
+            TyKind::PinnedRef(region, mt) => {
+                let region = region.unwrap_or_else(|| {
+                    let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
+                        self.resolver.get_lifetime_res(t.id)
+                    {
+                        debug_assert_eq!(start.plus(1), end);
+                        start
+                    } else {
+                        self.next_node_id()
+                    };
+                    let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
+                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
+                });
+                let lifetime = self.lower_lifetime(&region);
+                let kind = hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx));
+                let span = self.lower_span(t.span);
+                let arg = hir::Ty { kind, span, hir_id: self.next_id() };
+                let args = self.arena.alloc(hir::GenericArgs {
+                    args: self.arena.alloc([hir::GenericArg::Type(self.arena.alloc(arg))]),
+                    constraints: &[],
+                    parenthesized: hir::GenericArgsParentheses::No,
+                    span_ext: span,
+                });
+                let path = self.make_lang_item_qpath(LangItem::Pin, span, Some(args));
+                hir::TyKind::Path(path)
             }
             TyKind::BareFn(f) => {
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
@@ -1845,10 +1876,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Given we are only considering `ImplicitSelf` types, we needn't consider
                     // the case where we have a mutable pattern to a reference as that would
                     // no longer be an `ImplicitSelf`.
-                    TyKind::Ref(_, mt) if mt.ty.kind.is_implicit_self() => match mt.mutbl {
-                        hir::Mutability::Not => hir::ImplicitSelfKind::RefImm,
-                        hir::Mutability::Mut => hir::ImplicitSelfKind::RefMut,
-                    },
+                    TyKind::Ref(_, mt) | TyKind::PinnedRef(_, mt)
+                        if mt.ty.kind.is_implicit_self() =>
+                    {
+                        match mt.mutbl {
+                            hir::Mutability::Not => hir::ImplicitSelfKind::RefImm,
+                            hir::Mutability::Mut => hir::ImplicitSelfKind::RefMut,
+                        }
+                    }
                     _ => hir::ImplicitSelfKind::None,
                 }
             }),

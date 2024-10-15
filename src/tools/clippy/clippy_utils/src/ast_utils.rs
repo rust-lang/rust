@@ -753,6 +753,9 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (Ref(ll, l), Ref(rl, r)) => {
             both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
+        (PinnedRef(ll, l), PinnedRef(rl, r)) => {
+            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
+        },
         (BareFn(l), BareFn(r)) => {
             l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)

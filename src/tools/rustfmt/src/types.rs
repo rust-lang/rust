@@ -827,7 +827,8 @@ impl Rewrite for ast::Ty {
 
                 rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
             }
-            ast::TyKind::Ref(ref lifetime, ref mt) => {
+            ast::TyKind::Ref(ref lifetime, ref mt)
+            | ast::TyKind::PinnedRef(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
                 let mut result = String::with_capacity(128);
@@ -859,6 +860,13 @@ impl Rewrite for ast::Ty {
                     }
                     result.push(' ');
                     cmnt_lo = lifetime.ident.span.hi();
+                }
+
+                if let ast::TyKind::PinnedRef(..) = self.kind {
+                    result.push_str("pin ");
+                    if ast::Mutability::Not == mt.mutbl {
+                        result.push_str("const ");
+                    }
                 }
 
                 if ast::Mutability::Mut == mt.mutbl {
@@ -1260,9 +1268,9 @@ pub(crate) fn can_be_overflowed_type(
 ) -> bool {
     match ty.kind {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
-        ast::TyKind::Ref(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
-            can_be_overflowed_type(context, &*mutty.ty, len)
-        }
+        ast::TyKind::Ref(_, ref mutty)
+        | ast::TyKind::PinnedRef(_, ref mutty)
+        | ast::TyKind::Ptr(ref mutty) => can_be_overflowed_type(context, &*mutty.ty, len),
         _ => false,
     }
 }
