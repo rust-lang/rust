@@ -96,6 +96,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::definitions::DefKey,
     rustc_index::bit_set::BitSet<u32>,
     rustc_index::bit_set::FiniteBitSet<u32>,
+    rustc_middle::mir::MirFlags,
     rustc_session::cstore::ForeignModule,
     rustc_session::cstore::LinkagePreference,
     rustc_session::cstore::NativeLib,

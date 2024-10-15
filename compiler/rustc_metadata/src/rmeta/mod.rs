@@ -24,6 +24,7 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
+use rustc_middle::mir::MirFlags;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{
     self, DeducedParamAttrs, ParameterizedOverTcx, ReprOptions, Ty, TyCtxt, UnusedGenericParams,
@@ -404,6 +405,7 @@ define_tables! {
     // individually instead of `DefId`s.
     module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
     cross_crate_inlinable: Table<DefIndex, bool>,
+    mir_flags: Table<DefIndex, MirFlags>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,

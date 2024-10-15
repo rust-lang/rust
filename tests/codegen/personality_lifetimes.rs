@@ -13,7 +13,9 @@ impl Drop for S {
 }
 
 #[inline(never)]
-fn might_unwind() {}
+fn might_unwind() {
+    panic!()
+}
 
 // CHECK-LABEL: @test
 #[no_mangle]

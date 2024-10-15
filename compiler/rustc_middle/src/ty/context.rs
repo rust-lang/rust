@@ -66,7 +66,7 @@ use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::{resolve_bound_vars, stability};
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
-use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::mir::{Body, Local, MirFlags, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::plumbing::QuerySystem;
 use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
 use crate::thir::Thir;
@@ -3179,6 +3179,14 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             false
         }
+    }
+
+    pub fn is_nounwind(self, def_id: DefId) -> bool {
+        self.mir_flags(def_id).contains(MirFlags::IS_NOUNWIND)
+    }
+
+    pub fn has_ffi_unwind_calls(self, def_id: DefId) -> bool {
+        self.mir_flags(def_id).contains(MirFlags::HAS_FFI_UNWIND_CALLS)
     }
 
     /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
