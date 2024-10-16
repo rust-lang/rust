@@ -1188,11 +1188,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     // SAFETY: We have allocated enough memory for a full FILE_RENAME_INFO struct and a filename.
     unsafe {
         (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
-            // Don't bother with FileRenameInfo on Windows 7 since it doesn't exist.
-            #[cfg(not(target_vendor = "win7"))]
             Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
-            #[cfg(target_vendor = "win7")]
-            ReplaceIfExists: 1,
         });
 
         (&raw mut (*file_rename_info).RootDirectory).write(ptr::null_mut());
@@ -1202,22 +1198,16 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
             .copy_to_nonoverlapping((&raw mut (*file_rename_info).FileName) as *mut u16, new.len());
     }
 
-    #[cfg(not(target_vendor = "win7"))]
-    const FileInformationClass: c::FILE_INFO_BY_HANDLE_CLASS = c::FileRenameInfoEx;
-    #[cfg(target_vendor = "win7")]
-    const FileInformationClass: c::FILE_INFO_BY_HANDLE_CLASS = c::FileRenameInfo;
-
     // We don't use `set_file_information_by_handle` here as `FILE_RENAME_INFO` is used for both `FileRenameInfo` and `FileRenameInfoEx`.
     let result = unsafe {
         cvt(c::SetFileInformationByHandle(
             handle.as_raw_handle(),
-            FileInformationClass,
+            c::FileRenameInfoEx,
             (&raw const *file_rename_info).cast::<c_void>(),
             struct_size,
         ))
     };
 
-    #[cfg(not(target_vendor = "win7"))]
     if let Err(err) = result {
         if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _) {
             // FileRenameInfoEx and FILE_RENAME_FLAG_POSIX_SEMANTICS were added in Windows 10 1607; retry with FileRenameInfo.
@@ -1235,9 +1225,6 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
             return Err(err);
         }
     }
-
-    #[cfg(target_vendor = "win7")]
-    result?;
 
     Ok(())
 }
