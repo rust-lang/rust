@@ -182,6 +182,12 @@ impl CoverageCounters {
             .reduce(|accum, counter| self.make_expression(accum, Op::Add, counter))
     }
 
+    /// Creates a counter whose value is `lhs - SUM(rhs)`.
+    fn make_subtracted_sum(&mut self, lhs: BcbCounter, rhs: &[BcbCounter]) -> BcbCounter {
+        let Some(rhs_sum) = self.make_sum(rhs) else { return lhs };
+        self.make_expression(lhs, Op::Subtract, rhs_sum)
+    }
+
     pub(super) fn num_counters(&self) -> usize {
         self.counter_increment_sites.len()
     }
@@ -338,8 +344,7 @@ impl<'a> CountersBuilder<'a> {
         };
 
         // For each out-edge other than the one that was chosen to get an expression,
-        // ensure that it has a counter (existing counter/expression or a new counter),
-        // and accumulate the corresponding counters into a single sum expression.
+        // ensure that it has a counter (existing counter/expression or a new counter).
         let other_out_edge_counters = successors
             .iter()
             .copied()
@@ -347,15 +352,10 @@ impl<'a> CountersBuilder<'a> {
             .filter(|&edge_target_bcb| edge_target_bcb != target_bcb)
             .map(|to_bcb| self.get_or_make_edge_counter(from_bcb, to_bcb))
             .collect::<Vec<_>>();
-        let Some(sum_of_all_other_out_edges) = self.counters.make_sum(&other_out_edge_counters)
-        else {
-            return;
-        };
 
         // Now create an expression for the chosen edge, by taking the counter
         // for its source node and subtracting the sum of its sibling out-edges.
-        let expression =
-            self.counters.make_expression(node_counter, Op::Subtract, sum_of_all_other_out_edges);
+        let expression = self.counters.make_subtracted_sum(node_counter, &other_out_edge_counters);
 
         debug!("{target_bcb:?} gets an expression: {expression:?}");
         self.counters.set_edge_counter(from_bcb, target_bcb, expression);
