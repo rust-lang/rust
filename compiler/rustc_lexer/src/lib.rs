@@ -34,8 +34,14 @@ mod tests;
 
 use unicode_properties::UnicodeEmoji;
 
-use self::LiteralKind::*;
-use self::TokenKind::*;
+use self::LiteralKind::{Byte, ByteStr, CStr, Char, Float, Int, RawByteStr, RawCStr, RawStr, Str};
+use self::TokenKind::{
+    And, At, Bang, BlockComment, Caret, CloseBrace, CloseBracket, CloseParen, Colon, Comma, Dollar,
+    Dot, Eq as TokenKindEq, Gt, Ident, InvalidIdent, InvalidPrefix, Lifetime, LineComment, Literal,
+    Lt, Minus, OpenBrace, OpenBracket, OpenParen, Or, Percent, Plus, Pound, Question, RawIdent,
+    RawLifetime, Semi, Slash, Star, Tilde, Unknown, UnknownPrefix, UnknownPrefixLifetime,
+    Whitespace,
+};
 pub use crate::cursor::Cursor;
 use crate::cursor::EOF_CHAR;
 
@@ -442,7 +448,7 @@ impl Cursor<'_> {
             '?' => Question,
             ':' => Colon,
             '$' => Dollar,
-            '=' => Eq,
+            '=' => TokenKindEq,
             '!' => Bang,
             '<' => Lt,
             '>' => Gt,

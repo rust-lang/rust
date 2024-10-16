@@ -4,7 +4,7 @@
 use std::ops::Range;
 use std::str::Chars;
 
-use Mode::*;
+use Mode::{Byte, ByteStr, CStr, Char, RawByteStr, RawCStr, RawStr, Str};
 
 #[cfg(test)]
 mod tests;
