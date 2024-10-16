@@ -805,7 +805,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// #![feature(num_midpoint)]
     /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
     ///
     /// assert_eq!(1f16.midpoint(4.0), 2.5);
@@ -814,8 +813,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    // #[unstable(feature = "num_midpoint", issue = "110840")]
-    pub fn midpoint(self, other: f16) -> f16 {
+    pub const fn midpoint(self, other: f16) -> f16 {
         const LO: f16 = f16::MIN_POSITIVE * 2.;
         const HI: f16 = f16::MAX / 2.;
 
