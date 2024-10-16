@@ -189,7 +189,9 @@ fn pretty_terminator_head<W: Write>(writer: &mut W, terminator: &TerminatorKind)
 fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
     use self::TerminatorKind::*;
     match terminator {
-        Resume | Abort | Return | Unreachable => vec![],
+        Call { target: None, unwind: UnwindAction::Cleanup(_), .. }
+        | InlineAsm { destination: None, .. } => vec!["unwind".into()],
+        Resume | Abort | Return | Unreachable | Call { target: None, unwind: _, .. } => vec![],
         Goto { .. } => vec!["".to_string()],
         SwitchInt { targets, .. } => targets
             .branches()
@@ -197,19 +199,15 @@ fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
             .chain(iter::once("otherwise".into()))
             .collect(),
         Drop { unwind: UnwindAction::Cleanup(_), .. } => vec!["return".into(), "unwind".into()],
-        Drop { unwind: _, .. } => vec!["return".into()],
         Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
             vec!["return".into(), "unwind".into()]
         }
-        Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
-        Call { target: None, unwind: UnwindAction::Cleanup(_), .. } => vec!["unwind".into()],
-        Call { target: None, unwind: _, .. } => vec![],
+        Drop { unwind: _, .. } | Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
         Assert { unwind: UnwindAction::Cleanup(_), .. } => {
             vec!["success".into(), "unwind".into()]
         }
         Assert { unwind: _, .. } => vec!["success".into()],
         InlineAsm { destination: Some(_), .. } => vec!["goto".into(), "unwind".into()],
-        InlineAsm { destination: None, .. } => vec!["unwind".into()],
     }
 }
 
