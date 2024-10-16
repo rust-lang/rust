@@ -490,8 +490,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
     auto Arg0 = std::string(ArgsCstrBuff);
     buffer_offset = Arg0.size() + 1;
-    auto ArgsCppStr =
-        std::string(ArgsCstrBuff + buffer_offset, ArgsCstrBuffLen - buffer_offset);
+    auto ArgsCppStr = std::string(ArgsCstrBuff + buffer_offset,
+                                  ArgsCstrBuffLen - buffer_offset);
     auto i = 0;
     while (i != std::string::npos) {
       i = ArgsCppStr.find('\0', i + 1);
