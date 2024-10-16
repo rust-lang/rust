@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use rustc_ast::ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::visit::Visitor;
 use rustc_span::Span;
 use rustc_span::symbol::{self, Symbol, sym};
@@ -15,6 +16,7 @@ use crate::items::is_mod_decl;
 use crate::parse::parser::{
     Directory, DirectoryOwnership, ModError, ModulePathSuccess, Parser, ParserError,
 };
+
 use crate::parse::session::ParseSess;
 use crate::utils::{contains_skip, mk_sp};
 
