@@ -28,6 +28,63 @@ use crate::utils::cache::{INTERNER, Interned};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
 
+/// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
+/// This means they can be modified and changes to these paths should never trigger a compiler build
+/// when "if-unchanged" is set.
+///
+/// NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
+/// the diff check.
+///
+/// WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
+/// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
+const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    ":!.github",
+    ":!.clang-format",
+    ":!.editorconfig",
+    ":!.git-blame-ignore-revs",
+    ":!.gitattributes",
+    ":!.gitignore",
+    ":!.gitmodules",
+    ":!.ignore",
+    ":!.mailmap",
+    ":!CODE_OF_CONDUCT.md",
+    ":!CONTRIBUTING.md",
+    ":!COPYRIGHT",
+    ":!Cargo.lock",
+    ":!Cargo.toml",
+    ":!INSTALL.md",
+    ":!LICENSE-APACHE",
+    ":!LICENSE-MIT",
+    ":!LICENSES",
+    ":!README.md",
+    ":!RELEASES.md",
+    ":!REUSE.toml",
+    ":!config.example.toml",
+    ":!configure",
+    ":!rust-bors.toml",
+    ":!rustfmt.toml",
+    ":!src",
+    ":!tests",
+    ":!triagebot.toml",
+    ":!x",
+    ":!x.ps1",
+    ":!x.py",
+];
+
+/// Holds subpaths from [`RUSTC_IF_UNCHANGED_ALLOWED_PATHS`] that should not be allowed.
+const RUSTC_IF_UNCHANGED_DENIED_SUBPATHS: &[&str] = &[
+    "src/stage0",
+    "src/version",
+    "src/ci/channel",
+    // FIXME: We should add more paths from bootstrap, but this may require
+    // moving some logic into separate For instance, the logic for handling
+    // rustflags should be moved to a specific module and that module's path
+    // should be included here.
+    "src/bootstrap/defaults",
+    "src/bootstrap/src/bin/rustc.rs",
+    "src/bootstrap/src/core/config/config.rs",
+];
+
 macro_rules! check_ci_llvm {
     ($name:expr) => {
         assert!(
@@ -2751,18 +2808,9 @@ impl Config {
             }
         };
 
-        let files_to_track = &[
-            self.src.join("compiler"),
-            self.src.join("library"),
-            self.src.join("src/version"),
-            self.src.join("src/stage0"),
-            self.src.join("src/ci/channel"),
-        ];
-
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit =
-            get_closest_merge_commit(Some(&self.src), &self.git_config(), files_to_track).unwrap();
+        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");
             println!("HELP: maybe your repository history is too shallow?");
@@ -2784,27 +2832,27 @@ impl Config {
             return None;
         }
 
-        // Warn if there were changes to the compiler or standard library since the ancestor commit.
-        let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", &commit])
-            .arg("--")
-            .args(files_to_track)
-            .as_command_mut()
-            .status())
-        .success();
-        if has_changes {
+        let in_tree_build_required = |paths| {
+            !t!(helpers::git(Some(&self.src))
+                .args(["diff-index", "--quiet", &commit])
+                .arg("--")
+                .args(paths)
+                .as_command_mut()
+                .status())
+            .success()
+        };
+
+        if in_tree_build_required(RUSTC_IF_UNCHANGED_ALLOWED_PATHS)
+            || in_tree_build_required(RUSTC_IF_UNCHANGED_DENIED_SUBPATHS)
+        {
             if if_unchanged {
                 if self.is_verbose() {
-                    println!(
-                        "WARNING: saw changes to compiler/ or library/ since {commit}; \
-                            ignoring `download-rustc`"
-                    );
+                    println!("WARNING: changes detected since {commit}; ignoring `download-rustc`");
                 }
                 return None;
             }
             println!(
-                "WARNING: `download-rustc` is enabled, but there are changes to \
-                    compiler/ or library/"
+                "WARNING: `download-rustc` is enabled while there are changes on the paths that can influence the compiler builds."
             );
         }
 
