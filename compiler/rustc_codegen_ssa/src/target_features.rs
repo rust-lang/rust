@@ -1,8 +1,8 @@
-use rustc_ast::ast;
-use rustc_attr::InstructionSetAttr;
+use rustc_attr::{AttributeExt, InstructionSetAttr};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_middle::bug;
@@ -17,7 +17,7 @@ use crate::errors;
 
 pub(crate) fn from_target_feature(
     tcx: TyCtxt<'_>,
-    attr: &ast::Attribute,
+    attr: &hir::Attribute,
     supported_target_features: &UnordMap<String, Option<Symbol>>,
     target_features: &mut Vec<TargetFeature>,
 ) {

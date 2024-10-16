@@ -9,6 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 use hir::def_id::CRATE_DEF_ID;
+use rustc_ast::attr::AttributeExt;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};

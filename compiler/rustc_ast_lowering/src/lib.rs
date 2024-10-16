@@ -976,11 +976,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
+            AttrArgs::Eq { eq_span, value } => {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
-                let lit = if let ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) = MetaItemLit::from_token_lit(token_lit, expr.span)
+                let lit = if let ExprKind::Lit(token_lit) = value.kind
+                    && let Ok(lit) = MetaItemLit::from_token_lit(token_lit, value.span)
                 {
                     lit
                 } else {
@@ -992,10 +992,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: DUMMY_SP,
                     }
                 };
-                AttrArgs::Eq(*eq_span, AttrArgsEq::Hir(lit))
-            }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when lowering mac args eq: {:?}", lit)
+                hir::AttrArgs::Eq { eq_span: *eq_span, value: lit }
             }
         }
     }
@@ -2512,7 +2509,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn stmt_let_pat(
         &mut self,
-        attrs: Option<&'hir [Attribute]>,
+        attrs: Option<&'hir [hir::Attribute]>,
         span: Span,
         init: Option<&'hir hir::Expr<'hir>>,
         pat: &'hir hir::Pat<'hir>,

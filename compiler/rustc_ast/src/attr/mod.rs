@@ -1,5 +1,6 @@
 //! Functions dealing with attributes and meta items.
 
+use std::fmt::Debug;
 use std::iter;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -68,7 +69,7 @@ impl AttributeExt for Attribute {
     fn value_span(&self) -> Option<Span> {
         match &self.kind {
             AttrKind::Normal(normal) => match &normal.item.args {
-                AttrArgs::Eq(_, l) => Some(l.span),
+                AttrArgs::Eq { eq_span: _, value } => Some(value.span),
                 _ => None,
             },
             AttrKind::DocComment(..) => None,
@@ -225,13 +226,13 @@ impl AttrItem {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
             }
-            AttrArgs::Delimited(_) | AttrArgs::Eq(..) | AttrArgs::Empty => None,
+            AttrArgs::Delimited(_) | AttrArgs::Eq { .. } | AttrArgs::Empty => None,
         }
     }
 
     fn value_str(&self) -> Option<Symbol> {
         match &self.args {
-            AttrArgs::Eq(_, expr) => match expr.kind {
+            AttrArgs::Eq { eq_span: _, value } => match value.kind {
                 ExprKind::Lit(token_lit) => {
                     LitKind::from_token_lit(token_lit).ok().and_then(|lit| lit.str())
                 }
@@ -435,10 +436,10 @@ impl MetaItemKind {
                 MetaItemKind::list_from_tokens(tokens.clone()).map(MetaItemKind::List)
             }
             AttrArgs::Delimited(..) => None,
-            AttrArgs::Eq(_, expr) => match expr.kind {
+            AttrArgs::Eq { eq_span: _, value } => match value.kind {
                 ExprKind::Lit(token_lit) => {
                     // Turn failures to `None`, we'll get parse errors elsewhere.
-                    MetaItemLit::from_token_lit(token_lit, expr.span)
+                    MetaItemLit::from_token_lit(token_lit, value.span)
                         .ok()
                         .map(|lit| MetaItemKind::NameValue(lit))
                 }
@@ -636,7 +637,7 @@ pub fn mk_attr_name_value_str(
     span: Span,
 ) -> Attribute {
     let lit = token::Lit::new(token::Str, escape_string_symbol(val), None);
-    let expr = P(Expr {
+    let value = P(Expr {
         id: DUMMY_NODE_ID,
         kind: ExprKind::Lit(lit),
         span,
@@ -644,7 +645,7 @@ pub fn mk_attr_name_value_str(
         tokens: None,
     });
     let path = Path::from_ident(Ident::new(name, span));
-    let args = AttrArgs::Eq(span, expr);
+    let args = AttrArgs::Eq { eq_span: span, value };
     mk_attr(g, style, unsafety, path, args, span)
 }
 

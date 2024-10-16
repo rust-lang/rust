@@ -10,7 +10,7 @@
 
 use std::num::IntErrorKind;
 
-use rustc_ast::Attribute;
+use rustc_ast::attr::AttributeExt;
 use rustc_session::{Limit, Limits, Session};
 use rustc_span::symbol::{Symbol, sym};
 
@@ -35,32 +35,36 @@ pub fn provide(providers: &mut Providers) {
     }
 }
 
-pub fn get_recursion_limit(krate_attrs: &[Attribute], sess: &Session) -> Limit {
+pub fn get_recursion_limit(krate_attrs: &[impl AttributeExt], sess: &Session) -> Limit {
     get_limit(krate_attrs, sess, sym::recursion_limit, 128)
 }
 
-fn get_limit(krate_attrs: &[Attribute], sess: &Session, name: Symbol, default: usize) -> Limit {
+fn get_limit(
+    krate_attrs: &[impl AttributeExt],
+    sess: &Session,
+    name: Symbol,
+    default: usize,
+) -> Limit {
     match get_limit_size(krate_attrs, sess, name) {
         Some(size) => Limit::new(size),
         None => Limit::new(default),
     }
 }
 
-pub fn get_limit_size(krate_attrs: &[Attribute], sess: &Session, name: Symbol) -> Option<usize> {
+pub fn get_limit_size(
+    krate_attrs: &[impl AttributeExt],
+    sess: &Session,
+    name: Symbol,
+) -> Option<usize> {
     for attr in krate_attrs {
         if !attr.has_name(name) {
             continue;
         }
 
-        if let Some(s) = attr.value_str() {
-            match s.as_str().parse() {
+        if let Some(sym) = attr.value_str() {
+            match sym.as_str().parse() {
                 Ok(n) => return Some(n),
                 Err(e) => {
-                    let value_span = attr
-                        .meta()
-                        .and_then(|meta| meta.name_value_literal_span())
-                        .unwrap_or(attr.span);
-
                     let error_str = match e.kind() {
                         IntErrorKind::PosOverflow => "`limit` is too large",
                         IntErrorKind::Empty => "`limit` must be a non-negative integer",
@@ -71,7 +75,11 @@ pub fn get_limit_size(krate_attrs: &[Attribute], sess: &Session, name: Symbol) -
                         IntErrorKind::Zero => bug!("zero is a valid `limit`"),
                         kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
                     };
-                    sess.dcx().emit_err(LimitInvalid { span: attr.span, value_span, error_str });
+                    sess.dcx().emit_err(LimitInvalid {
+                        span: attr.span(),
+                        value_span: attr.value_span().unwrap(),
+                        error_str,
+                    });
                 }
             }
         }
