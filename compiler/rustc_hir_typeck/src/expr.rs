@@ -1330,9 +1330,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let refs_can_coerce = |lhs: Ty<'tcx>, rhs: Ty<'tcx>| {
                 let lhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, lhs.peel_refs());
                 let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
-                self.can_coerce(rhs, lhs)
+                self.may_coerce(rhs, lhs)
             };
-            let (applicability, eq) = if self.can_coerce(rhs_ty, lhs_ty) {
+            let (applicability, eq) = if self.may_coerce(rhs_ty, lhs_ty) {
                 (Applicability::MachineApplicable, true)
             } else if refs_can_coerce(rhs_ty, lhs_ty) {
                 // The lhs and rhs are likely missing some references in either side. Subsequent
@@ -1349,7 +1349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let actual_lhs_ty = self.check_expr(rhs_expr);
                 (
                     Applicability::MaybeIncorrect,
-                    self.can_coerce(rhs_ty, actual_lhs_ty)
+                    self.may_coerce(rhs_ty, actual_lhs_ty)
                         || refs_can_coerce(rhs_ty, actual_lhs_ty),
                 )
             } else if let ExprKind::Binary(
@@ -1363,7 +1363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let actual_rhs_ty = self.check_expr(lhs_expr);
                 (
                     Applicability::MaybeIncorrect,
-                    self.can_coerce(actual_rhs_ty, lhs_ty)
+                    self.may_coerce(actual_rhs_ty, lhs_ty)
                         || refs_can_coerce(actual_rhs_ty, lhs_ty),
                 )
             } else {
@@ -1414,7 +1414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.param_env,
                     )
                     .may_apply();
-                if lhs_deref_ty_is_sized && self.can_coerce(rhs_ty, lhs_deref_ty) {
+                if lhs_deref_ty_is_sized && self.may_coerce(rhs_ty, lhs_deref_ty) {
                     err.span_suggestion_verbose(
                         lhs.span.shrink_to_lo(),
                         "consider dereferencing here to assign to the mutably borrowed value",
