@@ -1,37 +1,83 @@
 use super::DUPLICATED_ATTRIBUTES;
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::{Attribute, MetaItem};
+use rustc_ast::{MetaItem, MetaItemInner};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::Attribute;
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol, sym};
 use std::collections::hash_map::Entry;
+use thin_vec::ThinVec;
 
 fn emit_if_duplicated(
     cx: &LateContext<'_>,
-    attr: &MetaItem,
+    span: Span,
     attr_paths: &mut FxHashMap<String, Span>,
     complete_path: String,
 ) {
     match attr_paths.entry(complete_path) {
         Entry::Vacant(v) => {
-            v.insert(attr.span);
+            v.insert(span);
         },
         Entry::Occupied(o) => {
-            span_lint_and_then(cx, DUPLICATED_ATTRIBUTES, attr.span, "duplicated attribute", |diag| {
+            span_lint_and_then(cx, DUPLICATED_ATTRIBUTES, span, "duplicated attribute", |diag| {
                 diag.span_note(*o.get(), "first defined here");
-                diag.span_help(attr.span, "remove this attribute");
+                diag.span_help(span, "remove this attribute");
             });
         },
     }
 }
 
+trait AttrOrMetaItem {
+    fn ident(&self) -> Option<Ident>;
+    fn span(&self) -> Span;
+    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>>;
+    fn value_str(&self) -> Option<Symbol>;
+}
+
+impl AttrOrMetaItem for Attribute {
+    fn ident(&self) -> Option<Ident> {
+        rustc_ast::attr::AttributeExt::ident(self)
+    }
+
+    fn span(&self) -> Span {
+        rustc_ast::attr::AttributeExt::span(self)
+    }
+
+    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+        rustc_ast::attr::AttributeExt::meta_item_list(self)
+    }
+
+    fn value_str(&self) -> Option<Symbol> {
+        rustc_ast::attr::AttributeExt::value_str(self)
+    }
+}
+
+impl AttrOrMetaItem for MetaItem {
+    fn ident(&self) -> Option<Ident> {
+        MetaItem::ident(self)
+    }
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+        MetaItem::meta_item_list(self).map(|i| i.iter().cloned().collect())
+    }
+
+    fn value_str(&self) -> Option<Symbol> {
+        MetaItem::value_str(self)
+    }
+}
+
 fn check_duplicated_attr(
     cx: &LateContext<'_>,
-    attr: &MetaItem,
+    attr: &impl AttrOrMetaItem,
     attr_paths: &mut FxHashMap<String, Span>,
     parent: &mut Vec<String>,
 ) {
-    if attr.span.from_expansion() {
+    if attr.span().from_expansion() {
         return;
     }
     let Some(ident) = attr.ident() else { return };
@@ -51,7 +97,12 @@ fn check_duplicated_attr(
         return;
     }
     if let Some(value) = attr.value_str() {
-        emit_if_duplicated(cx, attr, attr_paths, format!("{}:{name}={value}", parent.join(":")));
+        emit_if_duplicated(
+            cx,
+            attr.span(),
+            attr_paths,
+            format!("{}:{name}={value}", parent.join(":")),
+        );
     } else if let Some(sub_attrs) = attr.meta_item_list() {
         parent.push(name.as_str().to_string());
         for sub_attr in sub_attrs {
@@ -61,7 +112,7 @@ fn check_duplicated_attr(
         }
         parent.pop();
     } else {
-        emit_if_duplicated(cx, attr, attr_paths, format!("{}:{name}", parent.join(":")));
+        emit_if_duplicated(cx, attr.span(), attr_paths, format!("{}:{name}", parent.join(":")));
     }
 }
 
@@ -69,8 +120,8 @@ pub fn check(cx: &LateContext<'_>, attrs: &[Attribute]) {
     let mut attr_paths = FxHashMap::default();
 
     for attr in attrs {
-        if let Some(meta) = attr.meta() {
-            check_duplicated_attr(cx, &meta, &mut attr_paths, &mut Vec::new());
+        if !rustc_ast::attr::AttributeExt::is_doc_comment(attr) {
+            check_duplicated_attr(cx, attr, &mut attr_paths, &mut Vec::new());
         }
     }
 }

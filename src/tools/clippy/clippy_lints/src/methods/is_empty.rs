@@ -1,12 +1,12 @@
+use super::CONST_IS_EMPTY;
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{find_binding_init, path_to_local};
+use rustc_ast::attr::AttributeExt;
 use rustc_hir::{Expr, HirId};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
-
-use super::CONST_IS_EMPTY;
 
 /// Expression whose initialization depend on a constant conditioned by a `#[cfg(…)]` directive will
 /// not trigger the lint.
