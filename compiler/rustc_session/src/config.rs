@@ -1319,6 +1319,7 @@ pub enum PAuthKey {
 #[derive(Clone, Copy, Hash, Debug, PartialEq)]
 pub struct PacRet {
     pub leaf: bool,
+    pub pc: bool,
     pub key: PAuthKey,
 }
 

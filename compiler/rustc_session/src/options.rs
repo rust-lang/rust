@@ -442,8 +442,7 @@ mod desc {
     pub(crate) const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
     pub(crate) const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
-    pub(crate) const parse_branch_protection: &str =
-        "a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
+    pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `pac-ret`, followed by a combination of `pc`, `b-key`, or `leaf`";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
     pub(crate) const parse_remap_path_scope: &str =
@@ -1396,7 +1395,7 @@ mod parse {
                     match opt {
                         "bti" => slot.bti = true,
                         "pac-ret" if slot.pac_ret.is_none() => {
-                            slot.pac_ret = Some(PacRet { leaf: false, key: PAuthKey::A })
+                            slot.pac_ret = Some(PacRet { leaf: false, pc: false, key: PAuthKey::A })
                         }
                         "leaf" => match slot.pac_ret.as_mut() {
                             Some(pac) => pac.leaf = true,
@@ -1404,6 +1403,10 @@ mod parse {
                         },
                         "b-key" => match slot.pac_ret.as_mut() {
                             Some(pac) => pac.key = PAuthKey::B,
+                            _ => return false,
+                        },
+                        "pc" => match slot.pac_ret.as_mut() {
+                            Some(pac) => pac.pc = true,
                             _ => return false,
                         },
                         _ => return false,
