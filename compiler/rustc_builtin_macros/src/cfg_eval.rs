@@ -1,6 +1,7 @@
 use core::ops::ControlFlow;
 
 use rustc_ast as ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, Visitor};

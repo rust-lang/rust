@@ -1,6 +1,7 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
 use rustc_ast::Attribute;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};

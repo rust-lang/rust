@@ -3,6 +3,7 @@ use std::cmp::max;
 use std::iter;
 use std::ops::Deref;
 
+use rustc_attr::AttributeExt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

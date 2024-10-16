@@ -8,7 +8,7 @@ mod item;
 
 use std::borrow::Cow;
 
-use rustc_ast::attr::AttrIdGenerator;
+use rustc_ast::attr::{AttrIdGenerator, AttributeExt};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{
     self, BinOpToken, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind,
@@ -17,9 +17,9 @@ use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
-    self as ast, AttrArgs, AttrArgsEq, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg,
-    GenericBound, InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass,
-    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
+    self as ast, AttrArgs, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg, GenericBound,
+    InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece, PatKind,
+    RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
@@ -640,18 +640,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             AttrArgs::Empty => {
                 self.print_path(&item.path, false, 0);
             }
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
+            AttrArgs::Eq { eq_span: _, value } => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
-                let token_str = self.expr_to_string(expr);
-                self.word(token_str);
-            }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                self.print_path(&item.path, false, 0);
-                self.space();
-                self.word_space("=");
-                let token_str = self.meta_item_lit_to_string(lit);
+                let token_str = self.expr_to_string(value);
                 self.word(token_str);
             }
         }

@@ -1697,7 +1697,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => None,
             AttrArgs::Delimited(args) => Some(args.dspan.entire()),
-            AttrArgs::Eq(eq_span, expr) => Some(eq_span.to(expr.span)),
+            AttrArgs::Eq { eq_span, value } => Some(eq_span.to(value.span)),
         }
     }
 
@@ -1707,7 +1707,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => TokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq(_, expr) => TokenStream::from_ast(expr),
+            AttrArgs::Eq { eq_span: _, value } => TokenStream::from_ast(value),
         }
     }
 }

@@ -15,6 +15,7 @@ use std::mem::{replace, swap, take};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, visit_opt, walk_list};
 use rustc_ast::*;
+use rustc_attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey, Suggestions};

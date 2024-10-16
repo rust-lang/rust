@@ -1,11 +1,13 @@
 use std::iter;
 use std::path::PathBuf;
 
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItemInner};
+use rustc_ast::MetaItemInner;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{AttrArgs, AttrKind, Attribute};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -639,8 +641,7 @@ impl<'tcx> OnUnimplementedDirective {
                 let report_span = match &item.args {
                     AttrArgs::Empty => item.path.span,
                     AttrArgs::Delimited(args) => args.dspan.entire(),
-                    AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => eq_span.to(expr.span),
-                    AttrArgs::Eq(span, AttrArgsEq::Hir(expr)) => span.to(expr.span),
+                    AttrArgs::Eq { eq_span, value } => eq_span.to(value.span),
                 };
 
                 if let Some(item_def_id) = item_def_id.as_local() {
@@ -655,7 +656,7 @@ impl<'tcx> OnUnimplementedDirective {
             }
         } else if is_diagnostic_namespace_variant {
             match &attr.kind {
-                AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
+                AttrKind::Normal(p) if !matches!(p.args, AttrArgs::Empty) => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
                             UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,

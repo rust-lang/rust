@@ -2,6 +2,7 @@
 
 use std::path::Path;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::{self as ast, attr};
 use rustc_errors::FatalError;
 use rustc_span::symbol::sym;

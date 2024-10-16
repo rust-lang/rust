@@ -953,12 +953,12 @@ pub enum AttrArgs {
     /// Delimited arguments: `#[attr()/[]/{}]`.
     Delimited(DelimArgs),
     /// Arguments of a key-value attribute: `#[attr = "value"]`.
-    Eq(
+    Eq {
         /// Span of the `=` token.
-        Span,
+        eq_span: Span,
         /// The "value".
-        MetaItemLit,
-    ),
+        value: MetaItemLit,
+    },
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]

@@ -10,17 +10,19 @@ use std::cell::Cell;
 use std::vec;
 
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
+use rustc_ast::{DUMMY_NODE_ID, DelimArgs, Path, PathSegment};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
+use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
     HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
     TraitBoundModifier,
 };
-use rustc_span::FileName;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{FileName, Span};
 use rustc_target::spec::abi::Abi;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -170,7 +172,7 @@ pub fn print_crate<'a>(
     krate: &hir::Mod<'_>,
     filename: FileName,
     input: String,
-    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [hir::Attribute],
     ann: &'a dyn PpAnn,
 ) -> String {
     let mut s = State {
@@ -248,7 +250,7 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span);
     }
 
-    fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
+    fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[hir::Attribute]) {
         self.print_inner_attributes(attrs);
         for &item_id in _mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id));
@@ -913,14 +915,14 @@ impl<'a> State<'a> {
         self.print_block_maybe_unclosed(blk, &[], false)
     }
 
-    fn print_block_with_attrs(&mut self, blk: &hir::Block<'_>, attrs: &[ast::Attribute]) {
+    fn print_block_with_attrs(&mut self, blk: &hir::Block<'_>, attrs: &[hir::Attribute]) {
         self.print_block_maybe_unclosed(blk, attrs, true)
     }
 
     fn print_block_maybe_unclosed(
         &mut self,
         blk: &hir::Block<'_>,
-        attrs: &[ast::Attribute],
+        attrs: &[hir::Attribute],
         close_box: bool,
     ) {
         match blk.rules {

@@ -180,6 +180,7 @@ use std::{iter, vec};
 
 pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,

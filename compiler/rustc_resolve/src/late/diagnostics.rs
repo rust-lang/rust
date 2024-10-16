@@ -11,6 +11,7 @@ use rustc_ast::{
     Item, ItemKind, MethodCall, NodeId, Path, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
+use rustc_attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{

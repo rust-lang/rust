@@ -13,6 +13,7 @@ use rustc_ast::{
     ItemKind, MetaItemKind, NodeId, StmtKind,
 };
 use rustc_attr as attr;
+use rustc_attr::AttributeExt;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
