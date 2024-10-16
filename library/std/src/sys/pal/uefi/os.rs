@@ -125,7 +125,7 @@ pub fn error_string(errno: RawOsError) -> String {
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    match uefi_shell::open_shell() {
+    match helpers::open_shell() {
         Some(shell) => {
             // SAFETY: path_ptr is managed by UEFI shell and should not be deallocated
             let path_ptr = unsafe { ((*shell.as_ptr()).get_cur_dir)(crate::ptr::null_mut()) };
@@ -144,7 +144,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let shell = uefi_shell::open_shell().ok_or(unsupported_err())?;
+    let shell = helpers::open_shell().ok_or(unsupported_err())?;
 
     let mut p = helpers::os_string_to_raw(p.as_os_str())
         .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
@@ -273,40 +273,6 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     panic!("no pids on this platform")
-}
-
-mod uefi_shell {
-    use r_efi::protocols::shell;
-
-    use super::super::helpers;
-    use crate::ptr::NonNull;
-    use crate::sync::atomic::{AtomicPtr, Ordering};
-
-    pub fn open_shell() -> Option<NonNull<shell::Protocol>> {
-        static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
-            AtomicPtr::new(crate::ptr::null_mut());
-
-        if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
-            if let Ok(protocol) = helpers::open_protocol::<shell::Protocol>(
-                handle,
-                r_efi::protocols::shell::PROTOCOL_GUID,
-            ) {
-                return Some(protocol);
-            }
-        }
-
-        let handles = helpers::locate_handles(shell::PROTOCOL_GUID).ok()?;
-        for handle in handles {
-            if let Ok(protocol) =
-                helpers::open_protocol::<shell::Protocol>(handle, shell::PROTOCOL_GUID)
-            {
-                LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
-                return Some(protocol);
-            }
-        }
-
-        None
-    }
 }
 
 mod uefi_env {
