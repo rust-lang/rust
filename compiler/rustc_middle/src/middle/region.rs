@@ -236,6 +236,11 @@ pub struct ScopeTree {
     /// during type check based on a traversal of the AST.
     pub rvalue_candidates: HirIdMap<RvalueCandidateType>,
 
+    /// Backwards incompatible scoping that will be introduced in future editions.
+    /// This information is used later for linting to identify locals and
+    /// temporary values that will receive backwards-incompatible drop orders.
+    pub backwards_incompatible_scope: UnordMap<hir::ItemLocalId, Scope>,
+
     /// If there are any `yield` nested within a scope, this map
     /// stores the `Span` of the last one and its index in the
     /// postorder of the Visitor traversal on the HIR.

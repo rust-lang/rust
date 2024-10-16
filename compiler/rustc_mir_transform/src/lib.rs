@@ -104,6 +104,7 @@ mod sanity_check;
 mod shim;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
+mod lint_tail_expr_drop_order;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
@@ -414,6 +415,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     }
 
     let (body, _) = tcx.mir_promoted(def);
+    lint_tail_expr_drop_order::run_lint(tcx, def, &body.borrow());
     let mut body = body.steal();
 
     if let Some(error_reported) = tainted_by_errors {

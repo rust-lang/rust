@@ -236,6 +236,7 @@ pub trait MirVisitor {
             },
             StatementKind::ConstEvalCounter => {}
             StatementKind::Nop => {}
+            StatementKind::BackwardIncompatibleDropHint { .. } => {}
         }
     }
 

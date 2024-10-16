@@ -97,6 +97,7 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
         | StatementKind::ConstEvalCounter
+        | StatementKind::BackwardIncompatibleDropHint { .. }
         | StatementKind::Nop => None,
 
         // FIXME(#78546): MIR InstrumentCoverage - Can the source_info.span for `FakeRead`
