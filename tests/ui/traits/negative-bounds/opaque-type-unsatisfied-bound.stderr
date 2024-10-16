@@ -1,74 +1,56 @@
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:16
    |
 LL | fn weird0() -> impl Sized + !Sized {}
-   |                ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   |                ^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:36
    |
 LL | fn weird0() -> impl Sized + !Sized {}
-   |                                    ^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   |                                    ^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:1
    |
 LL | fn weird0() -> impl Sized + !Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
    |
 LL | fn weird1() -> impl !Sized + Sized {}
-   |                ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   |                ^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:19:36
    |
 LL | fn weird1() -> impl !Sized + Sized {}
-   |                                    ^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   |                                    ^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:19:1
    |
 LL | fn weird1() -> impl !Sized + Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:23:16
    |
 LL | fn weird2() -> impl !Sized {}
-   |                ^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   |                ^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:23:28
    |
 LL | fn weird2() -> impl !Sized {}
-   |                            ^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   |                            ^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0277]: the size for values of type `()` cannot be known at compilation time
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:23:1
    |
 LL | fn weird2() -> impl !Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait bound `(): !Sized` is not satisfied
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the trait bound `impl !Trait: Trait` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:12:13

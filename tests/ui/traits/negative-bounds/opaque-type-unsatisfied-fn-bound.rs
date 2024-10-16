@@ -3,8 +3,8 @@
 #![feature(negative_bounds, unboxed_closures)]
 
 fn produce() -> impl !Fn<(u32,)> {}
-//~^ ERROR expected a `Fn(u32)` closure, found `()`
-//~| ERROR expected a `Fn(u32)` closure, found `()`
-//~| ERROR expected a `Fn(u32)` closure, found `()`
+//~^ ERROR the trait bound `(): !Fn(u32)` is not satisfied
+//~| ERROR the trait bound `(): !Fn(u32)` is not satisfied
+//~| ERROR the trait bound `(): !Fn(u32)` is not satisfied
 
 fn main() {}

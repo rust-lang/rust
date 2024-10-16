@@ -1,26 +1,20 @@
-error[E0277]: expected a `Fn(u32)` closure, found `()`
+error[E0277]: the trait bound `(): !Fn(u32)` is not satisfied
   --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:17
    |
 LL | fn produce() -> impl !Fn<(u32,)> {}
-   |                 ^^^^^^^^^^^^^^^^ expected an `Fn(u32)` closure, found `()`
-   |
-   = help: the trait bound `(): !Fn(u32)` is not satisfied
+   |                 ^^^^^^^^^^^^^^^^ the trait bound `(): !Fn(u32)` is not satisfied
 
-error[E0277]: expected a `Fn(u32)` closure, found `()`
+error[E0277]: the trait bound `(): !Fn(u32)` is not satisfied
   --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:34
    |
 LL | fn produce() -> impl !Fn<(u32,)> {}
-   |                                  ^^ expected an `Fn(u32)` closure, found `()`
-   |
-   = help: the trait bound `(): !Fn(u32)` is not satisfied
+   |                                  ^^ the trait bound `(): !Fn(u32)` is not satisfied
 
-error[E0277]: expected a `Fn(u32)` closure, found `()`
+error[E0277]: the trait bound `(): !Fn(u32)` is not satisfied
   --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:1
    |
 LL | fn produce() -> impl !Fn<(u32,)> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an `Fn(u32)` closure, found `()`
-   |
-   = help: the trait bound `(): !Fn(u32)` is not satisfied
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Fn(u32)` is not satisfied
 
 error: aborting due to 3 previous errors
 
