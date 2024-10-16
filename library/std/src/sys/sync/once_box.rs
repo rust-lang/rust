@@ -8,7 +8,7 @@
 use crate::mem::replace;
 use crate::ptr::null_mut;
 use crate::sync::atomic::AtomicPtr;
-use crate::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed};
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
 pub(crate) struct OnceBox<T> {
     ptr: AtomicPtr<T>,
@@ -60,7 +60,7 @@ impl<T> OnceBox<T> {
     #[cold]
     fn initialize(&self, f: impl FnOnce() -> Box<T>) -> &T {
         let new_ptr = Box::into_raw(f());
-        match self.ptr.compare_exchange(null_mut(), new_ptr, AcqRel, Acquire) {
+        match self.ptr.compare_exchange(null_mut(), new_ptr, Release, Acquire) {
             Ok(_) => unsafe { &*new_ptr },
             Err(ptr) => {
                 // Lost the race to another thread.
