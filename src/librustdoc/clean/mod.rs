@@ -20,7 +20,6 @@
 //! This IR is consumed by both the HTML and the JSON backend.
 //!
 //! [^1]: Intermediate representation.
-
 mod auto_trait;
 mod blanket_impl;
 pub(crate) mod cfg;

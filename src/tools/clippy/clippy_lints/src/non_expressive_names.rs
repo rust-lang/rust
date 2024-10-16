@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use rustc_ast::ast::{
     self, Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, Pat, PatKind,
 };
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::visit::{Visitor, walk_block, walk_expr, walk_pat};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;

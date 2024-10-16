@@ -1,7 +1,8 @@
-use super::{ALLOW_ATTRIBUTES_WITHOUT_REASON, Attribute};
+use super::ALLOW_ATTRIBUTES_WITHOUT_REASON;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_ast::{MetaItemInner, MetaItemKind};
+use rustc_hir::Attribute;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
