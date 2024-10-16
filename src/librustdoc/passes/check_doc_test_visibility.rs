@@ -20,7 +20,7 @@ use crate::visit::DocVisitor;
 
 pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
     name: "check_doc_test_visibility",
-    run: check_doc_test_visibility,
+    run: Some(check_doc_test_visibility),
     description: "run various visibility-related lints on doctests",
 };
 
