@@ -83,6 +83,7 @@ fn aarch64_linux() {
     println!("sb: {}", is_aarch64_feature_detected!("sb"));
     println!("paca: {}", is_aarch64_feature_detected!("paca"));
     println!("pacg: {}", is_aarch64_feature_detected!("pacg"));
+    // println!("pauth-lr: {}", is_aarch64_feature_detected!("pauth-lr"));
     println!("dpb: {}", is_aarch64_feature_detected!("dpb"));
     println!("dpb2: {}", is_aarch64_feature_detected!("dpb2"));
     println!("sve-b16b16: {}", is_aarch64_feature_detected!("sve-b16b16"));

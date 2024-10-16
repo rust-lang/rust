@@ -140,6 +140,7 @@ struct AtHwcap {
     smesf8fma: bool,
     smesf8dp4: bool,
     smesf8dp2: bool,
+    // pauthlr: bool,
 }
 
 impl From<auxvec::AuxVec> for AtHwcap {
@@ -243,6 +244,7 @@ impl From<auxvec::AuxVec> for AtHwcap {
             smesf8fma: bit::test(auxv.hwcap2, 60),
             smesf8dp4: bit::test(auxv.hwcap2, 61),
             smesf8dp2: bit::test(auxv.hwcap2, 62),
+            // pauthlr: bit::test(auxv.hwcap2, ??),
         }
     }
 }
@@ -353,6 +355,7 @@ impl From<super::cpuinfo::CpuInfo> for AtHwcap {
             smesf8fma: f.has("smesf8fma"),
             smesf8dp4: f.has("smesf8dp4"),
             smesf8dp2: f.has("smesf8dp2"),
+            // pauthlr: f.has("pauthlr"),
         }
     }
 }
@@ -413,6 +416,7 @@ impl AtHwcap {
             enable_feature(Feature::sb, self.sb);
             enable_feature(Feature::paca, self.paca);
             enable_feature(Feature::pacg, self.pacg);
+            // enable_feature(Feature::pauth_lr, self.pauthlr);
             enable_feature(Feature::dpb, self.dcpop);
             enable_feature(Feature::dpb2, self.dcpodp);
             enable_feature(Feature::rand, self.rng);
