@@ -20,7 +20,7 @@ use crate::visit::DocVisitor;
 
 pub(crate) const CALCULATE_DOC_COVERAGE: Pass = Pass {
     name: "calculate-doc-coverage",
-    run: calculate_doc_coverage,
+    run: Some(calculate_doc_coverage),
     description: "counts the number of items with and without documentation",
 };
 

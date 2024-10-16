@@ -1780,7 +1780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if inexistent_fields.len() == 1 {
                     match pat_field.pat.kind {
                         PatKind::Lit(expr)
-                            if !self.can_coerce(
+                            if !self.may_coerce(
                                 self.typeck_results.borrow().expr_ty(expr),
                                 self.field_ty(field.span, field_def, args),
                             ) => {}

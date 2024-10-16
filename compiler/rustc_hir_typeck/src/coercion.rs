@@ -1084,24 +1084,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    /// Same as `coerce()`, but without side-effects.
+    /// Probe whether `expr_ty` can be coerced to `target_ty`. This has no side-effects,
+    /// and may return false positives if types are not yet fully constrained by inference.
     ///
-    /// Returns false if the coercion creates any obligations that result in
-    /// errors.
-    pub(crate) fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
-        // FIXME(-Znext-solver): We need to structurally resolve both types here.
-        let source = self.resolve_vars_with_obligations(expr_ty);
-        debug!("coercion::can_with_predicates({:?} -> {:?})", source, target);
-
+    /// Returns false if the coercion is not possible, or if the coercion creates any
+    /// sub-obligations that result in errors.
+    ///
+    /// This should only be used for diagnostics.
+    pub(crate) fn may_coerce(&self, expr_ty: Ty<'tcx>, target_ty: Ty<'tcx>) -> bool {
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion.
         // We also just always set `coerce_never` to true, since this is a heuristic.
-        let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
+        let coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         self.probe(|_| {
-            let Ok(ok) = coerce.coerce(source, target) else {
+            // Make sure to structurally resolve the types, since we use
+            // the `TyKind`s heavily in coercion.
+            let ocx = ObligationCtxt::new(self);
+            let structurally_resolve = |ty| {
+                let ty = self.shallow_resolve(ty);
+                if self.next_trait_solver()
+                    && let ty::Alias(..) = ty.kind()
+                {
+                    ocx.structurally_normalize(&cause, self.param_env, ty)
+                } else {
+                    Ok(ty)
+                }
+            };
+            let Ok(expr_ty) = structurally_resolve(expr_ty) else {
                 return false;
             };
-            let ocx = ObligationCtxt::new(self);
+            let Ok(target_ty) = structurally_resolve(target_ty) else {
+                return false;
+            };
+
+            let Ok(ok) = coerce.coerce(expr_ty, target_ty) else {
+                return false;
+            };
             ocx.register_obligations(ok.obligations);
             ocx.select_where_possible().is_empty()
         })
@@ -1370,7 +1388,7 @@ pub fn can_coerce<'tcx>(
 ) -> bool {
     let root_ctxt = crate::typeck_root_ctxt::TypeckRootCtxt::new(tcx, body_id);
     let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, body_id);
-    fn_ctxt.can_coerce(ty, output_ty)
+    fn_ctxt.may_coerce(ty, output_ty)
 }
 
 /// CoerceMany encapsulates the pattern you should use when you have

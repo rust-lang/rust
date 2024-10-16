@@ -2302,7 +2302,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 })),
                 terr,
                 false,
-                false,
             );
             diag.emit();
             self.abort.set(true);
