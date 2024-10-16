@@ -1,4 +1,5 @@
 //@ needs-llvm-components: avr
+//@ needs-rust-lld
 //! Regression test for #129301/llvm-project#106722 within `rustc`.
 //!
 //! Some LLVM-versions had wrong offsets in the local labels, causing the first
@@ -12,6 +13,8 @@
 use run_make_support::{llvm_objdump, rustc};
 
 fn main() {
+    panic!("This is expected. This panic should occur in at least one job.");
+
     rustc()
         .input("avr-rjmp-offsets.rs")
         .opt_level("s")
