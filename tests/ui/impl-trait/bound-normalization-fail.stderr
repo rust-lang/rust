@@ -7,13 +7,13 @@ LL |
 LL |         Foo(())
    |         ------- return type was inferred to be `Foo<()>` here
    |
-note: expected this to be `()`
+note: expected this to be `<T as impl_trait::Trait>::Assoc`
   --> $DIR/bound-normalization-fail.rs:14:19
    |
 LL |     type Output = T;
    |                   ^
-   = note:    expected unit type `()`
-           found associated type `<T as impl_trait::Trait>::Assoc`
+   = note: expected associated type `<T as impl_trait::Trait>::Assoc`
+                    found unit type `()`
 help: consider constraining the associated type `<T as impl_trait::Trait>::Assoc` to `()`
    |
 LL |     fn foo_fail<T: Trait<Assoc = ()>>() -> impl FooLike<Output = T::Assoc> {
@@ -28,13 +28,13 @@ LL |
 LL |         Foo(())
    |         ------- return type was inferred to be `Foo<()>` here
    |
-note: expected this to be `()`
+note: expected this to be `<T as lifetimes::Trait<'a>>::Assoc`
   --> $DIR/bound-normalization-fail.rs:14:19
    |
 LL |     type Output = T;
    |                   ^
-   = note:    expected unit type `()`
-           found associated type `<T as lifetimes::Trait<'a>>::Assoc`
+   = note: expected associated type `<T as lifetimes::Trait<'a>>::Assoc`
+                    found unit type `()`
 help: consider constraining the associated type `<T as lifetimes::Trait<'a>>::Assoc` to `()`
    |
 LL |     fn foo2_fail<'a, T: Trait<'a, Assoc = ()>>() -> impl FooLike<Output = T::Assoc> {
