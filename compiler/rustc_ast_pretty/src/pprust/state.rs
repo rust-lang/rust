@@ -358,7 +358,7 @@ fn binop_to_string(op: BinOpToken) -> &'static str {
     }
 }
 
-fn doc_comment_to_string(
+pub fn doc_comment_to_string(
     comment_kind: CommentKind,
     attr_style: ast::AttrStyle,
     data: Symbol,

@@ -71,13 +71,107 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
-    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [hir::Attribute],
     ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> State<'a> {
-    fn attrs(&self, id: HirId) -> &'a [ast::Attribute] {
+    fn attrs(&self, id: HirId) -> &'a [hir::Attribute] {
         (self.attrs)(id)
+    }
+
+    fn print_inner_attributes(&mut self, attrs: &[hir::Attribute]) -> bool {
+        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
+    }
+
+    fn print_outer_attributes(&mut self, attrs: &[hir::Attribute]) -> bool {
+        self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
+    }
+
+    fn print_either_attributes(
+        &mut self,
+        attrs: &[hir::Attribute],
+        kind: ast::AttrStyle,
+        is_inline: bool,
+        trailing_hardbreak: bool,
+    ) -> bool {
+        let mut printed = false;
+        for attr in attrs {
+            if attr.style == kind {
+                self.print_attribute_inline(attr, is_inline);
+                if is_inline {
+                    self.nbsp();
+                }
+                printed = true;
+            }
+        }
+        if printed && trailing_hardbreak && !is_inline {
+            self.hardbreak_if_not_bol();
+        }
+        printed
+    }
+
+    fn print_attribute_inline(&mut self, attr: &hir::Attribute, is_inline: bool) {
+        if !is_inline {
+            self.hardbreak_if_not_bol();
+        }
+        self.maybe_print_comment(attr.span.lo());
+        match &attr.kind {
+            hir::AttrKind::Normal(normal) => {
+                match attr.style {
+                    ast::AttrStyle::Inner => self.word("#!["),
+                    ast::AttrStyle::Outer => self.word("#["),
+                }
+                self.print_attr_item(&normal, attr.span);
+                self.word("]");
+            }
+            hir::AttrKind::DocComment(comment_kind, data) => {
+                self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
+                    *comment_kind,
+                    attr.style,
+                    *data,
+                ));
+                self.hardbreak()
+            }
+        }
+    }
+
+    fn print_attr_item(&mut self, item: &hir::AttrItem, span: Span) {
+        self.ibox(0);
+        let path = Path {
+            span,
+            segments: item
+                .path
+                .segments
+                .iter()
+                .map(|i| PathSegment { ident: *i, id: DUMMY_NODE_ID, args: None })
+                .collect(),
+            tokens: None,
+        };
+
+        match &item.args {
+            hir::AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self
+                .print_mac_common(
+                    Some(MacHeader::Path(&path)),
+                    false,
+                    None,
+                    *delim,
+                    tokens,
+                    true,
+                    span,
+                ),
+            hir::AttrArgs::Empty => {
+                PrintState::print_path(self, &path, false, 0);
+            }
+            hir::AttrArgs::Eq { eq_span: _, value } => {
+                PrintState::print_path(self, &path, false, 0);
+                self.space();
+                self.word_space("=");
+                let token_str = self.meta_item_lit_to_string(value);
+                self.word(token_str);
+            }
+        }
+        self.end();
     }
 
     fn print_node(&mut self, node: Node<'_>) {
@@ -197,6 +291,10 @@ where
     let mut printer = State { s: pp::Printer::new(), comments: None, attrs: &|_| &[], ann };
     f(&mut printer);
     printer.s.eof()
+}
+
+pub fn attribute_to_string(ann: &dyn PpAnn, attr: &hir::Attribute) -> String {
+    to_string(ann, |s| s.print_attribute_inline(attr, false))
 }
 
 pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {
