@@ -17,12 +17,13 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint, LintBuffer};
-use rustc_session::parse::feature_err_issues;
+use rustc_session::parse::add_feature_diagnostics_for_issues;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 use tracing::debug;
 
 pub use self::StabilityLevel::*;
+use crate::error::{SoftUnstableLibraryFeature, UnstableLibraryFeatureError};
 use crate::ty::TyCtxt;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -106,25 +107,23 @@ pub fn report_unstable(
     reason: Option<Symbol>,
     issue: Option<NonZero<u32>>,
     suggestion: Option<(Span, String, String, Applicability)>,
-    is_soft: bool,
     span: Span,
-    soft_handler: impl FnOnce(&'static Lint, Span, String),
 ) {
-    let msg = match reason {
-        Some(r) => format!("use of unstable library feature `{feature}`: {r}"),
-        None => format!("use of unstable library feature `{feature}`"),
-    };
+    let features = vec![feature];
 
-    if is_soft {
-        soft_handler(SOFT_UNSTABLE, span, msg)
-    } else {
-        let issues = Vec::from_iter(issue);
-        let mut err = feature_err_issues(sess, &[feature], span, GateIssues::Library(issues), msg);
-        if let Some((inner_types, msg, sugg, applicability)) = suggestion {
-            err.span_suggestion(inner_types, msg, sugg, applicability);
-        }
-        err.emit();
+    let mut err = sess.dcx().create_err(UnstableLibraryFeatureError::new(feature, reason, span));
+    add_feature_diagnostics_for_issues(
+        &mut err,
+        sess,
+        &features,
+        GateIssues::Library(Vec::from_iter(issue)),
+        false,
+        None,
+    );
+    if let Some((inner_types, msg, sugg, applicability)) = suggestion {
+        err.span_suggestion(inner_types, msg, sugg, applicability);
     }
+    err.emit();
 }
 
 fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
@@ -565,26 +564,23 @@ impl<'tcx> TyCtxt<'tcx> {
         allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
-        let soft_handler = |lint, span, msg: String| {
-            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
-                lint.primary_message(msg);
-            })
-        };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);
         let is_allowed = matches!(eval_result, EvalResult::Allow);
         match eval_result {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => report_unstable(
-                self.sess,
-                feature,
-                reason,
-                issue,
-                suggestion,
-                is_soft,
-                span,
-                soft_handler,
-            ),
+            EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => {
+                if is_soft {
+                    self.emit_node_span_lint(
+                        SOFT_UNSTABLE,
+                        id.unwrap_or(hir::CRATE_HIR_ID),
+                        span,
+                        SoftUnstableLibraryFeature::new(feature, reason),
+                    );
+                } else {
+                    report_unstable(self.sess, feature, reason, issue, suggestion, span);
+                }
+            }
             EvalResult::Unmarked => unmarked(span, def_id),
         }
 

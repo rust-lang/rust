@@ -1009,28 +1009,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
                 let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
                 if !is_allowed(feature) && !allowed_by_implication {
-                    let lint_buffer = &mut self.lint_buffer;
-                    let soft_handler = |lint, span, msg: String| {
-                        lint_buffer.buffer_lint(
-                            lint,
+                    if is_soft {
+                        self.lint_buffer.buffer_lint(
+                            SOFT_UNSTABLE,
                             node_id,
                             span,
-                            BuiltinLintDiag::UnstableFeature(
-                                // FIXME make this translatable
-                                msg.into(),
-                            ),
-                        )
-                    };
-                    stability::report_unstable(
-                        self.tcx.sess,
-                        feature,
-                        reason.to_opt_reason(),
-                        issue,
-                        None,
-                        is_soft,
-                        span,
-                        soft_handler,
-                    );
+                            BuiltinLintDiag::SoftUnstableMacro {
+                                feature,
+                                reason: reason.to_opt_reason(),
+                            },
+                        );
+                    } else {
+                        stability::report_unstable(
+                            self.tcx.sess,
+                            feature,
+                            reason.to_opt_reason(),
+                            issue,
+                            None,
+                            span,
+                        );
+                    }
                 }
             }
         }

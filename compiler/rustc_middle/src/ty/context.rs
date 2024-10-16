@@ -2969,22 +2969,22 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         diag: &mut Diag<'_, E>,
         hir_id: Option<HirId>,
-        features: impl IntoIterator<Item = (String, Symbol)>,
+        featuresets: impl IntoIterator<Item = (String, impl std::fmt::Display)>,
     ) {
         if !self.sess.is_nightly_build() {
             return;
         }
 
         let span = hir_id.and_then(|id| self.crate_level_attribute_injection_span(id));
-        for (desc, feature) in features {
+        for (desc, features) in featuresets {
             // FIXME: make this string translatable
             let msg =
-                format!("add `#![feature({feature})]` to the crate attributes to enable{desc}");
+                format!("add `#![feature({features})]` to the crate attributes to enable{desc}");
             if let Some(span) = span {
                 diag.span_suggestion_verbose(
                     span,
                     msg,
-                    format!("#![feature({feature})]\n"),
+                    format!("#![feature({features})]\n"),
                     Applicability::MaybeIncorrect,
                 );
             } else {

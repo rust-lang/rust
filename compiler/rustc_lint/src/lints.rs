@@ -2408,16 +2408,6 @@ pub(crate) struct MacroRuleNeverUsed {
     pub name: Symbol,
 }
 
-pub(crate) struct UnstableFeature {
-    pub msg: DiagMessage,
-}
-
-impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(self.msg);
-    }
-}
-
 #[derive(LintDiagnostic)]
 #[diag(lint_avoid_intel_syntax)]
 pub(crate) struct AvoidIntelSyntax;
