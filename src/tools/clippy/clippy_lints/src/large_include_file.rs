@@ -2,8 +2,8 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, LitKind};
-use rustc_hir::{Expr, ExprKind};
+use rustc_ast::{LitKind};
+use rustc_hir::{Expr, ExprKind, Attribute, AttrArgs, AttrKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
@@ -93,10 +93,10 @@ impl LateLintPass<'_> for LargeIncludeFile {
         if !attr.span.from_expansion()
             // Currently, rustc limits the usage of macro at the top-level of attributes,
             // so we don't need to recurse into each level.
-            && let AttrKind::Normal(ref normal) = attr.kind
+            && let AttrKind::Normal(ref item) = attr.kind
             && let Some(doc) = attr.doc_str()
             && doc.as_str().len() as u64 > self.max_file_size
-            && let AttrArgs::Eq { expr: AttrArgsEq::Hir(ref meta), .. } = normal.item.args
+            && let AttrArgs::Eq { expr: meta, .. } = &item.args
             && !attr.span.contains(meta.span)
             // Since the `include_str` is already expanded at this point, we can only take the
             // whole attribute snippet and then modify for our suggestion.

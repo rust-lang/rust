@@ -29,9 +29,9 @@ use rustc_ast::tokenstream::{
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind,
-    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered,
-    Safety, StrLit, Visibility, VisibilityKind,
+    self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
+    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit,
+    Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -1376,7 +1376,7 @@ impl<'a> Parser<'a> {
             AttrArgs::Delimited(args)
         } else if self.eat(&token::Eq) {
             let eq_span = self.prev_token.span;
-            AttrArgs::Eq { eq_span, expr: AttrArgsEq::Ast(self.parse_expr_force_collect()?) }
+            AttrArgs::Eq { eq_span, expr: self.parse_expr_force_collect()? }
         } else {
             AttrArgs::Empty
         })

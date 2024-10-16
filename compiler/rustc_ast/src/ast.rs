@@ -1759,7 +1759,7 @@ pub enum AttrArgs {
         /// Span of the `=` token.
         eq_span: Span,
 
-        expr: AttrArgsEq,
+        expr: P<Expr>,
     },
 }
 
@@ -1804,7 +1804,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => None,
             AttrArgs::Delimited(args) => Some(args.dspan.entire()),
-            AttrArgs::Eq { eq_span, expr } => Some(eq_span.to(expr.span())),
+            AttrArgs::Eq { eq_span, expr } => Some(eq_span.to(expr.span)),
         }
     }
 
@@ -1814,7 +1814,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => TokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq { expr, .. } => TokenStream::from_ast(expr.unwrap_ast()),
+            AttrArgs::Eq { expr, .. } => TokenStream::from_ast(expr),
         }
     }
 }
@@ -1828,12 +1828,8 @@ where
         match self {
             AttrArgs::Empty => {}
             AttrArgs::Delimited(args) => args.hash_stable(ctx, hasher),
-            AttrArgs::Eq { expr: AttrArgsEq::Ast(expr), .. } => {
+            AttrArgs::Eq { expr, .. } => {
                 unreachable!("hash_stable {:?}", expr);
-            }
-            AttrArgs::Eq { eq_span, expr: AttrArgsEq::Hir(lit) } => {
-                eq_span.hash_stable(ctx, hasher);
-                lit.hash_stable(ctx, hasher);
             }
         }
     }

@@ -3,8 +3,7 @@
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
-    self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind,
-    Safety,
+    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
 };
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -70,7 +69,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     parse_in(psess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
-            AttrArgs::Eq { expr: AttrArgsEq::Ast(expr), .. } => {
+            AttrArgs::Eq { expr, .. } => {
                 if let ast::ExprKind::Lit(token_lit) = expr.kind {
                     let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
                     let res = match res {
@@ -116,7 +115,6 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     return Err(err);
                 }
             }
-            AttrArgs::Eq { expr: AttrArgsEq::Hir(lit), .. } => MetaItemKind::NameValue(lit.clone()),
         },
     })
 }

@@ -452,7 +452,7 @@ fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
         AttrArgs::Empty => {}
         AttrArgs::Delimited(args) => visit_delim_args(vis, args),
         AttrArgs::Eq { eq_span, expr } => {
-            vis.visit_expr(expr.unwrap_ast_mut());
+            vis.visit_expr(expr);
             vis.visit_span(eq_span);
         }
     }

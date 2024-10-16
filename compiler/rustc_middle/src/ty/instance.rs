@@ -277,7 +277,7 @@ impl<'tcx> InstanceKind<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx rustc_ast::Attribute> {
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         tcx.get_attrs(self.def_id(), attr)
     }
 

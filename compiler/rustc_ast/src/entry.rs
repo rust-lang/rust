@@ -1,7 +1,7 @@
 use rustc_span::Symbol;
 use rustc_span::symbol::sym;
 
-use crate::{Attribute, attr};
+use crate::attr::{self, AttributeExt};
 
 #[derive(Debug)]
 pub enum EntryPointType {
@@ -37,7 +37,7 @@ pub enum EntryPointType {
 }
 
 pub fn entry_point_type(
-    attrs: &[Attribute],
+    attrs: &[impl AttributeExt],
     at_root: bool,
     name: Option<Symbol>,
 ) -> EntryPointType {

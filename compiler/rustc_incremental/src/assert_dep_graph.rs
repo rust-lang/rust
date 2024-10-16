@@ -50,7 +50,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 use tracing::debug;
-use {rustc_ast as ast, rustc_graphviz as dot, rustc_hir as hir};
+use {rustc_graphviz as dot, rustc_hir as hir};
 
 use crate::errors;
 
@@ -106,7 +106,7 @@ struct IfThisChanged<'tcx> {
 }
 
 impl<'tcx> IfThisChanged<'tcx> {
-    fn argument(&self, attr: &ast::Attribute) -> Option<Symbol> {
+    fn argument(&self, attr: &hir::Attribute) -> Option<Symbol> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
             match list_item.ident() {
