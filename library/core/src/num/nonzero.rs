@@ -1509,8 +1509,6 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
-        ///
         /// # use std::num::NonZero;
         /// #
         /// # fn main() { test().unwrap(); }
@@ -1524,7 +1522,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

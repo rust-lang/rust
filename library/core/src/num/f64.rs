@@ -1002,13 +1002,13 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(num_midpoint)]
     /// assert_eq!(1f64.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f64).midpoint(8.0), 1.25);
     /// ```
     #[inline]
-    #[unstable(feature = "num_midpoint", issue = "110840")]
-    pub fn midpoint(self, other: f64) -> f64 {
+    #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn midpoint(self, other: f64) -> f64 {
         const LO: f64 = f64::MIN_POSITIVE * 2.;
         const HI: f64 = f64::MAX / 2.;
 

@@ -103,18 +103,18 @@ macro_rules! midpoint_impl {
     ($SelfT:ty, unsigned) => {
         /// Calculates the middle point of `self` and `rhs`.
         ///
-        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
-        /// sufficiently-large signed integral type. This implies that the result is
-        /// always rounded towards negative infinity and that no overflow will ever occur.
+        /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
+        /// sufficiently-large unsigned integral type. This implies that the result is
+        /// always rounded towards zero and that no overflow will ever occur.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -134,14 +134,14 @@ macro_rules! midpoint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
+        /// #![feature(num_midpoint_signed)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(2), 0);")]
         #[doc = concat!("assert_eq!((-7", stringify!($SelfT), ").midpoint(0), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[unstable(feature = "num_midpoint_signed", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -157,18 +157,18 @@ macro_rules! midpoint_impl {
     ($SelfT:ty, $WideT:ty, unsigned) => {
         /// Calculates the middle point of `self` and `rhs`.
         ///
-        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
-        /// sufficiently-large signed integral type. This implies that the result is
-        /// always rounded towards negative infinity and that no overflow will ever occur.
+        /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
+        /// sufficiently-large unsigned integral type. This implies that the result is
+        /// always rounded towards zero and that no overflow will ever occur.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -186,14 +186,14 @@ macro_rules! midpoint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
+        /// #![feature(num_midpoint_signed)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(2), 0);")]
         #[doc = concat!("assert_eq!((-7", stringify!($SelfT), ").midpoint(0), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[unstable(feature = "num_midpoint_signed", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
