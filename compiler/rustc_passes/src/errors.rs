@@ -802,6 +802,8 @@ pub(crate) enum UnusedNote {
     NoLints { name: Symbol },
     #[note(passes_unused_default_method_body_const_note)]
     DefaultMethodBodyConst,
+    #[note(passes_unused_linker_warnings_note)]
+    LinkerWarningsBinaryCrateOnly,
 }
 
 #[derive(LintDiagnostic)]

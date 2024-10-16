@@ -25,6 +25,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
@@ -2328,6 +2329,33 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && item.path == sym::reason
         {
             errors::UnusedNote::NoLints { name: attr.name_or_empty() }
+        } else if matches!(
+            attr.name_or_empty(),
+            sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
+        ) && let Some(meta) = attr.meta_item_list()
+            && meta.iter().any(|meta| {
+                meta.meta_item().map_or(false, |item| item.path == sym::linker_messages)
+            })
+        {
+            if hir_id != CRATE_HIR_ID {
+                let err = match attr.style {
+                    ast::AttrStyle::Outer => errors::OuterCrateLevelAttr,
+                    ast::AttrStyle::Inner => errors::OuterCrateLevelAttr,
+                };
+                self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, err);
+                return;
+            } else {
+                let never_needs_link = self
+                    .tcx
+                    .crate_types()
+                    .iter()
+                    .all(|kind| matches!(kind, CrateType::Rlib | CrateType::Staticlib));
+                if never_needs_link {
+                    errors::UnusedNote::LinkerWarningsBinaryCrateOnly
+                } else {
+                    return;
+                }
+            }
         } else if attr.name_or_empty() == sym::default_method_body_is_const {
             errors::UnusedNote::DefaultMethodBodyConst
         } else {
