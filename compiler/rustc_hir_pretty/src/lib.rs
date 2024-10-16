@@ -121,7 +121,13 @@ impl<'a> State<'a> {
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
                 }
+                if normal.unsafety == hir::Safety::Unsafe {
+                    self.word("unsafe(");
+                }
                 self.print_attr_item(&normal, attr.span);
+                if normal.unsafety == hir::Safety::Unsafe {
+                    self.word(")");
+                }
                 self.word("]");
             }
             hir::AttrKind::DocComment(comment_kind, data) => {
