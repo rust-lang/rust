@@ -41,6 +41,8 @@ use crate::mbe::macro_parser::NamedMatch::*;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
 use crate::mbe::transcribe::transcribe;
 
+type Item<A> = ast::Item<ast::ItemKind, A>;
+
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
 

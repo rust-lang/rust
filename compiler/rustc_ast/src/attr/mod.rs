@@ -9,10 +9,11 @@ use rustc_span::symbol::{Ident, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::MetaItemLit;
 use crate::ast::{
-    AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit,
-    NormalAttr, Path, PathSegment, Safety,
+    AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
+    Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, NormalAttr, Path, PathSegment,
+    Safety,
 };
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};
@@ -253,20 +254,6 @@ impl AttrItem {
     }
 }
 
-impl AttrArgsEq {
-    fn value_str(&self) -> Option<Symbol> {
-        match self {
-            AttrArgsEq::Ast(expr) => match expr.kind {
-                ExprKind::Lit(token_lit) => {
-                    LitKind::from_token_lit(token_lit).ok().and_then(|lit| lit.str())
-                }
-                _ => None,
-            },
-            AttrArgsEq::Hir(lit) => lit.kind.str(),
-        }
-    }
-}
-
 impl MetaItem {
     /// For a single-segment meta item, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
@@ -446,7 +433,7 @@ impl MetaItemKind {
                 MetaItemKind::list_from_tokens(tokens.clone()).map(MetaItemKind::List)
             }
             AttrArgs::Delimited(..) => None,
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => match expr.kind {
+            AttrArgs::Eq(_, expr) => match expr.kind {
                 ExprKind::Lit(token_lit) => {
                     // Turn failures to `None`, we'll get parse errors elsewhere.
                     MetaItemLit::from_token_lit(token_lit, expr.span)
@@ -455,7 +442,6 @@ impl MetaItemKind {
                 }
                 _ => None,
             },
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => Some(MetaItemKind::NameValue(lit.clone())),
         }
     }
 }
