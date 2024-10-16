@@ -71,7 +71,8 @@ pub enum SolverMode {
     Coherence,
 }
 
-pub type CanonicalInput<I, T = <I as Interner>::Predicate> = Canonical<I, QueryInput<I, T>>;
+pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
+    ty::CanonicalQueryInput<I, QueryInput<I, T>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///

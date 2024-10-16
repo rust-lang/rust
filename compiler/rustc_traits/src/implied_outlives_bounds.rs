@@ -5,13 +5,14 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::{self, Canonical};
 use rustc_infer::traits::query::OutlivesBound;
+use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::{
     compute_implied_outlives_bounds_compat_inner, compute_implied_outlives_bounds_inner,
 };
-use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
+use rustc_trait_selection::traits::query::{CanonicalImpliedOutlivesBoundsGoal, NoSolution};
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { implied_outlives_bounds_compat, ..*p };
@@ -20,26 +21,26 @@ pub(crate) fn provide(p: &mut Providers) {
 
 fn implied_outlives_bounds_compat<'tcx>(
     tcx: TyCtxt<'tcx>,
-    goal: CanonicalTyGoal<'tcx>,
+    goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>,
 ) -> Result<
     &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
     NoSolution,
 > {
     tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
-        let (param_env, ty) = key.into_parts();
+        let (param_env, ImpliedOutlivesBounds { ty }) = key.into_parts();
         compute_implied_outlives_bounds_compat_inner(ocx, param_env, ty)
     })
 }
 
 fn implied_outlives_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    goal: CanonicalTyGoal<'tcx>,
+    goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>,
 ) -> Result<
     &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
     NoSolution,
 > {
     tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
-        let (param_env, ty) = key.into_parts();
+        let (param_env, ImpliedOutlivesBounds { ty }) = key.into_parts();
         compute_implied_outlives_bounds_inner(ocx, param_env, ty)
     })
 }
