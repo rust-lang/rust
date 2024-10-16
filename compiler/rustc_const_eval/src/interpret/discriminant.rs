@@ -181,7 +181,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             variant_index_relative_val.to_scalar().to_bits(tag_val.layout.size)?;
                         // Check if this is in the range that indicates an actual discriminant.
                         if niche_variants.contains(&untagged_variant) {
-                            if variant_index_relative < u128::from(discr_len) {
+                            if variant_index_relative < u128::from(discr_len - 1) {
                                 let adj_untagged_idx = untagged_variant.as_u32() - variants_start;
                                 let variant_index_relative = u32::try_from(variant_index_relative)
                                     .expect("we checked that this fits into a u32");
@@ -333,6 +333,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     adj_idx
                 };
                 // We need to use machine arithmetic when taking into account `niche_start`:
+                // tag_val = variant_index_relative + niche_start_val
                 let tag_layout = self.layout_of(tag_layout.primitive().to_int_ty(*self.tcx))?;
                 let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                 let variant_index_relative_val =
