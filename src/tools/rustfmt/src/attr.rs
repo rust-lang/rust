@@ -2,6 +2,7 @@
 
 use rustc_ast::HasAttrs;
 use rustc_ast::ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_span::{Span, symbol::sym};
 use tracing::debug;
 

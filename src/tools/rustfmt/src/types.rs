@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr;
 use rustc_span::{BytePos, Pos, Span, symbol::kw};
 use tracing::debug;
