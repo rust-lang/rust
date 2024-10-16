@@ -17,9 +17,9 @@ use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
-    self as ast, AttrArgs, AttrArgsEq, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg,
-    GenericBound, InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass,
-    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
+    self as ast, AttrArgs, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg, GenericBound,
+    InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece, PatKind,
+    RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
 use rustc_data_structures::sync::Lrc;
 use rustc_span::edition::Edition;
@@ -359,7 +359,7 @@ fn binop_to_string(op: BinOpToken) -> &'static str {
     }
 }
 
-fn doc_comment_to_string(
+pub fn doc_comment_to_string(
     comment_kind: CommentKind,
     attr_style: ast::AttrStyle,
     data: Symbol,
@@ -648,18 +648,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             AttrArgs::Empty => {
                 self.print_path(&item.path, false, 0);
             }
-            AttrArgs::Eq { expr: AttrArgsEq::Ast(expr), .. } => {
+            AttrArgs::Eq { expr, .. } => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
                 let token_str = self.expr_to_string(expr);
-                self.word(token_str);
-            }
-            AttrArgs::Eq { expr: AttrArgsEq::Hir(lit), .. } => {
-                self.print_path(&item.path, false, 0);
-                self.space();
-                self.word_space("=");
-                let token_str = self.meta_item_lit_to_string(lit);
                 self.word(token_str);
             }
         }

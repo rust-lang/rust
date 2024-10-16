@@ -3727,6 +3727,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -4395,9 +4396,9 @@ version = "0.0.0"
 dependencies = [
  "rustc_abi",
  "rustc_ast",
- "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_hir",
+ "rustc_hir_pretty",
  "rustc_middle",
  "rustc_session",
  "rustc_span",

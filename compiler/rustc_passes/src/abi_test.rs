@@ -1,4 +1,4 @@
-use rustc_ast::Attribute;
+use rustc_hir::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;

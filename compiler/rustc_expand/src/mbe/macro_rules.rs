@@ -9,7 +9,7 @@ use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_attr::{self as attr, TransparencyError};
+use rustc_attr::{self as attr, AttributeExt, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
@@ -371,7 +371,7 @@ pub fn compile_declarative_macro(
     features: &Features,
     macro_def: &ast::MacroDef,
     ident: Ident,
-    attrs: &[ast::Attribute],
+    attrs: &[impl AttributeExt],
     span: Span,
     node_id: NodeId,
     edition: Edition,

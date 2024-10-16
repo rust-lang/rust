@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::ast;
 use rustc_hir as hir;
+use rustc_hir::Attribute;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocItemContainer;
 use rustc_session::declare_lint_pass;
@@ -63,7 +63,7 @@ declare_clippy_lint! {
     "detects missing `#[inline]` attribute for public callables (functions, trait methods, methods...)"
 }
 
-fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
+fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[Attribute], sp: Span, desc: &'static str) {
     let has_inline = attrs.iter().any(|a| a.has_name(sym::inline));
     if !has_inline {
         span_lint(

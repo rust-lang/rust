@@ -2,14 +2,14 @@ use super::{Attribute, SHOULD_PANIC_WITHOUT_EXPECT};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind};
+use rustc_ast::{AttrArgs, AttrKind};
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;
 use rustc_span::sym;
 
 pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute) {
     if let AttrKind::Normal(normal_attr) = &attr.kind {
-        if let AttrArgs::Eq { expr:  AttrArgsEq::Ast(_), .. } = &normal_attr.item.args {
+        if let AttrArgs::Eq { .. } = &normal_attr.item.args {
             // `#[should_panic = ".."]` found, good
             return;
         }

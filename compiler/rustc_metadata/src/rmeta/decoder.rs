@@ -1363,10 +1363,10 @@ impl<'a> CrateMetadataRef<'a> {
         self,
         id: DefIndex,
         sess: &'a Session,
-    ) -> impl Iterator<Item = ast::Attribute> + 'a {
+    ) -> impl Iterator<Item = hir::Attribute> + 'a {
         self.root
             .tables
-            .attributes
+            .hir_attributes
             .get(self, id)
             .unwrap_or_else(|| {
                 // Structure and variant constructors don't have any attributes encoded for them,
@@ -1377,7 +1377,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let parent_id = def_key.parent.expect("no parent for a constructor");
                 self.root
                     .tables
-                    .attributes
+                    .hir_attributes
                     .get(self, parent_id)
                     .expect("no encoded attributes for a structure or variant")
             })

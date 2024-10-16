@@ -6,8 +6,6 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_ast::MetaItemInner;
-use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -454,14 +452,14 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
-        let ast_attrs = cx.tcx.get_attrs_unchecked(def_id);
+        let hir_attrs = cx.tcx.get_attrs_unchecked(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,
             name,
             kind,
-            Attributes::from_ast(ast_attrs),
-            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            Attributes::from_hir(hir_attrs),
+            hir_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
 
@@ -742,10 +740,10 @@ impl Item {
             .iter()
             .filter_map(|attr| {
                 if keep_as_is {
-                    Some(pprust::attribute_to_string(attr))
+                    Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
-                        pprust::attribute_to_string(attr)
+                        rustc_hir_pretty::attribute_to_string(&tcx, attr)
                             .replace("\\\n", "")
                             .replace('\n', "")
                             .replace("  ", " "),
@@ -955,7 +953,7 @@ pub(crate) trait AttributesExt {
     type AttributeIterator<'a>: Iterator<Item = ast::MetaItemInner>
     where
         Self: 'a;
-    type Attributes<'a>: Iterator<Item = &'a ast::Attribute>
+    type Attributes<'a>: Iterator<Item = &'a hir::Attribute>
     where
         Self: 'a;
 
@@ -1009,7 +1007,7 @@ pub(crate) trait AttributesExt {
             // #[doc]
             if attr.doc_str().is_none() && attr.has_name(sym::doc) {
                 // #[doc(...)]
-                if let Some(list) = attr.meta().as_ref().and_then(|mi| mi.meta_item_list()) {
+                if let Some(list) = attr.meta_item_list() {
                     for item in list {
                         // #[doc(hidden)]
                         if !item.has_name(sym::cfg) {
@@ -1042,7 +1040,7 @@ pub(crate) trait AttributesExt {
                     let mut meta = attr.meta_item().unwrap().clone();
                     meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                    if let Ok(feat_cfg) = Cfg::parse(&MetaItemInner::MetaItem(meta)) {
+                    if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
                         cfg &= feat_cfg;
                     }
                 }
@@ -1053,14 +1051,14 @@ pub(crate) trait AttributesExt {
     }
 }
 
-impl AttributesExt for [ast::Attribute] {
+impl AttributesExt for [hir::Attribute] {
     type AttributeIterator<'a> = impl Iterator<Item = ast::MetaItemInner> + 'a;
-    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
+    type Attributes<'a> = impl Iterator<Item = &'a hir::Attribute> + 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         self.iter()
             .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::Attribute::meta_item_list)
+            .filter_map(ast::attr::AttributeExt::meta_item_list)
             .flatten()
     }
 
@@ -1069,20 +1067,20 @@ impl AttributesExt for [ast::Attribute] {
     }
 }
 
-impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
+impl AttributesExt for [(Cow<'_, hir::Attribute>, Option<DefId>)] {
     type AttributeIterator<'a>
         = impl Iterator<Item = ast::MetaItemInner> + 'a
     where
         Self: 'a;
     type Attributes<'a>
-        = impl Iterator<Item = &'a ast::Attribute> + 'a
+        = impl Iterator<Item = &'a hir::Attribute> + 'a
     where
         Self: 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         AttributesExt::iter(self)
             .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::Attribute::meta_item_list)
+            .filter_map(hir::Attribute::meta_item_list)
             .flatten()
     }
 
@@ -1152,7 +1150,7 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
-    pub(crate) other_attrs: ast::AttrVec,
+    pub(crate) other_attrs: Vec<hir::Attribute>,
 }
 
 impl Attributes {
@@ -1180,22 +1178,22 @@ impl Attributes {
         self.has_doc_flag(sym::hidden)
     }
 
-    pub(crate) fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
-        Attributes::from_ast_iter(attrs.iter().map(|attr| (attr, None)), false)
+    pub(crate) fn from_hir(attrs: &[hir::Attribute]) -> Attributes {
+        Attributes::from_hir_iter(attrs.iter().map(|attr| (attr, None)), false)
     }
 
-    pub(crate) fn from_ast_with_additional(
-        attrs: &[ast::Attribute],
-        (additional_attrs, def_id): (&[ast::Attribute], DefId),
+    pub(crate) fn from_hir_with_additional(
+        attrs: &[hir::Attribute],
+        (additional_attrs, def_id): (&[hir::Attribute], DefId),
     ) -> Attributes {
         // Additional documentation should be shown before the original documentation.
         let attrs1 = additional_attrs.iter().map(|attr| (attr, Some(def_id)));
         let attrs2 = attrs.iter().map(|attr| (attr, None));
-        Attributes::from_ast_iter(attrs1.chain(attrs2), false)
+        Attributes::from_hir_iter(attrs1.chain(attrs2), false)
     }
 
-    pub(crate) fn from_ast_iter<'a>(
-        attrs: impl Iterator<Item = (&'a ast::Attribute, Option<DefId>)>,
+    pub(crate) fn from_hir_iter<'a>(
+        attrs: impl Iterator<Item = (&'a hir::Attribute, Option<DefId>)>,
         doc_only: bool,
     ) -> Attributes {
         let (doc_strings, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);

@@ -9,9 +9,8 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
-use rustc_ast as ast;
-use rustc_hir::OwnerId;
 use rustc_hir::diagnostic_items::DiagnosticItems;
+use rustc_hir::{Attribute, OwnerId};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
@@ -55,7 +54,7 @@ fn report_duplicate_item(
 }
 
 /// Extract the first `rustc_diagnostic_item = "$name"` out of a list of attributes.
-fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
+fn extract(attrs: &[Attribute]) -> Option<Symbol> {
     attrs.iter().find_map(|attr| {
         if attr.has_name(sym::rustc_diagnostic_item) { attr.value_str() } else { None }
     })

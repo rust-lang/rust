@@ -1742,11 +1742,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     // FIXME(@lcnr): Remove this function.
-    pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [ast::Attribute] {
+    pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [hir::Attribute] {
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did))
         } else {
-            self.item_attrs(did)
+            self.hir_attrs_for_def(did)
         }
     }
 
@@ -1755,14 +1755,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: impl Into<DefId>,
         attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx ast::Attribute> {
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let did: DefId = did.into();
-        let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
+        let filter_fn = move |a: &&hir::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
             debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.item_attrs(did).iter().filter(filter_fn)
+            self.hir_attrs_for_def(did).iter().filter(filter_fn)
         }
     }
 
@@ -1778,7 +1778,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: impl Into<DefId>,
         attr: Symbol,
-    ) -> Option<&'tcx ast::Attribute> {
+    ) -> Option<&'tcx hir::Attribute> {
         let did: DefId = did.into();
         if did.as_local().is_some() {
             // it's a crate local item, we need to check feature flags
@@ -1791,7 +1791,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // we filter out unstable diagnostic attributes before
             // encoding attributes
             debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.item_attrs(did)
+            self.hir_attrs_for_def(did)
                 .iter()
                 .find(|a| matches!(a.path().as_ref(), [sym::diagnostic, a] if *a == attr))
         }
@@ -1801,19 +1801,19 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: DefId,
         attr: &'attr [Symbol],
-    ) -> impl Iterator<Item = &'tcx ast::Attribute> + 'attr
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> + 'attr
     where
         'tcx: 'attr,
     {
-        let filter_fn = move |a: &&ast::Attribute| a.path_matches(attr);
+        let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
-            self.item_attrs(did).iter().filter(filter_fn)
+            self.hir_attrs_for_def(did).iter().filter(filter_fn)
         }
     }
 
-    pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx ast::Attribute> {
+    pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx hir::Attribute> {
         if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
             let did: DefId = did.into();
             bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);

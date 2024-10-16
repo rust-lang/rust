@@ -201,7 +201,7 @@ fn generate_item_with_correct_attrs(
     };
 
     let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
-    let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
+    let attrs = Attributes::from_hir_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
     let name = renamed.or(Some(name));
     let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
@@ -1036,7 +1036,7 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// This is needed to make it more "readable" when documenting functions using
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
-fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attribute]) {
+fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
     for meta_item_list in attrs
         .iter()
         .filter(|a| a.has_name(sym::rustc_legacy_const_generics))
@@ -2574,7 +2574,7 @@ fn get_all_import_attributes<'hir>(
     import_def_id: LocalDefId,
     target_def_id: DefId,
     is_inline: bool,
-) -> Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)> {
+) -> Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)> {
     let mut attrs = Vec::new();
     let mut first = true;
     for def_id in reexport_chain(cx.tcx, import_def_id, target_def_id)
@@ -2627,9 +2627,9 @@ fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
 
 /// Remove attributes from `normal` that should not be inherited by `use` re-export.
 /// Before calling this function, make sure `normal` is a `#[doc]` attribute.
-fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
-    match normal.item.args {
-        ast::AttrArgs::Delimited(ref mut args) => {
+fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
+    match args {
+        hir::AttrArgs::Delimited(ref mut args) => {
             let tokens = filter_tokens_from_list(&args.tokens, |token| {
                 !matches!(
                     token,
@@ -2647,7 +2647,7 @@ fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
             });
             args.tokens = TokenStream::new(tokens);
         }
-        ast::AttrArgs::Empty | ast::AttrArgs::Eq { .. } => {}
+        hir::AttrArgs::Empty | hir::AttrArgs::Eq { .. } => {}
     }
 }
 
@@ -2672,23 +2672,23 @@ fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
 /// * `doc(no_inline)`
 /// * `doc(hidden)`
 fn add_without_unwanted_attributes<'hir>(
-    attrs: &mut Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)>,
-    new_attrs: &'hir [ast::Attribute],
+    attrs: &mut Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)>,
+    new_attrs: &'hir [hir::Attribute],
     is_inline: bool,
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if matches!(attr.kind, ast::AttrKind::DocComment(..)) {
+        if matches!(attr.kind, hir::AttrKind::DocComment(..)) {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
         }
         let mut attr = attr.clone();
         match attr.kind {
-            ast::AttrKind::Normal(ref mut normal) => {
-                if let [ident] = &*normal.item.path.segments {
-                    let ident = ident.ident.name;
+            hir::AttrKind::Normal(ref mut normal) => {
+                if let [ident] = &*normal.path.segments {
+                    let ident = ident.name;
                     if ident == sym::doc {
-                        filter_doc_attr(normal, is_inline);
+                        filter_doc_attr(&mut normal.args, is_inline);
                         attrs.push((Cow::Owned(attr), import_parent));
                     } else if is_inline || ident != sym::cfg {
                         // If it's not a `cfg()` attribute, we keep it.

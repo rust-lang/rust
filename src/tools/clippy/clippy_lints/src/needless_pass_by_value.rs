@@ -5,12 +5,11 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
-use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind, QPath,
-    TyKind,
+    Attribute, BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node,
+    PatKind, QPath, TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_lint::{LateContext, LateLintPass};

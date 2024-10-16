@@ -1,4 +1,5 @@
-use rustc_ast::{ast, attr};
+use rustc_ast::attr;
+use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
@@ -51,33 +52,31 @@ impl LimitStack {
     pub fn limit(&self) -> u64 {
         *self.stack.last().expect("there should always be a value in the stack")
     }
-    pub fn push_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
+    pub fn push_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: &'static str) {
         let stack = &mut self.stack;
         parse_attrs(sess, attrs, name, |val| stack.push(val));
     }
-    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
+    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: &'static str) {
         let stack = &mut self.stack;
         parse_attrs(sess, attrs, name, |val| assert_eq!(stack.pop(), Some(val)));
     }
 }
 
-pub fn get_attr<'a>(
+pub fn get_attr<'a, A: AttributeExt + 'a>(
     sess: &'a Session,
-    attrs: &'a [ast::Attribute],
+    attrs: &'a [A],
     name: &'static str,
-) -> impl Iterator<Item = &'a ast::Attribute> {
+) -> impl Iterator<Item = &'a A> {
     attrs.iter().filter(move |attr| {
-        let attr = if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            &normal.item
-        } else {
+        let Some(attr_segments) = attr.ident_path() else {
             return false;
         };
-        let attr_segments = &attr.path.segments;
-        if attr_segments.len() == 2 && attr_segments[0].ident.name == sym::clippy {
+
+        if attr_segments.len() == 2 && attr_segments[0].name == sym::clippy {
             BUILTIN_ATTRIBUTES
                 .iter()
                 .find_map(|&(builtin_name, ref deprecation_status)| {
-                    if attr_segments[1].ident.name.as_str() == builtin_name {
+                    if attr_segments[1].name.as_str() == builtin_name {
                         Some(deprecation_status)
                     } else {
                         None
@@ -85,14 +84,13 @@ pub fn get_attr<'a>(
                 })
                 .map_or_else(
                     || {
-                        sess.dcx()
-                            .span_err(attr_segments[1].ident.span, "usage of unknown attribute");
+                        sess.dcx().span_err(attr_segments[1].span, "usage of unknown attribute");
                         false
                     },
                     |deprecation_status| {
                         let mut diag = sess
                             .dcx()
-                            .struct_span_err(attr_segments[1].ident.span, "usage of deprecated attribute");
+                            .struct_span_err(attr_segments[1].span, "usage of deprecated attribute");
                         match *deprecation_status {
                             DeprecationStatus::Deprecated => {
                                 diag.emit();
@@ -100,7 +98,7 @@ pub fn get_attr<'a>(
                             },
                             DeprecationStatus::Replaced(new_name) => {
                                 diag.span_suggestion(
-                                    attr_segments[1].ident.span,
+                                    attr_segments[1].span,
                                     "consider using",
                                     new_name,
                                     Applicability::MachineApplicable,
@@ -110,7 +108,7 @@ pub fn get_attr<'a>(
                             },
                             DeprecationStatus::None => {
                                 diag.cancel();
-                                attr_segments[1].ident.name.as_str() == name
+                                attr_segments[1].as_str() == name
                             },
                         }
                     },
@@ -121,31 +119,31 @@ pub fn get_attr<'a>(
     })
 }
 
-fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
+fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: &'static str, mut f: F) {
     for attr in get_attr(sess, attrs, name) {
         if let Some(ref value) = attr.value_str() {
             if let Ok(value) = FromStr::from_str(value.as_str()) {
                 f(value);
             } else {
-                sess.dcx().span_err(attr.span, "not a number");
+                sess.dcx().span_err(attr.span(), "not a number");
             }
         } else {
-            sess.dcx().span_err(attr.span, "bad clippy attribute");
+            sess.dcx().span_err(attr.span(), "bad clippy attribute");
         }
     }
 }
 
-pub fn get_unique_attr<'a>(
+pub fn get_unique_attr<'a, A: AttributeExt>(
     sess: &'a Session,
-    attrs: &'a [ast::Attribute],
+    attrs: &'a [A],
     name: &'static str,
-) -> Option<&'a ast::Attribute> {
-    let mut unique_attr: Option<&ast::Attribute> = None;
+) -> Option<&'a A> {
+    let mut unique_attr: Option<&A> = None;
     for attr in get_attr(sess, attrs, name) {
         if let Some(duplicate) = unique_attr {
             sess.dcx()
-                .struct_span_err(attr.span, format!("`{name}` is defined multiple times"))
-                .with_span_note(duplicate.span, "first definition found here")
+                .struct_span_err(attr.span(), format!("`{name}` is defined multiple times"))
+                .with_span_note(duplicate.span(), "first definition found here")
                 .emit();
         } else {
             unique_attr = Some(attr);
@@ -156,16 +154,16 @@ pub fn get_unique_attr<'a>(
 
 /// Returns true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
-pub fn is_proc_macro(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(rustc_ast::Attribute::is_proc_macro_attr)
+pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
+    attrs.iter().any(AttributeExt::is_proc_macro_attr)
 }
 
 /// Returns true if the attributes contain `#[doc(hidden)]`
-pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
+pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
     attrs
         .iter()
         .filter(|attr| attr.has_name(sym::doc))
-        .filter_map(ast::Attribute::meta_item_list)
+        .filter_map(AttributeExt::meta_item_list)
         .any(|l| attr::list_contains_name(&l, sym::hidden))
 }
 

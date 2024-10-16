@@ -468,7 +468,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_assoc_item_constraint(self, constraint)
     }
 
-    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'v hir::Attribute) {
         self.record("Attribute", None, attr);
     }
 

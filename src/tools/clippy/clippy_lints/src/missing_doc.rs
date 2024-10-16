@@ -10,8 +10,9 @@ use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::SpanRangeExt;
-use rustc_ast::ast::{self, MetaItem, MetaItemKind};
+use rustc_ast::ast::MetaItemInner;
 use rustc_hir as hir;
+use rustc_hir::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -67,9 +68,8 @@ impl MissingDoc {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
 
-    fn has_include(meta: Option<MetaItem>) -> bool {
-        if let Some(meta) = meta
-            && let MetaItemKind::List(list) = meta.kind
+    fn has_include(meta: Option<&[MetaItemInner]>) -> bool {
+        if let Some(list) = meta
             && let Some(meta) = list.first()
             && let Some(name) = meta.ident()
         {
@@ -83,7 +83,7 @@ impl MissingDoc {
         &self,
         cx: &LateContext<'_>,
         def_id: LocalDefId,
-        attrs: &[ast::Attribute],
+        attrs: &[Attribute],
         sp: Span,
         article: &'static str,
         desc: &'static str,
@@ -129,7 +129,7 @@ impl MissingDoc {
 
         let has_doc = attrs
             .iter()
-            .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()))
+            .any(|a| a.doc_str().is_some() || Self::has_include(a.meta_item_list().as_deref()))
             || matches!(self.search_span(sp), Some(span) if span_to_snippet_contains_docs(cx, span));
 
         if !has_doc {
@@ -172,12 +172,12 @@ impl MissingDoc {
 impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
-    fn check_attributes(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [ast::Attribute]) {
+    fn check_attributes(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
         let doc_hidden = self.doc_hidden() || is_doc_hidden(attrs);
         self.doc_hidden_stack.push(doc_hidden);
     }
 
-    fn check_attributes_post(&mut self, _: &LateContext<'tcx>, _: &'tcx [ast::Attribute]) {
+    fn check_attributes_post(&mut self, _: &LateContext<'tcx>, _: &'tcx [Attribute]) {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 

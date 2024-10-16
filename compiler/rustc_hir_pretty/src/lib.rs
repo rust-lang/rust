@@ -11,16 +11,18 @@ use std::vec;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::util::parser::{self, AssocOp, ExprPrecedence, Fixity};
+use rustc_ast::{DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
+use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
     HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
 };
-use rustc_span::FileName;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{FileName, Span};
 use {rustc_ast as ast, rustc_hir as hir};
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: HirId) -> String {
@@ -68,13 +70,107 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
-    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [hir::Attribute],
     ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> State<'a> {
-    fn attrs(&self, id: HirId) -> &'a [ast::Attribute] {
+    fn attrs(&self, id: HirId) -> &'a [hir::Attribute] {
         (self.attrs)(id)
+    }
+
+    fn print_inner_attributes(&mut self, attrs: &[hir::Attribute]) -> bool {
+        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
+    }
+
+    fn print_outer_attributes(&mut self, attrs: &[hir::Attribute]) -> bool {
+        self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
+    }
+
+    fn print_either_attributes(
+        &mut self,
+        attrs: &[hir::Attribute],
+        kind: ast::AttrStyle,
+        is_inline: bool,
+        trailing_hardbreak: bool,
+    ) -> bool {
+        let mut printed = false;
+        for attr in attrs {
+            if attr.style == kind {
+                self.print_attribute_inline(attr, is_inline);
+                if is_inline {
+                    self.nbsp();
+                }
+                printed = true;
+            }
+        }
+        if printed && trailing_hardbreak && !is_inline {
+            self.hardbreak_if_not_bol();
+        }
+        printed
+    }
+
+    fn print_attribute_inline(&mut self, attr: &hir::Attribute, is_inline: bool) {
+        if !is_inline {
+            self.hardbreak_if_not_bol();
+        }
+        self.maybe_print_comment(attr.span.lo());
+        match &attr.kind {
+            hir::AttrKind::Normal(normal) => {
+                match attr.style {
+                    ast::AttrStyle::Inner => self.word("#!["),
+                    ast::AttrStyle::Outer => self.word("#["),
+                }
+                self.print_attr_item(&normal, attr.span);
+                self.word("]");
+            }
+            hir::AttrKind::DocComment(comment_kind, data) => {
+                self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
+                    *comment_kind,
+                    attr.style,
+                    *data,
+                ));
+                self.hardbreak()
+            }
+        }
+    }
+
+    fn print_attr_item(&mut self, item: &hir::AttrItem, span: Span) {
+        self.ibox(0);
+        let path = ast::Path {
+            span,
+            segments: item
+                .path
+                .segments
+                .iter()
+                .map(|i| ast::PathSegment { ident: *i, args: None, id: DUMMY_NODE_ID })
+                .collect(),
+            tokens: None,
+        };
+
+        match &item.args {
+            hir::AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self
+                .print_mac_common(
+                    Some(MacHeader::Path(&path)),
+                    false,
+                    None,
+                    *delim,
+                    tokens,
+                    true,
+                    span,
+                ),
+            hir::AttrArgs::Empty => {
+                PrintState::print_path(self, &path, false, 0);
+            }
+            hir::AttrArgs::Eq { eq_span: _, expr } => {
+                PrintState::print_path(self, &path, false, 0);
+                self.space();
+                self.word_space("=");
+                let token_str = self.meta_item_lit_to_string(expr);
+                self.word(token_str);
+            }
+        }
+        self.end();
     }
 
     fn print_node(&mut self, node: Node<'_>) {
@@ -164,7 +260,7 @@ pub fn print_crate<'a>(
     krate: &hir::Mod<'_>,
     filename: FileName,
     input: String,
-    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [hir::Attribute],
     ann: &'a dyn PpAnn,
 ) -> String {
     let mut s = State {
@@ -189,6 +285,10 @@ where
     let mut printer = State { s: pp::Printer::new(), comments: None, attrs: &|_| &[], ann };
     f(&mut printer);
     printer.s.eof()
+}
+
+pub fn attribute_to_string(ann: &dyn PpAnn, attr: &hir::Attribute) -> String {
+    to_string(ann, |s| s.print_attribute_inline(attr, false))
 }
 
 pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {
@@ -242,7 +342,7 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span);
     }
 
-    fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
+    fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[hir::Attribute]) {
         self.print_inner_attributes(attrs);
         for &item_id in _mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id));
@@ -912,14 +1012,14 @@ impl<'a> State<'a> {
         self.print_block_maybe_unclosed(blk, &[], false)
     }
 
-    fn print_block_with_attrs(&mut self, blk: &hir::Block<'_>, attrs: &[ast::Attribute]) {
+    fn print_block_with_attrs(&mut self, blk: &hir::Block<'_>, attrs: &[hir::Attribute]) {
         self.print_block_maybe_unclosed(blk, attrs, true)
     }
 
     fn print_block_maybe_unclosed(
         &mut self,
         blk: &hir::Block<'_>,
-        attrs: &[ast::Attribute],
+        attrs: &[hir::Attribute],
         close_box: bool,
     ) {
         match blk.rules {

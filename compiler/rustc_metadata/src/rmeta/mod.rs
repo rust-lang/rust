@@ -404,7 +404,7 @@ define_tables! {
     cross_crate_inlinable: Table<DefIndex, bool>,
 
 - optional:
-    attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
+    hir_attributes: Table<DefIndex, LazyArray<hir::Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
     module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,

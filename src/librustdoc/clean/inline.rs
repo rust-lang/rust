@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
 use rustc_hir::Mutability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
@@ -15,7 +16,6 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use super::Item;
 use crate::clean::{
@@ -43,7 +43,7 @@ pub(crate) fn try_inline(
     cx: &mut DocContext<'_>,
     res: Res,
     name: Symbol,
-    attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
+    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -206,7 +206,7 @@ pub(crate) fn try_inline_glob(
     }
 }
 
-pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [ast::Attribute] {
+pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [hir::Attribute] {
     cx.tcx.get_attrs_unchecked(did)
 }
 
@@ -360,7 +360,7 @@ fn build_type_alias(
 pub(crate) fn build_impls(
     cx: &mut DocContext<'_>,
     did: DefId,
-    attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
+    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     ret: &mut Vec<clean::Item>,
 ) {
     let _prof_timer = cx.tcx.sess.prof.generic_activity("build_inherent_impls");
@@ -392,8 +392,8 @@ pub(crate) fn build_impls(
 
 pub(crate) fn merge_attrs(
     cx: &mut DocContext<'_>,
-    old_attrs: &[ast::Attribute],
-    new_attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
+    old_attrs: &[hir::Attribute],
+    new_attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
 ) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
@@ -404,14 +404,14 @@ pub(crate) fn merge_attrs(
         both.extend_from_slice(old_attrs);
         (
             if let Some(item_id) = item_id {
-                Attributes::from_ast_with_additional(old_attrs, (inner, item_id.to_def_id()))
+                Attributes::from_hir_with_additional(old_attrs, (inner, item_id.to_def_id()))
             } else {
-                Attributes::from_ast(&both)
+                Attributes::from_hir(&both)
             },
             both.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     } else {
-        (Attributes::from_ast(old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
+        (Attributes::from_hir(old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
     }
 }
 
@@ -419,7 +419,7 @@ pub(crate) fn merge_attrs(
 pub(crate) fn build_impl(
     cx: &mut DocContext<'_>,
     did: DefId,
-    attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
+    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     ret: &mut Vec<clean::Item>,
 ) {
     if !cx.inlined.insert(did.into()) {
@@ -629,7 +629,7 @@ fn build_module_items(
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
     allowed_def_ids: Option<&DefIdSet>,
-    attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
+    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
 ) -> Vec<clean::Item> {
     let mut items = Vec::new();
 

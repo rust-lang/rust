@@ -19,11 +19,13 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc_ast::{self as ast, Attribute, MetaItemInner};
+use rustc_ast::{self as ast, MetaItemInner};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, intravisit};
+use rustc_hir::{
+    Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, intravisit,
+};
 use rustc_middle::dep_graph::{DepNode, DepNodeExt, label_strs};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;

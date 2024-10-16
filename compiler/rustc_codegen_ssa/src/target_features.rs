@@ -1,8 +1,8 @@
-use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
@@ -19,7 +19,7 @@ use crate::errors;
 /// Enabled target features are added to `target_features`.
 pub(crate) fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
-    attr: &ast::Attribute,
+    attr: &hir::Attribute,
     rust_target_features: &UnordMap<String, target_features::Stability>,
     target_features: &mut Vec<TargetFeature>,
 ) {

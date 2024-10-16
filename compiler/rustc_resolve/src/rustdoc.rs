@@ -6,6 +6,7 @@ use pulldown_cmark::{
 };
 use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
+use rustc_attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
@@ -192,19 +193,24 @@ pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     }
 }
 
-pub fn attrs_to_doc_fragments<'a>(
-    attrs: impl Iterator<Item = (&'a ast::Attribute, Option<DefId>)>,
+pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
+    attrs: impl Iterator<Item = (&'a A, Option<DefId>)>,
     doc_only: bool,
-) -> (Vec<DocFragment>, ast::AttrVec) {
+) -> (Vec<DocFragment>, Vec<A>) {
     let mut doc_fragments = Vec::new();
-    let mut other_attrs = ast::AttrVec::new();
+    let mut other_attrs = Vec::<A>::new();
     for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);
             let (span, kind) = if attr.is_doc_comment() {
-                (attr.span, DocFragmentKind::SugaredDoc)
+                (attr.span(), DocFragmentKind::SugaredDoc)
             } else {
-                (span_for_value(attr), DocFragmentKind::RawDoc)
+                (
+                    attr.value_span()
+                        .map(|i| i.with_ctxt(attr.span().ctxt()))
+                        .unwrap_or(attr.span()),
+                    DocFragmentKind::RawDoc,
+                )
             };
             let fragment = DocFragment { span, doc, kind, item_id, indent: 0 };
             doc_fragments.push(fragment);
@@ -216,16 +222,6 @@ pub fn attrs_to_doc_fragments<'a>(
     unindent_doc_fragments(&mut doc_fragments);
 
     (doc_fragments, other_attrs)
-}
-
-fn span_for_value(attr: &ast::Attribute) -> Span {
-    if let ast::AttrKind::Normal(normal) = &attr.kind
-        && let ast::AttrArgs::Eq { expr, .. } = &normal.item.args
-    {
-        expr.span().with_ctxt(attr.span.ctxt())
-    } else {
-        attr.span
-    }
 }
 
 /// Return the doc-comments on this item, grouped by the module they came from.
@@ -353,12 +349,15 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
 ///
 //// If there are no doc-comments, return true.
 /// FIXME(#78591): Support both inner and outer attributes on the same item.
-pub fn inner_docs(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == ast::AttrStyle::Inner)
+pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
+    attrs
+        .iter()
+        .find(|a| a.doc_str().is_some())
+        .map_or(true, |a| a.style() == ast::AttrStyle::Inner)
 }
 
 /// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]`.
-pub fn has_primitive_or_keyword_docs(attrs: &[ast::Attribute]) -> bool {
+pub fn has_primitive_or_keyword_docs(attrs: &[impl AttributeExt]) -> bool {
     for attr in attrs {
         if attr.has_name(sym::rustc_doc_primitive) {
             return true;
@@ -408,7 +407,7 @@ pub fn may_be_doc_link(link_type: LinkType) -> bool {
 
 /// Simplified version of `preprocessed_markdown_links` from rustdoc.
 /// Must return at least the same links as it, but may add some more links on top of that.
-pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<str>> {
+pub(crate) fn attrs_to_preprocessed_links<A: AttributeExt + Clone>(attrs: &[A]) -> Vec<Box<str>> {
     let (doc_fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
     let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap();
 

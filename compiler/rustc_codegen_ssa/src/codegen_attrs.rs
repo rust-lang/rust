@@ -1,13 +1,12 @@
-use rustc_ast::{MetaItemInner, MetaItemKind, ast, attr};
+use rustc_ast::{MetaItemInner, attr};
 use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_name};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
-use rustc_hir::{LangItem, lang_items};
+use rustc_hir::{self as hir, LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
@@ -517,28 +516,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::inline) {
             return ia;
         }
-        match attr.meta_kind() {
-            Some(MetaItemKind::Word) => InlineAttr::Hint,
-            Some(MetaItemKind::List(ref items)) => {
-                inline_span = Some(attr.span);
-                if items.len() != 1 {
-                    struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument")
-                        .emit();
-                    InlineAttr::None
-                } else if list_contains_name(items, sym::always) {
-                    InlineAttr::Always
-                } else if list_contains_name(items, sym::never) {
-                    InlineAttr::Never
-                } else {
-                    struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
-                        .with_help("valid inline arguments are `always` and `never`")
-                        .emit();
+        if attr.is_word() {
+            InlineAttr::Hint
+        } else if let Some(ref items) = attr.meta_item_list() {
+            inline_span = Some(attr.span);
+            if items.len() != 1 {
+                struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument").emit();
+                InlineAttr::None
+            } else if list_contains_name(items, sym::always) {
+                InlineAttr::Always
+            } else if list_contains_name(items, sym::never) {
+                InlineAttr::Never
+            } else {
+                struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
+                    .with_help("valid inline arguments are `always` and `never`")
+                    .emit();
 
-                    InlineAttr::None
-                }
+                InlineAttr::None
             }
-            Some(MetaItemKind::NameValue(_)) => ia,
-            None => ia,
+        } else {
+            ia
         }
     });
 
@@ -547,27 +544,24 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             return ia;
         }
         let err = |sp, s| struct_span_code_err!(tcx.dcx(), sp, E0722, "{}", s).emit();
-        match attr.meta_kind() {
-            Some(MetaItemKind::Word) => {
+        if attr.is_word() {
+            err(attr.span, "expected one argument");
+            ia
+        } else if let Some(ref items) = attr.meta_item_list() {
+            inline_span = Some(attr.span);
+            if items.len() != 1 {
                 err(attr.span, "expected one argument");
-                ia
+                OptimizeAttr::None
+            } else if list_contains_name(items, sym::size) {
+                OptimizeAttr::Size
+            } else if list_contains_name(items, sym::speed) {
+                OptimizeAttr::Speed
+            } else {
+                err(items[0].span(), "invalid argument");
+                OptimizeAttr::None
             }
-            Some(MetaItemKind::List(ref items)) => {
-                inline_span = Some(attr.span);
-                if items.len() != 1 {
-                    err(attr.span, "expected one argument");
-                    OptimizeAttr::None
-                } else if list_contains_name(items, sym::size) {
-                    OptimizeAttr::Size
-                } else if list_contains_name(items, sym::speed) {
-                    OptimizeAttr::Speed
-                } else {
-                    err(items[0].span(), "invalid argument");
-                    OptimizeAttr::None
-                }
-            }
-            Some(MetaItemKind::NameValue(_)) => ia,
-            None => ia,
+        } else {
+            OptimizeAttr::None
         }
     });
 
@@ -719,7 +713,7 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     false
 }
 
-fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
+fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
     use rustc_ast::{LitIntType, LitKind, MetaItemLit};
     let meta_item_list = attr.meta_item_list();
     let meta_item_list = meta_item_list.as_deref();

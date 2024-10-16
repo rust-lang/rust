@@ -1,10 +1,12 @@
 use std::fmt;
 
 use rustc_abi::ExternAbi;
+use rustc_ast::attr::AttributeExt;
+use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
-    self as ast, Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
-    LitKind, TraitObjectSyntax, UintTy,
+    self as ast, AttrId, AttrStyle, DelimArgs, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece,
+    IntTy, Label, LitKind, MetaItemInner, MetaItemLit, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
@@ -21,6 +23,7 @@ use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
+use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::LangItem;
@@ -935,6 +938,250 @@ pub struct WhereEqPredicate<'hir> {
 pub struct ParentedNode<'tcx> {
     pub parent: ItemLocalId,
     pub node: Node<'tcx>,
+}
+
+/// Arguments passed to an attribute macro.
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub enum AttrArgs {
+    /// No arguments: `#[attr]`.
+    Empty,
+    /// Delimited arguments: `#[attr()/[]/{}]`.
+    Delimited(DelimArgs),
+    /// Arguments of a key-value attribute: `#[attr = "value"]`.
+    Eq {
+        /// Span of the `=` token.
+        eq_span: Span,
+        /// The "value".
+        expr: MetaItemLit,
+    },
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub enum AttrKind {
+    /// A normal attribute.
+    Normal(Box<AttrItem>),
+
+    /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
+    /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
+    /// variant (which is much less compact and thus more expensive).
+    DocComment(CommentKind, Symbol),
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub struct AttrPath {
+    pub segments: Box<[Ident]>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub struct AttrItem {
+    pub unsafety: Safety,
+    // Not lowered to hir::Path because we have no NodeId to resolve to.
+    pub path: AttrPath,
+    pub args: AttrArgs,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct Attribute {
+    pub kind: AttrKind,
+    pub id: AttrId,
+    /// Denotes if the attribute decorates the following construct (outer)
+    /// or the construct this attribute is contained within (inner).
+    pub style: AttrStyle,
+    pub span: Span,
+}
+
+impl Attribute {
+    pub fn get_normal_item(&self) -> &AttrItem {
+        match &self.kind {
+            AttrKind::Normal(normal) => &normal,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
+    pub fn unwrap_normal_item(self) -> AttrItem {
+        match self.kind {
+            AttrKind::Normal(normal) => *normal,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
+    pub fn value_lit(&self) -> Option<&MetaItemLit> {
+        match &self.kind {
+            AttrKind::Normal(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Eq { expr, .. }, .. } => Some(expr),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
+impl AttributeExt for Attribute {
+    fn id(&self) -> AttrId {
+        self.id
+    }
+
+    fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
+        match &self.kind {
+            AttrKind::Normal(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Delimited(d), .. } => {
+                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn value_str(&self) -> Option<Symbol> {
+        self.value_lit().and_then(|x| x.value_str())
+    }
+
+    fn value_span(&self) -> Option<Span> {
+        self.value_lit().map(|i| i.span)
+    }
+
+    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    fn ident(&self) -> Option<Ident> {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                if let [ident] = n.path.segments.as_ref() {
+                    Some(*ident)
+                } else {
+                    None
+                }
+            }
+            AttrKind::DocComment(..) => None,
+        }
+    }
+
+    fn path_matches(&self, name: &[Symbol]) -> bool {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                n.path.segments.len() == name.len()
+                    && n.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
+            }
+            AttrKind::DocComment(..) => false,
+        }
+    }
+
+    fn is_doc_comment(&self) -> bool {
+        matches!(self.kind, AttrKind::DocComment(..))
+    }
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn is_word(&self) -> bool {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                matches!(n.args, AttrArgs::Empty)
+            }
+            AttrKind::DocComment(..) => false,
+        }
+    }
+
+    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        match &self.kind {
+            AttrKind::Normal(n) => Some(n.path.segments.iter().copied().collect()),
+            AttrKind::DocComment(..) => None,
+        }
+    }
+
+    fn doc_str(&self) -> Option<Symbol> {
+        match &self.kind {
+            AttrKind::DocComment(.., data) => Some(*data),
+            AttrKind::Normal(_) if self.has_name(sym::doc) => self.value_str(),
+            _ => None,
+        }
+    }
+    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        match &self.kind {
+            AttrKind::DocComment(kind, data) => Some((*data, *kind)),
+            AttrKind::Normal(_) if self.name_or_empty() == sym::doc => {
+                self.value_str().map(|s| (s, CommentKind::Line))
+            }
+            _ => None,
+        }
+    }
+
+    fn style(&self) -> AttrStyle {
+        self.style
+    }
+}
+
+// FIXME(fn_delegation): use function delegation instead of manually forwarding
+impl Attribute {
+    pub fn id(&self) -> AttrId {
+        AttributeExt::id(self)
+    }
+
+    pub fn name_or_empty(&self) -> Symbol {
+        AttributeExt::name_or_empty(self)
+    }
+
+    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+        AttributeExt::meta_item_list(self)
+    }
+
+    pub fn value_str(&self) -> Option<Symbol> {
+        AttributeExt::value_str(self)
+    }
+
+    pub fn value_span(&self) -> Option<Span> {
+        AttributeExt::value_span(self)
+    }
+
+    pub fn ident(&self) -> Option<Ident> {
+        AttributeExt::ident(self)
+    }
+
+    pub fn path_matches(&self, name: &[Symbol]) -> bool {
+        AttributeExt::path_matches(self, name)
+    }
+
+    pub fn is_doc_comment(&self) -> bool {
+        AttributeExt::is_doc_comment(self)
+    }
+
+    #[inline]
+    pub fn has_name(&self, name: Symbol) -> bool {
+        AttributeExt::has_name(self, name)
+    }
+
+    pub fn span(&self) -> Span {
+        AttributeExt::span(self)
+    }
+
+    pub fn is_word(&self) -> bool {
+        AttributeExt::is_word(self)
+    }
+
+    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
+        AttributeExt::path(self)
+    }
+
+    pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        AttributeExt::ident_path(self)
+    }
+
+    pub fn doc_str(&self) -> Option<Symbol> {
+        AttributeExt::doc_str(self)
+    }
+
+    pub fn is_proc_macro_attr(&self) -> bool {
+        AttributeExt::is_proc_macro_attr(self)
+    }
+
+    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        AttributeExt::doc_str_and_comment_kind(self)
+    }
+
+    pub fn style(&self) -> AttrStyle {
+        AttributeExt::style(self)
+    }
 }
 
 /// Attributes owned by a HIR owner.
