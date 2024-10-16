@@ -723,7 +723,13 @@ pub fn eval_condition(
                     }
 
                     mis.iter().fold(true, |res, mi| {
-                        let mut mi = mi.meta_item().unwrap().clone();
+                        let Some(mut mi) = mi.meta_item().cloned() else {
+                            dcx.emit_err(session_diagnostics::CfgPredicateIdentifier {
+                                span: mi.span(),
+                            });
+                            return false;
+                        };
+
                         if let [seg, ..] = &mut mi.path.segments[..] {
                             seg.ident.name = Symbol::intern(&format!("target_{}", seg.ident.name));
                         }
