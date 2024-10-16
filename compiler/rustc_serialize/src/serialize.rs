@@ -288,7 +288,7 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<T> {
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
     default fn encode(&self, s: &mut S) {
         s.emit_usize(self.len());
-        for e in self.iter() {
+        for e in self {
             e.encode(s);
         }
     }
@@ -527,7 +527,7 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for ThinVec<T> {
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for VecDeque<T> {
     fn encode(&self, s: &mut S) {
         s.emit_usize(self.len());
-        for e in self.iter() {
+        for e in self {
             e.encode(s);
         }
     }
@@ -547,7 +547,7 @@ where
 {
     fn encode(&self, e: &mut S) {
         e.emit_usize(self.len());
-        for (key, val) in self.iter() {
+        for (key, val) in self {
             key.encode(e);
             val.encode(e);
         }
@@ -571,7 +571,7 @@ where
 {
     fn encode(&self, s: &mut S) {
         s.emit_usize(self.len());
-        for e in self.iter() {
+        for e in self {
             e.encode(s);
         }
     }
@@ -595,7 +595,7 @@ where
 {
     fn encode(&self, e: &mut E) {
         e.emit_usize(self.len());
-        for (key, val) in self.iter() {
+        for (key, val) in self {
             key.encode(e);
             val.encode(e);
         }
@@ -621,7 +621,7 @@ where
 {
     fn encode(&self, s: &mut E) {
         s.emit_usize(self.len());
-        for e in self.iter() {
+        for e in self {
             e.encode(s);
         }
     }
@@ -646,7 +646,7 @@ where
 {
     fn encode(&self, e: &mut E) {
         e.emit_usize(self.len());
-        for (key, val) in self.iter() {
+        for (key, val) in self {
             key.encode(e);
             val.encode(e);
         }
@@ -672,7 +672,7 @@ where
 {
     fn encode(&self, s: &mut E) {
         s.emit_usize(self.len());
-        for e in self.iter() {
+        for e in self {
             e.encode(s);
         }
     }
