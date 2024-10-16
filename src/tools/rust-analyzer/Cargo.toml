@@ -153,6 +153,9 @@ tracing-tree = "0.3.0"
 tracing-subscriber = { version = "0.3.18", default-features = false, features = [
   "registry",
   "fmt",
+  "local-time",
+  "std",
+  "time",
   "tracing-log",
 ] }
 triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
