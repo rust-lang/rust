@@ -187,6 +187,24 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 };
                 Some(node)
             },
+            ast::LetStmt(it) => {
+                let pat = it.pat()?;
+
+                let mut label = String::new();
+                collapse_ws(pat.syntax(), &mut label);
+
+                let node = StructureNode {
+                    parent: None,
+                    label,
+                    navigation_range: pat.syntax().text_range(),
+                    node_range: it.syntax().text_range(),
+                    kind: StructureNodeKind::SymbolKind(SymbolKind::Local),
+                    detail: it.ty().map(|ty| ty.to_string()),
+                    deprecated: false,
+                };
+
+                Some(node)
+            },
             ast::Macro(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Macro)),
             _ => None,
         }
