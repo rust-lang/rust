@@ -17,6 +17,7 @@ cfg_if::cfg_if! {
         target_os = "illumos",
         target_os = "netbsd",
         target_os = "openbsd",
+        target_os = "rtems",
         target_os = "solaris",
         target_os = "vita",
     ))] {
