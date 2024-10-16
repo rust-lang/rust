@@ -1,9 +1,11 @@
 use std::fmt;
 
+use rustc_ast::attr::AttributeExt;
+use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
-    self as ast, Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
-    LitKind, TraitObjectSyntax, UintTy,
+    self as ast, AttrId, AttrStyle, DelimArgs, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece,
+    IntTy, Label, LitKind, MetaItemLit, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, ByRef, CaptureBy, ImplPolarity, IsAuto, Movability,
@@ -21,6 +23,7 @@ use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
+use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::LangItem;
@@ -940,6 +943,178 @@ pub struct WhereEqPredicate<'hir> {
 pub struct ParentedNode<'tcx> {
     pub parent: ItemLocalId,
     pub node: Node<'tcx>,
+}
+
+/// Arguments passed to an attribute macro.
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub enum AttrArgs {
+    /// No arguments: `#[attr]`.
+    Empty,
+    /// Delimited arguments: `#[attr()/[]/{}]`.
+    Delimited(DelimArgs),
+    /// Arguments of a key-value attribute: `#[attr = "value"]`.
+    Eq(
+        /// Span of the `=` token.
+        Span,
+        /// The "value".
+        MetaItemLit,
+    ),
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub enum AttrKind {
+    /// A normal attribute.
+    Normal(Box<AttrItem>),
+
+    /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
+    /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
+    /// variant (which is much less compact and thus more expensive).
+    DocComment(CommentKind, Symbol),
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub struct AttrPath {
+    pub segments: Box<[Ident]>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub struct AttrItem {
+    pub unsafety: Safety,
+    // Not lowered to hir::Path because we have no NodeId to resolve to.
+    pub path: AttrPath,
+    pub args: AttrArgs,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct Attribute {
+    pub kind: AttrKind,
+    pub id: AttrId,
+    /// Denotes if the attribute decorates the following construct (outer)
+    /// or the construct this attribute is contained within (inner).
+    pub style: AttrStyle,
+    pub span: Span,
+}
+
+impl Attribute {
+    pub fn get_normal_item(&self) -> &AttrItem {
+        match &self.kind {
+            AttrKind::Normal(normal) => &normal,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
+    pub fn unwrap_normal_item(self) -> AttrItem {
+        match self.kind {
+            AttrKind::Normal(normal) => *normal,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
+    pub fn value_lit(&self) -> Option<&MetaItemLit> {
+        match &self.kind {
+            AttrKind::Normal(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Eq { eq_span: _, value }, .. } => Some(value),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
+impl AttributeExt for Attribute {
+    fn id(&self) -> AttrId {
+        self.id
+    }
+
+    fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
+        match &self.kind {
+            AttrKind::Normal(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Delimited(d), .. } => {
+                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn value_str(&self) -> Option<Symbol> {
+        self.value_lit().and_then(|x| x.value_str())
+    }
+
+    fn value_span(&self) -> Option<Span> {
+        self.value_lit().map(|i| i.span)
+    }
+
+    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    fn ident(&self) -> Option<Ident> {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                if let [ident] = n.path.segments.as_ref() {
+                    Some(*ident)
+                } else {
+                    None
+                }
+            }
+            AttrKind::DocComment(..) => None,
+        }
+    }
+
+    fn path_matches(&self, name: &[Symbol]) -> bool {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                n.path.segments.len() == name.len()
+                    && n.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
+            }
+            AttrKind::DocComment(..) => false,
+        }
+    }
+
+    fn is_doc_comment(&self) -> bool {
+        matches!(self.kind, AttrKind::DocComment(..))
+    }
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn is_word(&self) -> bool {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                matches!(n.args, AttrArgs::Empty)
+            }
+            AttrKind::DocComment(..) => false,
+        }
+    }
+
+    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        match &self.kind {
+            AttrKind::Normal(n) => Some(n.path.segments.iter().copied().collect()),
+            AttrKind::DocComment(..) => None,
+        }
+    }
+
+    fn doc_str(&self) -> Option<Symbol> {
+        match &self.kind {
+            AttrKind::DocComment(.., data) => Some(*data),
+            AttrKind::Normal(_) if self.has_name(sym::doc) => self.value_str(),
+            _ => None,
+        }
+    }
+    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        match &self.kind {
+            AttrKind::DocComment(kind, data) => Some((*data, *kind)),
+            AttrKind::Normal(_) if self.name_or_empty() == sym::doc => {
+                self.value_str().map(|s| (s, CommentKind::Line))
+            }
+            _ => None,
+        }
+    }
+
+    fn style(&self) -> AttrStyle {
+        self.style
+    }
 }
 
 /// Attributes owned by a HIR owner.
