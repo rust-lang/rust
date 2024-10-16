@@ -29,7 +29,7 @@ The setup for the `rmake.rs` version is a 3-stage process:
    structure within `build/<target>/test/run-make/`
 
    ```
-   <test-name>/<test-name>/
+   <test-name>/
        rmake.exe              # recipe binary
        rmake_out/             # sources from test sources copied over
    ```

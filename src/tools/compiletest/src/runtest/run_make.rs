@@ -22,6 +22,10 @@ impl TestCx<'_> {
         let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
         let src_root = cwd.join(&src_root);
 
+        // FIXME(Zalathar): This should probably be `output_base_dir` to avoid
+        // an unnecessary extra subdirectory, but since legacy Makefile tests
+        // are hopefully going away, it seems safer to leave this perilous code
+        // as-is until it can all be deleted.
         let tmpdir = cwd.join(self.output_base_name());
         if tmpdir.exists() {
             self.aggressive_rm_rf(&tmpdir).unwrap();
@@ -213,7 +217,7 @@ impl TestCx<'_> {
         // `rmake_out/` directory.
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
-        let base_dir = self.output_base_name();
+        let base_dir = self.output_base_dir();
         if base_dir.exists() {
             self.aggressive_rm_rf(&base_dir).unwrap();
         }
