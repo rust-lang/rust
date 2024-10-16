@@ -1,18 +1,26 @@
  WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, '^0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a), "'a")], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit), .. }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, '^0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a), "'a")], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit), .. }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, '^0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a), "'a")], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit), .. }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, '^0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a), "'a")], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit), .. }
-error[E0119]: conflicting implementations of trait `Overlap<for<'a> fn(&'a (), _)>` for type `for<'a> fn(&'a (), _)`
-  --> $DIR/structually-relate-aliases.rs:13:1
+error[E0277]: the trait bound `for<'a> T: ToUnit<'a>` is not satisfied
+  --> $DIR/structually-relate-aliases.rs:13:36
    |
-LL | impl<T> Overlap<T> for T {}
-   | ------------------------ first implementation here
-LL |
 LL | impl<T> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a> fn(&'a (), _)`
+   |                                    ^^^^^^^^^^^^ the trait `for<'a> ToUnit<'a>` is not implemented for `T`
    |
-   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+help: consider restricting type parameter `T`
+   |
+LL | impl<T: for<'a> ToUnit<'a>> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
+   |       ++++++++++++++++++++
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `for<'a> T: ToUnit<'a>` is not satisfied
+  --> $DIR/structually-relate-aliases.rs:13:17
+   |
+LL | impl<T> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> ToUnit<'a>` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | impl<T: for<'a> ToUnit<'a>> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
+   |       ++++++++++++++++++++
 
-For more information about this error, try `rustc --explain E0119`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

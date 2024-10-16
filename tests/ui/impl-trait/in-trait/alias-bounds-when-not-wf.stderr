@@ -7,14 +7,42 @@ LL | #![feature(lazy_type_alias)]
    = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0277]: the size for values of type `A<usize>` cannot be known at compilation time
+error[E0277]: the trait bound `usize: Foo` is not satisfied
   --> $DIR/alias-bounds-when-not-wf.rs:16:13
    |
 LL | fn hello(_: W<A<usize>>) {}
-   |             ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |             ^^^^^^^^^^^ the trait `Foo` is not implemented for `usize`
    |
-   = help: the trait `Sized` is not implemented for `A<usize>`
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
 
-error: aborting due to 1 previous error; 1 warning emitted
+error[E0277]: the trait bound `usize: Foo` is not satisfied
+  --> $DIR/alias-bounds-when-not-wf.rs:16:10
+   |
+LL | fn hello(_: W<A<usize>>) {}
+   |          ^ the trait `Foo` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+
+error[E0277]: the trait bound `usize: Foo` is not satisfied
+  --> $DIR/alias-bounds-when-not-wf.rs:16:1
+   |
+LL | fn hello(_: W<A<usize>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.
