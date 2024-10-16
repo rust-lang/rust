@@ -1114,7 +1114,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 None,
                                 Some(trace.values),
                                 e,
-                                false,
                                 true,
                             );
                         }
