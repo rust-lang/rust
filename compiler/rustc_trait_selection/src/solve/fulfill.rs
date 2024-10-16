@@ -14,7 +14,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
-use tracing::instrument;
+use tracing::{instrument, trace};
 
 use super::Certainty;
 use super::delegate::SolverDelegate;
@@ -401,6 +401,7 @@ impl<'tcx> BestObligation<'tcx> {
                                         nested_goal.source(),
                                         GoalSource::ImplWhereBound
                                             | GoalSource::InstantiateHigherRanked
+                                            | GoalSource::AliasWellFormed
                                     ) && match self.consider_ambiguities {
                                         true => {
                                             matches!(
@@ -413,6 +414,13 @@ impl<'tcx> BestObligation<'tcx> {
                                 },
                             )
                         })
+                    });
+                }
+
+                // Prefer a non-rigid candidate if there is one.
+                if candidates.len() > 1 {
+                    candidates.retain(|candidate| {
+                        !matches!(candidate.kind(), inspect::ProbeKind::RigidAlias { .. })
                     });
                 }
             }
@@ -429,8 +437,11 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         self.obligation.cause.span
     }
 
+    #[instrument(level = "trace", skip(self, goal), fields(goal = ?goal.goal()))]
     fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
         let candidates = self.non_trivial_candidates(goal);
+        trace!(candidates = ?candidates.iter().map(|c| c.kind()).collect::<Vec<_>>());
+
         let [candidate] = candidates.as_slice() else {
             return ControlFlow::Break(self.obligation.clone());
         };
@@ -464,17 +475,13 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     polarity: ty::PredicatePolarity::Positive,
                 }))
             }
-            ty::PredicateKind::Clause(
-                ty::ClauseKind::WellFormed(_) | ty::ClauseKind::Projection(..),
-            )
-            | ty::PredicateKind::AliasRelate(..) => ChildMode::PassThrough,
-            _ => {
-                return ControlFlow::Break(self.obligation.clone());
-            }
+            _ => ChildMode::PassThrough,
         };
 
         let mut impl_where_bound_count = 0;
         for nested_goal in candidate.instantiate_nested_goals(self.span()) {
+            trace!(nested_goal = ?(nested_goal.goal(), nested_goal.source(), nested_goal.result()));
+
             let make_obligation = |cause| Obligation {
                 cause,
                 param_env: nested_goal.goal().param_env,
@@ -501,7 +508,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 (_, GoalSource::InstantiateHigherRanked) => {
                     obligation = self.obligation.clone();
                 }
-                (ChildMode::PassThrough, _) => {
+                (ChildMode::PassThrough, _) | (_, GoalSource::AliasWellFormed) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
             }
