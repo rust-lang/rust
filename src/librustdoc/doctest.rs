@@ -13,9 +13,9 @@ use std::{panic, str};
 
 pub(crate) use make::DocTestBuilder;
 pub(crate) use markdown::test as test_markdown;
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
+use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
@@ -32,6 +32,7 @@ use self::rust::HirCollector;
 use crate::config::Options as RustdocOptions;
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
+use crate::rustc_attr::AttributeExt;
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone)]
@@ -332,7 +333,7 @@ pub(crate) fn run_tests(
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
 fn scrape_test_config(
     crate_name: String,
-    attrs: &[ast::Attribute],
+    attrs: &[hir::Attribute],
     args_file: PathBuf,
 ) -> GlobalTestOptions {
     use rustc_ast_pretty::pprust;

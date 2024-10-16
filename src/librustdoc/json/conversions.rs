@@ -20,6 +20,7 @@ use crate::formats::FormatRenderer;
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
 use crate::passes::collect_intra_doc_links::UrlFragment;
+use crate::rustc_attr::AttributeExt;
 
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
