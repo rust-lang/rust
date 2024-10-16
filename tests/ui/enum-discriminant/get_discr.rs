@@ -1,4 +1,5 @@
 //@ run-pass
+use std::mem;
 
 // Now that there are several variations on the code generated in
 // `codegen_get_discr`, let's make sure the various cases yield the correct
@@ -6,6 +7,8 @@
 
 // To get the discriminant of an E<X1> value, there are no shortcuts - we must
 // do the full algorithm.
+// `X1` is u8 with two niche values.
+#[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum X1 {
     _1 = 1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16,
@@ -31,6 +34,7 @@ pub enum X2 {
     _1 = -1, _2 = 0, _3 = 1,
 }
 
+#[derive(Clone, Copy)]
 #[repr(i8)]
 pub enum X3 {
     _1 = -128, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16,
@@ -86,6 +90,116 @@ pub fn match_e<X>(e: E<X>) -> u8 {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum Void {}
+// Special case that there's only one tagged variant.
+#[derive(Clone, Copy)]
+pub enum E1<X> {
+    A(X),   // the untagged variant.
+    B,
+}
+
+pub const fn match_e1<X: Copy>(e: E1<X>) -> u8 {
+    use E1::*;
+    match e {
+        A(_) => 0,
+        B => 1,
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum E1WithAbsent<X> {
+    V1(Void),
+    A(X),
+    V2(Void),
+    B,
+    V3(Void),
+}
+
+pub const fn match_e1_with_absent<X: Copy>(e: E1WithAbsent<X>) -> u8 {
+    use E1WithAbsent::*;
+    match e {
+        A(_) => 0,
+        B => 1,
+        _ => unreachable!(),
+    }
+}
+
+// General case. And the untagged variant is contained in the niche_variants.
+#[derive(Clone, Copy)]
+pub enum E2<X> {
+    A,
+    B(X),
+    C,
+}
+
+pub const fn match_e2<X: Copy>(e: E2<X>) -> u8 {
+    use E2::*;
+    match e {
+        A => 0,
+        B(_) => 1,
+        C => 2,
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum E2WithAbsent<X> {
+    V1(Void),
+    V2(Void),
+    A,
+    B(X),
+    C,
+    V3(Void),
+}
+
+pub const fn match_e2_with_absent<X: Copy>(e: E2WithAbsent<X>) -> u8 {
+    use E2WithAbsent::*;
+    match e {
+        A => 0,
+        B(_) => 1,
+        C => 2,
+        _ => unreachable!(),
+    }
+}
+
+// General case. And the untagged variant is not contained in the niche_variants.
+#[derive(Clone, Copy)]
+pub enum E3<X> {
+    A,
+    B,
+    C(X)
+}
+
+pub const fn match_e3<X: Copy>(e: E3<X>) -> u8 {
+    use E3::*;
+    match e {
+        A => 0,
+        B => 1,
+        C(_) => 2,
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum E3WithAbsent<X> {
+    V1(Void),
+    V2(Void),
+    A,
+    B,
+    C(X),
+    V3(Void),
+}
+
+pub const fn match_e3_with_absent<X: Copy>(e: E3WithAbsent<X>) -> u8 {
+    use E3WithAbsent::*;
+    match e {
+        A => 0,
+        B => 1,
+        C(_) => 2,
+        _ => unreachable!(),
+    }
+}
+
+
 fn main() {
     assert_eq!(match_e(E::A(X1::_1)), 0);
     assert_eq!(match_e(E::A(X1::_2)), 0);
@@ -111,4 +225,159 @@ fn main() {
     assert_eq!(match_e(E::A(true)), 0);
     assert_eq!(match_e(E::<bool>::B), 1);
     assert_eq!(match_e(E::<bool>::C), 2);
+
+    // Check `u8` primitive type as discriminant.
+    assert_eq!(mem::size_of::<E1<X1>>(), 1);
+    assert_eq!(match_e1(E1::A(X1::_1)), 0);
+    assert_eq!(match_e1(E1::A(X1::_2)), 0);
+    assert_eq!(match_e1(E1::A(X1::_254)), 0);
+    assert_eq!(match_e1(E1::<X1>::B), 1);
+    assert_eq!(mem::size_of::<E1WithAbsent<X1>>(), 1);
+    assert_eq!(match_e1_with_absent(E1WithAbsent::A(X1::_1)), 0);
+    assert_eq!(match_e1_with_absent(E1WithAbsent::A(X1::_2)), 0);
+    assert_eq!(match_e1_with_absent(E1WithAbsent::A(X1::_254)), 0);
+    assert_eq!(match_e1_with_absent(E1WithAbsent::<X1>::B), 1);
+
+    // Check `i8` primitive type as discriminant.
+    assert_eq!(mem::size_of::<E1<X3>>(), 1);
+    assert_eq!(match_e1(E1::A(X3::_1)), 0);
+    assert_eq!(match_e1(E1::A(X3::_2)), 0);
+    assert_eq!(match_e1(E1::A(X3::_254)), 0);
+    assert_eq!(match_e1(E1::<X3>::B), 1);
+    assert_eq!(mem::size_of::<E1WithAbsent<X3>>(), 1);
+    assert_eq!(match_e1_with_absent(E1WithAbsent::A(X3::_1)), 0);
+    assert_eq!(match_e1_with_absent(E1WithAbsent::A(X3::_2)), 0);
+    assert_eq!(match_e1_with_absent(E1WithAbsent::A(X3::_254)), 0);
+    assert_eq!(match_e1_with_absent(E1WithAbsent::<X3>::B), 1);
+
+    assert_eq!(mem::size_of::<E2<X1>>(), 1);
+    assert_eq!(match_e2(E2::<X1>::A), 0);
+    assert_eq!(match_e2(E2::B(X1::_1)), 1);
+    assert_eq!(match_e2(E2::B(X1::_2)), 1);
+    assert_eq!(match_e2(E2::B(X1::_254)), 1);
+    assert_eq!(match_e2(E2::<X1>::C), 2);
+    assert_eq!(mem::size_of::<E2WithAbsent<X1>>(), 1);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::<X1>::A), 0);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::B(X1::_1)), 1);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::B(X1::_2)), 1);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::B(X1::_254)), 1);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::<X1>::C), 2);
+
+    assert_eq!(mem::size_of::<E2<X3>>(), 1);
+    assert_eq!(match_e2(E2::<X3>::A), 0);
+    assert_eq!(match_e2(E2::B(X3::_1)), 1);
+    assert_eq!(match_e2(E2::B(X3::_2)), 1);
+    assert_eq!(match_e2(E2::B(X3::_254)), 1);
+    assert_eq!(match_e2(E2::<X3>::C), 2);
+    assert_eq!(mem::size_of::<E2WithAbsent<X3>>(), 1);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::<X3>::A), 0);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::B(X3::_1)), 1);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::B(X3::_2)), 1);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::B(X3::_254)), 1);
+    assert_eq!(match_e2_with_absent(E2WithAbsent::<X3>::C), 2);
+
+    assert_eq!(mem::size_of::<E3<X1>>(), 1);
+    assert_eq!(match_e3(E3::<X1>::A), 0);
+    assert_eq!(match_e3(E3::<X1>::B), 1);
+    assert_eq!(match_e3(E3::C(X1::_1)), 2);
+    assert_eq!(match_e3(E3::C(X1::_2)), 2);
+    assert_eq!(match_e3(E3::C(X1::_254)), 2);
+    assert_eq!(mem::size_of::<E3WithAbsent<X1>>(), 1);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::<X1>::A), 0);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::<X1>::B), 1);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::C(X1::_1)), 2);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::C(X1::_2)), 2);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::C(X1::_254)), 2);
+
+    assert_eq!(mem::size_of::<E3<X3>>(), 1);
+    assert_eq!(match_e3(E3::<X3>::A), 0);
+    assert_eq!(match_e3(E3::<X3>::B), 1);
+    assert_eq!(match_e3(E3::C(X3::_1)), 2);
+    assert_eq!(match_e3(E3::C(X3::_2)), 2);
+    assert_eq!(match_e3(E3::C(X3::_254)), 2);
+    assert_eq!(mem::size_of::<E3WithAbsent<X3>>(), 1);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::<X3>::A), 0);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::<X3>::B), 1);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::C(X3::_1)), 2);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::C(X3::_2)), 2);
+    assert_eq!(match_e3_with_absent(E3WithAbsent::C(X3::_254)), 2);
+
+    // Check set_discr and get_discr work as intended in const eval too.
+    const _: () = {
+        // Check `u8` primitive type as discriminant.
+        assert!(mem::size_of::<E1<X1>>() == 1);
+        assert!(match_e1(E1::A(X1::_1)) == 0);
+        assert!(match_e1(E1::A(X1::_2)) == 0);
+        assert!(match_e1(E1::A(X1::_254)) == 0);
+        assert!(match_e1(E1::<X1>::B) == 1);
+        assert!(mem::size_of::<E1WithAbsent<X1>>() == 1);
+        assert!(match_e1_with_absent(E1WithAbsent::A(X1::_1)) == 0);
+        assert!(match_e1_with_absent(E1WithAbsent::A(X1::_2)) == 0);
+        assert!(match_e1_with_absent(E1WithAbsent::A(X1::_254)) == 0);
+        assert!(match_e1_with_absent(E1WithAbsent::<X1>::B) == 1);
+
+        // Check `i8` primitive type as discriminant.
+        assert!(mem::size_of::<E1<X3>>() == 1);
+        assert!(match_e1(E1::A(X3::_1)) == 0);
+        assert!(match_e1(E1::A(X3::_2)) == 0);
+        assert!(match_e1(E1::A(X3::_254)) == 0);
+        assert!(match_e1(E1::<X3>::B) == 1);
+        assert!(mem::size_of::<E1WithAbsent<X3>>() == 1);
+        assert!(match_e1_with_absent(E1WithAbsent::A(X3::_1)) == 0);
+        assert!(match_e1_with_absent(E1WithAbsent::A(X3::_2)) == 0);
+        assert!(match_e1_with_absent(E1WithAbsent::A(X3::_254)) == 0);
+        assert!(match_e1_with_absent(E1WithAbsent::<X3>::B) == 1);
+
+        assert!(mem::size_of::<E2<X1>>() == 1);
+        assert!(match_e2(E2::<X1>::A) == 0);
+        assert!(match_e2(E2::B(X1::_1)) == 1);
+        assert!(match_e2(E2::B(X1::_2)) == 1);
+        assert!(match_e2(E2::B(X1::_254)) == 1);
+        assert!(match_e2(E2::<X1>::C) == 2);
+        assert!(mem::size_of::<E2WithAbsent<X1>>() == 1);
+        assert!(match_e2_with_absent(E2WithAbsent::<X1>::A) == 0);
+        assert!(match_e2_with_absent(E2WithAbsent::B(X1::_1)) == 1);
+        assert!(match_e2_with_absent(E2WithAbsent::B(X1::_2)) == 1);
+        assert!(match_e2_with_absent(E2WithAbsent::B(X1::_254)) == 1);
+        assert!(match_e2_with_absent(E2WithAbsent::<X1>::C) == 2);
+
+        assert!(mem::size_of::<E2<X3>>() == 1);
+        assert!(match_e2(E2::<X3>::A) == 0);
+        assert!(match_e2(E2::B(X3::_1)) == 1);
+        assert!(match_e2(E2::B(X3::_2)) == 1);
+        assert!(match_e2(E2::B(X3::_254)) == 1);
+        assert!(match_e2(E2::<X3>::C) == 2);
+        assert!(mem::size_of::<E2WithAbsent<X3>>() == 1);
+        assert!(match_e2_with_absent(E2WithAbsent::<X3>::A) == 0);
+        assert!(match_e2_with_absent(E2WithAbsent::B(X3::_1)) == 1);
+        assert!(match_e2_with_absent(E2WithAbsent::B(X3::_2)) == 1);
+        assert!(match_e2_with_absent(E2WithAbsent::B(X3::_254)) == 1);
+        assert!(match_e2_with_absent(E2WithAbsent::<X3>::C) == 2);
+
+        assert!(mem::size_of::<E3<X1>>() == 1);
+        assert!(match_e3(E3::<X1>::A) == 0);
+        assert!(match_e3(E3::<X1>::B) == 1);
+        assert!(match_e3(E3::C(X1::_1)) == 2);
+        assert!(match_e3(E3::C(X1::_2)) == 2);
+        assert!(match_e3(E3::C(X1::_254)) == 2);
+        assert!(mem::size_of::<E3WithAbsent<X1>>() == 1);
+        assert!(match_e3_with_absent(E3WithAbsent::<X1>::A) == 0);
+        assert!(match_e3_with_absent(E3WithAbsent::<X1>::B) == 1);
+        assert!(match_e3_with_absent(E3WithAbsent::C(X1::_1)) == 2);
+        assert!(match_e3_with_absent(E3WithAbsent::C(X1::_2)) == 2);
+        assert!(match_e3_with_absent(E3WithAbsent::C(X1::_254)) == 2);
+
+        assert!(mem::size_of::<E3<X3>>() == 1);
+        assert!(match_e3(E3::<X3>::A) == 0);
+        assert!(match_e3(E3::<X3>::B) == 1);
+        assert!(match_e3(E3::C(X3::_1)) == 2);
+        assert!(match_e3(E3::C(X3::_2)) == 2);
+        assert!(match_e3(E3::C(X3::_254)) == 2);
+        assert!(mem::size_of::<E3WithAbsent<X3>>() == 1);
+        assert!(match_e3_with_absent(E3WithAbsent::<X3>::A) == 0);
+        assert!(match_e3_with_absent(E3WithAbsent::<X3>::B) == 1);
+        assert!(match_e3_with_absent(E3WithAbsent::C(X3::_1)) == 2);
+        assert!(match_e3_with_absent(E3WithAbsent::C(X3::_2)) == 2);
+        assert!(match_e3_with_absent(E3WithAbsent::C(X3::_254)) == 2);
+    };
 }

@@ -25,31 +25,6 @@ pub fn match0(e: Enum0) -> u8 {
     }
 }
 
-// Case 1: Niche values are on a boundary for `range`.
-pub enum Enum1 {
-    A(bool),
-    B,
-    C,
-}
-
-// CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1{{.*}}
-// CHECK-NEXT: start:
-// CHECK-NEXT: %1 = add{{( nsw)?}} i8 %0, -2
-// CHECK-NEXT: %2 = zext i8 %1 to i64
-// CHECK-NEXT: %3 = icmp ult i8 %1, 2
-// CHECK-NEXT: %4 = add nuw nsw i64 %2, 1
-// CHECK-NEXT: %_2 = select i1 %3, i64 %4, i64 0
-#[no_mangle]
-pub fn match1(e: Enum1) -> u8 {
-    use Enum1::*;
-    match e {
-        A(b) => b as u8,
-        B => 13,
-        C => 100,
-    }
-}
-
-// Case 2: Special cases don't apply.
 #[rustfmt::skip]
 pub enum X {
     _2=2, _3, _4, _5, _6, _7, _8, _9, _10, _11,
@@ -84,6 +59,37 @@ pub enum X {
     _246, _247, _248, _249, _250, _251, _252, _253,
 }
 
+// Case 1: Special case doesn't apply. And the untagged variant is contained in niche_variants.
+pub enum Enum1 {
+    A,
+    B,
+    C(X),
+    D,
+    E,
+}
+
+// CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1{{.*}}
+// CHECK-NEXT: start:
+// CHECK-NEXT: %1 = add i8 %0, 2
+// CHECK-NEXT: %2 = zext i8 %1 to i64
+// CHECK-NEXT: %3 = icmp ult i8 %1, 4
+// CHECK-NEXT: %4 = add nuw nsw i64 %2, 3
+// CHECK-NEXT: %5 = urem i64 %4, 5
+// CHECK-NEXT: %_2 = select i1 %3, i64 %5, i64 2
+// CHECK-NEXT: switch i64 %_2, label {{.*}} [
+#[no_mangle]
+pub fn match1(e: Enum1) -> u8 {
+    use Enum1::*;
+    match e {
+        A => 0,
+        B => 1,
+        C(c) => c as u8,
+        D => 254,
+        E => 255,
+    }
+}
+
+// Case 2: Special cases don't apply. And the untagged variant is not contained in niche_variants.
 pub enum Enum2 {
     A(X),
     B,
