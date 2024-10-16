@@ -670,7 +670,8 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn dangling<T>() -> *const T {
-    without_provenance(mem::align_of::<T>())
+    // 0x8000[...], aligned for any pointer
+    without_provenance(isize::MIN as usize)
 }
 
 /// Creates a pointer with the given address and no provenance.
@@ -714,7 +715,8 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 #[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn dangling_mut<T>() -> *mut T {
-    without_provenance_mut(mem::align_of::<T>())
+    // 0x8000[...], aligned for any pointer.
+    without_provenance_mut(isize::MIN as usize)
 }
 
 /// Converts an address back to a pointer, picking up a previously 'exposed' provenance.
