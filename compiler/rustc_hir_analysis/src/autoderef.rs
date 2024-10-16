@@ -1,4 +1,5 @@
 use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Limit;
 use rustc_span::Span;
@@ -23,7 +24,7 @@ struct AutoderefSnapshot<'tcx> {
     reached_recursion_limit: bool,
     steps: Vec<(Ty<'tcx>, AutoderefKind)>,
     cur_ty: Ty<'tcx>,
-    obligations: Vec<traits::PredicateObligation<'tcx>>,
+    obligations: PredicateObligations<'tcx>,
 }
 
 pub struct Autoderef<'a, 'tcx> {
@@ -119,7 +120,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             state: AutoderefSnapshot {
                 steps: vec![],
                 cur_ty: infcx.resolve_vars_if_possible(base_ty),
-                obligations: vec![],
+                obligations: PredicateObligations::new(),
                 at_start: true,
                 reached_recursion_limit: false,
             },
@@ -165,7 +166,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     pub fn structurally_normalize(
         &self,
         ty: Ty<'tcx>,
-    ) -> Option<(Ty<'tcx>, Vec<traits::PredicateObligation<'tcx>>)> {
+    ) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
         let ocx = ObligationCtxt::new(self.infcx);
         let Ok(normalized_ty) = ocx.structurally_normalize(
             &traits::ObligationCause::misc(self.span, self.body_id),
@@ -204,11 +205,11 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         self.state.steps.len()
     }
 
-    pub fn into_obligations(self) -> Vec<traits::PredicateObligation<'tcx>> {
+    pub fn into_obligations(self) -> PredicateObligations<'tcx> {
         self.state.obligations
     }
 
-    pub fn current_obligations(&self) -> Vec<traits::PredicateObligation<'tcx>> {
+    pub fn current_obligations(&self) -> PredicateObligations<'tcx> {
         self.state.obligations.clone()
     }
 

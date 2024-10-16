@@ -12,6 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
@@ -414,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
-        let mut obligations = vec![];
+        let mut obligations = PredicateObligations::new();
 
         // FIXME(effects): revisit when binops get `#[const_trait]`
 

@@ -10,6 +10,7 @@ use rustc_infer::infer::canonical::{
 };
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError, TypeTrace};
+use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
@@ -206,7 +207,7 @@ where
     /// getting ignored. You can make a new `ObligationCtxt` if this
     /// needs to be done in a loop, for example.
     #[must_use]
-    pub fn into_pending_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+    pub fn into_pending_obligations(self) -> PredicateObligations<'tcx> {
         self.engine.borrow().pending_obligations()
     }
 

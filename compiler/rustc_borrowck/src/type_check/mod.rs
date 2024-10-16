@@ -18,6 +18,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
 };
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -40,7 +41,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
-use rustc_trait_selection::traits::PredicateObligation;
 use rustc_trait_selection::traits::query::type_op::custom::{
     CustomTypeOp, scrape_region_constraints,
 };
@@ -2940,7 +2940,7 @@ impl NormalizeLocation for Location {
 pub(super) struct InstantiateOpaqueType<'tcx> {
     pub base_universe: Option<ty::UniverseIndex>,
     pub region_constraints: Option<RegionConstraintData<'tcx>>,
-    pub obligations: Vec<PredicateObligation<'tcx>>,
+    pub obligations: PredicateObligations<'tcx>,
 }
 
 impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
