@@ -138,6 +138,16 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
+    if llvm_version < (20, 0, 0) {
+        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
+            // LLVM 20 defines three additional address spaces for alternate
+            // pointer kinds used in Windows.
+            // See https://github.com/llvm/llvm-project/pull/111879
+            target_data_layout =
+                target_data_layout.replace("-p270:32:32-p271:32:32-p272:64:64", "");
+        }
+    }
+
     // Ensure the data-layout values hardcoded remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
