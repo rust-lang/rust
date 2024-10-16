@@ -10,7 +10,10 @@ error: `foobar` is not yet stable as a const fn
 LL | const VAR: u32 = foobar();
    |                  ^^^^^^^^
    |
+   = note: use of unstable library feature `const_foobar`
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(const_foobar)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors
 

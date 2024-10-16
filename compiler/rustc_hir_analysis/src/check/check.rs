@@ -922,14 +922,7 @@ fn check_impl_items_against_trait<'tcx>(
                 let full_impl_span = tcx.hir().span_with_body(tcx.local_def_id_to_hir_id(impl_id));
                 match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
                     EvalResult::Deny { denials, .. } => {
-                        for denial in denials {
-                            default_body_is_unstable(
-                                tcx,
-                                full_impl_span,
-                                trait_item_id,
-                                denial.unstability,
-                            );
-                        }
+                        default_body_is_unstable(tcx, full_impl_span, trait_item_id, &denials);
                     }
 
                     // Unmarked default bodies are considered stable (at least for now).

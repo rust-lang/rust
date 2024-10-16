@@ -48,6 +48,7 @@
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(iter_from_coroutine)]
+#![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]

@@ -5,6 +5,8 @@ LL |     const_eval_select((), nothing, log);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
+   = note: use of unstable library feature `const_eval_select`
+   = note: see issue #124625 <https://github.com/rust-lang/rust/issues/124625> for more information
 
 error: aborting due to 1 previous error
 

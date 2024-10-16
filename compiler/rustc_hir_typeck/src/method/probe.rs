@@ -1326,10 +1326,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let stability::EvalResult::Deny { denials, .. } =
                     self.tcx.eval_stability(candidate.item.def_id, None, self.span, None)
                 {
-                    uc.push((
-                        candidate.clone(),
-                        denials.iter().map(|d| d.unstability.feature).collect(),
-                    ));
+                    uc.push((candidate.clone(), denials.iter().map(|d| d.feature).collect()));
                     return false;
                 }
                 true
@@ -1428,10 +1425,11 @@ impl<'tcx> Pick<'tcx> {
             tcx.disabled_nightly_features(
                 lint,
                 Some(scope_expr_id),
-                self.unstable_candidates.iter().flat_map(|(candidate, features)| {
-                    features.iter().map(|feature| {
-                        (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
-                    })
+                self.unstable_candidates.iter().map(|(candidate, features)| {
+                    (
+                        format!(" `{}`", tcx.def_path_str(candidate.item.def_id)),
+                        features.iter().map(Symbol::as_str).intersperse(", ").collect::<String>(),
+                    )
                 }),
             );
         });

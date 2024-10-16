@@ -8,6 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
+use rustc_middle::middle::stability;
 use rustc_middle::mir::CallSource;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
@@ -298,28 +299,35 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 ///
 /// Contains the names of the features that would allow the use of this function.
 #[derive(Debug)]
-pub(crate) struct FnCallUnstable(pub DefId, pub Vec<Symbol>);
+pub(crate) struct FnCallUnstable(pub DefId, pub Vec<stability::EvalDenial>);
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let FnCallUnstable(def_id, features) = self;
+        let FnCallUnstable(def_id, denials) = self;
 
-        let mut err = ccx
-            .dcx()
-            .create_err(errors::UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
+        let in_const_stable_context = ccx.is_const_stable_const_fn();
+        // Only report unstable features when they're present.
+        let (features, info) = if denials.is_empty() {
+            (None, vec![])
+        } else {
+            let (features, info) = stability::unstable_notes(&denials);
+            (Some(features), info)
+        };
+        // Only suggest adding `#![feature]` if it could help.
+        let nightly_subdiags = if in_const_stable_context || denials.is_empty() {
+            vec![]
+        } else {
+            stability::unstable_nightly_subdiags(&ccx.tcx.sess, &denials, None)
+        };
 
-        // FIXME: make this translatable
-        #[allow(rustc::untranslatable_diagnostic)]
-        if ccx.is_const_stable_const_fn() {
-            err.help(fluent_generated::const_eval_const_stable);
-        } else if ccx.tcx.sess.is_nightly_build() && !features.is_empty() {
-            err.help(format!(
-                "add `#![feature({})]` to the crate attributes to enable",
-                features.iter().map(Symbol::as_str).intersperse(", ").collect::<String>(),
-            ));
-        }
-
-        err
+        ccx.dcx().create_err(errors::UnstableConstFn {
+            span,
+            def_path: ccx.tcx.def_path_str(def_id),
+            in_const_stable_context,
+            features,
+            info,
+            nightly_subdiags,
+        })
     }
 }
 

@@ -5,6 +5,7 @@ LL | const unsafe fn bar() -> u32 { foo() }
    |                                ^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
+   = note: use of unstable library feature `foo`
 
 error: `foo2` is not yet stable as a const fn
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:24:33

@@ -14,6 +14,8 @@ LL |     RustcEncodable,
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = help: add `#![feature(rustc_encodable_decodable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `#[deny(soft_unstable)]` on by default
 
 warning: use of deprecated macro `RustcEncodable`: rustc-serialize is deprecated and no longer supported
@@ -32,6 +34,8 @@ LL |     RustcDecodable,
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = help: add `#![feature(rustc_encodable_decodable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: use of deprecated macro `RustcDecodable`: rustc-serialize is deprecated and no longer supported
   --> $DIR/feature-gate-rustc_encodable_decodable.rs:11:5
@@ -51,6 +55,8 @@ LL |     RustcEncodable,
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = help: add `#![feature(rustc_encodable_decodable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `#[deny(soft_unstable)]` on by default
 
 Future breakage diagnostic:
@@ -62,5 +68,7 @@ LL |     RustcDecodable,
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = help: add `#![feature(rustc_encodable_decodable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `#[deny(soft_unstable)]` on by default
 

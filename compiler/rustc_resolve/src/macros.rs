@@ -1002,34 +1002,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id: NodeId,
     ) {
         let span = path.span;
-        if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { unstables, is_soft } = &stability.level {
-                let is_allowed =
-                    |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
-                for unstability in unstables {
-                    let allowed_by_implication =
-                        unstability.implied_by.is_some_and(|feature| is_allowed(feature));
-                    if !is_allowed(unstability.feature) && !allowed_by_implication {
-                        let lint_buffer = &mut self.lint_buffer;
-                        let soft_handler = |lint, span, msg: String| {
-                            lint_buffer.buffer_lint(
-                                lint,
-                                node_id,
-                                span,
-                                BuiltinLintDiag::UnstableFeature(
-                                    // FIXME make this translatable
-                                    msg.into(),
-                                ),
-                            )
-                        };
-                        stability::report_unstable(
-                            self.tcx.sess,
-                            stability::EvalDenial { unstability: *unstability, suggestion: None },
-                            *is_soft,
-                            span,
-                            soft_handler,
-                        );
-                    }
+        if let Some(stability) = &ext.stability
+            && let StabilityLevel::Unstable { unstables, is_soft } = &stability.level
+        {
+            let is_allowed =
+                |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
+            let allowed_by_implication = |unstability: &rustc_attr::Unstability| {
+                unstability.implied_by.is_some_and(|feature| is_allowed(feature))
+            };
+            let denials = unstables
+                .iter()
+                .filter(|u| !is_allowed(u.feature) && !allowed_by_implication(u))
+                .map(|u| u.into())
+                .collect::<Vec<_>>();
+            if !denials.is_empty() {
+                if *is_soft {
+                    stability::report_soft_unstable_macro(
+                        &mut self.lint_buffer,
+                        &denials,
+                        span,
+                        node_id,
+                    );
+                } else {
+                    stability::report_unstable(self.tcx.sess, &denials, vec![], span);
                 }
             }
         }

@@ -102,6 +102,25 @@ middle_type_length_limit = reached the type-length limit while instantiating `{$
 middle_unknown_layout =
     the type `{$ty}` has an unknown layout
 
+middle_unstable_library_feature = use of unstable library {$count ->
+    [one] feature {$features}{$single_feature_has_reason ->
+        [true] : {$reason_for_single_feature}
+        *[false] {""}
+    }
+    *[other] features {$features}
+}
+
+middle_unstable_library_feature_issue =
+    see issue #{$issue} <https://github.com/rust-lang/rust/issues/{$issue}> for more information{$show_feature ->
+        [true] {" "}about `{$feature}`
+        *[false] {""}
+    }
+
+middle_unstable_library_feature_reason = reason for `{$feature}`: {$reason}
+
+middle_unstable_library_feature_suggestion_for_allocator_api =
+    consider wrapping the inner types in tuple
+
 middle_values_too_big =
     values of the type `{$ty}` are too big for the target architecture
 middle_written_to_path = the full type name has been written to '{$path}'
