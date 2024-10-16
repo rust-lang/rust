@@ -230,6 +230,24 @@ impl<T: ?Sized> NonNull<T> {
         }
     }
 
+    /// Converts a reference to a `NonNull` pointer.
+    #[unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[rustc_const_unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[inline]
+    pub const fn from_ref(r: &T) -> Self {
+        // SAFETY: A reference cannot be null.
+        unsafe { NonNull { pointer: r as *const T } }
+    }
+
+    /// Converts a mutable reference to a `NonNull` pointer.
+    #[unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[rustc_const_unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[inline]
+    pub const fn from_mut(r: &mut T) -> Self {
+        // SAFETY: A mutable reference cannot be null.
+        unsafe { NonNull { pointer: r as *mut T } }
+    }
+
     /// Performs the same functionality as [`std::ptr::from_raw_parts`], except that a
     /// `NonNull` pointer is returned, as opposed to a raw `*const` pointer.
     ///
@@ -1749,9 +1767,8 @@ impl<T: ?Sized> From<&mut T> for NonNull<T> {
     ///
     /// This conversion is safe and infallible since references cannot be null.
     #[inline]
-    fn from(reference: &mut T) -> Self {
-        // SAFETY: A mutable reference cannot be null.
-        unsafe { NonNull { pointer: reference as *mut T } }
+    fn from(r: &mut T) -> Self {
+        NonNull::from_mut(r)
     }
 }
 
@@ -1761,8 +1778,7 @@ impl<T: ?Sized> From<&T> for NonNull<T> {
     ///
     /// This conversion is safe and infallible since references cannot be null.
     #[inline]
-    fn from(reference: &T) -> Self {
-        // SAFETY: A reference cannot be null.
-        unsafe { NonNull { pointer: reference as *const T } }
+    fn from(r: &T) -> Self {
+        NonNull::from_ref(r)
     }
 }

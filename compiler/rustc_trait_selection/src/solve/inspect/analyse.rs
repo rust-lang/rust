@@ -292,7 +292,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                         | inspect::ProbeKind::Root { .. }
                         | inspect::ProbeKind::TryNormalizeNonRigid { .. }
                         | inspect::ProbeKind::TraitCandidate { .. }
-                        | inspect::ProbeKind::OpaqueTypeStorageLookup { .. } => {
+                        | inspect::ProbeKind::OpaqueTypeStorageLookup { .. }
+                        | inspect::ProbeKind::RigidAlias { .. } => {
                             // Nested probes have to prove goals added in their parent
                             // but do not leak them, so we truncate the added goals
                             // afterwards.
@@ -316,7 +317,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             inspect::ProbeKind::Root { result }
             | inspect::ProbeKind::TryNormalizeNonRigid { result }
             | inspect::ProbeKind::TraitCandidate { source: _, result }
-            | inspect::ProbeKind::OpaqueTypeStorageLookup { result } => {
+            | inspect::ProbeKind::OpaqueTypeStorageLookup { result }
+            | inspect::ProbeKind::RigidAlias { result } => {
                 // We only add a candidate if `shallow_certainty` was set, which means
                 // that we ended up calling `evaluate_added_goals_and_make_canonical_response`.
                 if let Some(shallow_certainty) = shallow_certainty {

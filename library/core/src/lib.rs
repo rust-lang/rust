@@ -153,6 +153,7 @@
 #![feature(isqrt)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
+#![feature(non_null_from_ref)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
