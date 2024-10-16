@@ -524,6 +524,11 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
     // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
     // to HIR for it.
 
+    // HACK: For synthetic MIR bodies (async closures), use the def id of the HIR body.
+    if tcx.is_synthetic_mir(def_id) {
+        return extract_hir_info(tcx, tcx.local_parent(def_id));
+    }
+
     let hir_node = tcx.hir_node_by_def_id(def_id);
     let fn_body_id = hir_node.body_id().expect("HIR node is a function with body");
     let hir_body = tcx.hir().body(fn_body_id);
