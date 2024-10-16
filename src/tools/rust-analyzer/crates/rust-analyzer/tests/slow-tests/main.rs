@@ -10,6 +10,7 @@
 
 #![allow(clippy::disallowed_types)]
 
+mod cli;
 mod ratoml;
 mod support;
 mod testdir;

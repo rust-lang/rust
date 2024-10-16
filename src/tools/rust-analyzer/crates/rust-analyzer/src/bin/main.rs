@@ -85,7 +85,9 @@ fn actual_main() -> anyhow::Result<ExitCode> {
         flags::RustAnalyzerCmd::UnresolvedReferences(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Ssr(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Search(cmd) => cmd.run()?,
-        flags::RustAnalyzerCmd::Lsif(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::Lsif(cmd) => {
+            cmd.run(&mut std::io::stdout(), Some(project_model::RustLibSource::Discover))?
+        }
         flags::RustAnalyzerCmd::Scip(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::RunTests(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::RustcTests(cmd) => cmd.run()?,
