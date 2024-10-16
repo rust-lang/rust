@@ -723,8 +723,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn as_mut(&mut self) -> Option<&mut T> {
         match *self {
             Some(ref mut x) => Some(x),
@@ -926,7 +925,7 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "option_expect")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
@@ -965,7 +964,7 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "option_unwrap")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn unwrap(self) -> T {
         match self {
             Some(val) => val,
@@ -1073,7 +1072,7 @@ impl<T> Option<T> {
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
         match self {
             Some(val) => val,
@@ -1655,7 +1654,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(7));
     /// ```
     #[inline]
-    #[stable(feature = "option_get_or_insert_default", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "option_get_or_insert_default", since = "1.83.0")]
     pub fn get_or_insert_default(&mut self) -> &mut T
     where
         T: Default,
@@ -1716,8 +1715,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn take(&mut self) -> Option<T> {
         // FIXME(const-hack) replace `mem::replace` by `mem::take` when the latter is const ready
         mem::replace(self, None)
@@ -1775,8 +1773,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_replace", since = "1.31.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
@@ -1884,7 +1881,7 @@ impl<T> Option<&T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn copied(self) -> Option<T>
     where
         T: Copy,
@@ -1937,8 +1934,7 @@ impl<T> Option<&mut T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn copied(self) -> Option<T>
     where
         T: Copy,
@@ -1994,7 +1990,7 @@ impl<T, E> Option<Result<T, E>> {
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn transpose(self) -> Result<Option<T>, E> {
         match self {
             Some(Ok(x)) => Ok(Some(x)),
@@ -2542,7 +2538,7 @@ impl<T> Option<Option<T>> {
     #[inline]
     #[stable(feature = "option_flattening", since = "1.40.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_option", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn flatten(self) -> Option<T> {
         // FIXME(const-hack): could be written with `and_then`
         match self {

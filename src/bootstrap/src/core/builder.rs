@@ -63,7 +63,7 @@ pub struct Builder<'a> {
     pub paths: Vec<PathBuf>,
 }
 
-impl<'a> Deref for Builder<'a> {
+impl Deref for Builder<'_> {
     type Target = Build;
 
     fn deref(&self) -> &Self::Target {

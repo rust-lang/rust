@@ -1085,7 +1085,7 @@ extern "rust-intrinsic" {
     /// it does not require an `unsafe` block.
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
-    #[rustc_const_stable(feature = "const_intrinsic_forget", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_forget", since = "1.83.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn forget<T: ?Sized>(_: T);
@@ -1807,7 +1807,6 @@ extern "rust-intrinsic" {
     /// is selected, and that may depend on optimization level and context, for
     /// example.
     #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
     pub fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
     /// Returns `a * b + c` for `f32` values, non-deterministically executing
     /// either a fused multiply-add or two operations with rounding of the
@@ -1820,7 +1819,6 @@ extern "rust-intrinsic" {
     /// is selected, and that may depend on optimization level and context, for
     /// example.
     #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
     pub fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
     /// Returns `a * b + c` for `f64` values, non-deterministically executing
     /// either a fused multiply-add or two operations with rounding of the
@@ -1833,7 +1831,6 @@ extern "rust-intrinsic" {
     /// is selected, and that may depend on optimization level and context, for
     /// example.
     #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
     pub fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
     /// Returns `a * b + c` for `f128` values, non-deterministically executing
     /// either a fused multiply-add or two operations with rounding of the
@@ -1846,7 +1843,6 @@ extern "rust-intrinsic" {
     /// is selected, and that may depend on optimization level and context, for
     /// example.
     #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
     pub fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
 
     /// Returns the largest integer less than or equal to an `f16`.
@@ -2541,7 +2537,7 @@ extern "rust-intrinsic" {
     /// This intrinsic can *only* be called where the pointer is a local without
     /// projections (`write_via_move(ptr, x)`, not `write_via_move(*ptr, x)`) so
     /// that it trivially obeys runtime-MIR rules about derefs in operands.
-    #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     #[rustc_nounwind]
     pub fn write_via_move<T>(ptr: *mut T, value: T);
 
@@ -3070,7 +3066,7 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128 {
 /// change the possible layouts of pointers.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "ptr_metadata_const", since = "1.83.0")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(_data: D, _meta: M) -> P {
@@ -3095,7 +3091,7 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 /// This is used to implement functions like `ptr::metadata`.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "ptr_metadata_const", since = "1.83.0")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *const P) -> M {
@@ -3196,13 +3192,13 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
         #[rustc_nounwind]
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
@@ -3300,13 +3296,13 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
         #[rustc_nounwind]
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
@@ -3381,13 +3377,13 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_write_bytes"]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
         #[rustc_nounwind]
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
