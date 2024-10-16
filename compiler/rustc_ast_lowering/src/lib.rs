@@ -43,7 +43,6 @@
 use std::collections::hash_map::Entry;
 
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -101,7 +100,7 @@ struct LoweringContext<'a, 'hir> {
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// Attributes inside the owner being lowered.
-    attrs: SortedMap<hir::ItemLocalId, &'hir [Attribute]>,
+    attrs: SortedMap<hir::ItemLocalId, &'hir [hir::Attribute]>,
     /// Collect items that were created by lowering the current owner.
     children: Vec<(LocalDefId, hir::MaybeOwner<'hir>)>,
 
@@ -927,7 +926,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [Attribute] {
+    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [hir::Attribute] {
         if attrs.is_empty() {
             &[]
         } else {
@@ -939,7 +938,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attr(&self, attr: &Attribute) -> Attribute {
+    fn lower_attr(&self, attr: &Attribute) -> hir::Attribute {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
@@ -965,7 +964,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
+        hir::Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
@@ -977,10 +976,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attr_args(&self, args: &AttrArgs) -> AttrArgs {
+    fn lower_attr_args(&self, args: &AttrArgs) -> hir::AttrArgs {
         match args {
-            AttrArgs::Empty => AttrArgs::Empty,
-            AttrArgs::Delimited(args) => AttrArgs::Delimited(self.lower_delim_args(args)),
+            AttrArgs::Empty => hir::AttrArgs::Empty,
+            AttrArgs::Delimited(args) => hir::AttrArgs::Delimited(self.lower_delim_args(args)),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).

@@ -35,29 +35,22 @@ impl<'ctx> HashStable<StableHashingContext<'ctx>> for [hir::Attribute] {
     }
 }
 
-impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
-    fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
+impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
+    fn hash_attr(&mut self, attr: &hir::Attribute, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
         debug_assert!(!attr.ident().is_some_and(|ident| self.is_ignored_attr(ident.name)));
         debug_assert!(!attr.is_doc_comment());
 
-        let ast::Attribute { kind, id: _, style, span } = attr;
-        if let ast::AttrKind::Normal(normal) = kind {
-            normal.item.hash_stable(self, hasher);
+        let hir::Attribute { kind, id: _, style, span } = attr;
+        if let hir::AttrKind::Normal(item) = kind {
+            item.hash_stable(self, hasher);
             style.hash_stable(self, hasher);
             span.hash_stable(self, hasher);
-            assert_matches!(
-                normal.tokens.as_ref(),
-                None,
-                "Tokens should have been removed during lowering!"
-            );
         } else {
             unreachable!();
         }
     }
 }
-
-impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
