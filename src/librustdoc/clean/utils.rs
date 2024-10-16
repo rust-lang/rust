@@ -25,6 +25,7 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::html::format::visibility_to_src_with_space;
+use crate::rustc_attr::AttributeExt;
 
 #[cfg(test)]
 mod tests;
@@ -586,7 +587,7 @@ pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
 }
 
 pub(crate) fn attrs_have_doc_flag<'a>(
-    mut attrs: impl Iterator<Item = &'a ast::Attribute>,
+    mut attrs: impl Iterator<Item = &'a hir::Attribute>,
     flag: Symbol,
 ) -> bool {
     attrs
