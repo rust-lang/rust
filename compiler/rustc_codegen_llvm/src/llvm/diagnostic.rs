@@ -151,7 +151,7 @@ impl InlineAsmDiagnostic {
             unsafe { SrcMgrDiagnostic::unpack(super::LLVMRustGetSMDiagnostic(di, &mut cookie)) };
         InlineAsmDiagnostic {
             level: smdiag.level,
-            cookie: cookie.into(),
+            cookie,
             message: smdiag.message,
             source: smdiag.source,
         }
