@@ -20,7 +20,10 @@ fn alloc_caller_location<'tcx>(
     // This can fail if rustc runs out of memory right here. Trying to emit an error would be
     // pointless, since that would require allocating more memory than these short strings.
     let file = if loc_details.file {
-        ecx.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        let mut name = filename.as_str().to_string();
+        name.push('\0');
+
+        ecx.allocate_str(&name, MemoryKind::CallerLocation, Mutability::Not).unwrap()
     } else {
         // FIXME: This creates a new allocation each time. It might be preferable to
         // perform this allocation only once, and re-use the `MPlaceTy`.
