@@ -490,13 +490,13 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
     auto Arg0 = std::string(ArgsCstrBuff);
     buffer_offset = Arg0.size() + 1;
-    auto ArgsCppStr =
-        std::string(ArgsCstrBuff + buffer_offset, ArgsCstrBuffLen - 1);
+    auto ArgsCppStr = std::string(ArgsCstrBuff + buffer_offset,
+                                  ArgsCstrBuffLen - buffer_offset);
     auto i = 0;
     while (i != std::string::npos) {
       i = ArgsCppStr.find('\0', i + 1);
       if (i != std::string::npos)
-        ArgsCppStr.replace(i, i + 1, " ");
+        ArgsCppStr.replace(i, 1, " ");
     }
     Options.MCOptions.Argv0 = Arg0;
     Options.MCOptions.CommandlineArgs = ArgsCppStr;
