@@ -1,7 +1,6 @@
 use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::canonical::Certainty;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -9,7 +8,8 @@ use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::Span;
 
 use crate::infer::canonical::{
-    Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
+    CanonicalQueryInput, CanonicalQueryResponse, Certainty, OriginalQueryValues,
+    QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{ObligationCause, ObligationCtxt};
@@ -80,7 +80,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     /// not captured in the return value.
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution>;
 
     /// In the new trait solver, we already do caching in the solver itself,
@@ -102,7 +102,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     ) -> Result<
         (
             Self::QueryResponse,
-            Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
+            Option<CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>>,
             PredicateObligations<'tcx>,
             Certainty,
         ),
@@ -135,7 +135,7 @@ where
     Q: QueryTypeOp<'tcx>,
 {
     type Output = Q::QueryResponse;
-    type ErrorInfo = Canonical<'tcx, ParamEnvAnd<'tcx, Q>>;
+    type ErrorInfo = CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Q>>;
 
     fn fully_perform(
         self,

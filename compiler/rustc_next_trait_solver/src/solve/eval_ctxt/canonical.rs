@@ -60,7 +60,7 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical_goal = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize(
             self.delegate,
             CanonicalizeMode::Input,
             &mut orig_values,
@@ -71,7 +71,11 @@ where
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
-        (orig_values, canonical_goal)
+        let query_input = ty::CanonicalQueryInput {
+            canonical,
+            defining_opaque_types: self.delegate.defining_opaque_types(),
+        };
+        (orig_values, query_input)
     }
 
     /// To return the constraints of a canonical query to the caller, we canonicalize:

@@ -17,7 +17,7 @@ pub trait SolverDelegate:
     fn build_with_canonical<V>(
         cx: Self::Interner,
         solver_mode: SolverMode,
-        canonical: &ty::Canonical<Self::Interner, V>,
+        canonical: &ty::CanonicalQueryInput<Self::Interner, V>,
     ) -> (Self, V, ty::CanonicalVarValues<Self::Interner>)
     where
         V: TypeFoldable<Self::Interner>;

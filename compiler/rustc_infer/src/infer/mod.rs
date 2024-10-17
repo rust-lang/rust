@@ -25,7 +25,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{
     ConstVariableOrigin, ConstVariableValue, ConstVidKey, EffectVarValue, EffectVidKey,
 };
@@ -606,14 +606,14 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     pub fn build_with_canonical<T>(
         mut self,
         span: Span,
-        canonical: &Canonical<'tcx, T>,
+        input: &CanonicalQueryInput<'tcx, T>,
     ) -> (InferCtxt<'tcx>, T, CanonicalVarValues<'tcx>)
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.defining_opaque_types = canonical.defining_opaque_types;
+        self.defining_opaque_types = input.defining_opaque_types;
         let infcx = self.build();
-        let (value, args) = infcx.instantiate_canonical(span, canonical);
+        let (value, args) = infcx.instantiate_canonical(span, &input.canonical);
         (infcx, value, args)
     }
 

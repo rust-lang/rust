@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 35;
+pub const FORMAT_VERSION: u32 = 36;
 
 /// The root of the emitted JSON blob.
 ///
@@ -1082,8 +1082,11 @@ pub struct Trait {
     pub is_auto: bool,
     /// Whether the trait is marked as `unsafe`.
     pub is_unsafe: bool,
-    /// Whether the trait is [object safe](https://doc.rust-lang.org/reference/items/traits.html#object-safety).
-    pub is_object_safe: bool,
+    // FIXME(dyn_compat_renaming): Update the URL once the Reference is updated and hits stable.
+    /// Whether the trait is [dyn compatible](https://doc.rust-lang.org/reference/items/traits.html#object-safety)[^1].
+    ///
+    /// [^1]: Formerly known as "object safe".
+    pub is_dyn_compatible: bool,
     /// Associated [`Item`]s that can/must be implemented by the `impl` blocks.
     pub items: Vec<Id>,
     /// Information about the type parameters and `where` clauses of the trait.
