@@ -415,14 +415,14 @@ where
                                 const_value,
                                 cx.layout_of(ty),
                             );
-                            GlobalAsmOperandRef::Const { string }
+                            GlobalAsmOperandRef::Interpolate { string }
                         }
                         Err(ErrorHandled::Reported { .. }) => {
                             // An error has already been reported and
                             // compilation is guaranteed to fail if execution
                             // hits this path. So an empty string instead of
                             // a stringified constant value will suffice.
-                            GlobalAsmOperandRef::Const { string: String::new() }
+                            GlobalAsmOperandRef::Interpolate { string: String::new() }
                         }
                         Err(ErrorHandled::TooGeneric(_)) => {
                             span_bug!(*op_sp, "asm const cannot be resolved; too generic")

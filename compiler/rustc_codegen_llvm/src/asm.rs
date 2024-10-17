@@ -205,7 +205,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                 template_str.push_str(&format!("${{{}}}", op_idx[&operand_idx]));
                             }
                         }
-                        InlineAsmOperandRef::Const { ref string } => {
+                        InlineAsmOperandRef::Interpolate { ref string } => {
                             // Const operands get injected directly into the template
                             template_str.push_str(string);
                         }
@@ -402,7 +402,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                 InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
                     match operands[operand_idx] {
-                        GlobalAsmOperandRef::Const { ref string } => {
+                        GlobalAsmOperandRef::Interpolate { ref string } => {
                             // Const operands get injected directly into the
                             // template. Note that we don't need to escape $
                             // here unlike normal inline assembly.
