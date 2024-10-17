@@ -356,11 +356,13 @@ hir_analysis_only_current_traits_arbitrary = only traits defined in the current 
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
 
-hir_analysis_only_current_traits_label = impl doesn't use only types from inside the current crate
-
 hir_analysis_only_current_traits_name = this is not defined in the current crate because {$name} are always foreign
 
 hir_analysis_only_current_traits_note = define and implement a trait or new type instead
+
+hir_analysis_only_current_traits_note_more_info = for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+
+hir_analysis_only_current_traits_note_uncovered = impl doesn't have any local type before any uncovered type parameters
 
 hir_analysis_only_current_traits_opaque = type alias impl trait is treated as if it were foreign, because its hidden type could be from a foreign crate
 
