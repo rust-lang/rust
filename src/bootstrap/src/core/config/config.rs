@@ -37,7 +37,7 @@ use crate::utils::helpers::{self, exe, output, t};
 ///
 /// WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
 /// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
-const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
     ":!.clang-format",
     ":!.editorconfig",
     ":!.git-blame-ignore-revs",
