@@ -672,12 +672,12 @@ impl FromClean<clean::Trait> for Trait {
         let tcx = renderer.tcx;
         let is_auto = trait_.is_auto(tcx);
         let is_unsafe = trait_.safety(tcx) == rustc_hir::Safety::Unsafe;
-        let is_object_safe = trait_.is_dyn_compatible(tcx);
+        let is_dyn_compatible = trait_.is_dyn_compatible(tcx);
         let clean::Trait { items, generics, bounds, .. } = trait_;
         Trait {
             is_auto,
             is_unsafe,
-            is_object_safe,
+            is_dyn_compatible,
             items: renderer.ids(items),
             generics: generics.into_json(renderer),
             bounds: bounds.into_json(renderer),
