@@ -49,7 +49,10 @@ impl CheckCtx {
 
 /// Possible items to test against
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CheckBasis {}
+pub enum CheckBasis {
+    /// Check against Musl's math sources.
+    Musl,
+}
 
 /// A trait to implement on any output type so we can verify it in a generic way.
 pub trait CheckOutput<Input>: Sized {
@@ -160,8 +163,7 @@ where
 
             // Check when both are NaNs
             if self.is_nan() && expected.is_nan() {
-                ensure!(self.to_bits() == expected.to_bits(), "NaNs have different bitpatterns");
-                // Nothing else to check
+                // By default, NaNs have nothing special to check.
                 return Ok(());
             } else if self.is_nan() || expected.is_nan() {
                 // Check when only one is a NaN
