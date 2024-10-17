@@ -54,6 +54,9 @@ pub enum LayoutCalculatorError<F> {
 
     /// A union had no fields.
     EmptyUnion,
+
+    /// The fields or variants have irreconcilable reprs
+    ReprConflict,
 }
 
 type LayoutCalculatorResult<FieldIdx, VariantIdx, F> =
@@ -307,12 +310,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                         common_non_zst_abi_and_align = Err(AbiMismatch);
                     } else {
                         // Fields with the same non-Aggregate ABI should also
-                        // have the same alignment
-                        if !matches!(common_abi, Abi::Aggregate { .. }) {
-                            assert_eq!(
-                                common_align, field.align.abi,
-                                "non-Aggregate field with matching ABI but differing alignment"
-                            );
+                        // have the same alignment, but one may have an invalid repr
+                        if !matches!(common_abi, Abi::Aggregate { .. })
+                            && common_align != field.align.abi
+                        {
+                            return Err(LayoutCalculatorError::ReprConflict);
                         }
                     }
                 } else {

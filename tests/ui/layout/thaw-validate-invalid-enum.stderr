@@ -1,0 +1,29 @@
+error[E0517]: attribute should be applied to a struct or union
+  --> $DIR/thaw-validate-invalid-enum.rs:3:8
+   |
+LL |   #[repr(packed)]
+   |          ^^^^^^
+LL |   #[repr(u32)]
+LL | / enum E {
+LL | |     A,
+LL | |     B,
+LL | |     C,
+LL | | }
+   | |_- not a struct or union
+
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/thaw-validate-invalid-enum.rs:14:9
+   |
+LL |         e: E,
+   |         ^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |         e: std::mem::ManuallyDrop<E>,
+   |            +++++++++++++++++++++++ +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0517, E0740.
+For more information about an error, try `rustc --explain E0517`.
