@@ -120,12 +120,12 @@
 #![feature(const_char_encode_utf16)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
+#![feature(const_float_methods)]
 #![feature(const_fmt_arguments_new)]
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_index_range_slice_index)]
 #![feature(const_likely)]
-#![feature(const_make_ascii)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
 #![feature(const_option_ext)]
@@ -153,6 +153,7 @@
 #![feature(isqrt)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
+#![feature(non_null_from_ref)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
@@ -173,9 +174,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(const_mut_refs))]
-#![cfg_attr(bootstrap, feature(const_refs_to_cell))]
-#![cfg_attr(bootstrap, feature(const_refs_to_static))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -268,6 +266,15 @@ mod macros;
 pub mod assert_matches {
     #[unstable(feature = "assert_matches", issue = "82775")]
     pub use crate::macros::{assert_matches, debug_assert_matches};
+}
+
+// We don't export this through #[macro_export] for now, to avoid breakage.
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "124509")]
+/// Unstable module containing the unstable `autodiff` macro.
+pub mod autodiff {
+    #[unstable(feature = "autodiff", issue = "124509")]
+    pub use crate::macros::builtin::autodiff;
 }
 
 #[unstable(feature = "cfg_match", issue = "115585")]

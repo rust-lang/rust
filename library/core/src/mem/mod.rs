@@ -857,8 +857,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
-#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-#[rustc_const_stable(feature = "const_replace", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_replace")]
 pub const fn replace<T>(dest: &mut T, src: T) -> T {
     // It may be tempting to use `swap` to avoid `unsafe` here. Don't!

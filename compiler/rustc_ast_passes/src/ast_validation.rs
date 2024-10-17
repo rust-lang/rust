@@ -524,21 +524,24 @@ impl<'a> AstValidator<'a> {
         // Deconstruct to ensure exhaustiveness
         FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
-        let report_err = |span| {
-            self.dcx()
-                .emit_err(errors::FnQualifierInExtern { span, block: self.current_extern_span() });
+        let report_err = |span, kw| {
+            self.dcx().emit_err(errors::FnQualifierInExtern {
+                span,
+                kw,
+                block: self.current_extern_span(),
+            });
         };
         match coroutine_kind {
-            Some(knd) => report_err(knd.span()),
+            Some(kind) => report_err(kind.span(), kind.as_str()),
             None => (),
         }
         match constness {
-            Const::Yes(span) => report_err(span),
+            Const::Yes(span) => report_err(span, "const"),
             Const::No => (),
         }
         match ext {
             Extern::None => (),
-            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span),
+            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span, "extern"),
         }
     }
 
@@ -1260,7 +1263,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if !bound_pred.bound_generic_params.is_empty() {
                         for bound in &bound_pred.bounds {
                             match bound {
-                                GenericBound::Trait(t, _) => {
+                                GenericBound::Trait(t) => {
                                     if !t.bound_generic_params.is_empty() {
                                         self.dcx()
                                             .emit_err(errors::NestedLifetimes { span: t.span });
@@ -1280,8 +1283,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
         match bound {
-            GenericBound::Trait(trait_ref, modifiers) => {
-                match (ctxt, modifiers.constness, modifiers.polarity) {
+            GenericBound::Trait(trait_ref) => {
+                match (ctxt, trait_ref.modifiers.constness, trait_ref.modifiers.polarity) {
                     (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
                         if !self.features.more_maybe_bounds =>
                     {
@@ -1321,7 +1324,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
 
                 // Negative trait bounds are not allowed to have associated constraints
-                if let BoundPolarity::Negative(_) = modifiers.polarity
+                if let BoundPolarity::Negative(_) = trait_ref.modifiers.polarity
                     && let Some(segment) = trait_ref.trait_ref.path.segments.last()
                 {
                     match segment.args.as_deref() {
@@ -1669,7 +1672,9 @@ fn deny_equality_constraints(
             }),
         ) {
             for bound in bounds {
-                if let GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                if let GenericBound::Trait(poly) = bound
+                    && poly.modifiers == TraitBoundModifiers::NONE
+                {
                     if full_path.segments[..full_path.segments.len() - 1]
                         .iter()
                         .map(|segment| segment.ident.name)
@@ -1697,7 +1702,9 @@ fn deny_equality_constraints(
             ) {
                 if ident == potential_param.ident {
                     for bound in bounds {
-                        if let ast::GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                        if let ast::GenericBound::Trait(poly) = bound
+                            && poly.modifiers == TraitBoundModifiers::NONE
+                        {
                             suggest(poly, potential_assoc, predicate);
                         }
                     }

@@ -690,16 +690,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     BindingMode(def_br, Mutability::Mut)
                 } else {
-                    // `mut` resets binding mode on edition <= 2021
-                    self.typeck_results
+                    // `mut` resets the binding mode on edition <= 2021
+                    *self
+                        .typeck_results
                         .borrow_mut()
                         .rust_2024_migration_desugared_pats_mut()
-                        .insert(pat_info.top_info.hir_id);
+                        .entry(pat_info.top_info.hir_id)
+                        .or_default() |= pat.span.at_least_rust_2024();
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(_), _) => user_bind_annot,
+            BindingMode(ByRef::Yes(_), _) => {
+                if matches!(def_br, ByRef::Yes(_)) {
+                    // `ref`/`ref mut` overrides the binding mode on edition <= 2021
+                    *self
+                        .typeck_results
+                        .borrow_mut()
+                        .rust_2024_migration_desugared_pats_mut()
+                        .entry(pat_info.top_info.hir_id)
+                        .or_default() |= pat.span.at_least_rust_2024();
+                }
+                user_bind_annot
+            }
         };
 
         if bm.0 == ByRef::Yes(Mutability::Mut)
@@ -1767,7 +1780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if inexistent_fields.len() == 1 {
                     match pat_field.pat.kind {
                         PatKind::Lit(expr)
-                            if !self.can_coerce(
+                            if !self.may_coerce(
                                 self.typeck_results.borrow().expr_ty(expr),
                                 self.field_ty(field.span, field_def, args),
                             ) => {}
@@ -2204,14 +2217,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Reset binding mode on old editions
-
             if pat_info.binding_mode != ByRef::No {
                 pat_info.binding_mode = ByRef::No;
-
-                self.typeck_results
+                *self
+                    .typeck_results
                     .borrow_mut()
                     .rust_2024_migration_desugared_pats_mut()
-                    .insert(pat_info.top_info.hir_id);
+                    .entry(pat_info.top_info.hir_id)
+                    .or_default() |= pat.span.at_least_rust_2024();
             }
         }
 
@@ -2262,6 +2275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (err, err)
             }
         };
+
         self.check_pat(inner, inner_ty, pat_info);
         ref_ty
     }

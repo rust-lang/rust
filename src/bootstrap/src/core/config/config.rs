@@ -612,6 +612,9 @@ impl Target {
         if triple.contains("-none") || triple.contains("nvptx") || triple.contains("switch") {
             target.no_std = true;
         }
+        if triple.contains("emscripten") {
+            target.runner = Some("node".into());
+        }
         target
     }
 }
@@ -993,7 +996,7 @@ impl<'de> Deserialize<'de> for RustOptimize {
 
 struct OptimizeVisitor;
 
-impl<'de> serde::de::Visitor<'de> for OptimizeVisitor {
+impl serde::de::Visitor<'_> for OptimizeVisitor {
     type Value = RustOptimize;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1068,7 +1071,7 @@ impl<'de> Deserialize<'de> for LldMode {
     {
         struct LldModeVisitor;
 
-        impl<'de> serde::de::Visitor<'de> for LldModeVisitor {
+        impl serde::de::Visitor<'_> for LldModeVisitor {
             type Value = LldMode;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

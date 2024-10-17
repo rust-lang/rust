@@ -24,7 +24,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,edition2021
-    /// #![cfg_attr(not(bootstrap), feature(if_let_rescope))] // Simplify this in bootstrap bump.
+    /// #![feature(if_let_rescope)]
     /// #![warn(if_let_rescope)]
     /// #![allow(unused_variables)]
     ///

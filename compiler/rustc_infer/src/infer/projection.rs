@@ -2,7 +2,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, Ty};
 
 use super::InferCtxt;
-use crate::traits::{Obligation, PredicateObligation};
+use crate::traits::{Obligation, PredicateObligations};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Instead of normalizing an associated type projection,
@@ -17,7 +17,7 @@ impl<'tcx> InferCtxt<'tcx> {
         projection_ty: ty::AliasTy<'tcx>,
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
-        obligations: &mut Vec<PredicateObligation<'tcx>>,
+        obligations: &mut PredicateObligations<'tcx>,
     ) -> Ty<'tcx> {
         debug_assert!(!self.next_trait_solver());
         let ty_var = self.next_ty_var(self.tcx.def_span(projection_ty.def_id));

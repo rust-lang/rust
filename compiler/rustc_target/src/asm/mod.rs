@@ -890,6 +890,7 @@ pub enum InlineAsmClobberAbi {
     Arm,
     AArch64,
     AArch64NoX18,
+    Arm64EC,
     RiscV,
     LoongArch,
     S390x,
@@ -932,7 +933,7 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::Arm64EC => match name {
-                "C" | "system" => Ok(InlineAsmClobberAbi::AArch64NoX18),
+                "C" | "system" => Ok(InlineAsmClobberAbi::Arm64EC),
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {
@@ -1033,7 +1034,6 @@ impl InlineAsmClobberAbi {
                     p0, p1, p2, p3, p4, p5, p6, p7,
                     p8, p9, p10, p11, p12, p13, p14, p15,
                     ffr,
-
                 }
             },
             InlineAsmClobberAbi::AArch64NoX18 => clobbered_regs! {
@@ -1052,7 +1052,20 @@ impl InlineAsmClobberAbi {
                     p0, p1, p2, p3, p4, p5, p6, p7,
                     p8, p9, p10, p11, p12, p13, p14, p15,
                     ffr,
+                }
+            },
+            InlineAsmClobberAbi::Arm64EC => clobbered_regs! {
+                AArch64 AArch64InlineAsmReg {
+                    // x13 and x14 cannot be used in Arm64EC.
+                    x0, x1, x2, x3, x4, x5, x6, x7,
+                    x8, x9, x10, x11, x12, x15,
+                    x16, x17, x30,
 
+                    // Technically the low 64 bits of v8-v15 are preserved, but
+                    // we have no way of expressing this using clobbers.
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+                    v8, v9, v10, v11, v12, v13, v14, v15,
+                    // v16-v31, p*, and ffr cannot be used in Arm64EC.
                 }
             },
             InlineAsmClobberAbi::Arm => clobbered_regs! {

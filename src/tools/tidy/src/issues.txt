@@ -1520,7 +1520,6 @@ ui/issues/issue-12567.rs
 ui/issues/issue-12612.rs
 ui/issues/issue-12660.rs
 ui/issues/issue-12677.rs
-ui/issues/issue-12699.rs
 ui/issues/issue-12729.rs
 ui/issues/issue-12744.rs
 ui/issues/issue-12860.rs

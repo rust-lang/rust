@@ -11,13 +11,6 @@ help: consider mutably borrowing here
 LL |     for item in &mut *things { *item = 0 }
    |                 ++++
 
-error[E0614]: type `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::Item` cannot be dereferenced
-  --> $DIR/issue-20605.rs:6:27
-   |
-LL |     for item in *things { *item = 0 }
-   |                           ^^^^^
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0277, E0614.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

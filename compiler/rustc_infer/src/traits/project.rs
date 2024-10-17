@@ -6,7 +6,7 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty;
 use tracing::{debug, info};
 
-use super::PredicateObligation;
+use super::PredicateObligations;
 use crate::infer::snapshot::undo_log::InferCtxtUndoLogs;
 
 pub(crate) type UndoLog<'tcx> =
@@ -20,7 +20,7 @@ pub struct MismatchedProjectionTypes<'tcx> {
 #[derive(Clone)]
 pub struct Normalized<'tcx, T> {
     pub value: T,
-    pub obligations: Vec<PredicateObligation<'tcx>>,
+    pub obligations: PredicateObligations<'tcx>,
 }
 
 pub type NormalizedTerm<'tcx> = Normalized<'tcx, ty::Term<'tcx>>;
@@ -191,7 +191,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
                 info!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
                 let mut ty = ty.clone();
                 if result.must_apply_considering_regions() {
-                    ty.obligations = vec![];
+                    ty.obligations = PredicateObligations::new();
                 }
                 map.insert(key, ProjectionCacheEntry::NormalizedTerm {
                     ty,

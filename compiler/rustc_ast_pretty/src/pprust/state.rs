@@ -8,7 +8,6 @@ mod item;
 
 use std::borrow::Cow;
 
-use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{
@@ -1163,6 +1162,12 @@ impl<'a> State<'a> {
                 self.print_opt_lifetime(lifetime);
                 self.print_mt(mt, false);
             }
+            ast::TyKind::PinnedRef(lifetime, mt) => {
+                self.word("&");
+                self.print_opt_lifetime(lifetime);
+                self.word("pin ");
+                self.print_mt(mt, true);
+            }
             ast::TyKind::Never => {
                 self.word("!");
             }
@@ -1253,6 +1258,27 @@ impl<'a> State<'a> {
 
     fn print_poly_trait_ref(&mut self, t: &ast::PolyTraitRef) {
         self.print_formal_generic_params(&t.bound_generic_params);
+
+        let ast::TraitBoundModifiers { constness, asyncness, polarity } = t.modifiers;
+        match constness {
+            ast::BoundConstness::Never => {}
+            ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
+                self.word_space(constness.as_str());
+            }
+        }
+        match asyncness {
+            ast::BoundAsyncness::Normal => {}
+            ast::BoundAsyncness::Async(_) => {
+                self.word_space(asyncness.as_str());
+            }
+        }
+        match polarity {
+            ast::BoundPolarity::Positive => {}
+            ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
+                self.word(polarity.as_str());
+            }
+        }
+
         self.print_trait_ref(&t.trait_ref)
     }
 
@@ -1740,31 +1766,7 @@ impl<'a> State<'a> {
             }
 
             match bound {
-                GenericBound::Trait(
-                    tref,
-                    TraitBoundModifiers { constness, asyncness, polarity },
-                ) => {
-                    match constness {
-                        ast::BoundConstness::Never => {}
-                        ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
-                            self.word_space(constness.as_str());
-                        }
-                    }
-
-                    match asyncness {
-                        ast::BoundAsyncness::Normal => {}
-                        ast::BoundAsyncness::Async(_) => {
-                            self.word_space(asyncness.as_str());
-                        }
-                    }
-
-                    match polarity {
-                        ast::BoundPolarity::Positive => {}
-                        ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
-                            self.word(polarity.as_str());
-                        }
-                    }
-
+                GenericBound::Trait(tref) => {
                     self.print_poly_trait_ref(tref);
                 }
                 GenericBound::Outlives(lt) => self.print_lifetime(*lt),

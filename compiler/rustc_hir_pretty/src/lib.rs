@@ -301,15 +301,12 @@ impl<'a> State<'a> {
                     self.word_space("dyn");
                 }
                 let mut first = true;
-                for (bound, modifier) in bounds {
+                for bound in bounds {
                     if first {
                         first = false;
                     } else {
                         self.nbsp();
                         self.word_space("+");
-                    }
-                    if *modifier == TraitBoundModifier::Maybe {
-                        self.word("?");
                     }
                     self.print_poly_trait_ref(bound);
                 }
@@ -679,6 +676,10 @@ impl<'a> State<'a> {
     }
 
     fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef<'_>) {
+        // FIXME: This isn't correct!
+        if t.modifiers == TraitBoundModifier::Maybe {
+            self.word("?");
+        }
         self.print_formal_generic_params(t.bound_generic_params);
         self.print_trait_ref(&t.trait_ref);
     }
@@ -2077,10 +2078,7 @@ impl<'a> State<'a> {
             }
 
             match bound {
-                GenericBound::Trait(tref, modifier) => {
-                    if modifier == &TraitBoundModifier::Maybe {
-                        self.word("?");
-                    }
+                GenericBound::Trait(tref) => {
                     self.print_poly_trait_ref(tref);
                 }
                 GenericBound::Outlives(lt) => {

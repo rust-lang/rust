@@ -1,9 +1,21 @@
-error[E0271]: type mismatch resolving `impl !Fn<(u32,)> == ()`
+error[E0277]: the trait bound `(): !Fn(u32)` is not satisfied
   --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:17
    |
 LL | fn produce() -> impl !Fn<(u32,)> {}
-   |                 ^^^^^^^^^^^^^^^^ types differ
+   |                 ^^^^^^^^^^^^^^^^ the trait bound `(): !Fn(u32)` is not satisfied
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `(): !Fn(u32)` is not satisfied
+  --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:34
+   |
+LL | fn produce() -> impl !Fn<(u32,)> {}
+   |                                  ^^ the trait bound `(): !Fn(u32)` is not satisfied
 
-For more information about this error, try `rustc --explain E0271`.
+error[E0277]: the trait bound `(): !Fn(u32)` is not satisfied
+  --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:1
+   |
+LL | fn produce() -> impl !Fn<(u32,)> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Fn(u32)` is not satisfied
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

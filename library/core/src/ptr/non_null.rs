@@ -230,6 +230,24 @@ impl<T: ?Sized> NonNull<T> {
         }
     }
 
+    /// Converts a reference to a `NonNull` pointer.
+    #[unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[rustc_const_unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[inline]
+    pub const fn from_ref(r: &T) -> Self {
+        // SAFETY: A reference cannot be null.
+        unsafe { NonNull { pointer: r as *const T } }
+    }
+
+    /// Converts a mutable reference to a `NonNull` pointer.
+    #[unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[rustc_const_unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[inline]
+    pub const fn from_mut(r: &mut T) -> Self {
+        // SAFETY: A mutable reference cannot be null.
+        unsafe { NonNull { pointer: r as *mut T } }
+    }
+
     /// Performs the same functionality as [`std::ptr::from_raw_parts`], except that a
     /// `NonNull` pointer is returned, as opposed to a raw `*const` pointer.
     ///
@@ -394,8 +412,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-    #[rustc_const_stable(feature = "const_ptr_as_ref", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_as_ref", since = "1.83.0")]
     #[must_use]
     #[inline(always)]
     pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
@@ -923,7 +940,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     pub const unsafe fn copy_to(self, dest: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -943,7 +960,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     pub const unsafe fn copy_to_nonoverlapping(self, dest: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -963,7 +980,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     pub const unsafe fn copy_from(self, src: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -983,7 +1000,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     pub const unsafe fn copy_from_nonoverlapping(self, src: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1013,7 +1030,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     pub const unsafe fn write(self, val: T)
     where
         T: Sized,
@@ -1032,7 +1049,7 @@ impl<T: ?Sized> NonNull<T> {
     #[doc(alias = "memset")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     pub const unsafe fn write_bytes(self, val: u8, count: usize)
     where
         T: Sized,
@@ -1073,7 +1090,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_ptr_write", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     pub const unsafe fn write_unaligned(self, val: T)
     where
         T: Sized,
@@ -1432,10 +1449,7 @@ impl<T> NonNull<[T]> {
     /// (Note that this example artificially demonstrates a use of this method,
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
     #[stable(feature = "nonnull_slice_from_raw_parts", since = "1.70.0")]
-    #[rustc_const_stable(
-        feature = "const_slice_from_raw_parts_mut",
-        since = "CURRENT_RUSTC_VERSION"
-    )]
+    #[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
@@ -1753,9 +1767,8 @@ impl<T: ?Sized> From<&mut T> for NonNull<T> {
     ///
     /// This conversion is safe and infallible since references cannot be null.
     #[inline]
-    fn from(reference: &mut T) -> Self {
-        // SAFETY: A mutable reference cannot be null.
-        unsafe { NonNull { pointer: reference as *mut T } }
+    fn from(r: &mut T) -> Self {
+        NonNull::from_mut(r)
     }
 }
 
@@ -1765,8 +1778,7 @@ impl<T: ?Sized> From<&T> for NonNull<T> {
     ///
     /// This conversion is safe and infallible since references cannot be null.
     #[inline]
-    fn from(reference: &T) -> Self {
-        // SAFETY: A reference cannot be null.
-        unsafe { NonNull { pointer: reference as *const T } }
+    fn from(r: &T) -> Self {
+        NonNull::from_ref(r)
     }
 }

@@ -3074,11 +3074,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     match ty.kind {
                         hir::TyKind::TraitObject(traits, _, _) => {
                             let (span, kw) = match traits {
-                                [(first, _), ..] if first.span.lo() == ty.span.lo() => {
+                                [first, ..] if first.span.lo() == ty.span.lo() => {
                                     // Missing `dyn` in front of trait object.
                                     (ty.span.shrink_to_lo(), "dyn ")
                                 }
-                                [(first, _), ..] => (ty.span.until(first.span), ""),
+                                [first, ..] => (ty.span.until(first.span), ""),
                                 [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
                             };
                             let needs_parens = traits.len() != 1;
@@ -5162,7 +5162,7 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
     let async_span = tcx.sess.source_map().span_extend_while_whitespace(async_span);
 
     let future = tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty();
-    let [hir::GenericBound::Trait(trait_ref, _)] = future.bounds else {
+    let [hir::GenericBound::Trait(trait_ref)] = future.bounds else {
         // `async fn` should always lower to a single bound... but don't ICE.
         return None;
     };

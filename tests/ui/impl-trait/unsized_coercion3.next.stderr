@@ -1,38 +1,35 @@
-error[E0271]: type mismatch resolving `impl Trait + ?Sized <: dyn Send`
-  --> $DIR/unsized_coercion3.rs:13:17
+error[E0277]: the trait bound `dyn Send: Trait` is not satisfied
+  --> $DIR/unsized_coercion3.rs:14:17
    |
 LL |         let x = hello();
-   |                 ^^^^^^^ types differ
+   |                 ^^^^^^^ the trait `Trait` is not implemented for `dyn Send`
+   |
+   = help: the trait `Trait` is implemented for `u32`
 
 error[E0308]: mismatched types
-  --> $DIR/unsized_coercion3.rs:18:14
+  --> $DIR/unsized_coercion3.rs:19:5
    |
 LL | fn hello() -> Box<impl Trait + ?Sized> {
-   |                   ------------------- the expected opaque type
+   |               ------------------------
+   |               |   |
+   |               |   the expected opaque type
+   |               expected `Box<impl Trait + ?Sized>` because of return type
 ...
 LL |     Box::new(1u32)
-   |     -------- ^^^^ types differ
-   |     |
-   |     arguments to this function are incorrect
+   |     ^^^^^^^^^^^^^^ types differ
    |
-   = note: expected opaque type `impl Trait + ?Sized`
-                     found type `u32`
-note: associated function defined here
-  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   = note: expected struct `Box<impl Trait + ?Sized>`
+              found struct `Box<u32>`
 
-error[E0277]: the size for values of type `impl Trait + ?Sized` cannot be known at compilation time
-  --> $DIR/unsized_coercion3.rs:18:14
+error[E0277]: the trait bound `dyn Send: Trait` is not satisfied
+  --> $DIR/unsized_coercion3.rs:11:1
    |
-LL |     Box::new(1u32)
-   |     -------- ^^^^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+LL | fn hello() -> Box<impl Trait + ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `dyn Send`
    |
-   = help: the trait `Sized` is not implemented for `impl Trait + ?Sized`
-note: required by a bound in `Box::<T>::new`
-  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   = help: the trait `Trait` is implemented for `u32`
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0271, E0277, E0308.
-For more information about an error, try `rustc --explain E0271`.
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

@@ -753,6 +753,9 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (Ref(ll, l), Ref(rl, r)) => {
             both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
+        (PinnedRef(ll, l), PinnedRef(rl, r)) => {
+            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
+        },
         (BareFn(l), BareFn(r)) => {
             l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)
@@ -783,7 +786,8 @@ pub fn eq_str_lit(l: &StrLit, r: &StrLit) -> bool {
 }
 
 pub fn eq_poly_ref_trait(l: &PolyTraitRef, r: &PolyTraitRef) -> bool {
-    eq_path(&l.trait_ref.path, &r.trait_ref.path)
+    l.modifiers == r.modifiers
+        && eq_path(&l.trait_ref.path, &r.trait_ref.path)
         && over(&l.bound_generic_params, &r.bound_generic_params, |l, r| {
             eq_generic_param(l, r)
         })
@@ -817,7 +821,7 @@ pub fn eq_generic_param(l: &GenericParam, r: &GenericParam) -> bool {
 pub fn eq_generic_bound(l: &GenericBound, r: &GenericBound) -> bool {
     use GenericBound::*;
     match (l, r) {
-        (Trait(ptr1, tbm1), Trait(ptr2, tbm2)) => tbm1 == tbm2 && eq_poly_ref_trait(ptr1, ptr2),
+        (Trait(ptr1), Trait(ptr2)) => eq_poly_ref_trait(ptr1, ptr2),
         (Outlives(l), Outlives(r)) => eq_id(l.ident, r.ident),
         _ => false,
     }

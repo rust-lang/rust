@@ -658,7 +658,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && fn_sig.inputs()[1..]
                     .iter()
                     .zip(input_types.iter())
-                    .all(|(expected, found)| self.can_coerce(*expected, *found))
+                    .all(|(expected, found)| self.may_coerce(*expected, *found))
                 && fn_sig.inputs()[1..].len() == input_types.len()
             {
                 err.span_suggestion_verbose(
@@ -722,7 +722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let expectation = Expectation::rvalue_hint(self, expected_input_ty);
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
-            let can_coerce = self.can_coerce(arg_ty, coerced_ty);
+            let can_coerce = self.may_coerce(arg_ty, coerced_ty);
             if !can_coerce {
                 return Compatibility::Incompatible(Some(ty::error::TypeError::Sorts(
                     ty::error::ExpectedFound::new(true, coerced_ty, arg_ty),
@@ -802,7 +802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx + tys.len()),
                     ),
                 ) {
-                    if !self.can_coerce(provided_ty, *expected_ty) {
+                    if !self.may_coerce(provided_ty, *expected_ty) {
                         satisfied = false;
                         break;
                     }
@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 std::iter::zip(formal_and_expected_inputs.iter(), removed_arg_tys.iter()).all(
                     |((expected_ty, _), (provided_ty, _))| {
                         !provided_ty.references_error()
-                            && self.can_coerce(*provided_ty, *expected_ty)
+                            && self.may_coerce(*provided_ty, *expected_ty)
                     },
                 )
             };
@@ -1114,7 +1114,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 None,
                                 Some(trace.values),
                                 e,
-                                false,
                                 true,
                             );
                         }
@@ -2124,7 +2123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let expr_ty = self.typeck_results.borrow().expr_ty(expr);
                                     let return_ty = fn_sig.output();
                                     if !matches!(expr.kind, hir::ExprKind::Ret(..))
-                                        && self.can_coerce(expr_ty, return_ty)
+                                        && self.may_coerce(expr_ty, return_ty)
                                     {
                                         found_semi = true;
                                     }

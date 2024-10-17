@@ -254,7 +254,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         debug!(?hrtb_bounds);
 
         hrtb_bounds.iter().for_each(|bound| {
-            let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else {
+            let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }) = bound else {
                 return;
             };
             diag.span_note(*trait_span, fluent::borrowck_limitations_implies_static);
@@ -277,7 +277,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     return;
                 };
                 bounds.iter().for_each(|bd| {
-                    if let Trait(PolyTraitRef { trait_ref: tr_ref, .. }, _) = bd
+                    if let Trait(PolyTraitRef { trait_ref: tr_ref, .. }) = bd
                         && let Def(_, res_defid) = tr_ref.path.res
                         && res_defid == trait_res_defid // trait id matches
                         && let TyKind::Path(Resolved(_, path)) = bounded_ty.kind

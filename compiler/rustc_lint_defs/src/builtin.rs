@@ -1651,7 +1651,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,edition2021
-    /// #![feature(ref_pat_eat_one_layer_2024)]
     /// #![warn(rust_2024_incompatible_pat)]
     ///
     /// if let Some(&a) = &Some(&0u8) {
@@ -1672,12 +1671,10 @@ declare_lint! {
     pub RUST_2024_INCOMPATIBLE_PAT,
     Allow,
     "detects patterns whose meaning will change in Rust 2024",
-    @feature_gate = ref_pat_eat_one_layer_2024;
-    // FIXME uncomment below upon stabilization
-    /*@future_incompatible = FutureIncompatibleInfo {
+    @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
         reference: "123076",
-    };*/
+    };
 }
 
 declare_lint! {
@@ -1871,7 +1868,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #[cfg_attr(bootstrap)] compile_error!(); // Remove this in bootstrap bump.
     /// #![deny(elided_named_lifetimes)]
     /// struct Foo;
     /// impl Foo {
@@ -3859,7 +3855,7 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// warning: use of calling convention not supported on this target on function pointer
+    /// warning: the calling convention `"stdcall"` is not supported on this target
     ///   --> $DIR/unsupported.rs:34:15
     ///    |
     /// LL | fn stdcall_ptr(f: extern "stdcall" fn()) {

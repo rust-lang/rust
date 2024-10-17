@@ -23,7 +23,7 @@ use std::{cmp, fmt, mem};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
-pub use rustc_ast_ir::{Movability, Mutability};
+pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -308,7 +308,7 @@ impl TraitBoundModifiers {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum GenericBound {
-    Trait(PolyTraitRef, TraitBoundModifiers),
+    Trait(PolyTraitRef),
     Outlives(Lifetime),
     /// Precise capturing syntax: `impl Sized + use<'a>`
     Use(ThinVec<PreciseCapturingArg>, Span),
@@ -1213,10 +1213,12 @@ impl Expr {
 
     pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
-            ExprKind::Path(None, path) => Some(GenericBound::Trait(
-                PolyTraitRef::new(ThinVec::new(), path.clone(), self.span),
+            ExprKind::Path(None, path) => Some(GenericBound::Trait(PolyTraitRef::new(
+                ThinVec::new(),
+                path.clone(),
                 TraitBoundModifiers::NONE,
-            )),
+                self.span,
+            ))),
             _ => None,
         }
     }
@@ -2161,6 +2163,10 @@ pub enum TyKind {
     Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`).
     Ref(Option<Lifetime>, MutTy),
+    /// A pinned reference (`&'a pin const T` or `&'a pin mut T`).
+    ///
+    /// Desugars into `Pin<&'a T>` or `Pin<&'a mut T>`.
+    PinnedRef(Option<Lifetime>, MutTy),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(P<BareFnTy>),
     /// The never type (`!`).
@@ -2501,7 +2507,10 @@ impl Param {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Ref(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
+                    TyKind::Ref(lt, MutTy { ref ty, mutbl })
+                    | TyKind::PinnedRef(lt, MutTy { ref ty, mutbl })
+                        if ty.kind.is_implicit_self() =>
+                    {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
                     _ => Some(respan(
@@ -2965,6 +2974,9 @@ pub struct PolyTraitRef {
     /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: ThinVec<GenericParam>,
 
+    // Optional constness, asyncness, or polarity.
+    pub modifiers: TraitBoundModifiers,
+
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef,
 
@@ -2972,9 +2984,15 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(generic_params: ThinVec<GenericParam>, path: Path, span: Span) -> Self {
+    pub fn new(
+        generic_params: ThinVec<GenericParam>,
+        path: Path,
+        modifiers: TraitBoundModifiers,
+        span: Span,
+    ) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
+            modifiers,
             trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
             span,
         }

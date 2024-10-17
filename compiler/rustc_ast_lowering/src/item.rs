@@ -1504,8 +1504,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             for bound in &bound_pred.bounds {
                 if !matches!(
                     *bound,
-                    GenericBound::Trait(_, TraitBoundModifiers {
-                        polarity: BoundPolarity::Maybe(_),
+                    GenericBound::Trait(PolyTraitRef {
+                        modifiers: TraitBoundModifiers { polarity: BoundPolarity::Maybe(_), .. },
                         ..
                     })
                 ) {

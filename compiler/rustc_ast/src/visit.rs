@@ -329,7 +329,7 @@ pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef) 
 where
     V: Visitor<'a>,
 {
-    let PolyTraitRef { bound_generic_params, trait_ref, span: _ } = trait_ref;
+    let PolyTraitRef { bound_generic_params, modifiers: _, trait_ref, span: _ } = trait_ref;
     walk_list!(visitor, visit_generic_param, bound_generic_params);
     visitor.visit_trait_ref(trait_ref)
 }
@@ -499,7 +499,8 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
     match kind {
         TyKind::Slice(ty) | TyKind::Paren(ty) => try_visit!(visitor.visit_ty(ty)),
         TyKind::Ptr(MutTy { ty, mutbl: _ }) => try_visit!(visitor.visit_ty(ty)),
-        TyKind::Ref(opt_lifetime, MutTy { ty, mutbl: _ }) => {
+        TyKind::Ref(opt_lifetime, MutTy { ty, mutbl: _ })
+        | TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl: _ }) => {
             visit_opt!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Ref);
             try_visit!(visitor.visit_ty(ty));
         }
@@ -720,7 +721,7 @@ impl WalkItemKind for ForeignItemKind {
 
 pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericBound) -> V::Result {
     match bound {
-        GenericBound::Trait(typ, _modifier) => visitor.visit_poly_trait_ref(typ),
+        GenericBound::Trait(trait_ref) => visitor.visit_poly_trait_ref(trait_ref),
         GenericBound::Outlives(lifetime) => visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound),
         GenericBound::Use(args, _span) => {
             walk_list!(visitor, visit_precise_capturing_arg, args);
