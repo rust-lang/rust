@@ -145,6 +145,7 @@ rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
 rm tests/ui/process/process-panic-after-fork.rs # same
 
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
+cp $(../dist/rustc-clif --print target-libdir)/libstd-*.so ../dist/lib/
 
 # prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
 # rustdoc-clif
