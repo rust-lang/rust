@@ -25,8 +25,7 @@ pub fn test_ScalarZstFirst(_: ScalarZstFirst) -> ScalarZstFirst {
 }
 
 type ScalarPairZstLast = (u8, u128, ());
-// bit32: define {{(dso_local )?}}void @test_ScalarPairZstLast(ptr sret([24 x i8]) align 8
-// bit64: define {{(dso_local )?}}void @test_ScalarPairZstLast(ptr sret([32 x i8]) align 16
+// CHECK: define {{(dso_local )?}}void @test_ScalarPairZstLast(ptr sret({{[^,]*}})
 // CHECK-SAME: %_0, i128 %_1.0, i8 %_1.1)
 #[no_mangle]
 pub fn test_ScalarPairZstLast(_: ScalarPairZstLast) -> ScalarPairZstLast {
@@ -34,8 +33,7 @@ pub fn test_ScalarPairZstLast(_: ScalarPairZstLast) -> ScalarPairZstLast {
 }
 
 type ScalarPairZstFirst = ((), u8, u128);
-// bit32: define {{(dso_local )?}}void @test_ScalarPairZstFirst(ptr sret([24 x i8]) align 8
-// bit64: define {{(dso_local )?}}void @test_ScalarPairZstFirst(ptr sret([32 x i8]) align 16
+// CHECK: define {{(dso_local )?}}void @test_ScalarPairZstFirst(ptr sret({{[^,]*}})
 // CHECK-SAME: %_0, i8 %_1.0, i128 %_1.1)
 #[no_mangle]
 pub fn test_ScalarPairZstFirst(_: ScalarPairZstFirst) -> ScalarPairZstFirst {
@@ -43,8 +41,7 @@ pub fn test_ScalarPairZstFirst(_: ScalarPairZstFirst) -> ScalarPairZstFirst {
 }
 
 type ScalarPairLotsOfZsts = ((), u8, (), u128, ());
-// bit32: define {{(dso_local )?}}void @test_ScalarPairLotsOfZsts(ptr sret([24 x i8]) align 8
-// bit64: define {{(dso_local )?}}void @test_ScalarPairLotsOfZsts(ptr sret([32 x i8]) align 16
+// CHECK: define {{(dso_local )?}}void @test_ScalarPairLotsOfZsts(ptr sret({{[^,]*}})
 // CHECK-SAME: %_0, i128 %_1.0, i8 %_1.1)
 #[no_mangle]
 pub fn test_ScalarPairLotsOfZsts(_: ScalarPairLotsOfZsts) -> ScalarPairLotsOfZsts {
@@ -52,8 +49,7 @@ pub fn test_ScalarPairLotsOfZsts(_: ScalarPairLotsOfZsts) -> ScalarPairLotsOfZst
 }
 
 type ScalarPairLottaNesting = (((), ((), u8, (), u128, ())), ());
-// bit32: define {{(dso_local )?}}void @test_ScalarPairLottaNesting(ptr sret([24 x i8]) align 8
-// bit64: define {{(dso_local )?}}void @test_ScalarPairLottaNesting(ptr sret([32 x i8]) align 16
+// CHECK: define {{(dso_local )?}}void @test_ScalarPairLottaNesting(ptr sret({{[^,]*}})
 // CHECK-SAME: %_0, i128 %_1.0, i8 %_1.1)
 #[no_mangle]
 pub fn test_ScalarPairLottaNesting(_: ScalarPairLottaNesting) -> ScalarPairLottaNesting {

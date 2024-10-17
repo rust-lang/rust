@@ -315,10 +315,10 @@ pub fn return_f16(x: f16) -> f16 {
 #[no_mangle]
 pub fn return_f128(x: f128) -> f128 {
     // CHECK: movl [[#%d,OFFSET:]](%ebp), %[[PTR:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+16]](%ebp), %[[VAL4:.*]]
     // CHECK-NEXT: movl [[#%d,OFFSET+4]](%ebp), %[[VAL1:.*]]
     // CHECK-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
     // CHECK-NEXT: movl [[#%d,OFFSET+12]](%ebp), %[[VAL3:.*]]
+    // CHECK-NEXT: movl [[#%d,OFFSET+16]](%ebp), %[[VAL4:.*]]
     // CHECK-NEXT: movl %[[VAL4:.*]] 12(%[[PTR]])
     // CHECK-NEXT: movl %[[VAL3:.*]] 8(%[[PTR]])
     // CHECK-NEXT: movl %[[VAL2:.*]] 4(%[[PTR]])
