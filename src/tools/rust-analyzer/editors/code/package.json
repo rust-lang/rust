@@ -58,14 +58,14 @@
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
         "@vscode/test-electron": "^2.3.8",
-        "@vscode/vsce": "^2.19.0",
+        "@vscode/vsce": "^3.0.0",
         "esbuild": "^0.18.12",
         "eslint": "^8.44.0",
         "eslint-config-prettier": "^8.8.0",
         "ovsx": "^0.8.2",
         "prettier": "^3.0.0",
         "tslib": "^2.6.0",
-        "typescript": "^5.1.6"
+        "typescript": "^5.6.0"
     },
     "activationEvents": [
         "workspaceContains:Cargo.toml",
