@@ -12,6 +12,7 @@ default = []
 test-musl-serialized = ["rand"]
 
 [dependencies]
+anyhow = "1.0.90"
 libm = { path = "../.." }
 libm-macros = { path = "../libm-macros" }
 

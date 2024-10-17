@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::TestResult;
+
 /// Common types and methods for floating point numbers.
 pub trait Float: Copy + fmt::Display + fmt::Debug + PartialEq<Self> {
     type Int: Int<OtherSign = Self::SignedInt, Unsigned = Self::Int>;
@@ -132,6 +134,29 @@ macro_rules! impl_int {
         impl Hex for $ty {
             fn hex(self) -> String {
                 format!("{self:#0width$x}", width = ((Self::BITS / 4) + 2) as usize)
+            }
+        }
+
+        impl<Input: Hex + fmt::Debug> $crate::CheckOutput<Input> for $ty {
+            fn validate<'a>(
+                self,
+                expected: Self,
+                input: Input,
+                _ctx: &$crate::CheckCtx,
+            ) -> TestResult {
+                anyhow::ensure!(
+                    self == expected,
+                    "\
+                    \n    input:    {input:?} {ibits}\
+                    \n    expected: {expected:<22?} {expbits}\
+                    \n    actual:   {self:<22?} {actbits}\
+                    ",
+                    actbits = self.hex(),
+                    expbits = expected.hex(),
+                    ibits = input.hex(),
+                );
+
+                Ok(())
             }
         }
     }
