@@ -7,9 +7,9 @@ edition = "2021"
 # tidy-alphabetical-start
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }
+rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
