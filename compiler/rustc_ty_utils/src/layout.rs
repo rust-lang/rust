@@ -30,7 +30,8 @@ use {rustc_abi as abi, rustc_hir as hir};
 use crate::errors::{
     MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
 };
-use crate::layout_sanity_check::sanity_check_layout;
+
+mod invariant;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { layout_of, ..*providers };
@@ -79,7 +80,7 @@ fn layout_of<'tcx>(
         record_layout_for_printing(&cx, layout);
     }
 
-    sanity_check_layout(&cx, &layout);
+    invariant::partially_check_layout(&cx, &layout);
 
     Ok(layout)
 }
