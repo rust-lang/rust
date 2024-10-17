@@ -414,6 +414,11 @@
 # Specify the location of the Android NDK. Used when targeting Android.
 #android-ndk = "/path/to/android-ndk-r26d"
 
+# Number of parallel jobs to be used for building and testing. If set to `0` or
+# omitted, it will be automatically determined. This is the `-j`/`--jobs` flag
+# passed to cargo invocations.
+#jobs = 0
+
 # =============================================================================
 # General install configuration options
 # =============================================================================

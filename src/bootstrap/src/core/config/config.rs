@@ -891,6 +891,7 @@ define_config! {
         metrics: Option<bool> = "metrics",
         android_ndk: Option<PathBuf> = "android-ndk",
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
+        jobs: Option<u32> = "jobs",
     }
 }
 
@@ -1289,7 +1290,6 @@ impl Config {
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
         config.on_fail = flags.on_fail;
-        config.jobs = Some(threads_from_config(flags.jobs as u32));
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
         config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
@@ -1511,7 +1511,10 @@ impl Config {
             metrics: _,
             android_ndk,
             optimized_compiler_builtins,
+            jobs,
         } = toml.build.unwrap_or_default();
+
+        config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
 
         if let Some(file_build) = build {
             config.build = TargetSelection::from_user(&file_build);
