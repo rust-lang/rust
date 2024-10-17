@@ -1,4 +1,4 @@
-use super::{TestCx, WillExecute};
+use super::{FailMode, TestCx, WillExecute};
 use crate::errors;
 
 impl TestCx<'_> {
@@ -96,7 +96,7 @@ impl TestCx<'_> {
     fn run_cfail_test(&self) {
         let pm = self.pass_mode();
         let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
-        self.check_if_test_should_compile(&proc_res, pm);
+        self.check_if_test_should_compile(Some(FailMode::Build), pm, &proc_res);
         self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
         let output_to_check = self.get_output(&proc_res);

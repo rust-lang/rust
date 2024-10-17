@@ -9,7 +9,7 @@ use crate::cmp::{self, Ordering};
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
-fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
+fn _assert_is_dyn_compatible(_: &dyn Iterator<Item = ()>) {}
 
 /// A trait for dealing with iterators.
 ///

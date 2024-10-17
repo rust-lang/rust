@@ -22,6 +22,7 @@ Number of file 0 mappings: 9
     = ((c0 - c2) + c3)
 - Code(Expression(3, Add)) at (prev + 2, 5) to (start + 1, 2)
     = (c4 + ((c0 - c2) + c3))
+Highest counter ID seen: c4
 
 Function name: unicode::他 (unused)
 Raw bytes (9): 0x[01, 01, 00, 01, 00, 1e, 19, 00, 25]
@@ -30,6 +31,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 30, 25) to (start + 0, 37)
+Highest counter ID seen: (none)
 
 Function name: unicode::申し訳ございません
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 18, 01, 02, 02]
@@ -38,4 +40,5 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 24, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 

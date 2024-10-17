@@ -19,7 +19,7 @@ impl<'tcx> Rollback<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for TypeVariabl
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub(crate) struct TypeVariableStorage<'tcx> {
     /// The origins of each type variable.
     values: IndexVec<TyVid, TypeVariableData>,
@@ -74,13 +74,6 @@ impl<'tcx> TypeVariableValue<'tcx> {
 }
 
 impl<'tcx> TypeVariableStorage<'tcx> {
-    pub(crate) fn new() -> TypeVariableStorage<'tcx> {
-        TypeVariableStorage {
-            values: Default::default(),
-            eq_relations: ut::UnificationTableStorage::new(),
-        }
-    }
-
     #[inline]
     pub(crate) fn with_log<'a>(
         &'a mut self,

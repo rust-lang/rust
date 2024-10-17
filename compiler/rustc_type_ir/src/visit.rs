@@ -47,6 +47,7 @@ use std::ops::ControlFlow;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_ast_ir::{try_visit, walk_visitable_list};
 use rustc_index::{Idx, IndexVec};
+use thin_vec::ThinVec;
 
 use crate::data_structures::Lrc;
 use crate::inherent::*;
@@ -178,6 +179,13 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<T> {
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Vec<T> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        walk_visitable_list!(visitor, self.iter());
+        V::Result::output()
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for ThinVec<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
         V::Result::output()

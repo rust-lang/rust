@@ -194,26 +194,16 @@ pub trait MirVisitor {
                 self.visit_place(place, PlaceContext::MUTATING, location);
                 self.visit_rvalue(rvalue, location);
             }
-            StatementKind::FakeRead(_, place) => {
+            StatementKind::FakeRead(_, place) | StatementKind::PlaceMention(place) => {
                 self.visit_place(place, PlaceContext::NON_MUTATING, location);
             }
-            StatementKind::SetDiscriminant { place, .. } => {
+            StatementKind::SetDiscriminant { place, .. }
+            | StatementKind::Deinit(place)
+            | StatementKind::Retag(_, place) => {
                 self.visit_place(place, PlaceContext::MUTATING, location);
             }
-            StatementKind::Deinit(place) => {
-                self.visit_place(place, PlaceContext::MUTATING, location);
-            }
-            StatementKind::StorageLive(local) => {
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 self.visit_local(local, PlaceContext::NON_USE, location);
-            }
-            StatementKind::StorageDead(local) => {
-                self.visit_local(local, PlaceContext::NON_USE, location);
-            }
-            StatementKind::Retag(_, place) => {
-                self.visit_place(place, PlaceContext::MUTATING, location);
-            }
-            StatementKind::PlaceMention(place) => {
-                self.visit_place(place, PlaceContext::NON_MUTATING, location);
             }
             StatementKind::AscribeUserType { place, projections, variance: _ } => {
                 self.visit_place(place, PlaceContext::NON_USE, location);
@@ -234,8 +224,7 @@ pub trait MirVisitor {
                     self.visit_operand(count, location);
                 }
             },
-            StatementKind::ConstEvalCounter => {}
-            StatementKind::Nop => {}
+            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
         }
     }
 
@@ -304,14 +293,15 @@ pub trait MirVisitor {
         location: Location,
     ) {
         match elem {
-            ProjectionElem::Deref => {}
+            ProjectionElem::Downcast(_idx) => {}
+            ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
+            | ProjectionElem::Deref
+            | ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
             ProjectionElem::Field(_idx, ty) => self.visit_ty(ty, location),
             ProjectionElem::Index(local) => self.visit_local(local, ptx, location),
-            ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ } => {}
-            ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
-            ProjectionElem::Downcast(_idx) => {}
-            ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
-            ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
+            ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => {
+                self.visit_ty(ty, location)
+            }
         }
     }
 
@@ -487,7 +477,7 @@ pub struct PlaceRef<'a> {
     pub projection: &'a [ProjectionElem],
 }
 
-impl<'a> PlaceRef<'a> {
+impl PlaceRef<'_> {
     /// Get the type of this place.
     pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
         self.projection.iter().fold(Ok(locals[self.local].ty), |place_ty, elem| elem.ty(place_ty?))

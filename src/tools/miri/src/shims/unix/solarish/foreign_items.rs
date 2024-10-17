@@ -31,16 +31,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.read_scalar(name)?,
                     max_len,
                 )?;
+                let res = if res { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") };
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
                 let [thread, name, len] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // https://github.com/illumos/illumos-gate/blob/c56822be04b6c157c8b6f2281e47214c3b86f657/usr/src/lib/libc/port/threads/thr.c#L2449-L2480
                 let res = this.pthread_getname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     this.read_scalar(len)?,
+                    /* truncate */ false,
                 )?;
+                let res = if res { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") };
                 this.write_scalar(res, dest)?;
             }
 

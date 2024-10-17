@@ -202,7 +202,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             notes,
                             parent_label,
                             append_const_msg,
-                        } = self.on_unimplemented_note(main_trait_ref, o, &mut long_ty_file);
+                        } = self.on_unimplemented_note(main_trait_predicate, o, &mut long_ty_file);
 
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try_conversion = self.is_try_conversion(span, main_trait_ref.def_id());
@@ -709,7 +709,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     None,
                     None,
                     TypeError::Sorts(ty::error::ExpectedFound::new(true, expected_ty, ct_ty)),
-                    false,
                     false,
                 );
                 diag
@@ -1435,6 +1434,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 cx.into_buffer()
                             }
                         ))),
+                        true,
                     )),
                     _ => None,
                 }
@@ -1452,7 +1452,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ))
                 }),
                 err,
-                true,
                 false,
             );
             self.note_obligation_cause(&mut diag, obligation);

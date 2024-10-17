@@ -292,6 +292,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "pipe2" => {
+                // Currently this function does not exist on all Unixes, e.g. on macOS.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "solaris" | "illumos") {
+                    throw_unsup_format!(
+                        "`pipe2` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
                 let [pipefd, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pipe2(pipefd, Some(flags))?;

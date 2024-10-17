@@ -866,7 +866,7 @@ impl<'tcx> ItemCtxt<'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn bound_defines_assoc_item(&self, b: &hir::GenericBound<'_>, assoc_name: Ident) -> bool {
         match b {
-            hir::GenericBound::Trait(poly_trait_ref, _) => {
+            hir::GenericBound::Trait(poly_trait_ref) => {
                 let trait_ref = &poly_trait_ref.trait_ref;
                 if let Some(trait_did) = trait_ref.trait_def_id() {
                     self.tcx.trait_may_define_assoc_item(trait_did, assoc_name)

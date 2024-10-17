@@ -119,6 +119,7 @@ use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_span::symbol::Symbol;
+use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
@@ -904,6 +905,11 @@ fn mono_item_visibility<'tcx>(
 }
 
 fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibility {
+    // Fast-path to avoid expensive query call below
+    if tcx.sess.default_visibility() == SymbolVisibility::Interposable {
+        return Visibility::Default;
+    }
+
     let export_level = if is_generic {
         // Generic functions never have export-level C.
         SymbolExportLevel::Rust
@@ -913,6 +919,7 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
             _ => SymbolExportLevel::Rust,
         }
     };
+
     match export_level {
         // C-export level items remain at `Default` to allow C code to
         // access and interpose them.

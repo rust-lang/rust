@@ -53,6 +53,7 @@ use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::{debug, debug_span, instrument};
 
 use crate::bounds::Bounds;
+use crate::check::check_abi_fn_ptr;
 use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, WildPatTy};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
@@ -2063,13 +2064,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
-                self.prohibit_or_lint_bare_trait_object_ty(hir_ty);
-
-                let repr = match repr {
-                    TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
-                    TraitObjectSyntax::DynStar => ty::DynStar,
-                };
-                self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
+                if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
+                    // Don't continue with type analysis if the `dyn` keyword is missing
+                    // It generates confusing errors, especially if the user meant to use another
+                    // keyword like `impl`
+                    Ty::new_error(tcx, guar)
+                } else {
+                    let repr = match repr {
+                        TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
+                        TraitObjectSyntax::DynStar => ty::DynStar,
+                    };
+                    self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
+                }
             }
             // If we encounter a fully qualified path with RTN generics, then it must have
             // *not* gone through `lower_ty_maybe_return_type_notation`, and therefore
@@ -2336,6 +2342,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
+
+        if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(bare_fn_ty), span, .. }) =
+            tcx.hir_node(hir_id)
+        {
+            check_abi_fn_ptr(tcx, hir_id, *span, bare_fn_ty.abi);
+        }
 
         // reject function types that violate cmse ABI requirements
         cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, bare_fn_ty);

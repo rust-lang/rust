@@ -2164,8 +2164,14 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
             && tcx.sess.opts.cg.prefer_dynamic)
     );
 
+    // We need to generate _imp__ symbol if we are generating an rlib or we include one
+    // indirectly from ThinLTO. In theory these are not needed as ThinLTO could resolve
+    // these, but it currently does not do so.
+    let can_have_static_objects =
+        tcx.sess.lto() == Lto::Thin || tcx.crate_types().iter().any(|ct| *ct == CrateType::Rlib);
+
     tcx.sess.target.is_like_windows &&
-        tcx.crate_types().iter().any(|ct| *ct == CrateType::Rlib) &&
+    can_have_static_objects   &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
     // dynamic linking when linker plugin LTO is enabled.

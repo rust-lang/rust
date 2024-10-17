@@ -1228,15 +1228,14 @@ impl Attributes {
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
             if let Some(values) = attr.meta_item_list() {
                 for l in values {
-                    match l.lit().unwrap().kind {
-                        ast::LitKind::Str(s, _) => {
-                            aliases.insert(s);
-                        }
-                        _ => unreachable!(),
+                    if let Some(lit) = l.lit()
+                        && let ast::LitKind::Str(s, _) = lit.kind
+                    {
+                        aliases.insert(s);
                     }
                 }
-            } else {
-                aliases.insert(attr.value_str().unwrap());
+            } else if let Some(value) = attr.value_str() {
+                aliases.insert(value);
             }
         }
         aliases.into_iter().collect::<Vec<_>>().into()
@@ -1450,7 +1449,7 @@ impl Trait {
     pub(crate) fn safety(&self, tcx: TyCtxt<'_>) -> hir::Safety {
         tcx.trait_def(self.def_id).safety
     }
-    pub(crate) fn is_object_safe(&self, tcx: TyCtxt<'_>) -> bool {
+    pub(crate) fn is_dyn_compatible(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.is_dyn_compatible(self.def_id)
     }
 }

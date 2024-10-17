@@ -20,10 +20,9 @@ use build_helper::git::get_closest_merge_commit;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
-use crate::utils::channel;
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    self, HashStamp, exe, get_clang_cl_resource_dir, output, t, unhashed_basename, up_to_date,
+    self, HashStamp, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
 };
 use crate::{CLang, GitRepo, Kind, generate_smart_stamp_hash};
 
@@ -166,7 +165,7 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
             config.src.join("src/version"),
         ])
         .unwrap()
-    } else if let Some(info) = channel::read_commit_info_file(&config.src) {
+    } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()
     } else {
         "".to_owned()
@@ -242,15 +241,29 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
 
 /// Returns true if we're running in CI with modified LLVM (and thus can't download it)
 pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
-    CiEnv::is_rust_lang_managed_ci_job() && config.rust_info.is_managed_git_subrepository() && {
-        // We assume we have access to git, so it's okay to unconditionally pass
-        // `true` here.
-        let llvm_sha = detect_llvm_sha(config, true);
-        let head_sha =
-            output(helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD").as_command_mut());
-        let head_sha = head_sha.trim();
-        llvm_sha == head_sha
+    // If not running in a CI environment, return false.
+    if !CiEnv::is_ci() {
+        return false;
     }
+
+    // In rust-lang/rust managed CI, assert the existence of the LLVM submodule.
+    if CiEnv::is_rust_lang_managed_ci_job() {
+        assert!(
+            config.in_tree_llvm_info.is_managed_git_subrepository(),
+            "LLVM submodule must be fetched in rust-lang/rust managed CI builders."
+        );
+    }
+    // If LLVM submodule isn't present, skip the change check as it won't work.
+    else if !config.in_tree_llvm_info.is_managed_git_subrepository() {
+        return false;
+    }
+
+    let llvm_sha = detect_llvm_sha(config, true);
+    let head_sha = crate::output(
+        helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD").as_command_mut(),
+    );
+    let head_sha = head_sha.trim();
+    llvm_sha == head_sha
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -1214,6 +1227,9 @@ fn supported_sanitizers(
         }
         "aarch64-unknown-linux-ohos" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
+        }
+        "loongarch64-unknown-linux-gnu" | "loongarch64-unknown-linux-musl" => {
+            common_libs("linux", "loongarch64", &["asan", "lsan", "msan", "tsan"])
         }
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-unknown-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),

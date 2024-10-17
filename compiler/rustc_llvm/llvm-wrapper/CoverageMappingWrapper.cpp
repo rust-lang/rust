@@ -183,7 +183,7 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
            RustMappingRegions, NumMappingRegions)) {
     MappingRegions.emplace_back(
         fromRust(Region.Count), fromRust(Region.FalseCount),
-#if LLVM_VERSION_GE(18, 0) && LLVM_VERSION_LT(19, 0)
+#if LLVM_VERSION_LT(19, 0)
         coverage::CounterMappingRegion::MCDCParameters{},
 #endif
         Region.FileID, Region.ExpandedFileID, // File IDs, then region info.

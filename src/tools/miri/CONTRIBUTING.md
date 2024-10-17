@@ -45,6 +45,14 @@ process for such contributions:
 This process is largely informal, and its primary goal is to more clearly communicate expectations.
 Please get in touch with us if you have any questions!
 
+### Managing the review state
+
+Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
+keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
+`S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
+they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
+next round of review.
+
 ## Preparing the build environment
 
 Miri heavily relies on internal and unstable rustc interfaces to execute MIR,
@@ -195,48 +203,37 @@ installed (`cargo install hyperfine`).
 
 ## Configuring `rust-analyzer`
 
-To configure `rust-analyzer` and VS Code for working on Miri, save the following
-to `.vscode/settings.json` in your local Miri clone:
+To configure `rust-analyzer` and the IDE for working on Miri, copy one of the provided
+configuration files according to the instructions below. You can also set up a symbolic
+link to keep the configuration in sync with our recommendations.
 
-```json
-{
-    "rust-analyzer.rustc.source": "discover",
-    "rust-analyzer.linkedProjects": [
-        "Cargo.toml",
-        "cargo-miri/Cargo.toml",
-        "miri-script/Cargo.toml",
-    ],
-    "rust-analyzer.check.invocationLocation": "root",
-    "rust-analyzer.check.invocationStrategy": "once",
-    "rust-analyzer.check.overrideCommand": [
-        "env",
-        "MIRI_AUTO_OPS=no",
-        "./miri",
-        "clippy", // make this `check` when working with a locally built rustc
-        "--message-format=json",
-    ],
-    // Contrary to what the name suggests, this also affects proc macros.
-    "rust-analyzer.cargo.buildScripts.invocationLocation": "root",
-    "rust-analyzer.cargo.buildScripts.invocationStrategy": "once",
-    "rust-analyzer.cargo.buildScripts.overrideCommand": [
-        "env",
-        "MIRI_AUTO_OPS=no",
-        "./miri",
-        "check",
-        "--message-format=json",
-    ],
-}
-```
+### Visual Studio Code
 
-> #### Note
->
-> If you are [building Miri with a locally built rustc][], set
-> `rust-analyzer.rustcSource` to the relative path from your Miri clone to the
-> root `Cargo.toml` of the locally built rustc. For example, the path might look
-> like `../rust/Cargo.toml`.
+Copy [`etc/rust_analyzer_vscode.json`] to `.vscode/settings.json` in the project root directory.
+
+[`etc/rust_analyzer_vscode.json`]: https://github.com/rust-lang/miri/blob/master/etc/rust_analyzer_vscode.json
+
+### Helix
+
+Copy [`etc/rust_analyzer_helix.toml`] to `.helix/languages.toml` in the project root directory.
+
+Since working on Miri requires a custom toolchain, and Helix requires the language server
+to be installed with the toolchain, you have to run `./miri toolchain -c rust-analyzer`
+when installing the Miri toolchain. Alternatively, set the `RUSTUP_TOOLCHAIN` environment variable according to
+[the documentation](https://rust-analyzer.github.io/manual.html#toolchain).
+
+[`etc/rust_analyzer_helix.toml`]: https://github.com/rust-lang/miri/blob/master/etc/rust_analyzer_helix.toml
+
+### Advanced configuration
+
+If you are building Miri with a locally built rustc, set
+`rust-analyzer.rustcSource` to the relative path from your Miri clone to the
+root `Cargo.toml` of the locally built rustc. For example, the path might look
+like `../rust/Cargo.toml`. In addition to that, replace `clippy` by `check`
+in the `rust-analyzer.check.overrideCommand` setting.
 
 See the rustc-dev-guide's docs on ["Configuring `rust-analyzer` for `rustc`"][rdg-r-a]
-for more information about configuring VS Code and `rust-analyzer`.
+for more information about configuring the IDE and `rust-analyzer`.
 
 [rdg-r-a]: https://rustc-dev-guide.rust-lang.org/building/suggested.html#configuring-rust-analyzer-for-rustc
 

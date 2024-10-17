@@ -164,13 +164,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Threading
             "pthread_setname_np" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                // The real implementation has logic in two places:
+                // * in userland at https://github.com/apple-oss-distributions/libpthread/blob/c032e0b076700a0a47db75528a282b8d3a06531a/src/pthread.c#L1178-L1200,
+                // * in kernel at https://github.com/apple-oss-distributions/xnu/blob/8d741a5de7ff4191bf97d57b9f54c2f6d4a15585/bsd/kern/proc_info.c#L3218-L3227.
+                //
+                // The function in libc calls the kernel to validate
+                // the security policies and the input. If all of the requirements
+                // are met, then the name is set and 0 is returned. Otherwise, if
+                // the specified name is lomnger than MAXTHREADNAMESIZE, then
+                // ENAMETOOLONG is returned.
+                //
+                // FIXME: the real implementation maybe returns ESRCH if the thread ID is invalid.
                 let thread = this.pthread_self()?;
-                let max_len = this.eval_libc("MAXTHREADNAMESIZE").to_target_usize(this)?;
-                let res = this.pthread_setname_np(
+                let res = if this.pthread_setname_np(
                     thread,
                     this.read_scalar(name)?,
-                    max_len.try_into().unwrap(),
-                )?;
+                    this.eval_libc("MAXTHREADNAMESIZE").to_target_usize(this)?.try_into().unwrap(),
+                )? {
+                    Scalar::from_u32(0)
+                } else {
+                    this.eval_libc("ENAMETOOLONG")
+                };
                 // Contrary to the manpage, `pthread_setname_np` on macOS still
                 // returns an integer indicating success.
                 this.write_scalar(res, dest)?;
@@ -178,10 +193,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_getname_np" => {
                 let [thread, name, len] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let res = this.pthread_getname_np(
+
+                // The function's behavior isn't portable between platforms.
+                // In case of macOS, a truncated name (due to a too small buffer)
+                // does not lead to an error.
+                //
+                // For details, see the implementation at
+                // https://github.com/apple-oss-distributions/libpthread/blob/c032e0b076700a0a47db75528a282b8d3a06531a/src/pthread.c#L1160-L1175.
+                // The key part is the strlcpy, which truncates the resulting value,
+                // but always null terminates (except for zero sized buffers).
+                //
+                // FIXME: the real implementation returns ESRCH if the thread ID is invalid.
+                let res = Scalar::from_u32(0);
+                this.pthread_getname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     this.read_scalar(len)?,
+                    /* truncate */ true,
                 )?;
                 this.write_scalar(res, dest)?;
             }

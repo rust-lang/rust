@@ -5,6 +5,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 10, 1) to (start + 5, 2)
+Highest counter ID seen: c0
 
 Function name: fn_sig_into_try::b
 Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 11, 01, 03, 0f, 00, 03, 0f, 00, 10, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
@@ -18,6 +19,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
     = (c0 - Zero)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: fn_sig_into_try::c
 Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 18, 01, 03, 17, 00, 03, 17, 00, 18, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
@@ -31,6 +33,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
     = (c0 - Zero)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: fn_sig_into_try::d
 Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 1f, 01, 04, 0f, 00, 04, 0f, 00, 10, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
@@ -44,4 +47,5 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
     = (c0 - Zero)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 

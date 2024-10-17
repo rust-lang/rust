@@ -6,7 +6,7 @@ trait Foo<T> {
 
 /* note the "missing" for ... (in this case for i64, in order for this to compile) */
 impl Foo<i64> {
-//[e2021]~^ ERROR trait objects must include the `dyn` keyword
+//[e2021]~^ ERROR expected a type, found a trait
 //[e2015]~^^ WARNING trait objects without an explicit `dyn` are deprecated
 //[e2015]~| WARNING trait objects without an explicit `dyn` are deprecated
 //[e2015]~| WARNING this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!

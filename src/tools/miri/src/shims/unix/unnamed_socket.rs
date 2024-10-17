@@ -163,7 +163,7 @@ impl FileDescription for AnonSocket {
                 } else {
                     // Blocking socketpair with writer and empty buffer.
                     // FIXME: blocking is currently not supported
-                    throw_unsup_format!("socketpair read: blocking isn't supported yet");
+                    throw_unsup_format!("socketpair/pipe/pipe2 read: blocking isn't supported yet");
                 }
             }
         }
@@ -230,13 +230,13 @@ impl FileDescription for AnonSocket {
                 return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
             } else {
                 // Blocking socketpair with a full buffer.
-                throw_unsup_format!("socketpair write: blocking isn't supported yet");
+                throw_unsup_format!("socketpair/pipe/pipe2 write: blocking isn't supported yet");
             }
         }
         // Remember this clock so `read` can synchronize with us.
-        if let Some(clock) = &ecx.release_clock() {
+        ecx.release_clock(|clock| {
             writebuf.clock.join(clock);
-        }
+        });
         // Do full write / partial write based on the space available.
         let actual_write_size = len.min(available_space);
         let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
@@ -267,21 +267,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let domain = this.read_scalar(domain)?.to_i32()?;
-        let mut type_ = this.read_scalar(type_)?.to_i32()?;
+        let mut flags = this.read_scalar(type_)?.to_i32()?;
         let protocol = this.read_scalar(protocol)?.to_i32()?;
         let sv = this.deref_pointer(sv)?;
 
         let mut is_sock_nonblock = false;
 
-        // Parse and remove the type flags that we support.
-        // SOCK_NONBLOCK only exists on Linux.
+        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
+        // if there is anything left at the end, that's an unsupported flag.
         if this.tcx.sess.target.os == "linux" {
-            if type_ & this.eval_libc_i32("SOCK_NONBLOCK") == this.eval_libc_i32("SOCK_NONBLOCK") {
+            // SOCK_NONBLOCK only exists on Linux.
+            let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
+            let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
+            if flags & sock_nonblock == sock_nonblock {
                 is_sock_nonblock = true;
-                type_ &= !(this.eval_libc_i32("SOCK_NONBLOCK"));
+                flags &= !sock_nonblock;
             }
-            if type_ & this.eval_libc_i32("SOCK_CLOEXEC") == this.eval_libc_i32("SOCK_CLOEXEC") {
-                type_ &= !(this.eval_libc_i32("SOCK_CLOEXEC"));
+            if flags & sock_cloexec == sock_cloexec {
+                flags &= !sock_cloexec;
             }
         }
 
@@ -294,11 +297,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                  and AF_LOCAL are allowed",
                 domain
             );
-        } else if type_ != this.eval_libc_i32("SOCK_STREAM") {
+        } else if flags != this.eval_libc_i32("SOCK_STREAM") {
             throw_unsup_format!(
                 "socketpair: type {:#x} is unsupported, only SOCK_STREAM, \
                                  SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
-                type_
+                flags
             );
         } else if protocol != 0 {
             throw_unsup_format!(
@@ -347,14 +350,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let pipefd = this.deref_pointer_as(pipefd, this.machine.layouts.i32)?;
-        let flags = match flags {
+        let mut flags = match flags {
             Some(flags) => this.read_scalar(flags)?.to_i32()?,
             None => 0,
         };
 
-        // As usual we ignore CLOEXEC.
         let cloexec = this.eval_libc_i32("O_CLOEXEC");
-        if flags != 0 && flags != cloexec {
+        let o_nonblock = this.eval_libc_i32("O_NONBLOCK");
+
+        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
+        // if there is anything left at the end, that's an unsupported flag.
+        let mut is_nonblock = false;
+        if flags & o_nonblock == o_nonblock {
+            is_nonblock = true;
+            flags &= !o_nonblock;
+        }
+        // As usual we ignore CLOEXEC.
+        if flags & cloexec == cloexec {
+            flags &= !cloexec;
+        }
+        if flags != 0 {
             throw_unsup_format!("unsupported flags in `pipe2`");
         }
 
@@ -365,13 +380,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
-            is_nonblock: false,
+            is_nonblock,
         });
         let fd1 = fds.new_ref(AnonSocket {
             readbuf: None,
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
-            is_nonblock: false,
+            is_nonblock,
         });
 
         // Make the file descriptions point to each other.

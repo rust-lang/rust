@@ -235,7 +235,9 @@ try:
         exit(0)
 
     cur_commit = sys.argv[1]
-    cur_datetime = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+    cur_datetime = datetime.datetime.now(datetime.timezone.utc).strftime(
+        '%Y-%m-%dT%H:%M:%SZ'
+    )
     cur_commit_msg = sys.argv[2]
     save_message_to_path = sys.argv[3]
     github_token = sys.argv[4]

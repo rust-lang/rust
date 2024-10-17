@@ -295,6 +295,7 @@ pub(crate) struct FnQualifierInExtern {
     pub span: Span,
     #[label]
     pub block: Span,
+    pub kw: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -812,33 +813,6 @@ pub(crate) struct ConstraintOnNegativeBound {
 pub(crate) struct NegativeBoundWithParentheticalNotation {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_invalid_unnamed_field_ty)]
-pub(crate) struct InvalidUnnamedFieldTy {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub ty_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_invalid_unnamed_field)]
-pub(crate) struct InvalidUnnamedField {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub ident_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_anon_struct_or_union_not_allowed)]
-pub(crate) struct AnonStructOrUnionNotAllowed {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub struct_or_union: &'static str,
 }
 
 #[derive(Diagnostic)]

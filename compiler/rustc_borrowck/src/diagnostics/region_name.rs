@@ -837,7 +837,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 hir_ty
             );
         };
-        if let hir::OpaqueTy { bounds: [hir::GenericBound::Trait(trait_ref, _)], .. } = opaque_ty
+        if let hir::OpaqueTy { bounds: [hir::GenericBound::Trait(trait_ref)], .. } = opaque_ty
             && let Some(segment) = trait_ref.trait_ref.path.segments.last()
             && let Some(args) = segment.args
             && let [constraint] = args.constraints

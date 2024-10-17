@@ -282,19 +282,19 @@ mod tests;
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
 #[repr(C)]
-struct RcBox<T: ?Sized> {
+struct RcInner<T: ?Sized> {
     strong: Cell<usize>,
     weak: Cell<usize>,
     value: T,
 }
 
-/// Calculate layout for `RcBox<T>` using the inner value's layout
-fn rcbox_layout_for_value_layout(layout: Layout) -> Layout {
+/// Calculate layout for `RcInner<T>` using the inner value's layout
+fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
     // Calculate layout using the given value layout.
     // Previously, layout was calculated on the expression
-    // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
+    // `&*(ptr as *const RcInner<T>)`, but this created a misaligned
     // reference (see #54908).
-    Layout::new::<RcBox<()>>().extend(layout).unwrap().0.pad_to_align()
+    Layout::new::<RcInner<()>>().extend(layout).unwrap().0.pad_to_align()
 }
 
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
@@ -314,8 +314,8 @@ pub struct Rc<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<RcBox<T>>,
+    ptr: NonNull<RcInner<T>>,
+    phantom: PhantomData<RcInner<T>>,
     alloc: A,
 }
 
@@ -343,37 +343,37 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline]
-    unsafe fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
+    unsafe fn from_inner(ptr: NonNull<RcInner<T>>) -> Self {
         unsafe { Self::from_inner_in(ptr, Global) }
     }
 
     #[inline]
-    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
+    unsafe fn from_ptr(ptr: *mut RcInner<T>) -> Self {
         unsafe { Self::from_inner(NonNull::new_unchecked(ptr)) }
     }
 }
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> {
+    fn inner(&self) -> &RcInner<T> {
         // This unsafety is ok because while this Rc is alive we're guaranteed
         // that the inner pointer is valid.
         unsafe { self.ptr.as_ref() }
     }
 
     #[inline]
-    fn into_inner_with_allocator(this: Self) -> (NonNull<RcBox<T>>, A) {
+    fn into_inner_with_allocator(this: Self) -> (NonNull<RcInner<T>>, A) {
         let this = mem::ManuallyDrop::new(this);
         (this.ptr, unsafe { ptr::read(&this.alloc) })
     }
 
     #[inline]
-    unsafe fn from_inner_in(ptr: NonNull<RcBox<T>>, alloc: A) -> Self {
+    unsafe fn from_inner_in(ptr: NonNull<RcInner<T>>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
     }
 
     #[inline]
-    unsafe fn from_ptr_in(ptr: *mut RcBox<T>, alloc: A) -> Self {
+    unsafe fn from_ptr_in(ptr: *mut RcInner<T>, alloc: A) -> Self {
         unsafe { Self::from_inner_in(NonNull::new_unchecked(ptr), alloc) }
     }
 }
@@ -397,7 +397,7 @@ impl<T> Rc<T> {
         // if the weak pointer is stored inside the strong one.
         unsafe {
             Self::from_inner(
-                Box::leak(Box::new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value }))
+                Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
                     .into(),
             )
         }
@@ -546,8 +546,12 @@ impl<T> Rc<T> {
         // if the weak pointer is stored inside the strong one.
         unsafe {
             Ok(Self::from_inner(
-                Box::leak(Box::try_new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value })?)
-                    .into(),
+                Box::leak(Box::try_new(RcInner {
+                    strong: Cell::new(1),
+                    weak: Cell::new(1),
+                    value,
+                })?)
+                .into(),
             ))
         }
     }
@@ -646,7 +650,7 @@ impl<T, A: Allocator> Rc<T, A> {
         // That would make code size bigger.
         match Self::try_new_in(value, alloc) {
             Ok(m) => m,
-            Err(_) => handle_alloc_error(Layout::new::<RcBox<T>>()),
+            Err(_) => handle_alloc_error(Layout::new::<RcInner<T>>()),
         }
     }
 
@@ -765,7 +769,7 @@ impl<T, A: Allocator> Rc<T, A> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let (uninit_raw_ptr, alloc) = Box::into_raw_with_allocator(Box::new_in(
-            RcBox {
+            RcInner {
                 strong: Cell::new(0),
                 weak: Cell::new(1),
                 value: mem::MaybeUninit::<T>::uninit(),
@@ -773,7 +777,7 @@ impl<T, A: Allocator> Rc<T, A> {
             alloc,
         ));
         let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
-        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
+        let init_ptr: NonNull<RcInner<T>> = uninit_ptr.cast();
 
         let weak = Weak { ptr: init_ptr, alloc: alloc };
 
@@ -826,7 +830,7 @@ impl<T, A: Allocator> Rc<T, A> {
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
         let (ptr, alloc) = Box::into_unique(Box::try_new_in(
-            RcBox { strong: Cell::new(1), weak: Cell::new(1), value },
+            RcInner { strong: Cell::new(1), weak: Cell::new(1), value },
             alloc,
         )?);
         Ok(unsafe { Self::from_inner_in(ptr.into(), alloc) })
@@ -1059,7 +1063,7 @@ impl<T> Rc<[T]> {
                 |layout| Global.allocate_zeroed(layout),
                 |mem| {
                     ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                        as *mut RcBox<[mem::MaybeUninit<T>]>
+                        as *mut RcInner<[mem::MaybeUninit<T>]>
                 },
             ))
         }
@@ -1132,7 +1136,7 @@ impl<T, A: Allocator> Rc<[T], A> {
                     |layout| alloc.allocate_zeroed(layout),
                     |mem| {
                         ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                            as *mut RcBox<[mem::MaybeUninit<T>]>
+                            as *mut RcInner<[mem::MaybeUninit<T>]>
                     },
                 ),
                 alloc,
@@ -1437,7 +1441,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     #[rustc_never_returns_null_ptr]
     pub fn as_ptr(this: &Self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
+        let ptr: *mut RcInner<T> = NonNull::as_ptr(this.ptr);
 
         // SAFETY: This cannot go through Deref::deref or Rc::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
@@ -1516,8 +1520,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     pub unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {
         let offset = unsafe { data_offset(ptr) };
 
-        // Reverse the offset to find the original RcBox.
-        let rc_ptr = unsafe { ptr.byte_sub(offset) as *mut RcBox<T> };
+        // Reverse the offset to find the original RcInner.
+        let rc_ptr = unsafe { ptr.byte_sub(offset) as *mut RcInner<T> };
 
         unsafe { Self::from_ptr_in(rc_ptr, alloc) }
     }
@@ -2002,43 +2006,43 @@ impl<A: Allocator> Rc<dyn Any, A> {
 }
 
 impl<T: ?Sized> Rc<T> {
-    /// Allocates an `RcBox<T>` with sufficient space for
+    /// Allocates an `RcInner<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided.
     ///
-    /// The function `mem_to_rcbox` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    /// The function `mem_to_rc_inner` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `RcInner<T>`.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> *mut RcBox<T> {
-        let layout = rcbox_layout_for_value_layout(value_layout);
+        mem_to_rc_inner: impl FnOnce(*mut u8) -> *mut RcInner<T>,
+    ) -> *mut RcInner<T> {
+        let layout = rc_inner_layout_for_value_layout(value_layout);
         unsafe {
-            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
+            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rc_inner)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
         }
     }
 
-    /// Allocates an `RcBox<T>` with sufficient space for
+    /// Allocates an `RcInner<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided,
     /// returning an error if allocation fails.
     ///
-    /// The function `mem_to_rcbox` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    /// The function `mem_to_rc_inner` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `RcInner<T>`.
     #[inline]
     unsafe fn try_allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> Result<*mut RcBox<T>, AllocError> {
-        let layout = rcbox_layout_for_value_layout(value_layout);
+        mem_to_rc_inner: impl FnOnce(*mut u8) -> *mut RcInner<T>,
+    ) -> Result<*mut RcInner<T>, AllocError> {
+        let layout = rc_inner_layout_for_value_layout(value_layout);
 
         // Allocate for the layout.
         let ptr = allocate(layout)?;
 
-        // Initialize the RcBox
-        let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
+        // Initialize the RcInner
+        let inner = mem_to_rc_inner(ptr.as_non_null_ptr().as_ptr());
         unsafe {
             debug_assert_eq!(Layout::for_value_raw(inner), layout);
 
@@ -2051,15 +2055,15 @@ impl<T: ?Sized> Rc<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
-    /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
+    /// Allocates an `RcInner<T>` with sufficient space for an unsized inner value
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_ptr_in(ptr: *const T, alloc: &A) -> *mut RcBox<T> {
-        // Allocate for the `RcBox<T>` using the given value.
+    unsafe fn allocate_for_ptr_in(ptr: *const T, alloc: &A) -> *mut RcInner<T> {
+        // Allocate for the `RcInner<T>` using the given value.
         unsafe {
             Rc::<T>::allocate_for_layout(
                 Layout::for_value_raw(ptr),
                 |layout| alloc.allocate(layout),
-                |mem| mem.with_metadata_of(ptr as *const RcBox<T>),
+                |mem| mem.with_metadata_of(ptr as *const RcInner<T>),
             )
         }
     }
@@ -2088,14 +2092,14 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
 }
 
 impl<T> Rc<[T]> {
-    /// Allocates an `RcBox<[T]>` with the given length.
+    /// Allocates an `RcInner<[T]>` with the given length.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
+    unsafe fn allocate_for_slice(len: usize) -> *mut RcInner<[T]> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcBox<[T]>,
+                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
             )
         }
     }
@@ -2119,7 +2123,7 @@ impl<T> Rc<[T]> {
     unsafe fn from_iter_exact(iter: impl Iterator<Item = T>, len: usize) -> Rc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
-        // into the new RcBox will be dropped, then the memory freed.
+        // into the new RcInner will be dropped, then the memory freed.
         struct Guard<T> {
             mem: NonNull<u8>,
             elems: *mut T,
@@ -2154,7 +2158,7 @@ impl<T> Rc<[T]> {
                 guard.n_elems += 1;
             }
 
-            // All clear. Forget the guard so it doesn't free the new RcBox.
+            // All clear. Forget the guard so it doesn't free the new RcInner.
             mem::forget(guard);
 
             Self::from_ptr(ptr)
@@ -2163,15 +2167,15 @@ impl<T> Rc<[T]> {
 }
 
 impl<T, A: Allocator> Rc<[T], A> {
-    /// Allocates an `RcBox<[T]>` with the given length.
+    /// Allocates an `RcInner<[T]>` with the given length.
     #[inline]
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice_in(len: usize, alloc: &A) -> *mut RcBox<[T]> {
+    unsafe fn allocate_for_slice_in(len: usize, alloc: &A) -> *mut RcInner<[T]> {
         unsafe {
             Rc::<[T]>::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcBox<[T]>,
+                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
             )
         }
     }
@@ -2901,9 +2905,9 @@ pub struct Weak<
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap. That's not a value a real pointer
-    // will ever have because RcBox has alignment at least 2.
+    // will ever have because RcInner has alignment at least 2.
     // This is only possible when `T: Sized`; unsized `T` never dangle.
-    ptr: NonNull<RcBox<T>>,
+    ptr: NonNull<RcInner<T>>,
     alloc: A,
 }
 
@@ -2939,7 +2943,7 @@ impl<T> Weak<T> {
     pub const fn new() -> Weak<T> {
         Weak {
             ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcBox<T>>(usize::MAX))
+                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
             },
             alloc: Global,
         }
@@ -2966,7 +2970,7 @@ impl<T, A: Allocator> Weak<T, A> {
     pub fn new_in(alloc: A) -> Weak<T, A> {
         Weak {
             ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcBox<T>>(usize::MAX))
+                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
             },
             alloc,
         }
@@ -3070,11 +3074,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
+        let ptr: *mut RcInner<T> = NonNull::as_ptr(self.ptr);
 
         if is_dangling(ptr) {
             // If the pointer is dangling, we return the sentinel directly. This cannot be
-            // a valid payload address, as the payload is at least as aligned as RcBox (usize).
+            // a valid payload address, as the payload is at least as aligned as RcInner (usize).
             ptr as *const T
         } else {
             // SAFETY: if is_dangling returns false, then the pointer is dereferenceable.
@@ -3206,14 +3210,14 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
 
         let ptr = if is_dangling(ptr) {
             // This is a dangling Weak.
-            ptr as *mut RcBox<T>
+            ptr as *mut RcInner<T>
         } else {
             // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
             // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
             let offset = unsafe { data_offset(ptr) };
-            // Thus, we reverse the offset to get the whole RcBox.
+            // Thus, we reverse the offset to get the whole RcInner.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.
-            unsafe { ptr.byte_sub(offset) as *mut RcBox<T> }
+            unsafe { ptr.byte_sub(offset) as *mut RcInner<T> }
         };
 
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
@@ -3288,7 +3292,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         }
     }
 
-    /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`,
+    /// Returns `None` when the pointer is dangling and there is no allocated `RcInner`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
     fn inner(&self) -> Option<WeakInner<'_>> {
@@ -3522,7 +3526,7 @@ trait RcInnerPtr {
     }
 }
 
-impl<T: ?Sized> RcInnerPtr for RcBox<T> {
+impl<T: ?Sized> RcInnerPtr for RcInner<T> {
     #[inline(always)]
     fn weak_ref(&self) -> &Cell<usize> {
         &self.weak
@@ -3563,15 +3567,15 @@ impl<T: ?Sized, A: Allocator> AsRef<T> for Rc<T, A> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized, A: Allocator> Unpin for Rc<T, A> {}
 
-/// Gets the offset within an `RcBox` for the payload behind a pointer.
+/// Gets the offset within an `RcInner` for the payload behind a pointer.
 ///
 /// # Safety
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
-    // Align the unsized value to the end of the RcBox.
-    // Because RcBox is repr(C), it will always be the last field in memory.
+    // Align the unsized value to the end of the RcInner.
+    // Because RcInner is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
     // satisfy the requirements of align_of_val_raw; this is an implementation
@@ -3581,7 +3585,7 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
 
 #[inline]
 fn data_offset_align(align: usize) -> usize {
-    let layout = Layout::new::<RcBox<()>>();
+    let layout = Layout::new::<RcInner<()>>();
     layout.size() + layout.padding_needed_for(align)
 }
 
@@ -3627,8 +3631,8 @@ pub struct UniqueRc<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<RcBox<T>>,
+    ptr: NonNull<RcInner<T>>,
+    phantom: PhantomData<RcInner<T>>,
     alloc: A,
 }
 
@@ -3664,7 +3668,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
     pub fn new_in(value: T, alloc: A) -> Self {
         let (ptr, alloc) = Box::into_unique(Box::new_in(
-            RcBox {
+            RcInner {
                 strong: Cell::new(0),
                 // keep one weak reference so if all the weak pointers that are created are dropped
                 // the UniqueRc still stays valid.
@@ -3759,7 +3763,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
     }
 }
 
-/// A unique owning pointer to a [`RcBox`] **that does not imply the contents are initialized,**
+/// A unique owning pointer to a [`RcInner`] **that does not imply the contents are initialized,**
 /// but will deallocate it (without dropping the value) when dropped.
 ///
 /// This is a helper for [`Rc::make_mut()`] to ensure correct cleanup on panic.
@@ -3767,21 +3771,21 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
 /// which `MaybeUninit` does not.
 #[cfg(not(no_global_oom_handling))]
 struct UniqueRcUninit<T: ?Sized, A: Allocator> {
-    ptr: NonNull<RcBox<T>>,
+    ptr: NonNull<RcInner<T>>,
     layout_for_value: Layout,
     alloc: Option<A>,
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
-    /// Allocates a RcBox with layout suitable to contain `for_value` or a clone of it.
+    /// Allocates a RcInner with layout suitable to contain `for_value` or a clone of it.
     fn new(for_value: &T, alloc: A) -> UniqueRcUninit<T, A> {
         let layout = Layout::for_value(for_value);
         let ptr = unsafe {
             Rc::allocate_for_layout(
                 layout,
-                |layout_for_rcbox| alloc.allocate(layout_for_rcbox),
-                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcBox<T>),
+                |layout_for_rc_inner| alloc.allocate(layout_for_rc_inner),
+                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcInner<T>),
             )
         };
         Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) }
@@ -3816,10 +3820,10 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
         // * new() produced a pointer safe to deallocate.
         // * We own the pointer unless into_rc() was called, which forgets us.
         unsafe {
-            self.alloc
-                .take()
-                .unwrap()
-                .deallocate(self.ptr.cast(), rcbox_layout_for_value_layout(self.layout_for_value));
+            self.alloc.take().unwrap().deallocate(
+                self.ptr.cast(),
+                rc_inner_layout_for_value_layout(self.layout_for_value),
+            );
         }
     }
 }

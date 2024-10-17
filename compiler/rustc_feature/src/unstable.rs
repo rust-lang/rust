@@ -228,7 +228,7 @@ declare_features! (
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
     /// Helps with formatting for `group_imports = "StdExternalCrate"`.
-    (unstable, unqualified_local_imports, "CURRENT_RUSTC_VERSION", None),
+    (unstable, unqualified_local_imports, "1.83.0", None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (unstable, with_negative_coherence, "1.60.0", None),
@@ -259,6 +259,14 @@ declare_features! (
     (unstable, doc_notable_trait, "1.52.0", Some(45040)),
     /// Allows using the `may_dangle` attribute (RFC 1327).
     (unstable, dropck_eyepatch, "1.10.0", Some(34761)),
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible[^1].
+    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
+    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
+    ///
+    /// Renamed from `object_safe_for_dispatch`.
+    ///
+    /// [^1]: Formerly known as "object safe".
+    (unstable, dyn_compatible_for_dispatch, "1.83.0", Some(43561)),
     /// Allows using the `#[fundamental]` attribute.
     (unstable, fundamental, "1.0.0", Some(29635)),
     /// Allows using `#[link_name="llvm.*"]`.
@@ -352,7 +360,7 @@ declare_features! (
     /// Allows inherent and trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
     /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
-    (unstable, arbitrary_self_types_pointers, "CURRENT_RUSTC_VERSION", Some(44874)),
+    (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Allows using `label` operands in inline assembly.
@@ -372,7 +380,7 @@ declare_features! (
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(<true/false>)]`.
-    (unstable, cfg_boolean_literals, "CURRENT_RUSTC_VERSION", Some(131204)),
+    (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
@@ -490,7 +498,7 @@ declare_features! (
     /// Allows `if let` guard in match arms.
     (unstable, if_let_guard, "1.47.0", Some(51114)),
     /// Rescoping temporaries in `if let` to align with Rust 2024.
-    (unstable, if_let_rescope, "CURRENT_RUSTC_VERSION", Some(124085)),
+    (unstable, if_let_rescope, "1.83.0", Some(124085)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
@@ -546,13 +554,6 @@ declare_features! (
     (unstable, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554)),
     /// Allows `for<T>` binders in where-clauses
     (incomplete, non_lifetime_binders, "1.69.0", Some(108185)),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible[^1].
-    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
-    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
-    ///
-    /// [^1]: Formerly known as "object safe".
-    // FIXME(dyn_compat_renaming): Rename feature.
-    (unstable, object_safe_for_dispatch, "1.40.0", Some(43561)),
     /// Allows using enums in offset_of!
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
     /// Allows using fields with slice type in offset_of!
@@ -562,9 +563,11 @@ declare_features! (
     /// Allows specifying nop padding on functions for dynamic patching.
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
     /// Experimental features that make `Pin` more ergonomic.
-    (incomplete, pin_ergonomics, "CURRENT_RUSTC_VERSION", Some(130494)),
+    (incomplete, pin_ergonomics, "1.83.0", Some(130494)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
+    /// Allows `use<..>` precise capturign on impl Trait in traits.
+    (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
@@ -620,8 +623,6 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
-    /// Allows unnamed fields of struct and union type
-    (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "1.82.0", Some(95174)),

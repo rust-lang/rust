@@ -894,7 +894,9 @@ fn foo(&self) -> Self::T { String::new() }
         // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
 
         let trait_bounds = bounds.iter().filter_map(|bound| match bound {
-            hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) => Some(ptr),
+            hir::GenericBound::Trait(ptr) if ptr.modifiers == hir::TraitBoundModifier::None => {
+                Some(ptr)
+            }
             _ => None,
         });
 

@@ -1053,8 +1053,19 @@ pub fn rustc_cargo(
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
 
-    // If the rustc output is piped to e.g. `head -n1` we want the process to be
-    // killed, rather than having an error bubble up and cause a panic.
+    // If the rustc output is piped to e.g. `head -n1` we want the process to be killed, rather than
+    // having an error bubble up and cause a panic.
+    //
+    // FIXME(jieyouxu): this flag is load-bearing for rustc to not ICE on broken pipes, because
+    // rustc internally sometimes uses std `println!` -- but std `println!` by default will panic on
+    // broken pipes, and uncaught panics will manifest as an ICE. The compiler *should* handle this
+    // properly, but this flag is set in the meantime to paper over the I/O errors.
+    //
+    // See <https://github.com/rust-lang/rust/issues/131059> for details.
+    //
+    // Also see the discussion for properly handling I/O errors related to broken pipes, i.e. safe
+    // variants of `println!` in
+    // <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Internal.20lint.20for.20raw.20.60print!.60.20and.20.60println!.60.3F>.
     cargo.rustflag("-Zon-broken-pipe=kill");
 
     if builder.config.llvm_enzyme {

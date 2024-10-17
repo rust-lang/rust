@@ -1,0 +1,31 @@
+error: unnecessary parentheses around assigned value
+  --> $DIR/unused-parens-for-stmt-expr-attributes-issue-129833.rs:9:13
+   |
+LL |     let _ = (#[inline] #[allow(dead_code)] || println!("Hello!"));
+   |             ^                                                   ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-parens-for-stmt-expr-attributes-issue-129833.rs:6:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let _ = (#[inline] #[allow(dead_code)] || println!("Hello!"));
+LL +     let _ = #[inline] #[allow(dead_code)] || println!("Hello!");
+   |
+
+error: unnecessary parentheses around block return value
+  --> $DIR/unused-parens-for-stmt-expr-attributes-issue-129833.rs:10:5
+   |
+LL |     (#[inline] #[allow(dead_code)] || println!("Hello!"))
+   |     ^                                                   ^
+   |
+help: remove these parentheses
+   |
+LL -     (#[inline] #[allow(dead_code)] || println!("Hello!"))
+LL +     #[inline] #[allow(dead_code)] || println!("Hello!")
+   |
+
+error: aborting due to 2 previous errors
+

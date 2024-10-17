@@ -166,6 +166,12 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when the target vendor is Apple"
     }
 
+    condition! {
+        name: "enzyme",
+        condition: config.has_enzyme,
+        message: "when rustc is built with LLVM Enzyme"
+    }
+
     // Technically the locally built compiler uses the "dev" channel rather than the "nightly"
     // channel, even though most people don't know or won't care about it. To avoid confusion, we
     // treat the "dev" channel as the "nightly" channel when processing the directive.
@@ -217,13 +223,10 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
     // Coverage tests run the same test file in multiple modes.
     // If a particular test should not be run in one of the modes, ignore it
-    // with "ignore-mode-coverage-map" or "ignore-mode-coverage-run".
+    // with "ignore-coverage-map" or "ignore-coverage-run".
     condition! {
-        name: format!("mode-{}", config.mode.to_str()),
-        allowed_names: ContainsPrefixed {
-            prefix: "mode-",
-            inner: ["coverage-run", "coverage-map"],
-        },
+        name: config.mode.to_str(),
+        allowed_names: ["coverage-map", "coverage-run"],
         message: "when the test mode is {name}",
     }
 

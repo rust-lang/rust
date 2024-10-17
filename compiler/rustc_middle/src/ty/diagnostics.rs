@@ -192,7 +192,8 @@ fn suggest_changing_unsized_bound(
             .iter()
             .enumerate()
             .filter(|(_, bound)| {
-                if let hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound
+                if let hir::GenericBound::Trait(poly) = bound
+                    && poly.modifiers == hir::TraitBoundModifier::Maybe
                     && poly.trait_ref.trait_def_id() == def_id
                 {
                     true
@@ -325,7 +326,7 @@ pub fn suggest_constraining_type_params<'a>(
             let suggestion = if span_to_replace.is_some() {
                 constraint.clone()
             } else if constraint.starts_with('<') {
-                constraint.to_string()
+                constraint.clone()
             } else if bound_list_non_empty {
                 format!(" + {constraint}")
             } else {

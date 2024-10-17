@@ -36,7 +36,7 @@ pub trait Interner:
 {
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
-    type Span: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
+    type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
@@ -260,6 +260,8 @@ pub trait Interner:
     fn trait_is_fundamental(self, def_id: Self::DefId) -> bool;
 
     fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
+
+    fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
 

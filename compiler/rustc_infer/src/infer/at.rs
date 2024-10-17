@@ -27,11 +27,14 @@
 
 use relate::lattice::{LatticeOp, LatticeOpKind};
 use rustc_middle::bug;
+use rustc_middle::ty::relate::solver_relating::RelateExt as NextSolverRelate;
 use rustc_middle::ty::{Const, ImplSubject};
 
 use super::*;
 use crate::infer::relate::type_relating::TypeRelating;
-use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
+use crate::infer::relate::{Relate, TypeRelation};
+use crate::traits::Obligation;
+use crate::traits::solve::Goal;
 
 /// Whether we should define opaque types or just treat them opaquely.
 ///
@@ -109,16 +112,26 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        let mut op = TypeRelating::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, expected, actual),
-            self.param_env,
-            define_opaque_types,
-            StructurallyRelateAliases::No,
-            ty::Contravariant,
-        );
-        op.relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: op.into_obligations() })
+        if self.infcx.next_trait_solver {
+            NextSolverRelate::relate(
+                self.infcx,
+                self.param_env,
+                expected,
+                ty::Contravariant,
+                actual,
+            )
+            .map(|goals| self.goals_to_obligations(goals))
+        } else {
+            let mut op = TypeRelating::new(
+                self.infcx,
+                ToTrace::to_trace(self.cause, expected, actual),
+                self.param_env,
+                define_opaque_types,
+                ty::Contravariant,
+            );
+            op.relate(expected, actual)?;
+            Ok(InferOk { value: (), obligations: op.into_obligations() })
+        }
     }
 
     /// Makes `expected <: actual`.
@@ -131,16 +144,20 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        let mut op = TypeRelating::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, expected, actual),
-            self.param_env,
-            define_opaque_types,
-            StructurallyRelateAliases::No,
-            ty::Covariant,
-        );
-        op.relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: op.into_obligations() })
+        if self.infcx.next_trait_solver {
+            NextSolverRelate::relate(self.infcx, self.param_env, expected, ty::Covariant, actual)
+                .map(|goals| self.goals_to_obligations(goals))
+        } else {
+            let mut op = TypeRelating::new(
+                self.infcx,
+                ToTrace::to_trace(self.cause, expected, actual),
+                self.param_env,
+                define_opaque_types,
+                ty::Covariant,
+            );
+            op.relate(expected, actual)?;
+            Ok(InferOk { value: (), obligations: op.into_obligations() })
+        }
     }
 
     /// Makes `expected == actual`.
@@ -172,16 +189,20 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        let mut op = TypeRelating::new(
-            self.infcx,
-            trace,
-            self.param_env,
-            define_opaque_types,
-            StructurallyRelateAliases::No,
-            ty::Invariant,
-        );
-        op.relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: op.into_obligations() })
+        if self.infcx.next_trait_solver {
+            NextSolverRelate::relate(self.infcx, self.param_env, expected, ty::Invariant, actual)
+                .map(|goals| self.goals_to_obligations(goals))
+        } else {
+            let mut op = TypeRelating::new(
+                self.infcx,
+                trace,
+                self.param_env,
+                define_opaque_types,
+                ty::Invariant,
+            );
+            op.relate(expected, actual)?;
+            Ok(InferOk { value: (), obligations: op.into_obligations() })
+        }
     }
 
     pub fn relate<T>(
@@ -208,49 +229,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         }
     }
 
-    /// Used in the new solver since we don't care about tracking an `ObligationCause`.
-    pub fn relate_no_trace<T>(
-        self,
-        expected: T,
-        variance: ty::Variance,
-        actual: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>
-    where
-        T: Relate<TyCtxt<'tcx>>,
-    {
-        let mut op = TypeRelating::new(
-            self.infcx,
-            TypeTrace::dummy(self.cause),
-            self.param_env,
-            DefineOpaqueTypes::Yes,
-            StructurallyRelateAliases::No,
-            variance,
-        );
-        op.relate(expected, actual)?;
-        Ok(op.into_obligations().into_iter().map(|o| o.into()).collect())
-    }
-
-    /// Used in the new solver since we don't care about tracking an `ObligationCause`.
-    pub fn eq_structurally_relating_aliases_no_trace<T>(
-        self,
-        expected: T,
-        actual: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>
-    where
-        T: Relate<TyCtxt<'tcx>>,
-    {
-        let mut op = TypeRelating::new(
-            self.infcx,
-            TypeTrace::dummy(self.cause),
-            self.param_env,
-            DefineOpaqueTypes::Yes,
-            StructurallyRelateAliases::Yes,
-            ty::Invariant,
-        );
-        op.relate(expected, actual)?;
-        Ok(op.into_obligations().into_iter().map(|o| o.into()).collect())
-    }
-
     /// Computes the least-upper-bound, or mutual supertype, of two
     /// values. The order of the arguments doesn't matter, but since
     /// this can result in an error (e.g., if asked to compute LUB of
@@ -268,6 +246,26 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         );
         let value = op.relate(expected, actual)?;
         Ok(InferOk { value, obligations: op.into_obligations() })
+    }
+
+    fn goals_to_obligations(
+        &self,
+        goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) -> InferOk<'tcx, ()> {
+        InferOk {
+            value: (),
+            obligations: goals
+                .into_iter()
+                .map(|goal| {
+                    Obligation::new(
+                        self.infcx.tcx,
+                        self.cause.clone(),
+                        goal.param_env,
+                        goal.predicate,
+                    )
+                })
+                .collect(),
+        }
     }
 }
 

@@ -31,3 +31,19 @@ pub static tested_symbol: [u8; 6] = *b"foobar";
 // PROTECTED:    @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = protected constant
 // INTERPOSABLE: @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
 // DEFAULT:      @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
+
+pub fn do_memcmp(left: &[u8], right: &[u8]) -> i32 {
+    left.cmp(right) as i32
+}
+
+// CHECK: define {{.*}} @{{.*}}do_memcmp{{.*}} {
+// CHECK: }
+
+// `do_memcmp` should invoke core::intrinsic::compare_bytes which emits a call
+// to the C symbol `memcmp` (at least on x86_64-unknown-linux-gnu). This symbol
+// should *not* be declared hidden or protected.
+
+// HIDDEN:       declare i32 @memcmp
+// PROTECTED:    declare i32 @memcmp
+// INTERPOSABLE: declare i32 @memcmp
+// DEFAULT:      declare i32 @memcmp

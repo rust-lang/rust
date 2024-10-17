@@ -1107,17 +1107,19 @@ pub(crate) mod builtin {
     ///
     /// If the named environment variable is present at compile time, this will
     /// expand into an expression of type `Option<&'static str>` whose value is
-    /// `Some` of the value of the environment variable. If the environment
-    /// variable is not present, then this will expand to `None`. See
-    /// [`Option<T>`][Option] for more information on this type.  Use
-    /// [`std::env::var`] instead if you want to read the value at runtime.
+    /// `Some` of the value of the environment variable (a compilation error
+    /// will be emitted if the environment variable is not a valid Unicode
+    /// string). If the environment variable is not present, then this will
+    /// expand to `None`. See [`Option<T>`][Option] for more information on this
+    /// type.  Use [`std::env::var`] instead if you want to read the value at
+    /// runtime.
     ///
     /// [`std::env::var`]: ../std/env/fn.var.html
     ///
-    /// A compile time error is never emitted when using this macro regardless
-    /// of whether the environment variable is present or not.
-    /// To emit a compile error if the environment variable is not present,
-    /// use the [`env!`] macro instead.
+    /// A compile time error is only emitted when using this macro if the
+    /// environment variable exists and is not a valid Unicode string. To also
+    /// emit a compile error if the environment variable is not present, use the
+    /// [`env!`] macro instead.
     ///
     /// # Examples
     ///
@@ -1537,6 +1539,24 @@ pub(crate) mod builtin {
     #[rustc_diagnostic_item = "include_macro"] // useful for external lints
     macro_rules! include {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+    }
+
+    /// Automatic Differentiation macro which allows generating a new function to compute
+    /// the derivative of a given function. It may only be applied to a function.
+    /// The expected usage syntax is
+    /// `#[autodiff(NAME, MODE, INPUT_ACTIVITIES, OUTPUT_ACTIVITY)]`
+    /// where:
+    /// NAME is a string that represents a valid function name.
+    /// MODE is any of Forward, Reverse, ForwardFirst, ReverseFirst.
+    /// INPUT_ACTIVITIES consists of one valid activity for each input parameter.
+    /// OUTPUT_ACTIVITY must not be set if we implicitely return nothing (or explicitely return
+    /// `-> ()`. Otherwise it must be set to one of the allowed activities.
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[rustc_builtin_macro]
+    #[cfg(not(bootstrap))]
+    pub macro autodiff($item:item) {
+        /* compiler built-in */
     }
 
     /// Asserts that a boolean expression is `true` at runtime.

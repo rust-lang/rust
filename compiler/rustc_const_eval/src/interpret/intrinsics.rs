@@ -4,6 +4,7 @@
 
 use std::assert_matches::assert_matches;
 
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
@@ -438,6 +439,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
+            sym::minnumf16 => self.float_min_intrinsic::<Half>(args, dest)?,
+            sym::minnumf32 => self.float_min_intrinsic::<Single>(args, dest)?,
+            sym::minnumf64 => self.float_min_intrinsic::<Double>(args, dest)?,
+            sym::minnumf128 => self.float_min_intrinsic::<Quad>(args, dest)?,
+
+            sym::maxnumf16 => self.float_max_intrinsic::<Half>(args, dest)?,
+            sym::maxnumf32 => self.float_max_intrinsic::<Single>(args, dest)?,
+            sym::maxnumf64 => self.float_max_intrinsic::<Double>(args, dest)?,
+            sym::maxnumf128 => self.float_max_intrinsic::<Quad>(args, dest)?,
+
+            sym::copysignf16 => self.float_copysign_intrinsic::<Half>(args, dest)?,
+            sym::copysignf32 => self.float_copysign_intrinsic::<Single>(args, dest)?,
+            sym::copysignf64 => self.float_copysign_intrinsic::<Double>(args, dest)?,
+            sym::copysignf128 => self.float_copysign_intrinsic::<Quad>(args, dest)?,
+
+            sym::fabsf16 => self.float_abs_intrinsic::<Half>(args, dest)?,
+            sym::fabsf32 => self.float_abs_intrinsic::<Single>(args, dest)?,
+            sym::fabsf64 => self.float_abs_intrinsic::<Double>(args, dest)?,
+            sym::fabsf128 => self.float_abs_intrinsic::<Quad>(args, dest)?,
+
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
         }
@@ -696,5 +717,64 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let lhs_bytes = get_bytes(self, lhs)?;
         let rhs_bytes = get_bytes(self, rhs)?;
         interp_ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
+    }
+
+    fn float_min_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let res = self.adjust_nan(a.min(b), &[a, b]);
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_max_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let res = self.adjust_nan(a.max(b), &[a, b]);
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_copysign_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        // bitwise, no NaN adjustments
+        self.write_scalar(a.copy_sign(b), dest)?;
+        interp_ok(())
+    }
+
+    fn float_abs_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = self.read_scalar(&args[0])?.to_float()?;
+        // bitwise, no NaN adjustments
+        self.write_scalar(x.abs(), dest)?;
+        interp_ok(())
     }
 }

@@ -6,6 +6,7 @@ use std::{ptr, slice, str};
 
 use libc::c_int;
 use rustc_codegen_ssa::base::wants_wasm_eh;
+use rustc_codegen_ssa::codegen_attrs::check_tied_features;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::unord::UnordSet;
@@ -19,8 +20,8 @@ use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATU
 
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    FixedX18InvalidArch, InvalidTargetFeaturePrefix, PossibleFeature, TargetFeatureDisableOrEnable,
-    UnknownCTargetFeature, UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
+    FixedX18InvalidArch, InvalidTargetFeaturePrefix, PossibleFeature, UnknownCTargetFeature,
+    UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
 
@@ -247,7 +248,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "pmuv3") => Some(LLVMFeature::new("perfmon")),
         ("aarch64", "paca") => Some(LLVMFeature::new("pauth")),
         ("aarch64", "pacg") => Some(LLVMFeature::new("pauth")),
-        ("aarch64", "sve-b16b16") => Some(LLVMFeature::new("b16b16")),
+        // Before LLVM 20 those two features were packaged together as b16b16
+        ("aarch64", "sve-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
+        ("aarch64", "sme-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
         ("aarch64", "flagm2") => Some(LLVMFeature::new("altnzcv")),
         // Rust ties fp and neon together.
         ("aarch64", "neon") => {
@@ -274,25 +277,6 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         }
         (_, s) => Some(LLVMFeature::new(s)),
     }
-}
-
-/// Given a map from target_features to whether they are enabled or disabled,
-/// ensure only valid combinations are allowed.
-pub(crate) fn check_tied_features(
-    sess: &Session,
-    features: &FxHashMap<&str, bool>,
-) -> Option<&'static [&'static str]> {
-    if !features.is_empty() {
-        for tied in sess.target.tied_target_features() {
-            // Tied features must be set to the same value, or not set at all
-            let mut tied_iter = tied.iter();
-            let enabled = features.get(tied_iter.next().unwrap());
-            if tied_iter.any(|f| enabled != features.get(f)) {
-                return Some(tied);
-            }
-        }
-    }
-    None
 }
 
 /// Used to generate cfg variables and apply features
@@ -685,7 +669,7 @@ pub(crate) fn global_llvm_features(
         features.extend(feats);
 
         if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-            sess.dcx().emit_err(TargetFeatureDisableOrEnable {
+            sess.dcx().emit_err(rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable {
                 features: f,
                 span: None,
                 missing_features: None,

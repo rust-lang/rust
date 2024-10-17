@@ -20,6 +20,14 @@ use crate::lang_items::Duplicate;
 #[diag(passes_incorrect_do_not_recommend_location)]
 pub(crate) struct IncorrectDoNotRecommendLocation;
 
+#[derive(Diagnostic)]
+#[diag(passes_autodiff_attr)]
+pub(crate) struct AutoDiffAttr {
+    #[primary_span]
+    #[label]
+    pub attr_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub(crate) struct OuterCrateLevelAttr;
@@ -1475,6 +1483,17 @@ pub(crate) struct UselessStability {
 pub(crate) struct CannotStabilizeDeprecated {
     #[primary_span]
     #[label]
+    pub span: Span,
+    #[label(passes_item)]
+    pub item_sp: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_unstable_attr_for_already_stable_feature)]
+pub(crate) struct UnstableAttrForAlreadyStableFeature {
+    #[primary_span]
+    #[label]
+    #[help]
     pub span: Span,
     #[label(passes_item)]
     pub item_sp: Span,

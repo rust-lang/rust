@@ -223,6 +223,8 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         if eligible { Ok(Some(node_item.item.def_id)) } else { Ok(None) }
     }
 
+    // FIXME: This actually should destructure the `Result` we get from transmutability and
+    // register candidates. We probably need to register >1 since we may have an OR of ANDs.
     fn is_transmutable(
         &self,
         param_env: ty::ParamEnv<'tcx>,

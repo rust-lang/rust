@@ -14,4 +14,8 @@ fn two() {}
 //~^ ERROR invalid predicate `target_pointer`
 fn three() {}
 
+#[cfg(target(true))]
+//~^ ERROR `cfg` predicate key must be an identifier
+fn four() {}
+
 fn main() {}

@@ -1,11 +1,11 @@
-error[E0119]: conflicting implementations of trait `Yay` for type `Alias`
+error[E0119]: conflicting implementations of trait `Yay` for type `<() as HideIt>::Assoc`
   --> $DIR/implied_lifetime_wf_check.rs:26:1
    |
 LL | impl Yay for <() as HideIt>::Assoc {}
    | ---------------------------------- first implementation here
 LL | #[cfg(error)]
 LL | impl Yay for i32 {}
-   | ^^^^^^^^^^^^^^^^ conflicting implementation for `Alias`
+   | ^^^^^^^^^^^^^^^^ conflicting implementation for `<() as HideIt>::Assoc`
 
 error: aborting due to 1 previous error
 

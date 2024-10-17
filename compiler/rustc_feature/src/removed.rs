@@ -154,6 +154,10 @@ declare_features! (
     /// then removed. But there was no utility storing it separately, so now
     /// it's in this list.
     (removed, no_stack_check, "1.0.0", None, None),
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible (object safe).
+    /// Renamed to `dyn_compatible_for_dispatch`.
+    (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
+     Some("renamed to `dyn_compatible_for_dispatch`")),
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
     (removed, on_unimplemented, "1.40.0", None, None),
@@ -216,6 +220,8 @@ declare_features! (
     (removed, test_removed_feature, "1.0.0", None, None),
     /// Allows using items which are missing stability attributes
     (removed, unmarked_api, "1.0.0", None, None),
+    /// Allows unnamed fields of struct and union type
+    (removed, unnamed_fields, "1.83.0", Some(49804), Some("feature needs redesign")),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None),
     /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.
     (removed, untagged_unions, "1.13.0", Some(55149),

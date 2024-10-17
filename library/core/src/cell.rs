@@ -193,11 +193,11 @@
 //! use std::marker::PhantomData;
 //!
 //! struct Rc<T: ?Sized> {
-//!     ptr: NonNull<RcBox<T>>,
-//!     phantom: PhantomData<RcBox<T>>,
+//!     ptr: NonNull<RcInner<T>>,
+//!     phantom: PhantomData<RcInner<T>>,
 //! }
 //!
-//! struct RcBox<T: ?Sized> {
+//! struct RcInner<T: ?Sized> {
 //!     strong: Cell<usize>,
 //!     refcount: Cell<usize>,
 //!     value: T,
@@ -213,9 +213,9 @@
 //!     }
 //! }
 //!
-//! trait RcBoxPtr<T: ?Sized> {
+//! trait RcInnerPtr<T: ?Sized> {
 //!
-//!     fn inner(&self) -> &RcBox<T>;
+//!     fn inner(&self) -> &RcInner<T>;
 //!
 //!     fn strong(&self) -> usize {
 //!         self.inner().strong.get()
@@ -230,8 +230,8 @@
 //!     }
 //! }
 //!
-//! impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
-//!    fn inner(&self) -> &RcBox<T> {
+//! impl<T: ?Sized> RcInnerPtr<T> for Rc<T> {
+//!    fn inner(&self) -> &RcInner<T> {
 //!        unsafe {
 //!            self.ptr.as_ref()
 //!        }
@@ -515,7 +515,7 @@ impl<T> Cell<T> {
     /// assert_eq!(five, 5);
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value.into_inner()
@@ -666,7 +666,7 @@ impl<T: Default> Cell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 
 // Allow types that wrap `Cell` to also implement `DispatchFromDyn`
-// and become object safe method receivers.
+// and become dyn-compatible method receivers.
 // Note that currently `Cell` itself cannot be a method receiver
 // because it does not implement Deref.
 // In other words:
@@ -864,7 +864,7 @@ impl<T> RefCell<T> {
     /// let five = c.into_inner();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     #[inline]
     pub const fn into_inner(self) -> T {
@@ -2108,7 +2108,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value
@@ -2181,8 +2181,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
-    #[rustc_const_stable(feature = "const_unsafecell_get_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_unsafecell_get_mut", since = "1.83.0")]
     pub const fn get_mut(&mut self) -> &mut T {
         &mut self.value
     }
@@ -2247,7 +2246,7 @@ impl<T> From<T> for UnsafeCell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 
 // Allow types that wrap `UnsafeCell` to also implement `DispatchFromDyn`
-// and become object safe method receivers.
+// and become dyn-compatible method receivers.
 // Note that currently `UnsafeCell` itself cannot be a method receiver
 // because it does not implement Deref.
 // In other words:
@@ -2349,7 +2348,7 @@ impl<T> From<T> for SyncUnsafeCell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
 
 // Allow types that wrap `SyncUnsafeCell` to also implement `DispatchFromDyn`
-// and become object safe method receivers.
+// and become dyn-compatible method receivers.
 // Note that currently `SyncUnsafeCell` itself cannot be a method receiver
 // because it does not implement Deref.
 // In other words:

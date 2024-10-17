@@ -315,10 +315,10 @@ fn sidebar_trait<'a>(
     );
     sidebar_assoc_items(cx, it, blocks);
 
-    if !t.is_object_safe(cx.tcx()) {
+    if !t.is_dyn_compatible(cx.tcx()) {
         blocks.push(LinkBlock::forced(
-            Link::new("object-safety", "Object Safety"),
-            "object-safety-note",
+            Link::new("dyn-compatibility", "Dyn Compatibility"),
+            "dyn-compatibility-note",
         ));
     }
 

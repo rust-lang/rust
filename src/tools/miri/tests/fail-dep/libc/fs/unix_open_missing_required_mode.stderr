@@ -1,8 +1,8 @@
-error: Undefined Behavior: incorrect number of arguments for `open` with `O_CREAT`: got 2, expected at least 3
+error: Undefined Behavior: incorrect number of arguments for `open(pathname, O_CREAT, ...)`: got 2, expected at least 3
   --> tests/fail-dep/libc/fs/unix_open_missing_required_mode.rs:LL:CC
    |
-LL | ...safe { libc::open(name_ptr, libc::O_CREAT) };
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of arguments for `open` with `O_CREAT`: got 2, expected at least 3
+LL | ... { libc::open(name_ptr, libc::O_CREAT) };
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of arguments for `open(pathname, O_CREAT, ...)`: got 2, expected at least 3
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

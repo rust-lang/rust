@@ -16,18 +16,6 @@ LL |     async fn bar<F>(&mut self, _func: F) -> ()
 LL |         F: FnMut() + Send,
    |                      ^^^^ required by this bound in `<Baz as Foo>::bar`
 
-error[E0276]: impl has stricter requirements than trait
-  --> $DIR/remove-invalid-type-bound-suggest-issue-127555.rs:16:22
-   |
-LL | /     fn bar<F>(&mut self, func: F) -> impl std::future::Future<Output = ()> + Send
-LL | |     where
-LL | |         F: FnMut();
-   | |___________________- definition of `bar` from trait
-...
-LL |           F: FnMut() + Send,
-   |                        ^^^^ impl has extra requirement `F: Send`
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0276, E0277.
-For more information about an error, try `rustc --explain E0276`.
+For more information about this error, try `rustc --explain E0277`.

@@ -565,6 +565,10 @@ pub trait BoundExistentialPredicates<I: Interner>:
     ) -> impl IntoIterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>>;
 }
 
+pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+    fn dummy() -> Self;
+}
+
 pub trait SliceLike: Sized + Copy {
     type Item: Copy;
     type IntoIter: Iterator<Item = Self::Item>;

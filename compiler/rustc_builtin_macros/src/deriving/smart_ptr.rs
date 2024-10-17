@@ -312,7 +312,7 @@ pub(crate) fn expand_deriving_smart_ptr(
     impl_generics.params.insert(pointee_param_idx + 1, extra_param);
 
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
-    let gen_args = vec![GenericArg::Type(alt_self_type.clone())];
+    let gen_args = vec![GenericArg::Type(alt_self_type)];
     add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
     add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args);
 }
@@ -333,12 +333,12 @@ fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee:
 }
 
 fn is_maybe_sized_bound(bound: &GenericBound) -> bool {
-    if let GenericBound::Trait(
-        trait_ref,
-        TraitBoundModifiers { polarity: ast::BoundPolarity::Maybe(_), .. },
-    ) = bound
+    if let GenericBound::Trait(trait_ref) = bound
+        && let TraitBoundModifiers { polarity: ast::BoundPolarity::Maybe(_), .. } =
+            trait_ref.modifiers
+        && is_sized_marker(&trait_ref.trait_ref.path)
     {
-        is_sized_marker(&trait_ref.trait_ref.path)
+        true
     } else {
         false
     }

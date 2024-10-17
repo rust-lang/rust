@@ -11,6 +11,10 @@ use crate::{
     Variants, WrappingRange,
 };
 
+mod ty;
+
+pub use ty::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
+
 // A variant is absent if it's uninhabited and only has ZST fields.
 // Present uninhabited variants only require space for their fields,
 // but *not* an encoding of the discriminant (e.g., a tag value).
