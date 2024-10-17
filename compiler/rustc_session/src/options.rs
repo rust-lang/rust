@@ -14,7 +14,7 @@ use rustc_span::{RealFileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
-    TargetTriple, TlsModel, WasmCAbi,
+    TargetTuple, TlsModel, WasmCAbi,
 };
 
 use crate::config::*;
@@ -146,7 +146,7 @@ top_level_options!(
         libs: Vec<NativeLib> [TRACKED],
         maybe_sysroot: Option<PathBuf> [UNTRACKED],
 
-        target_triple: TargetTriple [TRACKED],
+        target_triple: TargetTuple [TRACKED],
 
         /// Effective logical environment used by `env!`/`option_env!` macros
         logical_env: FxIndexMap<String, String> [TRACKED],

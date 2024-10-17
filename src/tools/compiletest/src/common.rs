@@ -761,7 +761,7 @@ pub const UI_COVERAGE_MAP: &str = "cov-map";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:
-///   /path/to/build/host-triple/test/ui/relative/
+///   /path/to/build/host-tuple/test/ui/relative/
 /// This is created early when tests are collected to avoid race conditions.
 pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
     config.build_base.join(relative_dir)
@@ -784,7 +784,7 @@ pub fn output_testname_unique(
 
 /// Absolute path to the directory where all output for the given
 /// test/revision should reside. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
+///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/
 pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_relative_path(config, &testpaths.relative_dir)
         .join(output_testname_unique(config, testpaths, revision))
@@ -792,13 +792,13 @@ pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<
 
 /// Absolute path to the base filename used as output for the given
 /// test/revision. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/testname
+///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/testname
 pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
 }
 
 /// Absolute path to the directory to use for incremental compilation. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.mode/testname.inc
+///   /path/to/build/host-tuple/test/ui/relative/testname.mode/testname.inc
 pub fn incremental_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_name(config, testpaths, revision).with_extension("inc")
 }

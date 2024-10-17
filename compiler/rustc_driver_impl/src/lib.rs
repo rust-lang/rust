@@ -61,7 +61,7 @@ use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
 use rustc_span::source_map::FileLoader;
 use rustc_target::json::ToJson;
-use rustc_target::spec::{Target, TargetTriple};
+use rustc_target::spec::{Target, TargetTuple};
 use time::OffsetDateTime;
 use tracing::trace;
 
@@ -738,7 +738,7 @@ fn print_crate_info(
             AllTargetSpecs => {
                 let mut targets = BTreeMap::new();
                 for name in rustc_target::spec::TARGETS {
-                    let triple = TargetTriple::from_triple(name);
+                    let triple = TargetTuple::from_tuple(name);
                     let target = Target::expect_builtin(&triple);
                     targets.insert(name, target.to_json());
                 }
@@ -918,7 +918,7 @@ pub fn version_at_macro_invocation(
         safe_println!("binary: {binary}");
         safe_println!("commit-hash: {commit_hash}");
         safe_println!("commit-date: {commit_date}");
-        safe_println!("host: {}", config::host_triple());
+        safe_println!("host: {}", config::host_tuple());
         safe_println!("release: {release}");
 
         let debug_flags = matches.opt_strs("Z");
@@ -1495,7 +1495,7 @@ fn report_ice(
     }
 
     let version = util::version_str!().unwrap_or("unknown_version");
-    let triple = config::host_triple();
+    let tuple = config::host_tuple();
 
     static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -1505,7 +1505,7 @@ fn report_ice(
             Ok(mut file) => {
                 dcx.emit_note(session_diagnostics::IcePath { path: path.clone() });
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
-                    let _ = write!(file, "\n\nrustc version: {version}\nplatform: {triple}");
+                    let _ = write!(file, "\n\nrustc version: {version}\nplatform: {tuple}");
                 }
                 Some(file)
             }
@@ -1518,12 +1518,12 @@ fn report_ice(
                         .map(PathBuf::from)
                         .map(|env_var| session_diagnostics::IcePathErrorEnv { env_var }),
                 });
-                dcx.emit_note(session_diagnostics::IceVersion { version, triple });
+                dcx.emit_note(session_diagnostics::IceVersion { version, triple: tuple });
                 None
             }
         }
     } else {
-        dcx.emit_note(session_diagnostics::IceVersion { version, triple });
+        dcx.emit_note(session_diagnostics::IceVersion { version, triple: tuple });
         None
     };
 

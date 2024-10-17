@@ -11,7 +11,7 @@ use rustc_macros::Subdiagnostic;
 use rustc_span::Span;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
-use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
+use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTuple};
 use rustc_type_ir::{ClosureKind, FloatTy};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -89,7 +89,7 @@ into_diag_arg_using_display!(
     MacroRulesNormalizedIdent,
     ParseIntError,
     StackProtector,
-    &TargetTriple,
+    &TargetTuple,
     SplitDebuginfo,
     ExitStatus,
     ErrCode,

@@ -30,7 +30,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::{PanicStrategy, Target, TargetTriple};
+use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
 use tracing::{debug, info, trace};
 
 use crate::errors;
@@ -506,7 +506,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         locator.reset();
         locator.is_proc_macro = true;
         locator.target = &self.sess.host;
-        locator.triple = TargetTriple::from_triple(config::host_triple());
+        locator.tuple = TargetTuple::from_tuple(config::host_tuple());
         locator.filesearch = self.sess.host_filesearch(path_kind);
 
         let Some(host_result) = self.load(locator)? else {
@@ -635,7 +635,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // FIXME: why is this condition necessary? It was adding in #33625 but I
         // don't know why and the original author doesn't remember ...
         let can_reuse_cratenum =
-            locator.triple == self.sess.opts.target_triple || locator.is_proc_macro;
+            locator.tuple == self.sess.opts.target_triple || locator.is_proc_macro;
         Ok(Some(if can_reuse_cratenum {
             let mut result = LoadResult::Loaded(library);
             for (cnum, data) in self.cstore.iter_crate_data() {
