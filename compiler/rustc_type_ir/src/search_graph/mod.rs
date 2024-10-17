@@ -714,7 +714,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // current goal is already part of the same cycle. This check could be
                 // improved but seems to be good enough for now.
                 let last = self.stack.raw.last().unwrap();
-                if !last.heads.opt_lowest_cycle_head().is_some_and(|lowest| lowest <= head) {
+                if last.heads.opt_lowest_cycle_head().is_none_or(|lowest| lowest > head) {
                     continue;
                 }
             }
