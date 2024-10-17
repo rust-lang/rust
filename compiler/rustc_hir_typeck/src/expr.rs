@@ -1320,84 +1320,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let expected_ty = expected.coercion_target_type(self, expr.span);
         if expected_ty == self.tcx.types.bool {
-            // The expected type is `bool` but this will result in `()` so we can reasonably
-            // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
-            // The likely cause of this is `if foo = bar { .. }`.
-            let actual_ty = self.tcx.types.unit;
-            let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap_err();
-            let lhs_ty = self.check_expr(lhs);
-            let rhs_ty = self.check_expr(rhs);
-            let refs_can_coerce = |lhs: Ty<'tcx>, rhs: Ty<'tcx>| {
-                let lhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, lhs.peel_refs());
-                let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
-                self.may_coerce(rhs, lhs)
-            };
-            let (applicability, eq) = if self.may_coerce(rhs_ty, lhs_ty) {
-                (Applicability::MachineApplicable, true)
-            } else if refs_can_coerce(rhs_ty, lhs_ty) {
-                // The lhs and rhs are likely missing some references in either side. Subsequent
-                // suggestions will show up.
-                (Applicability::MaybeIncorrect, true)
-            } else if let ExprKind::Binary(
-                Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
-                _,
-                rhs_expr,
-            ) = lhs.kind
-            {
-                // if x == 1 && y == 2 { .. }
-                //                 +
-                let actual_lhs_ty = self.check_expr(rhs_expr);
-                (
-                    Applicability::MaybeIncorrect,
-                    self.may_coerce(rhs_ty, actual_lhs_ty)
-                        || refs_can_coerce(rhs_ty, actual_lhs_ty),
-                )
-            } else if let ExprKind::Binary(
-                Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
-                lhs_expr,
-                _,
-            ) = rhs.kind
-            {
-                // if x == 1 && y == 2 { .. }
-                //       +
-                let actual_rhs_ty = self.check_expr(lhs_expr);
-                (
-                    Applicability::MaybeIncorrect,
-                    self.may_coerce(actual_rhs_ty, lhs_ty)
-                        || refs_can_coerce(actual_rhs_ty, lhs_ty),
-                )
-            } else {
-                (Applicability::MaybeIncorrect, false)
-            };
-            if !lhs.is_syntactic_place_expr()
-                && lhs.is_approximately_pattern()
-                && !matches!(lhs.kind, hir::ExprKind::Lit(_))
-            {
-                // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
-                if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
-                    self.tcx.parent_hir_node(expr.hir_id)
-                {
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_lo(),
-                        "you might have meant to use pattern matching",
-                        "let ",
-                        applicability,
-                    );
-                };
-            }
-            if eq {
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "you might have meant to compare for equality",
-                    '=',
-                    applicability,
-                );
-            }
-
-            // If the assignment expression itself is ill-formed, don't
-            // bother emitting another error
-            let reported = err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error());
-            return Ty::new_error(self.tcx, reported);
+            let guar = self.expr_assign_expected_bool_error(expr, lhs, rhs, span);
+            return Ty::new_error(self.tcx, guar);
         }
 
         let lhs_ty = self.check_expr_with_needs(lhs, Needs::MutPlace);
@@ -1448,6 +1372,88 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.tcx.types.unit
         }
+    }
+
+    /// The expected type is `bool` but this will result in `()` so we can reasonably
+    /// say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
+    /// The likely cause of this is `if foo = bar { .. }`.
+    fn expr_assign_expected_bool_error(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        lhs: &'tcx hir::Expr<'tcx>,
+        rhs: &'tcx hir::Expr<'tcx>,
+        span: Span,
+    ) -> ErrorGuaranteed {
+        let actual_ty = self.tcx.types.unit;
+        let expected_ty = self.tcx.types.bool;
+        let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap_err();
+        let lhs_ty = self.check_expr(lhs);
+        let rhs_ty = self.check_expr(rhs);
+        let refs_can_coerce = |lhs: Ty<'tcx>, rhs: Ty<'tcx>| {
+            let lhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, lhs.peel_refs());
+            let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
+            self.may_coerce(rhs, lhs)
+        };
+        let (applicability, eq) = if self.may_coerce(rhs_ty, lhs_ty) {
+            (Applicability::MachineApplicable, true)
+        } else if refs_can_coerce(rhs_ty, lhs_ty) {
+            // The lhs and rhs are likely missing some references in either side. Subsequent
+            // suggestions will show up.
+            (Applicability::MaybeIncorrect, true)
+        } else if let ExprKind::Binary(
+            Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+            _,
+            rhs_expr,
+        ) = lhs.kind
+        {
+            // if x == 1 && y == 2 { .. }
+            //                 +
+            let actual_lhs = self.check_expr(rhs_expr);
+            let may_eq = self.may_coerce(rhs_ty, actual_lhs) || refs_can_coerce(rhs_ty, actual_lhs);
+            (Applicability::MaybeIncorrect, may_eq)
+        } else if let ExprKind::Binary(
+            Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+            lhs_expr,
+            _,
+        ) = rhs.kind
+        {
+            // if x == 1 && y == 2 { .. }
+            //       +
+            let actual_rhs = self.check_expr(lhs_expr);
+            let may_eq = self.may_coerce(actual_rhs, lhs_ty) || refs_can_coerce(actual_rhs, lhs_ty);
+            (Applicability::MaybeIncorrect, may_eq)
+        } else {
+            (Applicability::MaybeIncorrect, false)
+        };
+
+        if !lhs.is_syntactic_place_expr()
+            && lhs.is_approximately_pattern()
+            && !matches!(lhs.kind, hir::ExprKind::Lit(_))
+        {
+            // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
+            if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
+                self.tcx.parent_hir_node(expr.hir_id)
+            {
+                err.span_suggestion_verbose(
+                    expr.span.shrink_to_lo(),
+                    "you might have meant to use pattern matching",
+                    "let ",
+                    applicability,
+                );
+            };
+        }
+        if eq {
+            err.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                "you might have meant to compare for equality",
+                '=',
+                applicability,
+            );
+        }
+
+        // If the assignment expression itself is ill-formed, don't
+        // bother emitting another error
+        err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error())
     }
 
     pub(super) fn check_expr_let(
