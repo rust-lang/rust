@@ -6,6 +6,7 @@ edition = "2021"
 # this is a dummy crate to ensure that all required crates appear in the sysroot
 [dependencies]
 proc_macro = { path = "../proc_macro" }
+profiler_builtins = { path = "../profiler_builtins", optional = true }
 std = { path = "../std" }
 test = { path = "../test" }
 
@@ -23,7 +24,7 @@ system-llvm-libunwind = ["std/system-llvm-libunwind"]
 panic-unwind = ["std/panic_unwind"]
 panic_immediate_abort = ["std/panic_immediate_abort"]
 optimize_for_size = ["std/optimize_for_size"]
-profiler = ["std/profiler"]
+profiler = ["dep:profiler_builtins"]
 std_detect_file_io = ["std/std_detect_file_io"]
 std_detect_dlsym_getauxval = ["std/std_detect_dlsym_getauxval"]
 std_detect_env_override = ["std/std_detect_env_override"]
