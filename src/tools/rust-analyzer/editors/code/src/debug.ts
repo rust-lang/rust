@@ -6,7 +6,6 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
-import { execSync } from "node:child_process";
 import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
 import type { Config } from "./config";
 
@@ -152,9 +151,24 @@ async function getDebugConfiguration(
     const env = prepareEnv(inheritEnv, runnable.label, runnableArgs, config.runnablesExtraEnv);
     const executable = await getDebugExecutable(runnableArgs, env);
     let sourceFileMap = debugOptions.sourceFileMap;
+
     if (sourceFileMap === "auto") {
         sourceFileMap = {};
-        await discoverSourceFileMap(sourceFileMap, env, wsFolder);
+        const computedSourceFileMap = await discoverSourceFileMap(env, wsFolder);
+
+        if (computedSourceFileMap) {
+            // lldb-dap requires passing the source map as an array of two element arrays.
+            // the two element array contains a source and destination pathname.
+            // TODO: remove lldb-dap-specific post-processing once
+            // https://github.com/llvm/llvm-project/pull/106919/ is released in the extension.
+            if (provider.type === "lldb-dap") {
+                provider.additional["sourceMap"] = [
+                    [computedSourceFileMap?.source, computedSourceFileMap?.destination],
+                ];
+            } else {
+                sourceFileMap[computedSourceFileMap.source] = computedSourceFileMap.destination;
+            }
+        }
     }
 
     const debugConfig = getDebugConfig(
@@ -189,11 +203,15 @@ async function getDebugConfiguration(
     return debugConfig;
 }
 
+type SourceFileMap = {
+    source: string;
+    destination: string;
+};
+
 async function discoverSourceFileMap(
-    sourceFileMap: Record<string, string>,
     env: Record<string, string>,
     cwd: string,
-) {
+): Promise<SourceFileMap | undefined> {
     const sysroot = env["RUSTC_TOOLCHAIN"];
     if (sysroot) {
         // let's try to use the default toolchain
@@ -203,9 +221,11 @@ async function discoverSourceFileMap(
         const commitHash = rx.exec(data)?.[1];
         if (commitHash) {
             const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
-            sourceFileMap[`/rustc/${commitHash}/`] = rustlib;
+            return { source: rustlib, destination: rustlib };
         }
     }
+
+    return;
 }
 
 type PropertyFetcher<Config, Input, Key extends keyof Config> = (
@@ -218,7 +238,7 @@ type DebugConfigProvider<Type extends string, DebugConfig extends BaseDebugConfi
     runnableArgsProperty: PropertyFetcher<DebugConfig, ra.CargoRunnableArgs, keyof DebugConfig>;
     sourceFileMapProperty?: keyof DebugConfig;
     type: Type;
-    additional?: Record<string, unknown>;
+    additional: Record<string, unknown>;
 };
 
 type KnownEnginesType = (typeof knownEngines)[keyof typeof knownEngines];
@@ -236,16 +256,7 @@ const knownEngines: {
             "args",
             runnableArgs.executableArgs,
         ],
-        additional: {
-            sourceMap: [
-                [
-                    `/rustc/${/commit-hash:\s(.*)$/m.exec(
-                        execSync("rustc -V -v", {}).toString(),
-                    )?.[1]}/library`,
-                    "${config:rust-analyzer.cargo.sysroot}/lib/rustlib/src/rust/library",
-                ],
-            ],
-        },
+        additional: {},
     },
     "vadimcn.vscode-lldb": {
         type: "lldb",
