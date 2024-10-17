@@ -263,6 +263,7 @@ macro_rules! lint_any {
                     $path,
                     SourceType::InTree,
                     &[],
+                    vec![]
                 );
 
                 let _guard = builder.msg_tool(

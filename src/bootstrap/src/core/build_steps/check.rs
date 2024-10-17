@@ -365,6 +365,7 @@ impl Step for RustAnalyzer {
             "src/tools/rust-analyzer",
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
+            vec![],
         );
 
         cargo.allow_features(crate::core::build_steps::tool::RustAnalyzer::ALLOW_FEATURES);
@@ -440,6 +441,8 @@ macro_rules! tool_check_step {
                     $path,
                     $source_type,
                     &[],
+                    vec![],
+
                 );
 
                 // For ./x.py clippy, don't run with --all-targets because

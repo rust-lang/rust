@@ -146,6 +146,7 @@ impl Step for Miri {
             "src/tools/miri",
             SourceType::InTree,
             &[],
+            vec![],
         );
         miri.add_rustc_lib_path(builder);
         miri.arg("--").arg("--target").arg(target.rustc_target_arg());

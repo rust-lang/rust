@@ -13,7 +13,7 @@ use std::{env, fs, mem};
 
 use crate::Mode;
 use crate::core::build_steps::compile;
-use crate::core::build_steps::tool::{self, SourceType, Tool, prepare_tool_cargo};
+use crate::core::build_steps::tool::{self, CompileStep, SourceType, Tool, prepare_tool_cargo};
 use crate::core::builder::{
     self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, crate_description,
 };
@@ -948,7 +948,8 @@ macro_rules! tool_doc {
                 t!(fs::create_dir_all(&out));
 
                 let compiler = builder.compiler(stage, builder.config.build);
-                builder.ensure(compile::Std::new(compiler, target));
+                let mut steps = vec![];
+                steps.push(CompileStep::Std(target));
 
                 if true $(&& $rustc_tool)? {
                     // Build rustc docs so that we generate relative links.
@@ -957,7 +958,8 @@ macro_rules! tool_doc {
                     // Rustdoc needs the rustc sysroot available to build.
                     // FIXME: is there a way to only ensure `check::Rustc` here? Last time I tried it failed
                     // with strange errors, but only on a full bors test ...
-                    builder.ensure(compile::Rustc::new(compiler, target));
+                    steps.push(CompileStep::Rustc(target, None));
+
                 }
 
                 // Build cargo command.
@@ -970,6 +972,7 @@ macro_rules! tool_doc {
                     $path,
                     source_type,
                     &[],
+                    steps
                 );
 
                 cargo.arg("-Zskip-rustdoc-fingerprint");
