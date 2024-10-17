@@ -25,8 +25,17 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
         in_value: OperandRef<'tcx, B::Value>,
         out_place: Option<PlaceRef<'tcx, B::Value>>,
     },
+    /// Interpolate a string directly into the inline assembly.
+    ///
+    /// This is distinct from `Const`, which can reference a const pointer or reference (and thus is
+    /// a const in Rust/linker sense but not a literal value).
+    ///
+    /// We currently use this for constant integers. They could technically use `Const` as well.
     Interpolate {
         string: String,
+    },
+    Const {
+        value: OperandRef<'tcx, B::Value>,
     },
     SymFn {
         instance: Instance<'tcx>,
