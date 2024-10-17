@@ -76,7 +76,7 @@ fn inline_to_global_operand<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 cx.layout_of(mono_type),
             );
 
-            GlobalAsmOperandRef::Const { string }
+            GlobalAsmOperandRef::Interpolate { string }
         }
         InlineAsmOperand::SymFn { value } => {
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
