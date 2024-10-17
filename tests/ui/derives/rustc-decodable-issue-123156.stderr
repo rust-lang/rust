@@ -1,5 +1,5 @@
 Future incompatibility report: Future breakage diagnostic:
-warning: use of unstable library feature 'rustc_encodable_decodable': derive macro for `rustc-serialize`; should not be used in new code
+warning: use of unstable library feature `rustc_encodable_decodable`: derive macro for `rustc-serialize`; should not be used in new code
   --> $DIR/rustc-decodable-issue-123156.rs:10:10
    |
 LL | #[derive(RustcDecodable)]

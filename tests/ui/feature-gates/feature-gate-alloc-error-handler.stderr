@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'alloc_error_handler'
+error[E0658]: use of unstable library feature `alloc_error_handler`
   --> $DIR/feature-gate-alloc-error-handler.rs:8:3
    |
 LL | #[alloc_error_handler]

@@ -114,8 +114,8 @@ pub fn report_unstable(
     let attr::Unstability { feature, reason, issue, .. } = denial.unstability;
 
     let msg = match reason.to_opt_reason() {
-        Some(r) => format!("use of unstable library feature '{feature}': {r}"),
-        None => format!("use of unstable library feature '{feature}'"),
+        Some(r) => format!("use of unstable library feature `{feature}`: {r}"),
+        None => format!("use of unstable library feature `{feature}`"),
     };
 
     if is_soft {

@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'function'
+error[E0658]: use of unstable library feature `function`
   --> $DIR/internal-unstable.rs:48:25
    |
 LL |     pass_through_allow!(internal_unstable::unstable());
@@ -7,7 +7,7 @@ LL |     pass_through_allow!(internal_unstable::unstable());
    = help: add `#![feature(function)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'function'
+error[E0658]: use of unstable library feature `function`
   --> $DIR/internal-unstable.rs:50:27
    |
 LL |     pass_through_noallow!(internal_unstable::unstable());
@@ -16,7 +16,7 @@ LL |     pass_through_noallow!(internal_unstable::unstable());
    = help: add `#![feature(function)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'function'
+error[E0658]: use of unstable library feature `function`
   --> $DIR/internal-unstable.rs:54:22
    |
 LL |     println!("{:?}", internal_unstable::unstable());
@@ -25,7 +25,7 @@ LL |     println!("{:?}", internal_unstable::unstable());
    = help: add `#![feature(function)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'function'
+error[E0658]: use of unstable library feature `function`
   --> $DIR/internal-unstable.rs:56:10
    |
 LL |     bar!(internal_unstable::unstable());
@@ -34,7 +34,7 @@ LL |     bar!(internal_unstable::unstable());
    = help: add `#![feature(function)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'function'
+error[E0658]: use of unstable library feature `function`
   --> $DIR/internal-unstable.rs:18:9
    |
 LL |         internal_unstable::unstable();

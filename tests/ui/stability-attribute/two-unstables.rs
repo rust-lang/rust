@@ -13,9 +13,9 @@ const USE_NOTHING: () = two_unstables::nothing();
 //[some]~^^ ERROR `nothing` is not yet stable as a const fn
 
 struct Wrapper(two_unstables::Foo);
-//[none]~^ ERROR use of unstable library feature 'a': reason a [E0658]
-//[none]~| ERROR use of unstable library feature 'b' [E0658]
-//[some]~^^^ ERROR use of unstable library feature 'b' [E0658]
+//[none]~^ ERROR use of unstable library feature `a`: reason a [E0658]
+//[none]~| ERROR use of unstable library feature `b` [E0658]
+//[some]~^^^ ERROR use of unstable library feature `b` [E0658]
 
 impl two_unstables::Trait for Wrapper {}
 //[none]~^ ERROR not all trait items implemented, missing: `method` [E0046]
@@ -24,7 +24,7 @@ impl two_unstables::Trait for Wrapper {}
 
 fn main() {
     two_unstables::mac!();
-    //[none]~^ ERROR use of unstable library feature 'g': reason g [E0658]
-    //[none]~| ERROR use of unstable library feature 'h' [E0658]
-    //[some]~^^^ ERROR use of unstable library feature 'g': reason g [E0658]
+    //[none]~^ ERROR use of unstable library feature `g`: reason g [E0658]
+    //[none]~| ERROR use of unstable library feature `h` [E0658]
+    //[some]~^^^ ERROR use of unstable library feature `g`: reason g [E0658]
 }

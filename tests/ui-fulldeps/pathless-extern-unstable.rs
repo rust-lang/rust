@@ -4,6 +4,6 @@
 // Test that `--extern rustc_middle` fails with `rustc_private`.
 
 pub use rustc_middle;
-//~^ ERROR use of unstable library feature 'rustc_private'
+//~^ ERROR use of unstable library feature `rustc_private`
 
 fn main() {}

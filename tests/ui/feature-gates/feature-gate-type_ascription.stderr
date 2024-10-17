@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'type_ascription': placeholder syntax for type ascription
+error[E0658]: use of unstable library feature `type_ascription`: placeholder syntax for type ascription
   --> $DIR/feature-gate-type_ascription.rs:4:13
    |
 LL |     let a = type_ascribe!(10, u8);

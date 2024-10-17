@@ -1,4 +1,4 @@
-error: use of unstable library feature 'test': `bench` is a part of custom test frameworks which are unstable
+error: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
   --> $DIR/bench.rs:3:3
    |
 LL | #[bench]
@@ -8,7 +8,7 @@ LL | #[bench]
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
    = note: `#[deny(soft_unstable)]` on by default
 
-error: use of unstable library feature 'test': `bench` is a part of custom test frameworks which are unstable
+error: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
   --> $DIR/bench.rs:7:5
    |
 LL | use bench as _;
@@ -20,7 +20,7 @@ LL | use bench as _;
 error: aborting due to 2 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-error: use of unstable library feature 'test': `bench` is a part of custom test frameworks which are unstable
+error: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
   --> $DIR/bench.rs:3:3
    |
 LL | #[bench]
@@ -31,7 +31,7 @@ LL | #[bench]
    = note: `#[deny(soft_unstable)]` on by default
 
 Future breakage diagnostic:
-error: use of unstable library feature 'test': `bench` is a part of custom test frameworks which are unstable
+error: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
   --> $DIR/bench.rs:7:5
    |
 LL | use bench as _;
