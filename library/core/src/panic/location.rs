@@ -1,7 +1,6 @@
-use crate::fmt;
-
 #[cfg(not(bootstrap))]
 use crate::ffi::CStr;
+use crate::fmt;
 
 /// A struct containing information about the location of a panic.
 ///
