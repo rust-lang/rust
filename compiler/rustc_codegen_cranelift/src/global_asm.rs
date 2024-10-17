@@ -104,7 +104,7 @@ fn codegen_global_asm_inner<'tcx>(
             InlineAsmTemplatePiece::String(ref s) => global_asm.push_str(s),
             InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
                 match operands[operand_idx] {
-                    GlobalAsmOperandRef::Const { ref string } => {
+                    GlobalAsmOperandRef::Interpolate { ref string } => {
                         global_asm.push_str(string);
                     }
                     GlobalAsmOperandRef::SymFn { instance } => {

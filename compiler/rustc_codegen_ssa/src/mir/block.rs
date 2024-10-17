@@ -1193,7 +1193,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         const_value,
                         bx.layout_of(value.ty()),
                     );
-                    InlineAsmOperandRef::Const { string }
+                    InlineAsmOperandRef::Interpolate { string }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);
