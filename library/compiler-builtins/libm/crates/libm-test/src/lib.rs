@@ -1,3 +1,4 @@
+pub mod gen;
 mod num_traits;
 mod test_traits;
 
