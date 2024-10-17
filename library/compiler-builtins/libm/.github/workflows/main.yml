@@ -2,38 +2,103 @@ name: CI
 on: [push, pull_request]
 
 env:
+  CARGO_TERM_VERBOSE: true
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
+  RUST_BACKTRACE: full
 
 jobs:
-  docker:
+  test:
     name: Docker
-    runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
-        target:
-        - aarch64-unknown-linux-gnu
-        - arm-unknown-linux-gnueabi
-        - arm-unknown-linux-gnueabihf
-        - armv7-unknown-linux-gnueabihf
-        # - i686-unknown-linux-gnu
-        # MIPS targets disabled since they are dropped to tier 3.
-        # See https://github.com/rust-lang/compiler-team/issues/648
-        #- mips-unknown-linux-gnu
-        #- mips64-unknown-linux-gnuabi64
-        #- mips64el-unknown-linux-gnuabi64
-        - powerpc-unknown-linux-gnu
-        - powerpc64-unknown-linux-gnu
-        - powerpc64le-unknown-linux-gnu
-        - x86_64-unknown-linux-gnu
+        include:
+        - target: aarch64-apple-darwin
+          os: macos-latest
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: aarch64-pc-windows-msvc
+          os: windows-latest
+          build_only: 1 # Can't run on x86 hosts
+        - target: arm-unknown-linux-gnueabi
+          os: ubuntu-latest
+        - target: arm-unknown-linux-gnueabihf
+          os: ubuntu-latest
+        - target: armv7-unknown-linux-gnueabihf
+          os: ubuntu-latest
+        - target: i586-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: i686-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: powerpc-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: powerpc64-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: powerpc64le-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: riscv64gc-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: thumbv6m-none-eabi
+          os: ubuntu-latest
+        - target: thumbv7em-none-eabi
+          os: ubuntu-latest
+        - target: thumbv7em-none-eabihf
+          os: ubuntu-latest
+        - target: thumbv7m-none-eabi
+          os: ubuntu-latest
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: x86_64-apple-darwin
+          os: macos-13
+        - target: i686-pc-windows-msvc
+          os: windows-latest
+        - target: x86_64-pc-windows-msvc
+          os: windows-latest
+        - target: i686-pc-windows-gnu
+          os: windows-latest
+          channel: nightly-i686-gnu
+        - target: x86_64-pc-windows-gnu
+          os: windows-latest
+          channel: nightly-x86_64-gnu
+    runs-on: ${{ matrix.os }}
+    env:
+      BUILD_ONLY: ${{ matrix.build_only }}
     steps:
-    - uses: actions/checkout@master
-    - name: Install Rust
-      run: rustup update nightly --no-self-update && rustup default nightly
-    - run: rustup target add ${{ matrix.target }}
-    - run: rustup target add x86_64-unknown-linux-musl
-    - run: cargo generate-lockfile
-    - run: ./ci/run-docker.sh ${{ matrix.target }}
+    - name: Print runner information
+      run: uname -a
+    - uses: actions/checkout@v4
+    - name: Install Rust (rustup)
+      shell: bash
+      run: |
+        channel="nightly"
+        # Account for channels that have required components (MinGW)
+        [ -n "${{ matrix.channel }}" ] && channel="${{ matrix.channel }}"
+        rustup update "$channel" --no-self-update
+        rustup default "$channel"
+        rustup target add ${{ matrix.target }}
+        rustup component add llvm-tools-preview
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.target }}
+
+    - name: Download musl source
+      run: ./ci/download-musl.sh
+      shell: bash
+
+    # Non-linux tests just use our raw script
+    - name: Run locally
+      if: matrix.os != 'ubuntu-latest'
+      shell: bash
+      run: ./ci/run.sh ${{ matrix.target }}
+
+    # Otherwise we use our docker containers to run builds
+    - name: Run in Docker
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        rustup target add x86_64-unknown-linux-musl
+        cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
 
   wasm:
     name: WebAssembly
@@ -45,7 +110,7 @@ jobs:
     - run: rustup target add wasm32-unknown-unknown
     - run: cargo build --target wasm32-unknown-unknown
 
-  cb:
+  builtins:
     name: "The compiler-builtins crate works"
     runs-on: ubuntu-latest
     steps:
@@ -61,6 +126,8 @@ jobs:
     - uses: actions/checkout@master
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
+    - name: Download musl source
+      run: ./ci/download-musl.sh
     - run: cargo bench --all
 
   msrv:
@@ -92,9 +159,9 @@ jobs:
 
   success:
     needs:
-      - docker
+      - test
       - wasm
-      - cb
+      - builtins
       - benchmarks
       - msrv
       - rustfmt
