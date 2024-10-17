@@ -25,7 +25,7 @@ crossbeam-channel.workspace = true
 dirs = "5.0.1"
 dissimilar.workspace = true
 itertools.workspace = true
-scip = "0.3.3"
+scip = "0.5.1"
 lsp-types = { version = "=0.95.0", features = ["proposed"] }
 parking_lot = "0.12.1"
 xflags = "0.3.0"
