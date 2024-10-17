@@ -213,15 +213,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.scc_universe(scc).is_root() {
-                    match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
-                        // If the region contains a single placeholder then they're equal.
-                        Some((0, placeholder)) => {
-                            return ty::Region::new_placeholder(tcx, placeholder);
-                        }
+                    let higher_ranked_region = if let Some(representative) =
+                        self.placeholder_representative(scc)
+                    {
+                        ty::Region::new_placeholder(tcx, representative)
+                    } else {
+                        debug!(
+                            "Cannot get a nice name for higher-ranked region {vid:?} as {region:?}"
+                        );
 
-                        // Fallback: this will produce a cryptic error message.
-                        _ => return region,
-                    }
+                        region
+                    };
+                    return higher_ranked_region;
                 }
 
                 // Find something that we can name
