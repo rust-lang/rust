@@ -157,13 +157,18 @@ fn basic() {
     assert_eq(-{ 5.0_f128 }, -5.0_f128);
 
     // infinities, NaN
-    // FIXME(f16_f128): add when constants and `is_infinite` are available
+    assert!((5.0_f16 / 0.0).is_infinite());
+    assert_ne!({ 5.0_f16 / 0.0 }, { -5.0_f16 / 0.0 });
     assert!((5.0_f32 / 0.0).is_infinite());
     assert_ne!({ 5.0_f32 / 0.0 }, { -5.0_f32 / 0.0 });
     assert!((5.0_f64 / 0.0).is_infinite());
     assert_ne!({ 5.0_f64 / 0.0 }, { 5.0_f64 / -0.0 });
+    assert!((5.0_f128 / 0.0).is_infinite());
+    assert_ne!({ 5.0_f128 / 0.0 }, { 5.0_f128 / -0.0 });
+    assert_ne!(f16::NAN, f16::NAN);
     assert_ne!(f32::NAN, f32::NAN);
     assert_ne!(f64::NAN, f64::NAN);
+    assert_ne!(f128::NAN, f128::NAN);
 
     // negative zero
     let posz = 0.0f16;
@@ -215,9 +220,14 @@ fn basic() {
     assert!((black_box(-1.0f128) % 1.0).is_sign_negative());
     assert!((black_box(-1.0f128) % -1.0).is_sign_negative());
 
-    // FIXME(f16_f128): add when `abs` is available
+    assert_eq!((-1.0f16).abs(), 1.0f16);
+    assert_eq!(34.2f16.abs(), 34.2f16);
     assert_eq!((-1.0f32).abs(), 1.0f32);
+    assert_eq!(34.2f32.abs(), 34.2f32);
+    assert_eq!((-1.0f64).abs(), 1.0f64);
     assert_eq!(34.2f64.abs(), 34.2f64);
+    assert_eq!((-1.0f128).abs(), 1.0f128);
+    assert_eq!(34.2f128.abs(), 34.2f128);
 }
 
 /// Test casts from floats to ints and back
@@ -654,6 +664,14 @@ fn casts() {
 }
 
 fn ops() {
+    // f16 min/max
+    assert_eq((1.0_f16).max(-1.0), 1.0);
+    assert_eq((1.0_f16).min(-1.0), -1.0);
+    assert_eq(f16::NAN.min(9.0), 9.0);
+    assert_eq(f16::NAN.max(-9.0), -9.0);
+    assert_eq((9.0_f16).min(f16::NAN), 9.0);
+    assert_eq((-9.0_f16).max(f16::NAN), -9.0);
+
     // f32 min/max
     assert_eq((1.0 as f32).max(-1.0), 1.0);
     assert_eq((1.0 as f32).min(-1.0), -1.0);
@@ -670,6 +688,21 @@ fn ops() {
     assert_eq((9.0 as f64).min(f64::NAN), 9.0);
     assert_eq((-9.0 as f64).max(f64::NAN), -9.0);
 
+    // f128 min/max
+    assert_eq((1.0_f128).max(-1.0), 1.0);
+    assert_eq((1.0_f128).min(-1.0), -1.0);
+    assert_eq(f128::NAN.min(9.0), 9.0);
+    assert_eq(f128::NAN.max(-9.0), -9.0);
+    assert_eq((9.0_f128).min(f128::NAN), 9.0);
+    assert_eq((-9.0_f128).max(f128::NAN), -9.0);
+
+    // f16 copysign
+    assert_eq(3.5_f16.copysign(0.42), 3.5_f16);
+    assert_eq(3.5_f16.copysign(-0.42), -3.5_f16);
+    assert_eq((-3.5_f16).copysign(0.42), 3.5_f16);
+    assert_eq((-3.5_f16).copysign(-0.42), -3.5_f16);
+    assert!(f16::NAN.copysign(1.0).is_nan());
+
     // f32 copysign
     assert_eq(3.5_f32.copysign(0.42), 3.5_f32);
     assert_eq(3.5_f32.copysign(-0.42), -3.5_f32);
@@ -683,6 +716,13 @@ fn ops() {
     assert_eq((-3.5_f64).copysign(0.42), 3.5_f64);
     assert_eq((-3.5_f64).copysign(-0.42), -3.5_f64);
     assert!(f64::NAN.copysign(1.0).is_nan());
+
+    // f128 copysign
+    assert_eq(3.5_f128.copysign(0.42), 3.5_f128);
+    assert_eq(3.5_f128.copysign(-0.42), -3.5_f128);
+    assert_eq((-3.5_f128).copysign(0.42), 3.5_f128);
+    assert_eq((-3.5_f128).copysign(-0.42), -3.5_f128);
+    assert!(f128::NAN.copysign(1.0).is_nan());
 }
 
 /// Tests taken from rustc test suite.
@@ -807,6 +847,18 @@ fn nan_casts() {
 
 fn rounding() {
     // Test cases taken from the library's tests for this feature
+    // f16
+    assert_eq(2.5f16.round_ties_even(), 2.0f16);
+    assert_eq(1.0f16.round_ties_even(), 1.0f16);
+    assert_eq(1.3f16.round_ties_even(), 1.0f16);
+    assert_eq(1.5f16.round_ties_even(), 2.0f16);
+    assert_eq(1.7f16.round_ties_even(), 2.0f16);
+    assert_eq(0.0f16.round_ties_even(), 0.0f16);
+    assert_eq((-0.0f16).round_ties_even(), -0.0f16);
+    assert_eq((-1.0f16).round_ties_even(), -1.0f16);
+    assert_eq((-1.3f16).round_ties_even(), -1.0f16);
+    assert_eq((-1.5f16).round_ties_even(), -2.0f16);
+    assert_eq((-1.7f16).round_ties_even(), -2.0f16);
     // f32
     assert_eq(2.5f32.round_ties_even(), 2.0f32);
     assert_eq(1.0f32.round_ties_even(), 1.0f32);
@@ -831,23 +883,59 @@ fn rounding() {
     assert_eq((-1.3f64).round_ties_even(), -1.0f64);
     assert_eq((-1.5f64).round_ties_even(), -2.0f64);
     assert_eq((-1.7f64).round_ties_even(), -2.0f64);
+    // f128
+    assert_eq(2.5f128.round_ties_even(), 2.0f128);
+    assert_eq(1.0f128.round_ties_even(), 1.0f128);
+    assert_eq(1.3f128.round_ties_even(), 1.0f128);
+    assert_eq(1.5f128.round_ties_even(), 2.0f128);
+    assert_eq(1.7f128.round_ties_even(), 2.0f128);
+    assert_eq(0.0f128.round_ties_even(), 0.0f128);
+    assert_eq((-0.0f128).round_ties_even(), -0.0f128);
+    assert_eq((-1.0f128).round_ties_even(), -1.0f128);
+    assert_eq((-1.3f128).round_ties_even(), -1.0f128);
+    assert_eq((-1.5f128).round_ties_even(), -2.0f128);
+    assert_eq((-1.7f128).round_ties_even(), -2.0f128);
 
+    assert_eq!(3.8f16.floor(), 3.0f16);
+    assert_eq!((-1.1f16).floor(), -2.0f16);
     assert_eq!(3.8f32.floor(), 3.0f32);
+    assert_eq!((-1.1f32).floor(), -2.0f32);
+    assert_eq!(3.8f64.floor(), 3.0f64);
     assert_eq!((-1.1f64).floor(), -2.0f64);
+    assert_eq!(3.8f128.floor(), 3.0f128);
+    assert_eq!((-1.1f128).floor(), -2.0f128);
 
+    assert_eq!(3.8f16.ceil(), 4.0f16);
+    assert_eq!((-2.3f16).ceil(), -2.0f16);
+    assert_eq!(3.8f32.ceil(), 4.0f32);
     assert_eq!((-2.3f32).ceil(), -2.0f32);
     assert_eq!(3.8f64.ceil(), 4.0f64);
+    assert_eq!((-2.3f64).ceil(), -2.0f64);
+    assert_eq!(3.8f128.ceil(), 4.0f128);
+    assert_eq!((-2.3f128).ceil(), -2.0f128);
 
+    assert_eq!(0.1f16.trunc(), 0.0f16);
+    assert_eq!((-0.1f16).trunc(), 0.0f16);
     assert_eq!(0.1f32.trunc(), 0.0f32);
+    assert_eq!((-0.1f32).trunc(), 0.0f32);
+    assert_eq!(0.1f64.trunc(), 0.0f64);
     assert_eq!((-0.1f64).trunc(), 0.0f64);
+    assert_eq!(0.1f128.trunc(), 0.0f128);
+    assert_eq!((-0.1f128).trunc(), 0.0f128);
 
+    assert_eq!(3.3_f16.round(), 3.0);
+    assert_eq!(2.5_f16.round(), 3.0);
     assert_eq!(3.3_f32.round(), 3.0);
     assert_eq!(2.5_f32.round(), 3.0);
     assert_eq!(3.9_f64.round(), 4.0);
     assert_eq!(2.5_f64.round(), 3.0);
+    assert_eq!(3.9_f128.round(), 4.0);
+    assert_eq!(2.5_f128.round(), 3.0);
 }
 
 fn mul_add() {
+    // FIXME(f16_f128): add when supported
+
     assert_eq!(3.0f32.mul_add(2.0f32, 5.0f32), 11.0);
     assert_eq!(0.0f32.mul_add(-2.0, f32::consts::E), f32::consts::E);
     assert_eq!(3.0f64.mul_add(2.0, 5.0), 11.0);
@@ -983,7 +1071,7 @@ fn test_fast() {
     use std::intrinsics::{fadd_fast, fdiv_fast, fmul_fast, frem_fast, fsub_fast};
 
     #[inline(never)]
-    pub fn test_operations_f64(a: f64, b: f64) {
+    pub fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
         unsafe {
             assert_eq!(fadd_fast(a, b), a + b);
@@ -1006,10 +1094,38 @@ fn test_fast() {
         }
     }
 
-    test_operations_f64(1., 2.);
-    test_operations_f64(10., 5.);
+    #[inline(never)]
+    pub fn test_operations_f64(a: f64, b: f64) {
+        // make sure they all map to the correct operation
+        unsafe {
+            assert_eq!(fadd_fast(a, b), a + b);
+            assert_eq!(fsub_fast(a, b), a - b);
+            assert_eq!(fmul_fast(a, b), a * b);
+            assert_eq!(fdiv_fast(a, b), a / b);
+            assert_eq!(frem_fast(a, b), a % b);
+        }
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f128(a: f128, b: f128) {
+        // make sure they all map to the correct operation
+        unsafe {
+            assert_eq!(fadd_fast(a, b), a + b);
+            assert_eq!(fsub_fast(a, b), a - b);
+            assert_eq!(fmul_fast(a, b), a * b);
+            assert_eq!(fdiv_fast(a, b), a / b);
+            assert_eq!(frem_fast(a, b), a % b);
+        }
+    }
+
+    test_operations_f16(11., 2.);
+    test_operations_f16(10., 15.);
     test_operations_f32(11., 2.);
     test_operations_f32(10., 15.);
+    test_operations_f64(1., 2.);
+    test_operations_f64(10., 5.);
+    test_operations_f128(1., 2.);
+    test_operations_f128(10., 5.);
 }
 
 fn test_algebraic() {
@@ -1018,7 +1134,7 @@ fn test_algebraic() {
     };
 
     #[inline(never)]
-    pub fn test_operations_f64(a: f64, b: f64) {
+    pub fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
         assert_eq!(fadd_algebraic(a, b), a + b);
         assert_eq!(fsub_algebraic(a, b), a - b);
@@ -1037,14 +1153,40 @@ fn test_algebraic() {
         assert_eq!(frem_algebraic(a, b), a % b);
     }
 
-    test_operations_f64(1., 2.);
-    test_operations_f64(10., 5.);
+    #[inline(never)]
+    pub fn test_operations_f64(a: f64, b: f64) {
+        // make sure they all map to the correct operation
+        assert_eq!(fadd_algebraic(a, b), a + b);
+        assert_eq!(fsub_algebraic(a, b), a - b);
+        assert_eq!(fmul_algebraic(a, b), a * b);
+        assert_eq!(fdiv_algebraic(a, b), a / b);
+        assert_eq!(frem_algebraic(a, b), a % b);
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f128(a: f128, b: f128) {
+        // make sure they all map to the correct operation
+        assert_eq!(fadd_algebraic(a, b), a + b);
+        assert_eq!(fsub_algebraic(a, b), a - b);
+        assert_eq!(fmul_algebraic(a, b), a * b);
+        assert_eq!(fdiv_algebraic(a, b), a / b);
+        assert_eq!(frem_algebraic(a, b), a % b);
+    }
+
+    test_operations_f16(11., 2.);
+    test_operations_f16(10., 15.);
     test_operations_f32(11., 2.);
     test_operations_f32(10., 15.);
+    test_operations_f64(1., 2.);
+    test_operations_f64(10., 5.);
+    test_operations_f128(1., 2.);
+    test_operations_f128(10., 5.);
 }
 
 fn test_fmuladd() {
     use std::intrinsics::{fmuladdf32, fmuladdf64};
+
+    // FIXME(f16_f128): add when supported
 
     #[inline(never)]
     pub fn test_operations_f32(a: f32, b: f32, c: f32) {
