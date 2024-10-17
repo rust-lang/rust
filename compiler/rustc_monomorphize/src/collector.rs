@@ -954,7 +954,10 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
         || instance.polymorphize(*tcx).upstream_monomorphization(*tcx).is_some()
     {
         // We can link to the item in question, no instance needed in this crate.
-        return false;
+        // However, we will still codegen this item locally *if* we have the MIR to do so.
+        // This codegen will happen in LLVM with available_externally linkage, which lets us benefit
+        // from inlining etc. while saving on binary size.
+        return tcx.is_mir_available(def_id);
     }
 
     if let DefKind::Static { .. } = tcx.def_kind(def_id) {
