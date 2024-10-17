@@ -205,7 +205,12 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
             let (span, kind) = if attr.is_doc_comment() {
                 (attr.span(), DocFragmentKind::SugaredDoc)
             } else {
-                (attr.value_span().unwrap(), DocFragmentKind::RawDoc)
+                (
+                    attr.value_span()
+                        .map(|i| i.with_ctxt(attr.span().ctxt()))
+                        .unwrap_or(attr.span()),
+                    DocFragmentKind::RawDoc,
+                )
             };
             let fragment = DocFragment { span, doc, kind, item_id, indent: 0 };
             doc_fragments.push(fragment);
