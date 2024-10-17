@@ -459,8 +459,6 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut five = Arc::<u32>::new_uninit();
@@ -1143,8 +1141,6 @@ impl<T> Arc<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
@@ -1295,8 +1291,6 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut five = Arc::<u32>::new_uninit();
@@ -1333,8 +1327,6 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
