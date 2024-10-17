@@ -13,6 +13,7 @@ test-musl-serialized = ["rand"]
 
 [dependencies]
 libm = { path = "../.." }
+libm-macros = { path = "../libm-macros" }
 
 [build-dependencies]
 rand = { version = "0.8.5", optional = true }
