@@ -79,18 +79,18 @@ dependencies = [
 
 [[package]]
 name = "gccjit"
-version = "2.2.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bb376e98c82d9284c3a17fc1d6bf9bc921055418950238d7a553c27a7e1f6ab"
+checksum = "8b8611473168aebc9b307d7f4e7466fda20ab8d72acaca2c0d840dbe8fef451a"
 dependencies = [
  "gccjit_sys",
 ]
 
 [[package]]
 name = "gccjit_sys"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93b4b1be553b5df790bf25ca2a1d6add81727dc29f8d5c8742468ed306d621d1"
+checksum = "f383b875dac2f3bb06e7d395be2fe6fbaad935658fb54f2399e5eb4fb88117ce"
 dependencies = [
  "libc",
 ]

@@ -199,12 +199,13 @@ pub fn compile_codegen_unit(
             let f32_type_supported = target_info.supports_target_dependent_type(CType::Float32);
             let f64_type_supported = target_info.supports_target_dependent_type(CType::Float64);
             let f128_type_supported = target_info.supports_target_dependent_type(CType::Float128);
+            let u128_type_supported = target_info.supports_target_dependent_type(CType::UInt128t);
             // TODO: improve this to avoid passing that many arguments.
             let cx = CodegenCx::new(
                 &context,
                 cgu,
                 tcx,
-                target_info.supports_128bit_int(),
+                u128_type_supported,
                 f16_type_supported,
                 f32_type_supported,
                 f64_type_supported,
