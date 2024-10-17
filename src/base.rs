@@ -379,7 +379,6 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                 let target = fx.get_block(*target);
                 let failure = fx.bcx.create_block();
-                fx.bcx.set_cold_block(failure);
 
                 if *expected {
                     fx.bcx.ins().brif(cond, target, &[], failure, &[]);
@@ -544,6 +543,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
             }
             TerminatorKind::Unreachable => {
+                fx.bcx.set_cold_block(block);
                 fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
             }
             TerminatorKind::Yield { .. }
@@ -1075,6 +1075,8 @@ fn codegen_panic_inner<'tcx>(
     args: &[Value],
     span: Option<Span>,
 ) {
+    fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+
     let def_id = fx.tcx.require_lang_item(lang_item, span);
 
     let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);

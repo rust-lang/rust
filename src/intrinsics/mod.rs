@@ -449,6 +449,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
     match intrinsic {
         sym::abort => {
+            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
             fx.bcx.ins().trap(TrapCode::User(0));
             return Ok(());
         }
