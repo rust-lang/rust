@@ -891,6 +891,7 @@ define_config! {
         metrics: Option<bool> = "metrics",
         android_ndk: Option<PathBuf> = "android-ndk",
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
+        jobs: Option<u32> = "jobs",
     }
 }
 
@@ -1511,6 +1512,7 @@ impl Config {
             metrics: _,
             android_ndk,
             optimized_compiler_builtins,
+            jobs,
         } = toml.build.unwrap_or_default();
 
         if let Some(file_build) = build {
@@ -1620,6 +1622,12 @@ impl Config {
 
         // Verbose flag is a good default for `rust.verbose-tests`.
         config.verbose_tests = config.is_verbose();
+
+        if let Some(jobs) = jobs {
+            if jobs > 0 {
+                config.jobs = Some(jobs);
+            }
+        }
 
         if let Some(install) = toml.install {
             let Install { prefix, sysconfdir, docdir, bindir, libdir, mandir, datadir } = install;
