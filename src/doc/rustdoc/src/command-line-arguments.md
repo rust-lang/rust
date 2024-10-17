@@ -52,7 +52,7 @@ rustdoc 1.17.0 (56124baa9 2017-04-24)
 binary: rustdoc
 commit-hash: hash
 commit-date: date
-host: host-triple
+host: host-tuple
 release: 1.17.0
 LLVM version: 3.9
 ```

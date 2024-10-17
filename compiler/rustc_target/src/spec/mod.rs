@@ -1,21 +1,21 @@
 //! [Flexible target specification.](https://github.com/rust-lang/rfcs/pull/131)
 //!
 //! Rust targets a wide variety of usecases, and in the interest of flexibility,
-//! allows new target triples to be defined in configuration files. Most users
+//! allows new target tuples to be defined in configuration files. Most users
 //! will not need to care about these, but this is invaluable when porting Rust
 //! to a new platform, and allows for an unprecedented level of control over how
 //! the compiler works.
 //!
 //! # Using custom targets
 //!
-//! A target triple, as passed via `rustc --target=TRIPLE`, will first be
+//! A target tuple, as passed via `rustc --target=TUPLE`, will first be
 //! compared against the list of built-in targets. This is to ease distributing
 //! rustc (no need for configuration files) and also to hold these built-in
-//! targets as immutable and sacred. If `TRIPLE` is not one of the built-in
-//! targets, rustc will check if a file named `TRIPLE` exists. If it does, it
+//! targets as immutable and sacred. If `TUPLE` is not one of the built-in
+//! targets, rustc will check if a file named `TUPLE` exists. If it does, it
 //! will be loaded as the target configuration. If the file does not exist,
 //! rustc will search each directory in the environment variable
-//! `RUST_TARGET_PATH` for a file named `TRIPLE.json`. The first one found will
+//! `RUST_TARGET_PATH` for a file named `TUPLE.json`. The first one found will
 //! be loaded. If no file is found in any of those directories, a fatal error
 //! will be given.
 //!
@@ -1586,17 +1586,17 @@ impl fmt::Display for StackProtector {
 }
 
 macro_rules! supported_targets {
-    ( $(($triple:literal, $module:ident),)+ ) => {
+    ( $(($tuple:literal, $module:ident),)+ ) => {
         mod targets {
             $(pub(crate) mod $module;)+
         }
 
         /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($triple),+];
+        pub const TARGETS: &[&str] = &[$($tuple),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
             let mut t = match target {
-                $( $triple => targets::$module::target(), )+
+                $( $tuple => targets::$module::target(), )+
                 _ => return None,
             };
             t.is_builtin = true;
@@ -2005,9 +2005,9 @@ impl TargetWarnings {
 /// Every field here must be specified, and has no default value.
 #[derive(PartialEq, Clone, Debug)]
 pub struct Target {
-    /// Unversioned target triple to pass to LLVM.
+    /// Unversioned target tuple to pass to LLVM.
     ///
-    /// Target triples can optionally contain an OS version (notably Apple targets), which rustc
+    /// Target tuples can optionally contain an OS version (notably Apple targets), which rustc
     /// cannot know without querying the environment.
     ///
     /// Use `rustc_codegen_ssa::back::versioned_llvm_target` if you need the full LLVM target.
@@ -3477,28 +3477,28 @@ impl Target {
     }
 
     /// Load a built-in target
-    pub fn expect_builtin(target_triple: &TargetTriple) -> Target {
-        match *target_triple {
-            TargetTriple::TargetTriple(ref target_triple) => {
-                load_builtin(target_triple).expect("built-in target")
+    pub fn expect_builtin(target_tuple: &TargetTuple) -> Target {
+        match *target_tuple {
+            TargetTuple::TargetTuple(ref target_tuple) => {
+                load_builtin(target_tuple).expect("built-in target")
             }
-            TargetTriple::TargetJson { .. } => {
+            TargetTuple::TargetJson { .. } => {
                 panic!("built-in targets doesn't support target-paths")
             }
         }
     }
 
-    /// Search for a JSON file specifying the given target triple.
+    /// Search for a JSON file specifying the given target tuple.
     ///
     /// If none is found in `$RUST_TARGET_PATH`, look for a file called `target.json` inside the
-    /// sysroot under the target-triple's `rustlib` directory. Note that it could also just be a
+    /// sysroot under the target-tuple's `rustlib` directory. Note that it could also just be a
     /// bare filename already, so also check for that. If one of the hardcoded targets we know
     /// about, just return it directly.
     ///
     /// The error string could come from any of the APIs called, including filesystem access and
     /// JSON decoding.
     pub fn search(
-        target_triple: &TargetTriple,
+        target_tuple: &TargetTuple,
         sysroot: &Path,
     ) -> Result<(Target, TargetWarnings), String> {
         use std::{env, fs};
@@ -3509,16 +3509,16 @@ impl Target {
             Target::from_json(obj)
         }
 
-        match *target_triple {
-            TargetTriple::TargetTriple(ref target_triple) => {
-                // check if triple is in list of built-in targets
-                if let Some(t) = load_builtin(target_triple) {
+        match *target_tuple {
+            TargetTuple::TargetTuple(ref target_tuple) => {
+                // check if tuple is in list of built-in targets
+                if let Some(t) = load_builtin(target_tuple) {
                     return Ok((t, TargetWarnings::empty()));
                 }
 
-                // search for a file named `target_triple`.json in RUST_TARGET_PATH
+                // search for a file named `target_tuple`.json in RUST_TARGET_PATH
                 let path = {
-                    let mut target = target_triple.to_string();
+                    let mut target = target_tuple.to_string();
                     target.push_str(".json");
                     PathBuf::from(target)
                 };
@@ -3532,9 +3532,9 @@ impl Target {
                     }
                 }
 
-                // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
+                // Additionally look in the sysroot under `lib/rustlib/<tuple>/target.json`
                 // as a fallback.
-                let rustlib_path = crate::relative_target_rustlib_path(sysroot, target_triple);
+                let rustlib_path = crate::relative_target_rustlib_path(sysroot, target_tuple);
                 let p = PathBuf::from_iter([
                     Path::new(sysroot),
                     Path::new(&rustlib_path),
@@ -3544,9 +3544,9 @@ impl Target {
                     return load_file(&p);
                 }
 
-                Err(format!("Could not find specification for target {target_triple:?}"))
+                Err(format!("Could not find specification for target {target_tuple:?}"))
             }
-            TargetTriple::TargetJson { ref contents, .. } => {
+            TargetTuple::TargetJson { ref contents, .. } => {
                 let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
                 Target::from_json(obj)
             }
@@ -3751,44 +3751,44 @@ impl ToJson for Target {
     }
 }
 
-/// Either a target triple string or a path to a JSON file.
+/// Either a target tuple string or a path to a JSON file.
 #[derive(Clone, Debug)]
-pub enum TargetTriple {
-    TargetTriple(String),
+pub enum TargetTuple {
+    TargetTuple(String),
     TargetJson {
         /// Warning: This field may only be used by rustdoc. Using it anywhere else will lead to
         /// inconsistencies as it is discarded during serialization.
         path_for_rustdoc: PathBuf,
-        triple: String,
+        tuple: String,
         contents: String,
     },
 }
 
 // Use a manual implementation to ignore the path field
-impl PartialEq for TargetTriple {
+impl PartialEq for TargetTuple {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::TargetTriple(l0), Self::TargetTriple(r0)) => l0 == r0,
+            (Self::TargetTuple(l0), Self::TargetTuple(r0)) => l0 == r0,
             (
-                Self::TargetJson { path_for_rustdoc: _, triple: l_triple, contents: l_contents },
-                Self::TargetJson { path_for_rustdoc: _, triple: r_triple, contents: r_contents },
-            ) => l_triple == r_triple && l_contents == r_contents,
+                Self::TargetJson { path_for_rustdoc: _, tuple: l_tuple, contents: l_contents },
+                Self::TargetJson { path_for_rustdoc: _, tuple: r_tuple, contents: r_contents },
+            ) => l_tuple == r_tuple && l_contents == r_contents,
             _ => false,
         }
     }
 }
 
 // Use a manual implementation to ignore the path field
-impl Hash for TargetTriple {
+impl Hash for TargetTuple {
     fn hash<H: Hasher>(&self, state: &mut H) -> () {
         match self {
-            TargetTriple::TargetTriple(triple) => {
+            TargetTuple::TargetTuple(tuple) => {
                 0u8.hash(state);
-                triple.hash(state)
+                tuple.hash(state)
             }
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => {
+            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents } => {
                 1u8.hash(state);
-                triple.hash(state);
+                tuple.hash(state);
                 contents.hash(state)
             }
         }
@@ -3796,45 +3796,45 @@ impl Hash for TargetTriple {
 }
 
 // Use a manual implementation to prevent encoding the target json file path in the crate metadata
-impl<S: Encoder> Encodable<S> for TargetTriple {
+impl<S: Encoder> Encodable<S> for TargetTuple {
     fn encode(&self, s: &mut S) {
         match self {
-            TargetTriple::TargetTriple(triple) => {
+            TargetTuple::TargetTuple(tuple) => {
                 s.emit_u8(0);
-                s.emit_str(triple);
+                s.emit_str(tuple);
             }
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => {
+            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents } => {
                 s.emit_u8(1);
-                s.emit_str(triple);
+                s.emit_str(tuple);
                 s.emit_str(contents);
             }
         }
     }
 }
 
-impl<D: Decoder> Decodable<D> for TargetTriple {
+impl<D: Decoder> Decodable<D> for TargetTuple {
     fn decode(d: &mut D) -> Self {
         match d.read_u8() {
-            0 => TargetTriple::TargetTriple(d.read_str().to_owned()),
-            1 => TargetTriple::TargetJson {
+            0 => TargetTuple::TargetTuple(d.read_str().to_owned()),
+            1 => TargetTuple::TargetJson {
                 path_for_rustdoc: PathBuf::new(),
-                triple: d.read_str().to_owned(),
+                tuple: d.read_str().to_owned(),
                 contents: d.read_str().to_owned(),
             },
             _ => {
-                panic!("invalid enum variant tag while decoding `TargetTriple`, expected 0..2");
+                panic!("invalid enum variant tag while decoding `TargetTuple`, expected 0..2");
             }
         }
     }
 }
 
-impl TargetTriple {
-    /// Creates a target triple from the passed target triple string.
-    pub fn from_triple(triple: &str) -> Self {
-        TargetTriple::TargetTriple(triple.into())
+impl TargetTuple {
+    /// Creates a target tuple from the passed target tuple string.
+    pub fn from_tuple(tuple: &str) -> Self {
+        TargetTuple::TargetTuple(tuple.into())
     }
 
-    /// Creates a target triple from the passed target path.
+    /// Creates a target tuple from the passed target path.
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
         let canonicalized_path = try_canonicalize(path)?;
         let contents = std::fs::read_to_string(&canonicalized_path).map_err(|err| {
@@ -3843,46 +3843,47 @@ impl TargetTriple {
                 format!("target path {canonicalized_path:?} is not a valid file: {err}"),
             )
         })?;
-        let triple = canonicalized_path
+        let tuple = canonicalized_path
             .file_stem()
             .expect("target path must not be empty")
             .to_str()
             .expect("target path must be valid unicode")
             .to_owned();
-        Ok(TargetTriple::TargetJson { path_for_rustdoc: canonicalized_path, triple, contents })
+        Ok(TargetTuple::TargetJson { path_for_rustdoc: canonicalized_path, tuple, contents })
     }
 
-    /// Returns a string triple for this target.
+    /// Returns a string tuple for this target.
     ///
     /// If this target is a path, the file name (without extension) is returned.
-    pub fn triple(&self) -> &str {
+    pub fn tuple(&self) -> &str {
         match *self {
-            TargetTriple::TargetTriple(ref triple)
-            | TargetTriple::TargetJson { ref triple, .. } => triple,
+            TargetTuple::TargetTuple(ref tuple) | TargetTuple::TargetJson { ref tuple, .. } => {
+                tuple
+            }
         }
     }
 
-    /// Returns an extended string triple for this target.
+    /// Returns an extended string tuple for this target.
     ///
-    /// If this target is a path, a hash of the path is appended to the triple returned
-    /// by `triple()`.
-    pub fn debug_triple(&self) -> String {
+    /// If this target is a path, a hash of the path is appended to the tuple returned
+    /// by `tuple()`.
+    pub fn debug_tuple(&self) -> String {
         use std::hash::DefaultHasher;
 
         match self {
-            TargetTriple::TargetTriple(triple) => triple.to_owned(),
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents: content } => {
+            TargetTuple::TargetTuple(tuple) => tuple.to_owned(),
+            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents: content } => {
                 let mut hasher = DefaultHasher::new();
                 content.hash(&mut hasher);
                 let hash = hasher.finish();
-                format!("{triple}-{hash}")
+                format!("{tuple}-{hash}")
             }
         }
     }
 }
 
-impl fmt::Display for TargetTriple {
+impl fmt::Display for TargetTuple {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.debug_triple())
+        write!(f, "{}", self.debug_tuple())
     }
 }

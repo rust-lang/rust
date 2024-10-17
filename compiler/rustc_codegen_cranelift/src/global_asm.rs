@@ -118,8 +118,8 @@ impl GlobalAsmConfig {
         GlobalAsmConfig {
             assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
             target: match &tcx.sess.opts.target_triple {
-                rustc_target::spec::TargetTriple::TargetTriple(triple) => triple.clone(),
-                rustc_target::spec::TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+                rustc_target::spec::TargetTuple::TargetTuple(triple) => triple.clone(),
+                rustc_target::spec::TargetTuple::TargetJson { path_for_rustdoc, .. } => {
                     path_for_rustdoc.to_str().unwrap().to_owned()
                 }
             },
