@@ -21,4 +21,13 @@ const _: () = {
     };
 };
 
+// https://github.com/rust-lang/rust/issues/131643
+const _: () = {
+    const _: () = {
+        impl InnerTest {}
+    };
+
+    struct InnerTest;
+};
+
 fn main() {}

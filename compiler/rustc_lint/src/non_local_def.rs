@@ -301,9 +301,13 @@ fn did_has_local_parent(
         return false;
     };
 
-    peel_parent_while(tcx, parent_did, |tcx, did| tcx.def_kind(did) == DefKind::Mod)
-        .map(|parent_did| parent_did == impl_parent || Some(parent_did) == outermost_impl_parent)
-        .unwrap_or(false)
+    peel_parent_while(tcx, parent_did, |tcx, did| {
+        tcx.def_kind(did) == DefKind::Mod
+            || (tcx.def_kind(did) == DefKind::Const
+                && tcx.opt_item_name(did) == Some(kw::Underscore))
+    })
+    .map(|parent_did| parent_did == impl_parent || Some(parent_did) == outermost_impl_parent)
+    .unwrap_or(false)
 }
 
 /// Given a `DefId` checks if it satisfies `f` if it does check with it's parent and continue
