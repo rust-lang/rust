@@ -223,11 +223,9 @@ mod handlers {
     mod unnecessary_async;
     mod unqualify_method_call;
     mod unwrap_block;
-    mod unwrap_option_return_type;
-    mod unwrap_result_return_type;
+    mod unwrap_return_type;
     mod unwrap_tuple;
-    mod wrap_return_type_in_option;
-    mod wrap_return_type_in_result;
+    mod wrap_return_type;
     mod wrap_unwrap_cfg_attr;
 
     pub(crate) fn all() -> &'static [Handler] {
@@ -357,12 +355,12 @@ mod handlers {
             unmerge_use::unmerge_use,
             unnecessary_async::unnecessary_async,
             unwrap_block::unwrap_block,
-            unwrap_option_return_type::unwrap_option_return_type,
-            unwrap_result_return_type::unwrap_result_return_type,
+            unwrap_return_type::unwrap_option_return_type,
+            unwrap_return_type::unwrap_result_return_type,
             unwrap_tuple::unwrap_tuple,
             unqualify_method_call::unqualify_method_call,
-            wrap_return_type_in_option::wrap_return_type_in_option,
-            wrap_return_type_in_result::wrap_return_type_in_result,
+            wrap_return_type::wrap_return_type_in_option,
+            wrap_return_type::wrap_return_type_in_result,
             wrap_unwrap_cfg_attr::wrap_unwrap_cfg_attr,
 
             // These are manually sorted for better priorities. By default,
