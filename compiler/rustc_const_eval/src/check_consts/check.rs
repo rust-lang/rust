@@ -741,9 +741,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         self.check_op(ops::FnCallUnstable(callee, bad_gates));
                     }
                 } else {
-                    // FIXME(ecstaticmorse); For compatibility, we consider `unstable` callees that
-                    // have no `rustc_const_stable` attributes to be const-unstable as well. This
-                    // should be fixed later.
+                    // For compatibility, we consider `unstable` callees that have no
+                    // `rustc_const_stable` attributes to be const-unstable as well.
                     let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
                         && tcx.lookup_stability(callee).is_some_and(|s| s.is_unstable());
                     if callee_is_unstable_unmarked {
