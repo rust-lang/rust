@@ -8,9 +8,7 @@ use crate::num::NonZero;
 /// The `repeat_n()` function repeats a single value exactly `n` times.
 ///
 /// This is very similar to using [`repeat()`] with [`Iterator::take()`],
-/// but there are two differences:
-/// - `repeat_n()` can return the original value, rather than always cloning.
-/// - `repeat_n()` produces an [`ExactSizeIterator`].
+/// but `repeat_n()` can return the original value, rather than always cloning.
 ///
 /// [`repeat()`]: crate::iter::repeat
 ///
