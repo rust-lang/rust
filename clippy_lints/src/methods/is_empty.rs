@@ -1,6 +1,7 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{find_binding_init, path_to_local};
+use clippy_utils::macros::{is_assert_macro, root_macro_call};
+use clippy_utils::{find_binding_init, get_parent_expr, is_inside_always_const_context, path_to_local};
 use rustc_hir::{Expr, HirId};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -13,6 +14,16 @@ use super::CONST_IS_EMPTY;
 pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_>) {
     if in_external_macro(cx.sess(), expr.span) || !receiver.span.eq_ctxt(expr.span) {
         return;
+    }
+    if let Some(parent) = get_parent_expr(cx, expr) {
+        if let Some(parent) = get_parent_expr(cx, parent) {
+            if is_inside_always_const_context(cx.tcx, expr.hir_id)
+                && let Some(macro_call) = root_macro_call(parent.span)
+                && is_assert_macro(cx, macro_call.def_id)
+            {
+                return;
+            }
+        }
     }
     let init_expr = expr_or_init(cx, receiver);
     if !receiver.span.eq_ctxt(init_expr.span) {
