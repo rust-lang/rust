@@ -1455,17 +1455,21 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         // Figure out if this is a type/trait segment,
         // which requires object lifetime defaults.
-        let type_def_id = match res {
-            Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(self.tcx.parent(def_id)),
-            Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(self.tcx.parent(def_id)),
-            Res::Def(
-                DefKind::Struct
-                | DefKind::Union
-                | DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::Trait,
-                def_id,
-            ) if depth == 0 => Some(def_id),
+        let type_def_id = match (res, depth) {
+            (Res::Def(DefKind::AssocTy, def_id), 1) => Some(self.tcx.parent(def_id)),
+            (Res::Def(DefKind::Variant, def_id), 0) => Some(self.tcx.parent(def_id)),
+            (
+                Res::Def(
+                    DefKind::Struct
+                    | DefKind::Union
+                    | DefKind::Enum
+                    | DefKind::TyAlias
+                    | DefKind::Trait
+                    | DefKind::AssocTy,
+                    def_id,
+                ),
+                0,
+            ) => Some(def_id),
             _ => None,
         };
 
@@ -1509,9 +1513,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             let map = &self.map;
             let generics = self.tcx.generics_of(def_id);
 
-            // `type_def_id` points to an item, so there is nothing to inherit generics from.
-            debug_assert_eq!(generics.parent_count, 0);
-
             let set_to_region = |set: ObjectLifetimeDefault| match set {
                 ObjectLifetimeDefault::Empty => {
                     if in_body {
@@ -1522,8 +1523,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 }
                 ObjectLifetimeDefault::Static => Some(ResolvedArg::StaticLifetime),
                 ObjectLifetimeDefault::Param(param_def_id) => {
-                    // This index can be used with `generic_args` since `parent_count == 0`.
                     let index = generics.param_def_id_to_index[&param_def_id] as usize;
+                    let index = index - generics.parent_count;
                     generic_args.args.get(index).and_then(|arg| match arg {
                         GenericArg::Lifetime(lt) => map.defs.get(&lt.hir_id.local_id).copied(),
                         _ => None,

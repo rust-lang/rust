@@ -1977,22 +1977,21 @@ impl<'tcx> ContainerTy<'_, 'tcx> {
                 | DefKind::Union
                 | DefKind::Enum
                 | DefKind::TyAlias
-                | DefKind::Trait) = tcx.def_kind(container)
+                | DefKind::Trait
+                | DefKind::AssocTy) = tcx.def_kind(container)
                 else {
                     return ObjectLifetimeDefault::Empty;
                 };
 
                 let generics = tcx.generics_of(container);
-                debug_assert_eq!(generics.parent_count, 0);
 
                 let param = generics.own_params[index].def_id;
                 let default = tcx.object_lifetime_default(param);
                 match default {
                     rbv::ObjectLifetimeDefault::Param(lifetime) => {
-                        // The index is relative to the parent generics but since we don't have any,
-                        // we don't need to translate it.
-                        let index = generics.param_def_id_to_index[&lifetime];
-                        let arg = args.skip_binder()[index as usize].expect_region();
+                        let index = generics.param_def_id_to_index[&lifetime] as usize;
+                        let index = index - generics.parent_count;
+                        let arg = args.skip_binder()[index].expect_region();
                         ObjectLifetimeDefault::Arg(arg)
                     }
                     rbv::ObjectLifetimeDefault::Empty => ObjectLifetimeDefault::Empty,
