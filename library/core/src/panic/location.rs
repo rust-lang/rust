@@ -145,7 +145,7 @@ impl<'a> Location<'a> {
 
         #[cfg(debug_assertions)]
         if !matches!(s.as_bytes().last(), Some(0)) {
-            panic!("filename is not nul terminated");
+            panic!("filename is not nul-terminated");
         }
 
         // SAFETY: The string contains a nul-byte, so the length is at least one.
@@ -220,11 +220,6 @@ impl<'a> Location<'a> {
     #[cfg(not(bootstrap))]
     pub fn file_with_nul(&self) -> &CStr {
         let file_with_nul = self.file_with_nul.as_bytes();
-
-        #[cfg(debug_assertions)]
-        if !matches!(file_with_nul.last(), Some(0)) {
-            panic!("filename is not nul terminated");
-        }
 
         // SAFETY: This struct is only ever constructed by the compiler, which always inserts a
         // nul-terminator in this string.
