@@ -2561,6 +2561,12 @@ impl<T, A: Allocator> Vec<T, A> {
     #[track_caller]
     unsafe fn append_elements(&mut self, other: *const [T]) {
         let count = unsafe { (*other).len() };
+        if count == 0 {
+            // The early return is not necessary for correctness, but it helps
+            // LLVM by avoiding phi nodes flowing into memcpy.
+            // See codegen/lib-optimizations/append-elements.rs
+            return;
+        }
         self.reserve(count);
         let len = self.len();
         unsafe { ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count) };
