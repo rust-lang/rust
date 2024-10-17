@@ -553,7 +553,7 @@ impl ProjectWorkspace {
             ProjectWorkspaceKind::Json(project) => project
                 .crates()
                 .filter_map(|(_, krate)| krate.build.as_ref().map(|build| build.build_file.clone()))
-                .map(AbsPathBuf::assert)
+                .map(|build_file| self.workspace_root().join(build_file))
                 .collect(),
             _ => vec![],
         }

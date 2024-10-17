@@ -59,7 +59,7 @@ mod tests {
     use expect_test::expect;
     use ide_assists::{Assist, AssistResolveStrategy};
     use ide_db::{
-        base_db::salsa::Durability, symbol_index::SymbolsDatabase, FileRange, FxHashSet,
+        base_db::ra_salsa::Durability, symbol_index::SymbolsDatabase, FileRange, FxHashSet,
         RootDatabase,
     };
     use test_fixture::WithFixture;

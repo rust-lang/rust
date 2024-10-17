@@ -97,7 +97,7 @@ fn apply_mark_internal(
     call_id: MacroCallId,
     transparency: Transparency,
 ) -> SyntaxContextId {
-    use base_db::salsa;
+    use base_db::ra_salsa;
 
     let call_id = Some(call_id);
 
@@ -107,7 +107,7 @@ fn apply_mark_internal(
 
     if transparency >= Transparency::Opaque {
         let parent = opaque;
-        opaque = salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
+        opaque = ra_salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
             (parent, call_id, transparency),
             |new_opaque| SyntaxContextData {
                 outer_expn: call_id,
@@ -122,7 +122,7 @@ fn apply_mark_internal(
     if transparency >= Transparency::SemiTransparent {
         let parent = opaque_and_semitransparent;
         opaque_and_semitransparent =
-            salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
+            ra_salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
                 (parent, call_id, transparency),
                 |new_opaque_and_semitransparent| SyntaxContextData {
                     outer_expn: call_id,
@@ -200,7 +200,7 @@ pub fn marks_rev(
 
 pub(crate) fn dump_syntax_contexts(db: &dyn ExpandDatabase) -> String {
     use crate::db::{InternMacroCallLookupQuery, InternSyntaxContextLookupQuery};
-    use base_db::salsa::debug::DebugQueryTable;
+    use base_db::ra_salsa::debug::DebugQueryTable;
 
     let mut s = String::from("Expansions:");
     let mut entries = InternMacroCallLookupQuery.in_db(db).entries::<Vec<_>>();

@@ -74,7 +74,7 @@ proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
 proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
 profile = { path = "./crates/profile", version = "0.0.0" }
 project-model = { path = "./crates/project-model", version = "0.0.0" }
-salsa = { path = "./crates/salsa", version = "0.0.0" }
+ra-salsa = { path = "./crates/ra-salsa", package = "salsa", version = "0.0.0" }
 span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
@@ -85,11 +85,11 @@ tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.68.0", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.68.0", default-features = false }
-ra-ap-rustc_index = { version = "0.68.0", default-features = false }
-ra-ap-rustc_abi = { version = "0.68.0", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.68.0", default-features = false }
+ra-ap-rustc_lexer = { version = "0.71.0", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.71.0", default-features = false }
+ra-ap-rustc_index = { version = "0.71.0", default-features = false }
+ra-ap-rustc_abi = { version = "0.71.0", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.71.0", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 test-fixture = { path = "./crates/test-fixture" }
@@ -153,6 +153,9 @@ tracing-tree = "0.3.0"
 tracing-subscriber = { version = "0.3.18", default-features = false, features = [
   "registry",
   "fmt",
+  "local-time",
+  "std",
+  "time",
   "tracing-log",
 ] }
 triomphe = { version = "0.1.10", default-features = false, features = ["std"] }

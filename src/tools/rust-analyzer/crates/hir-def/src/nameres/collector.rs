@@ -30,8 +30,8 @@ use crate::{
     db::DefDatabase,
     item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
     item_tree::{
-        self, AttrOwner, ExternCrate, FieldsShape, FileItemTreeId, ImportKind, ItemTree,
-        ItemTreeId, ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
+        self, AttrOwner, FieldsShape, FileItemTreeId, ImportKind, ItemTree, ItemTreeId,
+        ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
     },
     macro_call_as_call_id, macro_call_as_call_id_with_eager,
     nameres::{
@@ -93,6 +93,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
         proc_macros,
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
+        unresolved_extern_crates: Default::default(),
         is_proc_macro: krate.is_proc_macro,
     };
     if tree_id.is_block() {
@@ -126,9 +127,11 @@ impl PartialResolvedImport {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum ImportSource {
-    Use { use_tree: Idx<ast::UseTree>, id: UseId, is_prelude: bool, kind: ImportKind },
-    ExternCrate { id: ExternCrateId },
+struct ImportSource {
+    use_tree: Idx<ast::UseTree>,
+    id: UseId,
+    is_prelude: bool,
+    kind: ImportKind,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -154,24 +157,9 @@ impl Import {
                 path,
                 alias,
                 visibility: visibility.clone(),
-                source: ImportSource::Use { use_tree: idx, id, is_prelude, kind },
+                source: ImportSource { use_tree: idx, id, is_prelude, kind },
             });
         });
-    }
-
-    fn from_extern_crate(
-        tree: &ItemTree,
-        item_tree_id: ItemTreeId<item_tree::ExternCrate>,
-        id: ExternCrateId,
-    ) -> Self {
-        let it = &tree[item_tree_id.value];
-        let visibility = &tree[it.visibility];
-        Self {
-            path: ModPath::from_segments(PathKind::Plain, iter::once(it.name.clone())),
-            alias: it.alias.clone(),
-            visibility: visibility.clone(),
-            source: ImportSource::ExternCrate { id },
-        }
     }
 }
 
@@ -218,11 +206,16 @@ enum MacroDirectiveKind {
 struct DefCollector<'a> {
     db: &'a dyn DefDatabase,
     def_map: DefMap,
+    // The dependencies of the current crate, including optional deps like `test`.
     deps: FxHashMap<Name, Dependency>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, UseId)>>,
     unresolved_imports: Vec<ImportDirective>,
     indeterminate_imports: Vec<(ImportDirective, PerNs)>,
     unresolved_macros: Vec<MacroDirective>,
+    // We'd like to avoid emitting a diagnostics avalanche when some `extern crate` doesn't
+    // resolve. When we emit diagnostics for unresolved imports, we only do so if the import
+    // doesn't start with an unresolved crate's name.
+    unresolved_extern_crates: FxHashSet<Name>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
     /// List of procedural macros defined by this crate. This is read from the dynamic library
@@ -310,6 +303,7 @@ impl DefCollector<'_> {
         }
 
         for (name, dep) in &self.deps {
+            // Add all
             if dep.is_prelude() {
                 // This is a bit confusing but the gist is that `no_core` and `no_std` remove the
                 // sysroot dependence on `core` and `std` respectively. Our `CrateGraph` is eagerly
@@ -329,6 +323,7 @@ impl DefCollector<'_> {
                 if skip {
                     continue;
                 }
+
                 crate_data
                     .extern_prelude
                     .insert(name.clone(), (CrateRootModuleId { krate: dep.crate_id }, None));
@@ -788,61 +783,31 @@ impl DefCollector<'_> {
         let _p = tracing::info_span!("resolve_import", import_path = %import.path.display(self.db.upcast(), Edition::LATEST))
             .entered();
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
-        match import.source {
-            ImportSource::ExternCrate { .. } => {
-                let name = import
-                    .path
-                    .as_ident()
-                    .expect("extern crate should have been desugared to one-element path");
+        let res = self.def_map.resolve_path_fp_with_macro(
+            self.db,
+            ResolveMode::Import,
+            module_id,
+            &import.path,
+            BuiltinShadowMode::Module,
+            None, // An import may resolve to any kind of macro.
+        );
 
-                let res = self.resolve_extern_crate(name);
-
-                match res {
-                    Some(res) => PartialResolvedImport::Resolved(PerNs::types(
-                        res.into(),
-                        Visibility::Public,
-                        None,
-                    )),
-                    None => PartialResolvedImport::Unresolved,
-                }
-            }
-            ImportSource::Use { .. } => {
-                let res = self.def_map.resolve_path_fp_with_macro(
-                    self.db,
-                    ResolveMode::Import,
-                    module_id,
-                    &import.path,
-                    BuiltinShadowMode::Module,
-                    None, // An import may resolve to any kind of macro.
-                );
-
-                let def = res.resolved_def;
-                if res.reached_fixedpoint == ReachedFixedPoint::No || def.is_none() {
-                    return PartialResolvedImport::Unresolved;
-                }
-
-                if res.from_differing_crate {
-                    return PartialResolvedImport::Resolved(
-                        def.filter_visibility(|v| matches!(v, Visibility::Public)),
-                    );
-                }
-
-                // Check whether all namespaces are resolved.
-                if def.is_full() {
-                    PartialResolvedImport::Resolved(def)
-                } else {
-                    PartialResolvedImport::Indeterminate(def)
-                }
-            }
+        let def = res.resolved_def;
+        if res.reached_fixedpoint == ReachedFixedPoint::No || def.is_none() {
+            return PartialResolvedImport::Unresolved;
         }
-    }
 
-    fn resolve_extern_crate(&self, name: &Name) -> Option<CrateRootModuleId> {
-        if *name == sym::self_.clone() {
-            cov_mark::hit!(extern_crate_self_as);
-            Some(self.def_map.crate_root())
+        if res.from_differing_crate {
+            return PartialResolvedImport::Resolved(
+                def.filter_visibility(|v| matches!(v, Visibility::Public)),
+            );
+        }
+
+        // Check whether all namespaces are resolved.
+        if def.is_full() {
+            PartialResolvedImport::Resolved(def)
         } else {
-            self.deps.get(name).map(|dep| CrateRootModuleId { krate: dep.crate_id })
+            PartialResolvedImport::Indeterminate(def)
         }
     }
 
@@ -858,8 +823,12 @@ impl DefCollector<'_> {
             .unwrap_or(Visibility::Public);
 
         match import.source {
-            ImportSource::ExternCrate { .. }
-            | ImportSource::Use { kind: ImportKind::Plain | ImportKind::TypeOnly, .. } => {
+            ImportSource {
+                kind: kind @ (ImportKind::Plain | ImportKind::TypeOnly),
+                id,
+                use_tree,
+                ..
+            } => {
                 let name = match &import.alias {
                     Some(ImportAlias::Alias(name)) => Some(name),
                     Some(ImportAlias::Underscore) => None,
@@ -872,40 +841,20 @@ impl DefCollector<'_> {
                     },
                 };
 
-                let imp = match import.source {
-                    // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-                    ImportSource::ExternCrate { id, .. } => {
-                        if self.def_map.block.is_none() && module_id == DefMap::ROOT {
-                            if let (Some(ModuleDefId::ModuleId(def)), Some(name)) =
-                                (def.take_types(), name)
-                            {
-                                if let Ok(def) = def.try_into() {
-                                    Arc::get_mut(&mut self.def_map.data)
-                                        .unwrap()
-                                        .extern_prelude
-                                        .insert(name.clone(), (def, Some(id)));
-                                }
-                            }
-                        }
-                        ImportType::ExternCrate(id)
-                    }
-                    ImportSource::Use { kind, id, use_tree, .. } => {
-                        if kind == ImportKind::TypeOnly {
-                            def.values = None;
-                            def.macros = None;
-                        }
-                        ImportType::Import(ImportId { import: id, idx: use_tree })
-                    }
-                };
+                if kind == ImportKind::TypeOnly {
+                    def.values = None;
+                    def.macros = None;
+                }
+                let imp = ImportType::Import(ImportId { import: id, idx: use_tree });
                 tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                 self.update(module_id, &[(name.cloned(), def)], vis, Some(imp));
             }
-            ImportSource::Use { kind: ImportKind::Glob, id, .. } => {
+            ImportSource { kind: ImportKind::Glob, id, is_prelude, .. } => {
                 tracing::debug!("glob import: {:?}", import);
                 match def.take_types() {
                     Some(ModuleDefId::ModuleId(m)) => {
-                        if let ImportSource::Use { id, is_prelude: true, .. } = import.source {
+                        if is_prelude {
                             // Note: This dodgily overrides the injected prelude. The rustc
                             // implementation seems to work the same though.
                             cov_mark::hit!(std_prelude);
@@ -1323,7 +1272,7 @@ impl DefCollector<'_> {
                         _ => return Resolved::No,
                     };
 
-                    // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
+                    // Skip #[test]/#[bench]/#[test_case] expansion, which would merely result in more memory usage
                     // due to duplicating functions into macro expansions, but only if `cfg(test)` is active,
                     // otherwise they are expanded to nothing and this can impact e.g. diagnostics (due to things
                     // being cfg'ed out).
@@ -1332,7 +1281,7 @@ impl DefCollector<'_> {
                     if matches!(
                         def.kind,
                         MacroDefKind::BuiltInAttr(_, expander)
-                        if expander.is_test() || expander.is_bench()
+                        if expander.is_test() || expander.is_bench() || expander.is_test_case()
                     ) {
                         let test_is_active =
                             self.cfg_options.check_atom(&CfgAtom::Flag(sym::test.clone()));
@@ -1560,45 +1509,29 @@ impl DefCollector<'_> {
         }
 
         // Emit diagnostics for all remaining unresolved imports.
-
-        // We'd like to avoid emitting a diagnostics avalanche when some `extern crate` doesn't
-        // resolve. We first emit diagnostics for unresolved extern crates and collect the missing
-        // crate names. Then we emit diagnostics for unresolved imports, but only if the import
-        // doesn't start with an unresolved crate's name. Due to renaming and reexports, this is a
-        // heuristic, but it works in practice.
-        let mut diagnosed_extern_crates = FxHashSet::default();
-        for directive in &self.unresolved_imports {
-            if let ImportSource::ExternCrate { id } = directive.import.source {
-                let item_tree_id = id.lookup(self.db).id;
-                let item_tree = item_tree_id.item_tree(self.db);
-                let extern_crate = &item_tree[item_tree_id.value];
-
-                diagnosed_extern_crates.insert(extern_crate.name.clone());
-
-                self.def_map.diagnostics.push(DefDiagnostic::unresolved_extern_crate(
-                    directive.module_id,
-                    InFile::new(item_tree_id.file_id(), extern_crate.ast_id),
-                ));
+        for import in &self.unresolved_imports {
+            let &ImportDirective {
+                module_id,
+                import:
+                    Import {
+                        ref path,
+                        source: ImportSource { use_tree, id, is_prelude: _, kind: _ },
+                        ..
+                    },
+                ..
+            } = import;
+            if matches!(
+                (path.segments().first(), &path.kind),
+                (Some(krate), PathKind::Plain | PathKind::Abs) if self.unresolved_extern_crates.contains(krate)
+            ) {
+                continue;
             }
-        }
-
-        for directive in &self.unresolved_imports {
-            if let ImportSource::Use { use_tree, id, is_prelude: _, kind: _ } =
-                directive.import.source
-            {
-                if matches!(
-                    (directive.import.path.segments().first(), &directive.import.path.kind),
-                    (Some(krate), PathKind::Plain | PathKind::Abs) if diagnosed_extern_crates.contains(krate)
-                ) {
-                    continue;
-                }
-                let item_tree_id = id.lookup(self.db).id;
-                self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
-                    directive.module_id,
-                    item_tree_id,
-                    use_tree,
-                ));
-            }
+            let item_tree_id = id.lookup(self.db).id;
+            self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
+                module_id,
+                item_tree_id,
+                use_tree,
+            ));
         }
 
         self.def_map
@@ -1623,7 +1556,8 @@ impl ModCollector<'_, '_> {
 
     fn collect(&mut self, items: &[ModItem], container: ItemContainerId) {
         let krate = self.def_collector.def_map.krate;
-        let is_crate_root = self.module_id == DefMap::ROOT;
+        let is_crate_root =
+            self.module_id == DefMap::ROOT && self.def_collector.def_map.block.is_none();
 
         // Note: don't assert that inserted value is fresh: it's simply not true
         // for macros.
@@ -1632,10 +1566,7 @@ impl ModCollector<'_, '_> {
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some((prelude_module, _use)) = self.def_collector.def_map.prelude {
             // Don't insert macros from the prelude into blocks, as they can be shadowed by other macros.
-            if prelude_module.krate != krate
-                && is_crate_root
-                && self.def_collector.def_map.block.is_none()
-            {
+            if prelude_module.krate != krate && is_crate_root {
                 cov_mark::hit!(prelude_is_macro_use);
                 self.def_collector.import_macros_from_extern_crate(
                     prelude_module.krate,
@@ -1709,26 +1640,73 @@ impl ModCollector<'_, '_> {
                         id: ItemTreeId::new(self.tree_id, item_tree_id),
                     }
                     .intern(db);
-                    if is_crate_root {
-                        self.process_macro_use_extern_crate(
-                            item_tree_id,
-                            id,
-                            attrs.by_key(&sym::macro_use).attrs(),
+                    def_map.modules[self.module_id].scope.define_extern_crate_decl(id);
+
+                    let item_tree::ExternCrate { name, visibility, alias, ast_id } =
+                        &self.item_tree[item_tree_id];
+
+                    let is_self = *name == sym::self_;
+                    let resolved = if is_self {
+                        cov_mark::hit!(extern_crate_self_as);
+                        Some(def_map.crate_root())
+                    } else {
+                        self.def_collector
+                            .deps
+                            .get(name)
+                            .map(|dep| CrateRootModuleId { krate: dep.crate_id })
+                    };
+
+                    let name = match alias {
+                        Some(ImportAlias::Alias(name)) => Some(name),
+                        Some(ImportAlias::Underscore) => None,
+                        None => Some(name),
+                    };
+
+                    if let Some(resolved) = resolved {
+                        let vis = resolve_vis(def_map, &self.item_tree[*visibility]);
+
+                        if is_crate_root {
+                            // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
+                            if let Some(name) = name {
+                                Arc::get_mut(&mut def_map.data)
+                                    .unwrap()
+                                    .extern_prelude
+                                    .insert(name.clone(), (resolved, Some(id)));
+                            }
+                            // they also allow `#[macro_use]`
+                            if !is_self {
+                                self.process_macro_use_extern_crate(
+                                    id,
+                                    attrs.by_key(&sym::macro_use).attrs(),
+                                    resolved.krate,
+                                );
+                            }
+                        }
+
+                        self.def_collector.update(
+                            module_id,
+                            &[(
+                                name.cloned(),
+                                PerNs::types(
+                                    resolved.into(),
+                                    vis,
+                                    Some(ImportOrExternCrate::ExternCrate(id)),
+                                ),
+                            )],
+                            vis,
+                            Some(ImportType::ExternCrate(id)),
+                        );
+                    } else {
+                        if let Some(name) = name {
+                            self.def_collector.unresolved_extern_crates.insert(name.clone());
+                        }
+                        self.def_collector.def_map.diagnostics.push(
+                            DefDiagnostic::unresolved_extern_crate(
+                                module_id,
+                                InFile::new(self.file_id(), *ast_id),
+                            ),
                         );
                     }
-
-                    self.def_collector.def_map.modules[self.module_id]
-                        .scope
-                        .define_extern_crate_decl(id);
-                    self.def_collector.unresolved_imports.push(ImportDirective {
-                        module_id: self.module_id,
-                        import: Import::from_extern_crate(
-                            self.item_tree,
-                            ItemTreeId::new(self.tree_id, item_tree_id),
-                            id,
-                        ),
-                        status: PartialResolvedImport::Unresolved,
-                    })
                 }
                 ModItem::ExternBlock(block) => self.collect(
                     &self.item_tree[block].children,
@@ -1939,27 +1917,15 @@ impl ModCollector<'_, '_> {
 
     fn process_macro_use_extern_crate<'a>(
         &mut self,
-        extern_crate: FileItemTreeId<ExternCrate>,
         extern_crate_id: ExternCrateId,
         macro_use_attrs: impl Iterator<Item = &'a Attr>,
+        target_crate: CrateId,
     ) {
-        let db = self.def_collector.db;
-
-        let target_crate =
-            match self.def_collector.resolve_extern_crate(&self.item_tree[extern_crate].name) {
-                Some(m) if m.krate == self.def_collector.def_map.krate => {
-                    cov_mark::hit!(ignore_macro_use_extern_crate_self);
-                    return;
-                }
-                Some(m) => m.krate,
-                None => return,
-            };
-
         cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
-
         let mut single_imports = Vec::new();
         for attr in macro_use_attrs {
-            let Some(paths) = attr.parse_path_comma_token_tree(db.upcast()) else {
+            let Some(paths) = attr.parse_path_comma_token_tree(self.def_collector.db.upcast())
+            else {
                 // `#[macro_use]` (without any paths) found, forget collected names and just import
                 // all visible macros.
                 self.def_collector.import_macros_from_extern_crate(
@@ -2523,6 +2489,7 @@ mod tests {
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             is_proc_macro: false,
+            unresolved_extern_crates: Default::default(),
         };
         collector.seed_with_top_level();
         collector.collect();

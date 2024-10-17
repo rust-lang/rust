@@ -1258,4 +1258,29 @@ pub unsafe fn foo(a: *mut A) {
 "#,
         );
     }
+
+    #[test]
+    fn regression_15799() {
+        check_diagnostics(
+            r#"
+//- minicore: deref_mut
+struct WrapPtr(*mut u32);
+
+impl core::ops::Deref for WrapPtr {
+    type Target = *mut u32;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn main() {
+    let mut x = 0u32;
+    let wrap = WrapPtr(&mut x);
+    unsafe {
+        **wrap = 6;
+    }
+}
+"#,
+        );
+    }
 }

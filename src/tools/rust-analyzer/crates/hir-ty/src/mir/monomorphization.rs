@@ -9,7 +9,7 @@
 
 use std::mem;
 
-use base_db::salsa::Cycle;
+use base_db::ra_salsa::Cycle;
 use chalk_ir::{
     fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
     ConstData, DebruijnIndex,

@@ -7,7 +7,7 @@
 use std::mem;
 use std::{cell::LazyCell, cmp::Reverse};
 
-use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
+use base_db::{ra_salsa::Database, SourceDatabase, SourceRootDatabase};
 use either::Either;
 use hir::{
     sym, Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer,

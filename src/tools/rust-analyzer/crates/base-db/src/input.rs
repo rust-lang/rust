@@ -288,6 +288,11 @@ pub struct CrateData {
     /// The cfg options that could be used by the crate
     pub potential_cfg_options: Option<Arc<CfgOptions>>,
     pub env: Env,
+    /// The dependencies of this crate.
+    ///
+    /// Note that this may contain more dependencies than the crate actually uses.
+    /// A common example is the test crate which is included but only actually is active when
+    /// declared in source via `extern crate test`.
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,

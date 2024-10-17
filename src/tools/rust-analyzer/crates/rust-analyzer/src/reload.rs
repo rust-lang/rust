@@ -18,7 +18,7 @@ use std::{iter, mem};
 use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros, ProcMacrosBuilder};
 use ide::CrateId;
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, CrateWorkspaceData, ProcMacroPaths},
+    base_db::{ra_salsa::Durability, CrateGraph, CrateWorkspaceData, ProcMacroPaths},
     FxHashMap,
 };
 use itertools::Itertools;
@@ -33,7 +33,9 @@ use vfs::{AbsPath, AbsPathBuf, ChangeKind};
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
     flycheck::{FlycheckConfig, FlycheckHandle},
-    global_state::{FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState},
+    global_state::{
+        FetchBuildDataResponse, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
+    },
     lsp_ext,
     main_loop::{DiscoverProjectParam, Task},
     op_queue::Cause,
@@ -475,7 +477,9 @@ impl GlobalState {
 
         if same_workspaces {
             let (workspaces, build_scripts) = match self.fetch_build_data_queue.last_op_result() {
-                Some((workspaces, build_scripts)) => (workspaces.clone(), build_scripts.as_slice()),
+                Some(FetchBuildDataResponse { workspaces, build_scripts }) => {
+                    (workspaces.clone(), build_scripts.as_slice())
+                }
                 None => (Default::default(), Default::default()),
             };
 
@@ -769,12 +773,14 @@ impl GlobalState {
     pub(super) fn fetch_build_data_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        let Some((_, ws)) = &self.fetch_build_data_queue.last_op_result() else {
+        let Some(FetchBuildDataResponse { build_scripts, .. }) =
+            &self.fetch_build_data_queue.last_op_result()
+        else {
             return Ok(());
         };
 
-        for ws in ws {
-            match ws {
+        for script in build_scripts {
+            match script {
                 Ok(data) => {
                     if let Some(stderr) = data.error() {
                         stdx::format_to!(buf, "{:#}\n", stderr)

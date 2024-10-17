@@ -223,7 +223,7 @@ struct TidyDocs {
 impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
         // Tests and diagnostic fixes don't need module level comments.
-        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar", "salsa"]) {
+        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar", "ra-salsa"]) {
             return;
         }
 
