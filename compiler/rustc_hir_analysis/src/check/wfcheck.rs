@@ -531,7 +531,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
         debug!(?required_bounds);
         let param_env = tcx.param_env(gat_def_id);
 
-        let mut unsatisfied_bounds: Vec<_> = required_bounds
+        let unsatisfied_bounds: Vec<_> = required_bounds
             .into_iter()
             .filter(|clause| match clause.kind().skip_binder() {
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
@@ -551,9 +551,6 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
             })
             .map(|clause| clause.to_string())
             .collect();
-
-        // We sort so that order is predictable
-        unsatisfied_bounds.sort();
 
         if !unsatisfied_bounds.is_empty() {
             let plural = pluralize!(unsatisfied_bounds.len());
@@ -832,7 +829,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
 
 fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
     match ty.kind {
-        hir::TyKind::TraitObject([(trait_ref, _)], ..) => match trait_ref.trait_ref.path.segments {
+        hir::TyKind::TraitObject([trait_ref], ..) => match trait_ref.trait_ref.path.segments {
             [s] => s.res.opt_def_id() == Some(trait_def_id.to_def_id()),
             _ => false,
         },
@@ -1878,24 +1875,15 @@ fn check_variances_for_type_defn<'tcx>(
     item: &'tcx hir::Item<'tcx>,
     hir_generics: &hir::Generics<'tcx>,
 ) {
-    let identity_args = ty::GenericArgs::identity_for_item(tcx, item.owner_id);
-
     match item.kind {
         ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
-            for field in tcx.adt_def(item.owner_id).all_fields() {
-                if field.ty(tcx, identity_args).references_error() {
-                    return;
-                }
-            }
+            // Ok
         }
         ItemKind::TyAlias(..) => {
             assert!(
                 tcx.type_alias_is_lazy(item.owner_id),
                 "should not be computing variance of non-weak type alias"
             );
-            if tcx.type_of(item.owner_id).skip_binder().references_error() {
-                return;
-            }
         }
         kind => span_bug!(item.span, "cannot compute the variances of {kind:?}"),
     }
@@ -1958,12 +1946,61 @@ fn check_variances_for_type_defn<'tcx>(
             continue;
         }
 
+        // Look for `ErrorGuaranteed` deeply within this type.
+        if let ControlFlow::Break(ErrorGuaranteed { .. }) = tcx
+            .type_of(item.owner_id)
+            .instantiate_identity()
+            .visit_with(&mut HasErrorDeep { tcx, seen: Default::default() })
+        {
+            continue;
+        }
+
         match hir_param.name {
             hir::ParamName::Error => {}
             _ => {
                 let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
                 report_bivariance(tcx, hir_param, has_explicit_bounds, item);
             }
+        }
+    }
+}
+
+/// Look for `ErrorGuaranteed` deeply within structs' (unsubstituted) fields.
+struct HasErrorDeep<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    seen: FxHashSet<DefId>,
+}
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasErrorDeep<'tcx> {
+    type Result = ControlFlow<ErrorGuaranteed>;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        match *ty.kind() {
+            ty::Adt(def, _) => {
+                if self.seen.insert(def.did()) {
+                    for field in def.all_fields() {
+                        self.tcx.type_of(field.did).instantiate_identity().visit_with(self)?;
+                    }
+                }
+            }
+            ty::Error(guar) => return ControlFlow::Break(guar),
+            _ => {}
+        }
+        ty.super_visit_with(self)
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
+        if let Err(guar) = r.error_reported() {
+            ControlFlow::Break(guar)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> Self::Result {
+        if let Err(guar) = c.error_reported() {
+            ControlFlow::Break(guar)
+        } else {
+            ControlFlow::Continue(())
         }
     }
 }

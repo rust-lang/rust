@@ -29,8 +29,9 @@ use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
+use crate::passes;
 use crate::passes::Condition::*;
-use crate::passes::{self};
+use crate::passes::collect_intra_doc_links::LinkCollector;
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -427,6 +428,9 @@ pub(crate) fn run_global_ctxt(
 
     info!("Executing passes");
 
+    let mut visited = FxHashMap::default();
+    let mut ambiguous = FxIndexMap::default();
+
     for p in passes::defaults(show_coverage) {
         let run = match p.condition {
             Always => true,
@@ -436,17 +440,29 @@ pub(crate) fn run_global_ctxt(
         };
         if run {
             debug!("running pass {}", p.pass.name);
-            krate = tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &mut ctxt));
+            if let Some(run_fn) = p.pass.run {
+                krate = tcx.sess.time(p.pass.name, || run_fn(krate, &mut ctxt));
+            } else {
+                let (k, LinkCollector { visited_links, ambiguous_links, .. }) =
+                    passes::collect_intra_doc_links::collect_intra_doc_links(krate, &mut ctxt);
+                krate = k;
+                visited = visited_links;
+                ambiguous = ambiguous_links;
+            }
         }
     }
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
+    krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
+
+    let mut collector =
+        LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
+    collector.resolve_ambiguities();
+
     if let Some(guar) = tcx.dcx().has_errors() {
         return Err(guar);
     }
-
-    krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
 
     Ok((krate, ctxt.render_options, ctxt.cache))
 }

@@ -2,7 +2,7 @@ extern "C" {
     //@ is "$.index[*][?(@.name=='f1')].inner.function.header.is_unsafe" true
     pub fn f1();
 
-    // items in unadorned `extern` blocks cannot have safety qualifiers
+    // items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
 }
 
 unsafe extern "C" {

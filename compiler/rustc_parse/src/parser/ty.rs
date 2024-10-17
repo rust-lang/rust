@@ -4,7 +4,8 @@ use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
     GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind,
+    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
+    TyKind,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{Ident, kw, sym};
@@ -419,8 +420,13 @@ impl<'a> Parser<'a> {
         lo: Span,
         parse_plus: bool,
     ) -> PResult<'a, TyKind> {
-        let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_token.span));
-        let bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifiers::NONE)];
+        let poly_trait_ref = PolyTraitRef::new(
+            generic_params,
+            path,
+            TraitBoundModifiers::NONE,
+            lo.to(self.prev_token.span),
+        );
+        let bounds = vec![GenericBound::Trait(poly_trait_ref)];
         self.parse_remaining_bounds(bounds, parse_plus)
     }
 
@@ -487,7 +493,10 @@ impl<'a> Parser<'a> {
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
         let and_span = self.prev_token.span;
         let mut opt_lifetime = self.check_lifetime().then(|| self.expect_lifetime());
-        let mut mutbl = self.parse_mutability();
+        let (pinned, mut mutbl) = match self.parse_pin_and_mut() {
+            Some(pin_mut) => pin_mut,
+            None => (Pinnedness::Not, self.parse_mutability()),
+        };
         if self.token.is_lifetime() && mutbl == Mutability::Mut && opt_lifetime.is_none() {
             // A lifetime is invalid here: it would be part of a bare trait bound, which requires
             // it to be followed by a plus, but we disallow plus in the pointee type.
@@ -523,7 +532,35 @@ impl<'a> Parser<'a> {
             self.bump_with((dyn_tok, dyn_tok_sp));
         }
         let ty = self.parse_ty_no_plus()?;
-        Ok(TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }))
+        Ok(match pinned {
+            Pinnedness::Not => TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }),
+            Pinnedness::Pinned => TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl }),
+        })
+    }
+
+    /// Parses `pin` and `mut` annotations on references.
+    ///
+    /// It must be either `pin const` or `pin mut`.
+    pub(crate) fn parse_pin_and_mut(&mut self) -> Option<(Pinnedness, Mutability)> {
+        if self.token.is_ident_named(sym::pin) {
+            let result = self.look_ahead(1, |token| {
+                if token.is_keyword(kw::Const) {
+                    Some((Pinnedness::Pinned, Mutability::Not))
+                } else if token.is_keyword(kw::Mut) {
+                    Some((Pinnedness::Pinned, Mutability::Mut))
+                } else {
+                    None
+                }
+            });
+            if result.is_some() {
+                self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
+                self.bump();
+                self.bump();
+            }
+            result
+        } else {
+            None
+        }
     }
 
     // Parses the `typeof(EXPR)`.
@@ -1085,8 +1122,9 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_token.span));
-        Ok(GenericBound::Trait(poly_trait, modifiers))
+        let poly_trait =
+            PolyTraitRef::new(lifetime_defs, path, modifiers, lo.to(self.prev_token.span));
+        Ok(GenericBound::Trait(poly_trait))
     }
 
     // recovers a `Fn(..)` parenthesized-style path from `fn(..)`

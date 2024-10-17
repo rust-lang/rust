@@ -20,6 +20,14 @@ use crate::lang_items::Duplicate;
 #[diag(passes_incorrect_do_not_recommend_location)]
 pub(crate) struct IncorrectDoNotRecommendLocation;
 
+#[derive(Diagnostic)]
+#[diag(passes_autodiff_attr)]
+pub(crate) struct AutoDiffAttr {
+    #[primary_span]
+    #[label]
+    pub attr_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub(crate) struct OuterCrateLevelAttr;
@@ -68,9 +76,15 @@ pub(crate) struct CoverageNotFnOrClosure {
     pub defn_span: Span,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(passes_optimize_not_fn_or_closure)]
-pub(crate) struct OptimizeNotFnOrClosure;
+#[derive(Diagnostic)]
+#[diag(passes_optimize_invalid_target)]
+pub(crate) struct OptimizeInvalidTarget {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+    pub on_crate: bool,
+}
 
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn)]

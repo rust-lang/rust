@@ -190,7 +190,7 @@ target | std | notes
 [`thumbv8m.base-none-eabi`](platform-support/thumbv8m.base-none-eabi.md) | * | Bare Armv8-M Baseline
 [`thumbv8m.main-none-eabi`](platform-support/thumbv8m.main-none-eabi.md) | * | Bare Armv8-M Mainline
 [`thumbv8m.main-none-eabihf`](platform-support/thumbv8m.main-none-eabi.md) | * | Bare Armv8-M Mainline, hardfloat
-`wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
+[`wasm32-unknown-emscripten`](platform-support/wasm32-unknown-emscripten.md) | ✓ | WebAssembly via Emscripten
 [`wasm32-unknown-unknown`](platform-support/wasm32-unknown-unknown.md) | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI (undergoing a [rename to `wasm32-wasip1`][wasi-rename])
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASI

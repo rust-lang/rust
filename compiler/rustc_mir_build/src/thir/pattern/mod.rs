@@ -25,6 +25,7 @@ use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
 use crate::errors::*;
+use crate::fluent_generated as fluent;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 struct PatCtxt<'a, 'tcx> {
@@ -48,18 +49,28 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
         typeck_results,
         rust_2024_migration_suggestion: typeck_results
             .rust_2024_migration_desugared_pats()
-            .contains(pat.hir_id)
-            .then_some(Rust2024IncompatiblePatSugg { suggestion: Vec::new() }),
+            .get(pat.hir_id)
+            .map(|&is_hard_error| Rust2024IncompatiblePatSugg {
+                suggestion: Vec::new(),
+                is_hard_error,
+            }),
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     if let Some(sugg) = pcx.rust_2024_migration_suggestion {
-        tcx.emit_node_span_lint(
-            lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
-            pat.hir_id,
-            pat.span,
-            Rust2024IncompatiblePat { sugg },
-        );
+        if sugg.is_hard_error {
+            let mut err =
+                tcx.dcx().struct_span_err(pat.span, fluent::mir_build_rust_2024_incompatible_pat);
+            err.subdiagnostic(sugg);
+            err.emit();
+        } else {
+            tcx.emit_node_span_lint(
+                lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
+                pat.hir_id,
+                pat.span,
+                Rust2024IncompatiblePat { sugg },
+            );
+        }
     }
     result
 }

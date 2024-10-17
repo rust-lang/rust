@@ -11,7 +11,7 @@ use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
 };
 use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, JoinSemiLattice};
+use rustc_mir_dataflow::{Analysis, JoinSemiLattice};
 
 use super::{ConstCx, Qualif, qualifs};
 
@@ -310,7 +310,7 @@ impl JoinSemiLattice for State {
     }
 }
 
-impl<'tcx, Q> AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -328,12 +328,7 @@ where
     fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut Self::Domain) {
         self.transfer_function(state).initialize_state();
     }
-}
 
-impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
-where
-    Q: Qualif,
-{
     fn apply_statement_effect(
         &mut self,
         state: &mut Self::Domain,

@@ -195,12 +195,26 @@ fn make_format_args(
                                     Applicability::MaybeIncorrect,
                                 );
                             } else {
-                                let sugg_fmt = match args.explicit_args().len() {
-                                    0 => "{}".to_string(),
-                                    count => {
-                                        format!("{}{{}}", "{} ".repeat(count))
+                                // `{}` or `()`
+                                let should_suggest = |kind: &ExprKind| -> bool {
+                                    match kind {
+                                        ExprKind::Block(b, None) if b.stmts.is_empty() => true,
+                                        ExprKind::Tup(v) if v.is_empty() => true,
+                                        _ => false,
                                     }
                                 };
+
+                                let mut sugg_fmt = String::new();
+                                for kind in std::iter::once(&efmt.kind)
+                                    .chain(args.explicit_args().into_iter().map(|a| &a.expr.kind))
+                                {
+                                    sugg_fmt.push_str(if should_suggest(kind) {
+                                        "{:?} "
+                                    } else {
+                                        "{} "
+                                    });
+                                }
+                                sugg_fmt = sugg_fmt.trim_end().to_string();
                                 err.span_suggestion(
                                     unexpanded_fmt_span.shrink_to_lo(),
                                     "you might be missing a string literal to format with",

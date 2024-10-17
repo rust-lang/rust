@@ -13,7 +13,7 @@ use crate::passes::Pass;
 
 pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
     name: "propagate-doc-cfg",
-    run: propagate_doc_cfg,
+    run: Some(propagate_doc_cfg),
     description: "propagates `#[doc(cfg(...))]` to child items",
 };
 

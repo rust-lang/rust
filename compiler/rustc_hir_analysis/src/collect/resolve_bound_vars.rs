@@ -644,7 +644,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 debug!(?bounds, ?lifetime, "TraitObject");
                 let scope = Scope::TraitRefBoundary { s: self.scope };
                 self.with(scope, |this| {
-                    for (bound, _) in bounds {
+                    for bound in bounds {
                         this.visit_poly_trait_ref_inner(
                             bound,
                             NonLifetimeBinderAllowed::Deny("trait object types"),
@@ -1918,7 +1918,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                                 return None;
                             }
                             predicate.bounds.iter().find_map(|bound| {
-                                let hir::GenericBound::Trait(trait_, _) = bound else {
+                                let hir::GenericBound::Trait(trait_) = bound else {
                                     return None;
                                 };
                                 BoundVarContext::supertrait_hrtb_vars(

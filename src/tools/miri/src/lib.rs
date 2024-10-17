@@ -14,6 +14,7 @@
 #![feature(strict_provenance)]
 #![feature(exposed_provenance)]
 #![feature(pointer_is_aligned_to)]
+#![feature(unqualified_local_imports)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -42,13 +43,12 @@
 )]
 #![warn(
     rust_2018_idioms,
+    unqualified_local_imports,
     clippy::cast_possible_wrap, // unsigned -> signed
     clippy::cast_sign_loss, // signed -> unsigned
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
 )]
-#![cfg_attr(not(bootstrap), feature(unqualified_local_imports))]
-#![cfg_attr(not(bootstrap), warn(unqualified_local_imports))]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 

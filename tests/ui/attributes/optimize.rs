@@ -3,11 +3,13 @@
 #![deny(unused_attributes)]
 #![allow(dead_code)]
 
-#[optimize(speed)] //~ ERROR attribute should be applied to function or closure
+//@ edition: 2018
+
+#[optimize(speed)] //~ ERROR attribute applied to an invalid target
 struct F;
 
 fn invalid() {
-    #[optimize(speed)] //~ ERROR attribute should be applied to function or closure
+    #[optimize(speed)] //~ ERROR attribute applied to an invalid target
     {
         1
     };
@@ -16,13 +18,25 @@ fn invalid() {
 #[optimize(speed)]
 fn valid() {}
 
-#[optimize(speed)]
+#[optimize(speed)] //~ ERROR attribute applied to an invalid target
 mod valid_module {}
 
-#[optimize(speed)]
+#[optimize(speed)] //~ ERROR attribute applied to an invalid target
 impl F {}
 
 fn main() {
     let _ = #[optimize(speed)]
     (|| 1);
+}
+
+use std::future::Future;
+
+fn async_block() -> impl Future<Output = ()> {
+    #[optimize(speed)]
+    async { }
+}
+
+#[optimize(speed)]
+async fn async_fn() {
+    ()
 }

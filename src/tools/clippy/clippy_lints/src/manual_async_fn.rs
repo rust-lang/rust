@@ -107,7 +107,7 @@ fn future_trait_ref<'tcx>(
 ) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
     if let TyKind::OpaqueDef(opaque, bounds) = ty.kind
         && let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
-            if let GenericBound::Trait(poly, _) = bound {
+            if let GenericBound::Trait(poly) = bound {
                 Some(&poly.trait_ref)
             } else {
                 None

@@ -295,6 +295,7 @@ pub(crate) struct FnQualifierInExtern {
     pub span: Span,
     #[label]
     pub block: Span,
+    pub kw: &'static str,
 }
 
 #[derive(Diagnostic)]

@@ -16,7 +16,13 @@ error[E0537]: invalid predicate `target_pointer`
 LL | #[cfg(target(os = "linux", pointer(width = "64")))]
    |                            ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: `cfg` predicate key must be an identifier
+  --> $DIR/cfg-target-compact-errors.rs:17:14
+   |
+LL | #[cfg(target(true))]
+   |              ^^^^
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0537, E0565.
 For more information about an error, try `rustc --explain E0537`.

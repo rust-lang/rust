@@ -409,7 +409,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
                     if let ty::RawPtr(expr_ty, _) = *self.expr_ty.kind()
-                        && fcx.can_coerce(
+                        && fcx.may_coerce(
                             Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, expr_ty, mutbl),
                             self.cast_ty,
                         )
@@ -418,14 +418,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
-                        && fcx.can_coerce(Ty::new_mut_ref(fcx.tcx, expr_reg, expr_ty), self.cast_ty)
+                        && fcx.may_coerce(Ty::new_mut_ref(fcx.tcx, expr_reg, expr_ty), self.cast_ty)
                     {
                         sugg_mutref = true;
                     }
 
                     if !sugg_mutref
                         && sugg == None
-                        && fcx.can_coerce(
+                        && fcx.may_coerce(
                             Ty::new_ref(fcx.tcx, reg, self.expr_ty, mutbl),
                             self.cast_ty,
                         )
@@ -433,7 +433,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
                 } else if let ty::RawPtr(_, mutbl) = *self.cast_ty.kind()
-                    && fcx.can_coerce(
+                    && fcx.may_coerce(
                         Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, self.expr_ty, mutbl),
                         self.cast_ty,
                     )

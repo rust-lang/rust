@@ -22,6 +22,10 @@
 //@[rlib_] compile-flags: --crate-type=rlib
 //@[staticlib_] compile-flags: --crate-type=staticlib
 
+// The compiler may emit a warning that causes stderr output
+// that contains a warning this test does not wish to check.
+//@[proc_macro_] needs-unwind
+
 #![crate_name = "NonSnakeCase"]
 //[cdylib_,dylib_,lib_,proc_macro_,rlib_,staticlib_]~^ ERROR crate `NonSnakeCase` should have a snake case name
 #![deny(non_snake_case)]

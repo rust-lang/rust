@@ -73,9 +73,10 @@ pub struct TypeckResults<'tcx> {
     /// Stores the actual binding mode for all instances of [`BindingMode`].
     pat_binding_modes: ItemLocalMap<BindingMode>,
 
-    /// Top-level patterns whose match ergonomics need to be desugared
-    /// by the Rust 2021 -> 2024 migration lint.
-    rust_2024_migration_desugared_pats: ItemLocalSet,
+    /// Top-level patterns whose match ergonomics need to be desugared by the Rust 2021 -> 2024
+    /// migration lint. The boolean indicates whether the emitted diagnostic should be a hard error
+    /// (if any of the incompatible pattern elements are in edition 2024).
+    rust_2024_migration_desugared_pats: ItemLocalMap<bool>,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
     /// for later usage in THIR lowering. For example,
@@ -418,15 +419,15 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
-    pub fn rust_2024_migration_desugared_pats(&self) -> LocalSetInContext<'_> {
-        LocalSetInContext {
+    pub fn rust_2024_migration_desugared_pats(&self) -> LocalTableInContext<'_, bool> {
+        LocalTableInContext {
             hir_owner: self.hir_owner,
             data: &self.rust_2024_migration_desugared_pats,
         }
     }
 
-    pub fn rust_2024_migration_desugared_pats_mut(&mut self) -> LocalSetInContextMut<'_> {
-        LocalSetInContextMut {
+    pub fn rust_2024_migration_desugared_pats_mut(&mut self) -> LocalTableInContextMut<'_, bool> {
+        LocalTableInContextMut {
             hir_owner: self.hir_owner,
             data: &mut self.rust_2024_migration_desugared_pats,
         }

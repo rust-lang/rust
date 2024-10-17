@@ -2002,7 +2002,7 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("required-associated-consts".into(), 1);
     map.insert("required-methods".into(), 1);
     map.insert("provided-methods".into(), 1);
-    map.insert("object-safety".into(), 1);
+    map.insert("dyn-compatibility".into(), 1);
     map.insert("implementors".into(), 1);
     map.insert("synthetic-implementors".into(), 1);
     map.insert("implementations-list".into(), 1);

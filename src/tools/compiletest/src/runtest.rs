@@ -1643,7 +1643,9 @@ impl<'test> TestCx<'test> {
         // double the length.
         let mut f = self.output_base_dir().join("a");
         // FIXME: This is using the host architecture exe suffix, not target!
-        if self.config.target.starts_with("wasm") {
+        if self.config.target.contains("emscripten") {
+            f = f.with_extra_extension("js");
+        } else if self.config.target.starts_with("wasm") {
             f = f.with_extra_extension("wasm");
         } else if self.config.target.contains("spirv") {
             f = f.with_extra_extension("spv");

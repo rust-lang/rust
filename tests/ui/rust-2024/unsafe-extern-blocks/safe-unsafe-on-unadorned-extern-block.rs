@@ -6,9 +6,9 @@
 extern "C" {
     //[edition2024]~^ ERROR extern blocks must be unsafe
     safe static TEST1: i32;
-    //~^ ERROR items in unadorned `extern` blocks cannot have safety qualifiers
+    //~^ ERROR items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
     safe fn test1(i: i32);
-    //~^ ERROR items in unadorned `extern` blocks cannot have safety qualifiers
+    //~^ ERROR items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
 }
 
 fn test2() {
