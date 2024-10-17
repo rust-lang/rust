@@ -294,7 +294,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     }
                 }
 
-                InlineAsmOperandRef::Const { ref string } => {
+                InlineAsmOperandRef::Interpolate { ref string } => {
                     constants_len += string.len() + att_dialect as usize;
                 }
 
@@ -409,7 +409,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     });
                 }
 
-                InlineAsmOperandRef::Const { .. } => {
+                InlineAsmOperandRef::Interpolate { .. } => {
                     // processed in the previous pass
                 }
 
@@ -502,7 +502,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             template_str.push_str(name);
                         }
 
-                        InlineAsmOperandRef::Const { ref string } => {
+                        InlineAsmOperandRef::Interpolate { ref string } => {
                             template_str.push_str(string);
                         }
 
@@ -865,7 +865,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
                     match operands[operand_idx] {
-                        GlobalAsmOperandRef::Const { ref string } => {
+                        GlobalAsmOperandRef::Interpolate { ref string } => {
                             // Const operands get injected directly into the
                             // template. Note that we don't need to escape %
                             // here unlike normal inline assembly.
