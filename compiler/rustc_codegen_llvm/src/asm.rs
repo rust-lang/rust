@@ -158,6 +158,11 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         constraints.push(format!("{}", op_idx[&idx]));
                     }
                 }
+                InlineAsmOperandRef::Const { value } => {
+                    inputs.push(value.immediate());
+                    op_idx.insert(idx, constraints.len());
+                    constraints.push("i".to_string());
+                }
                 InlineAsmOperandRef::SymFn { instance } => {
                     inputs.push(self.cx.get_fn(instance));
                     op_idx.insert(idx, constraints.len());
@@ -204,6 +209,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             } else {
                                 template_str.push_str(&format!("${{{}}}", op_idx[&operand_idx]));
                             }
+                        }
+                        InlineAsmOperandRef::Const { .. } => {
+                            template_str.push_str(&format!("${{{}:c}}", op_idx[&operand_idx]));
                         }
                         InlineAsmOperandRef::Interpolate { ref string } => {
                             // Const operands get injected directly into the template
