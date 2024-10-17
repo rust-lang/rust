@@ -5,7 +5,7 @@
 
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt, Variance};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt, TypingMode, Variance};
 use rustc_trait_selection::traits::ObligationCtxt;
 
 /// Returns whether the two types are equal up to subtyping.
@@ -45,7 +45,8 @@ pub fn relate_types<'tcx>(
     }
 
     let mut builder = tcx.infer_ctxt().ignoring_regions();
-    let infcx = builder.build();
+    // FIXME(#132279): This should eventually use the already defined hidden types.
+    let infcx = builder.build(TypingMode::from_param_env(param_env));
     let ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
     let src = ocx.normalize(&cause, param_env, src);

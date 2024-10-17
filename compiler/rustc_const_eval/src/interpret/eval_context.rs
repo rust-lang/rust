@@ -9,7 +9,9 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
 };
-use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, TypeFoldable, Variance};
+use rustc_middle::ty::{
+    self, GenericArgsRef, ParamEnv, Ty, TyCtxt, TypeFoldable, TypingMode, Variance,
+};
 use rustc_middle::{mir, span_bug};
 use rustc_session::Limit;
 use rustc_span::Span;
@@ -325,7 +327,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return true;
         }
         // Slow path: spin up an inference context to check if these traits are sufficiently equal.
-        let infcx = self.tcx.infer_ctxt().build();
+        let infcx = self.tcx.infer_ctxt().build(TypingMode::from_param_env(self.param_env));
         let ocx = ObligationCtxt::new(&infcx);
         let cause = ObligationCause::dummy_with_span(self.cur_span());
         // equate the two trait refs after normalization

@@ -2,6 +2,7 @@ use rustc_abi::{HasDataLayout, TargetDataLayout};
 use rustc_ast::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::infer::canonical::ir::TypingMode;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
@@ -54,7 +55,7 @@ pub fn ensure_wf<'tcx>(
         param_env,
         pred,
     );
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
     let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
     ocx.register_obligation(obligation);
     let errors = ocx.select_all_or_error();

@@ -323,7 +323,7 @@ macro_rules! define_callbacks {
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
                 const _: () = {
-                    if mem::size_of::<Key<'static>>() > 72 {
+                    if mem::size_of::<Key<'static>>() > 80 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),

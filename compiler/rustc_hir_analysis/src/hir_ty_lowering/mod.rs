@@ -39,7 +39,7 @@ use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
     self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, ParamEnv, Ty, TyCtxt,
-    TypeVisitableExt,
+    TypeVisitableExt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -1300,7 +1300,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(infcx) => infcx,
             None => {
                 assert!(!self_ty.has_infer());
-                infcx_ = tcx.infer_ctxt().ignoring_regions().build();
+                infcx_ = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
                 &infcx_
             }
         };
@@ -1492,7 +1492,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             infcx
         } else {
             assert!(!qself_ty.has_infer());
-            infcx_ = tcx.infer_ctxt().build();
+            infcx_ = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             &infcx_
         };
 

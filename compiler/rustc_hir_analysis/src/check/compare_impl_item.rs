@@ -17,7 +17,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, Upcast,
+    TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
@@ -228,7 +228,7 @@ fn compare_method_predicate_entailment<'tcx>(
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(caller_bounds=?param_env.caller_bounds());
 
-    let infcx = &tcx.infer_ctxt().build();
+    let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     // Create obligations for each predicate declared by the impl
@@ -516,7 +516,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         ObligationCause::misc(tcx.def_span(impl_m_def_id), impl_m_def_id),
     );
 
-    let infcx = &tcx.infer_ctxt().build();
+    let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     // Normalize the impl signature with fresh variables for lifetime inference.
@@ -1196,7 +1196,7 @@ fn compare_self_type<'tcx>(
         let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
         let param_env = ty::ParamEnv::reveal_all();
 
-        let infcx = tcx.infer_ctxt().build();
+        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
         match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
@@ -1801,7 +1801,7 @@ fn compare_const_predicate_entailment<'tcx>(
         ObligationCause::misc(impl_ct_span, impl_ct_def_id),
     );
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let impl_ct_own_bounds = impl_ct_predicates.instantiate_own_identity();
@@ -1951,7 +1951,7 @@ fn compare_type_predicate_entailment<'tcx>(
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(caller_bounds=?param_env.caller_bounds());
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     for (predicate, span) in impl_ty_own_bounds {
@@ -2036,7 +2036,7 @@ pub(super) fn check_type_bounds<'tcx>(
     let impl_ty_args = GenericArgs::identity_for_item(tcx, impl_ty.def_id);
     let rebased_args = impl_ty_args.rebase_onto(tcx, container_id, impl_trait_ref.args);
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     // A synthetic impl Trait for RPITIT desugaring or assoc type for effects desugaring has no HIR,
