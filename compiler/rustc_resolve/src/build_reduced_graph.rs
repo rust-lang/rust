@@ -1193,7 +1193,11 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
             for (rule_i, rule_span) in &self.r.macro_map[&def_id.to_def_id()].rule_spans {
-                self.r.unused_macro_rules.insert((def_id, *rule_i), (ident, *rule_span));
+                self.r
+                    .unused_macro_rules
+                    .entry(def_id)
+                    .or_default()
+                    .insert(*rule_i, (ident, *rule_span));
             }
         }
     }
