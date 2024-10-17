@@ -4,9 +4,8 @@ use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::solve::{Certainty, Goal, NoSolution, SolverMode};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 
-pub trait SolverDelegate:
-    Deref<Target: InferCtxtLike<Interner = <Self as SolverDelegate>::Interner>> + Sized
-{
+pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Sized {
+    type Infcx: InferCtxtLike<Interner = <Self as SolverDelegate>::Interner>;
     type Interner: Interner;
     fn cx(&self) -> Self::Interner {
         (**self).cx()

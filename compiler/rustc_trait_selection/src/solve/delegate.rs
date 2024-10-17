@@ -36,6 +36,7 @@ impl<'tcx> Deref for SolverDelegate<'tcx> {
 }
 
 impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<'tcx> {
+    type Infcx = InferCtxt<'tcx>;
     type Interner = TyCtxt<'tcx>;
 
     fn cx(&self) -> TyCtxt<'tcx> {
