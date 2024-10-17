@@ -80,9 +80,11 @@ fn layout_of<'tcx>(
         record_layout_for_printing(&cx, layout);
     }
 
-    invariant::partially_check_layout(&cx, &layout);
-
-    Ok(layout)
+    if let Err(err) = invariant::partially_check_layout(&cx, &layout) {
+        Err(map_error(&cx, ty, err))
+    } else {
+        Ok(layout)
+    }
 }
 
 fn error<'tcx>(cx: &LayoutCx<'tcx>, err: LayoutError<'tcx>) -> &'tcx LayoutError<'tcx> {
