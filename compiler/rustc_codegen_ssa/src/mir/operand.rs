@@ -3,12 +3,13 @@ use std::fmt;
 
 use arrayvec::ArrayVec;
 use either::Either;
+use rustc_abi as abi;
+use rustc_abi::{Abi, Align, Size};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_target::abi::{self, Abi, Align, Size};
 use tracing::debug;
 
 use super::place::{PlaceRef, PlaceValue};
@@ -207,7 +208,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             match alloc.0.read_scalar(
                 bx,
                 alloc_range(start, size),
-                /*read_provenance*/ matches!(s.primitive(), abi::Pointer(_)),
+                /*read_provenance*/ matches!(s.primitive(), abi::Primitive::Pointer(_)),
             ) {
                 Ok(val) => bx.scalar_to_backend(val, s, ty),
                 Err(_) => bx.const_poison(ty),

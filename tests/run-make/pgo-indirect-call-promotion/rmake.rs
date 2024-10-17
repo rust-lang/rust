@@ -5,7 +5,7 @@
 // whether it can make a direct call instead of the indirect call.
 // See https://github.com/rust-lang/rust/pull/66631
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 // Reason: llvm_profdata is used
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed

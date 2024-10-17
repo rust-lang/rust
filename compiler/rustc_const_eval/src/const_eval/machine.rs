@@ -140,7 +140,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
 
     #[inline(always)]
     fn filter_map_collect<T>(&self, mut f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T> {
-        self.iter().filter_map(move |(k, v)| f(k, &*v)).collect()
+        self.iter().filter_map(move |(k, v)| f(k, v)).collect()
     }
 
     #[inline(always)]

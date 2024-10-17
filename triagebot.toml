@@ -431,6 +431,11 @@ trigger_files = [
     "src/tools/run-make-support"
 ]
 
+[autolabel."A-compiletest"]
+trigger_files = [
+    "src/tools/compiletest"
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
@@ -923,7 +928,6 @@ contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "BoxyUwU",
     "fmease",
-    "jhpratt",
     "jyn514",
     "oli-obk",
 ]
@@ -971,6 +975,7 @@ bootstrap = [
     "@albertlarsan68",
     "@onur-ozkan",
     "@kobzol",
+    "@jieyouxu",
 ]
 infra-ci = [
     "@Mark-Simulacrum",

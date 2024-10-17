@@ -134,3 +134,9 @@ impl ToJson for TargetMetadata {
         })
     }
 }
+
+impl ToJson for rustc_abi::Endian {
+    fn to_json(&self) -> Json {
+        self.as_str().to_json()
+    }
+}

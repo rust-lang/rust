@@ -10,6 +10,7 @@ mod tests;
 
 pub mod common;
 pub mod compute_diff;
+mod debuggers;
 pub mod errors;
 pub mod header;
 mod json;
@@ -36,12 +37,17 @@ use walkdir::WalkDir;
 
 use self::header::{EarlyProps, make_test_description};
 use crate::common::{
-    Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
-    output_base_dir, output_relative_path,
+    Config, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path, output_base_dir,
+    output_relative_path,
 };
 use crate::header::HeadersCache;
 use crate::util::logv;
 
+/// Creates the `Config` instance for this invocation of compiletest.
+///
+/// The config mostly reflects command-line arguments, but there might also be
+/// some code here that inspects environment variables or even runs executables
+/// (e.g. when discovering debugger versions).
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
@@ -153,7 +159,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("", "only-modified", "only run tests that result been modified")
         .optflag("", "nocapture", "")
-        .optflag("", "profiler-support", "is the profiler runtime enabled for this target")
+        .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
         .optflag(
@@ -204,9 +210,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
-    let (cdb, cdb_version) = analyze_cdb(matches.opt_str("cdb"), &target);
-    let (gdb, gdb_version) = analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
-    let lldb_version = matches.opt_str("lldb-version").as_deref().and_then(extract_lldb_version);
+    let (cdb, cdb_version) = debuggers::analyze_cdb(matches.opt_str("cdb"), &target);
+    let (gdb, gdb_version) =
+        debuggers::analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
+    let lldb_version =
+        matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
     let color = match matches.opt_str("color").as_deref() {
         Some("auto") | None => ColorConfig::AutoColor,
         Some("always") => ColorConfig::AlwaysColor,
@@ -355,7 +363,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
-        profiler_support: matches.opt_present("profiler-support"),
+        profiler_runtime: matches.opt_present("profiler-runtime"),
     }
 }
 
@@ -410,6 +418,7 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
     }
 }
 
+/// Called by `main` after the config has been parsed.
 pub fn run_tests(config: Arc<Config>) {
     // If we want to collect rustfix coverage information,
     // we first make sure that the coverage file does not exist.
@@ -443,14 +452,16 @@ pub fn run_tests(config: Arc<Config>) {
     if let Mode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
         if !config.target.contains("emscripten") {
-            configs.extend(configure_cdb(&config));
-            configs.extend(configure_gdb(&config));
-            configs.extend(configure_lldb(&config));
+            configs.extend(debuggers::configure_cdb(&config));
+            configs.extend(debuggers::configure_gdb(&config));
+            configs.extend(debuggers::configure_lldb(&config));
         }
     } else {
         configs.push(config.clone());
     };
 
+    // Discover all of the tests in the test suite directory, and build a libtest
+    // structure for each test (or each revision of a multi-revision test).
     let mut tests = Vec::new();
     for c in configs {
         let mut found_paths = HashSet::new();
@@ -460,7 +471,12 @@ pub fn run_tests(config: Arc<Config>) {
 
     tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
 
+    // Delegate to libtest to filter and run the big list of structures created
+    // during test discovery. When libtest decides to run a test, it will invoke
+    // the corresponding closure created by `make_test_closure`.
     let res = test::run_tests_console(&opts, tests);
+
+    // Check the outcome reported by libtest.
     match res {
         Ok(true) => {}
         Ok(false) => {
@@ -498,62 +514,6 @@ pub fn run_tests(config: Arc<Config>) {
     }
 }
 
-fn configure_cdb(config: &Config) -> Option<Arc<Config>> {
-    config.cdb.as_ref()?;
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.clone() }))
-}
-
-fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
-    config.gdb_version?;
-
-    if config.matches_env("msvc") {
-        return None;
-    }
-
-    if config.remote_test_client.is_some() && !config.target.contains("android") {
-        println!(
-            "WARNING: debuginfo tests are not available when \
-             testing with remote"
-        );
-        return None;
-    }
-
-    if config.target.contains("android") {
-        println!(
-            "{} debug-info test uses tcp 5039 port.\
-             please reserve it",
-            config.target
-        );
-
-        // android debug-info test uses remote debugger so, we test 1 thread
-        // at once as they're all sharing the same TCP port to communicate
-        // over.
-        //
-        // we should figure out how to lift this restriction! (run them all
-        // on different ports allocated dynamically).
-        env::set_var("RUST_TEST_THREADS", "1");
-    }
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.clone() }))
-}
-
-fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
-    config.lldb_python_dir.as_ref()?;
-
-    if let Some(350) = config.lldb_version {
-        println!(
-            "WARNING: The used version of LLDB (350) has a \
-             known issue that breaks debuginfo tests. See \
-             issue #32520 for more information. Skipping all \
-             LLDB-based tests!",
-        );
-        return None;
-    }
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
-}
-
 pub fn test_opts(config: &Config) -> test::TestOpts {
     if env::var("RUST_TEST_NOCAPTURE").is_ok() {
         eprintln!(
@@ -585,6 +545,11 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     }
 }
 
+/// Creates libtest structures for every test/revision in the test suite directory.
+///
+/// This always inspects _all_ test files in the suite (e.g. all 17k+ ui tests),
+/// regardless of whether any filters/tests were specified on the command-line,
+/// because filtering is handled later by libtest.
 pub fn make_tests(
     config: Arc<Config>,
     tests: &mut Vec<test::TestDescAndFn>,
@@ -663,10 +628,17 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
     stamp
 }
 
+/// Returns a list of modified/untracked test files that should be run when
+/// the `--only-modified` flag is in use.
+///
+/// (Might be inaccurate in some cases.)
 fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
+    // If `--only-modified` wasn't passed, the list of modified tests won't be
+    // used for anything, so avoid some work and just return an empty list.
     if !config.only_modified {
         return Ok(vec![]);
     }
+
     let files =
         get_git_modified_files(&config.git_config(), Some(dir), &vec!["rs", "stderr", "fixed"])?
             .unwrap_or(vec![]);
@@ -687,6 +659,8 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(full_paths)
 }
 
+/// Recursively scans a directory to find test files and create test structures
+/// that will be handed over to libtest.
 fn collect_tests_from_dir(
     config: Arc<Config>,
     cache: &HeadersCache,
@@ -703,6 +677,8 @@ fn collect_tests_from_dir(
         return Ok(());
     }
 
+    // For run-make tests, a "test file" is actually a directory that contains
+    // an `rmake.rs` or `Makefile`"
     if config.mode == Mode::RunMake {
         if dir.join("Makefile").exists() && dir.join("rmake.rs").exists() {
             return Err(io::Error::other(
@@ -716,6 +692,7 @@ fn collect_tests_from_dir(
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
             tests.extend(make_test(config, cache, &paths, inputs, poisoned));
+            // This directory is a test, so don't try to find other tests inside it.
             return Ok(());
         }
     }
@@ -730,22 +707,27 @@ fn collect_tests_from_dir(
     fs::create_dir_all(&build_dir).unwrap();
 
     // Add each `.rs` file as a test, and recurse further on any
-    // subdirectories we find, except for `aux` directories.
+    // subdirectories we find, except for `auxiliary` directories.
     // FIXME: this walks full tests tree, even if we have something to ignore
     // use walkdir/ignore like in tidy?
     for file in fs::read_dir(dir)? {
         let file = file?;
         let file_path = file.path();
         let file_name = file.file_name();
+
         if is_test(&file_name) && (!config.only_modified || modified_tests.contains(&file_path)) {
+            // We found a test file, so create the corresponding libtest structures.
             debug!("found test file: {:?}", file_path.display());
+
+            // Record the stem of the test file, to check for overlaps later.
             let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
             found_paths.insert(rel_test_path);
+
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
-
             tests.extend(make_test(config.clone(), cache, &paths, inputs, poisoned))
         } else if file_path.is_dir() {
+            // Recurse to find more tests in a subdirectory.
             let relative_file_path = relative_dir_path.join(file.file_name());
             if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
@@ -781,6 +763,8 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
+/// For a single test file, creates one or more test structures (one per revision)
+/// that can be handed over to libtest to run, possibly in parallel.
 fn make_test(
     config: Arc<Config>,
     cache: &HeadersCache,
@@ -788,6 +772,9 @@ fn make_test(
     inputs: &Stamp,
     poisoned: &mut bool,
 ) -> Vec<test::TestDescAndFn> {
+    // For run-make tests, each "test file" is actually a _directory_ containing
+    // an `rmake.rs` or `Makefile`. But for the purposes of directive parsing,
+    // we want to look at that recipe file, not the directory itself.
     let test_path = if config.mode == Mode::RunMake {
         if testpaths.file.join("rmake.rs").exists() && testpaths.file.join("Makefile").exists() {
             panic!("run-make tests cannot have both `rmake.rs` and `Makefile`");
@@ -803,26 +790,40 @@ fn make_test(
     } else {
         PathBuf::from(&testpaths.file)
     };
+
+    // Scan the test file to discover its revisions, if any.
     let early_props = EarlyProps::from_file(&config, &test_path);
 
-    // Incremental tests are special, they inherently cannot be run in parallel.
-    // `runtest::run` will be responsible for iterating over revisions.
+    // Normally we create one libtest structure per revision, with two exceptions:
+    // - If a test doesn't use revisions, create a dummy revision (None) so that
+    //   the test can still run.
+    // - Incremental tests inherently can't run their revisions in parallel, so
+    //   we treat them like non-revisioned tests here. Incremental revisions are
+    //   handled internally by `runtest::run` instead.
     let revisions = if early_props.revisions.is_empty() || config.mode == Mode::Incremental {
         vec![None]
     } else {
         early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
     };
 
+    // For each revision (or the sole dummy revision), create and return a
+    // `test::TestDescAndFn` that can be handed over to libtest.
     revisions
         .into_iter()
         .map(|revision| {
+            // Create a test name and description to hand over to libtest.
             let src_file =
                 std::fs::File::open(&test_path).expect("open test file to parse ignores");
             let test_name = crate::make_test_name(&config, testpaths, revision);
+            // Create a libtest description for the test/revision.
+            // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
+            // because they need to set the libtest ignored flag.
             let mut desc = make_test_description(
                 &config, cache, test_name, &test_path, src_file, revision, poisoned,
             );
-            // Ignore tests that already run and are up to date with respect to inputs.
+
+            // If a test's inputs haven't changed since the last time it ran,
+            // mark it as ignored so that libtest will skip it.
             if !config.force_rerun
                 && is_up_to_date(&config, testpaths, &early_props, revision, inputs)
             {
@@ -830,18 +831,25 @@ fn make_test(
                 // Keep this in sync with the "up-to-date" message detected by bootstrap.
                 desc.ignore_message = Some("up-to-date");
             }
-            test::TestDescAndFn {
-                desc,
-                testfn: make_test_closure(config.clone(), testpaths, revision),
-            }
+
+            // Create the callback that will run this test/revision when libtest calls it.
+            let testfn = make_test_closure(config.clone(), testpaths, revision);
+
+            test::TestDescAndFn { desc, testfn }
         })
         .collect()
 }
 
+/// The path of the `stamp` file that gets created or updated whenever a
+/// particular test completes successfully.
 fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
+/// Returns a list of files that, if modified, would cause this test to no
+/// longer be up-to-date.
+///
+/// (Might be inaccurate in some cases.)
 fn files_related_to_test(
     config: &Config,
     testpaths: &TestPaths,
@@ -862,7 +870,8 @@ fn files_related_to_test(
         related.push(testpaths.file.clone());
     }
 
-    for aux in &props.aux {
+    for aux in props.aux.all_aux_path_strings() {
+        // FIXME(Zalathar): Perform all `auxiliary` path resolution in one place.
         let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
         related.push(path);
     }
@@ -876,46 +885,61 @@ fn files_related_to_test(
     related
 }
 
+/// Checks whether a particular test/revision is "up-to-date", meaning that no
+/// relevant files/settings have changed since the last time the test succeeded.
+///
+/// (This is not very reliable in some circumstances, so the `--force-rerun`
+/// flag can be used to ignore up-to-date checking and always re-run tests.)
 fn is_up_to_date(
     config: &Config,
     testpaths: &TestPaths,
     props: &EarlyProps,
     revision: Option<&str>,
-    inputs: &Stamp,
+    inputs: &Stamp, // Last-modified timestamp of the compiler, compiletest etc
 ) -> bool {
     let stamp_name = stamp(config, testpaths, revision);
-    // Check hash.
+    // Check the config hash inside the stamp file.
     let contents = match fs::read_to_string(&stamp_name) {
         Ok(f) => f,
         Err(ref e) if e.kind() == ErrorKind::InvalidData => panic!("Can't read stamp contents"),
+        // The test hasn't succeeded yet, so it is not up-to-date.
         Err(_) => return false,
     };
     let expected_hash = runtest::compute_stamp_hash(config);
     if contents != expected_hash {
+        // Some part of compiletest configuration has changed since the test
+        // last succeeded, so it is not up-to-date.
         return false;
     }
 
-    // Check timestamps.
+    // Check the timestamp of the stamp file against the last modified time
+    // of all files known to be relevant to the test.
     let mut inputs = inputs.clone();
     for path in files_related_to_test(config, testpaths, props, revision) {
         inputs.add_path(&path);
     }
 
+    // If no relevant files have been modified since the stamp file was last
+    // written, the test is up-to-date.
     inputs < Stamp::from_path(&stamp_name)
 }
 
+/// The maximum of a set of file-modified timestamps.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Stamp {
     time: SystemTime,
 }
 
 impl Stamp {
+    /// Creates a timestamp holding the last-modified time of the specified file.
     fn from_path(path: &Path) -> Self {
         let mut stamp = Stamp { time: SystemTime::UNIX_EPOCH };
         stamp.add_path(path);
         stamp
     }
 
+    /// Updates this timestamp to the last-modified time of the specified file,
+    /// if it is later than the currently-stored timestamp.
     fn add_path(&mut self, path: &Path) {
         let modified = fs::metadata(path)
             .and_then(|metadata| metadata.modified())
@@ -923,6 +947,9 @@ impl Stamp {
         self.time = self.time.max(modified);
     }
 
+    /// Updates this timestamp to the most recent last-modified time of all files
+    /// recursively contained in the given directory, if it is later than the
+    /// currently-stored timestamp.
     fn add_dir(&mut self, path: &Path) {
         for entry in WalkDir::new(path) {
             let entry = entry.unwrap();
@@ -938,6 +965,7 @@ impl Stamp {
     }
 }
 
+/// Creates a name for this test/revision that can be handed over to libtest.
 fn make_test_name(
     config: &Config,
     testpaths: &TestPaths,
@@ -966,226 +994,41 @@ fn make_test_name(
     ))
 }
 
+/// Creates a callback for this test/revision that libtest will call when it
+/// decides to actually run the underlying test.
 fn make_test_closure(
     config: Arc<Config>,
     testpaths: &TestPaths,
     revision: Option<&str>,
 ) -> test::TestFn {
-    let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.map(str::to_owned);
+
+    // This callback is the link between compiletest's test discovery code,
+    // and the parts of compiletest that know how to run an individual test.
     test::DynTestFn(Box::new(move || {
         runtest::run(config, &testpaths, revision.as_deref());
         Ok(())
     }))
 }
 
-/// Returns `true` if the given target is an Android target for the
-/// purposes of GDB testing.
-fn is_android_gdb_target(target: &str) -> bool {
-    matches!(
-        &target[..],
-        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android"
-    )
-}
-
-/// Returns `true` if the given target is a MSVC target for the purposes of CDB testing.
-fn is_pc_windows_msvc_target(target: &str) -> bool {
-    target.ends_with("-pc-windows-msvc")
-}
-
-fn find_cdb(target: &str) -> Option<OsString> {
-    if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
-        return None;
-    }
-
-    let pf86 = env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?;
-    let cdb_arch = if cfg!(target_arch = "x86") {
-        "x86"
-    } else if cfg!(target_arch = "x86_64") {
-        "x64"
-    } else if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else if cfg!(target_arch = "arm") {
-        "arm"
-    } else {
-        return None; // No compatible CDB.exe in the Windows 10 SDK
-    };
-
-    let mut path = PathBuf::new();
-    path.push(pf86);
-    path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
-    path.push(cdb_arch);
-    path.push(r"cdb.exe");
-
-    if !path.exists() {
-        return None;
-    }
-
-    Some(path.into_os_string())
-}
-
-/// Returns Path to CDB
-fn analyze_cdb(cdb: Option<String>, target: &str) -> (Option<OsString>, Option<[u16; 4]>) {
-    let cdb = cdb.map(OsString::from).or_else(|| find_cdb(target));
-
-    let mut version = None;
-    if let Some(cdb) = cdb.as_ref() {
-        if let Ok(output) = Command::new(cdb).arg("/version").output() {
-            if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-                version = extract_cdb_version(&first_line);
-            }
-        }
-    }
-
-    (cdb, version)
-}
-
-fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
-    // Example full_version_line: "cdb version 10.0.18362.1"
-    let version = full_version_line.rsplit(' ').next()?;
-    let mut components = version.split('.');
-    let major: u16 = components.next().unwrap().parse().unwrap();
-    let minor: u16 = components.next().unwrap().parse().unwrap();
-    let patch: u16 = components.next().unwrap_or("0").parse().unwrap();
-    let build: u16 = components.next().unwrap_or("0").parse().unwrap();
-    Some([major, minor, patch, build])
-}
-
-/// Returns (Path to GDB, GDB Version)
-fn analyze_gdb(
-    gdb: Option<String>,
-    target: &str,
-    android_cross_path: &PathBuf,
-) -> (Option<String>, Option<u32>) {
-    #[cfg(not(windows))]
-    const GDB_FALLBACK: &str = "gdb";
-    #[cfg(windows)]
-    const GDB_FALLBACK: &str = "gdb.exe";
-
-    let fallback_gdb = || {
-        if is_android_gdb_target(target) {
-            let mut gdb_path = match android_cross_path.to_str() {
-                Some(x) => x.to_owned(),
-                None => panic!("cannot find android cross path"),
-            };
-            gdb_path.push_str("/bin/gdb");
-            gdb_path
-        } else {
-            GDB_FALLBACK.to_owned()
-        }
-    };
-
-    let gdb = match gdb {
-        None => fallback_gdb(),
-        Some(ref s) if s.is_empty() => fallback_gdb(), // may be empty if configure found no gdb
-        Some(ref s) => s.to_owned(),
-    };
-
-    let mut version_line = None;
-    if let Ok(output) = Command::new(&gdb).arg("--version").output() {
-        if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-            version_line = Some(first_line.to_string());
-        }
-    }
-
-    let version = match version_line {
-        Some(line) => extract_gdb_version(&line),
-        None => return (None, None),
-    };
-
-    (Some(gdb), version)
-}
-
-fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
-    let full_version_line = full_version_line.trim();
-
-    // GDB versions look like this: "major.minor.patch?.yyyymmdd?", with both
-    // of the ? sections being optional
-
-    // We will parse up to 3 digits for each component, ignoring the date
-
-    // We skip text in parentheses.  This avoids accidentally parsing
-    // the openSUSE version, which looks like:
-    //  GNU gdb (GDB; openSUSE Leap 15.0) 8.1
-    // This particular form is documented in the GNU coding standards:
-    // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
-
-    let unbracketed_part = full_version_line.split('[').next().unwrap();
-    let mut splits = unbracketed_part.trim_end().rsplit(' ');
-    let version_string = splits.next().unwrap();
-
-    let mut splits = version_string.split('.');
-    let major = splits.next().unwrap();
-    let minor = splits.next().unwrap();
-    let patch = splits.next();
-
-    let major: u32 = major.parse().unwrap();
-    let (minor, patch): (u32, u32) = match minor.find(not_a_digit) {
-        None => {
-            let minor = minor.parse().unwrap();
-            let patch: u32 = match patch {
-                Some(patch) => match patch.find(not_a_digit) {
-                    None => patch.parse().unwrap(),
-                    Some(idx) if idx > 3 => 0,
-                    Some(idx) => patch[..idx].parse().unwrap(),
-                },
-                None => 0,
-            };
-            (minor, patch)
-        }
-        // There is no patch version after minor-date (e.g. "4-2012").
-        Some(idx) => {
-            let minor = minor[..idx].parse().unwrap();
-            (minor, 0)
-        }
-    };
-
-    Some(((major * 1000) + minor) * 1000 + patch)
-}
-
-/// Returns LLDB version
-fn extract_lldb_version(full_version_line: &str) -> Option<u32> {
-    // Extract the major LLDB version from the given version string.
-    // LLDB version strings are different for Apple and non-Apple platforms.
-    // The Apple variant looks like this:
-    //
-    // LLDB-179.5 (older versions)
-    // lldb-300.2.51 (new versions)
-    //
-    // We are only interested in the major version number, so this function
-    // will return `Some(179)` and `Some(300)` respectively.
-    //
-    // Upstream versions look like:
-    // lldb version 6.0.1
-    //
-    // There doesn't seem to be a way to correlate the Apple version
-    // with the upstream version, and since the tests were originally
-    // written against Apple versions, we make a fake Apple version by
-    // multiplying the first number by 100. This is a hack.
-
-    let full_version_line = full_version_line.trim();
-
-    if let Some(apple_ver) =
-        full_version_line.strip_prefix("LLDB-").or_else(|| full_version_line.strip_prefix("lldb-"))
-    {
-        if let Some(idx) = apple_ver.find(not_a_digit) {
-            let version: u32 = apple_ver[..idx].parse().unwrap();
-            return Some(version);
-        }
-    } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
-        if let Some(idx) = lldb_ver.find(not_a_digit) {
-            let version: u32 = lldb_ver[..idx].parse().ok()?;
-            return Some(version * 100);
-        }
-    }
-    None
-}
-
-fn not_a_digit(c: char) -> bool {
-    !c.is_ascii_digit()
-}
-
+/// Checks that test discovery didn't find any tests whose name stem is a prefix
+/// of some other tests's name.
+///
+/// For example, suppose the test suite contains these two test files:
+/// - `tests/rustdoc/primitive.rs`
+/// - `tests/rustdoc/primitive/no_std.rs`
+///
+/// The test runner might put the output from those tests in these directories:
+/// - `$build/test/rustdoc/primitive/`
+/// - `$build/test/rustdoc/primitive/no_std/`
+///
+/// Because one output path is a subdirectory of the other, the two tests might
+/// interfere with each other in unwanted ways, especially if the test runner
+/// decides to delete test output directories to clean them between runs.
+/// To avoid problems, we forbid test names from overlapping in this way.
+///
+/// See <https://github.com/rust-lang/rust/pull/109509> for more context.
 fn check_overlapping_tests(found_paths: &HashSet<PathBuf>) {
     let mut collisions = Vec::new();
     for path in found_paths {

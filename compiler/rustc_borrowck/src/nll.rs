@@ -165,7 +165,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         universe_causes,
         type_tests,
         liveness_constraints,
-        elements.clone(),
+        elements,
     );
 
     // If requested: dump NLL facts, and run legacy polonius analysis.

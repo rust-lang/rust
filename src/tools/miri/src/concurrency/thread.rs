@@ -50,7 +50,7 @@ pub trait UnblockCallback<'tcx>: VisitProvenance {
     fn timeout(self: Box<Self>, _ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>)
     -> InterpResult<'tcx>;
 }
-type DynUnblockCallback<'tcx> = Box<dyn UnblockCallback<'tcx> + 'tcx>;
+pub type DynUnblockCallback<'tcx> = Box<dyn UnblockCallback<'tcx> + 'tcx>;
 
 #[macro_export]
 macro_rules! callback {
@@ -59,7 +59,7 @@ macro_rules! callback {
         @unblock = |$this:ident| $unblock:block
     ) => {
         callback!(
-            @capture<$tcx, $($lft),*> { $($name: $type),+ }
+            @capture<$tcx, $($lft),*> { $($name: $type),* }
             @unblock = |$this| $unblock
             @timeout = |_this| {
                 unreachable!(
@@ -101,7 +101,7 @@ macro_rules! callback {
             }
         }
 
-        Callback { $($name,)* _phantom: std::marker::PhantomData }
+        Box::new(Callback { $($name,)* _phantom: std::marker::PhantomData })
     }}
 }
 
@@ -715,11 +715,11 @@ impl<'tcx> ThreadManager<'tcx> {
         &mut self,
         reason: BlockReason,
         timeout: Option<Timeout>,
-        callback: impl UnblockCallback<'tcx> + 'tcx,
+        callback: DynUnblockCallback<'tcx>,
     ) {
         let state = &mut self.threads[self.active_thread].state;
         assert!(state.is_enabled());
-        *state = ThreadState::Blocked { reason, timeout, callback: Box::new(callback) }
+        *state = ThreadState::Blocked { reason, timeout, callback }
     }
 
     /// Change the active thread to some enabled thread.
@@ -1032,7 +1032,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         reason: BlockReason,
         timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
-        callback: impl UnblockCallback<'tcx> + 'tcx,
+        callback: DynUnblockCallback<'tcx>,
     ) {
         let this = self.eval_context_mut();
         let timeout = timeout.map(|(clock, anchor, duration)| {

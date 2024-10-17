@@ -1,11 +1,20 @@
 use crate::fold::TypeFoldable;
-use crate::relate::Relate;
-use crate::solve::{Goal, NoSolution, SolverMode};
+use crate::relate::RelateResult;
+use crate::relate::combine::PredicateEmittingRelation;
+use crate::solve::SolverMode;
 use crate::{self as ty, Interner};
 
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
     fn cx(&self) -> Self::Interner;
+
+    /// Whether the new trait solver is enabled. This only exists because rustc
+    /// shares code between the new and old trait solvers; for all other users,
+    /// this should always be true. If this is unknowingly false and you try to
+    /// use the new trait solver, things will break badly.
+    fn next_trait_solver(&self) -> bool {
+        true
+    }
 
     fn solver_mode(&self) -> SolverMode;
 
@@ -58,25 +67,45 @@ pub trait InferCtxtLike: Sized {
         f: impl FnOnce(T) -> U,
     ) -> U;
 
-    fn relate<T: Relate<Self::Interner>>(
-        &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
-        lhs: T,
-        variance: ty::Variance,
-        rhs: T,
-    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+    fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
+    fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid);
+    fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid);
+    fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid);
+    fn equate_effect_vids_raw(&self, a: ty::EffectVid, b: ty::EffectVid);
 
-    fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
+    fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
-        lhs: T,
-        rhs: T,
-    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: ty::TyVid,
+        instantiation_variance: ty::Variance,
+        source_ty: <Self::Interner as Interner>::Ty,
+    ) -> RelateResult<Self::Interner, ()>;
+    fn instantiate_int_var_raw(&self, vid: ty::IntVid, value: ty::IntVarValue);
+    fn instantiate_float_var_raw(&self, vid: ty::FloatVid, value: ty::FloatVarValue);
+    fn instantiate_effect_var_raw(
+        &self,
+        vid: ty::EffectVid,
+        value: <Self::Interner as Interner>::Const,
+    );
+    fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(
+        &self,
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: ty::ConstVid,
+        source_ct: <Self::Interner as Interner>::Const,
+    ) -> RelateResult<Self::Interner, ()>;
+
+    fn set_tainted_by_errors(&self, e: <Self::Interner as Interner>::ErrorGuaranteed);
 
     fn shallow_resolve(
         &self,
         ty: <Self::Interner as Interner>::Ty,
     ) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_const(
+        &self,
+        ty: <Self::Interner as Interner>::Const,
+    ) -> <Self::Interner as Interner>::Const;
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
@@ -88,6 +117,12 @@ pub trait InferCtxtLike: Sized {
         &self,
         sub: <Self::Interner as Interner>::Region,
         sup: <Self::Interner as Interner>::Region,
+    );
+
+    fn equate_regions(
+        &self,
+        a: <Self::Interner as Interner>::Region,
+        b: <Self::Interner as Interner>::Region,
     );
 
     fn register_ty_outlives(

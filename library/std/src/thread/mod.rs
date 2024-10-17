@@ -519,9 +519,14 @@ impl Builder {
 
         let f = MaybeDangling::new(f);
         let main = move || {
-            // Immediately store the thread handle to avoid setting it or its ID
-            // twice, which would cause an abort.
-            set_current(their_thread.clone());
+            if let Err(_thread) = set_current(their_thread.clone()) {
+                // Both the current thread handle and the ID should not be
+                // initialized yet. Since only the C runtime and some of our
+                // platform code run before this, this point shouldn't be
+                // reachable. Use an abort to save binary size (see #123356).
+                rtabort!("something here is badly broken!");
+            }
+
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
             }
@@ -1159,9 +1164,6 @@ pub fn park_timeout(dur: Duration) {
 pub struct ThreadId(NonZero<u64>);
 
 impl ThreadId {
-    // DO NOT rely on this value.
-    const MAIN_THREAD: ThreadId = ThreadId(unsafe { NonZero::new_unchecked(1) });
-
     // Generate a new unique thread ID.
     pub(crate) fn new() -> ThreadId {
         #[cold]
@@ -1173,7 +1175,7 @@ impl ThreadId {
             if #[cfg(target_has_atomic = "64")] {
                 use crate::sync::atomic::AtomicU64;
 
-                static COUNTER: AtomicU64 = AtomicU64::new(1);
+                static COUNTER: AtomicU64 = AtomicU64::new(0);
 
                 let mut last = COUNTER.load(Ordering::Relaxed);
                 loop {
@@ -1189,7 +1191,7 @@ impl ThreadId {
             } else {
                 use crate::sync::{Mutex, PoisonError};
 
-                static COUNTER: Mutex<u64> = Mutex::new(1);
+                static COUNTER: Mutex<u64> = Mutex::new(0);
 
                 let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
                 let Some(id) = counter.checked_add(1) else {
@@ -1326,9 +1328,9 @@ impl Thread {
         Self::new_inner(id, ThreadName::Unnamed)
     }
 
-    // Used in runtime to construct main thread
-    pub(crate) fn new_main() -> Thread {
-        Self::new_inner(ThreadId::MAIN_THREAD, ThreadName::Main)
+    /// Constructs the thread handle for the main thread.
+    pub(crate) fn new_main(id: ThreadId) -> Thread {
+        Self::new_inner(id, ThreadName::Main)
     }
 
     fn new_inner(id: ThreadId, name: ThreadName) -> Thread {

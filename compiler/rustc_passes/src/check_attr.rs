@@ -243,6 +243,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_generic_attr(hir_id, attr, target, Target::Fn);
                     self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                 }
+                [sym::autodiff, ..] => {
+                    self.check_autodiff(hir_id, attr, span, target)
+                }
                 [sym::coroutine, ..] => {
                     self.check_coroutine(attr, target);
                 }
@@ -2299,7 +2302,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 })),
                 terr,
                 false,
-                false,
             );
             diag.emit();
             self.abort.set(true);
@@ -2343,6 +2345,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             .any(|nmi| nmi.has_name(sym::transparent))
         {
             self.dcx().emit_err(errors::RustcPubTransparent { span, attr_span });
+        }
+    }
+
+    /// Checks if `#[autodiff]` is applied to an item other than a function item.
+    fn check_autodiff(&self, _hir_id: HirId, _attr: &Attribute, span: Span, target: Target) {
+        debug!("check_autodiff");
+        match target {
+            Target::Fn => {}
+            _ => {
+                self.dcx().emit_err(errors::AutoDiffAttr { attr_span: span });
+                self.abort.set(true);
+            }
         }
     }
 }

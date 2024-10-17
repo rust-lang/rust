@@ -1,7 +1,7 @@
 // This must fail coherence.
 //
 // Getting this to pass was fairly difficult, so here's an explanation
-// of what's happening:
+// of what was previously happening for this to compile:
 //
 // Normalizing projections currently tries to replace them with inference variables
 // while emitting a nested `Projection` obligation. This cannot be done if the projection
@@ -16,12 +16,6 @@
 // assumption `?T: for<'a> WithAssoc2<'a, Assoc = i32>` in the `param_env`, so we normalize
 // that to `i32`. We then try to unify `i32` from `impl1` with `u32` from `impl2` which fails,
 // causing coherence to consider these two impls distinct.
-
-//@ revisions: classic next
-//@[next] compile-flags: -Znext-solver
-
-//@[classic] known-bug: #102048
-//@[classic] check-pass
 
 pub trait Trait<T> {}
 
@@ -42,7 +36,7 @@ where
 
 // impl 2
 impl<T, U> Trait<for<'a> fn(<U as WithAssoc1<'a>>::Assoc, u32)> for (T, U) where
-    U: for<'a> WithAssoc1<'a> //[next]~^ ERROR conflicting implementations of trait
+    U: for<'a> WithAssoc1<'a> //~^ ERROR conflicting implementations of trait
 {
 }
 

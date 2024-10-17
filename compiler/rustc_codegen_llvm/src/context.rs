@@ -138,6 +138,16 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
+    if llvm_version < (20, 0, 0) {
+        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
+            // LLVM 20 defines three additional address spaces for alternate
+            // pointer kinds used in Windows.
+            // See https://github.com/llvm/llvm-project/pull/111879
+            target_data_layout =
+                target_data_layout.replace("-p270:32:32-p271:32:32-p272:64:64", "");
+        }
+    }
+
     // Ensure the data-layout values hardcoded remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
@@ -884,6 +894,11 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.fma.f64", fn(t_f64, t_f64, t_f64) -> t_f64);
         ifn!("llvm.fma.f128", fn(t_f128, t_f128, t_f128) -> t_f128);
 
+        ifn!("llvm.fmuladd.f16", fn(t_f16, t_f16, t_f16) -> t_f16);
+        ifn!("llvm.fmuladd.f32", fn(t_f32, t_f32, t_f32) -> t_f32);
+        ifn!("llvm.fmuladd.f64", fn(t_f64, t_f64, t_f64) -> t_f64);
+        ifn!("llvm.fmuladd.f128", fn(t_f128, t_f128, t_f128) -> t_f128);
+
         ifn!("llvm.fabs.f16", fn(t_f16) -> t_f16);
         ifn!("llvm.fabs.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.fabs.f64", fn(t_f64) -> t_f64);
@@ -1187,10 +1202,11 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.tcx.dcx().emit_fatal(Spanned { span, node: err })
-        } else {
-            match fn_abi_request {
+        match err {
+            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::Cycle(_)) => {
+                self.tcx.dcx().emit_fatal(Spanned { span, node: err });
+            }
+            _ => match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
                     span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
                 }
@@ -1200,7 +1216,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
                         "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
                     );
                 }
-            }
+            },
         }
     }
 }

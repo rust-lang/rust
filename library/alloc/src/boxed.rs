@@ -1688,7 +1688,7 @@ impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Self {
-        Box::new(T::default())
+        Box::write(Box::new_uninit(), T::default())
     }
 }
 

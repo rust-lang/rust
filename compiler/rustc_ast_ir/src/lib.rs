@@ -79,3 +79,10 @@ impl Mutability {
         matches!(self, Self::Not)
     }
 }
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+pub enum Pinnedness {
+    Not,
+    Pinned,
+}

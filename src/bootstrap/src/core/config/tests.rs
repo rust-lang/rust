@@ -10,9 +10,10 @@ use serde::Deserialize;
 use super::flags::Flags;
 use super::{ChangeIdWrapper, Config};
 use crate::core::build_steps::clippy::get_clippy_rules_in_order;
+use crate::core::build_steps::llvm;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 
-fn parse(config: &str) -> Config {
+pub(crate) fn parse(config: &str) -> Config {
     Config::parse_inner(
         Flags::parse(&["check".to_string(), "--config=/does/not/exist".to_string()]),
         |&_| toml::from_str(&config),
@@ -21,29 +22,32 @@ fn parse(config: &str) -> Config {
 
 #[test]
 fn download_ci_llvm() {
-    if crate::core::build_steps::llvm::is_ci_llvm_modified(&parse("")) {
-        eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
-        return;
+    let config = parse("");
+    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
+    if is_available {
+        assert!(config.llvm_from_ci);
     }
 
-    let parse_llvm = |s| parse(s).llvm_from_ci;
-    let if_unchanged = parse_llvm("llvm.download-ci-llvm = \"if-unchanged\"");
+    let config = parse("llvm.download-ci-llvm = true");
+    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
+    if is_available {
+        assert!(config.llvm_from_ci);
+    }
 
-    assert!(parse_llvm("llvm.download-ci-llvm = true"));
-    assert!(!parse_llvm("llvm.download-ci-llvm = false"));
-    assert_eq!(parse_llvm(""), if_unchanged);
-    assert_eq!(parse_llvm("rust.channel = \"dev\""), if_unchanged);
-    assert!(parse_llvm("rust.channel = \"stable\""));
-    assert_eq!(parse_llvm("build.build = \"x86_64-unknown-linux-gnu\""), if_unchanged);
-    assert_eq!(
-        parse_llvm(
-            "llvm.assertions = true \r\n build.build = \"x86_64-unknown-linux-gnu\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
-        ),
-        if_unchanged
-    );
-    assert!(!parse_llvm(
-        "llvm.assertions = true \r\n build.build = \"aarch64-apple-darwin\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
-    ));
+    let config = parse("llvm.download-ci-llvm = false");
+    assert!(!config.llvm_from_ci);
+
+    let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
+    if if_unchanged_config.llvm_from_ci {
+        let has_changes = if_unchanged_config
+            .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+            .is_none();
+
+        assert!(
+            !has_changes,
+            "CI LLVM can't be enabled with 'if-unchanged' while there are changes in LLVM submodule."
+        );
+    }
 }
 
 // FIXME(onur-ozkan): extend scope of the test

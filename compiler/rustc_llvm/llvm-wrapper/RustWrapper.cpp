@@ -1533,27 +1533,40 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty,
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(20, 0)
+  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_increment));
+#else
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_increment));
+#endif
 }
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(19, 0)
-  return wrap(llvm::Intrinsic::getDeclaration(
+#if LLVM_VERSION_LT(19, 0)
+  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
+#endif
+#if LLVM_VERSION_GE(20, 0)
+  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
 #else
-  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
 #endif
 }
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(19, 0)
-  return wrap(llvm::Intrinsic::getDeclaration(
+#if LLVM_VERSION_LT(19, 0)
+  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
+#endif
+#if LLVM_VERSION_GE(20, 0)
+  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
 #else
-  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
 #endif
 }
 

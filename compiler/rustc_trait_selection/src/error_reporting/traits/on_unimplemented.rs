@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::Span;
@@ -108,14 +108,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub fn on_unimplemented_note(
         &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_file: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
+        if trait_pred.polarity() != ty::PredicatePolarity::Positive {
+            return OnUnimplementedNote::default();
+        }
+
         let (def_id, args) = self
-            .impl_similar_to(trait_ref, obligation)
-            .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().args));
-        let trait_ref = trait_ref.skip_binder();
+            .impl_similar_to(trait_pred.to_poly_trait_ref(), obligation)
+            .unwrap_or_else(|| (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args));
+        let trait_pred = trait_pred.skip_binder();
 
         let mut flags = vec![];
         // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
@@ -144,13 +148,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             flags.push((sym::cause, Some("MainFunctionType".to_string())));
         }
 
-        flags.push((sym::Trait, Some(trait_ref.print_trait_sugared().to_string())));
+        flags.push((sym::Trait, Some(trait_pred.trait_ref.print_trait_sugared().to_string())));
 
         // Add all types without trimmed paths or visible paths, ensuring they end up with
         // their "canonical" def path.
         ty::print::with_no_trimmed_paths!(ty::print::with_no_visible_paths!({
             let generics = self.tcx.generics_of(def_id);
-            let self_ty = trait_ref.self_ty();
+            let self_ty = trait_pred.self_ty();
             // This is also included through the generics list as `Self`,
             // but the parser won't allow you to use it
             flags.push((sym::_Self, Some(self_ty.to_string())));
@@ -266,7 +270,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }));
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
-            command.evaluate(self.tcx, trait_ref, &flags, long_ty_file)
+            command.evaluate(self.tcx, trait_pred.trait_ref, &flags, long_ty_file)
         } else {
             OnUnimplementedNote::default()
         }

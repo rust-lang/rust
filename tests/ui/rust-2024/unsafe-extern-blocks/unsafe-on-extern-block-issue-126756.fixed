@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 unsafe extern "C" {
-    unsafe fn foo(); //~ ERROR items in unadorned `extern` blocks cannot have safety qualifiers
+    unsafe fn foo(); //~ ERROR items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
 }
 
 fn main() {}

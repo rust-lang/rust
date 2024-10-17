@@ -30,6 +30,7 @@ fn main() {
     libm();
     test_fast();
     test_algebraic();
+    test_fmuladd();
 }
 
 trait Float: Copy + PartialEq + Debug {
@@ -1040,4 +1041,21 @@ fn test_algebraic() {
     test_operations_f64(10., 5.);
     test_operations_f32(11., 2.);
     test_operations_f32(10., 15.);
+}
+
+fn test_fmuladd() {
+    use std::intrinsics::{fmuladdf32, fmuladdf64};
+
+    #[inline(never)]
+    pub fn test_operations_f32(a: f32, b: f32, c: f32) {
+        assert_approx_eq!(unsafe { fmuladdf32(a, b, c) }, a * b + c);
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f64(a: f64, b: f64, c: f64) {
+        assert_approx_eq!(unsafe { fmuladdf64(a, b, c) }, a * b + c);
+    }
+
+    test_operations_f32(0.1, 0.2, 0.3);
+    test_operations_f64(1.1, 1.2, 1.3);
 }

@@ -1,3 +1,4 @@
+//@aux-build:proc_macros.rs
 #![feature(yeet_expr)]
 #![allow(unused)]
 #![allow(
@@ -8,6 +9,9 @@
     clippy::needless_else
 )]
 #![warn(clippy::needless_return)]
+
+extern crate proc_macros;
+use proc_macros::with_span;
 
 use std::cell::RefCell;
 
@@ -367,6 +371,10 @@ fn conjunctive_blocks() -> String {
 
 fn issue12907() -> String {
     return "".split("").next().unwrap().to_string();
+}
+
+fn issue13458() {
+    with_span!(span return);
 }
 
 fn main() {}

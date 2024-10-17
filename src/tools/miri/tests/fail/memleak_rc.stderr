@@ -1,8 +1,8 @@
 error: memory leaked: ALLOC (Rust heap, SIZE, ALIGN), allocated here:
   --> RUSTLIB/alloc/src/rc.rs:LL:CC
    |
-LL |                 Box::leak(Box::new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value }))
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |                 Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: BACKTRACE:
    = note: inside `std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new` at RUSTLIB/alloc/src/rc.rs:LL:CC

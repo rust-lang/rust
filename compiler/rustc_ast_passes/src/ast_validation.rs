@@ -244,9 +244,6 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::AnonStruct(_, ref fields) | TyKind::AnonUnion(_, ref fields) => {
-                walk_list!(self, visit_struct_field_def, fields)
-            }
             _ => visit::walk_ty(self, t),
         }
     }
@@ -255,7 +252,6 @@ impl<'a> AstValidator<'a> {
         if let Some(ident) = field.ident
             && ident.name == kw::Underscore
         {
-            self.check_unnamed_field_ty(&field.ty, ident.span);
             self.visit_vis(&field.vis);
             self.visit_ident(ident);
             self.visit_ty_common(&field.ty);
@@ -291,39 +287,6 @@ impl<'a> AstValidator<'a> {
                 }
                 _ => report_err(pat.span, None, false),
             }
-        }
-    }
-
-    fn check_unnamed_field_ty(&self, ty: &Ty, span: Span) {
-        if matches!(
-            &ty.kind,
-            // We already checked for `kw::Underscore` before calling this function,
-            // so skip the check
-            TyKind::AnonStruct(..) | TyKind::AnonUnion(..)
-            // If the anonymous field contains a Path as type, we can't determine
-            // if the path is a valid struct or union, so skip the check
-            | TyKind::Path(..)
-        ) {
-            return;
-        }
-        self.dcx().emit_err(errors::InvalidUnnamedFieldTy { span, ty_span: ty.span });
-    }
-
-    fn deny_anon_struct_or_union(&self, ty: &Ty) {
-        let struct_or_union = match &ty.kind {
-            TyKind::AnonStruct(..) => "struct",
-            TyKind::AnonUnion(..) => "union",
-            _ => return,
-        };
-        self.dcx().emit_err(errors::AnonStructOrUnionNotAllowed { struct_or_union, span: ty.span });
-    }
-
-    fn deny_unnamed_field(&self, field: &FieldDef) {
-        if let Some(ident) = field.ident
-            && ident.name == kw::Underscore
-        {
-            self.dcx()
-                .emit_err(errors::InvalidUnnamedField { span: field.span, ident_span: ident.span });
         }
     }
 
@@ -561,21 +524,24 @@ impl<'a> AstValidator<'a> {
         // Deconstruct to ensure exhaustiveness
         FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
-        let report_err = |span| {
-            self.dcx()
-                .emit_err(errors::FnQualifierInExtern { span, block: self.current_extern_span() });
+        let report_err = |span, kw| {
+            self.dcx().emit_err(errors::FnQualifierInExtern {
+                span,
+                kw,
+                block: self.current_extern_span(),
+            });
         };
         match coroutine_kind {
-            Some(knd) => report_err(knd.span()),
+            Some(kind) => report_err(kind.span(), kind.as_str()),
             None => (),
         }
         match constness {
-            Const::Yes(span) => report_err(span),
+            Const::Yes(span) => report_err(span, "const"),
             Const::No => (),
         }
         match ext {
             Extern::None => (),
-            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span),
+            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span, "extern"),
         }
     }
 
@@ -890,13 +856,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
-        self.deny_anon_struct_or_union(ty);
         self.walk_ty(ty)
-    }
-
-    fn visit_field_def(&mut self, field: &'a FieldDef) {
-        self.deny_unnamed_field(field);
-        visit::walk_field_def(self, field)
     }
 
     fn visit_item(&mut self, item: &'a Item) {
@@ -1303,7 +1263,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if !bound_pred.bound_generic_params.is_empty() {
                         for bound in &bound_pred.bounds {
                             match bound {
-                                GenericBound::Trait(t, _) => {
+                                GenericBound::Trait(t) => {
                                     if !t.bound_generic_params.is_empty() {
                                         self.dcx()
                                             .emit_err(errors::NestedLifetimes { span: t.span });
@@ -1323,8 +1283,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
         match bound {
-            GenericBound::Trait(trait_ref, modifiers) => {
-                match (ctxt, modifiers.constness, modifiers.polarity) {
+            GenericBound::Trait(trait_ref) => {
+                match (ctxt, trait_ref.modifiers.constness, trait_ref.modifiers.polarity) {
                     (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
                         if !self.features.more_maybe_bounds =>
                     {
@@ -1364,7 +1324,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
 
                 // Negative trait bounds are not allowed to have associated constraints
-                if let BoundPolarity::Negative(_) = modifiers.polarity
+                if let BoundPolarity::Negative(_) = trait_ref.modifiers.polarity
                     && let Some(segment) = trait_ref.trait_ref.path.segments.last()
                 {
                     match segment.args.as_deref() {
@@ -1712,7 +1672,9 @@ fn deny_equality_constraints(
             }),
         ) {
             for bound in bounds {
-                if let GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                if let GenericBound::Trait(poly) = bound
+                    && poly.modifiers == TraitBoundModifiers::NONE
+                {
                     if full_path.segments[..full_path.segments.len() - 1]
                         .iter()
                         .map(|segment| segment.ident.name)
@@ -1740,7 +1702,9 @@ fn deny_equality_constraints(
             ) {
                 if ident == potential_param.ident {
                     for bound in bounds {
-                        if let ast::GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                        if let ast::GenericBound::Trait(poly) = bound
+                            && poly.modifiers == TraitBoundModifiers::NONE
+                        {
                             suggest(poly, potential_assoc, predicate);
                         }
                     }

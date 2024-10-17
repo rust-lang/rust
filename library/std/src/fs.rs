@@ -394,7 +394,8 @@ impl File {
     ///
     /// # Errors
     ///
-    /// This function will return an error if `path` does not already exist.
+    /// This function will return an error if `path` does not already exist,
+    /// or if memory allocation fails for the new buffer.
     /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples

@@ -581,8 +581,6 @@ lint_non_glob_import_type_ir_inherent = non-glob import of `rustc_type_ir::inher
 
 lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
 
-lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-
 lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
     .non_local = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
     .doctest = make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
@@ -739,6 +737,9 @@ lint_requested_level = requested on the command line with `{$level} {$lint_name}
 lint_reserved_prefix = prefix `{$prefix}` is unknown
     .label = unknown prefix
     .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+
+lint_reserved_string = will be parsed as a guarded string in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
 
 lint_shadowed_into_iter =
     this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<{$target} as IntoIterator>::into_iter` in Rust {$edition}

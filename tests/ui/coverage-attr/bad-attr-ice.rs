@@ -1,7 +1,7 @@
 #![cfg_attr(feat, feature(coverage_attribute))]
 //@ revisions: feat nofeat
 //@ compile-flags: -Cinstrument-coverage
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 
 // Malformed `#[coverage(..)]` attributes should not cause an ICE when built
 // with `-Cinstrument-coverage`.

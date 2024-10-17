@@ -32,11 +32,13 @@ pub struct EpollEventInstance {
     events: u32,
     /// Original data retrieved from `epoll_event` during `epoll_ctl`.
     data: u64,
+    /// The release clock associated with this event.
+    clock: VClock,
 }
 
 impl EpollEventInstance {
     pub fn new(events: u32, data: u64) -> EpollEventInstance {
-        EpollEventInstance { events, data }
+        EpollEventInstance { events, data, clock: Default::default() }
     }
 }
 
@@ -92,7 +94,6 @@ pub struct EpollReadyEvents {
 #[derive(Debug, Default)]
 struct ReadyList {
     mapping: RefCell<BTreeMap<(FdId, i32), EpollEventInstance>>,
-    clock: RefCell<VClock>,
 }
 
 impl EpollReadyEvents {
@@ -480,7 +481,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         if timeout == 0 || !ready_list_empty {
             // If the ready list is not empty, or the timeout is 0, we can return immediately.
-            blocking_epoll_callback(epfd_value, weak_epfd, dest, &event, this)?;
+            return_ready_list(epfd_value, weak_epfd, dest, &event, this)?;
         } else {
             // Blocking
             let timeout = match timeout {
@@ -508,7 +509,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         event: MPlaceTy<'tcx>,
                     }
                     @unblock = |this| {
-                        blocking_epoll_callback(epfd_value, weak_epfd, &dest, &event, this)?;
+                        return_ready_list(epfd_value, weak_epfd, &dest, &event, this)?;
                         interp_ok(())
                     }
                     @timeout = |this| {
@@ -567,11 +568,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                         let epoll = epfd.downcast::<Epoll>().unwrap();
 
-                        // Synchronize running thread to the epoll ready list.
-                        if let Some(clock) = &this.release_clock() {
-                            epoll.ready_list.clock.borrow_mut().join(clock);
-                        }
-
                         if let Some(thread_id) = epoll.thread_id.borrow_mut().pop() {
                             waiter.push(thread_id);
                         };
@@ -627,7 +623,11 @@ fn check_and_update_one_event_interest<'tcx>(
     if flags != 0 {
         let epoll_key = (id, epoll_event_interest.fd_num);
         let ready_list = &mut epoll_event_interest.ready_list.mapping.borrow_mut();
-        let event_instance = EpollEventInstance::new(flags, epoll_event_interest.data);
+        let mut event_instance = EpollEventInstance::new(flags, epoll_event_interest.data);
+        // If we are tracking data races, remember the current clock so we can sync with it later.
+        ecx.release_clock(|clock| {
+            event_instance.clock.clone_from(clock);
+        });
         // Triggers the notification by inserting it to the ready list.
         ready_list.insert(epoll_key, event_instance);
         interp_ok(true)
@@ -636,8 +636,9 @@ fn check_and_update_one_event_interest<'tcx>(
     }
 }
 
-/// Callback function after epoll_wait unblocks
-fn blocking_epoll_callback<'tcx>(
+/// Stores the ready list of the `epfd` epoll instance into `events` (which must be an array),
+/// and the number of returned events into `dest`.
+fn return_ready_list<'tcx>(
     epfd_value: i32,
     weak_epfd: WeakFileDescriptionRef,
     dest: &MPlaceTy<'tcx>,
@@ -654,9 +655,6 @@ fn blocking_epoll_callback<'tcx>(
 
     let ready_list = epoll_file_description.get_ready_list();
 
-    // Synchronize waking thread from the epoll ready list.
-    ecx.acquire_clock(&ready_list.clock.borrow());
-
     let mut ready_list = ready_list.mapping.borrow_mut();
     let mut num_of_events: i32 = 0;
     let mut array_iter = ecx.project_array_fields(events)?;
@@ -670,6 +668,9 @@ fn blocking_epoll_callback<'tcx>(
                 ],
                 &des.1,
             )?;
+            // Synchronize waking thread with the event of interest.
+            ecx.acquire_clock(&epoll_event_instance.clock);
+
             num_of_events = num_of_events.strict_add(1);
         } else {
             break;

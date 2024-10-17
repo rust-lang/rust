@@ -530,8 +530,6 @@ fn main() {
         } else if arg == "-Zmiri-ignore-leaks" {
             miri_config.ignore_leaks = true;
             miri_config.collect_leak_backtraces = false;
-        } else if arg == "-Zmiri-panic-on-unsupported" {
-            miri_config.panic_on_unsupported = true;
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-permissive-provenance" {

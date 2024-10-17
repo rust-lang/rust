@@ -230,6 +230,9 @@ h4.code-header {
 	padding: 0;
 	white-space: pre-wrap;
 }
+.structfield {
+	margin: 0.6em 0;
+}
 
 #crate-search,
 h1, h2, h3, h4, h5, h6,
@@ -2435,7 +2438,7 @@ in src-script.js and main.js
 	}
 
 	/* Position of the "[-]" element. */
-	details.toggle:not(.top-doc) > summary {
+	details.toggle:not(.top-doc) > summary, .impl-items > section  {
 		margin-left: 10px;
 	}
 	.impl-items > details.toggle > summary:not(.hideme)::before,

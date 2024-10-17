@@ -86,6 +86,11 @@ fn get_simple_intrinsic<'ll>(
         sym::fmaf64 => "llvm.fma.f64",
         sym::fmaf128 => "llvm.fma.f128",
 
+        sym::fmuladdf16 => "llvm.fmuladd.f16",
+        sym::fmuladdf32 => "llvm.fmuladd.f32",
+        sym::fmuladdf64 => "llvm.fmuladd.f64",
+        sym::fmuladdf128 => "llvm.fmuladd.f128",
+
         sym::fabsf16 => "llvm.fabs.f16",
         sym::fabsf32 => "llvm.fabs.f32",
         sym::fabsf64 => "llvm.fabs.f64",

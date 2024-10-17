@@ -422,6 +422,9 @@ parse_invalid_meta_item = expected unsuffixed literal, found `{$token}`
 
 parse_invalid_offset_of = offset_of expects dot-separated field and variant names
 
+parse_invalid_path_sep_in_fn_definition = invalid path separator in function definition
+    .suggestion = remove invalid path separator
+
 parse_invalid_unicode_escape = invalid unicode character escape
     .label = invalid escape
     .help = unicode escape must {$surrogate ->
@@ -705,6 +708,10 @@ parse_require_colon_after_labeled_expression = labeled expression must be follow
     .note = labels are used before loops and blocks, allowing e.g., `break 'label` to them
     .label = the label
     .suggestion = add `:` after the label
+
+parse_reserved_string = invalid string literal
+    .note = unprefixed guarded string literals are reserved for future use since Rust 2024
+    .suggestion_whitespace = consider inserting whitespace here
 
 parse_return_types_use_thin_arrow = return types are denoted using `->`
     .suggestion = use `->` instead

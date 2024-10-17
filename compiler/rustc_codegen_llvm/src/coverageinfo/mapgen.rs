@@ -14,29 +14,20 @@ use crate::coverageinfo::ffi::CounterMappingRegion;
 use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
 use crate::{coverageinfo, llvm};
 
-/// Generates and exports the Coverage Map.
+/// Generates and exports the coverage map, which is embedded in special
+/// linker sections in the final binary.
 ///
-/// Rust Coverage Map generation supports LLVM Coverage Mapping Format versions
-/// 6 and 7 (encoded as 5 and 6 respectively), as described at
-/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/18.0-2024-02-13/llvm/docs/CoverageMappingFormat.rst).
-/// These versions are supported by the LLVM coverage tools (`llvm-profdata` and `llvm-cov`)
-/// distributed in the `llvm-tools-preview` rustup component.
-///
-/// Consequently, Rust's bundled version of Clang also generates Coverage Maps compliant with
-/// the same version. Clang's implementation of Coverage Map generation was referenced when
-/// implementing this Rust version, and though the format documentation is very explicit and
-/// detailed, some undocumented details in Clang's implementation (that may or may not be important)
-/// were also replicated for Rust's Coverage Map.
+/// Those sections are then read and understood by LLVM's `llvm-cov` tool,
+/// which is distributed in the `llvm-tools` rustup component.
 pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
     // Ensure that LLVM is using a version of the coverage mapping format that
     // agrees with our Rust-side code. Expected versions (encoded as n-1) are:
-    // - `CovMapVersion::Version6` (5) used by LLVM 13-17
-    // - `CovMapVersion::Version7` (6) used by LLVM 18
+    // - `CovMapVersion::Version7` (6) used by LLVM 18-19
     let covmap_version = {
         let llvm_covmap_version = coverageinfo::mapping_version();
-        let expected_versions = 5..=6;
+        let expected_versions = 6..=6;
         assert!(
             expected_versions.contains(&llvm_covmap_version),
             "Coverage mapping version exposed by `llvm-wrapper` is out of sync; \

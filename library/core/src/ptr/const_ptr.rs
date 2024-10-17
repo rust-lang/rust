@@ -63,21 +63,22 @@ impl<T: ?Sized> *const T {
         self as _
     }
 
-    /// Uses the pointer value in a new pointer of another type.
+    /// Uses the address value in a new pointer of another type.
     ///
-    /// In case `meta` is a (fat) pointer to an unsized type, this operation
-    /// will ignore the pointer part, whereas for (thin) pointers to sized
-    /// types, this has the same effect as a simple cast.
+    /// This operation will ignore the address part of its `meta` operand and discard existing
+    /// metadata of `self`. For pointers to a sized types (thin pointers), this has the same effect
+    /// as a simple cast. For pointers to an unsized type (fat pointers) this recombines the address
+    /// with new metadata such as slice lengths or `dyn`-vtable.
     ///
-    /// The resulting pointer will have provenance of `self`, i.e., for a fat
-    /// pointer, this operation is semantically the same as creating a new
-    /// fat pointer with the data pointer value of `self` but the metadata of
-    /// `meta`.
+    /// The resulting pointer will have provenance of `self`. This operation is semantically the
+    /// same as creating a new pointer with the data pointer value of `self` but the metadata of
+    /// `meta`, being fat or thin depending on the `meta` operand.
     ///
     /// # Examples
     ///
-    /// This function is primarily useful for allowing byte-wise pointer
-    /// arithmetic on potentially fat pointers:
+    /// This function is primarily useful for enabling pointer arithmetic on potentially fat
+    /// pointers. The pointer is cast to a sized pointee to utilize offset operations and then
+    /// recombined with its own original metadata.
     ///
     /// ```
     /// #![feature(set_ptr_value)]
@@ -91,8 +92,28 @@ impl<T: ?Sized> *const T {
     ///     println!("{:?}", &*ptr); // will print "3"
     /// }
     /// ```
+    ///
+    /// # *Incorrect* usage
+    ///
+    /// The provenance from pointers is *not* combined. The result must only be used to refer to the
+    /// address allowed by `self`.
+    ///
+    /// ```rust,no_run
+    /// #![feature(set_ptr_value)]
+    /// let x = 0u32;
+    /// let y = 1u32;
+    ///
+    /// let x = (&x) as *const u32;
+    /// let y = (&y) as *const u32;
+    ///
+    /// let offset = (x as usize - y as usize) / 4;
+    /// let bad = x.wrapping_add(offset).with_metadata_of(y);
+    ///
+    /// // This dereference is UB. The pointer only has provenance for `x` but points to `y`.
+    /// println!("{:?}", unsafe { &*bad });
+    /// ```
     #[unstable(feature = "set_ptr_value", issue = "75091")]
-    #[rustc_const_stable(feature = "ptr_metadata_const", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_metadata_const", since = "1.83.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *const U
@@ -1278,7 +1299,7 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1298,7 +1319,7 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

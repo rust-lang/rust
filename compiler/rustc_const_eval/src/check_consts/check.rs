@@ -666,6 +666,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 }
 
+                // This can be called on stable via the `vec!` macro.
                 if tcx.is_lang_item(callee, LangItem::ExchangeMalloc) {
                     self.check_op(ops::HeapAllocation);
                     return;

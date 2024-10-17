@@ -1,0 +1,16 @@
+error[E0391]: cycle detected when computing layout of `Wrapper<()>`
+   |
+   = note: ...which requires computing layout of `<() as Trait>::Assoc`...
+   = note: ...which again requires computing layout of `Wrapper<()>`, completing the cycle
+   = note: cycle used when computing layout of `core::option::Option<Wrapper<()>>`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: a cycle occurred during layout computation
+  --> $DIR/post-mono-layout-cycle.rs:16:1
+   |
+LL | fn abi<T: Trait>(_: Option<Wrapper<T>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

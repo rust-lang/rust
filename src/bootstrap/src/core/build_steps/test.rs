@@ -1697,7 +1697,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         builder.ensure(TestHelpers { target: compiler.host });
 
         // ensure that `libproc_macro` is available on the host.
-        builder.ensure(compile::Std::new(compiler, compiler.host));
+        if suite == "mir-opt" {
+            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, compiler.host));
+        } else {
+            builder.ensure(compile::Std::new(compiler, compiler.host));
+        }
 
         // As well as the target
         if suite != "mir-opt" {
@@ -2082,7 +2086,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if builder.config.profiler_enabled(target) {
-            cmd.arg("--profiler-support");
+            cmd.arg("--profiler-runtime");
         }
 
         cmd.env("RUST_TEST_TMPDIR", builder.tempdir());

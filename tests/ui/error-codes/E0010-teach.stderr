@@ -4,7 +4,7 @@ error[E0010]: allocations are not allowed in constants
 LL | const CON: Vec<i32> = vec![1, 2, 3];
    |                       ^^^^^^^^^^^^^ allocation not allowed in constants
    |
-   = note: The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
+   = note: The runtime heap is not yet available at compile-time, so no runtime heap allocations can be created.
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const fn `slice::<impl [i32]>::into_vec::<std::alloc::Global>` in constants

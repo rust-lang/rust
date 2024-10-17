@@ -845,6 +845,7 @@ impl<'src> Classifier<'src> {
                 // Number literals.
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },
+            TokenKind::GuardedStrPrefix => return no_highlight(sink),
             TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
                 self.in_macro = true;
                 sink(Highlight::EnterSpan { class: Class::Macro(self.new_span(before, text)) });

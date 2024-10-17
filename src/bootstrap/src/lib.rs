@@ -1575,9 +1575,11 @@ Executed at: {executed_at}"#,
     fn rust_version(&self) -> String {
         let mut version = self.rust_info().version(self, &self.version);
         if let Some(ref s) = self.config.description {
-            version.push_str(" (");
-            version.push_str(s);
-            version.push(')');
+            if !s.is_empty() {
+                version.push_str(" (");
+                version.push_str(s);
+                version.push(')');
+            }
         }
         version
     }
