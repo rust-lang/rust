@@ -109,7 +109,10 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-wasm-enable-eh", false);
         }
 
-        if sess.target.os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
+        if sess.target.os == "emscripten"
+            && !sess.opts.unstable_opts.emscripten_wasm_eh
+            && sess.panic_strategy() == PanicStrategy::Unwind
+        {
             add("-enable-emscripten-cxx-exceptions", false);
         }
 
