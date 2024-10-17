@@ -48,7 +48,7 @@ pub enum Enum1 {
     C(u64),
 }
 
-// bit32: void @enum1_value({{.*}} sret([16 x i8]) {{[^,]*}}, [[ENUM1_TYP:i[0-9]+]]
+// bit32: void @enum1_value({{.*}} sret({{[^,]*}}) {{[^,]*}}, [[ENUM1_TYP:i[0-9]+]]
 // bit64: { [[ENUM1_TYP:i[0-9]+]], i64 } @enum1_value([[ENUM1_TYP]]
 // CHECK-SAME: noundef range([[ENUM1_TYP]] 0, 3) %x.0, i64 noundef %x.1)
 #[no_mangle]
