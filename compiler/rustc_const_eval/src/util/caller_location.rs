@@ -28,7 +28,7 @@ fn alloc_caller_location<'tcx>(
         // FIXME: This creates a new allocation each time. It might be preferable to
         // perform this allocation only once, and re-use the `MPlaceTy`.
         // See https://github.com/rust-lang/rust/pull/89920#discussion_r730012398
-        ecx.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        ecx.allocate_str("<redacted>\0", MemoryKind::CallerLocation, Mutability::Not).unwrap()
     };
     let file = file.map_provenance(CtfeProvenance::as_immutable);
     let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
