@@ -63,6 +63,12 @@ const TY_PRIMITIVE = itemTypes.indexOf("primitive");
 const TY_GENERIC = itemTypes.indexOf("generic");
 const TY_IMPORT = itemTypes.indexOf("import");
 const TY_TRAIT = itemTypes.indexOf("trait");
+// used for isType
+const TY_STRUCT = itemTypes.indexOf("struct");
+const TY_ENUM = itemTypes.indexOf("enum");
+const TY_UNION = itemTypes.indexOf("union");
+const TY_PRIMATIVE = itemTypes.indexOf("primative");
+const TY_FOREIGN_TYPE = itemTypes.indexOf("foreigntype");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -248,6 +254,18 @@ function prevIs(parserState, lookingFor) {
         pos -= 1;
     }
     return false;
+}
+
+function isType(ty) {
+    return ty === TY_STRUCT || ty === TY_ENUM || ty === TY_UNION ||
+        ty === TY_PRIMATIVE || ty === TY_FOREIGN_TYPE || ty === -1;
+}
+
+/**
+ * This function removes any queryElem that cannot be a function argument.
+ */
+function filterOnlyTypes(elems) {
+    return elems.filter(elem => isType(elem.typeFilter));
 }
 
 /**
@@ -1870,6 +1888,8 @@ class DocSearch {
                 correction: null,
                 proposeCorrectionFrom: null,
                 proposeCorrectionTo: null,
+                // used for type-and-name searches
+                extraNameElem: null,
                 // bloom filter build from type ids
                 typeFingerprint: new Uint32Array(4),
             };
@@ -2002,6 +2022,17 @@ class DocSearch {
             query.literalSearch = parserState.totalElems > 1;
         }
         query.foundElems = query.elems.length + query.returned.length;
+        if (query.returned.length > 0 || query.elems.length > 1) {
+            for (const elem of query.elems) {
+                if (!isType(elem.typeFilter)) {
+                    query.extraNameElem = elem;
+                    query.elems = filterOnlyTypes(query.elems);
+                    query.hasReturnArrow = true;
+                    console.log(query.elems);
+                    break;
+                }
+            }
+        }
         query.totalElems = parserState.totalElems;
         return query;
     }
@@ -3687,7 +3718,7 @@ class DocSearch {
          * @param {integer} pos      - Position in the `searchIndex`.
          * @param {Object} results
          */
-        function handleArgs(row, pos, results) {
+        function handleArgs(row, pos, results, maxEditDistance) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates) || !row.type) {
                 return;
             }
@@ -3724,8 +3755,26 @@ class DocSearch {
                 return;
             }
 
+            let name_dist = 0;
+            let path_dist = tfpDist;
+            const name_elem = parsedQuery.extraNameElem;
+            if (name_elem !== null) {
+                if (!typePassesFilter(name_elem.typeFilter, row.ty)) {
+                    return;
+                }
+                name_dist = editDistance(
+                    row.normalizedName, name_elem.normalizedPathLast, maxEditDistance);
+                if (row.normalizedName.includes(name_elem.normalizedPathLast)) {
+                    name_dist = name_dist / 3;
+                }
+                if (name_dist > maxEditDistance) {
+                    return;
+                }
+                const real_path_dist = checkPath(name_elem.fullPath, row);
+                path_dist = (path_dist + real_path_dist) / 2;
+            }
             results.max_dist = Math.max(results.max_dist || 0, tfpDist);
-            addIntoResults(results, row.id, pos, 0, tfpDist, 0, Number.MAX_VALUE);
+            addIntoResults(results, row.id, pos, name_dist, path_dist, 0, Number.MAX_VALUE);
         }
 
         /**
@@ -3928,7 +3977,7 @@ class DocSearch {
                 parsedQuery.elems.sort(sortQ);
                 parsedQuery.returned.sort(sortQ);
                 for (let i = 0, nSearchIndex = this.searchIndex.length; i < nSearchIndex; ++i) {
-                    handleArgs(this.searchIndex[i], i, results_others);
+                    handleArgs(this.searchIndex[i], i, results_others, maxEditDistance);
                 }
             }
         };
