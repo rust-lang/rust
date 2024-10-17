@@ -28,6 +28,9 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
     Interpolate {
         string: String,
     },
+    Const {
+        value: OperandRef<'tcx, B::Value>,
+    },
     SymFn {
         instance: Instance<'tcx>,
     },

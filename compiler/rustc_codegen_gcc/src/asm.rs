@@ -298,6 +298,14 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     constants_len += string.len() + att_dialect as usize;
                 }
 
+                InlineAsmOperandRef::Const { value } => {
+                    inputs.push(AsmInOperand {
+                        constraint: Cow::Borrowed("i"),
+                        rust_idx,
+                        val: value.immediate(),
+                    });
+                }
+
                 InlineAsmOperandRef::SymFn { instance } => {
                     // TODO(@Amanieu): Additional mangling is needed on
                     // some targets to add a leading underscore (Mach-O)
@@ -413,6 +421,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     // processed in the previous pass
                 }
 
+                InlineAsmOperandRef::Const { .. } => {
+                    // processed in the previous pass
+                }
+
                 InlineAsmOperandRef::Label { .. } => {
                     // processed in the previous pass
                 }
@@ -484,6 +496,15 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 .position(|op| operand_idx == op.rust_idx)
                                 .expect("wrong rust index");
                             push_to_template(modifier, gcc_index);
+                        }
+
+                        InlineAsmOperandRef::Const { .. } => {
+                            let in_gcc_index = inputs
+                                .iter()
+                                .position(|op| operand_idx == op.rust_idx)
+                                .expect("wrong rust index");
+                            let gcc_index = in_gcc_index + outputs.len();
+                            push_to_template(None, gcc_index);
                         }
 
                         InlineAsmOperandRef::SymFn { instance } => {
