@@ -28,11 +28,13 @@ resolver = "2"
 members = [
   "crates/compiler-builtins-smoke-test",
   "crates/libm-bench",
+  "crates/libm-macros",
   "crates/libm-test",
   "crates/musl-math-sys",
 ]
 default-members = [
   ".",
+  "crates/libm-macros",
   "crates/libm-test",
 ]
 
