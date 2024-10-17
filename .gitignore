@@ -57,6 +57,8 @@ build/
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`
 /obj/
+# Created by nix dev shell / .envrc
+src/tools/nix-dev-shell/flake.lock
 
 ## ICE reports
 rustc-ice-*.txt
