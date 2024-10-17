@@ -154,6 +154,7 @@ pub trait CommandExt: Sealed {
     /// required to gracefully handle errors it is recommended to use the
     /// cross-platform `spawn` instead.
     #[stable(feature = "process_exec2", since = "1.9.0")]
+    #[must_use]
     fn exec(&mut self) -> io::Error;
 
     /// Set executable argument
