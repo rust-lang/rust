@@ -30,7 +30,8 @@ use {rustc_abi as abi, rustc_hir as hir};
 use crate::errors::{
     MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
 };
-use crate::layout_sanity_check::sanity_check_layout;
+
+mod invariant;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { layout_of, ..*providers };
@@ -79,9 +80,11 @@ fn layout_of<'tcx>(
         record_layout_for_printing(&cx, layout);
     }
 
-    sanity_check_layout(&cx, &layout);
-
-    Ok(layout)
+    if let Err(err) = invariant::partially_check_layout(&cx, &layout) {
+        Err(map_error(&cx, ty, err))
+    } else {
+        Ok(layout)
+    }
 }
 
 fn error<'tcx>(cx: &LayoutCx<'tcx>, err: LayoutError<'tcx>) -> &'tcx LayoutError<'tcx> {
@@ -113,6 +116,11 @@ fn map_error<'tcx>(
         LayoutCalculatorError::EmptyUnion => {
             // This is always a compile error.
             cx.tcx().dcx().delayed_bug(format!("computed layout of empty union: {ty:?}"));
+            LayoutError::Unknown(ty)
+        }
+        LayoutCalculatorError::ReprConflict => {
+            // packed enums are the only known trigger of this, but others might arise
+            cx.tcx().dcx().delayed_bug(format!("computed impossible repr (packed enum?): {ty:?}"));
             LayoutError::Unknown(ty)
         }
     };

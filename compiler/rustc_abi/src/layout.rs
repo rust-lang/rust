@@ -39,7 +39,7 @@ enum NicheBias {
     End,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LayoutCalculatorError<F> {
     /// An unsized type was found in a location where a sized type was expected.
     ///
@@ -54,6 +54,36 @@ pub enum LayoutCalculatorError<F> {
 
     /// A union had no fields.
     EmptyUnion,
+
+    /// The fields or variants have irreconcilable reprs
+    ReprConflict,
+}
+
+impl<F> LayoutCalculatorError<F> {
+    pub fn without_payload(&self) -> LayoutCalculatorError<()> {
+        match self {
+            LayoutCalculatorError::UnexpectedUnsized(_) => {
+                LayoutCalculatorError::UnexpectedUnsized(())
+            }
+            LayoutCalculatorError::SizeOverflow => LayoutCalculatorError::SizeOverflow,
+            LayoutCalculatorError::EmptyUnion => LayoutCalculatorError::EmptyUnion,
+            LayoutCalculatorError::ReprConflict => LayoutCalculatorError::ReprConflict,
+        }
+    }
+
+    /// Format an untranslated diagnostic for this type
+    ///
+    /// Intended for use by rust-analyzer, as neither it nor `rustc_abi` depend on fluent infra.
+    pub fn fallback_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            LayoutCalculatorError::UnexpectedUnsized(_) => {
+                "an unsized type was found where a sized type was expected"
+            }
+            LayoutCalculatorError::SizeOverflow => "size overflow",
+            LayoutCalculatorError::EmptyUnion => "type is a union with no fields",
+            LayoutCalculatorError::ReprConflict => "type has an invalid repr",
+        })
+    }
 }
 
 type LayoutCalculatorResult<FieldIdx, VariantIdx, F> =
@@ -307,12 +337,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                         common_non_zst_abi_and_align = Err(AbiMismatch);
                     } else {
                         // Fields with the same non-Aggregate ABI should also
-                        // have the same alignment
-                        if !matches!(common_abi, Abi::Aggregate { .. }) {
-                            assert_eq!(
-                                common_align, field.align.abi,
-                                "non-Aggregate field with matching ABI but differing alignment"
-                            );
+                        // have the same alignment, but one may have an invalid repr
+                        if !matches!(common_abi, Abi::Aggregate { .. })
+                            && common_align != field.align.abi
+                        {
+                            return Err(LayoutCalculatorError::ReprConflict);
                         }
                     }
                 } else {

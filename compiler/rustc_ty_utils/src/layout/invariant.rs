@@ -1,11 +1,18 @@
 use std::assert_matches::assert_matches;
 
+use rustc_abi::LayoutCalculatorError;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 use rustc_target::abi::*;
 
 /// Enforce some basic invariants on layouts.
-pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
+///
+/// Note most of the code is skipped if debug assertions are not enabled,
+/// and we bail left and right, thus the name of "partially check".
+pub(super) fn partially_check_layout<'tcx>(
+    cx: &LayoutCx<'tcx>,
+    layout: &TyAndLayout<'tcx>,
+) -> Result<(), LayoutCalculatorError<TyAndLayout<'tcx>>> {
     let tcx = cx.tcx();
 
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
@@ -22,7 +29,7 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
     if !cfg!(debug_assertions) {
         // Stop here, the rest is kind of expensive.
-        return;
+        return Ok(());
     }
 
     /// Yields non-ZST fields of the type
@@ -64,7 +71,10 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         *layout
     }
 
-    fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
+    fn check_layout_abi<'tcx>(
+        cx: &LayoutCx<'tcx>,
+        layout: &TyAndLayout<'tcx>,
+    ) -> Result<(), LayoutCalculatorError<TyAndLayout<'tcx>>> {
         // Verify the ABI mandated alignment and size.
         let align = layout.abi.inherent_align(cx).map(|align| align.abi);
         let size = layout.abi.inherent_size(cx);
@@ -74,13 +84,11 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 Abi::Uninhabited | Abi::Aggregate { .. },
                 "ABI unexpectedly missing alignment and/or size in {layout:#?}"
             );
-            return;
+            return Ok(());
         };
-        assert_eq!(
-            layout.layout.align().abi,
-            align,
-            "alignment mismatch between ABI and layout in {layout:#?}"
-        );
+        if layout.layout.align().abi != align {
+            return Err(LayoutCalculatorError::ReprConflict);
+        }
         assert_eq!(
             layout.layout.size(),
             size,
@@ -88,7 +96,7 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         );
 
         // Verify per-ABI invariants
-        match layout.layout.abi() {
+        let _unit = match layout.layout.abi() {
             Abi::Scalar(_) => {
                 // Check that this matches the underlying field.
                 let inner = skip_newtypes(cx, layout);
@@ -104,7 +112,7 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     }
                     FieldsShape::Union(..) => {
                         // FIXME: I guess we could also check something here? Like, look at all fields?
-                        return;
+                        return Ok(());
                     }
                     FieldsShape::Arbitrary { .. } => {
                         // Should be an enum, the only field is the discriminant.
@@ -153,7 +161,7 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 if matches!(inner.layout.variants(), Variants::Multiple { .. }) {
                     // FIXME: ScalarPair for enums is enormously complicated and it is very hard
                     // to check anything about them.
-                    return;
+                    return Ok(());
                 }
                 match inner.layout.fields() {
                     FieldsShape::Arbitrary { .. } => {
@@ -161,7 +169,7 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     }
                     FieldsShape::Union(..) => {
                         // FIXME: I guess we could also check something here? Like, look at all fields?
-                        return;
+                        return Ok(());
                     }
                     _ => {
                         panic!("`ScalarPair` layout with unexpected field shape in {inner:#?}");
@@ -236,10 +244,11 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 // FIXME: Do some kind of check of the inner type, like for Scalar and ScalarPair.
             }
             Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
-        }
+        };
+        Ok(_unit)
     }
 
-    check_layout_abi(cx, layout);
+    let _unit = check_layout_abi(cx, layout)?;
 
     if let Variants::Multiple { variants, .. } = &layout.variants {
         for variant in variants.iter() {
@@ -293,4 +302,5 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             }
         }
     }
+    Ok(())
 }
