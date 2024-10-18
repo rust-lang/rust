@@ -5,6 +5,7 @@ use tracing::trace;
 pub(super) enum SimplifyConstCondition {
     AfterConstProp,
     Final,
+    PostMono,
 }
 
 /// A pass that replaces a branch with a goto when its condition is known.
@@ -13,6 +14,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
         match self {
             SimplifyConstCondition::AfterConstProp => "SimplifyConstCondition-after-const-prop",
             SimplifyConstCondition::Final => "SimplifyConstCondition-final",
+            SimplifyConstCondition::PostMono => "SimplifyConstCondition-post-mono",
         }
     }
 

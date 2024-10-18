@@ -59,7 +59,7 @@ Number of file 0 mappings: 1
 Highest counter ID seen: c0
 
 Function name: issue_84561::test3
-Raw bytes (375): 0x[01, 01, 31, 05, 09, 0d, 00, 15, 19, 12, 00, 15, 19, 21, 00, 1e, 00, 21, 00, 31, 00, 3d, 00, 2e, 45, 3d, 00, 42, 49, 45, 00, 3f, 51, 42, 49, 45, 00, 7a, 55, 51, 00, 7a, 55, 51, 00, 77, 5d, 7a, 55, 51, 00, 77, 61, 7a, 55, 51, 00, 72, 65, 77, 61, 7a, 55, 51, 00, 75, be, 01, c2, 01, 79, 69, 6d, 69, 6d, 69, 6d, c2, 01, 00, 69, 6d, c2, 01, 79, 69, 6d, bb, 01, 7d, 75, be, 01, c2, 01, 79, 69, 6d, b6, 01, 00, bb, 01, 7d, 75, be, 01, c2, 01, 79, 69, 6d, 33, 01, 08, 01, 03, 1c, 05, 04, 09, 01, 1c, 02, 02, 05, 04, 1f, 0d, 05, 05, 00, 1f, 06, 01, 05, 00, 1f, 15, 01, 09, 01, 1c, 12, 02, 05, 00, 1f, 0e, 01, 05, 00, 0f, 00, 00, 20, 00, 30, 21, 01, 05, 03, 0f, 00, 03, 20, 00, 30, 00, 00, 33, 00, 41, 00, 00, 4b, 00, 5a, 1e, 01, 05, 00, 0f, 00, 05, 09, 03, 10, 00, 05, 0d, 00, 1b, 00, 02, 0d, 00, 1c, 1a, 04, 09, 05, 06, 31, 06, 05, 03, 06, 22, 04, 05, 03, 06, 3d, 04, 09, 04, 06, 2e, 05, 08, 00, 0f, 45, 01, 09, 03, 0a, 2a, 05, 09, 03, 0a, 3f, 05, 08, 00, 0f, 51, 01, 09, 00, 13, 00, 03, 0d, 00, 1d, 3a, 03, 09, 00, 13, 00, 03, 0d, 00, 1d, 77, 03, 05, 00, 0f, 77, 01, 0c, 00, 13, 5d, 01, 0d, 00, 13, 56, 02, 0d, 00, 13, 72, 04, 05, 02, 13, 65, 03, 0d, 00, 13, 6e, 02, 0d, 00, 13, bb, 01, 03, 05, 00, 0f, 69, 01, 0c, 00, 13, 6d, 01, 0d, 03, 0e, 75, 04, 0d, 00, 13, c2, 01, 02, 0d, 00, 17, c2, 01, 01, 14, 00, 1b, 00, 01, 15, 00, 1b, 92, 01, 02, 15, 00, 1b, be, 01, 04, 0d, 00, 13, 7d, 03, 09, 00, 19, b6, 01, 02, 05, 00, 0f, b2, 01, 03, 09, 00, 22, 00, 02, 05, 00, 0f, 00, 03, 09, 00, 2c, 00, 02, 01, 00, 02]
+Raw bytes (375): 0x[01, 01, 31, 05, 09, 0d, 00, 15, 19, 12, 00, 15, 19, 21, 00, 1e, 00, 21, 00, 31, 00, 3d, 00, 2e, 45, 3d, 00, 42, 49, 45, 00, 3f, 51, 42, 49, 45, 00, 7a, 55, 51, 00, 7a, 55, 51, 00, 77, 5d, 7a, 55, 51, 00, 77, 61, 7a, 55, 51, 00, 72, 65, 77, 61, 7a, 55, 51, 00, 75, be, 01, c2, 01, 00, 69, 6d, 69, 6d, 69, 6d, c2, 01, 00, 69, 6d, c2, 01, 00, 69, 6d, bb, 01, 7d, 75, be, 01, c2, 01, 00, 69, 6d, b6, 01, 00, bb, 01, 7d, 75, be, 01, c2, 01, 00, 69, 6d, 33, 01, 08, 01, 03, 1c, 05, 04, 09, 01, 1c, 02, 02, 05, 04, 1f, 0d, 05, 05, 00, 1f, 06, 01, 05, 00, 1f, 15, 01, 09, 01, 1c, 12, 02, 05, 00, 1f, 0e, 01, 05, 00, 0f, 00, 00, 20, 00, 30, 21, 01, 05, 03, 0f, 00, 03, 20, 00, 30, 00, 00, 33, 00, 41, 00, 00, 4b, 00, 5a, 1e, 01, 05, 00, 0f, 00, 05, 09, 03, 10, 00, 05, 0d, 00, 1b, 00, 02, 0d, 00, 1c, 1a, 04, 09, 05, 06, 31, 06, 05, 03, 06, 22, 04, 05, 03, 06, 3d, 04, 09, 04, 06, 2e, 05, 08, 00, 0f, 45, 01, 09, 03, 0a, 2a, 05, 09, 03, 0a, 3f, 05, 08, 00, 0f, 51, 01, 09, 00, 13, 00, 03, 0d, 00, 1d, 3a, 03, 09, 00, 13, 00, 03, 0d, 00, 1d, 77, 03, 05, 00, 0f, 77, 01, 0c, 00, 13, 5d, 01, 0d, 00, 13, 56, 02, 0d, 00, 13, 72, 04, 05, 02, 13, 65, 03, 0d, 00, 13, 6e, 02, 0d, 00, 13, bb, 01, 03, 05, 00, 0f, 69, 01, 0c, 00, 13, 6d, 01, 0d, 03, 0e, 75, 04, 0d, 00, 13, c2, 01, 02, 0d, 00, 17, c2, 01, 01, 14, 00, 1b, 00, 01, 15, 00, 1b, 92, 01, 02, 15, 00, 1b, be, 01, 04, 0d, 00, 13, 7d, 03, 09, 00, 19, b6, 01, 02, 05, 00, 0f, b2, 01, 03, 09, 00, 22, 00, 02, 05, 00, 0f, 00, 03, 09, 00, 2c, 00, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 49
@@ -95,22 +95,22 @@ Number of expressions: 49
 - expression 29 operands: lhs = Expression(30, Sub), rhs = Counter(21)
 - expression 30 operands: lhs = Counter(20), rhs = Zero
 - expression 31 operands: lhs = Counter(29), rhs = Expression(47, Sub)
-- expression 32 operands: lhs = Expression(48, Sub), rhs = Counter(30)
+- expression 32 operands: lhs = Expression(48, Sub), rhs = Zero
 - expression 33 operands: lhs = Counter(26), rhs = Counter(27)
 - expression 34 operands: lhs = Counter(26), rhs = Counter(27)
 - expression 35 operands: lhs = Counter(26), rhs = Counter(27)
 - expression 36 operands: lhs = Expression(48, Sub), rhs = Zero
 - expression 37 operands: lhs = Counter(26), rhs = Counter(27)
-- expression 38 operands: lhs = Expression(48, Sub), rhs = Counter(30)
+- expression 38 operands: lhs = Expression(48, Sub), rhs = Zero
 - expression 39 operands: lhs = Counter(26), rhs = Counter(27)
 - expression 40 operands: lhs = Expression(46, Add), rhs = Counter(31)
 - expression 41 operands: lhs = Counter(29), rhs = Expression(47, Sub)
-- expression 42 operands: lhs = Expression(48, Sub), rhs = Counter(30)
+- expression 42 operands: lhs = Expression(48, Sub), rhs = Zero
 - expression 43 operands: lhs = Counter(26), rhs = Counter(27)
 - expression 44 operands: lhs = Expression(45, Sub), rhs = Zero
 - expression 45 operands: lhs = Expression(46, Add), rhs = Counter(31)
 - expression 46 operands: lhs = Counter(29), rhs = Expression(47, Sub)
-- expression 47 operands: lhs = Expression(48, Sub), rhs = Counter(30)
+- expression 47 operands: lhs = Expression(48, Sub), rhs = Zero
 - expression 48 operands: lhs = Counter(26), rhs = Counter(27)
 Number of file 0 mappings: 51
 - Code(Counter(0)) at (prev + 8, 1) to (start + 3, 28)
@@ -166,7 +166,7 @@ Number of file 0 mappings: 51
 - Code(Expression(27, Sub)) at (prev + 2, 13) to (start + 0, 19)
     = ((((c20 - Zero) + c21) - c24) - c25)
 - Code(Expression(46, Add)) at (prev + 3, 5) to (start + 0, 15)
-    = (c29 + ((c26 - c27) - c30))
+    = (c29 + ((c26 - c27) - Zero))
 - Code(Counter(26)) at (prev + 1, 12) to (start + 0, 19)
 - Code(Counter(27)) at (prev + 1, 13) to (start + 3, 14)
 - Code(Counter(29)) at (prev + 4, 13) to (start + 0, 19)
@@ -178,12 +178,12 @@ Number of file 0 mappings: 51
 - Code(Expression(36, Sub)) at (prev + 2, 21) to (start + 0, 27)
     = ((c26 - c27) - Zero)
 - Code(Expression(47, Sub)) at (prev + 4, 13) to (start + 0, 19)
-    = ((c26 - c27) - c30)
+    = ((c26 - c27) - Zero)
 - Code(Counter(31)) at (prev + 3, 9) to (start + 0, 25)
 - Code(Expression(45, Sub)) at (prev + 2, 5) to (start + 0, 15)
-    = ((c29 + ((c26 - c27) - c30)) - c31)
+    = ((c29 + ((c26 - c27) - Zero)) - c31)
 - Code(Expression(44, Sub)) at (prev + 3, 9) to (start + 0, 34)
-    = (((c29 + ((c26 - c27) - c30)) - c31) - Zero)
+    = (((c29 + ((c26 - c27) - Zero)) - c31) - Zero)
 - Code(Zero) at (prev + 2, 5) to (start + 0, 15)
 - Code(Zero) at (prev + 3, 9) to (start + 0, 44)
 - Code(Zero) at (prev + 2, 1) to (start + 0, 2)

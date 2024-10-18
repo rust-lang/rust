@@ -47,6 +47,7 @@ pub(super) enum SimplifyCfg {
     Final,
     MakeShim,
     AfterUnreachableEnumBranching,
+    PostMono,
 }
 
 impl SimplifyCfg {
@@ -62,6 +63,7 @@ impl SimplifyCfg {
             SimplifyCfg::AfterUnreachableEnumBranching => {
                 "SimplifyCfg-after-unreachable-enum-branching"
             }
+            SimplifyCfg::PostMono => "SimplifyCfg-post-mono",
         }
     }
 }

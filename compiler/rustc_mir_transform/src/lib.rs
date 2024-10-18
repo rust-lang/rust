@@ -30,7 +30,7 @@ use rustc_middle::mir::{
     MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
     SourceInfo, Statement, StatementKind, TerminatorKind,
 };
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
 use rustc_span::source_map::Spanned;
@@ -136,6 +136,7 @@ pub fn provide(providers: &mut Providers) {
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
+        build_codegen_mir,
         ..providers.queries
     };
 }
@@ -564,11 +565,11 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     }
 }
 
-fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    fn o1<T>(x: T) -> WithMinOptLevel<T> {
-        WithMinOptLevel(1, x)
-    }
+fn o1<T>(x: T) -> WithMinOptLevel<T> {
+    WithMinOptLevel(1, x)
+}
 
+fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // The main optimizations that we do on MIR.
     pm::run_passes(
         tcx,
@@ -609,7 +610,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &instsimplify::InstSimplify::AfterSimplifyCfg,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
-            &gvn::GVN,
+            &gvn::GVN::Polymorphic,
             &simplify::SimplifyLocals::AfterGVN,
             &dataflow_const_prop::DataflowConstProp,
             &single_use_consts::SingleUseConsts,
@@ -628,8 +629,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
-            // Some cleanup necessary at least for LLVM and potentially other codegen backends.
-            &add_call_guards::CriticalCallEdges,
             // Cleanup for human readability, off by default.
             &prettify::ReorderBasicBlocks,
             &prettify::ReorderLocals,
@@ -686,6 +685,38 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
     run_optimization_passes(tcx, &mut body);
 
+    body
+}
+
+pub fn build_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Body<'tcx> {
+    let body = tcx.instance_mir(instance.def);
+    let mut body = instance.instantiate_mir_and_normalize_erasing_regions(
+        tcx,
+        ty::ParamEnv::reveal_all(),
+        ty::EarlyBinder::bind(body.clone()),
+    );
+    pm::run_passes(
+        tcx,
+        &mut body,
+        &[
+            // Validation calls layout::fn_can_unwind to figure out if a function can unwind, which
+            // always returns false if the current crate is compiled with -Cpanic=abort. So when
+            // a crate with panic=abort compiles MIR from a panic=unwind crate, we get validation
+            // failures. So we rely on the fact that validation only runs after passes? It's
+            // probably better to just delete that validation check.
+            &abort_unwinding_calls::AbortUnwindingCalls,
+            &gvn::GVN::PostMono,
+            // FIXME: Enabling this InstSimplify is required to fix the MIR from the
+            // unreachable_unchecked precondition check that UnreachablePropagation creates, but
+            // also enabling it breaks tests/codegen/issues/issue-122600-ptr-discriminant-update.rs
+            // LLVM appears to handle switches on i64 better than it handles icmp eq + br.
+            &instsimplify::InstSimplify::PostMono,
+            &o1(simplify_branches::SimplifyConstCondition::PostMono),
+            &o1(simplify::SimplifyCfg::PostMono),
+            &add_call_guards::CriticalCallEdges,
+        ],
+        Some(MirPhase::Runtime(RuntimePhase::Codegen)),
+    );
     body
 }
 

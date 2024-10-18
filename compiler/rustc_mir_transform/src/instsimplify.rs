@@ -16,6 +16,7 @@ use crate::take_array;
 pub(super) enum InstSimplify {
     BeforeInline,
     AfterSimplifyCfg,
+    PostMono,
 }
 
 impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
@@ -23,6 +24,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
         match self {
             InstSimplify::BeforeInline => "InstSimplify-before-inline",
             InstSimplify::AfterSimplifyCfg => "InstSimplify-after-simplifycfg",
+            InstSimplify::PostMono => "InstSimplify-post-mono",
         }
     }
 
@@ -50,6 +52,29 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
                         ctx.simplify_len(&statement.source_info, rvalue);
                         ctx.simplify_ptr_aggregate(&statement.source_info, rvalue);
                         ctx.simplify_cast(rvalue);
+                    }
+                    StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
+                        // UnreachablePropagation likes to generate this MIR:
+                        //
+                        // _1 = UbChecks();
+                        // assume(copy _1);
+                        // _2 = unreachable_unchecked::precondition_check() -> [return: bb2, unwind unreachable];
+                        //
+                        // Which is mind-bending but correct. When UbChecks is false, we
+                        // assume(false) which is unreachable, and we never hit the precondition
+                        // check. When UbChecks is true, we assume(true) and fall through to the
+                        // precondition check.
+                        //
+                        // So the branch on UbChecks is implicit, which is both clever and makes
+                        // the rest of MIR optimizations unable to delete this precondition check
+                        // call when UB checks are off.
+                        if let Some(ConstOperand { const_, .. }) = op.constant() {
+                            if let Some(false) = const_.try_to_bool() {
+                                block.statements.clear();
+                                block.terminator_mut().kind = TerminatorKind::Unreachable;
+                                break;
+                            }
+                        }
                     }
                     _ => {}
                 }
