@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'fn_traits'
+error[E0658]: use of unstable library feature `fn_traits`
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:4:5
    |
 LL |     Fn::call(&f, ());
@@ -8,7 +8,7 @@ LL |     Fn::call(&f, ());
    = help: add `#![feature(fn_traits)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'fn_traits'
+error[E0658]: use of unstable library feature `fn_traits`
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:5:5
    |
 LL |     FnMut::call_mut(&mut f, ());
@@ -18,7 +18,7 @@ LL |     FnMut::call_mut(&mut f, ());
    = help: add `#![feature(fn_traits)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'fn_traits'
+error[E0658]: use of unstable library feature `fn_traits`
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:6:5
    |
 LL |     FnOnce::call_once(f, ());

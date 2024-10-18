@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/stable-in-unstable.rs:16:9
    |
 LL |     use stable_in_unstable_core::new_unstable_module;
@@ -8,7 +8,7 @@ LL |     use stable_in_unstable_core::new_unstable_module;
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/stable-in-unstable.rs:17:9
    |
 LL |     use stable_in_unstable_core::new_unstable_module::OldTrait;
@@ -18,7 +18,7 @@ LL |     use stable_in_unstable_core::new_unstable_module::OldTrait;
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/stable-in-unstable.rs:29:9
    |
 LL |     use stable_in_unstable_core::new_unstable_module::OldTrait;
@@ -28,7 +28,7 @@ LL |     use stable_in_unstable_core::new_unstable_module::OldTrait;
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/stable-in-unstable.rs:39:10
    |
 LL |     impl stable_in_unstable_core::new_unstable_module::OldTrait for LocalType {}
@@ -38,7 +38,7 @@ LL |     impl stable_in_unstable_core::new_unstable_module::OldTrait for LocalTy
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/stable-in-unstable.rs:49:56
    |
 LL |     use stable_in_unstable_core::new_unstable_module::{OldTrait};
@@ -48,7 +48,7 @@ LL |     use stable_in_unstable_core::new_unstable_module::{OldTrait};
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/stable-in-unstable.rs:53:9
    |
 LL |     use stable_in_unstable_core::new_unstable_module::*;

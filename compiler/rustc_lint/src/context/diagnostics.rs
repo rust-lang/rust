@@ -382,8 +382,12 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::MacroRuleNeverUsed(n, name) => {
             lints::MacroRuleNeverUsed { n: n + 1, name }.decorate_lint(diag);
         }
-        BuiltinLintDiag::UnstableFeature(msg) => {
-            lints::UnstableFeature { msg }.decorate_lint(diag);
+        BuiltinLintDiag::SoftUnstableMacro { features } => {
+            let denials = features
+                .iter()
+                .map(|&(feature, reason, issue)| stability::EvalDenial { feature, reason, issue })
+                .collect::<Vec<_>>();
+            stability::soft_unstable(sess, &denials, vec![]).decorate_lint(diag);
         }
         BuiltinLintDiag::AvoidUsingIntelSyntax => {
             lints::AvoidIntelSyntax.decorate_lint(diag);

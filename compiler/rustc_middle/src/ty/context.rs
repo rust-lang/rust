@@ -1612,7 +1612,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn stability(self) -> &'tcx stability::Index {
+    pub fn stability(self) -> &'tcx stability::Index<'tcx> {
         self.stability_index(())
     }
 
@@ -2936,22 +2936,22 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         diag: &mut Diag<'_, E>,
         hir_id: Option<HirId>,
-        features: impl IntoIterator<Item = (String, Symbol)>,
+        featuresets: impl IntoIterator<Item = (String, impl std::fmt::Display)>,
     ) {
         if !self.sess.is_nightly_build() {
             return;
         }
 
         let span = hir_id.and_then(|id| self.crate_level_attribute_injection_span(id));
-        for (desc, feature) in features {
+        for (desc, features) in featuresets {
             // FIXME: make this string translatable
             let msg =
-                format!("add `#![feature({feature})]` to the crate attributes to enable{desc}");
+                format!("add `#![feature({features})]` to the crate attributes to enable{desc}");
             if let Some(span) = span {
                 diag.span_suggestion_verbose(
                     span,
                     msg,
-                    format!("#![feature({feature})]\n"),
+                    format!("#![feature({features})]\n"),
                     Applicability::MaybeIncorrect,
                 );
             } else {
@@ -3089,20 +3089,26 @@ impl<'tcx> TyCtxt<'tcx> {
     /// feature gates
     pub fn is_const_fn(self, def_id: DefId) -> bool {
         if self.is_const_fn_raw(def_id) {
-            match self.lookup_const_stability(def_id) {
-                Some(stability) if stability.is_const_unstable() => {
-                    // has a `rustc_const_unstable` attribute, check whether the user enabled the
-                    // corresponding feature gate.
-                    self.features().declared(stability.feature)
-                }
-                // functions without const stability are either stable user written
-                // const fn or the user is using feature gates and we thus don't
-                // care what they do
-                _ => true,
-            }
+            // if it has a `rustc_const_unstable` attribute, check whether the user enabled the
+            // corresponding feature gates.
+            // functions without const stability are either stable user written
+            // const fn or the user is using feature gates and we thus don't
+            // care what they do
+            self.lookup_const_stability(def_id).is_none_or(|const_stab| {
+                const_stab.unstable_features().all(|feature| self.features().declared(feature))
+            })
         } else {
             false
         }
+    }
+
+    /// Whether the `def_id` is declared `rustc_const_unstable`, even if the current feature flags
+    /// allow it to be called.
+    pub fn is_unstable_const_fn(self, def_id: DefId) -> bool {
+        self.is_const_fn_raw(def_id)
+            && self
+                .lookup_const_stability(def_id)
+                .is_some_and(rustc_attr::ConstStability::is_const_unstable)
     }
 
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.

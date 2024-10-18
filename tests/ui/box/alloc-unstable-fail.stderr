@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'allocator_api'
+error[E0658]: use of unstable library feature `allocator_api`
   --> $DIR/alloc-unstable-fail.rs:4:26
    |
 LL |     let _boxed: Box<u32, _> = Box::new(10);

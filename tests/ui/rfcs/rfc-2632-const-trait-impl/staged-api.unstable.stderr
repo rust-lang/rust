@@ -4,7 +4,9 @@ error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
+   = note: use of unstable library feature `foo`
    = help: add `#![feature(foo)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
   --> $DIR/staged-api.rs:47:5
@@ -12,7 +14,9 @@ error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
+   = note: use of unstable library feature `foo`
    = help: add `#![feature(foo)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
   --> $DIR/staged-api.rs:55:5
@@ -21,6 +25,7 @@ LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
+   = note: use of unstable library feature `unstable`
 
 error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
   --> $DIR/staged-api.rs:57:5
@@ -29,6 +34,7 @@ LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
+   = note: use of unstable library feature `foo`
 
 error: `const_context_not_const_stable` is not yet stable as a const fn
   --> $DIR/staged-api.rs:59:5
@@ -37,6 +43,7 @@ LL |     const_context_not_const_stable()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
+   = note: use of unstable library feature `foo`
 
 error: aborting due to 5 previous errors
 

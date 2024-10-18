@@ -7,11 +7,11 @@
 #![crate_type = "lib"]
 
 use std::autodiff::autodiff;
-//[has_support]~^ ERROR use of unstable library feature 'autodiff'
-//[no_support]~^^ ERROR use of unstable library feature 'autodiff'
+//[has_support]~^ ERROR use of unstable library feature `autodiff`
+//[no_support]~^^ ERROR use of unstable library feature `autodiff`
 
 #[autodiff(dfoo, Reverse)]
-//[has_support]~^ ERROR use of unstable library feature 'autodiff' [E0658]
-//[no_support]~^^ ERROR use of unstable library feature 'autodiff' [E0658]
+//[has_support]~^ ERROR use of unstable library feature `autodiff` [E0658]
+//[no_support]~^^ ERROR use of unstable library feature `autodiff` [E0658]
 //[no_support]~| ERROR this rustc version does not support autodiff
 fn foo() {}

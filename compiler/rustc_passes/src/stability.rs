@@ -6,7 +6,7 @@ use std::num::NonZero;
 
 use rustc_attr::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
-    Unstable, UnstableReason, VERSION_PLACEHOLDER,
+    Unstability, Unstable, UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
@@ -28,6 +28,7 @@ use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPR
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_target::spec::abi::Abi;
+use smallvec::smallvec;
 use tracing::{debug, info};
 
 use crate::errors;
@@ -91,9 +92,9 @@ impl InheritStability {
 /// A private tree-walker for producing an `Index`.
 struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    index: &'a mut Index,
-    parent_stab: Option<Stability>,
-    parent_const_stab: Option<ConstStability>,
+    index: &'a mut Index<'tcx>,
+    parent_stab: Option<&'tcx Stability>,
+    parent_const_stab: Option<&'tcx ConstStability>,
     parent_depr: Option<DeprecationEntry>,
     in_trait_impl: bool,
 }
@@ -149,7 +150,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
                 if inherit_deprecation.yes() && stab.is_unstable() {
-                    self.index.stab_map.insert(def_id, stab);
+                    self.index.stab_map.insert(def_id, &stab);
                 }
             }
 
@@ -165,24 +166,26 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let stab = attr::find_stability(self.tcx.sess, attrs, item_sp);
         let const_stab = attr::find_const_stability(self.tcx.sess, attrs, item_sp);
         let body_stab = attr::find_body_stability(self.tcx.sess, attrs);
-        let mut const_span = None;
+        let mut const_spans = None;
 
-        let const_stab = const_stab.map(|(const_stab, const_span_node)| {
+        let const_stab = const_stab.map(|(const_stab, const_stab_spans)| {
+            let const_stab: &_ = self.tcx.arena.alloc(const_stab);
             self.index.const_stab_map.insert(def_id, const_stab);
-            const_span = Some(const_span_node);
+            const_spans = Some(const_stab_spans);
             const_stab
         });
 
         // If the current node is a function, has const stability attributes and if it doesn not have an intrinsic ABI,
         // check if the function/method is const or the parent impl block is const
-        if let (Some(const_span), Some(fn_sig)) = (const_span, fn_sig)
+        if let (Some(const_spans), Some(fn_sig)) = (&const_spans, fn_sig)
             && fn_sig.header.abi != Abi::RustIntrinsic
             && !fn_sig.header.is_const()
             && (!self.in_trait_impl || !self.tcx.is_const_fn_raw(def_id.to_def_id()))
         {
-            self.tcx
-                .dcx()
-                .emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span, const_span });
+            self.tcx.dcx().emit_err(errors::MissingConstErr {
+                fn_sig_span: fn_sig.span,
+                const_spans: const_spans.spans(),
+            });
         }
 
         // `impl const Trait for Type` items forward their const stability to their
@@ -191,7 +194,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             debug!("annotate: const_stab not found, parent = {:?}", self.parent_const_stab);
             if let Some(parent) = self.parent_const_stab {
                 if parent.is_const_unstable() {
-                    self.index.const_stab_map.insert(def_id, parent);
+                    self.index.const_stab_map.insert(def_id, &parent);
                 }
             }
         }
@@ -203,30 +206,35 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             self.tcx.dcx().emit_err(errors::DeprecatedAttribute { span: *span });
         }
 
-        if let Some((body_stab, _span)) = body_stab {
+        if let Some((body_stab, _spans)) = body_stab {
             // FIXME: check that this item can have body stability
 
-            self.index.default_body_stab_map.insert(def_id, body_stab);
+            self.index.default_body_stab_map.insert(def_id, self.tcx.arena.alloc(body_stab));
             debug!(?self.index.default_body_stab_map);
         }
 
-        let stab = stab.map(|(stab, span)| {
+        let stab = stab.map(|(stab, stab_spans)| {
             // Error if prohibited, or can't inherit anything from a container.
             if kind == AnnotationKind::Prohibited
                 || (kind == AnnotationKind::Container && stab.level.is_stable() && is_deprecated)
             {
-                self.tcx.dcx().emit_err(errors::UselessStability { span, item_sp });
+                let spans = stab_spans.spans();
+                self.tcx.dcx().emit_err(errors::UselessStability { spans, item_sp });
             }
 
             debug!("annotate: found {:?}", stab);
 
             // Check if deprecated_since < stable_since. If it is,
             // this is *almost surely* an accident.
-            if let (
-                &Some(DeprecatedSince::RustcVersion(dep_since)),
-                &attr::Stable { since: stab_since, .. },
-            ) = (&depr.as_ref().map(|(d, _)| d.since), &stab.level)
+            if let &Some(DeprecatedSince::RustcVersion(dep_since)) =
+                &depr.as_ref().map(|(d, _)| d.since)
+                && let Some(stab_since) = stab.stable_since()
             {
+                let &(_, span) = stab_spans
+                    .iter()
+                    .find(|(level, _)| level.stable_since() == Some(stab_since))
+                    .expect("stabilization version should have an associated span");
+
                 match stab_since {
                     StableSince::Current => {
                         self.tcx
@@ -247,36 +255,36 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 }
             }
 
-            if let Stability { level: Unstable { .. }, feature } = stab {
-                if ACCEPTED_FEATURES.iter().find(|f| f.name == feature).is_some() {
-                    self.tcx
-                        .dcx()
-                        .emit_err(errors::UnstableAttrForAlreadyStableFeature { span, item_sp });
-                }
-            }
-            if let Stability { level: Unstable { implied_by: Some(implied_by), .. }, feature } =
-                stab
+            // Check if any already-stable features are on unstable or const-unstable attrs.
+            for (level, span) in stab_spans
+                .iter()
+                .chain(const_spans.iter().flat_map(|level_spans| level_spans.iter()))
             {
-                self.index.implications.insert(implied_by, feature);
-            }
-
-            if let Some(ConstStability { level: Unstable { .. }, feature, .. }) = const_stab {
-                if ACCEPTED_FEATURES.iter().find(|f| f.name == feature).is_some() {
+                if ACCEPTED_FEATURES.iter().any(|f| level.has_unstable_feature(f.name)) {
                     self.tcx.dcx().emit_err(errors::UnstableAttrForAlreadyStableFeature {
-                        span: const_span.unwrap(), // If const_stab contains Some(..), same is true for const_span
+                        span: *span,
                         item_sp,
                     });
                 }
             }
-            if let Some(ConstStability {
-                level: Unstable { implied_by: Some(implied_by), .. },
-                feature,
-                ..
-            }) = const_stab
-            {
-                self.index.implications.insert(implied_by, feature);
+
+            if let Unstable { unstables, .. } = &stab.level {
+                for &Unstability { feature, implied_by, .. } in unstables {
+                    if let Some(implied_by) = implied_by {
+                        self.index.implications.insert(implied_by, feature);
+                    }
+                }
             }
 
+            if let Some(ConstStability { level: Unstable { unstables, .. }, .. }) = &const_stab {
+                for &Unstability { feature, implied_by, .. } in unstables {
+                    if let Some(implied_by) = implied_by {
+                        self.index.implications.insert(implied_by, feature);
+                    }
+                }
+            }
+
+            let stab: &_ = self.tcx.arena.alloc(stab);
             self.index.stab_map.insert(def_id, stab);
             stab
         });
@@ -301,8 +309,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     fn recurse_with_stability_attrs(
         &mut self,
         depr: Option<DeprecationEntry>,
-        stab: Option<Stability>,
-        const_stab: Option<ConstStability>,
+        stab: Option<&'tcx Stability>,
+        const_stab: Option<&'tcx ConstStability>,
         f: impl FnOnce(&mut Self),
     ) {
         // These will be `Some` if this item changes the corresponding stability attribute.
@@ -628,7 +636,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     // stable (assuming they have not inherited instability from their parent).
 }
 
-fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
+fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index<'_> {
     let mut index = Index {
         stab_map: Default::default(),
         const_stab_map: Default::default(),
@@ -654,15 +662,17 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
         // while maintaining the invariant that all sysroot crates are unstable
         // by default and are unable to be used.
         if tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
-            let stability = Stability {
+            let stability = tcx.arena.alloc(Stability {
                 level: attr::StabilityLevel::Unstable {
-                    reason: UnstableReason::Default,
-                    issue: NonZero::new(27812),
+                    unstables: smallvec![attr::Unstability {
+                        feature: sym::rustc_private,
+                        reason: UnstableReason::Default,
+                        issue: NonZero::new(27812),
+                        implied_by: None,
+                    },],
                     is_soft: false,
-                    implied_by: None,
                 },
-                feature: sym::rustc_private,
-            };
+            });
             annotator.parent_stab = Some(stability);
         }
 
@@ -743,7 +753,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // error if all involved types and traits are stable, because
                     // it will have no effect.
                     // See: https://github.com/rust-lang/rust/issues/55436
-                    if let Some((Stability { level: attr::Unstable { .. }, .. }, span)) = stab {
+                    if let Some((Stability { level: attr::Unstable { .. }, .. }, spans)) = stab {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
@@ -754,7 +764,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                             self.tcx.emit_node_span_lint(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
-                                span,
+                                spans.spans(),
                                 errors::IneffectiveUnstableImpl,
                             );
                         }

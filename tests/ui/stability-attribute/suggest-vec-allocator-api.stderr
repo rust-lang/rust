@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'allocator_api'
+error[E0658]: use of unstable library feature `allocator_api`
   --> $DIR/suggest-vec-allocator-api.rs:2:20
    |
 LL |     let _: Vec<u8, _> = vec![];
@@ -10,7 +10,7 @@ LL |     let _: Vec<u8, _> = vec![];
    = help: add `#![feature(allocator_api)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'allocator_api'
+error[E0658]: use of unstable library feature `allocator_api`
   --> $DIR/suggest-vec-allocator-api.rs:6:9
    |
 LL |         _> = vec![];
@@ -26,7 +26,7 @@ LL +         String,
 LL ~         _)> = vec![];
    |
 
-error[E0658]: use of unstable library feature 'allocator_api'
+error[E0658]: use of unstable library feature `allocator_api`
   --> $DIR/suggest-vec-allocator-api.rs:8:26
    |
 LL |     let _boxed: Box<u32, _> = Box::new(10);
@@ -36,7 +36,7 @@ LL |     let _boxed: Box<u32, _> = Box::new(10);
    = help: add `#![feature(allocator_api)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'allocator_api'
+error[E0658]: use of unstable library feature `allocator_api`
   --> $DIR/suggest-vec-allocator-api.rs:7:24
    |
 LL |     let _ = Vec::<u16, _>::new();

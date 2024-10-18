@@ -18,7 +18,7 @@ fn main() {
 
     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
         Record::new();
-    //~^^ ERROR use of unstable library feature 'unstable_undeclared'
+    //~^^ ERROR use of unstable library feature `unstable_undeclared`
 
     let r = Record::new();
     let t = Tuple::new();
