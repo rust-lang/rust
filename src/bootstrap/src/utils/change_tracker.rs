@@ -275,4 +275,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `./x setup editor` added, replacing `./x setup vscode` and adding support for vim, emacs and helix.",
     },
+    ChangeInfo {
+        change_id: 131838,
+        severity: ChangeSeverity::Info,
+        summary: "Allow setting `--jobs` in config.toml with `build.jobs`.",
+    },
 ];

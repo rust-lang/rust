@@ -110,11 +110,10 @@ pub struct Flags {
         short,
         long,
         value_hint = clap::ValueHint::Other,
-        default_value_t = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get),
         value_name = "JOBS"
     )]
     /// number of jobs to run in parallel
-    pub jobs: usize,
+    pub jobs: Option<u32>,
     // This overrides the deny-warnings configuration option,
     // which passes -Dwarnings to the compiler invocations.
     #[arg(global = true, long)]
