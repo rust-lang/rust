@@ -286,13 +286,9 @@ pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     cov_data_val: &'ll llvm::Value,
 ) {
-    let covmap_var_name = CString::new(
-        // FIXME: wait, we're building a cstring out of a string? huh?
-        llvm::build_string(|s| unsafe {
-            llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
-        })
-        .expect("Rust Coverage Mapping var name failed UTF-8 conversion"),
-    )
+    let covmap_var_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
+        llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
+    }))
     .unwrap();
     debug!("covmap var name: {:?}", covmap_var_name);
 
