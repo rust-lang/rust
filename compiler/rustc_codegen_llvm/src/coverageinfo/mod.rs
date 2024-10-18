@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::ffi::CString;
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
@@ -284,10 +285,10 @@ pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     cov_data_val: &'ll llvm::Value,
 ) {
-    let covmap_var_name = llvm::build_string(|s| unsafe {
+    let covmap_var_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
         llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
-    })
-    .expect("Rust Coverage Mapping var name failed UTF-8 conversion");
+    }))
+    .unwrap();
     debug!("covmap var name: {:?}", covmap_var_name);
 
     let covmap_section_name = llvm::build_string(|s| unsafe {
@@ -322,7 +323,8 @@ pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     // of descriptions play distinct roles in LLVM IR; therefore, assign them different names (by
     // appending "u" to the end of the function record var name, to prevent `linkonce_odr` merging.
     let func_record_var_name =
-        format!("__covrec_{:X}{}", func_name_hash, if is_used { "u" } else { "" });
+        CString::new(format!("__covrec_{:X}{}", func_name_hash, if is_used { "u" } else { "" }))
+            .unwrap();
     debug!("function record var name: {:?}", func_record_var_name);
     debug!("function record section name: {:?}", covfun_section_name);
 
@@ -334,7 +336,7 @@ pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     llvm::set_section(llglobal, covfun_section_name);
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
     llvm::set_alignment(llglobal, Align::EIGHT);
-    llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
+    llvm::set_comdat(cx.llmod, llglobal, func_record_var_name.to_str().unwrap());
     cx.add_used_global(llglobal);
 }
 
