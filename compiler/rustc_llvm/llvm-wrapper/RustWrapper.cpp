@@ -1658,16 +1658,6 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
   unwrap(B)->SetInsertPoint(unwrap(BB), Point);
 }
 
-extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V,
-                                  const char *Name, size_t NameLen) {
-  Triple TargetTriple = Triple(unwrap(M)->getTargetTriple());
-  GlobalObject *GV = unwrap<GlobalObject>(V);
-  if (TargetTriple.supportsCOMDAT()) {
-    StringRef NameRef(Name, NameLen);
-    GV->setComdat(unwrap(M)->getOrInsertComdat(NameRef));
-  }
-}
-
 enum class LLVMRustLinkage {
   ExternalLinkage = 0,
   AvailableExternallyLinkage = 1,
