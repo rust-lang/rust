@@ -387,6 +387,9 @@ pub struct Config {
     /// True if the profiler runtime is enabled for this target.
     /// Used by the "needs-profiler-runtime" directive in test files.
     pub profiler_runtime: bool,
+
+    /// Command for visual diff display, e.g. `diff-tool --color=always`.
+    pub diff_command: Option<String>,
 }
 
 impl Config {
