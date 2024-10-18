@@ -166,9 +166,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         untagged_variant
                     }
                     Ok(tag_bits) => {
+                        // See the algorithm explanation in the definition of `TagEncoding::Niche`.
+                        let discr_len = (variants_end - variants_start)
+                            .checked_add(1)
+                            .expect("the number of niche variants fits into u32");
+
                         let tag_bits = tag_bits.to_bits(tag_layout.size);
                         // We need to use machine arithmetic to get the relative variant idx:
-                        // variant_index_relative = tag_val - niche_start_val
                         let tag_val = ImmTy::from_uint(tag_bits, tag_layout);
                         let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                         let variant_index_relative_val =
@@ -176,21 +180,45 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         let variant_index_relative =
                             variant_index_relative_val.to_scalar().to_bits(tag_val.layout.size)?;
                         // Check if this is in the range that indicates an actual discriminant.
-                        if variant_index_relative <= u128::from(variants_end - variants_start) {
-                            let variant_index_relative = u32::try_from(variant_index_relative)
-                                .expect("we checked that this fits into a u32");
-                            // Then computing the absolute variant idx should not overflow any more.
-                            let variant_index = VariantIdx::from_u32(
-                                variants_start
-                                    .checked_add(variant_index_relative)
-                                    .expect("overflow computing absolute variant idx"),
-                            );
-                            let variants =
-                                ty.ty_adt_def().expect("tagged layout for non adt").variants();
-                            assert!(variant_index < variants.next_index());
-                            variant_index
+                        if niche_variants.contains(&untagged_variant) {
+                            if variant_index_relative < u128::from(discr_len - 1) {
+                                let adj_untagged_idx = untagged_variant.as_u32() - variants_start;
+                                let variant_index_relative = u32::try_from(variant_index_relative)
+                                    .expect("we checked that this fits into a u32");
+                                let variant_index_to_modulo = variant_index_relative
+                                    .checked_add(1)
+                                    .expect("overflow computing absolute variant idx")
+                                    .checked_add(adj_untagged_idx)
+                                    .expect("overflow computing absolute variant idx");
+                                let variant_index = VariantIdx::from_u32(
+                                    variants_start
+                                        .checked_add(variant_index_to_modulo % discr_len)
+                                        .expect("overflow computing absolute variant idx"),
+                                );
+                                let variants =
+                                    ty.ty_adt_def().expect("tagged layout for non adt").variants();
+                                assert!(variant_index < variants.next_index());
+                                variant_index
+                            } else {
+                                untagged_variant
+                            }
                         } else {
-                            untagged_variant
+                            if variant_index_relative < u128::from(discr_len) {
+                                let variant_index_relative = u32::try_from(variant_index_relative)
+                                    .expect("we checked that this fits into a u32");
+                                // Then computing the absolute variant idx should not overflow any more.
+                                let variant_index = VariantIdx::from_u32(
+                                    variants_start
+                                        .checked_add(variant_index_relative)
+                                        .expect("overflow computing absolute variant idx"),
+                                );
+                                let variants =
+                                    ty.ty_adt_def().expect("tagged layout for non adt").variants();
+                                assert!(variant_index < variants.next_index());
+                                variant_index
+                            } else {
+                                untagged_variant
+                            }
                         }
                     }
                 };
@@ -286,11 +314,24 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ..
             } => {
                 assert!(variant_index != untagged_variant);
+                let discr_len = (niche_variants.end().as_u32() - niche_variants.start().as_u32())
+                    .checked_add(1)
+                    .expect("the number of niche variants fits into u32");
                 let variants_start = niche_variants.start().as_u32();
-                let variant_index_relative = variant_index
+                let adj_idx = variant_index
                     .as_u32()
                     .checked_sub(variants_start)
                     .expect("overflow computing relative variant idx");
+
+                let variant_index_relative = if niche_variants.contains(&untagged_variant) {
+                    let adj_untagged_idx = untagged_variant.as_u32() - variants_start;
+                    let adj_idx_to_modulo = adj_idx
+                        .checked_add(discr_len - adj_untagged_idx)
+                        .expect("overflow computing relative variant idx");
+                    adj_idx_to_modulo % discr_len - 1
+                } else {
+                    adj_idx
+                };
                 // We need to use machine arithmetic when taking into account `niche_start`:
                 // tag_val = variant_index_relative + niche_start_val
                 let tag_layout = self.layout_of(tag_layout.primitive().to_int_ty(*self.tcx))?;
