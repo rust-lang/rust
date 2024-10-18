@@ -178,10 +178,10 @@ pub fn SetFunctionCallConv(fn_: &Value, cc: CallConv) {
 // function.
 // For more details on COMDAT sections see e.g., https://www.airs.com/blog/archives/52
 pub fn SetUniqueComdat(llmod: &Module, val: &Value) {
-    unsafe {
-        let name = get_value_name(val);
-        LLVMRustSetComdat(llmod, val, name.as_ptr().cast(), name.len());
-    }
+    let name_buf = get_value_name(val).to_vec();
+    let name =
+        CString::from_vec_with_nul(name_buf).or_else(|buf| CString::new(buf.into_bytes())).unwrap();
+    set_comdat(llmod, val, &name);
 }
 
 pub fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
@@ -251,9 +251,14 @@ pub fn set_alignment(llglobal: &Value, align: Align) {
     }
 }
 
-pub fn set_comdat(llmod: &Module, llglobal: &Value, name: &str) {
+/// Get the `name`d comdat from `llmod` and assign it to `llglobal`.
+///
+/// Inserts the comdat into `llmod` if it does not exist.
+/// It is an error to call this if the target does not support comdat.
+pub fn set_comdat(llmod: &Module, llglobal: &Value, name: &CStr) {
     unsafe {
-        LLVMRustSetComdat(llmod, llglobal, name.as_ptr().cast(), name.len());
+        let comdat = LLVMGetOrInsertComdat(llmod, name.as_ptr());
+        LLVMSetComdat(llglobal, comdat);
     }
 }
 

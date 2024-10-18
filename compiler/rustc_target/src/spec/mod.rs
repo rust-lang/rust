@@ -2515,6 +2515,13 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
 }
 
 impl TargetOptions {
+    pub fn supports_comdat(&self) -> bool {
+        // XCOFF and MachO don't support COMDAT.
+        !self.is_like_aix && !self.is_like_osx
+    }
+}
+
+impl TargetOptions {
     fn link_args(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
         let mut link_args = LinkArgs::new();
         add_link_args(&mut link_args, flavor, args);

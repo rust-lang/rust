@@ -13,6 +13,7 @@ use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_target::abi::{Align, Size};
+use rustc_target::spec::HasTargetSpec;
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
@@ -336,7 +337,9 @@ pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     llvm::set_section(llglobal, covfun_section_name);
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
     llvm::set_alignment(llglobal, Align::EIGHT);
-    llvm::set_comdat(cx.llmod, llglobal, func_record_var_name.to_str().unwrap());
+    if cx.target_spec().supports_comdat() {
+        llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
+    }
     cx.add_used_global(llglobal);
 }
 
