@@ -91,5 +91,41 @@ LL -     cr"no hashes";
 LL +     c"no hashes";
    |
 
-error: aborting due to 7 previous errors
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:27:14
+   |
+LL |     println!(r"SELECT * FROM posts");
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use a plain string literal instead
+   |
+LL -     println!(r"SELECT * FROM posts");
+LL +     println!("SELECT * FROM posts");
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:28:14
+   |
+LL |     println!(r#"SELECT * FROM posts"#);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use a plain string literal instead
+   |
+LL -     println!(r#"SELECT * FROM posts"#);
+LL +     println!("SELECT * FROM posts");
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:32:20
+   |
+LL |     println!("{}", r"foobar".len());
+   |                    ^^^^^^^^^
+   |
+help: use a plain string literal instead
+   |
+LL -     println!("{}", r"foobar".len());
+LL +     println!("{}", "foobar".len());
+   |
+
+error: aborting due to 10 previous errors
 

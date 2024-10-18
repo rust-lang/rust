@@ -3,11 +3,11 @@
 
 fn main() {
     let s = Some(String::from("test string")).unwrap_or_else(|| "Fail".to_string()).len();
-    //~^ ERROR: use of `unwrap_or` followed by a function call
+    //~^ ERROR: function call inside of `unwrap_or`
     //~| NOTE: `-D clippy::or-fun-call` implied by `-D warnings`
 }
 
 fn new_lines() {
     let s = Some(String::from("test string")).unwrap_or_else(|| "Fail".to_string()).len();
-    //~^ ERROR: use of `unwrap_or` followed by a function call
+    //~^ ERROR: function call inside of `unwrap_or`
 }

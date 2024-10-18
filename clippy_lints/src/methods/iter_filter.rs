@@ -106,9 +106,9 @@ fn is_method(
 
 fn parent_is_map(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     if let Some(expr) = get_parent_expr(cx, expr)
-        && is_trait_method(cx, expr, sym::Iterator)
-        && let ExprKind::MethodCall(path, _, _, _) = expr.kind
+        && let ExprKind::MethodCall(path, _, [_], _) = expr.kind
         && path.ident.name == sym::map
+        && is_trait_method(cx, expr, sym::Iterator)
     {
         return true;
     }

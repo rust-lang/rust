@@ -1168,7 +1168,7 @@ pub fn make_normalized_projection<'tcx>(
 pub struct InteriorMut<'tcx> {
     ignored_def_ids: FxHashSet<DefId>,
     ignore_pointers: bool,
-    tys: FxHashMap<Ty<'tcx>, Option<bool>>,
+    tys: FxHashMap<Ty<'tcx>, Option<&'tcx ty::List<Ty<'tcx>>>>,
 }
 
 impl<'tcx> InteriorMut<'tcx> {
@@ -1194,25 +1194,24 @@ impl<'tcx> InteriorMut<'tcx> {
         }
     }
 
-    /// Check if given type has inner mutability such as [`std::cell::Cell`] or
-    /// [`std::cell::RefCell`] etc.
-    pub fn is_interior_mut_ty(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    /// Check if given type has interior mutability such as [`std::cell::Cell`] or
+    /// [`std::cell::RefCell`] etc. and if it does, returns a chain of types that causes
+    /// this type to be interior mutable
+    pub fn interior_mut_ty_chain(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx ty::List<Ty<'tcx>>> {
         match self.tys.entry(ty) {
-            Entry::Occupied(o) => return *o.get() == Some(true),
+            Entry::Occupied(o) => return *o.get(),
             // Temporarily insert a `None` to break cycles
             Entry::Vacant(v) => v.insert(None),
         };
 
-        let interior_mut = match *ty.kind() {
-            ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.is_interior_mut_ty(cx, inner_ty),
-            ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.is_interior_mut_ty(cx, inner_ty),
-            ty::Array(inner_ty, size) => {
-                size.try_eval_target_usize(cx.tcx, cx.param_env)
-                    .map_or(true, |u| u != 0)
-                    && self.is_interior_mut_ty(cx, inner_ty)
+        let chain = match *ty.kind() {
+            ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.interior_mut_ty_chain(cx, inner_ty),
+            ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.interior_mut_ty_chain(cx, inner_ty),
+            ty::Array(inner_ty, size) if size.try_eval_target_usize(cx.tcx, cx.param_env) != Some(0) => {
+                self.interior_mut_ty_chain(cx, inner_ty)
             },
-            ty::Tuple(fields) => fields.iter().any(|ty| self.is_interior_mut_ty(cx, ty)),
-            ty::Adt(def, _) if def.is_unsafe_cell() => true,
+            ty::Tuple(fields) => fields.iter().find_map(|ty| self.interior_mut_ty_chain(cx, ty)),
+            ty::Adt(def, _) if def.is_unsafe_cell() => Some(ty::List::empty()),
             ty::Adt(def, args) => {
                 let is_std_collection = matches!(
                     cx.tcx.get_diagnostic_name(def.did()),
@@ -1231,19 +1230,28 @@ impl<'tcx> InteriorMut<'tcx> {
 
                 if is_std_collection || def.is_box() {
                     // Include the types from std collections that are behind pointers internally
-                    args.types().any(|ty| self.is_interior_mut_ty(cx, ty))
+                    args.types().find_map(|ty| self.interior_mut_ty_chain(cx, ty))
                 } else if self.ignored_def_ids.contains(&def.did()) || def.is_phantom_data() {
-                    false
+                    None
                 } else {
                     def.all_fields()
-                        .any(|f| self.is_interior_mut_ty(cx, f.ty(cx.tcx, args)))
+                        .find_map(|f| self.interior_mut_ty_chain(cx, f.ty(cx.tcx, args)))
                 }
             },
-            _ => false,
+            _ => None,
         };
 
-        self.tys.insert(ty, Some(interior_mut));
-        interior_mut
+        chain.map(|chain| {
+            let list = cx.tcx.mk_type_list_from_iter(chain.iter().chain([ty]));
+            self.tys.insert(ty, Some(list));
+            list
+        })
+    }
+
+    /// Check if given type has interior mutability such as [`std::cell::Cell`] or
+    /// [`std::cell::RefCell`] etc.
+    pub fn is_interior_mut_ty(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+        self.interior_mut_ty_chain(cx, ty).is_some()
     }
 }
 

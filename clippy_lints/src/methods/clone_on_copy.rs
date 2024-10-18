@@ -58,7 +58,7 @@ pub(super) fn check(
                     return;
                 },
                 // ? is a Call, makes sure not to rec *x?, but rather (*x)?
-                ExprKind::Call(hir_callee, _) => matches!(
+                ExprKind::Call(hir_callee, [_]) => matches!(
                     hir_callee.kind,
                     ExprKind::Path(QPath::LangItem(rustc_hir::LangItem::TryTraitBranch, ..))
                 ),

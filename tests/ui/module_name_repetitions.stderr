@@ -31,5 +31,11 @@ error: item name starts with its containing module's name
 LL |     pub struct Foo7Bar;
    |                ^^^^^^^
 
-error: aborting due to 5 previous errors
+error: item name starts with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:30:20
+   |
+LL |     pub use error::FooError;
+   |                    ^^^^^^^^
+
+error: aborting due to 6 previous errors
 

@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::{SpanRangeExt, snippet_opt};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::token::LitKind;
 use rustc_errors::Applicability;
@@ -71,6 +71,23 @@ impl RawStrings {
 
 impl EarlyLintPass for RawStrings {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+        if let ExprKind::FormatArgs(format_args) = &expr.kind
+            && !in_external_macro(cx.sess(), format_args.span)
+            && format_args.span.check_source_text(cx, |src| src.starts_with('r'))
+            && let Some(str) = snippet_opt(cx.sess(), format_args.span)
+            && let count_hash = str.bytes().skip(1).take_while(|b| *b == b'#').count()
+            && let Some(str) = str.get(count_hash + 2..str.len() - count_hash - 1)
+        {
+            self.check_raw_string(
+                cx,
+                str,
+                format_args.span,
+                "r",
+                u8::try_from(count_hash).unwrap(),
+                "string",
+            );
+        }
+
         if let ExprKind::Lit(lit) = expr.kind
             && let (prefix, max) = match lit.kind {
                 LitKind::StrRaw(max) => ("r", max),
@@ -81,94 +98,105 @@ impl EarlyLintPass for RawStrings {
             && !in_external_macro(cx.sess(), expr.span)
             && expr.span.check_source_text(cx, |src| src.starts_with(prefix))
         {
-            let str = lit.symbol.as_str();
-            let descr = lit.kind.descr();
+            self.check_raw_string(cx, lit.symbol.as_str(), expr.span, prefix, max, lit.kind.descr());
+        }
+    }
+}
 
-            if !str.contains(['\\', '"']) {
-                span_lint_and_then(
-                    cx,
-                    NEEDLESS_RAW_STRINGS,
-                    expr.span,
-                    "unnecessary raw string literal",
-                    |diag| {
-                        let (start, end) = hash_spans(expr.span, prefix.len(), 0, max);
+impl RawStrings {
+    fn check_raw_string(
+        &mut self,
+        cx: &EarlyContext<'_>,
+        str: &str,
+        lit_span: Span,
+        prefix: &str,
+        max: u8,
+        descr: &str,
+    ) {
+        if !str.contains(['\\', '"']) {
+            span_lint_and_then(
+                cx,
+                NEEDLESS_RAW_STRINGS,
+                lit_span,
+                "unnecessary raw string literal",
+                |diag| {
+                    let (start, end) = hash_spans(lit_span, prefix.len(), 0, max);
 
-                        // BytePos: skip over the `b` in `br`, we checked the prefix appears in the source text
-                        let r_pos = expr.span.lo() + BytePos::from_usize(prefix.len() - 1);
-                        let start = start.with_lo(r_pos);
+                    // BytePos: skip over the `b` in `br`, we checked the prefix appears in the source text
+                    let r_pos = lit_span.lo() + BytePos::from_usize(prefix.len() - 1);
+                    let start = start.with_lo(r_pos);
 
-                        let mut remove = vec![(start, String::new())];
-                        // avoid debug ICE from empty suggestions
-                        if !end.is_empty() {
-                            remove.push((end, String::new()));
-                        }
-
-                        diag.multipart_suggestion_verbose(
-                            format!("use a plain {descr} literal instead"),
-                            remove,
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
-                if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS), rustc_lint::Allow) {
-                    return;
-                }
-            }
-
-            let mut req = {
-                let mut following_quote = false;
-                let mut req = 0;
-                // `once` so a raw string ending in hashes is still checked
-                let num = str.as_bytes().iter().chain(once(&0)).try_fold(0u8, |acc, &b| {
-                    match b {
-                        b'"' if !following_quote => (following_quote, req) = (true, 1),
-                        b'#' => req += u8::from(following_quote),
-                        _ => {
-                            if following_quote {
-                                following_quote = false;
-
-                                if req == max {
-                                    return ControlFlow::Break(req);
-                                }
-
-                                return ControlFlow::Continue(acc.max(req));
-                            }
-                        },
+                    let mut remove = vec![(start, String::new())];
+                    // avoid debug ICE from empty suggestions
+                    if !end.is_empty() {
+                        remove.push((end, String::new()));
                     }
 
-                    ControlFlow::Continue(acc)
-                });
-
-                match num {
-                    ControlFlow::Continue(num) | ControlFlow::Break(num) => num,
-                }
-            };
-            if self.allow_one_hash_in_raw_strings {
-                req = req.max(1);
+                    diag.multipart_suggestion_verbose(
+                        format!("use a plain {descr} literal instead"),
+                        remove,
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
+            if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS), rustc_lint::Allow) {
+                return;
             }
-            if req < max {
-                span_lint_and_then(
-                    cx,
-                    NEEDLESS_RAW_STRING_HASHES,
-                    expr.span,
-                    "unnecessary hashes around raw string literal",
-                    |diag| {
-                        let (start, end) = hash_spans(expr.span, prefix.len(), req, max);
+        }
 
-                        let message = match max - req {
-                            _ if req == 0 => format!("remove all the hashes around the {descr} literal"),
-                            1 => format!("remove one hash from both sides of the {descr} literal"),
-                            n => format!("remove {n} hashes from both sides of the {descr} literal"),
-                        };
+        let mut req = {
+            let mut following_quote = false;
+            let mut req = 0;
+            // `once` so a raw string ending in hashes is still checked
+            let num = str.as_bytes().iter().chain(once(&0)).try_fold(0u8, |acc, &b| {
+                match b {
+                    b'"' if !following_quote => (following_quote, req) = (true, 1),
+                    b'#' => req += u8::from(following_quote),
+                    _ => {
+                        if following_quote {
+                            following_quote = false;
 
-                        diag.multipart_suggestion(
-                            message,
-                            vec![(start, String::new()), (end, String::new())],
-                            Applicability::MachineApplicable,
-                        );
+                            if req == max {
+                                return ControlFlow::Break(req);
+                            }
+
+                            return ControlFlow::Continue(acc.max(req));
+                        }
                     },
-                );
+                }
+
+                ControlFlow::Continue(acc)
+            });
+
+            match num {
+                ControlFlow::Continue(num) | ControlFlow::Break(num) => num,
             }
+        };
+        if self.allow_one_hash_in_raw_strings {
+            req = req.max(1);
+        }
+        if req < max {
+            span_lint_and_then(
+                cx,
+                NEEDLESS_RAW_STRING_HASHES,
+                lit_span,
+                "unnecessary hashes around raw string literal",
+                |diag| {
+                    let (start, end) = hash_spans(lit_span, prefix.len(), req, max);
+
+                    let message = match max - req {
+                        _ if req == 0 => format!("remove all the hashes around the {descr} literal"),
+                        1 => format!("remove one hash from both sides of the {descr} literal"),
+                        n => format!("remove {n} hashes from both sides of the {descr} literal"),
+                    };
+
+                    diag.multipart_suggestion(
+                        message,
+                        vec![(start, String::new()), (end, String::new())],
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
         }
     }
 }
