@@ -225,6 +225,11 @@ pub(crate) fn target_machine_factory(
     let use_init_array =
         !sess.opts.unstable_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
 
+    // this makes LLVM add a hotpatch flag in the codeview S_COMPILE3 record,
+    // which is required by linkers for the functionpadmin option
+    // aarch64 is always hotpatchable
+    let is_hotpatchable = sess.opts.unstable_opts.hotpatch || sess.target.arch.contains("aarch64");
+
     let path_mapping = sess.source_map().path_mapping().clone();
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
@@ -297,6 +302,7 @@ pub(crate) fn target_machine_factory(
             emit_stack_size_section,
             relax_elf_relocations,
             use_init_array,
+            is_hotpatchable,
             &split_dwarf_file,
             &output_obj_file,
             &debuginfo_compression,
