@@ -11,7 +11,7 @@ use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
 use rustc_parse::validate_attr;
-use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_triple};
+use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_tuple};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
@@ -310,7 +310,7 @@ fn get_codegen_sysroot(
         "cannot load the default codegen backend twice"
     );
 
-    let target = host_triple();
+    let target = host_tuple();
     let sysroot_candidates = sysroot_candidates();
 
     let sysroot = iter::once(sysroot)
