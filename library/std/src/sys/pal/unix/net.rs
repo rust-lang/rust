@@ -81,6 +81,7 @@ impl Socket {
                     target_os = "netbsd",
                     target_os = "openbsd",
                     target_os = "nto",
+                    target_os = "solaris",
                 ))] {
                     // On platforms that support it we pass the SOCK_CLOEXEC
                     // flag to atomically create the socket and set it as
