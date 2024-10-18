@@ -2863,6 +2863,32 @@ macro_rules! uint_impl {
             self / rhs
         }
 
+        /// Calculates the remainder of `self / rhs` if the quotient is rounded toward negative infinity.
+        ///
+        /// This is the same as performing `self % rhs` for all unsigned integers.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".rem_floor(4), 3);")]
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn rem_floor(self, rhs: Self) -> Self {
+            self % rhs
+        }
+
+
         /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
         ///
         /// # Panics
@@ -2889,6 +2915,44 @@ macro_rules! uint_impl {
                 d + 1
             } else {
                 d
+            }
+        }
+
+        /// Calculates the remainder of `self / rhs` if the quotient is rounded towards positive infinity.
+        ///
+        /// Since this remainder can never be positive, we return the opposite of the actual remainder.
+        /// If you want the sign to reflect the actual remainder, you need to use the [signed version].
+        ///
+        #[doc = concat!("[signed version]: primitive.", stringify!($SignedT), ".html#method.rem_ceil")]
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// ## Overflow behavior
+        ///
+        /// On overflow, this function will panic if overflow checks are enabled (default in debug
+        /// mode) and wrap if overflow checks are disabled (default in release mode).
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(rem_ceil)]
+        #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".unsigned_rem_ceil(4), 1);")]
+        /// ```
+        #[unstable(feature = "rem_ceil", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn unsigned_rem_ceil(self, rhs: Self) -> Self {
+            let r = self % rhs;
+            if r != 0 {
+                rhs - r
+            } else {
+                r
             }
         }
 
