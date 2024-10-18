@@ -1277,19 +1277,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let normalized_term =
                         ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);
 
-                    let is_normalized_term_expected = !matches!(
-                        obligation.cause.code().peel_derives(),
-                        ObligationCauseCode::WhereClause(..)
-                            | ObligationCauseCode::WhereClauseInExpr(..)
-                            | ObligationCauseCode::Coercion { .. }
-                    );
-
-                    let (expected, actual) = if is_normalized_term_expected {
-                        (normalized_term, data.term)
-                    } else {
-                        (data.term, normalized_term)
-                    };
-
                     // constrain inference variables a bit more to nested obligations from normalize so
                     // we can have more helpful errors.
                     //
@@ -1298,12 +1285,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let _ = ocx.select_where_possible();
 
                     if let Err(new_err) =
-                        ocx.eq(&obligation.cause, obligation.param_env, expected, actual)
+                        ocx.eq(&obligation.cause, obligation.param_env, data.term, normalized_term)
                     {
                         (
                             Some((
                                 data.projection_term,
-                                is_normalized_term_expected,
+                                false,
                                 self.resolve_vars_if_possible(normalized_term),
                                 data.term,
                             )),
@@ -1444,12 +1431,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 &mut diag,
                 &obligation.cause,
                 secondary_span,
-                values.map(|(_, is_normalized_ty_expected, normalized_ty, expected_ty)| {
-                    infer::ValuePairs::Terms(ExpectedFound::new(
-                        is_normalized_ty_expected,
-                        normalized_ty,
-                        expected_ty,
-                    ))
+                values.map(|(_, _, normalized_ty, expected_ty)| {
+                    infer::ValuePairs::Terms(ExpectedFound::new(true, expected_ty, normalized_ty))
                 }),
                 err,
                 false,

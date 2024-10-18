@@ -16,7 +16,7 @@ error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:13:13: 13:18}` to be 
   --> $DIR/issue-78722-2.rs:11:30
    |
 LL |         fn concrete_use() -> F {
-   |                              ^ expected `()`, found `u8`
+   |                              ^ expected `u8`, found `()`
 
 error: aborting due to 2 previous errors
 

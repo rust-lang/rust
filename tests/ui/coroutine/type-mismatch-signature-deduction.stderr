@@ -22,10 +22,10 @@ error[E0271]: type mismatch resolving `<{coroutine@$DIR/type-mismatch-signature-
   --> $DIR/type-mismatch-signature-deduction.rs:5:13
    |
 LL | fn foo() -> impl Coroutine<Return = i32> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<{integer}, _>`, found `i32`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `Result<{integer}, _>`
    |
-   = note: expected enum `Result<{integer}, _>`
-              found type `i32`
+   = note: expected type `i32`
+              found enum `Result<{integer}, _>`
 
 error: aborting due to 2 previous errors
 
