@@ -177,6 +177,14 @@ impl LineIndex {
         Some(LineCol { line: line_col.line, col })
     }
 
+    /// Returns the given line's range.
+    pub fn line(&self, line: u32) -> Option<TextRange> {
+        let start = self.start_offset(line as usize)?;
+        let next_newline = self.newlines.get(line as usize).copied().unwrap_or(self.len);
+        let line_length = next_newline - start;
+        Some(TextRange::new(start, start + line_length))
+    }
+
     /// Given a range [start, end), returns a sorted iterator of non-empty ranges [start, x1), [x1,
     /// x2), ..., [xn, end) where all the xi, which are positions of newlines, are inside the range
     /// [start, end).
