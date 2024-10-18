@@ -394,11 +394,11 @@ fn adjust_for_rust_scalar<'tcx>(
     if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
         let kind = if let Some(kind) = pointee.safe {
             Some(kind)
-        } else if let Some(pointee) = drop_target_pointee {
-            // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
-            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.param_env()) })
         } else {
-            None
+            // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
+            drop_target_pointee.map(|pointee| PointerKind::MutableRef {
+                unpin: pointee.is_unpin(tcx, cx.param_env()),
+            })
         };
         if let Some(kind) = kind {
             attrs.pointee_align = Some(pointee.align);
