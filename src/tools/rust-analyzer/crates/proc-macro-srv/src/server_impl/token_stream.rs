@@ -1,10 +1,20 @@
 //! TokenStream implementation used by sysroot ABI
 
-use tt::TokenTree;
+use proc_macro::bridge;
 
-#[derive(Debug, Clone)]
+use crate::server_impl::{delim_to_external, literal_kind_to_external, TopSubtree};
+
+#[derive(Clone)]
 pub struct TokenStream<S> {
-    pub(super) token_trees: Vec<TokenTree<S>>,
+    pub(super) token_trees: Vec<tt::TokenTree<S>>,
+}
+
+impl<S: std::fmt::Debug + Copy> std::fmt::Debug for TokenStream<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TokenStream")
+            .field("token_trees", &tt::TokenTreesView::new(&self.token_trees))
+            .finish()
+    }
 }
 
 impl<S> Default for TokenStream<S> {
@@ -13,84 +23,85 @@ impl<S> Default for TokenStream<S> {
     }
 }
 
-impl<S> TokenStream<S> {
+impl<S: Copy> TokenStream<S> {
     pub(crate) fn new() -> Self {
         TokenStream::default()
     }
 
-    pub(crate) fn with_subtree(subtree: tt::Subtree<S>) -> Self {
-        if subtree.delimiter.kind != tt::DelimiterKind::Invisible {
-            TokenStream { token_trees: vec![TokenTree::Subtree(subtree)] }
-        } else {
-            TokenStream { token_trees: subtree.token_trees.into_vec() }
+    pub(crate) fn with_subtree(subtree: TopSubtree<S>) -> Self {
+        let delimiter_kind = subtree.top_subtree().delimiter.kind;
+        let mut token_trees = subtree.0;
+        if delimiter_kind == tt::DelimiterKind::Invisible {
+            token_trees.remove(0);
         }
+        TokenStream { token_trees }
     }
 
-    pub(crate) fn into_subtree(self, call_site: S) -> tt::Subtree<S>
+    pub(crate) fn into_subtree(mut self, call_site: S) -> TopSubtree<S>
     where
         S: Copy,
     {
-        tt::Subtree {
-            delimiter: tt::Delimiter {
-                open: call_site,
-                close: call_site,
-                kind: tt::DelimiterKind::Invisible,
-            },
-            token_trees: self.token_trees.into_boxed_slice(),
-        }
+        self.token_trees.insert(
+            0,
+            tt::TokenTree::Subtree(tt::Subtree {
+                delimiter: tt::Delimiter {
+                    open: call_site,
+                    close: call_site,
+                    kind: tt::DelimiterKind::Invisible,
+                },
+                len: self.token_trees.len() as u32,
+            }),
+        );
+        TopSubtree(self.token_trees)
     }
 
     pub(super) fn is_empty(&self) -> bool {
         self.token_trees.is_empty()
     }
-}
 
-/// Creates a token stream containing a single token tree.
-impl<S> From<TokenTree<S>> for TokenStream<S> {
-    fn from(tree: TokenTree<S>) -> TokenStream<S> {
-        TokenStream { token_trees: vec![tree] }
-    }
-}
-
-/// Collects a number of token trees into a single stream.
-impl<S> FromIterator<TokenTree<S>> for TokenStream<S> {
-    fn from_iter<I: IntoIterator<Item = TokenTree<S>>>(trees: I) -> Self {
-        trees.into_iter().map(TokenStream::from).collect()
-    }
-}
-
-/// A "flattening" operation on token streams, collects token trees
-/// from multiple token streams into a single stream.
-impl<S> FromIterator<TokenStream<S>> for TokenStream<S> {
-    fn from_iter<I: IntoIterator<Item = TokenStream<S>>>(streams: I) -> Self {
-        let mut builder = TokenStreamBuilder::new();
-        streams.into_iter().for_each(|stream| builder.push(stream));
-        builder.build()
-    }
-}
-
-impl<S> Extend<TokenTree<S>> for TokenStream<S> {
-    fn extend<I: IntoIterator<Item = TokenTree<S>>>(&mut self, trees: I) {
-        self.extend(trees.into_iter().map(TokenStream::from));
-    }
-}
-
-impl<S> Extend<TokenStream<S>> for TokenStream<S> {
-    fn extend<I: IntoIterator<Item = TokenStream<S>>>(&mut self, streams: I) {
-        for item in streams {
-            for tkn in item {
-                match tkn {
-                    tt::TokenTree::Subtree(subtree)
-                        if subtree.delimiter.kind == tt::DelimiterKind::Invisible =>
-                    {
-                        self.token_trees.extend(subtree.token_trees.into_vec().into_iter());
-                    }
-                    _ => {
-                        self.token_trees.push(tkn);
-                    }
+    pub(crate) fn into_bridge(self) -> Vec<bridge::TokenTree<Self, S, intern::Symbol>> {
+        let mut result = Vec::new();
+        let mut iter = self.token_trees.into_iter();
+        while let Some(tree) = iter.next() {
+            match tree {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    result.push(bridge::TokenTree::Ident(bridge::Ident {
+                        sym: ident.sym,
+                        is_raw: ident.is_raw.yes(),
+                        span: ident.span,
+                    }))
+                }
+                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
+                    result.push(bridge::TokenTree::Literal(bridge::Literal {
+                        span: lit.span,
+                        kind: literal_kind_to_external(lit.kind),
+                        symbol: lit.symbol,
+                        suffix: lit.suffix,
+                    }))
+                }
+                tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
+                    result.push(bridge::TokenTree::Punct(bridge::Punct {
+                        ch: punct.char as u8,
+                        joint: punct.spacing == tt::Spacing::Joint,
+                        span: punct.span,
+                    }))
+                }
+                tt::TokenTree::Subtree(subtree) => {
+                    result.push(bridge::TokenTree::Group(bridge::Group {
+                        delimiter: delim_to_external(subtree.delimiter),
+                        stream: if subtree.len == 0 {
+                            None
+                        } else {
+                            Some(TokenStream {
+                                token_trees: iter.by_ref().take(subtree.usize_len()).collect(),
+                            })
+                        },
+                        span: bridge::DelimSpan::from_single(subtree.delimiter.open),
+                    }))
                 }
             }
         }
+        result
     }
 }
 
@@ -103,19 +114,7 @@ pub(super) mod token_stream_impls {
 
     use core::fmt;
 
-    use super::{TokenStream, TokenTree};
-
-    /// An iterator over `TokenStream`'s `TokenTree`s.
-    /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
-    /// and returns whole groups as token trees.
-    impl<S> IntoIterator for TokenStream<S> {
-        type Item = TokenTree<S>;
-        type IntoIter = std::vec::IntoIter<TokenTree<S>>;
-
-        fn into_iter(self) -> Self::IntoIter {
-            self.token_trees.into_iter()
-        }
-    }
+    use super::{TokenStream, TopSubtree};
 
     /// Attempts to break the string into tokens and parse those tokens into a token stream.
     /// May fail for a number of reasons, for example, if the string contains unbalanced delimiters
@@ -133,7 +132,7 @@ pub(super) mod token_stream_impls {
             )
             .ok_or_else(|| format!("lexing error: {src}"))?;
 
-            Ok(TokenStream::with_subtree(subtree))
+            Ok(TokenStream::with_subtree(TopSubtree(subtree.0.into_vec())))
         }
     }
 
@@ -145,13 +144,13 @@ pub(super) mod token_stream_impls {
     }
 }
 
-impl<S> TokenStreamBuilder<S> {
+impl<S: Copy> TokenStreamBuilder<S> {
     pub(super) fn new() -> TokenStreamBuilder<S> {
         TokenStreamBuilder { acc: TokenStream::new() }
     }
 
     pub(super) fn push(&mut self, stream: TokenStream<S>) {
-        self.acc.extend(stream)
+        self.acc.token_trees.extend(stream.token_trees)
     }
 
     pub(super) fn build(self) -> TokenStream<S> {

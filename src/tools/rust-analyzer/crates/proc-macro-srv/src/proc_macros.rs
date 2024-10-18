@@ -4,7 +4,9 @@ use proc_macro::bridge;
 
 use libloading::Library;
 
-use crate::{dylib::LoadProcMacroDylibError, ProcMacroKind, ProcMacroSrvSpan};
+use crate::{
+    dylib::LoadProcMacroDylibError, server_impl::TopSubtree, ProcMacroKind, ProcMacroSrvSpan,
+};
 
 #[repr(transparent)]
 pub(crate) struct ProcMacros([bridge::client::ProcMacro]);
@@ -41,12 +43,12 @@ impl ProcMacros {
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
-        macro_body: tt::Subtree<S>,
-        attributes: Option<tt::Subtree<S>>,
+        macro_body: TopSubtree<S>,
+        attributes: Option<TopSubtree<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<tt::Subtree<S>, crate::PanicMessage> {
+    ) -> Result<TopSubtree<S>, crate::PanicMessage> {
         let parsed_body = crate::server_impl::TokenStream::with_subtree(macro_body);
 
         let parsed_attributes = attributes

@@ -72,12 +72,12 @@ impl ProcMacroSrv<'_> {
         env: Vec<(String, String)>,
         current_dir: Option<impl AsRef<Path>>,
         macro_name: String,
-        macro_body: tt::Subtree<S>,
-        attribute: Option<tt::Subtree<S>>,
+        macro_body: tt::TopSubtree<S>,
+        attribute: Option<tt::TopSubtree<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<tt::Subtree<S>, String> {
+    ) -> Result<Vec<tt::TokenTree<S>>, String> {
         let snapped_env = self.env;
         let expander =
             self.expander(lib.as_ref()).map_err(|err| format!("failed to load macro: {err}"))?;
@@ -91,14 +91,16 @@ impl ProcMacroSrv<'_> {
                 .stack_size(EXPANDER_STACK_SIZE)
                 .name(macro_name.clone())
                 .spawn_scoped(s, move || {
-                    expander.expand(
-                        &macro_name,
-                        macro_body,
-                        attribute,
-                        def_site,
-                        call_site,
-                        mixed_site,
-                    )
+                    expander
+                        .expand(
+                            &macro_name,
+                            server_impl::TopSubtree(macro_body.0.into_vec()),
+                            attribute.map(|it| server_impl::TopSubtree(it.0.into_vec())),
+                            def_site,
+                            call_site,
+                            mixed_site,
+                        )
+                        .map(|tt| tt.0)
                 });
             let res = match thread {
                 Ok(handle) => handle.join(),

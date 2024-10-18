@@ -75,7 +75,9 @@ pub(crate) fn run() -> io::Result<()> {
                             call_site,
                             mixed_site,
                         )
-                        .map(|it| msg::FlatTree::new_raw(&it, CURRENT_API_VERSION))
+                        .map(|it| {
+                            msg::FlatTree::new_raw(tt::SubtreeView::new(&it), CURRENT_API_VERSION)
+                        })
                         .map_err(msg::PanicMessage)
                     }),
                     SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended({
@@ -103,7 +105,11 @@ pub(crate) fn run() -> io::Result<()> {
                         )
                         .map(|it| {
                             (
-                                msg::FlatTree::new(&it, CURRENT_API_VERSION, &mut span_data_table),
+                                msg::FlatTree::new(
+                                    tt::SubtreeView::new(&it),
+                                    CURRENT_API_VERSION,
+                                    &mut span_data_table,
+                                ),
                                 serialize_span_data_index_map(&span_data_table),
                             )
                         })
