@@ -156,7 +156,7 @@ declare_lint! {
     ///
     /// ```rust
     /// #![forbid(warnings)]
-    /// #![deny(bad_style)]
+    /// #![warn(bad_style)]
     ///
     /// fn main() {}
     /// ```

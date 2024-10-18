@@ -19,9 +19,9 @@
 fn forbid_first(num: i32) -> i32 {
     #![forbid(unused)]
     #![deny(unused)]
-    //~^ ERROR: deny(unused) incompatible with previous forbid
-    //~| WARNING being phased out
     #![warn(unused)]
+    //~^ ERROR: warn(unused) incompatible with previous forbid
+    //~| WARNING being phased out
     #![allow(unused)]
 
     num * num
