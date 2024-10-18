@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
         if !expr.span.from_expansion()
             // Avoid cases already linted by `field_reassign_with_default`
             && !self.reassigned_linted.contains(&expr.span)
-            && let ExprKind::Call(path, ..) = expr.kind
+            && let ExprKind::Call(path, []) = expr.kind
             && !in_automatically_derived(cx.tcx, expr.hir_id)
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
@@ -253,7 +253,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
 
 /// Checks if the given expression is the `default` method belonging to the `Default` trait.
 fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool {
-    if let ExprKind::Call(fn_expr, _) = &expr.kind
+    if let ExprKind::Call(fn_expr, []) = &expr.kind
         && let ExprKind::Path(qpath) = &fn_expr.kind
         && let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id)
     {

@@ -65,11 +65,11 @@ impl LateLintPass<'_> for RcCloneInVecInit {
 
 fn loop_init_suggestion(elem: &str, len: &str, indent: &str) -> String {
     format!(
-        r#"{{
+        r"{{
 {indent}    let mut v = Vec::with_capacity({len});
 {indent}    (0..{len}).for_each(|_| v.push({elem}));
 {indent}    v
-{indent}}}"#
+{indent}}}"
     )
 }
 

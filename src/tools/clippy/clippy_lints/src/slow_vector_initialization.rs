@@ -152,7 +152,7 @@ impl SlowVectorInit {
             && is_path_diagnostic_item(cx, func, sym::vec_with_capacity)
         {
             Some(InitializedSize::Initialized(len_expr))
-        } else if matches!(expr.kind, ExprKind::Call(func, _) if is_path_diagnostic_item(cx, func, sym::vec_new)) {
+        } else if matches!(expr.kind, ExprKind::Call(func, []) if is_path_diagnostic_item(cx, func, sym::vec_new)) {
             Some(InitializedSize::Uninitialized)
         } else {
             None
@@ -268,7 +268,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
 
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&mut self, expr: &'tcx Expr<'tcx>) -> bool {
-        if let ExprKind::MethodCall(take_path, recv, [len_arg, ..], _) = expr.kind
+        if let ExprKind::MethodCall(take_path, recv, [len_arg], _) = expr.kind
             && take_path.ident.name == sym!(take)
             // Check that take is applied to `repeat(0)`
             && self.is_repeat_zero(recv)

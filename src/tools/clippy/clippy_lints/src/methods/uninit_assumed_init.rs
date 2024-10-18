@@ -9,8 +9,7 @@ use super::UNINIT_ASSUMED_INIT;
 
 /// lint for `MaybeUninit::uninit().assume_init()` (we already have the latter)
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
-    if let hir::ExprKind::Call(callee, args) = recv.kind
-        && args.is_empty()
+    if let hir::ExprKind::Call(callee, []) = recv.kind
         && is_path_diagnostic_item(cx, callee, sym::maybe_uninit_uninit)
         && !is_uninit_value_valid_for_ty(cx, cx.typeck_results().expr_ty_adjusted(expr))
     {
