@@ -2195,6 +2195,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && item.path == sym::reason
         {
             errors::UnusedNote::NoLints { name: attr.name_or_empty() }
+        } else if matches!(
+            attr.name_or_empty(),
+            sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
+        ) && let Some(meta) = attr.meta_item_list()
+            && meta.iter().any(|meta| {
+                meta.meta_item().map_or(false, |item| item.path == sym::linker_messages)
+            })
+            && hir_id != CRATE_HIR_ID
+        {
+            errors::UnusedNote::LinkerWarningsBinaryCrateOnly
         } else if attr.name_or_empty() == sym::default_method_body_is_const {
             errors::UnusedNote::DefaultMethodBodyConst
         } else {

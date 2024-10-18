@@ -35,7 +35,7 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
+use rustc_codegen_ssa::{CodegenLintLevels, CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_metadata::EncodedMetadata;
@@ -393,6 +393,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         &self,
         sess: &Session,
         codegen_results: CodegenResults,
+        lint_levels: CodegenLintLevels,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
@@ -401,7 +402,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        link_binary(sess, &LlvmArchiveBuilderBuilder, &codegen_results, outputs)
+        link_binary(sess, &LlvmArchiveBuilderBuilder, &codegen_results, lint_levels, outputs)
     }
 }
 

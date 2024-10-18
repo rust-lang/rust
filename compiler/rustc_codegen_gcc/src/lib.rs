@@ -100,6 +100,7 @@ use rustc_codegen_ssa::back::write::{
 };
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
+use rustc_codegen_ssa::CodegenLintLevels;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
@@ -265,11 +266,12 @@ impl CodegenBackend for GccCodegenBackend {
         &self,
         sess: &Session,
         codegen_results: CodegenResults,
+        lint_levels: CodegenLintLevels,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, outputs)
+        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, lint_levels, outputs)
     }
 
     fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {

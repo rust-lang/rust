@@ -39,7 +39,7 @@ use std::sync::Arc;
 
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
-use rustc_codegen_ssa::CodegenResults;
+use rustc_codegen_ssa::{CodegenLintLevels, CodegenResults};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::ErrorGuaranteed;
@@ -251,11 +251,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         sess: &Session,
         codegen_results: CodegenResults,
+        lint_levels: CodegenLintLevels,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, outputs)
+        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, lint_levels, outputs)
     }
 }
 
