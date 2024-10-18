@@ -1,39 +1,38 @@
 use crate::cell::Cell;
 use crate::sync as public;
-use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::once::ExclusiveState;
-use crate::sys::futex::{futex_wait, futex_wake_all};
+use crate::sys::futex::{Futex, Primitive, futex_wait, futex_wake_all};
 
 // On some platforms, the OS is very nice and handles the waiter queue for us.
 // This means we only need one atomic value with 4 states:
 
 /// No initialization has run yet, and no thread is currently using the Once.
-const INCOMPLETE: u32 = 0;
+const INCOMPLETE: Primitive = 0;
 /// Some thread has previously attempted to initialize the Once, but it panicked,
 /// so the Once is now poisoned. There are no other threads currently accessing
 /// this Once.
-const POISONED: u32 = 1;
+const POISONED: Primitive = 1;
 /// Some thread is currently attempting to run initialization. It may succeed,
 /// so all future threads need to wait for it to finish.
-const RUNNING: u32 = 2;
+const RUNNING: Primitive = 2;
 /// Initialization has completed and all future calls should finish immediately.
-const COMPLETE: u32 = 3;
+const COMPLETE: Primitive = 3;
 
 // An additional bit indicates whether there are waiting threads:
 
 /// May only be set if the state is not COMPLETE.
-const QUEUED: u32 = 4;
+const QUEUED: Primitive = 4;
 
 // Threads wait by setting the QUEUED bit and calling `futex_wait` on the state
 // variable. When the running thread finishes, it will wake all waiting threads using
 // `futex_wake_all`.
 
-const STATE_MASK: u32 = 0b11;
+const STATE_MASK: Primitive = 0b11;
 
 pub struct OnceState {
     poisoned: bool,
-    set_state_to: Cell<u32>,
+    set_state_to: Cell<Primitive>,
 }
 
 impl OnceState {
@@ -49,8 +48,8 @@ impl OnceState {
 }
 
 struct CompletionGuard<'a> {
-    state_and_queued: &'a AtomicU32,
-    set_state_on_drop_to: u32,
+    state_and_queued: &'a Futex,
+    set_state_on_drop_to: Primitive,
 }
 
 impl<'a> Drop for CompletionGuard<'a> {
@@ -65,13 +64,13 @@ impl<'a> Drop for CompletionGuard<'a> {
 }
 
 pub struct Once {
-    state_and_queued: AtomicU32,
+    state_and_queued: Futex,
 }
 
 impl Once {
     #[inline]
     pub const fn new() -> Once {
-        Once { state_and_queued: AtomicU32::new(INCOMPLETE) }
+        Once { state_and_queued: Futex::new(INCOMPLETE) }
     }
 
     #[inline]

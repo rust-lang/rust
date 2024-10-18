@@ -4,7 +4,7 @@ use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::sys::futex::{self, futex_wait, futex_wake};
 use crate::time::Duration;
 
-type Atomic = futex::SmallAtomic;
+type Futex = futex::SmallFutex;
 type State = futex::SmallPrimitive;
 
 const PARKED: State = State::MAX;
@@ -12,7 +12,7 @@ const EMPTY: State = 0;
 const NOTIFIED: State = 1;
 
 pub struct Parker {
-    state: Atomic,
+    state: Futex,
 }
 
 // Notes about memory ordering:
@@ -39,7 +39,7 @@ impl Parker {
     /// Constructs the futex parker. The UNIX parker implementation
     /// requires this to happen in-place.
     pub unsafe fn new_in_place(parker: *mut Parker) {
-        unsafe { parker.write(Self { state: Atomic::new(EMPTY) }) };
+        unsafe { parker.write(Self { state: Futex::new(EMPTY) }) };
     }
 
     // Assumes this is only called by the thread that owns the Parker,
