@@ -146,6 +146,12 @@ fn partition<'tcx, I>(
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
+    if tcx.building_mir_only_rlib() {
+        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+        let cgu_name = fallback_cgu_name(cgu_name_builder);
+        return vec![CodegenUnit::new(cgu_name)];
+    }
+
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
     let cx = &PartitioningCx { tcx, usage_map };
@@ -170,6 +176,10 @@ where
         debug_dump(tcx, "MERGE", &codegen_units);
     }
 
+    if !codegen_units.is_sorted_by(|a, b| a.name().as_str() < b.name().as_str()) {
+        bug!("unsorted CGUs");
+    }
+
     // Make as many symbols "internal" as possible, so LLVM has more freedom to
     // optimize.
     if !tcx.sess.link_dead_code() {
@@ -190,7 +200,12 @@ where
         for cgu in codegen_units.iter() {
             names += &format!("- {}\n", cgu.name());
         }
-        bug!("unsorted CGUs:\n{names}");
+        codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
+        let mut sorted_names = String::new();
+        for cgu in codegen_units.iter() {
+            sorted_names += &format!("- {}\n", cgu.name());
+        }
+        bug!("unsorted CGUs:\n{names}\n{sorted_names}");
     }
 
     codegen_units
@@ -214,6 +229,9 @@ where
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
     let cgu_name_cache = &mut UnordMap::default();
 
+    let start_fn = cx.tcx.lang_items().start_fn();
+    let entry_fn = cx.tcx.entry_fn(()).map(|(id, _)| id);
+
     for mono_item in mono_items {
         // Handle only root (GloballyShared) items directly here. Inlined (LocalCopy) items
         // are handled at the bottom of the loop based on reachability, with one exception.
@@ -222,7 +240,8 @@ where
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
             InstantiationMode::LocalCopy => {
-                if Some(mono_item.def_id()) != cx.tcx.lang_items().start_fn() {
+                let def_id = mono_item.def_id();
+                if ![start_fn, entry_fn].contains(&Some(def_id)) {
                     continue;
                 }
             }
@@ -244,7 +263,7 @@ where
 
         let cgu = codegen_units.entry(cgu_name).or_insert_with(|| CodegenUnit::new(cgu_name));
 
-        let mut can_be_internalized = true;
+        let mut can_be_internalized = false;
         let (linkage, visibility) = mono_item_linkage_and_visibility(
             cx.tcx,
             &mono_item,
@@ -486,7 +505,7 @@ fn merge_codegen_units<'tcx>(
         // If we didn't zero-pad the sorted-by-name order would be `XYZ-cgu.0`,
         // `XYZ-cgu.1`, `XYZ-cgu.10`, `XYZ-cgu.11`, ..., `XYZ-cgu.2`, etc.
         codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
-        let num_digits = codegen_units.len().ilog10() as usize + 1;
+        let num_digits = std::hint::black_box(codegen_units.len().ilog10() as usize + 1);
         for (index, cgu) in codegen_units.iter_mut().enumerate() {
             // Note: `WorkItem::short_description` depends on this name ending
             // with `-cgu.` followed by a numeric suffix. Please keep it in
