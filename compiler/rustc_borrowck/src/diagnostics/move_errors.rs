@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
+use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
 use crate::MirBorrowckCtxt;
@@ -267,6 +268,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 kind,
                 self.is_upvar_field_projection(original_path.as_ref())
             );
+            if self.has_ambiguous_copy(original_path.ty(self.body, self.infcx.tcx).ty) {
+                // If the type may implement Copy, skip the error.
+                // It's an error with the Copy implementation (e.g. duplicate Copy) rather than borrow check
+                self.dcx().span_delayed_bug(
+                    span,
+                    "Type may implement copy, but there is no other error.",
+                );
+                return;
+            }
             (
                 match kind {
                     &IllegalMoveOriginKind::BorrowedContent { target_place } => self
@@ -289,6 +299,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         self.add_move_hints(error, &mut err, err_span);
         self.buffer_error(err);
+    }
+
+    fn has_ambiguous_copy(&mut self, ty: Ty<'tcx>) -> bool {
+        let Some(copy_trait_def) = self.infcx.tcx.lang_items().copy_trait() else { return false };
+        // This is only going to be ambiguous if there are incoherent impls, because otherwise
+        // ambiguity should never happen in MIR.
+        self.infcx.type_implements_trait(copy_trait_def, [ty], self.param_env).may_apply()
     }
 
     fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
