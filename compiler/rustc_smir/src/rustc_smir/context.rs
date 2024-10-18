@@ -266,8 +266,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let did = tables[def_id];
-        let filter_fn =
-            move |a: &&rustc_hir::Attribute| matches!(a.kind, rustc_hir::AttrKind::Normal(_));
+        let filter_fn = move |a: &&rustc_hir::Attribute| !a.is_doc_comment();
         let attrs_iter = if let Some(did) = did.as_local() {
             tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {

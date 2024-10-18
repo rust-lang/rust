@@ -1,5 +1,5 @@
+use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
-use rustc_attr::AttributeExt;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};

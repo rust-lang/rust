@@ -16,6 +16,7 @@
 extern crate self as rustc_hir;
 
 mod arena;
+pub mod attribute;
 pub mod def;
 pub mod def_path_hash_map;
 pub mod definitions;
@@ -33,6 +34,7 @@ pub mod weak_lang_items;
 #[cfg(test)]
 mod tests;
 
+pub use attribute::*;
 #[doc(no_inline)]
 pub use hir::*;
 pub use hir_id::*;

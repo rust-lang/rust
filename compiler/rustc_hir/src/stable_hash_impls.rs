@@ -2,9 +2,10 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 use rustc_span::def_id::DefPathHash;
 
 use crate::hir::{
-    Attribute, AttributeMap, BodyId, Crate, ForeignItemId, ImplItemId, ItemId, OwnerNodes,
+    BodyId, Crate, ForeignItemId, ImplItemId, ItemId, OwnerNodes,
     TraitItemId,
 };
+use crate::{Attribute, AttributeMap};
 use crate::hir_id::{HirId, ItemLocalId};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.

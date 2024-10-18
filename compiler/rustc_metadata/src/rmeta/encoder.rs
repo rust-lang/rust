@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
+use rustc_ast::attr as ast_attr;
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
@@ -710,15 +711,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: attr::contains_name(attrs, sym::default_lib_allocator),
+                has_default_lib_allocator: ast_attr::contains_name(
+                    attrs,
+                    sym::default_lib_allocator,
+                ),
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: attr::contains_name(attrs, sym::compiler_builtins),
-                needs_allocator: attr::contains_name(attrs, sym::needs_allocator),
-                needs_panic_runtime: attr::contains_name(attrs, sym::needs_panic_runtime),
-                no_builtins: attr::contains_name(attrs, sym::no_builtins),
-                panic_runtime: attr::contains_name(attrs, sym::panic_runtime),
-                profiler_runtime: attr::contains_name(attrs, sym::profiler_runtime),
+                compiler_builtins: ast_attr::contains_name(attrs, sym::compiler_builtins),
+                needs_allocator: ast_attr::contains_name(attrs, sym::needs_allocator),
+                needs_panic_runtime: ast_attr::contains_name(attrs, sym::needs_panic_runtime),
+                no_builtins: ast_attr::contains_name(attrs, sym::no_builtins),
+                panic_runtime: ast_attr::contains_name(attrs, sym::panic_runtime),
+                profiler_runtime: ast_attr::contains_name(attrs, sym::profiler_runtime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,
@@ -1913,11 +1917,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = hir.attrs(proc_macro);
-                let macro_kind = if attr::contains_name(attrs, sym::proc_macro) {
+                let macro_kind = if ast_attr::contains_name(attrs, sym::proc_macro) {
                     MacroKind::Bang
-                } else if attr::contains_name(attrs, sym::proc_macro_attribute) {
+                } else if ast_attr::contains_name(attrs, sym::proc_macro_attribute) {
                     MacroKind::Attr
-                } else if let Some(attr) = attr::find_by_name(attrs, sym::proc_macro_derive) {
+                } else if let Some(attr) = ast_attr::find_by_name(attrs, sym::proc_macro_derive) {
                     // This unwrap chain should have been checked by the proc-macro harness.
                     name = attr.meta_item_list().unwrap()[0]
                         .meta_item()

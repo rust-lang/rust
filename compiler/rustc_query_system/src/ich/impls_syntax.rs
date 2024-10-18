@@ -40,13 +40,15 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         debug_assert!(!attr.ident().is_some_and(|ident| self.is_ignored_attr(ident.name)));
         debug_assert!(!attr.is_doc_comment());
 
-        let hir::Attribute { kind, id: _, style, span } = attr;
-        if let hir::AttrKind::Normal(item) = kind {
-            item.hash_stable(self, hasher);
-            style.hash_stable(self, hasher);
-            span.hash_stable(self, hasher);
-        } else {
-            unreachable!();
+        let hir::Attribute { kind, id: _, style, span, unsafety } = attr;
+        match kind {
+            hir::AttributeKind::Unparsed(item) => {
+                unsafety.hash_stable(self, hasher);
+                item.hash_stable(self, hasher);
+                style.hash_stable(self, hasher);
+                span.hash_stable(self, hasher);
+            }
+            hir::AttributeKind::Parsed(parsed) => parsed.hash_stable(self, hasher),
         }
     }
 }

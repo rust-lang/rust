@@ -3,7 +3,7 @@
 use std::num::NonZero;
 
 use rustc_abi::Align;
-use rustc_ast::attr::AttributeExt;
+use rustc_ast::attr::{AttributeExt, filter_by_name, first_attr_value_str_by_name};
 use rustc_ast::{self as ast, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
@@ -18,8 +18,8 @@ use rustc_span::Span;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{Symbol, kw, sym};
 
+use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
-use crate::{filter_by_name, first_attr_value_str_by_name, fluent_generated};
 
 /// The version placeholder that recently stabilized features contain inside the
 /// `since` field of the `#[stable]` attribute.

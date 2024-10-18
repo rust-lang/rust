@@ -4,7 +4,7 @@ use std::path::Component::Prefix;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use rustc_ast::attr::{AttributeExt, MarkedAttrs};
+use rustc_ast::attr::{self as ast_attr, AttributeExt, MarkedAttrs};
 use rustc_ast::ptr::P;
 use rustc_ast::token::Nonterminal;
 use rustc_ast::tokenstream::TokenStream;
@@ -809,7 +809,7 @@ impl SyntaxExtension {
     /// | yes           | yes | yes           | yes      | yes |
     fn get_collapse_debuginfo(sess: &Session, attrs: &[impl AttributeExt], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
-        let attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
+        let attr = ast_attr::find_by_name(attrs, sym::collapse_debuginfo)
             .and_then(|attr| {
                 Self::collapse_debuginfo_by_name(attr)
                     .map_err(|span| {
@@ -818,7 +818,7 @@ impl SyntaxExtension {
                     .ok()
             })
             .unwrap_or_else(|| {
-                if attr::contains_name(attrs, sym::rustc_builtin_macro) {
+                if ast_attr::contains_name(attrs, sym::rustc_builtin_macro) {
                     CollapseMacroDebuginfo::Yes
                 } else {
                     CollapseMacroDebuginfo::Unspecified
@@ -850,14 +850,14 @@ impl SyntaxExtension {
         let allow_internal_unstable =
             rustc_attr::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
 
-        let allow_internal_unsafe = attr::contains_name(attrs, sym::allow_internal_unsafe);
-        let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
+        let allow_internal_unsafe = ast_attr::contains_name(attrs, sym::allow_internal_unsafe);
+        let local_inner_macros = ast_attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
-            .is_some_and(|l| attr::list_contains_name(&l, sym::local_inner_macros));
+            .is_some_and(|l| ast_attr::list_contains_name(&l, sym::local_inner_macros));
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = attr::find_by_name(attrs, sym::rustc_builtin_macro)
+        let (builtin_name, helper_attrs) = ast_attr::find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|attr| {
                 // Override `helper_attrs` passed above if it's a built-in macro,
                 // marking `proc_macro_derive` macros as built-in is not a realistic use case.

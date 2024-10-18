@@ -70,6 +70,7 @@ use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, Symbol};
 
+use crate::attribute::Attribute;
 use crate::hir::*;
 
 pub trait IntoVisitor<'hir> {

@@ -7,6 +7,7 @@ use rustc_ast::tokenstream::{
 };
 use rustc_ast::{
     self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
+    attr as ast_attr,
 };
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -362,7 +363,7 @@ impl<'a> StripUnconfigured<'a> {
         ));
 
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
-        let attr = attr::mk_attr_from_item(
+        let attr = ast_attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
             item,
             tokens,

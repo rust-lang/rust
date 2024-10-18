@@ -14,7 +14,7 @@ use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, B
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, self, AssocItemKind, AttrKind, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig,
+    self as hir, self, AssocItemKind, AttributeKind, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig,
     ForeignItem, HirId, Item, ItemKind, MethodKind, Safety, Target, TraitItem,
 };
 use rustc_macros::LintDiagnostic;
@@ -2593,7 +2593,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
                         item,
                     });
 
-                    if let AttrKind::Normal(ref p) = attr.kind {
+                    if let AttributeKind::Unparsed(ref p) = attr.kind {
                         tcx.dcx().try_steal_replace_and_emit_err(
                             p.path.span,
                             StashKey::UndeterminedMacroResolution,

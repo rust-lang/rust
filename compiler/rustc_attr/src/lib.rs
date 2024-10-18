@@ -1,8 +1,13 @@
-//! Functions and types dealing with attributes and meta items.
+//! Centralized logic for parsing and validating all attributes used after HIR.
 //!
-//! FIXME(Centril): For now being, much of the logic is still in `rustc_ast::attr`.
-//! The goal is to move the definition of `MetaItem` and things that don't need to be in `syntax`
-//! to this crate.
+//! History: Check out [#131229](https://github.com/rust-lang/rust/issues/131229).
+//! There used to be only one definition of attributes in the compiler: `ast::Attribute`.
+//! These were then parsed or validated or both in places distributed all over the compiler.
+//!
+//! TODO(jdonszelmann): update devguide for best practices on attributes
+//! TODO(jdonszelmann): rename to `rustc_attr` in the future, integrating it into this crate.
+//!
+//! To define a new builtin, first add it
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
@@ -15,11 +20,24 @@
 mod builtin;
 mod session_diagnostics;
 
+// TODO: remove reexports
 pub use IntType::*;
 pub use ReprAttr::*;
 pub use StabilityLevel::*;
 pub use builtin::*;
-pub use rustc_ast::attr::*;
 pub(crate) use rustc_session::HashStableContext;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+
+use rustc_ast::{self as ast};
+use rustc_hir::attribute::{Attribute, ParsedAttributeKind};
+
+pub fn parse_attribute_list(_attr: &[ast::Attribute]) -> Vec<Attribute> {
+    todo!()
+}
+
+pub fn parse_attribute(attr: &ast::Attribute) -> Option<ParsedAttributeKind> {
+    match attr {
+        _ => None,
+    }
+}

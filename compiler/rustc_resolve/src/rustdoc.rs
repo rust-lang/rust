@@ -6,7 +6,7 @@ use pulldown_cmark::{
 };
 use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
-use rustc_attr::AttributeExt;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;

@@ -116,7 +116,7 @@ impl<'a> State<'a> {
         }
         self.maybe_print_comment(attr.span.lo());
         match &attr.kind {
-            hir::AttrKind::Normal(normal) => {
+            hir::AttributeKind::Unparsed(normal) => {
                 match attr.style {
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
@@ -124,7 +124,10 @@ impl<'a> State<'a> {
                 self.print_attr_item(&normal, attr.span);
                 self.word("]");
             }
-            hir::AttrKind::DocComment(comment_kind, data) => {
+            hir::AttributeKind::Parsed(hir::ParsedAttributeKind::DocComment(
+                comment_kind,
+                data,
+            )) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
                     *comment_kind,
                     attr.style,
@@ -132,6 +135,7 @@ impl<'a> State<'a> {
                 ));
                 self.hardbreak()
             }
+            _ => unimplemented!("pretty print parsed attributes"),
         }
     }
 
@@ -155,7 +159,7 @@ impl<'a> State<'a> {
                     false,
                     None,
                     *delim,
-                    tokens,
+                    &tokens,
                     true,
                     span,
                 ),

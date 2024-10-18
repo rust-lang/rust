@@ -852,32 +852,56 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_attr(&self, attr: &Attribute) -> hir::Attribute {
+        // if let Some(parsed_attr) = rustc_attr(attr) {
+        //     return hir::Attribute {
+        //         kind: hir::AttributeKind::Parsed(parsed_attr),
+        //         id: attr.id,
+        //         style: attr.style,
+        //         span: self.lower_span(attr.span),
+        //
+        //         unsafety: self.lower_safety(normal.item.unsafety, hir::Safety::Safe),
+        //     };
+        // }
+
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
         // Tokens are also not needed after macro expansion and parsing.
-        let kind = match attr.kind {
-            AttrKind::Normal(ref normal) => hir::AttrKind::Normal(Box::new(hir::AttrItem {
-                unsafety: self.lower_safety(normal.item.unsafety, hir::Safety::Safe),
-                path: hir::AttrPath {
-                    segments: normal
-                        .item
-                        .path
-                        .segments
-                        .iter()
-                        .map(|i| i.ident)
-                        .collect::<Vec<_>>()
-                        .into_boxed_slice(),
-                    span: normal.item.path.span,
-                },
-                args: self.lower_attr_args(&normal.item.args),
-            })),
-            AttrKind::DocComment(comment_kind, data) => {
-                hir::AttrKind::DocComment(comment_kind, data)
-            }
+        let (kind, unsafety) = match attr.kind {
+            AttrKind::Normal(ref normal) => (
+                hir::AttributeKind::Unparsed(Box::new(hir::AttrItem {
+                    path: hir::AttrPath {
+                        segments: normal
+                            .item
+                            .path
+                            .segments
+                            .iter()
+                            .map(|i| i.ident)
+                            .collect::<Vec<_>>()
+                            .into_boxed_slice(),
+                        span: normal.item.path.span,
+                    },
+                    args: self.lower_attr_args(&normal.item.args),
+                })),
+                self.lower_safety(normal.item.unsafety, hir::Safety::Safe),
+            ),
+            AttrKind::DocComment(comment_kind, data) => (
+                hir::AttributeKind::Parsed(rustc_hir::ParsedAttributeKind::DocComment(
+                    comment_kind,
+                    data,
+                )),
+                hir::Safety::Safe,
+            ),
         };
 
-        hir::Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
+        hir::Attribute {
+            kind,
+            id: attr.id,
+            style: attr.style,
+            span: self.lower_span(attr.span),
+
+            unsafety,
+        }
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
