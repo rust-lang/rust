@@ -2122,7 +2122,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` for which `f(&e)` returns false.
+    /// In other words, remove all elements `e` for which `f(&mut e)` returns false.
     /// This method operates in place, visiting each element exactly once in the
     /// original order, and preserves the order of the retained elements.
     ///
