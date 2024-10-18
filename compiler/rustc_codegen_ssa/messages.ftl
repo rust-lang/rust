@@ -2,7 +2,116 @@ codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not imp
 
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
-codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
+codegen_ssa_apple_deployment_target_invalid =
+    failed to parse deployment target specified in {$env_var}: {$error}
+
+codegen_ssa_apple_deployment_target_too_low =
+    deployment target in {$env_var} was set to {$version}, but the minimum supported by `rustc` is {$os_min}
+
+codegen_ssa_apple_deployment_target_too_high =
+    deployment target was set to {$version}, but the maximum supported by the current SDK is {$sdk_max}
+
+    Use the {$env_var} environment variable to set it to something lower.
+
+codegen_ssa_apple_sdk_error_failed_reading =
+    failed reading `{$path}` while looking for SDK root: {$error}
+
+codegen_ssa_apple_sdk_error_invalid_sdk_settings_json =
+    failed parsing SDK settings from `{$path}`: {$error}
+
+codegen_ssa_apple_sdk_error_missing =
+    failed finding SDK for platform `{$sdk_name}`. It looks like you have not installed Xcode?
+
+    You should install Xcode via the App Store, or run `xcode-select --install` if you only intend on developing for macOS.
+
+codegen_ssa_apple_sdk_error_missing_commandline_tools =
+    failed finding SDK at `{$sdkroot}` from Command Line Tools installation.
+
+    If cross-compiling for iOS, tvOS, visionOS or watchOS, you will likely need a full installation of Xcode.
+
+codegen_ssa_apple_sdk_error_missing_cross_compile_non_macos =
+    failed finding Apple SDK with name `{$sdk_name}`.
+
+    The SDK is needed by the linker to know where to find symbols in system libraries.
+
+    The SDK can be downloaded and extracted from https://developer.apple.com/download/all/?q=xcode (requires an Apple ID).
+
+    You will then need to tell `rustc` about it using the `SDKROOT` environment variables.
+
+    Furthermore, you might need to install a linker capable of linking Mach-O files, or at least ensure that your linker is configured as `lld`.
+
+codegen_ssa_apple_sdk_error_missing_developer_dir =
+    failed finding SDK inside active developer path `{$dir}` set by the DEVELOPER_DIR environment variable. Looked in:
+    - `{$sdkroot}`
+    - `{$sdkroot_bare}`
+
+codegen_ssa_apple_sdk_error_missing_mac_catalyst_version =
+    failed to find {$version} in SDK version map key `macOS_iOSMac`.
+
+    This is probably a bug in your SDK.
+
+codegen_ssa_apple_sdk_error_missing_sdk_settings =
+    failed finding `SDKSettings.json` or `SDKSettings.plist` in `{$sdkroot}`.
+
+    Are you sure this is a valid SDK?
+
+codegen_ssa_apple_sdk_error_missing_xcode =
+    failed finding SDK at `{$sdkroot}` in Xcode installation.
+
+    Perhaps you need a newer version of Xcode?
+
+codegen_ssa_apple_sdk_error_missing_xcode_select =
+    failed finding SDK inside active developer path `{$dir}` set by `xcode-select`. Looked in:
+    - `{$sdkroot}`
+    - `{$sdkroot_bare}`
+
+    Consider using `sudo xcode-select --switch path/to/Xcode.app` or `sudo xcode-select --reset` to select a valid path.
+
+codegen_ssa_apple_sdk_error_must_have_when_using_ld64 =
+    must know the SDK when linking with ld64
+
+codegen_ssa_apple_sdk_error_not_sdk_path =
+    failed parsing SDK at `{$path}`.
+
+    The SDK did not seem to contain `SDKSettings.json`, and hence `rustc` falled back to parsing required SDK details from the SDK name itself.
+
+    This name must be of the form `[SDKName][major].[minor].[patch].sdk`, for example `MacOSX10.13.sdk` or `iPhoneOS11.0.sdk`.
+
+codegen_ssa_apple_sdk_error_sdk_does_not_support_arch =
+    the SDK at `{$sdkroot}` does not support the {$arch} architecture.
+
+codegen_ssa_apple_sdk_error_sdk_does_not_support_os =
+    the SDK at `{$sdkroot}` does not support { $abi ->
+        [macabi] Mac Catalyst
+        [sim] the {$os} simulator
+        *[normal] {$os}
+    }.
+
+    Use `xcode-select --switch` or one of the `SDKROOT` and `DEVELOPER_DIR` environment variables to select { $abi ->
+        [macabi] a newer version of Xcode that has support for it
+        *[others] another SDK that has support for it
+    }.
+
+    { $abi ->
+        [macabi] Also remember that it is the macOS SDK that supports Mac Catalyst, not the iOS SDK.
+        *[others] {""}
+    }
+
+codegen_ssa_apple_sdk_error_sdk_root_ignored =
+    the SDKROOT environment variable has been ignored, and `rustc` will attempt to find a suitable SDK
+
+codegen_ssa_apple_sdk_error_sdk_root_is_root_path =
+    the path SDKROOT was set to the root path `/`.
+
+    This will work poorly with other tooling, and as such the value has been ignored.
+
+codegen_ssa_apple_sdk_error_sdk_root_missing =
+    the path `{$sdkroot}` specified in SDKROOT did not exist, so it has been ignored
+
+codegen_ssa_apple_sdk_error_sdk_root_not_absolute =
+    the path `{$sdkroot}` specified in SDKROOT was not an absolute path.
+
+    This will work poorly with other tooling, and as such the value has been ignored.
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
@@ -341,8 +450,6 @@ codegen_ssa_unknown_atomic_operation = unknown atomic operation
 codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
 
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
-
-codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
 
