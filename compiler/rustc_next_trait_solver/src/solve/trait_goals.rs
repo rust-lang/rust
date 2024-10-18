@@ -785,7 +785,8 @@ where
         let mut responses = vec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
-        if a_data.principal_def_id() == b_data.principal_def_id() {
+        let b_principal_def_id = b_data.principal_def_id();
+        if a_data.principal_def_id() == b_principal_def_id || b_principal_def_id.is_none() {
             responses.extend(self.consider_builtin_upcast_to_principal(
                 goal,
                 CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),

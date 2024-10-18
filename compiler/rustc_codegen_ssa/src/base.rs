@@ -147,7 +147,7 @@ pub fn validate_trivial_unsize<'tcx>(
                 infcx.leak_check(universe, None).is_ok()
             })
         }
-        (None, None) => true,
+        (_, None) => true,
         _ => false,
     }
 }
@@ -175,7 +175,8 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
-            if data_a.principal_def_id() == data_b.principal_def_id() {
+            let b_principal_def_id = data_b.principal_def_id();
+            if data_a.principal_def_id() == b_principal_def_id || b_principal_def_id.is_none() {
                 // Codegen takes advantage of the additional assumption, where if the
                 // principal trait def id of what's being casted doesn't change,
                 // then we don't need to adjust the vtable at all. This
