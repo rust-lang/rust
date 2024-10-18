@@ -8,7 +8,7 @@ use crate::ty::{self, TyCtxt};
 mod dep_node;
 
 pub use dep_node::{DepKind, DepNode, DepNodeExt, dep_kinds, label_strs};
-pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
+pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item, make_metadata};
 pub use rustc_query_system::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 pub use rustc_query_system::dep_graph::{
     DepContext, DepGraphQuery, DepNodeIndex, Deps, SerializedDepGraph, SerializedDepNodeIndex,
