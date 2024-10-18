@@ -60,8 +60,10 @@ pub mod crt_objects;
 
 mod base;
 pub use base::apple::{
-    deployment_target_for_target as current_apple_deployment_target,
-    platform as current_apple_platform,
+    OSVersion as AppleOSVersion, deployment_target_env_var as apple_deployment_target_env_var,
+    minimum_deployment_target as apple_minimum_deployment_target,
+    os_minimum_deployment_target as apple_os_minimum_deployment_target,
+    parse_version as apple_parse_version, platform as current_apple_platform,
 };
 pub use base::avr_gnu::ef_avr_arch;
 
@@ -2002,7 +2004,12 @@ impl TargetWarnings {
 /// Every field here must be specified, and has no default value.
 #[derive(PartialEq, Clone, Debug)]
 pub struct Target {
-    /// Target triple to pass to LLVM.
+    /// Unversioned target triple to pass to LLVM.
+    ///
+    /// Target triples can optionally contain an OS version (notably Apple targets), which rustc
+    /// cannot know without querying the environment.
+    ///
+    /// Use `rustc_codegen_ssa::apple::versioned_llvm_target` if you need the full LLVM target.
     pub llvm_target: StaticCow<str>,
     /// Metadata about a target, for example the description or tier.
     /// Used for generating target documentation.
