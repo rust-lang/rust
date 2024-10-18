@@ -3,11 +3,8 @@
 //! All the static files are included here for centralized access in case anything other than the
 //! HTML rendering code (say, the theme checker) needs to access one of these files.
 
-use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 use std::{fmt, str};
-
-use rustc_data_structures::fx::FxHasher;
 
 pub(crate) struct StaticFile {
     pub(crate) filename: PathBuf,
@@ -64,9 +61,11 @@ pub(crate) fn static_filename(filename: &str, contents: &[u8]) -> PathBuf {
 }
 
 fn static_suffix(bytes: &[u8]) -> String {
-    let mut hasher = FxHasher::default();
-    hasher.write(bytes);
-    format!("-{:016x}", hasher.finish())
+    use sha2::Digest;
+    let bytes = sha2::Sha256::digest(bytes);
+    let mut digest = format!("-{bytes:x}");
+    digest.truncate(9);
+    digest
 }
 
 macro_rules! static_files {
