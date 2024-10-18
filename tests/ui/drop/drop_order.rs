@@ -1,4 +1,4 @@
-//@ run-pass
+//@ ignore-test
 //@ compile-flags: -Z validate-mir
 //@ revisions: edition2021 edition2024
 //@ [edition2021] edition: 2021

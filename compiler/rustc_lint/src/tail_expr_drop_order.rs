@@ -137,9 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for TailExprDropOrder {
         _: Span,
         def_id: rustc_span::def_id::LocalDefId,
     ) {
-        if cx.tcx.sess.at_least_rust_2024() && cx.tcx.features().shorter_tail_lifetimes {
-            Self::check_fn_or_closure(cx, fn_kind, body, def_id);
-        }
+        Self::check_fn_or_closure(cx, fn_kind, body, def_id);
     }
 }
 
@@ -185,10 +183,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LintVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> LintVisitor<'a, 'tcx> {
     fn check_block_inner(&mut self, block: &Block<'tcx>) {
-        if !block.span.at_least_rust_2024() {
-            // We only lint for Edition 2024 onwards
-            return;
-        }
         let Some(tail_expr) = block.expr else { return };
         for stmt in block.stmts {
             match stmt.kind {
