@@ -1820,7 +1820,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {
         empty_proc_macro!(self);
         let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
-        self.lazy_array(used_libraries.iter())
+        self.lazy_array(used_libraries.iter_all_items())
     }
 
     fn encode_foreign_modules(&mut self) -> LazyArray<ForeignModule> {

@@ -9,13 +9,13 @@ use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{
-    DllCallingConvention, DllImport, ForeignModule, NativeLib, PeImportNameType,
+    DllCallingConvention, DllImport, ForeignModule, NativeLib, NativeLibs, PeImportNameType,
 };
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_target::spec::LinkSelfContainedComponents;
 use rustc_target::spec::abi::Abi;
 
@@ -173,7 +173,7 @@ fn find_bundled_library(
     None
 }
 
-pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib> {
+pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> NativeLibs {
     let mut collector = Collector { tcx, libs: Vec::new() };
     if tcx.sess.opts.unstable_opts.link_directives {
         for module in tcx.foreign_modules(LOCAL_CRATE).values() {
@@ -181,7 +181,7 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
         }
     }
     collector.process_command_line();
-    collector.libs
+    collector.libs.into()
 }
 
 pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
@@ -189,6 +189,20 @@ pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
         Some(ref cfg) => attr::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
         None => true,
     }
+}
+
+pub(crate) fn find_by_id<'a, I: Iterator<Item = &'a NativeLib>>(
+    tcx: TyCtxt<'_>,
+    id: DefId,
+    iter: I,
+) -> Option<&'a NativeLib> {
+    iter.filter(|lib| relevant_lib(tcx.sess, lib)).find(|lib| {
+        let Some(fm_id) = lib.foreign_module else {
+            return false;
+        };
+        let map = tcx.foreign_modules(id.krate);
+        map.get(&fm_id).expect("failed to find foreign module").foreign_items.contains(&id)
+    })
 }
 
 struct Collector<'tcx> {
@@ -445,10 +459,6 @@ impl<'tcx> Collector<'tcx> {
             if wasm_import_module.is_some() {
                 (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
             }
-            let Some((name, name_span)) = name else {
-                sess.dcx().emit_err(errors::LinkRequiresName { span: m.span });
-                continue;
-            };
 
             // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
             if let Some((_, span)) = import_name_type {
@@ -457,8 +467,25 @@ impl<'tcx> Collector<'tcx> {
                 }
             }
 
+            if kind != Some(NativeLibKind::RawDylib) {
+                for &child_item in foreign_items {
+                    if self.tcx.def_kind(child_item).has_codegen_attrs()
+                        && self.tcx.codegen_fn_attrs(child_item).link_ordinal.is_some()
+                    {
+                        let link_ordinal_attr =
+                            self.tcx.get_attr(child_item, sym::link_ordinal).unwrap();
+                        sess.dcx()
+                            .emit_err(errors::LinkOrdinalRawDylib { span: link_ordinal_attr.span });
+                    }
+                }
+            }
+
             let dll_imports = match kind {
                 Some(NativeLibKind::RawDylib) => {
+                    let Some((name, name_span)) = name else {
+                        sess.dcx().emit_err(errors::LinkRequiresName { span: m.span });
+                        continue;
+                    };
                     if name.as_str().contains('\0') {
                         sess.dcx().emit_err(errors::RawDylibNoNul { span: name_span });
                     }
@@ -473,25 +500,29 @@ impl<'tcx> Collector<'tcx> {
                         })
                         .collect()
                 }
-                _ => {
-                    for &child_item in foreign_items {
-                        if self.tcx.def_kind(child_item).has_codegen_attrs()
-                            && self.tcx.codegen_fn_attrs(child_item).link_ordinal.is_some()
-                        {
-                            let link_ordinal_attr =
-                                self.tcx.get_attr(child_item, sym::link_ordinal).unwrap();
-                            sess.dcx().emit_err(errors::LinkOrdinalRawDylib {
-                                span: link_ordinal_attr.span,
-                            });
-                        }
-                    }
+                _ => Vec::new(),
+            };
 
-                    Vec::new()
-                }
+            // Allow kind of "dylib" or "static" without adding a native lib.
+            let name = if self.tcx.features().bare_link_kind()
+                && matches!(kind, Some(NativeLibKind::Dylib { .. } | NativeLibKind::Static { .. }))
+                && items.len() == 1
+            {
+                kw::Empty
+            } else {
+                let Some((name, _)) = name else {
+                    sess.dcx().emit_err(errors::LinkRequiresName { span: m.span });
+                    continue;
+                };
+                name
             };
 
             let kind = kind.unwrap_or(NativeLibKind::Unspecified);
-            let filename = find_bundled_library(name, verbatim, kind, cfg.is_some(), self.tcx);
+            let filename = if !name.is_empty() {
+                find_bundled_library(name, verbatim, kind, cfg.is_some(), self.tcx)
+            } else {
+                None
+            };
             self.libs.push(NativeLib {
                 name,
                 filename,

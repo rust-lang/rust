@@ -17,6 +17,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
+use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::Span;
 use rustc_span::hygiene::ExpnId;
@@ -443,22 +444,22 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, LocalCrate| false,
         native_library: |tcx, id| {
-            tcx.native_libraries(id.krate)
-                .iter()
-                .filter(|lib| native_libs::relevant_lib(tcx.sess, lib))
-                .find(|lib| {
-                    let Some(fm_id) = lib.foreign_module else {
-                        return false;
-                    };
-                    let map = tcx.foreign_modules(id.krate);
-                    map.get(&fm_id)
-                        .expect("failed to find foreign module")
-                        .foreign_items
-                        .contains(&id)
-                })
+            native_libs::find_by_id(tcx, id, tcx.native_libraries(id.krate).iter())
         },
         native_libraries: native_libs::collect,
         foreign_modules: foreign_modules::collect,
+        is_dllimport: |tcx, id| {
+            native_libs::find_by_id(tcx, id, tcx.native_libraries(id.krate).iter_all_items())
+                .map(|l| {
+                    matches!(
+                        l.kind,
+                        NativeLibKind::Dylib { .. }
+                            | NativeLibKind::RawDylib
+                            | NativeLibKind::Unspecified
+                    )
+                })
+                .unwrap_or(false)
+        },
 
         // Returns a map from a sufficiently visible external item (i.e., an
         // external item that is visible from at least one local module) to a
