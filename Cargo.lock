@@ -4584,6 +4584,7 @@ dependencies = [
  "rustdoc-json-types",
  "serde",
  "serde_json",
+ "sha2",
  "smallvec",
  "tempfile",
  "threadpool",
