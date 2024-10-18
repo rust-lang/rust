@@ -138,18 +138,17 @@ function onEachLazy(lazyArray, func) {
     }
 }
 
-function highlightIfNeeded(elem) {
-    onEachLazy(elem.querySelectorAll("pre > code.language-rust:not(.highlighted)"), el => {
+function highlightIfNeeded(lintId) {
+    onEachLazy(document.querySelectorAll(`#${lintId} pre > code:not(.hljs)`), el => {
         hljs.highlightElement(el.parentElement)
         el.classList.add("highlighted");
     });
 }
 
 function expandLint(lintId) {
-    const lintElem = document.getElementById(lintId);
-    const isCollapsed = lintElem.classList.toggle("collapsed");
-    lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "−";
-    highlightIfNeeded(lintElem);
+    const elem = document.querySelector(`#${lintId} > input[type="checkbox"]`);
+    elem.checked = true;
+    highlightIfNeeded(lintId);
 }
 
 // Show details for one lint
