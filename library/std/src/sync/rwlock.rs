@@ -4,10 +4,10 @@ mod tests;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::marker::PhantomData;
-use crate::mem::ManuallyDrop;
+use crate::mem::{ManuallyDrop, forget};
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
-use crate::sync::{LockResult, TryLockError, TryLockResult, poison};
+use crate::sync::{LockResult, PoisonError, TryLockError, TryLockResult, poison};
 use crate::sys::sync as sys;
 
 /// A reader-writer lock
@@ -574,8 +574,12 @@ impl<T> From<T> for RwLock<T> {
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     /// Creates a new instance of `RwLockReadGuard<T>` from a `RwLock<T>`.
-    // SAFETY: if and only if `lock.inner.read()` (or `lock.inner.try_read()`) has been
-    // successfully called from the same thread before instantiating this object.
+    ///
+    /// # Safety
+    ///
+    /// This function is safe if and only if the same thread has successfully and safely called
+    /// `lock.inner.read()`, `lock.inner.try_read()`, or `lock.inner.downgrade()` before
+    /// instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |()| RwLockReadGuard {
             data: unsafe { NonNull::new_unchecked(lock.data.get()) },
@@ -956,6 +960,68 @@ impl<'a, T: ?Sized> RwLockWriteGuard<'a, T> {
             }
             None => Err(orig),
         }
+    }
+
+    /// Downgrades a write-locked `RwLockWriteGuard` into a read-locked [`RwLockReadGuard`].
+    ///
+    /// This method will atomically change the state of the [`RwLock`] from exclusive mode into
+    /// shared mode. This means that it is impossible for a writing thread to get in between a
+    /// thread calling `downgrade` and the same thread reading whatever it wrote while it had the
+    /// [`RwLock`] in write mode.
+    ///
+    /// Note that since we have the `RwLockWriteGuard`, we know that the [`RwLock`] is already
+    /// locked for writing, so this method cannot fail.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(rwlock_downgrade)]
+    /// use std::sync::{Arc, RwLock, RwLockWriteGuard};
+    ///
+    /// // The inner value starts as 0.
+    /// let rw = Arc::new(RwLock::new(0));
+    ///
+    /// // Put the lock in write mode.
+    /// let mut main_write_guard = rw.write().unwrap();
+    ///
+    /// let evil = rw.clone();
+    /// let handle = std::thread::spawn(move || {
+    ///     // This will not return until the main thread drops the `main_read_guard`.
+    ///     let mut evil_guard = evil.write().unwrap();
+    ///
+    ///     assert_eq!(*evil_guard, 1);
+    ///     *evil_guard = 2;
+    /// });
+    ///
+    /// // After spawning the writer thread, set the inner value to 1.
+    /// *main_write_guard = 1;
+    ///
+    /// // Atomically downgrade the write guard into a read guard.
+    /// let main_read_guard = RwLockWriteGuard::downgrade(main_write_guard);
+    ///
+    /// // Since `downgrade` is atomic, the writer thread cannot have set the inner value to 2.
+    /// assert_eq!(*main_read_guard, 1, "`downgrade` was not atomic");
+    ///
+    /// // Clean up everything now
+    /// drop(main_read_guard);
+    /// handle.join().unwrap();
+    ///
+    /// let final_check = rw.read().unwrap();
+    /// assert_eq!(*final_check, 2);
+    /// ```
+    #[unstable(feature = "rwlock_downgrade", issue = "128203")]
+    pub fn downgrade(s: Self) -> RwLockReadGuard<'a, T> {
+        let lock = s.lock;
+
+        // We don't want to call the destructor since that calls `write_unlock`.
+        forget(s);
+
+        // SAFETY: We take ownership of a write guard, so we must already have the `RwLock` in write
+        // mode, satisfying the `downgrade` contract.
+        unsafe { lock.inner.downgrade() };
+
+        // SAFETY: We have just successfully called `downgrade`, so we fulfill the safety contract.
+        unsafe { RwLockReadGuard::new(lock).unwrap_or_else(PoisonError::into_inner) }
     }
 }
 

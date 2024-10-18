@@ -22,7 +22,7 @@
 //! will scan through the queue and wake up threads as appropriate, which will
 //! then again try to acquire the lock. The resulting [`RwLock`] is:
 //!
-//! * adaptive, since it spins before doing any heavywheight parking operations
+//! * adaptive, since it spins before doing any heavyweight parking operations
 //! * allocation-free, modulo the per-thread [`Thread`] handle, which is
 //! allocated regardless when using threads created by `std`
 //! * writer-preferring, even if some readers may still slip through
@@ -39,16 +39,16 @@
 //!
 //! ## State
 //!
-//! A single [`AtomicPtr`] is used as state variable. The lowest three bits are used
+//! A single [`AtomicPtr`] is used as state variable. The lowest four bits are used
 //! to indicate the meaning of the remaining bits:
 //!
-//! | [`LOCKED`] | [`QUEUED`] | [`QUEUE_LOCKED`] | Remaining    |                                                                                                                             |
-//! |:-----------|:-----------|:-----------------|:-------------|:----------------------------------------------------------------------------------------------------------------------------|
-//! | 0          | 0          | 0                | 0            | The lock is unlocked, no threads are waiting                                                                                |
-//! | 1          | 0          | 0                | 0            | The lock is write-locked, no threads waiting                                                                                |
-//! | 1          | 0          | 0                | n > 0        | The lock is read-locked with n readers                                                                                      |
-//! | 0          | 1          | *                | `*mut Node`  | The lock is unlocked, but some threads are waiting. Only writers may lock the lock                                          |
-//! | 1          | 1          | *                | `*mut Node`  | The lock is locked, but some threads are waiting. If the lock is read-locked, the last queue node contains the reader count |
+//! | [`LOCKED`] | [`QUEUED`] | [`QUEUE_LOCKED`] | [`DOWNGRADED`] | Remaining    |                                                                                                                             |
+//! |------------|:-----------|:-----------------|:---------------|:-------------|:----------------------------------------------------------------------------------------------------------------------------|
+//! | 0          | 0          | 0                | 0              | 0            | The lock is unlocked, no threads are waiting                                                                                |
+//! | 1          | 0          | 0                | 0              | 0            | The lock is write-locked, no threads waiting                                                                                |
+//! | 1          | 0          | 0                | 0              | n > 0        | The lock is read-locked with n readers                                                                                      |
+//! | 0          | 1          | *                | 0              | `*mut Node`  | The lock is unlocked, but some threads are waiting. Only writers may lock the lock                                          |
+//! | 1          | 1          | *                | *              | `*mut Node`  | The lock is locked, but some threads are waiting. If the lock is read-locked, the last queue node contains the reader count |
 //!
 //! ## Waiter queue
 //!
@@ -94,9 +94,10 @@
 //! queue, which drastically improves performance, and after unlocking the lock
 //! to wake the next waiter(s). This is done atomically at the same time as the
 //! enqueuing/unlocking operation. The thread releasing the `QUEUE_LOCK` bit
-//! will check the state of the lock and wake up waiters as appropriate. This
-//! guarantees forward-progress even if the unlocking thread could not acquire
-//! the queue lock.
+//! will check the state of the lock (in particular, whether a downgrade was
+//! requested using the [`DOWNGRADED`] bit) and wake up waiters as appropriate.
+//! This guarantees forward-progress even if the unlocking or downgrading thread
+//! could not acquire the queue lock.
 //!
 //! ## Memory orderings
 //!
@@ -115,26 +116,30 @@ use crate::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed, Release};
 use crate::sync::atomic::{AtomicBool, AtomicPtr};
 use crate::thread::{self, Thread, ThreadId};
 
-// Locking uses exponential backoff. `SPIN_COUNT` indicates how many times the
-// locking operation will be retried.
-// `spin_loop` will be called `2.pow(SPIN_COUNT) - 1` times.
-const SPIN_COUNT: usize = 7;
-
-type State = *mut ();
+/// The atomic lock state.
 type AtomicState = AtomicPtr<()>;
+/// The inner lock state.
+type State = *mut ();
 
 const UNLOCKED: State = without_provenance_mut(0);
 const LOCKED: usize = 1;
 const QUEUED: usize = 2;
 const QUEUE_LOCKED: usize = 4;
-const SINGLE: usize = 8;
-const MASK: usize = !(QUEUE_LOCKED | QUEUED | LOCKED);
+const DOWNGRADED: usize = 8;
+const SINGLE: usize = 16;
+const STATE: usize = DOWNGRADED | QUEUE_LOCKED | QUEUED | LOCKED;
+const MASK: usize = !STATE;
+
+/// Locking uses exponential backoff. `SPIN_COUNT` indicates how many times the locking operation
+/// will be retried.
+///
+/// In other words, `spin_loop` will be called `2.pow(SPIN_COUNT) - 1` times.
+const SPIN_COUNT: usize = 7;
 
 /// Marks the state as write-locked, if possible.
 #[inline]
 fn write_lock(state: State) -> Option<State> {
-    let state = state.wrapping_byte_add(LOCKED);
-    if state.addr() & LOCKED == LOCKED { Some(state) } else { None }
+    if state.addr() & LOCKED == 0 { Some(state.wrapping_byte_add(LOCKED)) } else { None }
 }
 
 /// Marks the state as read-locked, if possible.
@@ -147,13 +152,28 @@ fn read_lock(state: State) -> Option<State> {
     }
 }
 
-/// Masks the state, assuming it points to a queue node.
+/// Converts a `State` into a `Node` by masking out the bottom bits of the state, assuming that the
+/// state points to a queue node.
 ///
 /// # Safety
+///
 /// The state must contain a valid pointer to a queue node.
 #[inline]
 unsafe fn to_node(state: State) -> NonNull<Node> {
     unsafe { NonNull::new_unchecked(state.mask(MASK)).cast() }
+}
+
+/// The representation of a thread waiting on the lock queue.
+///
+/// We initialize these `Node`s on thread execution stacks to avoid allocation.
+#[repr(align(16))]
+struct Node {
+    next: AtomicLink,
+    prev: AtomicLink,
+    tail: AtomicLink,
+    write: bool,
+    thread: OnceCell<Thread>,
+    completed: AtomicBool,
 }
 
 /// An atomic node pointer with relaxed operations.
@@ -171,16 +191,6 @@ impl AtomicLink {
     fn set(&self, v: Option<NonNull<Node>>) {
         self.0.store(v.map_or(null_mut(), NonNull::as_ptr), Relaxed);
     }
-}
-
-#[repr(align(8))]
-struct Node {
-    next: AtomicLink,
-    prev: AtomicLink,
-    tail: AtomicLink,
-    write: bool,
-    thread: OnceCell<Thread>,
-    completed: AtomicBool,
 }
 
 impl Node {
@@ -206,9 +216,10 @@ impl Node {
         self.completed = AtomicBool::new(false);
     }
 
-    /// Wait until this node is marked as completed.
+    /// Wait until this node is marked as [`complete`](Node::complete)d.
     ///
     /// # Safety
+    ///
     /// May only be called from the thread that created the node.
     unsafe fn wait(&self) {
         while !self.completed.load(Acquire) {
@@ -218,51 +229,48 @@ impl Node {
         }
     }
 
-    /// Atomically mark this node as completed. The node may not outlive this call.
-    unsafe fn complete(this: NonNull<Node>) {
-        // Since the node may be destroyed immediately after the completed flag
-        // is set, clone the thread handle before that.
-        let thread = unsafe { this.as_ref().thread.get().unwrap().clone() };
+    /// Atomically mark this node as completed.
+    ///
+    /// # Safety
+    ///
+    /// `node` must point to a valid `Node`, and the node may not outlive this call.
+    unsafe fn complete(node: NonNull<Node>) {
+        // Since the node may be destroyed immediately after the completed flag is set, clone the
+        // thread handle before that.
+        let thread = unsafe { node.as_ref().thread.get().unwrap().clone() };
         unsafe {
-            this.as_ref().completed.store(true, Release);
+            node.as_ref().completed.store(true, Release);
         }
         thread.unpark();
     }
 }
 
-struct PanicGuard;
-
-impl Drop for PanicGuard {
-    fn drop(&mut self) {
-        rtabort!("tried to drop node in intrusive list.");
-    }
-}
-
-/// Add backlinks to the queue, returning the tail.
+/// Traverse the queue and find the tail, adding backlinks to the queue while traversing.
 ///
-/// May be called from multiple threads at the same time, while the queue is not
+/// This may be called from multiple threads at the same time as long as the queue is not being
 /// modified (this happens when unlocking multiple readers).
 ///
 /// # Safety
+///
 /// * `head` must point to a node in a valid queue.
-/// * `head` must be or be in front of the head of the queue at the time of the
-/// last removal.
-/// * The part of the queue starting with `head` must not be modified during this
-/// call.
+/// * `head` must be or be in front of the head of the queue at the time of the last removal.
+/// * The part of the queue starting with `head` must not be modified during this call.
 unsafe fn add_backlinks_and_find_tail(head: NonNull<Node>) -> NonNull<Node> {
     let mut current = head;
+
+    // Traverse the queue until we find a node that has a set `tail`.
     let tail = loop {
         let c = unsafe { current.as_ref() };
-        match c.tail.get() {
-            Some(tail) => break tail,
-            // SAFETY:
-            // All `next` fields before the first node with a `set` tail are
-            // non-null and valid (invariant 3).
-            None => unsafe {
-                let next = c.next.get().unwrap_unchecked();
-                next.as_ref().prev.set(Some(current));
-                current = next;
-            },
+        if let Some(tail) = c.tail.get() {
+            break tail;
+        }
+
+        // SAFETY: All `next` fields before the first node with a set `tail` are non-null and valid
+        // (by Invariant 3).
+        unsafe {
+            let next = c.next.get().unwrap_unchecked();
+            next.as_ref().prev.set(Some(current));
+            current = next;
         }
     };
 
@@ -272,6 +280,38 @@ unsafe fn add_backlinks_and_find_tail(head: NonNull<Node>) -> NonNull<Node> {
     }
 }
 
+/// [`complete`](Node::complete)s all threads in the queue ending with `tail`.
+///
+/// # Safety
+///
+/// * `tail` must be a valid tail of a fully linked queue.
+/// * The current thread must have exclusive access to that queue.
+unsafe fn complete_all(tail: NonNull<Node>) {
+    let mut current = tail;
+
+    // Traverse backwards through the queue (FIFO) and `complete` all of the nodes.
+    loop {
+        let prev = unsafe { current.as_ref().prev.get() };
+        unsafe {
+            Node::complete(current);
+        }
+        match prev {
+            Some(prev) => current = prev,
+            None => return,
+        }
+    }
+}
+
+/// A type to guard against the unwinds of stacks that nodes are located on due to panics.
+struct PanicGuard;
+
+impl Drop for PanicGuard {
+    fn drop(&mut self) {
+        rtabort!("tried to drop node in intrusive list.");
+    }
+}
+
+/// The public inner `RwLock` type.
 pub struct RwLock {
     state: AtomicState,
 }
@@ -296,11 +336,10 @@ impl RwLock {
 
     #[inline]
     pub fn try_write(&self) -> bool {
-        // Atomically set the `LOCKED` bit. This is lowered to a single atomic
-        // instruction on most modern processors (e.g. "lock bts" on x86 and
-        // "ldseta" on modern AArch64), and therefore is more efficient than
-        // `fetch_update(lock(true))`, which can spuriously fail if a new node
-        // is appended to the queue.
+        // Atomically set the `LOCKED` bit. This is lowered to a single atomic instruction on most
+        // modern processors (e.g. "lock bts" on x86 and "ldseta" on modern AArch64), and therefore
+        // is more efficient than `fetch_update(lock(true))`, which can spuriously fail if a new
+        // node is appended to the queue.
         self.state.fetch_or(LOCKED, Acquire).addr() & LOCKED == 0
     }
 
@@ -313,88 +352,97 @@ impl RwLock {
 
     #[cold]
     fn lock_contended(&self, write: bool) {
-        let update = if write { write_lock } else { read_lock };
         let mut node = Node::new(write);
         let mut state = self.state.load(Relaxed);
         let mut count = 0;
+        let update_fn = if write { write_lock } else { read_lock };
+
         loop {
-            if let Some(next) = update(state) {
+            // Optimistically update the state.
+            if let Some(next) = update_fn(state) {
                 // The lock is available, try locking it.
                 match self.state.compare_exchange_weak(state, next, Acquire, Relaxed) {
                     Ok(_) => return,
                     Err(new) => state = new,
                 }
+                continue;
             } else if state.addr() & QUEUED == 0 && count < SPIN_COUNT {
-                // If the lock is not available and no threads are queued, spin
-                // for a while, using exponential backoff to decrease cache
-                // contention.
+                // If the lock is not available and no threads are queued, optimistically spin for a
+                // while, using exponential backoff to decrease cache contention.
                 for _ in 0..(1 << count) {
                     spin_loop();
                 }
                 state = self.state.load(Relaxed);
                 count += 1;
-            } else {
-                // Fall back to parking. First, prepare the node.
-                node.prepare();
-
-                // If there are threads queued, set the `next` field to a
-                // pointer to the next node in the queue. Otherwise set it to
-                // the lock count if the state is read-locked or to zero if it
-                // is write-locked.
-                node.next.0 = AtomicPtr::new(state.mask(MASK).cast());
-                node.prev = AtomicLink::new(None);
-                let mut next = ptr::from_ref(&node)
-                    .map_addr(|addr| addr | QUEUED | (state.addr() & LOCKED))
-                    as State;
-
-                if state.addr() & QUEUED == 0 {
-                    // If this is the first node in the queue, set the tail field to
-                    // the node itself to ensure there is a current `tail` field in
-                    // the queue (invariants 1 and 2). This needs to use `set` to
-                    // avoid invalidating the new pointer.
-                    node.tail.set(Some(NonNull::from(&node)));
-                } else {
-                    // Otherwise, the tail of the queue is not known.
-                    node.tail.set(None);
-                    // Try locking the queue to eagerly add backlinks.
-                    next = next.map_addr(|addr| addr | QUEUE_LOCKED);
-                }
-
-                // Register the node, using release ordering to propagate our
-                // changes to the waking thread.
-                if let Err(new) = self.state.compare_exchange_weak(state, next, AcqRel, Relaxed) {
-                    // The state has changed, just try again.
-                    state = new;
-                    continue;
-                }
-
-                // The node is registered, so the structure must not be
-                // mutably accessed or destroyed while other threads may
-                // be accessing it. Guard against unwinds using a panic
-                // guard that aborts when dropped.
-                let guard = PanicGuard;
-
-                // If the current thread locked the queue, unlock it again,
-                // linking it in the process.
-                if state.addr() & (QUEUE_LOCKED | QUEUED) == QUEUED {
-                    unsafe {
-                        self.unlock_queue(next);
-                    }
-                }
-
-                // Wait until the node is removed from the queue.
-                // SAFETY: the node was created by the current thread.
-                unsafe {
-                    node.wait();
-                }
-
-                // The node was removed from the queue, disarm the guard.
-                mem::forget(guard);
-
-                // Reload the state and try again.
-                state = self.state.load(Relaxed);
-                count = 0;
+                continue;
             }
+            // The optimistic paths did not succeed, so fall back to parking the thread.
+
+            // First, prepare the node.
+            node.prepare();
+
+            // If there are threads queued, this will set the `next` field to be a pointer to the
+            // first node in the queue.
+            // If the state is read-locked, this will set `next` to the lock count.
+            // If it is write-locked, it will set `next` to zero.
+            node.next.0 = AtomicPtr::new(state.mask(MASK).cast());
+            node.prev = AtomicLink::new(None);
+
+            // Set the `QUEUED` bit and maintain the `LOCKED` bit.
+            let mut next = ptr::from_ref(&node)
+                .map_addr(|addr| addr | QUEUED | (state.addr() & LOCKED))
+                as State;
+
+            let mut is_queue_locked = false;
+            if state.addr() & QUEUED == 0 {
+                // If this is the first node in the queue, set the `tail` field to the node itself
+                // to ensure there is a valid `tail` field in the queue (Invariants 1 & 2).
+                // This needs to use `set` to avoid invalidating the new pointer.
+                node.tail.set(Some(NonNull::from(&node)));
+            } else {
+                // Otherwise, the tail of the queue is not known.
+                node.tail.set(None);
+
+                // Try locking the queue to eagerly add backlinks.
+                next = next.map_addr(|addr| addr | QUEUE_LOCKED);
+
+                // Track if we changed the `QUEUE_LOCKED` bit from off to on.
+                is_queue_locked = state.addr() & QUEUE_LOCKED == 0;
+            }
+
+            // Register the node, using release ordering to propagate our changes to the waking
+            // thread.
+            if let Err(new) = self.state.compare_exchange_weak(state, next, AcqRel, Relaxed) {
+                // The state has changed, just try again.
+                state = new;
+                continue;
+            }
+            // The node has been registered, so the structure must not be mutably accessed or
+            // destroyed while other threads may be accessing it.
+
+            // Guard against unwinds using a `PanicGuard` that aborts when dropped.
+            let guard = PanicGuard;
+
+            // If the current thread locked the queue, unlock it to eagerly adding backlinks.
+            if is_queue_locked {
+                // SAFETY: This thread set the `QUEUE_LOCKED` bit above.
+                unsafe {
+                    self.unlock_queue(next);
+                }
+            }
+
+            // Wait until the node is removed from the queue.
+            // SAFETY: the node was created by the current thread.
+            unsafe {
+                node.wait();
+            }
+
+            // The node was removed from the queue, disarm the guard.
+            mem::forget(guard);
+
+            // Reload the state and try again.
+            state = self.state.load(Relaxed);
+            count = 0;
         }
     }
 
@@ -402,15 +450,21 @@ impl RwLock {
     pub unsafe fn read_unlock(&self) {
         match self.state.fetch_update(Release, Acquire, |state| {
             if state.addr() & QUEUED == 0 {
+                // If there are no threads queued, simply decrement the reader count.
                 let count = state.addr() - (SINGLE | LOCKED);
                 Some(if count > 0 { without_provenance_mut(count | LOCKED) } else { UNLOCKED })
+            } else if state.addr() & DOWNGRADED != 0 {
+                // This thread used to have exclusive access, but requested a downgrade. This has
+                // not been completed yet, so we still have exclusive access.
+                // Retract the downgrade request and unlock, but leave waking up new threads to the
+                // thread that already holds the queue lock.
+                Some(state.wrapping_byte_sub(DOWNGRADED | LOCKED))
             } else {
                 None
             }
         }) {
             Ok(_) => {}
-            // There are waiters queued and the lock count was moved to the
-            // tail of the queue.
+            // There are waiters queued and the lock count was moved to the tail of the queue.
             Err(state) => unsafe { self.read_unlock_contended(state) },
         }
     }
@@ -420,21 +474,21 @@ impl RwLock {
         // The state was observed with acquire ordering above, so the current
         // thread will observe all node initializations.
 
-        // SAFETY:
-        // Because new read-locks cannot be acquired while threads are queued,
-        // all queue-lock owners will observe the set `LOCKED` bit. Because they
-        // do not modify the queue while there is a lock owner, the queue will
-        // not be removed from here.
+        // FIXME this is a bit confusing
+        // SAFETY: Because new read-locks cannot be acquired while threads are queued, all
+        // queue-lock owners will observe the set `LOCKED` bit. And because no downgrade can be in
+        // progress (we checked above), they hence do not modify the queue, so the queue will not be
+        // removed from here.
         let tail = unsafe { add_backlinks_and_find_tail(to_node(state)).as_ref() };
+
         // The lock count is stored in the `next` field of `tail`.
-        // Decrement it, making sure to observe all changes made to the queue
-        // by the other lock owners by using acquire-release ordering.
+        // Decrement it, making sure to observe all changes made to the queue by the other lock
+        // owners by using acquire-release ordering.
         let was_last = tail.next.0.fetch_byte_sub(SINGLE, AcqRel).addr() - SINGLE == 0;
         if was_last {
-            // SAFETY:
-            // Other threads cannot read-lock while threads are queued. Also,
-            // the `LOCKED` bit is still set, so there are no writers. Therefore,
-            // the current thread exclusively owns the lock.
+            // SAFETY: Other threads cannot read-lock while threads are queued. Also, the `LOCKED`
+            // bit is still set, so there are no writers. Thus the current thread exclusively owns
+            // this lock, even though it is a reader.
             unsafe { self.unlock_contended(state) }
         }
     }
@@ -444,52 +498,125 @@ impl RwLock {
         if let Err(state) =
             self.state.compare_exchange(without_provenance_mut(LOCKED), UNLOCKED, Release, Relaxed)
         {
-            // SAFETY:
-            // Since other threads cannot acquire the lock, the state can only
-            // have changed because there are threads queued on the lock.
+            // SAFETY: Since other threads cannot acquire the lock, the state can only have changed
+            // because there are threads queued on the lock.
             unsafe { self.unlock_contended(state) }
         }
     }
 
     /// # Safety
+    ///
     /// * The lock must be exclusively owned by this thread.
     /// * There must be threads queued on the lock.
     #[cold]
-    unsafe fn unlock_contended(&self, mut state: State) {
+    unsafe fn unlock_contended(&self, state: State) {
+        debug_assert!(state.addr() & STATE == (QUEUED | LOCKED));
+        let mut current = state;
+
+        // Atomically release the lock and try to acquire the queue lock.
         loop {
-            // Atomically release the lock and try to acquire the queue lock.
-            let next = state.map_addr(|a| (a & !LOCKED) | QUEUE_LOCKED);
-            match self.state.compare_exchange_weak(state, next, AcqRel, Relaxed) {
-                // The queue lock was acquired. Release it, waking up the next
-                // waiter in the process.
-                Ok(_) if state.addr() & QUEUE_LOCKED == 0 => unsafe {
-                    return self.unlock_queue(next);
-                },
-                // Another thread already holds the queue lock, leave waking up
-                // waiters to it.
-                Ok(_) => return,
-                Err(new) => state = new,
+            let next = current.wrapping_byte_sub(LOCKED);
+            if current.addr() & QUEUE_LOCKED != 0 {
+                // Another thread already holds the queue lock, let them wake up the waiters for us.
+                match self.state.compare_exchange_weak(current, next, Release, Relaxed) {
+                    Ok(_) => return,
+                    Err(new) => current = new,
+                }
+            } else {
+                // Acquire the queue lock and wake up the next waiter.
+                let next = next.wrapping_byte_add(QUEUE_LOCKED);
+                match self.state.compare_exchange_weak(current, next, AcqRel, Relaxed) {
+                    Ok(_) => {
+                        // SAFETY: This thread is exclusively owned by this thread.
+                        unsafe { self.unlock_queue(next) };
+                        return;
+                    }
+                    Err(new) => current = new,
+                }
             }
         }
     }
 
-    /// Unlocks the queue. If the lock is unlocked, wakes up the next eligible
-    /// thread(s).
+    /// # Safety
+    ///
+    /// * The lock must be write-locked by this thread.
+    #[inline]
+    pub unsafe fn downgrade(&self) {
+        // Atomically set to read-locked with a single reader, without any waiting threads.
+        if let Err(state) = self.state.compare_exchange(
+            without_provenance_mut(LOCKED),
+            without_provenance_mut(SINGLE | LOCKED),
+            Release,
+            Relaxed,
+        ) {
+            // SAFETY: The only way the state can have changed is if there are threads queued.
+            // Wake all of them up.
+            unsafe { self.downgrade_slow(state) }
+        }
+    }
+
+    /// # Safety
+    ///
+    /// * The lock must be write-locked by this thread.
+    /// * There must be threads queued on the lock.
+    #[cold]
+    unsafe fn downgrade_slow(&self, mut state: State) {
+        debug_assert!(state.addr() & (DOWNGRADED | QUEUED | LOCKED) == (QUEUED | LOCKED));
+
+        // Attempt to wake up all waiters by taking ownership of the entire waiter queue.
+        loop {
+            if state.addr() & QUEUE_LOCKED != 0 {
+                // Another thread already holds the queue lock. Tell it to wake up all waiters.
+                // If the other thread succeeds in waking up waiters before we release our lock, the
+                // effect will be just the same as if we had changed the state below.
+                // Otherwise, the `DOWNGRADED` bit will still be set, meaning that when this thread
+                // calls `read_unlock` later, it will realize that the lock is still exclusively
+                // locked and act accordingly.
+                let next = state.wrapping_byte_add(DOWNGRADED);
+                match self.state.compare_exchange_weak(state, next, Release, Relaxed) {
+                    Ok(_) => return,
+                    Err(new) => state = new,
+                }
+            } else {
+                // Grab the entire queue by swapping the `state` with a single reader.
+                let next = ptr::without_provenance_mut(SINGLE | LOCKED);
+                if let Err(new) = self.state.compare_exchange_weak(state, next, AcqRel, Relaxed) {
+                    state = new;
+                    continue;
+                }
+
+                // SAFETY: We have full ownership of this queue now, so nobody else can modify it.
+                let tail = unsafe { add_backlinks_and_find_tail(to_node(state)) };
+
+                // Wake up all waiters.
+                // SAFETY: `tail` was just computed, meaning the whole queue is linked.
+                unsafe { complete_all(tail) };
+
+                return;
+            }
+        }
+    }
+
+    /// Unlocks the queue. Wakes up all threads if a downgrade was requested, otherwise wakes up the
+    /// next eligible thread(s) if the lock is unlocked.
     ///
     /// # Safety
-    /// The queue lock must be held by the current thread.
+    ///
+    /// * The queue lock must be held by the current thread.
+    /// * There must be threads queued on the lock.
     unsafe fn unlock_queue(&self, mut state: State) {
         debug_assert_eq!(state.addr() & (QUEUED | QUEUE_LOCKED), QUEUED | QUEUE_LOCKED);
 
         loop {
+            // SAFETY: FIXME why exactly is this safe?
             let tail = unsafe { add_backlinks_and_find_tail(to_node(state)) };
 
-            if state.addr() & LOCKED == LOCKED {
-                // Another thread has locked the lock. Leave waking up waiters
-                // to them by releasing the queue lock.
+            if state.addr() & (DOWNGRADED | LOCKED) == LOCKED {
+                // Another thread has locked the lock and no downgrade was requested.
+                // Leave waking up waiters to them by releasing the queue lock.
                 match self.state.compare_exchange_weak(
                     state,
-                    state.mask(!QUEUE_LOCKED),
+                    state.wrapping_byte_sub(QUEUE_LOCKED),
                     Release,
                     Acquire,
                 ) {
@@ -501,53 +628,63 @@ impl RwLock {
                 }
             }
 
-            let is_writer = unsafe { tail.as_ref().write };
-            if is_writer && let Some(prev) = unsafe { tail.as_ref().prev.get() } {
-                // `tail` is a writer and there is a node before `tail`.
-                // Split off `tail`.
+            // Since we hold the queue lock and downgrades cannot be requested if the lock is
+            // already read-locked, we have exclusive control over the queue here and can make
+            // modifications.
 
-                // There are no set `tail` links before the node pointed to by
-                // `state`, so the first non-null tail field will be current
-                // (invariant 2). Invariant 4 is fullfilled since `find_tail`
-                // was called on this node, which ensures all backlinks are set.
+            let downgrade = state.addr() & DOWNGRADED != 0;
+            let is_writer = unsafe { tail.as_ref().write };
+            if !downgrade
+                && is_writer
+                && let Some(prev) = unsafe { tail.as_ref().prev.get() }
+            {
+                // If we are not downgrading and the next thread is a writer, only wake up that
+                // writing thread.
+
+                // Split off `tail`.
+                // There are no set `tail` links before the node pointed to by `state`, so the first
+                // non-null tail field will be current (Invariant 2).
+                // We also fulfill Invariant 4 since `find_tail` was called on this node, which
+                // ensures all backlinks are set.
                 unsafe {
                     to_node(state).as_ref().tail.set(Some(prev));
                 }
 
-                // Release the queue lock. Doing this by subtraction is more
-                // efficient on modern processors since it is a single instruction
-                // instead of an update loop, which will fail if new threads are
-                // added to the list.
-                self.state.fetch_byte_sub(QUEUE_LOCKED, Release);
-
-                // The tail was split off and the lock released. Mark the node as
-                // completed.
-                unsafe {
-                    return Node::complete(tail);
-                }
-            } else {
-                // The next waiter is a reader or the queue only consists of one
-                // waiter. Just wake all threads.
-
-                // The lock cannot be locked (checked above), so mark it as
-                // unlocked to reset the queue.
-                if let Err(new) =
-                    self.state.compare_exchange_weak(state, UNLOCKED, Release, Acquire)
-                {
+                // Try to release the queue lock. We need to check the state again since another
+                // thread might have acquired the lock and requested a downgrade.
+                let next = state.wrapping_byte_sub(QUEUE_LOCKED);
+                if let Err(new) = self.state.compare_exchange_weak(state, next, Release, Acquire) {
+                    // Undo the tail modification above, so that we can find the tail again above.
+                    // As mentioned above, we have exclusive control over the queue, so no other
+                    // thread could have noticed the change.
+                    unsafe {
+                        to_node(state).as_ref().tail.set(Some(tail));
+                    }
                     state = new;
                     continue;
                 }
 
-                let mut current = tail;
-                loop {
-                    let prev = unsafe { current.as_ref().prev.get() };
-                    unsafe {
-                        Node::complete(current);
-                    }
-                    match prev {
-                        Some(prev) => current = prev,
-                        None => return,
-                    }
+                // The tail was split off and the lock was released. Mark the node as completed.
+                unsafe {
+                    return Node::complete(tail);
+                }
+            } else {
+                // We are either downgrading, the next waiter is a reader, or the queue only
+                // consists of one waiter. In any case, just wake all threads.
+
+                // Clear the queue.
+                let next =
+                    if downgrade { ptr::without_provenance_mut(SINGLE | LOCKED) } else { UNLOCKED };
+                if let Err(new) = self.state.compare_exchange_weak(state, next, Release, Acquire) {
+                    state = new;
+                    continue;
+                }
+
+                // SAFETY: we computed `tail` above, and no new nodes can have been added since
+                // (otherwise the CAS above would have failed).
+                // Thus we have complete control over the whole queue.
+                unsafe {
+                    return complete_all(tail);
                 }
             }
         }
