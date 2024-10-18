@@ -155,6 +155,8 @@ hir_typeck_remove_semi_for_coerce_ret = the `match` arms can conform to this ret
 hir_typeck_remove_semi_for_coerce_semi = the `match` is a statement because of this semicolon, consider removing it
 hir_typeck_remove_semi_for_coerce_suggestion = remove this semicolon
 
+hir_typeck_replace_comma_with_semicolon = replace the comma with a semicolon to create {$descr}
+
 hir_typeck_return_stmt_outside_of_fn_body =
     {$statement_kind} statement outside of function body
     .encl_body_label = the {$statement_kind} is part of this body...
