@@ -5,7 +5,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::spec::{PanicStrategy, TargetTriple};
+use rustc_target::spec::{PanicStrategy, TargetTuple};
 
 use crate::fluent_generated as fluent;
 use crate::locator::CrateFlavor;
@@ -630,7 +630,7 @@ pub struct CannotFindCrate {
     pub current_crate: String,
     pub is_nightly_build: bool,
     pub profiler_runtime: Symbol,
-    pub locator_triple: TargetTriple,
+    pub locator_triple: TargetTuple,
     pub is_ui_testing: bool,
 }
 
@@ -641,7 +641,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
         diag.arg("crate_name", self.crate_name);
         diag.arg("current_crate", self.current_crate);
         diag.arg("add_info", self.add_info);
-        diag.arg("locator_triple", self.locator_triple.triple());
+        diag.arg("locator_triple", self.locator_triple.tuple());
         diag.code(E0463);
         diag.span(self.span);
         if self.crate_name == sym::std || self.crate_name == sym::core {
