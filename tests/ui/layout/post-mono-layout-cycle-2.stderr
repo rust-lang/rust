@@ -12,12 +12,12 @@ LL |           Blah::iter(self, iterator).await
    |
    = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
 
-error: a cycle occurred during layout computation
-  --> $DIR/post-mono-layout-cycle-2.rs:47:5
+note: the above error was encountered while instantiating `fn main::{closure#0}`
+  --> $DIR/post-mono-layout-cycle-2.rs:16:15
    |
-LL |     async fn ice(&mut self) {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+LL |         match fut.as_mut().poll(ctx) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0733`.
