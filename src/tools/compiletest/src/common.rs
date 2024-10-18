@@ -387,6 +387,11 @@ pub struct Config {
     /// True if the profiler runtime is enabled for this target.
     /// Used by the "needs-profiler-runtime" directive in test files.
     pub profiler_runtime: bool,
+
+    /// Path to minicore aux library, used for `no_core` tests that need `core` stubs in
+    /// cross-compilation scenarios that do not otherwise want/need to `-Zbuild-std`. Used in e.g.
+    /// ABI tests.
+    pub minicore_path: PathBuf,
 }
 
 impl Config {
