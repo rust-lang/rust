@@ -10,7 +10,7 @@
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::{self, Guid};
-use r_efi::protocols::{device_path, device_path_to_text};
+use r_efi::protocols::{device_path, device_path_to_text, shell};
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_io_error};
@@ -423,4 +423,25 @@ pub(crate) fn os_string_from_raw(ptr: *mut r_efi::efi::Char16) -> Option<OsStrin
 pub(crate) fn os_string_to_raw(s: &OsStr) -> Option<Box<[r_efi::efi::Char16]>> {
     let temp = s.encode_wide().chain(Some(0)).collect::<Box<[r_efi::efi::Char16]>>();
     if temp[..temp.len() - 1].contains(&0) { None } else { Some(temp) }
+}
+
+pub(crate) fn open_shell() -> Option<NonNull<shell::Protocol>> {
+    static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+        AtomicPtr::new(crate::ptr::null_mut());
+
+    if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
+        if let Ok(protocol) = open_protocol::<shell::Protocol>(handle, shell::PROTOCOL_GUID) {
+            return Some(protocol);
+        }
+    }
+
+    let handles = locate_handles(shell::PROTOCOL_GUID).ok()?;
+    for handle in handles {
+        if let Ok(protocol) = open_protocol::<shell::Protocol>(handle, shell::PROTOCOL_GUID) {
+            LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
+            return Some(protocol);
+        }
+    }
+
+    None
 }
