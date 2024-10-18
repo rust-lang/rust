@@ -1445,11 +1445,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 &obligation.cause,
                 secondary_span,
                 values.map(|(_, is_normalized_ty_expected, normalized_ty, expected_ty)| {
-                    infer::ValuePairs::Terms(ExpectedFound::new(
-                        is_normalized_ty_expected,
-                        normalized_ty,
-                        expected_ty,
-                    ))
+                    (
+                        infer::ValuePairs::Terms(ExpectedFound::new(
+                            is_normalized_ty_expected,
+                            normalized_ty,
+                            expected_ty,
+                        )),
+                        obligation.param_env,
+                    )
                 }),
                 err,
                 false,
@@ -2649,6 +2652,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
         self.report_and_explain_type_error(
             TypeTrace::trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
+            obligation.param_env,
             terr,
         )
     }
@@ -2739,6 +2743,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             return Ok(self.report_and_explain_type_error(
                 TypeTrace::trait_refs(&obligation.cause, true, expected_trait_ref, found_trait_ref),
+                obligation.param_env,
                 ty::error::TypeError::Mismatch,
             ));
         }

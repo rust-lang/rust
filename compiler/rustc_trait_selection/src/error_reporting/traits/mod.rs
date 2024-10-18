@@ -287,6 +287,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::Subtype(ref expected_found, ref err) => self
                 .report_mismatched_types(
                     &error.obligation.cause,
+                    error.obligation.param_env,
                     expected_found.expected,
                     expected_found.found,
                     *err,
@@ -295,6 +296,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
+                    error.obligation.param_env,
                     expected_found.expected,
                     expected_found.found,
                     *err,

@@ -827,6 +827,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 formal_and_expected_inputs[mismatch_idx.into()],
                                 provided_arg_tys[mismatch_idx.into()].0,
                             ),
+                            self.param_env,
                             terr,
                         );
                         err.span_label(
@@ -912,7 +913,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
             if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308) {
-                let mut err = self.err_ctxt().report_and_explain_type_error(trace, *e);
+                let mut err =
+                    self.err_ctxt().report_and_explain_type_error(trace, self.param_env, *e);
                 suggest_confusable(&mut err);
                 reported = Some(err.emit());
                 return false;
@@ -940,7 +942,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (formal_ty, expected_ty) = formal_and_expected_inputs[*expected_idx];
             let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
             let trace = mk_trace(provided_arg_span, (formal_ty, expected_ty), provided_ty);
-            let mut err = self.err_ctxt().report_and_explain_type_error(trace, *err);
+            let mut err =
+                self.err_ctxt().report_and_explain_type_error(trace, self.param_env, *err);
             self.emit_coerce_suggestions(
                 &mut err,
                 provided_args[*provided_idx],
@@ -1112,7 +1115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 &mut err,
                                 &trace.cause,
                                 None,
-                                Some(trace.values),
+                                Some((trace.values, self.param_env)),
                                 e,
                                 true,
                             );
