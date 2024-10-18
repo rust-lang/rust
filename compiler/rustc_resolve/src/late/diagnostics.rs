@@ -960,7 +960,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                                 // Do not lint against unused label when we suggest them.
-                                self.diag_metadata.unused_labels.remove(node_id);
+                                self.diag_metadata.unused_labels.shift_remove(node_id);
                             }
                         }
                     }
