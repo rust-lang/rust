@@ -1,0 +1,124 @@
+error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+  --> $DIR/lint.rs:6:37
+   |
+LL |     let _a: [&mut u8; 2] = unsafe { transmute([&1u8; 2]) };
+   |                                     ^^^^^^^^^
+   |
+   = note: transmute from `[&u8; 2][0]` to `[&mut u8; 2][0]`
+   = note: `#[deny(mutable_transmutes)]` on by default
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:45:29
+   |
+LL |         let _: A = unsafe { transmute(&1u8) };
+   |                             ^^^^^^^^^
+   |
+   = note: transmute from `*&u8` to `(*main::A.a.b.c).d`
+   = note: `#[deny(unsafe_cell_transmutes)]` on by default
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:47:29
+   |
+LL |         let _: A = unsafe { transmute(E { e: F { f: &G { g: H { h: 0 } } } }) };
+   |                             ^^^^^^^^^
+   |
+   = note: transmute from `(*main::E.e.f).g.h` to `(*main::A.a.b.c).d`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:50:22
+   |
+LL |             unsafe { transmute(E { e: F { f: &G { g: H { h: 0 } } } }) };
+   |                      ^^^^^^^^^
+   |
+   = note: transmute from `(*main::E.e.f).g.h` to `*&UnsafeCell<u8>`
+
+error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+  --> $DIR/lint.rs:55:32
+   |
+LL |     let _a: &mut u8 = unsafe { transmute(&1u8) };
+   |                                ^^^^^^^^^
+   |
+   = note: transmute from `&u8` to `&mut u8`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:59:40
+   |
+LL |     let _a: &UnsafeCell<u8> = unsafe { transmute(&1u8) };
+   |                                        ^^^^^^^^^
+   |
+   = note: transmute from `*&u8` to `*&UnsafeCell<u8>`
+
+error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+  --> $DIR/lint.rs:77:48
+   |
+LL |         let _: Foo<&'static mut u8> = unsafe { transmute(Other(&1u8, &1u8)) };
+   |                                                ^^^^^^^^^
+   |
+   = note: transmute from `main::Other.1` to `main::Foo<&mut u8>.b.0.0`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:79:56
+   |
+LL |         let _: Foo<&'static UnsafeCell<u8>> = unsafe { transmute(Other(&1u8, &1u8)) };
+   |                                                        ^^^^^^^^^
+   |
+   = note: transmute from `*main::Other.1` to `*main::Foo<&UnsafeCell<u8>>.b.0.0`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:103:30
+   |
+LL |         let _: &B = unsafe { transmute(&A(0)) };
+   |                              ^^^^^^^^^
+   |
+   = note: transmute from `(*&main::A).0` to `(*&main::B).1`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:105:30
+   |
+LL |         let _: &D = unsafe { transmute(&C(0, UnsafeCell::new(0))) };
+   |                              ^^^^^^^^^
+   |
+   = note: transmute from `(*&main::C).0` to `(*&main::D).0`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:107:30
+   |
+LL |         let _: &F = unsafe { transmute(&E(0, UnsafeCell::new(0), 0)) };
+   |                              ^^^^^^^^^
+   |
+   = note: transmute from `(*&main::E).0` to `(*&main::F).0`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:119:32
+   |
+LL |         let _a: Bar = unsafe { transmute(Foo(&0, &0)) };
+   |                                ^^^^^^^^^
+   |
+   = note: transmute from `*main::Foo.0` to `*main::Bar.0`
+
+error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+  --> $DIR/lint.rs:119:32
+   |
+LL |         let _a: Bar = unsafe { transmute(Foo(&0, &0)) };
+   |                                ^^^^^^^^^
+   |
+   = note: transmute from `main::Foo.1` to `main::Bar.1`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:141:27
+   |
+LL |         let _b = unsafe { &*(&a as *const A as *const B) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: transmute from `main::A.b` to `main::B.b`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/lint.rs:160:27
+   |
+LL |         let _b = unsafe { &*(a as *const A<[u32]> as *const B) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: transmute from `main::A<[u32]>.a` to `main::B.a`
+
+error: aborting due to 15 previous errors
+
