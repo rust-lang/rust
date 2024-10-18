@@ -29,10 +29,7 @@ error[E0271]: type mismatch resolving `<SelectInt as Expression>::SqlType == Tex
   --> $DIR/as_expression.rs:57:5
    |
 LL |     SelectInt.check("bar");
-   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `Integer`, found `Text`
-   |
-   = note: expected struct `Integer`
-              found struct `Text`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `Text`, found `Integer`
 
 error: aborting due to 3 previous errors
 
