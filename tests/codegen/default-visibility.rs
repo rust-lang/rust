@@ -3,10 +3,12 @@
 // also https://github.com/rust-lang/rust/issues/73295 and
 // https://github.com/rust-lang/rust/issues/37530.
 
-//@ revisions:DEFAULT HIDDEN PROTECTED INTERPOSABLE
+//@ revisions:NO_LLD LLD HIDDEN PROTECTED INTERPOSABLE
 //@[HIDDEN] compile-flags: -Zdefault-visibility=hidden
 //@[PROTECTED] compile-flags: -Zdefault-visibility=protected
 //@[INTERPOSABLE] compile-flags: -Zdefault-visibility=interposable
+//@[NO_LLD] compile-flags: -Zlinker-features=-lld
+//@[LLD] compile-flags: -Zlinker-features=+lld
 
 // The test scenario is specifically about visibility of symbols exported out of dynamically linked
 // libraries.
@@ -30,7 +32,8 @@ pub static tested_symbol: [u8; 6] = *b"foobar";
 // HIDDEN:       @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = hidden constant
 // PROTECTED:    @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = protected constant
 // INTERPOSABLE: @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
-// DEFAULT:      @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
+// NO_LLD:       @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
+// LLD:          @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = protected constant
 
 pub fn do_memcmp(left: &[u8], right: &[u8]) -> i32 {
     left.cmp(right) as i32
@@ -46,4 +49,5 @@ pub fn do_memcmp(left: &[u8], right: &[u8]) -> i32 {
 // HIDDEN:       declare i32 @memcmp
 // PROTECTED:    declare i32 @memcmp
 // INTERPOSABLE: declare i32 @memcmp
-// DEFAULT:      declare i32 @memcmp
+// NO_LLD:       declare i32 @memcmp
+// LLD:          declare i32 @memcmp

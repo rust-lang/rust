@@ -30,7 +30,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    CodeModel, DebuginfoKind, LinkerFeatures, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
     TargetTriple, TlsModel,
 };
@@ -622,11 +622,20 @@ impl Session {
 
     /// Returns the default symbol visibility.
     pub fn default_visibility(&self) -> SymbolVisibility {
+        // For now, we default to using protected only if the LLD linker features is enabled. This
+        // is to avoid link errors that are likely if using protected visibility with GNU ld < 2.40.
+        let fallback =
+            if self.opts.unstable_opts.linker_features.enabled.contains(LinkerFeatures::LLD) {
+                SymbolVisibility::Protected
+            } else {
+                SymbolVisibility::Interposable
+            };
+
         self.opts
             .unstable_opts
             .default_visibility
             .or(self.target.options.default_visibility)
-            .unwrap_or(SymbolVisibility::Interposable)
+            .unwrap_or(fallback)
     }
 }
 
