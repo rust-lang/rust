@@ -234,14 +234,12 @@ pub(super) fn unexpected_cfg_value(
 
         let suggestion = if let Some((value, value_span)) = value {
             // Suggest the most probable if we found one
-            if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
-                Some(lints::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
+            find_best_match_for_name(&possibilities, value, None).map(|best_match| {
+                lints::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
                     span: value_span,
                     best_match,
-                })
-            } else {
-                None
-            }
+                }
+            })
         } else if let &[first_possibility] = &possibilities[..] {
             Some(lints::unexpected_cfg_value::ChangeValueSuggestion::SpecifyValue {
                 span: name_span.shrink_to_hi(),
