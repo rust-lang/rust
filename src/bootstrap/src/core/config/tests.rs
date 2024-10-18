@@ -8,7 +8,9 @@ use clap::CommandFactory;
 use serde::Deserialize;
 
 use super::flags::Flags;
-use super::{ChangeIdWrapper, Config};
+use super::{
+    ChangeIdWrapper, Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS, RUSTC_IF_UNCHANGED_DENIED_SUBPATHS,
+};
 use crate::core::build_steps::clippy::get_clippy_rules_in_order;
 use crate::core::build_steps::llvm;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
@@ -351,4 +353,31 @@ fn parse_rust_std_features_empty() {
 #[should_panic]
 fn parse_rust_std_features_invalid() {
     parse("rust.std-features = \"backtrace\"");
+}
+
+#[test]
+fn check_rustc_if_unchaged_paths() {
+    let config = parse("");
+    let normalised_allowed_paths: Vec<_> = RUSTC_IF_UNCHANGED_ALLOWED_PATHS
+        .iter()
+        .map(|t| {
+            t.strip_prefix(":!").expect(&format!("{t} doesn't have ':!' prefix, but it should."))
+        })
+        .collect();
+
+    let check_existence = |paths| {
+        for p in paths {
+            assert!(config.src.join(p).exists(), "{p} doesn't exist.");
+        }
+    };
+
+    check_existence(normalised_allowed_paths.as_slice());
+    check_existence(RUSTC_IF_UNCHANGED_DENIED_SUBPATHS);
+
+    for p in RUSTC_IF_UNCHANGED_DENIED_SUBPATHS {
+        assert!(
+            normalised_allowed_paths.iter().any(|t| p.starts_with(t)),
+            "{p} is not a subpath of an allowed path, there is no need to keep it in the denied list."
+        );
+    }
 }
