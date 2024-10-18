@@ -200,7 +200,8 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// # Layout
 ///
-/// `MaybeUninit<T>` is guaranteed to have the same size, alignment, and ABI as `T`:
+/// `MaybeUninit<T>` is guaranteed to have the same layout (size, alignment, and field offsets and layouts)
+/// and ABI as `T`:
 ///
 /// ```rust
 /// use std::mem::{MaybeUninit, size_of, align_of};
@@ -232,6 +233,13 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// remain `#[repr(transparent)]`. That said, `MaybeUninit<T>` will *always* guarantee that it has
 /// the same size, alignment, and ABI as `T`; it's just that the way `MaybeUninit` implements that
 /// guarantee may evolve.
+///
+/// ## `UnsafeCell`
+///
+/// As a result of having the same layout as `T`, `MaybeUninit<T>` has [`UnsafeCell`]s covering
+/// the same byte ranges as `T`.
+///
+/// [`UnsafeCell`]: crate::cell::UnsafeCell
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
