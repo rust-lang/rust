@@ -20,7 +20,7 @@ pub mod runtest;
 pub mod util;
 
 use core::panic;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -554,7 +554,7 @@ struct TestCollectorCx {
 /// Mutable state used during test collection.
 struct TestCollector {
     tests: Vec<test::TestDescAndFn>,
-    found_path_stems: HashSet<PathBuf>,
+    found_path_stems: BTreeSet<PathBuf>,
     poisoned: bool,
 }
 
@@ -573,7 +573,7 @@ pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
 
     let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
     let mut collector =
-        TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
+        TestCollector { tests: vec![], found_path_stems: BTreeSet::new(), poisoned: false };
 
     collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, &PathBuf::new())
         .unwrap_or_else(|reason| {
@@ -1023,7 +1023,7 @@ fn make_test_closure(
 /// To avoid problems, we forbid test names from overlapping in this way.
 ///
 /// See <https://github.com/rust-lang/rust/pull/109509> for more context.
-fn check_for_overlapping_test_paths(found_path_stems: &HashSet<PathBuf>) {
+fn check_for_overlapping_test_paths(found_path_stems: &BTreeSet<PathBuf>) {
     let mut collisions = Vec::new();
     for path in found_path_stems {
         for ancestor in path.ancestors().skip(1) {
