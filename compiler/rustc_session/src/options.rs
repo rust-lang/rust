@@ -1985,13 +1985,8 @@ options! {
     proc_macro_execution_strategy: ProcMacroExecutionStrategy = (ProcMacroExecutionStrategy::SameThread,
         parse_proc_macro_execution_strategy, [UNTRACKED],
         "how to run proc-macro code (default: same-thread)"),
-    profile: bool = (false, parse_bool, [TRACKED],
-        "insert profiling code (default: no)"),
     profile_closures: bool = (false, parse_no_flag, [UNTRACKED],
         "profile size of closures"),
-    profile_emit: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
-        "file path to emit profiling data at runtime when using 'profile' \
-        (default based on relative source path)"),
     profile_sample_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)"),
     profiler_runtime: String = (String::from("profiler_builtins"), parse_string, [TRACKED],
