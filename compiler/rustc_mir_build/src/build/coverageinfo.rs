@@ -144,10 +144,10 @@ impl CoverageInfoBuilder {
         // Separate path for handling branches when MC/DC is enabled.
         if let Some(mcdc_info) = self.mcdc_info.as_mut() {
             let inject_block_marker =
-                |source_info, block| self.markers.inject_block_marker(cfg, source_info, block);
+                |block| self.markers.inject_block_marker(cfg, source_info, block);
             mcdc_info.visit_evaluated_condition(
                 tcx,
-                source_info,
+                source_info.span,
                 true_block,
                 false_block,
                 inject_block_marker,
@@ -175,7 +175,7 @@ impl CoverageInfoBuilder {
         let branch_spans =
             branch_info.map(|branch_info| branch_info.branch_spans).unwrap_or_default();
 
-        let (mcdc_spans, mcdc_degraded_branch_spans) =
+        let (mcdc_degraded_spans, mcdc_spans) =
             mcdc_info.map(MCDCInfoBuilder::into_done).unwrap_or_default();
 
         // For simplicity, always return an info struct (without Option), even
@@ -183,7 +183,7 @@ impl CoverageInfoBuilder {
         Box::new(CoverageInfoHi {
             num_block_markers,
             branch_spans,
-            mcdc_degraded_branch_spans,
+            mcdc_degraded_spans,
             mcdc_spans,
         })
     }
