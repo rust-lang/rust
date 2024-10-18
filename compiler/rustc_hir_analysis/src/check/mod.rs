@@ -646,10 +646,13 @@ pub fn check_function_signature<'tcx>(
                 &mut diag,
                 &cause,
                 None,
-                Some(infer::ValuePairs::PolySigs(ExpectedFound {
-                    expected: expected_sig,
-                    found: actual_sig,
-                })),
+                Some((
+                    infer::ValuePairs::PolySigs(ExpectedFound {
+                        expected: expected_sig,
+                        found: actual_sig,
+                    }),
+                    param_env,
+                )),
                 err,
                 false,
             );
