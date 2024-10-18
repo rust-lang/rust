@@ -999,7 +999,7 @@ where
             }
 
             _ => {
-                let mut data_variant = match this.variants {
+                let (mut data_variant, align) = match this.variants {
                     // Within the discriminant field, only the niche itself is
                     // always initialized, so we only check for a pointer at its
                     // offset.
@@ -1012,13 +1012,32 @@ where
                     // using more niches than just null (e.g., the first page of
                     // the address space, or unaligned pointers).
                     Variants::Multiple {
-                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                        tag_encoding:
+                            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
                         tag_field,
+                        ref variants,
                         ..
                     } if this.fields.offset(tag_field) == offset => {
-                        Some(this.for_variant(cx, untagged_variant))
+                        // When a non-null niche is passed in, we might pass an unaligned value,
+                        // so we need to adjust the alignment to an appropriate value.
+                        let align = variants
+                            .iter_enumerated()
+                            .filter_map(|(idx, variant)| {
+                                if untagged_variant == idx || variant.abi.is_uninhabited() {
+                                    None
+                                } else {
+                                    Some(idx)
+                                }
+                            })
+                            .fold(Align::MAX, |align, idx| {
+                                let niche = (idx.as_u32() as u128
+                                    - niche_variants.start().as_u32() as u128)
+                                    .wrapping_add(niche_start);
+                                align.restrict_for_offset(Size::from_bytes(niche))
+                            });
+                        (Some(this.for_variant(cx, untagged_variant)), Some(align))
                     }
-                    _ => Some(this),
+                    _ => (Some(this), None),
                 };
 
                 if let Some(variant) = data_variant {
@@ -1055,19 +1074,22 @@ where
                     }
                 }
 
-                // Fixup info for the first field of a `Box`. Recursive traversal will have found
-                // the raw pointer, so size and align are set to the boxed type, but `pointee.safe`
-                // will still be `None`.
                 if let Some(ref mut pointee) = result {
                     if offset.bytes() == 0
                         && let Some(boxed_ty) = this.ty.boxed_ty()
                     {
+                        // Fixup info for the first field of a `Box`. Recursive traversal will have found
+                        // the raw pointer, so size and align are set to the boxed type, but `pointee.safe`
+                        // will still be `None`.
                         debug_assert!(pointee.safe.is_none());
                         let optimize = tcx.sess.opts.optimize != OptLevel::No;
                         pointee.safe = Some(PointerKind::Box {
                             unpin: optimize && boxed_ty.is_unpin(tcx, cx.param_env()),
                             global: this.ty.is_box_global(tcx),
                         });
+                    }
+                    if let Some(align) = align {
+                        pointee.align = pointee.align.min(align);
                     }
                 }
 
