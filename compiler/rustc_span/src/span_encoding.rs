@@ -303,6 +303,13 @@ impl Span {
         }
     }
 
+    /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
+    #[inline]
+    pub fn from_expansion(self) -> bool {
+        // If the span is fully inferred then ctxt > MAX_CTXT
+        self.inline_ctxt().map_or(true, |ctxt| !ctxt.is_root())
+    }
+
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
     pub fn is_dummy(self) -> bool {
@@ -370,9 +377,10 @@ impl Span {
     pub fn eq_ctxt(self, other: Span) -> bool {
         match (self.inline_ctxt(), other.inline_ctxt()) {
             (Ok(ctxt1), Ok(ctxt2)) => ctxt1 == ctxt2,
-            (Ok(ctxt), Err(index)) | (Err(index), Ok(ctxt)) => {
-                with_span_interner(|interner| ctxt == interner.spans[index].ctxt)
-            }
+            // If `inline_ctxt` returns `Ok` the context is <= MAX_CTXT.
+            // If it returns `Err` the span is fully interned and the context is > MAX_CTXT.
+            // As these do not overlap an `Ok` and `Err` result cannot have an equal context.
+            (Ok(_), Err(_)) | (Err(_), Ok(_)) => false,
             (Err(index1), Err(index2)) => with_span_interner(|interner| {
                 interner.spans[index1].ctxt == interner.spans[index2].ctxt
             }),
