@@ -782,6 +782,9 @@ passes_unused_multiple =
 passes_unused_no_lints_note =
     attribute `{$name}` without any lints has no effect
 
+passes_unused_linker_warnings_note =
+    the `linker_warnings` lint can only controlled at the root of a crate with `--crate-type bin`
+
 passes_unused_var_assigned_only = variable `{$name}` is assigned to, but never used
     .note = consider using `_{$name}` instead
 

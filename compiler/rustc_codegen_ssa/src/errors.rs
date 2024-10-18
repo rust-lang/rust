@@ -348,6 +348,7 @@ pub(crate) struct LinkingFailed<'a> {
     pub exit_status: ExitStatus,
     pub command: &'a Command,
     pub escaped_output: String,
+    pub verbose: bool,
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
@@ -358,7 +359,13 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
 
         let contains_undefined_ref = self.escaped_output.contains("undefined reference to");
 
-        diag.note(format!("{:?}", self.command)).note(self.escaped_output);
+        if self.verbose {
+            diag.note(format!("{:?}", self.command));
+        } else {
+            diag.note("use `--verbose` to show all linker arguments");
+        }
+
+        diag.note(self.escaped_output);
 
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.
