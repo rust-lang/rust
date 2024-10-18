@@ -21,6 +21,7 @@ use crate::clean::cfg::Cfg;
 use crate::clean::utils::{inherits_doc_hidden, should_ignore_res};
 use crate::clean::{AttributesExt, NestedAttributesExt, reexport_chain};
 use crate::core;
+use crate::rustc_attr::AttributeExt;
 
 /// This module is used to store stuff from Rust's AST in a more convenient
 /// manner (and with prettier names) before cleaning.

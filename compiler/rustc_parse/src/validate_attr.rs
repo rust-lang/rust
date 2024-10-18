@@ -1,10 +1,10 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
-    self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind,
-    Safety,
+    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
 };
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -17,12 +17,12 @@ use rustc_span::{BytePos, Span, Symbol, sym};
 use crate::{errors, parse_in};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    if attr.is_doc_comment() {
-        return;
-    }
+    let attr_item = match &attr.kind {
+        rustc_ast::AttrKind::Normal(attr) => &attr.item,
+        rustc_ast::AttrKind::DocComment(_, _) => return,
+    };
 
     let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
-    let attr_item = attr.get_normal_item();
 
     // All non-builtin attributes are considered safe
     let safety = attr_info.map(|x| x.safety).unwrap_or(AttributeSafety::Normal);
@@ -43,7 +43,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
             }
         }
         _ => {
-            if let AttrArgs::Eq(..) = attr_item.args {
+            if let AttrArgs::Eq { .. } = attr_item.args {
                 // All key-value attributes are restricted to meta-item syntax.
                 match parse_meta(psess, attr) {
                     Ok(_) => {}
@@ -70,14 +70,14 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     parse_in(psess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
-                if let ast::ExprKind::Lit(token_lit) = expr.kind {
-                    let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
+            AttrArgs::Eq { eq_span: _, value } => {
+                if let ast::ExprKind::Lit(token_lit) = value.kind {
+                    let res = ast::MetaItemLit::from_token_lit(token_lit, value.span);
                     let res = match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
                                 let mut err = psess.dcx().struct_span_err(
-                                    expr.span,
+                                    value.span,
                                     "suffixed literals are not allowed in attributes",
                                 );
                                 err.help(
@@ -90,12 +90,12 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                             }
                         }
                         Err(err) => {
-                            let guar = report_lit_error(psess, err, token_lit, expr.span);
+                            let guar = report_lit_error(psess, err, token_lit, value.span);
                             let lit = ast::MetaItemLit {
                                 symbol: token_lit.symbol,
                                 suffix: token_lit.suffix,
                                 kind: ast::LitKind::Err(guar),
-                                span: expr.span,
+                                span: value.span,
                             };
                             MetaItemKind::NameValue(lit)
                         }
@@ -109,14 +109,13 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     //   the error because an earlier error will have already
                     //   been reported.
                     let msg = "attribute value must be a literal";
-                    let mut err = psess.dcx().struct_span_err(expr.span, msg);
-                    if let ast::ExprKind::Err(_) = expr.kind {
+                    let mut err = psess.dcx().struct_span_err(value.span, msg);
+                    if let ast::ExprKind::Err(_) = value.kind {
                         err.downgrade_to_delayed_bug();
                     }
                     return Err(err);
                 }
             }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
         },
     })
 }

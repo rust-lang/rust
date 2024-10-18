@@ -13,6 +13,7 @@ use crate::clean::{Item, ItemIdSet};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
 use crate::passes::{ImplStripper, Pass};
+use crate::rustc_attr::AttributeExt;
 
 pub(crate) const STRIP_HIDDEN: Pass = Pass {
     name: "strip-hidden",

@@ -1,5 +1,6 @@
 use std::mem;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId, attr};

@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 
 use rustc_ast::CRATE_NODE_ID;
+use rustc_ast::attr::AttributeExt;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::query::LocalCrate;

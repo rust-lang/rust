@@ -6,6 +6,7 @@ use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 
 use rustc_ast::{self as ast, visit};
+use rustc_attr::AttributeExt;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;

@@ -18,6 +18,7 @@ use tracing::debug;
 
 use super::GlobalTestOptions;
 use crate::html::markdown::LangString;
+use crate::rustc_attr::AttributeExt;
 
 /// This struct contains information about the doctest itself which is then used to generate
 /// doctest source code appropriately.

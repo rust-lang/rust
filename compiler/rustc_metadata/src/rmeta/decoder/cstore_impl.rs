@@ -348,7 +348,7 @@ provide! { tcx, def_id, other, cdata,
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
-    item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
+    hir_attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_hir_attrs_for_def(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
     cross_crate_inlinable => { table_direct }
@@ -600,11 +600,11 @@ impl CStore {
         let span = data.get_span(id.index, sess);
 
         LoadedMacro::MacroDef(
-            ast::Item {
+            ast::Item::<_, rustc_hir::Attribute> {
                 ident: data.item_ident(id.index, sess),
                 id: ast::DUMMY_NODE_ID,
                 span,
-                attrs: data.get_item_attrs(id.index, sess).collect(),
+                attrs: data.get_hir_attrs_for_def(id.index, sess).collect(),
                 kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
                 vis: ast::Visibility {
                     span: span.shrink_to_lo(),

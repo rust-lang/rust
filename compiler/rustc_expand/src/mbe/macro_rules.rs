@@ -10,7 +10,7 @@ use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_attr::{self as attr, TransparencyError};
+use rustc_attr::{self as attr, AttributeExt, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
@@ -40,6 +40,8 @@ use crate::mbe::macro_check;
 use crate::mbe::macro_parser::NamedMatch::*;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
 use crate::mbe::transcribe::transcribe;
+
+type Item<A> = ast::Item<ast::ItemKind, A>;
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -367,10 +369,10 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 // Holy self-referential!
 
 /// Converts a macro item into a syntax extension.
-pub fn compile_declarative_macro(
+pub fn compile_declarative_macro<A: AttributeExt>(
     sess: &Session,
     features: &Features,
-    def: &ast::Item,
+    def: &Item<A>,
     edition: Edition,
 ) -> (SyntaxExtension, Vec<(usize, Span)>) {
     debug!("compile_declarative_macro: {:?}", def);
@@ -606,9 +608,9 @@ pub fn compile_declarative_macro(
     (mk_syn_ext(expander), rule_spans)
 }
 
-fn check_lhs_nt_follows(
+fn check_lhs_nt_follows<A: AttributeExt>(
     sess: &Session,
-    def: &ast::Item,
+    def: &Item<A>,
     lhs: &mbe::TokenTree,
 ) -> Result<(), ErrorGuaranteed> {
     // lhs is going to be like TokenTree::Delimited(...), where the
@@ -684,9 +686,9 @@ fn check_rhs(sess: &Session, rhs: &mbe::TokenTree) -> Result<(), ErrorGuaranteed
     }
 }
 
-fn check_matcher(
+fn check_matcher<A: AttributeExt>(
     sess: &Session,
-    def: &ast::Item,
+    def: &Item<A>,
     matcher: &[mbe::TokenTree],
 ) -> Result<(), ErrorGuaranteed> {
     let first_sets = FirstSets::new(matcher);
@@ -1026,9 +1028,9 @@ impl<'tt> TokenSet<'tt> {
 //
 // Requires that `first_sets` is pre-computed for `matcher`;
 // see `FirstSets::new`.
-fn check_matcher_core<'tt>(
+fn check_matcher_core<'tt, A: AttributeExt>(
     sess: &Session,
-    def: &ast::Item,
+    def: &Item<A>,
     first_sets: &FirstSets<'tt>,
     matcher: &'tt [mbe::TokenTree],
     follow: &TokenSet<'tt>,

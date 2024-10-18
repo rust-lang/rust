@@ -1,4 +1,5 @@
 use rustc_ast::MetaItem;
+use rustc_ast::attr::AttributeExt;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, Body, Local, Location};

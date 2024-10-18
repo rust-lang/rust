@@ -14,8 +14,9 @@ mod utils;
 
 use clippy_config::Conf;
 use clippy_config::msrvs::{self, Msrv};
-use rustc_ast::{Attribute, MetaItemInner, MetaItemKind};
-use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
+use rustc_ast::attr::AttributeExt;
+use rustc_ast::{self as ast, MetaItemInner, MetaItemKind};
+use rustc_hir::{self as hir, ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -439,7 +440,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
         duplicated_attributes::check(cx, cx.tcx.hir().krate_attrs());
     }
 
-    fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
+    fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx hir::Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
                 if is_lint_level(ident.name, attr.id) {
@@ -518,7 +519,7 @@ impl_lint_pass!(EarlyAttributes => [
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
-    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
+    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         deprecated_cfg_attr::check(cx, attr, &self.msrv);
         deprecated_cfg_attr::check_clippy(cx, attr);
         non_minimal_cfg::check(cx, attr);
