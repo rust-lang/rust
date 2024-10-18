@@ -356,6 +356,7 @@
 #![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
 #![feature(ptr_mask)]
+#![feature(ptr_metadata)]
 #![feature(random)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
