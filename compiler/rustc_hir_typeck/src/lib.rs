@@ -419,7 +419,7 @@ fn report_unexpected_variant_res(
                 }
             }
 
-            err.multipart_suggestion_verbose(descr, suggestion, Applicability::MaybeIncorrect);
+            err.multipart_suggestion_verbose(descr, suggestion, Applicability::HasPlaceholders);
             err
         }
         Res::Def(DefKind::Variant, _) if expr.is_none() => {
