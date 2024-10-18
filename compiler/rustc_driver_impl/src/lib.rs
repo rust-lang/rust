@@ -428,6 +428,16 @@ fn run_compiler(
             // Make sure name resolution and macro expansion is run.
             queries.global_ctxt()?.enter(|tcx| tcx.resolver_for_lowering());
 
+            // TODO: DECIDE where to put metrics in dump
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                compiler.enter(|queries| -> Result<(), ErrorGuaranteed> {
+                    queries
+                        .global_ctxt()?
+                        .enter(|tcxt| tcxt.features().dump_feature_usage_metrics(metrics_dir));
+                    Ok(())
+                })?;
+            }
+
             if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
