@@ -16,8 +16,9 @@ error: expected item, found `"\u\"`
   --> $DIR/issue-62913.rs:1:1
    |
 LL | "\u\"
-   | ^^^^^^ expected item
+   | ^^^^^^ unexpected expression
    |
+   = help: consider putting it inside a function: fn foo() { "\u\" }
    = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
 
 error: aborting due to 3 previous errors
