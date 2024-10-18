@@ -151,6 +151,48 @@ impl Command {
         self
     }
 
+    /// Set an auxiliary stream passed to the process, besides the stdio streams.
+    /// Use with caution - ideally, only set one aux fd; if there are multiple,
+    /// their old `fd` may overlap with another's `newfd`, and may break.
+    //FIXME: If more than 1 auxiliary file descriptor is needed, this function
+    // should be rewritten.
+    #[cfg(unix)]
+    pub fn set_aux_fd<F: Into<std::os::fd::OwnedFd>>(
+        &mut self,
+        newfd: std::os::fd::RawFd,
+        fd: F,
+    ) -> &mut Self {
+        use std::os::fd::AsRawFd;
+        use std::os::unix::process::CommandExt;
+
+        let cvt = |x| if x == -1 { Err(std::io::Error::last_os_error()) } else { Ok(()) };
+
+        let fd = fd.into();
+        if fd.as_raw_fd() == newfd {
+            // if the new file descriptor is already the same as fd, just turn off FD_CLOEXEC
+            // SAFETY: io-safe: fd is already owned.
+            cvt(unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFD, 0) })
+                .expect("disabling CLOEXEC failed");
+            // The pre_exec function should be unconditionally set, since it captures
+            // `fd`, and this ensures that it stays open until the fork
+        }
+        let pre_exec = move || {
+            if fd.as_raw_fd() != newfd {
+                // SAFETY: io-"safe": newfd is not necessarily an unused fd.
+                // However, we're ensuring that newfd will now refer to the same file descriptor
+                // as fd, which is safe as long as we manage the lifecycle of both descriptors
+                // correctly. This operation will replace the file descriptor referred to by newfd
+                // with the one from fd, allowing for shared access to the same underlying file or
+                // resource.
+                cvt(unsafe { libc::dup2(fd.as_raw_fd(), newfd) })?;
+            }
+            Ok(())
+        };
+        // SAFETY: dup2 is pre-exec-safe
+        unsafe { self.cmd.pre_exec(pre_exec) };
+        self
+    }
+
     /// Run the constructed command and assert that it is successfully run.
     ///
     /// By default, std{in,out,err} are [`Stdio::piped()`].
