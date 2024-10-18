@@ -42,6 +42,7 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
+use rustc_attr::MaybeParsedAttribute;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -843,55 +844,61 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if attrs.is_empty() {
             &[]
         } else {
+            let lowered_attrs = self.lower_attrs_iter(attrs);
+
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
-            let ret = self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)));
+            let ret = self.arena.alloc_from_iter(lowered_attrs);
             debug_assert!(!ret.is_empty());
             self.attrs.insert(id.local_id, ret);
             ret
         }
     }
 
-    fn lower_attr(&self, attr: &Attribute) -> hir::Attribute {
-        // if let Some(parsed_attr) = rustc_attr(attr) {
-        //     return hir::Attribute {
-        //         kind: hir::AttributeKind::Parsed(parsed_attr),
-        //         id: attr.id,
-        //         style: attr.style,
-        //         span: self.lower_span(attr.span),
-        //
-        //         unsafety: self.lower_safety(normal.item.unsafety, hir::Safety::Safe),
-        //     };
-        // }
+    fn lower_attrs_iter<'x>(
+        &'x self,
+        attrs: &'x [Attribute],
+    ) -> impl Iterator<Item = hir::Attribute> + use<'x, 'hir> {
+        let maybe_parsed = rustc_attr::parse_attribute_list(self.dcx(), attrs);
+        let attrs_with_kinds = maybe_parsed.map(|(maybe_parsed, attr)| {
+            (attr, match maybe_parsed {
+                MaybeParsedAttribute::Parsed(p) => hir::AttributeKind::Parsed(p),
+                MaybeParsedAttribute::MustRemainUnparsed(n) => self.lower_normal_attr(n),
+            })
+        });
 
+        attrs_with_kinds.map(|(attr, kind)| self.lower_attr(attr, kind))
+    }
+
+    fn lower_normal_attr(&self, normal: &NormalAttr) -> hir::AttributeKind {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
         // Tokens are also not needed after macro expansion and parsing.
-        let (kind, unsafety) = match attr.kind {
-            AttrKind::Normal(ref normal) => (
-                hir::AttributeKind::Unparsed(Box::new(hir::AttrItem {
-                    path: hir::AttrPath {
-                        segments: normal
-                            .item
-                            .path
-                            .segments
-                            .iter()
-                            .map(|i| i.ident)
-                            .collect::<Vec<_>>()
-                            .into_boxed_slice(),
-                        span: normal.item.path.span,
-                    },
-                    args: self.lower_attr_args(&normal.item.args),
-                })),
-                self.lower_safety(normal.item.unsafety, hir::Safety::Safe),
-            ),
-            AttrKind::DocComment(comment_kind, data) => (
-                hir::AttributeKind::Parsed(rustc_hir::ParsedAttributeKind::DocComment(
-                    comment_kind,
-                    data,
-                )),
-                hir::Safety::Safe,
-            ),
+        hir::AttributeKind::Unparsed(Box::new(hir::AttrItem {
+            path: hir::AttrPath {
+                segments: normal
+                    .item
+                    .path
+                    .segments
+                    .iter()
+                    .map(|i| i.ident)
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+                span: normal.item.path.span,
+            },
+            args: self.lower_attr_args(&normal.item.args),
+        }))
+    }
+
+    fn lower_attr(&self, attr: &Attribute, kind: hir::AttributeKind) -> hir::Attribute {
+        // In the AST, safety is only stored for non doc comments. However, since in the hir,
+        // doc comments are simply a normal instance of a "parsed attribute" safety is stored
+        // externally, for every attribute. This may costs marginally more storage, but it makes
+        // code that deals with attributes much simpler. Here we say that all doc comments are safe.
+        let unsafety = if let AttrKind::Normal(ref n) = attr.kind {
+            self.lower_safety(n.item.unsafety, hir::Safety::Safe)
+        } else {
+            hir::Safety::Safe
         };
 
         hir::Attribute {
@@ -899,7 +906,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             id: attr.id,
             style: attr.style,
             span: self.lower_span(attr.span),
-
             unsafety,
         }
     }

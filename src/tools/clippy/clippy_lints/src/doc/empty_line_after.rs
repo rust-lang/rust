@@ -5,7 +5,7 @@ use itertools::Itertools;
 use rustc_ast::AttrStyle;
 use rustc_ast::token::CommentKind;
 use rustc_errors::{Applicability, Diag, SuggestionStyle};
-use rustc_hir::{AttrKind, Attribute, ItemKind, Node};
+use rustc_hir::{Attribute, AttributeKind, ItemKind, Node, ParsedAttributeKind};
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
 use rustc_span::{BytePos, ExpnKind, InnerSpan, Span, SpanData};
@@ -73,8 +73,8 @@ impl Stop {
         Some(Self {
             span: attr.span,
             kind: match attr.kind {
-                AttrKind::Normal(_) => StopKind::Attr,
-                AttrKind::DocComment(comment_kind, _) => StopKind::Doc(comment_kind),
+                AttributeKind::Parsed(ParsedAttributeKind::DocComment(comment_kind, _)) => StopKind::Doc(comment_kind),
+                _ => StopKind::Attr,
             },
             first: file.lookup_line(file.relative_position(lo))?,
             last: file.lookup_line(file.relative_position(hi))?,

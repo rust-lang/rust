@@ -2,14 +2,16 @@ use rustc_ast::{self as ast, MetaItemInner};
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrId, AttrStyle, DelimArgs, MetaItemLit};
-use smallvec::SmallVec;
-use rustc_span::{Symbol, sym, symbol::Ident, Span};
-use thin_vec::ThinVec;
-use crate::hir::Safety;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol, sym};
+use smallvec::SmallVec;
+use thin_vec::ThinVec;
+
 use crate::ItemLocalId;
+use crate::hir::Safety;
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub enum DiagnosticAttribute {
@@ -19,13 +21,13 @@ pub enum DiagnosticAttribute {
     // tidy-alphabetical-end
 }
 
-// TODO(jdonszelmann): guidelines for when an attribute should be "rustc".
+// FIXME(jdonszelmann): guidelines for when an attribute should be "rustc".
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub enum RustcAttribute {
     // tidy-alphabetical-startt
     AllowConstFnUnstable,
-    AllowIncoherentImpl,
     AllowedThroughUnstableModules,
+    AllowIncoherentImpl,
     Coinductive,
     Confusables,
     ConstStable,
@@ -54,14 +56,14 @@ pub enum RustcAttribute {
 /// These are kept around after the AST, into the HIR and further on.
 ///
 /// The word parsed could be a little misleading here, because the parser already parses
-/// attributes early on. However, the result, an [`ast::Attribute`](rustc_ast::Attribute)
+/// attributes early on. However, the result, an [`ast::Attribute`]
 /// is only parsed at a high level, still containing a token stream in many cases. That is
 /// because the structure of the contents varies from attribute to attribute.
 /// With a parsed attribute I mean that each attribute is processed individually into a
 /// final structure, which on-site (the place where the attribute is useful for, think the
 /// the place where `must_use` is checked) little to no extra parsing or validating needs to
 /// happen.
-// TODO(jdonszelmann): rename to AttributeKind once hir::AttributeKind is dissolved
+// FIXME(jdonszelmann): rename to AttributeKind once hir::AttributeKind is dissolved
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub enum ParsedAttributeKind {
     // tidy-alphabetical-start
@@ -101,10 +103,10 @@ pub enum ParsedAttributeKind {
     InstructionSet, // broken on stable!!!
     Lang,
     Link,
+    Linkage,
     LinkName,
     LinkOrdinal,
     LinkSection,
-    Linkage,
     MacroExport,
     MacroUse,
     Marker,
@@ -115,8 +117,8 @@ pub enum ParsedAttributeKind {
     NoImplicitPrelude,
     NoLink,
     NoMangle,
-    NoSanitize,
     NonExhaustive,
+    NoSanitize,
     OmitGdbPrettyPrinterSection, // FIXME(omit_gdb_pretty_printer_section)
     PanicHandler,
     PatchableFunctionEntry, // FIXME(patchable_function_entry)
@@ -221,7 +223,7 @@ impl Attribute {
 // All paths through parsed are set to None because AttributeExt is made for parsing.
 // i.e. if that's the thing you're still doing on a parsed attribute then you're doing
 // something wrong.
-// TODO(jdonszelmann): remove when all attributes are parsed together
+// FIXME(jdonszelmann): remove when all attributes are parsed together
 impl AttributeExt for Attribute {
     fn id(&self) -> AttrId {
         self.id
@@ -304,7 +306,9 @@ impl AttributeExt for Attribute {
     }
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         match &self.kind {
-            AttributeKind::Parsed(ParsedAttributeKind::DocComment(kind, data)) => Some((*data, *kind)),
+            AttributeKind::Parsed(ParsedAttributeKind::DocComment(kind, data)) => {
+                Some((*data, *kind))
+            }
             AttributeKind::Unparsed(_) if self.name_or_empty() == sym::doc => {
                 self.value_str().map(|s| (s, CommentKind::Line))
             }
@@ -397,7 +401,7 @@ pub struct AttributeMap<'tcx> {
     pub opt_hash: Option<Fingerprint>,
 }
 
-// TODO: add more functions here to search through attributes
+// FIXME(jdonszelmann): add more functions here to search through attributes
 impl<'tcx> AttributeMap<'tcx> {
     pub const EMPTY: &'static AttributeMap<'static> =
         &AttributeMap { map: SortedMap::new(), opt_hash: Some(Fingerprint::ZERO) };

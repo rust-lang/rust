@@ -19,7 +19,7 @@ use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Attribute, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -595,6 +595,13 @@ impl_lint_pass!(Documentation => [
     DOC_INCLUDE_WITHOUT_CFG,
 ]);
 
+
+impl EarlyLintPass for Documentation {
+    fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
+        include_in_doc_without_cfg::check(cx, attrs);
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
@@ -722,7 +729,6 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
-    include_in_doc_without_cfg::check(cx, attrs);
     if suspicious_doc_comments::check(cx, attrs) || empty_line_after::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }

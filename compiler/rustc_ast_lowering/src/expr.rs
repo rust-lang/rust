@@ -78,10 +78,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.attrs.insert(
                             ex.hir_id.local_id,
                             &*self.arena.alloc_from_iter(
-                                e.attrs
-                                    .iter()
-                                    .map(|a| self.lower_attr(a))
-                                    .chain(old_attrs.iter().cloned()),
+                                self.lower_attrs_iter(&e.attrs).chain(old_attrs.iter().cloned()),
                             ),
                         );
                     }

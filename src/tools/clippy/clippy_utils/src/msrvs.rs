@@ -1,5 +1,5 @@
-use rustc_attr::AttributeExt;
 use rustc_attr::parse_version;
+use rustc_ast::attr::AttributeExt;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::{Symbol, sym};
 use serde::Deserialize;

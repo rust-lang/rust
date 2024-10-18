@@ -8,13 +8,13 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{SourceFile, Span, Symbol};
 
 #[derive(Hash, PartialEq, Eq)]
-enum SimpleAttrKind {
+enum SimpleAttributeKind {
     Doc,
     /// A normal attribute, with its name symbols.
     Normal(Vec<Symbol>),
 }
 
-impl From<&AttrKind> for SimpleAttrKind {
+impl From<&AttrKind> for SimpleAttributeKind {
     fn from(value: &AttrKind) -> Self {
         match value {
             AttrKind::Normal(attr) => {
@@ -33,8 +33,8 @@ impl From<&AttrKind> for SimpleAttrKind {
 }
 
 pub(super) fn check(cx: &EarlyContext<'_>, item_span: Span, attrs: &[Attribute]) {
-    let mut inner_attr_kind: FxHashSet<SimpleAttrKind> = FxHashSet::default();
-    let mut outer_attr_kind: FxHashSet<SimpleAttrKind> = FxHashSet::default();
+    let mut inner_attr_kind: FxHashSet<SimpleAttributeKind> = FxHashSet::default();
+    let mut outer_attr_kind: FxHashSet<SimpleAttributeKind> = FxHashSet::default();
 
     let source_map = cx.sess().source_map();
     let item_src = source_map.lookup_source_file(item_span.lo());
@@ -44,7 +44,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item_span: Span, attrs: &[Attribute])
             continue;
         }
 
-        let kind: SimpleAttrKind = (&attr.kind).into();
+        let kind: SimpleAttributeKind = (&attr.kind).into();
         match attr.style {
             AttrStyle::Inner => {
                 if outer_attr_kind.contains(&kind) {

@@ -581,8 +581,9 @@ pub(crate) fn attrs_have_doc_flag<'a>(
     mut attrs: impl Iterator<Item = &'a hir::Attribute>,
     flag: Symbol,
 ) -> bool {
-    attrs
-        .any(|attr| attr.meta_item_list().is_some_and(|l| rustc_attr::list_contains_name(&l, flag)))
+    attrs.any(|attr| {
+        attr.meta_item_list().is_some_and(|l| rustc_ast::attr::list_contains_name(&l, flag))
+    })
 }
 
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links
