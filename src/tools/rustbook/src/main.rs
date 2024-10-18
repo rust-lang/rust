@@ -67,7 +67,7 @@ fn main() {
         )
         .get_matches();
 
-    // Check which subcomamnd the user ran...
+    // Check which subcommand the user ran...
     match matches.subcommand() {
         Some(("build", sub_matches)) => {
             if let Err(e) = build(sub_matches) {
