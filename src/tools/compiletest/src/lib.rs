@@ -464,9 +464,7 @@ pub fn run_tests(config: Arc<Config>) {
     // structure for each test (or each revision of a multi-revision test).
     let mut tests = Vec::new();
     for c in configs {
-        let mut found_paths = HashSet::new();
-        make_tests(c, &mut tests, &mut found_paths);
-        check_overlapping_tests(&found_paths);
+        tests.extend(collect_and_make_tests(c));
     }
 
     tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
@@ -550,27 +548,26 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 /// This always inspects _all_ test files in the suite (e.g. all 17k+ ui tests),
 /// regardless of whether any filters/tests were specified on the command-line,
 /// because filtering is handled later by libtest.
-pub fn make_tests(
-    config: Arc<Config>,
-    tests: &mut Vec<test::TestDescAndFn>,
-    found_paths: &mut HashSet<PathBuf>,
-) {
+pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(&config);
     let modified_tests = modified_tests(&config, &config.src_base).unwrap_or_else(|err| {
         panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
     });
-
     let cache = HeadersCache::load(&config);
+
+    let mut tests = vec![];
+    let mut found_paths = HashSet::new();
     let mut poisoned = false;
+
     collect_tests_from_dir(
         config.clone(),
         &cache,
         &config.src_base,
         &PathBuf::new(),
         &inputs,
-        tests,
-        found_paths,
+        &mut tests,
+        &mut found_paths,
         &modified_tests,
         &mut poisoned,
     )
@@ -582,6 +579,10 @@ pub fn make_tests(
         eprintln!();
         panic!("there are errors in tests");
     }
+
+    check_overlapping_tests(&found_paths);
+
+    tests
 }
 
 /// Returns a stamp constructed from input files common to all test cases.
