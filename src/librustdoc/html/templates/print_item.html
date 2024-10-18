@@ -26,7 +26,7 @@
         {% match src_href %}
             {% when Some with (href) %}
                 {% if !stability_since_raw.is_empty() +%} · {%+ endif %}
-                <a class="src" href="{{href|safe}}">source</a> {#+ #}
+                <a class="src" href="{{href|safe}}">Source</a> {#+ #}
             {% else %}
         {% endmatch %}
     </span> {# #}
