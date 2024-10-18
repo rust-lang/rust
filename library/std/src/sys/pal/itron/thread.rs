@@ -205,6 +205,14 @@ impl Thread {
         }
     }
 
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            sleep(delay);
+        }
+    }
+
     pub fn join(self) {
         // Safety: `ThreadInner` is alive at this point
         let inner = unsafe { self.p_inner.as_ref() };
