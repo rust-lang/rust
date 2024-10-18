@@ -3,8 +3,8 @@ use std::{env, fs};
 
 use build_helper::git::get_closest_merge_commit;
 
-use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
+use crate::core::build_steps::{compile, doc};
 use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -60,6 +60,14 @@ impl Builder<'_> {
     }
 }
 
+pub enum CompileStep {
+    Std(TargetSelection),
+    Rustc(TargetSelection, Option<u32>),
+    Cargo(TargetSelection),
+    RustFmt(TargetSelection),
+    Clippy(TargetSelection),
+}
+
 impl Step for ToolBuild {
     type Output = PathBuf;
 
@@ -76,13 +84,14 @@ impl Step for ToolBuild {
         let target = self.target;
         let mut tool = self.tool;
         let path = self.path;
+        let mut steps = vec![];
 
         match self.mode {
             Mode::ToolRustc => {
-                builder.ensure(compile::Std::new(compiler, compiler.host));
-                builder.ensure(compile::Rustc::new(compiler, target));
+                steps.push(CompileStep::Std(compiler.host));
+                steps.push(CompileStep::Rustc(target, None));
             }
-            Mode::ToolStd => builder.ensure(compile::Std::new(compiler, target)),
+            Mode::ToolStd => steps.push(CompileStep::Std(target)),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
         }
@@ -96,7 +105,9 @@ impl Step for ToolBuild {
             path,
             self.source_type,
             &self.extra_features,
+            steps,
         );
+
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
@@ -142,8 +153,37 @@ pub fn prepare_tool_cargo(
     path: &str,
     source_type: SourceType,
     extra_features: &[String],
+    steps: Vec<CompileStep>,
 ) -> CargoCommand {
     let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
+
+    for s in steps {
+        match s {
+            CompileStep::Std(target) => {
+                builder.ensure(compile::Std::new(compiler, target));
+            }
+            CompileStep::Rustc(target, stage) => {
+                if let Some(s) = stage {
+                    builder.ensure(doc::Rustc::new(s, target, builder));
+                } else {
+                    builder.ensure(compile::Rustc::new(compiler, target));
+                }
+            }
+            CompileStep::Cargo(target) => {
+                builder.ensure(Cargo { compiler, target });
+            }
+            CompileStep::RustFmt(target) => {
+                builder.ensure(Rustfmt {
+                    compiler,
+                    target,
+                    extra_features: extra_features.to_vec(),
+                });
+            }
+            CompileStep::Clippy(target) => {
+                builder.ensure(Clippy { compiler, target, extra_features: Vec::new() });
+            }
+        }
+    }
 
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
@@ -642,10 +682,10 @@ impl Step for Rustdoc {
 
         // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
         // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
-        // it.
-        builder.ensure(compile::Std::new(build_compiler, target_compiler.host));
-        builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
-
+        let steps = vec![
+            CompileStep::Std(target_compiler.host),
+            CompileStep::Rustc(target_compiler.host, None),
+        ];
         // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
         // compiler libraries, ...) are built. Rustdoc does not require the presence of any
         // libraries within sysroot_libdir (i.e., rustlib), though doctests may want it (since
@@ -668,6 +708,7 @@ impl Step for Rustdoc {
             "src/tools/rustdoc",
             SourceType::InTree,
             features.as_slice(),
+            steps,
         );
 
         let _guard = builder.msg_tool(
@@ -888,11 +929,11 @@ impl Step for LlvmBitcodeLinker {
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let bin_name = "llvm-bitcode-linker";
-
+        let mut steps = vec![];
         // If enabled, use ci-rustc and skip building the in-tree compiler.
         if !builder.download_rustc() {
-            builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
-            builder.ensure(compile::Rustc::new(self.compiler, self.target));
+            steps.push(CompileStep::Std(self.compiler.host));
+            steps.push(CompileStep::Rustc(self.target, None));
         }
 
         let cargo = prepare_tool_cargo(
@@ -904,6 +945,7 @@ impl Step for LlvmBitcodeLinker {
             "src/tools/llvm-bitcode-linker",
             SourceType::InTree,
             &self.extra_features,
+            steps,
         );
 
         let _guard = builder.msg_tool(

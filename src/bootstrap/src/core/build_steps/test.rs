@@ -11,7 +11,7 @@ use clap_complete::shells;
 
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
-use crate::core::build_steps::tool::{self, SourceType, Tool};
+use crate::core::build_steps::tool::{self, CompileStep, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
@@ -71,6 +71,7 @@ impl Step for CrateBootstrap {
             path,
             SourceType::InTree,
             &[],
+            vec![],
         );
         let crate_name = path.rsplit_once('/').unwrap().1;
         run_cargo_test(cargo, &[], &[], crate_name, crate_name, compiler, bootstrap_host, builder);
@@ -122,6 +123,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
             "src/tools/linkchecker",
             SourceType::InTree,
             &[],
+            vec![],
         );
         run_cargo_test(
             cargo,
@@ -277,7 +279,6 @@ impl Step for Cargo {
     fn run(self, builder: &Builder<'_>) {
         let compiler = builder.compiler(self.stage, self.host);
 
-        builder.ensure(tool::Cargo { compiler, target: self.host });
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -287,6 +288,7 @@ impl Step for Cargo {
             "src/tools/cargo",
             SourceType::Submodule,
             &[],
+            vec![CompileStep::Cargo(self.host)],
         );
 
         // NOTE: can't use `run_cargo_test` because we need to overwrite `PATH`
@@ -341,10 +343,6 @@ impl Step for RustAnalyzer {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
-        // but we do need the standard library to be present.
-        builder.ensure(compile::Rustc::new(compiler, host));
-
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
         // `proc-macro-srv` tests
@@ -358,6 +356,9 @@ impl Step for RustAnalyzer {
             crate_path,
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
+            // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
+            // but we do need the standard library to be present.
+            vec![CompileStep::Rustc(host, None)],
         );
         cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
@@ -399,8 +400,6 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() });
-
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -410,6 +409,7 @@ impl Step for Rustfmt {
             "src/tools/rustfmt",
             SourceType::InTree,
             &[],
+            vec![CompileStep::RustFmt(self.host)],
         );
 
         let dir = testdir(builder, compiler.host);
@@ -516,7 +516,6 @@ impl Step for Miri {
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
         let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
-        builder.ensure(compile::Std::new(target_compiler, host));
         let host_sysroot = builder.sysroot(target_compiler);
 
         // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
@@ -540,6 +539,7 @@ impl Step for Miri {
             "src/tools/miri",
             SourceType::InTree,
             &[],
+            vec![CompileStep::Std(host)],
         );
 
         cargo.add_rustc_lib_path(builder);
@@ -630,6 +630,7 @@ impl Step for CargoMiri {
             "src/tools/miri/test-cargo-miri",
             SourceType::Submodule,
             &[],
+            vec![],
         );
 
         // We're not using `prepare_cargo_test` so we have to do this ourselves.
@@ -676,9 +677,6 @@ impl Step for CompiletestTest {
         let host = self.host;
         let compiler = builder.compiler(builder.top_stage, host);
 
-        // We need `ToolStd` for the locally-built sysroot because
-        // compiletest uses unstable features of the `test` crate.
-        builder.ensure(compile::Std::new(compiler, host));
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -690,6 +688,9 @@ impl Step for CompiletestTest {
             "src/tools/compiletest",
             SourceType::InTree,
             &[],
+            // We need `ToolStd` for the locally-built sysroot because
+            // compiletest uses unstable features of the `test` crate.
+            vec![CompileStep::Std(host)],
         );
         cargo.allow_features("test");
         run_cargo_test(
@@ -730,7 +731,6 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -740,6 +740,7 @@ impl Step for Clippy {
             "src/tools/clippy",
             SourceType::InTree,
             &[],
+            vec![CompileStep::Clippy(self.host)],
         );
 
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
@@ -1274,8 +1275,6 @@ impl Step for RunMakeSupport {
 
     /// Builds run-make-support and returns the path to the resulting rlib.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(compile::Std::new(self.compiler, self.target));
-
         let cargo = tool::prepare_tool_cargo(
             builder,
             self.compiler,
@@ -1285,6 +1284,7 @@ impl Step for RunMakeSupport {
             "src/tools/run-make-support",
             SourceType::InTree,
             &[],
+            vec![CompileStep::Std(self.target)],
         );
 
         cargo.into_cmd().run(builder);
@@ -1329,6 +1329,7 @@ impl Step for CrateRunMakeSupport {
             "src/tools/run-make-support",
             SourceType::InTree,
             &[],
+            vec![],
         );
         cargo.allow_features("test");
         run_cargo_test(
@@ -1375,6 +1376,7 @@ impl Step for CrateBuildHelper {
             "src/tools/build_helper",
             SourceType::InTree,
             &[],
+            vec![],
         );
         cargo.allow_features("test");
         run_cargo_test(
@@ -2762,8 +2764,9 @@ impl Step for CrateRustdoc {
         // using `download-rustc`, the rustc_private artifacts may be in a *different sysroot* from
         // the target rustdoc (`ci-rustc-sysroot` vs `stage2`). In that case, we need to ensure this
         // explicitly to make sure it ends up in the stage2 sysroot.
-        builder.ensure(compile::Std::new(compiler, target));
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let mut steps = vec![];
+        steps.push(CompileStep::Std(target));
+        steps.push(CompileStep::Rustc(target, None));
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -2774,6 +2777,7 @@ impl Step for CrateRustdoc {
             "src/tools/rustdoc",
             SourceType::InTree,
             &[],
+            steps,
         );
         if self.host.contains("musl") {
             cargo.arg("'-Ctarget-feature=-crt-static'");
@@ -2855,7 +2859,6 @@ impl Step for CrateRustdocJsonTypes {
         // `compiler`, then it would cause rustdoc to be built *again*, which
         // isn't really necessary.
         let compiler = builder.compiler_for(builder.top_stage, target, target);
-        builder.ensure(compile::Rustc::new(compiler, target));
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -2866,6 +2869,7 @@ impl Step for CrateRustdocJsonTypes {
             "src/rustdoc-json-types",
             SourceType::InTree,
             &[],
+            vec![CompileStep::Rustc(target, None)],
         );
 
         // FIXME: this looks very wrong, libtest doesn't accept `-C` arguments and the quotes are fishy.
@@ -3090,7 +3094,6 @@ impl Step for TierCheck {
 
     /// Tests the Platform Support page in the rustc book.
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             self.compiler,
@@ -3100,6 +3103,7 @@ impl Step for TierCheck {
             "src/tools/tier-check",
             SourceType::InTree,
             &[],
+            vec![CompileStep::Std(self.compiler.host)],
         );
         cargo.arg(builder.src.join("src/doc/rustc/src/platform-support.md"));
         cargo.arg(builder.rustc(self.compiler));
@@ -3172,6 +3176,7 @@ impl Step for RustInstaller {
             "src/tools/rust-installer",
             SourceType::InTree,
             &[],
+            vec![],
         );
 
         let _guard = builder.msg(
@@ -3549,8 +3554,9 @@ impl Step for TestFloatParse {
         let path = self.path.to_str().unwrap();
         let crate_name = self.path.components().last().unwrap().as_os_str().to_str().unwrap();
 
+        let mut steps = vec![];
         if !builder.download_rustc() {
-            builder.ensure(compile::Std::new(compiler, self.host));
+            steps.push(CompileStep::Std(self.host));
         }
 
         // Run any unit tests in the crate
@@ -3563,6 +3569,7 @@ impl Step for TestFloatParse {
             path,
             SourceType::InTree,
             &[],
+            steps,
         );
 
         run_cargo_test(
@@ -3586,6 +3593,7 @@ impl Step for TestFloatParse {
             path,
             SourceType::InTree,
             &[],
+            vec![],
         );
 
         cargo_run.arg("--");
