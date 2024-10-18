@@ -1,6 +1,7 @@
 //! Module that contains skip related stuffs.
 
 use rustc_ast::ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use std::collections::HashSet;
 

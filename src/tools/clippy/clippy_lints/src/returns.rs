@@ -8,6 +8,7 @@ use clippy_utils::{
 };
 use core::ops::ControlFlow;
 use rustc_ast::MetaItemInner;
+use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
 use rustc_hir::intravisit::FnKind;

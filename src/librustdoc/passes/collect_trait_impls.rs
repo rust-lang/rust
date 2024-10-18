@@ -12,6 +12,7 @@ use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
+use crate::rustc_attr::AttributeExt;
 use crate::visit::DocVisitor;
 
 pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {

@@ -1,6 +1,7 @@
 use core::ops::ControlFlow;
 
 use rustc_ast as ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::visit::visit_opt;
 use rustc_ast::{EnumDef, VariantData, attr};
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};

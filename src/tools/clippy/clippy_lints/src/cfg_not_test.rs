@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::MetaItemInner;
+use rustc_ast::attr::AttributeExt;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
 

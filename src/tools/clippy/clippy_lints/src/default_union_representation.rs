@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_ast::attr::AttributeExt;
 use rustc_hir::{HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;

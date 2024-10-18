@@ -1,3 +1,4 @@
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::captures::Captures;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{CounterId, CoverageKind};

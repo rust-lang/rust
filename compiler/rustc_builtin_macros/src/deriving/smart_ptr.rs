@@ -1,5 +1,6 @@
 use ast::HasAttrs;
 use ast::ptr::P;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{

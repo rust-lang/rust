@@ -19,7 +19,7 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::Cow;
-use std::{cmp, fmt, mem};
+use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
@@ -1684,21 +1684,12 @@ pub enum AttrArgs {
     /// Delimited arguments: `#[attr()/[]/{}]`.
     Delimited(DelimArgs),
     /// Arguments of a key-value attribute: `#[attr = "value"]`.
-    Eq(
+    Eq {
         /// Span of the `=` token.
-        Span,
+        eq_span: Span,
         /// The "value".
-        AttrArgsEq,
-    ),
-}
-
-// The RHS of an `AttrArgs::Eq` starts out as an expression. Once macro
-// expansion is completed, all cases end up either as a meta item literal,
-// which is the form used after lowering to HIR, or as an error.
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub enum AttrArgsEq {
-    Ast(P<Expr>),
-    Hir(MetaItemLit),
+        value: P<Expr>,
+    },
 }
 
 impl AttrArgs {
@@ -1706,10 +1697,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => None,
             AttrArgs::Delimited(args) => Some(args.dspan.entire()),
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => Some(eq_span.to(expr.span)),
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when getting span: {:?}", lit);
-            }
+            AttrArgs::Eq { eq_span, value } => Some(eq_span.to(value.span)),
         }
     }
 
@@ -1719,30 +1707,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => TokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => TokenStream::from_ast(expr),
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when getting inner tokens: {:?}", lit)
-            }
-        }
-    }
-}
-
-impl<CTX> HashStable<CTX> for AttrArgs
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(ctx, hasher);
-        match self {
-            AttrArgs::Empty => {}
-            AttrArgs::Delimited(args) => args.hash_stable(ctx, hasher),
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => {
-                unreachable!("hash_stable {:?}", expr);
-            }
-            AttrArgs::Eq(eq_span, AttrArgsEq::Hir(lit)) => {
-                eq_span.hash_stable(ctx, hasher);
-                lit.hash_stable(ctx, hasher);
-            }
+            AttrArgs::Eq { eq_span: _, value } => TokenStream::from_ast(value),
         }
     }
 }
@@ -2892,7 +2857,7 @@ pub enum AttrStyle {
 }
 
 /// A list of attributes.
-pub type AttrVec = ThinVec<Attribute>;
+pub type AttrVec<A = Attribute> = ThinVec<A>;
 
 /// A syntax-level representation of an attribute.
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2937,7 +2902,7 @@ impl NormalAttr {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
@@ -3078,8 +3043,8 @@ impl VariantData {
 
 /// An item definition.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Item<K = ItemKind> {
-    pub attrs: AttrVec,
+pub struct Item<K = ItemKind, A = Attribute> {
+    pub attrs: AttrVec<A>,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,

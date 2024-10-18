@@ -1,20 +1,21 @@
-use super::{Attribute, SHOULD_PANIC_WITHOUT_EXPECT};
+use super::SHOULD_PANIC_WITHOUT_EXPECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind};
 use rustc_errors::Applicability;
+use rustc_hir::{AttrArgs, AttrKind, Attribute};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
 pub(super) fn check(cx: &LateContext<'_>, attr: &Attribute) {
     if let AttrKind::Normal(normal_attr) = &attr.kind {
-        if let AttrArgs::Eq(_, AttrArgsEq::Hir(_)) = &normal_attr.item.args {
+        if let AttrArgs::Eq { .. } = &normal_attr.args {
             // `#[should_panic = ".."]` found, good
             return;
         }
 
-        if let AttrArgs::Delimited(args) = &normal_attr.item.args
+        if let AttrArgs::Delimited(args) = &normal_attr.args
             && let mut tt_iter = args.tokens.trees()
             && let Some(TokenTree::Token(
                 Token {
@@ -44,7 +45,7 @@ pub(super) fn check(cx: &LateContext<'_>, attr: &Attribute) {
         span_lint_and_sugg(
             cx,
             SHOULD_PANIC_WITHOUT_EXPECT,
-            attr.span,
+            attr.span(),
             "#[should_panic] attribute without a reason",
             "consider specifying the expected panic",
             "#[should_panic(expected = /* panic message */)]".into(),

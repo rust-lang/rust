@@ -1,6 +1,7 @@
 use std::iter::once;
 use std::path::{self, Path, PathBuf};
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr::P;
 use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans, token};
 use rustc_errors::{Diag, ErrorGuaranteed};
