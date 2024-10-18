@@ -42,6 +42,7 @@ pub(super) fn check<'tcx>(
     let mut loop_visitor = LoopVisitor {
         cx,
         label,
+        inner_labels: label.into_iter().collect(),
         is_finite: false,
         loop_depth: 0,
     };
@@ -93,6 +94,7 @@ fn get_parent_fn_ret_ty<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option
 struct LoopVisitor<'hir, 'tcx> {
     cx: &'hir LateContext<'tcx>,
     label: Option<Label>,
+    inner_labels: Vec<Label>,
     loop_depth: usize,
     is_finite: bool,
 }
@@ -108,11 +110,24 @@ impl<'hir> Visitor<'hir> for LoopVisitor<'hir, '_> {
                     self.is_finite = true;
                 }
             },
+            ExprKind::Continue(hir::Destination { label, .. }) => {
+                // Check whether we are leaving this loop by continuing into an outer loop
+                // whose label we did not encounter.
+                if label.is_some_and(|label| !self.inner_labels.contains(&label)) {
+                    self.is_finite = true;
+                }
+            },
             ExprKind::Ret(..) => self.is_finite = true,
-            ExprKind::Loop(..) => {
+            ExprKind::Loop(_, label, _, _) => {
+                if let Some(label) = label {
+                    self.inner_labels.push(*label);
+                }
                 self.loop_depth += 1;
                 walk_expr(self, ex);
-                self.loop_depth = self.loop_depth.saturating_sub(1);
+                self.loop_depth -= 1;
+                if label.is_some() {
+                    self.inner_labels.pop();
+                }
             },
             _ => {
                 // Calls to a function that never return

@@ -6,6 +6,7 @@ use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, QPath, TyKind};
 use rustc_lint::LateContext;
+use rustc_span::edition::Edition::Edition2021;
 use rustc_span::{Span, Symbol, sym};
 
 use super::MANUAL_C_STR_LITERALS;
@@ -25,6 +26,7 @@ pub(super) fn check_as_ptr<'tcx>(
 ) {
     if let ExprKind::Lit(lit) = receiver.kind
         && let LitKind::ByteStr(_, StrStyle::Cooked) | LitKind::Str(_, StrStyle::Cooked) = lit.node
+        && cx.tcx.sess.edition() >= Edition2021
         && let casts_removed = peel_ptr_cast_ancestors(cx, expr)
         && !get_parent_expr(cx, casts_removed).is_some_and(
             |parent| matches!(parent.kind, ExprKind::Call(func, _) if is_c_str_function(cx, func).is_some()),
@@ -66,6 +68,7 @@ fn is_c_str_function(cx: &LateContext<'_>, func: &Expr<'_>) -> Option<Symbol> {
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args: &[Expr<'_>], msrv: &Msrv) {
     if let Some(fn_name) = is_c_str_function(cx, func)
         && let [arg] = args
+        && cx.tcx.sess.edition() >= Edition2021
         && msrv.meets(msrvs::C_STR_LITERALS)
     {
         match fn_name.as_str() {
@@ -84,7 +87,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args
 
 /// Checks `CStr::from_ptr(b"foo\0".as_ptr().cast())`
 fn check_from_ptr(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) {
-    if let ExprKind::MethodCall(method, lit, ..) = peel_ptr_cast(arg).kind
+    if let ExprKind::MethodCall(method, lit, [], _) = peel_ptr_cast(arg).kind
         && method.ident.name == sym::as_ptr
         && !lit.span.from_expansion()
         && let ExprKind::Lit(lit) = lit.kind

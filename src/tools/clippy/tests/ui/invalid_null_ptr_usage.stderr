@@ -2,7 +2,7 @@ error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:3:59
    |
 LL |         let _slice: &[usize] = std::slice::from_raw_parts(std::ptr::null(), 0);
-   |                                                           ^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                                           ^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
    |
    = note: `#[deny(clippy::invalid_null_ptr_usage)]` on by default
 
@@ -10,127 +10,127 @@ error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:4:59
    |
 LL |         let _slice: &[usize] = std::slice::from_raw_parts(std::ptr::null_mut(), 0);
-   |                                                           ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                                           ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:6:63
    |
 LL |         let _slice: &[usize] = std::slice::from_raw_parts_mut(std::ptr::null_mut(), 0);
-   |                                                               ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                                               ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:8:33
    |
 LL |         std::ptr::copy::<usize>(std::ptr::null(), std::ptr::NonNull::dangling().as_ptr(), 0);
-   |                                 ^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                 ^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:9:73
    |
 LL |         std::ptr::copy::<usize>(std::ptr::NonNull::dangling().as_ptr(), std::ptr::null_mut(), 0);
-   |                                                                         ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                                                         ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:11:48
    |
 LL |         std::ptr::copy_nonoverlapping::<usize>(std::ptr::null(), std::ptr::NonNull::dangling().as_ptr(), 0);
-   |                                                ^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                                ^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:12:88
    |
 LL |         std::ptr::copy_nonoverlapping::<usize>(std::ptr::NonNull::dangling().as_ptr(), std::ptr::null_mut(), 0);
-   |                                                                                        ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                                                                        ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:17:36
    |
 LL |         let _a: A = std::ptr::read(std::ptr::null());
-   |                                    ^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                    ^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:18:36
    |
 LL |         let _a: A = std::ptr::read(std::ptr::null_mut());
-   |                                    ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                    ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:20:46
    |
 LL |         let _a: A = std::ptr::read_unaligned(std::ptr::null());
-   |                                              ^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                              ^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:21:46
    |
 LL |         let _a: A = std::ptr::read_unaligned(std::ptr::null_mut());
-   |                                              ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                              ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:23:45
    |
 LL |         let _a: A = std::ptr::read_volatile(std::ptr::null());
-   |                                             ^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                             ^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:24:45
    |
 LL |         let _a: A = std::ptr::read_volatile(std::ptr::null_mut());
-   |                                             ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                             ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:26:39
    |
 LL |         let _a: A = std::ptr::replace(std::ptr::null_mut(), A);
-   |                                       ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                       ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:30:29
    |
 LL |         std::ptr::swap::<A>(std::ptr::null_mut(), &mut A);
-   |                             ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                             ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:31:37
    |
 LL |         std::ptr::swap::<A>(&mut A, std::ptr::null_mut());
-   |                                     ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                     ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:33:44
    |
 LL |         std::ptr::swap_nonoverlapping::<A>(std::ptr::null_mut(), &mut A, 0);
-   |                                            ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                            ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:34:52
    |
 LL |         std::ptr::swap_nonoverlapping::<A>(&mut A, std::ptr::null_mut(), 0);
-   |                                                    ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                                    ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:36:25
    |
 LL |         std::ptr::write(std::ptr::null_mut(), A);
-   |                         ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                         ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:38:35
    |
 LL |         std::ptr::write_unaligned(std::ptr::null_mut(), A);
-   |                                   ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                   ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:40:34
    |
 LL |         std::ptr::write_volatile(std::ptr::null_mut(), A);
-   |                                  ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                  ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: pointer must be non-null
   --> tests/ui/invalid_null_ptr_usage.rs:42:40
    |
 LL |         std::ptr::write_bytes::<usize>(std::ptr::null_mut(), 42, 0);
-   |                                        ^^^^^^^^^^^^^^^^^^^^ help: change this to: `core::ptr::NonNull::dangling().as_ptr()`
+   |                                        ^^^^^^^^^^^^^^^^^^^^ help: change this to: `std::ptr::NonNull::dangling().as_ptr()`
 
 error: aborting due to 22 previous errors
 
