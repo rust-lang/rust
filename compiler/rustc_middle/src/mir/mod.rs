@@ -1337,8 +1337,8 @@ pub struct BasicBlockData<'tcx> {
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
-        BasicBlockData { statements: vec![], terminator, is_cleanup: false }
+    pub fn new(terminator: Option<Terminator<'tcx>>, is_cleanup: bool) -> BasicBlockData<'tcx> {
+        BasicBlockData { statements: vec![], terminator, is_cleanup }
     }
 
     /// Accessor for terminator.
