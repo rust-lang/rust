@@ -396,7 +396,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool FunctionSections, bool DataSections, bool UniqueSectionNames,
     bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
-    const char *SplitDwarfFile, const char *OutputObjFile,
+    bool IsHotpatchable, const char *SplitDwarfFile, const char *OutputObjFile,
     const char *DebugInfoCompression, bool UseEmulatedTls,
     const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
 
@@ -426,6 +426,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   // Always preserve comments that were written by the user
   Options.MCOptions.PreserveAsmComments = true;
   Options.MCOptions.ABIName = ABIStr;
+  Options.Hotpatch = IsHotpatchable;
   if (SplitDwarfFile) {
     Options.MCOptions.SplitDwarfFile = SplitDwarfFile;
   }
