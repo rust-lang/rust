@@ -152,6 +152,17 @@ impl Target {
         if self.crt_static_default || self.crt_static_allows_dylibs {
             assert!(self.crt_static_respected);
         }
+
+        // Check that RISC-V targets always specify which ABI they use.
+        match &*self.arch {
+            "riscv32" => {
+                assert_matches!(&*self.llvm_abiname, "ilp32" | "ilp32f" | "ilp32d" | "ilp32e")
+            }
+            "riscv64" => {
+                assert_matches!(&*self.llvm_abiname, "lp64" | "lp64f" | "lp64d" | "lp64q")
+            }
+            _ => {}
+        }
     }
 
     // Add your target to the whitelist if it has `std` library
