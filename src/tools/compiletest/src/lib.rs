@@ -175,7 +175,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "git-merge-commit-email",
             "email address used for finding merge commits",
             "EMAIL",
-        );
+        )
+        .reqopt("", "minicore-path", "path to minicore aux library", "PATH");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -364,6 +365,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_runtime: matches.opt_present("profiler-runtime"),
+
+        minicore_path: opt_path(matches, "minicore-path"),
     }
 }
 
@@ -401,6 +404,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("host-linker: {:?}", config.host_linker));
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("format: {:?}", config.format));
+    logv(c, format!("minicore_path: {:?}", config.minicore_path.display()));
     logv(c, "\n".to_string());
 }
 
@@ -876,6 +880,12 @@ fn files_related_to_test(
         let path = expected_output_path(testpaths, revision, &config.compare_mode, extension);
         related.push(path);
     }
+
+    // `minicore.rs` test auxiliary: we need to make sure tests get rerun if this changes.
+    //
+    // FIXME(jieyouxu): untangle these paths, we should provide both a path to root `tests/` or
+    // `tests/auxiliary/` and the test suite in question. `src_base` is also a terrible name.
+    related.push(config.src_base.parent().unwrap().join("auxiliary").join("minicore.rs"));
 
     related
 }

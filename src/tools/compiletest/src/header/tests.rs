@@ -148,6 +148,7 @@ impl ConfigBuilder {
             "--git-repository=",
             "--nightly-branch=",
             "--git-merge-commit-email=",
+            "--minicore-path=",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 

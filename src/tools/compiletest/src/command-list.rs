@@ -228,5 +228,6 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "unset-rustc-env",
     // Used by the tidy check `unknown_revision`.
     "unused-revision-names",
+    "use-minicore",
     // tidy-alphabetical-end
 ];
