@@ -94,11 +94,11 @@ pub struct Argument<'a> {
 }
 
 #[rustc_diagnostic_item = "ArgumentMethods"]
-impl<'a> Argument<'a> {
+impl Argument<'_> {
     #[inline(always)]
-    fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
+    fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'a> {
         Argument {
-            // INVARIANT: this creates an `ArgumentType<'b>` from a `&'b T` and
+            // INVARIANT: this creates an `ArgumentType<'a>` from a `&'a T` and
             // a `fn(&T, ...)`, so the invariant is maintained.
             ty: ArgumentType::Placeholder {
                 value: NonNull::from(x).cast(),
@@ -110,43 +110,43 @@ impl<'a> Argument<'a> {
     }
 
     #[inline(always)]
-    pub fn new_display<'b, T: Display>(x: &'b T) -> Argument<'b> {
+    pub fn new_display<T: Display>(x: &T) -> Argument<'_> {
         Self::new(x, Display::fmt)
     }
     #[inline(always)]
-    pub fn new_debug<'b, T: Debug>(x: &'b T) -> Argument<'b> {
+    pub fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
         Self::new(x, Debug::fmt)
     }
     #[inline(always)]
-    pub fn new_debug_noop<'b, T: Debug>(x: &'b T) -> Argument<'b> {
+    pub fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
         Self::new(x, |_, _| Ok(()))
     }
     #[inline(always)]
-    pub fn new_octal<'b, T: Octal>(x: &'b T) -> Argument<'b> {
+    pub fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
         Self::new(x, Octal::fmt)
     }
     #[inline(always)]
-    pub fn new_lower_hex<'b, T: LowerHex>(x: &'b T) -> Argument<'b> {
+    pub fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
         Self::new(x, LowerHex::fmt)
     }
     #[inline(always)]
-    pub fn new_upper_hex<'b, T: UpperHex>(x: &'b T) -> Argument<'b> {
+    pub fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
         Self::new(x, UpperHex::fmt)
     }
     #[inline(always)]
-    pub fn new_pointer<'b, T: Pointer>(x: &'b T) -> Argument<'b> {
+    pub fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
         Self::new(x, Pointer::fmt)
     }
     #[inline(always)]
-    pub fn new_binary<'b, T: Binary>(x: &'b T) -> Argument<'b> {
+    pub fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
         Self::new(x, Binary::fmt)
     }
     #[inline(always)]
-    pub fn new_lower_exp<'b, T: LowerExp>(x: &'b T) -> Argument<'b> {
+    pub fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
         Self::new(x, LowerExp::fmt)
     }
     #[inline(always)]
-    pub fn new_upper_exp<'b, T: UpperExp>(x: &'b T) -> Argument<'b> {
+    pub fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
         Self::new(x, UpperExp::fmt)
     }
     #[inline(always)]
