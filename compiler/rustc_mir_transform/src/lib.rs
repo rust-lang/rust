@@ -355,7 +355,12 @@ fn mir_promoted(
     pm::run_passes(
         tcx,
         &mut body,
-        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
+        &[
+            &coroutine::RelocateUpvars,
+            &promote_pass,
+            &simplify::SimplifyCfg::PromoteConsts,
+            &coverage::InstrumentCoverage,
+        ],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 
