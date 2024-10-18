@@ -876,19 +876,13 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // A<dyn Src<...> + SrcAuto> -> B<dyn Dst<...> + DstAuto>. need to make sure
                     // - `Src` and `Dst` traits are the same
                     // - traits have the same generic arguments
-                    // - `SrcAuto` is a superset of `DstAuto`
-                    (Some(src_principal), Some(dst_principal)) => {
+                    // - projections are the same
+                    // - `SrcAuto` (+auto traits implied by `Src`) is a superset of `DstAuto`
+                    //
+                    // Note that trait upcasting goes through a different mechanism (`coerce_unsized`)
+                    // and is unaffected by this check.
+                    (Some(src_principal), Some(_)) => {
                         let tcx = fcx.tcx;
-
-                        // Check that the traits are actually the same.
-                        // The `dyn Src = dyn Dst` check below would suffice,
-                        // but this may produce a better diagnostic.
-                        //
-                        // Note that trait upcasting goes through a different mechanism (`coerce_unsized`)
-                        // and is unaffected by this check.
-                        if src_principal.def_id() != dst_principal.def_id() {
-                            return Err(CastError::DifferingKinds { src_kind, dst_kind });
-                        }
 
                         // We need to reconstruct trait object types.
                         // `m_src` and `m_dst` won't work for us here because they will potentially
@@ -912,8 +906,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             ty::Dyn,
                         ));
 
-                        // `dyn Src = dyn Dst`, this checks for matching traits/generics
-                        // This is `demand_eqtype`, but inlined to give a better error.
+                        // `dyn Src = dyn Dst`, this checks for matching traits/generics/projections
+                        // This is `fcx.demand_eqtype`, but inlined to give a better error.
                         let cause = fcx.misc(self.span);
                         if fcx
                             .at(&cause, fcx.param_env)
