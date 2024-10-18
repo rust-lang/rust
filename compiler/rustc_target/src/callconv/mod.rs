@@ -720,28 +720,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
         Ok(())
     }
-
-    pub fn fill_inregs_for_rust_abi<C>(&mut self, cx: &C)
-    where
-        Ty: TyAbiInterface<'a, C> + Copy,
-        C: HasTargetSpec + HasX86AbiOpt,
-    {
-        let spec = cx.target_spec();
-        match &spec.arch[..] {
-            "x86" => {
-                x86::fill_inregs(
-                    cx,
-                    self,
-                    x86::X86Options {
-                        flavor: x86::Flavor::General,
-                        regparm: cx.x86_abi_opt().regparm,
-                    },
-                    true,
-                );
-            }
-            _ => {}
-        }
-    }
 }
 
 impl FromStr for Conv {

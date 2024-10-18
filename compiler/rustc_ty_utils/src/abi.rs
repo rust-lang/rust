@@ -797,9 +797,6 @@ fn fn_abi_adjust_for_abi<'tcx>(
         for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
             fixup(arg, Some(arg_idx));
         }
-        if tcx.sess.target.arch == "x86" {
-            fn_abi.fill_inregs_for_rust_abi(cx);
-        }
     } else {
         fn_abi
             .adjust_for_foreign_abi(cx, abi)

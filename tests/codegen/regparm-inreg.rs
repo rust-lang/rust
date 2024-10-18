@@ -25,13 +25,6 @@ pub mod tests {
     #[no_mangle]
     pub extern "fastcall" fn f1(_: i32, _: i32, _: i32) {}
 
-    // regparm0: @f2(i32 noundef %_1, i32 noundef %_2, i32 noundef %_3)
-    // regparm1: @f2(i32 inreg noundef %_1, i32 noundef %_2, i32 noundef %_3)
-    // regparm2: @f2(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 noundef %_3)
-    // regparm3: @f2(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 inreg noundef %_3)
-    #[no_mangle]
-    pub extern "Rust" fn f2(_: i32, _: i32, _: i32) {}
-
     // regparm0: @f3(i32 noundef %_1, i32 noundef %_2, i32 noundef %_3)
     // regparm1: @f3(i32 inreg noundef %_1, i32 noundef %_2, i32 noundef %_3)
     // regparm2: @f3(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 noundef %_3)
