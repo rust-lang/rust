@@ -86,6 +86,7 @@ mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
 mod mentioned_items;
+mod merge_branches;
 mod multiple_return_terminators;
 mod nrvo;
 mod post_drop_elaboration;
@@ -611,6 +612,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
+            &merge_branches::MergeBranchSimplification,
             &dataflow_const_prop::DataflowConstProp,
             &single_use_consts::SingleUseConsts,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),

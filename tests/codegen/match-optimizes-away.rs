@@ -1,5 +1,5 @@
-//
-//@ compile-flags: -O
+//@ compile-flags: -O -Cno-prepopulate-passes
+
 #![crate_type = "lib"]
 
 pub enum Three {
@@ -19,8 +19,9 @@ pub enum Four {
 #[no_mangle]
 pub fn three_valued(x: Three) -> Three {
     // CHECK-LABEL: @three_valued
-    // CHECK-NEXT: {{^.*:$}}
-    // CHECK-NEXT: ret i8 %0
+    // CHECK-SAME: (i8{{.*}} [[X:%x]])
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: ret i8 [[X]]
     match x {
         Three::A => Three::A,
         Three::B => Three::B,
@@ -31,8 +32,9 @@ pub fn three_valued(x: Three) -> Three {
 #[no_mangle]
 pub fn four_valued(x: Four) -> Four {
     // CHECK-LABEL: @four_valued
-    // CHECK-NEXT: {{^.*:$}}
-    // CHECK-NEXT: ret i16 %0
+    // CHECK-SAME: (i16{{.*}} [[X:%x]])
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: ret i16 [[X]]
     match x {
         Four::A => Four::A,
         Four::B => Four::B,
