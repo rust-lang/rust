@@ -491,7 +491,11 @@ function preLoadCss(cssUrl) {
                 ev.preventDefault();
                 searchState.focus();
                 break;
-
+            case "a":
+            case "A":
+                ev.preventDefault();
+                toggleAllDocs();
+                break;
             case "+":
                 ev.preventDefault();
                 expandAllDocs();
@@ -502,7 +506,14 @@ function preLoadCss(cssUrl) {
                 break;
 
             case "?":
+            case "h":
+            case "H":
                 showHelp();
+                break;
+
+            case "e":
+            case "E":
+                getSettingsButton().click();
                 break;
 
             default:
@@ -938,7 +949,7 @@ function preLoadCss(cssUrl) {
                 e.open = true;
             }
         });
-        innerToggle.children[0].innerText = "Summary";
+        innerToggle.children[0].innerHTML = "Summ<u>a</u>ry";
     }
 
     function collapseAllDocs() {
@@ -952,7 +963,7 @@ function preLoadCss(cssUrl) {
                 e.open = false;
             }
         });
-        innerToggle.children[0].innerText = "Show all";
+        innerToggle.children[0].innerHTML = "Show <u>a</u>ll";
     }
 
     function toggleAllDocs() {
