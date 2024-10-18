@@ -33,6 +33,7 @@
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
 #![feature(strict_provenance)]
+#![feature(extend_one)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
@@ -44,6 +45,7 @@ pub mod bridge;
 
 mod diagnostic;
 mod escape;
+mod to_tokens;
 
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
@@ -53,6 +55,8 @@ use std::{error, fmt};
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
+#[unstable(feature = "proc_macro_totokens", issue = "130977")]
+pub use to_tokens::ToTokens;
 
 use crate::escape::{EscapeOptions, escape_bytes};
 
