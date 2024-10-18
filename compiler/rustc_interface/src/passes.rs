@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::env::VarError;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -334,6 +335,20 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         (&**krate, &*krate.attrs),
     )
+}
+
+fn env_var(tcx: TyCtxt<'_>, key: Symbol) -> Option<Symbol> {
+    let var = match std::env::var(key.as_str()) {
+        Ok(var) => Some(Symbol::intern(&var)),
+        Err(VarError::NotPresent) => None,
+        Err(VarError::NotUnicode(var)) => {
+            tcx.dcx().emit_err(errors::EnvVarNotUnicode { key, var });
+            None
+        }
+    };
+    // Also add the variable to Cargo's dependency tracking
+    tcx.sess.psess.env_depinfo.borrow_mut().insert((key, var));
+    var
 }
 
 // Returns all the paths that correspond to generated files.
@@ -700,6 +715,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
         |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
     providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
+    providers.env_var = env_var;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);

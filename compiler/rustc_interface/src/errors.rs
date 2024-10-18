@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::io;
 use std::path::Path;
 
@@ -19,6 +20,13 @@ pub struct EmojiIdentifier {
     #[primary_span]
     pub spans: Vec<Span>,
     pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(interface_env_var_not_unicode)]
+pub struct EnvVarNotUnicode {
+    pub key: Symbol,
+    pub var: OsString,
 }
 
 #[derive(Diagnostic)]
