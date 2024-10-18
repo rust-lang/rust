@@ -180,6 +180,14 @@ hir_typeck_suggest_boxing_when_appropriate = store this in the heap by calling `
 
 hir_typeck_suggest_ptr_null_mut = consider using `core::ptr::null_mut` instead
 
+hir_typeck_supertrait_method_multiple_shadowee = methods from several supertraits are shadowed: {$traits}
+
+hir_typeck_supertrait_method_shadowee = method from `{$supertrait}` is shadowed by a subtrait method
+
+hir_typeck_supertrait_method_shadower = method from `{$subtrait}` shadows a supertrait method
+
+hir_typeck_supertrait_method_shadowing = trait method `{$method}` from `{$subtrait}` shadows identically named method from supertrait
+
 hir_typeck_trivial_cast = trivial {$numeric ->
     [true] numeric cast
     *[false] cast

@@ -601,6 +601,8 @@ declare_features! (
     (unstable, strict_provenance, "1.61.0", Some(95228)),
     /// Allows string patterns to dereference values to match them.
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
+    /// Allows subtrait items to shadow supertrait items.
+    (unstable, supertrait_item_shadowing, "CURRENT_RUSTC_VERSION", Some(89151)),
     /// Allows the use of `#[target_feature]` on safe functions.
     (unstable, target_feature_11, "1.45.0", Some(69098)),
     /// Allows using `#[thread_local]` on `static` items.

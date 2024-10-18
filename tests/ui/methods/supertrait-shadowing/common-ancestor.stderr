@@ -1,0 +1,20 @@
+warning: trait method `hello` from `B` shadows identically named method from supertrait
+  --> $DIR/common-ancestor.rs:22:8
+   |
+LL |     ().hello();
+   |        ^^^^^
+   |
+note: method from `B` shadows a supertrait method
+  --> $DIR/common-ancestor.rs:15:5
+   |
+LL |     fn hello(&self) {
+   |     ^^^^^^^^^^^^^^^
+note: method from `A` is shadowed by a subtrait method
+  --> $DIR/common-ancestor.rs:8:5
+   |
+LL |     fn hello(&self) {
+   |     ^^^^^^^^^^^^^^^
+   = note: `#[warn(supertrait_item_shadowing)]` on by default
+
+warning: 1 warning emitted
+

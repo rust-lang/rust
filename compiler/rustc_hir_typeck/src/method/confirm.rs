@@ -10,6 +10,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
     GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
+use rustc_lint::builtin::SUPERTRAIT_ITEM_SHADOWING;
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
@@ -25,6 +26,9 @@ use rustc_trait_selection::traits;
 use tracing::debug;
 
 use super::{MethodCallee, probe};
+use crate::errors::{
+    SupertraitMethodShadowee, SupertraitMethodShadower, SupertraitMethodShadowing,
+};
 use crate::{FnCtxt, callee};
 
 struct ConfirmContext<'a, 'tcx> {
@@ -143,6 +147,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // Make sure nobody calls `drop()` explicitly.
         self.enforce_illegal_method_limitations(pick);
+
+        self.enforce_shadowed_supertrait_methods(pick, segment);
 
         // Add any trait/regions obligations specified on the method's type parameters.
         // We won't add these if we encountered an illegal sized bound, so that we can use
@@ -661,6 +667,45 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.set_tainted_by_errors(e);
             }
         }
+    }
+
+    fn enforce_shadowed_supertrait_methods(
+        &self,
+        pick: &probe::Pick<'_>,
+        segment: &hir::PathSegment<'tcx>,
+    ) {
+        if pick.shadowed_candidates.is_empty() {
+            return;
+        }
+
+        let shadower_span = self.tcx.def_span(pick.item.def_id);
+        let subtrait = self.tcx.item_name(pick.item.trait_container(self.tcx).unwrap());
+        let shadower = SupertraitMethodShadower { span: shadower_span, subtrait };
+
+        let shadowee = if let [shadowee] = &pick.shadowed_candidates[..] {
+            let shadowee_span = self.tcx.def_span(shadowee.def_id);
+            let supertrait = self.tcx.item_name(shadowee.trait_container(self.tcx).unwrap());
+            SupertraitMethodShadowee::Labeled { span: shadowee_span, supertrait }
+        } else {
+            let (traits, spans): (Vec<_>, Vec<_>) = pick
+                .shadowed_candidates
+                .iter()
+                .map(|item| {
+                    (
+                        self.tcx.item_name(item.trait_container(self.tcx).unwrap()),
+                        self.tcx.def_span(item.def_id),
+                    )
+                })
+                .unzip();
+            SupertraitMethodShadowee::Several { traits: traits.into(), spans: spans.into() }
+        };
+
+        self.tcx.emit_node_span_lint(
+            SUPERTRAIT_ITEM_SHADOWING,
+            segment.hir_id,
+            segment.ident.span,
+            SupertraitMethodShadowing { shadower, shadowee, method: segment.ident.name, subtrait },
+        );
     }
 
     fn upcast(
