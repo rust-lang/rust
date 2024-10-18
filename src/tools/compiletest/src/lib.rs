@@ -547,7 +547,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 struct TestCollectorCx {
     config: Arc<Config>,
     cache: HeadersCache,
-    inputs: Stamp,
+    common_inputs_stamp: Stamp,
     modified_tests: Vec<PathBuf>,
 }
 
@@ -565,13 +565,13 @@ struct TestCollector {
 /// because filtering is handled later by libtest.
 pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {:?}", config.src_base.display());
-    let inputs = common_inputs_stamp(&config);
+    let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests = modified_tests(&config, &config.src_base).unwrap_or_else(|err| {
         panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
     });
     let cache = HeadersCache::load(&config);
 
-    let cx = TestCollectorCx { config, cache, inputs, modified_tests };
+    let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
     let mut collector =
         TestCollector { tests: vec![], found_paths: HashSet::new(), poisoned: false };
 
@@ -592,7 +592,13 @@ pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
     tests
 }
 
-/// Returns a stamp constructed from input files common to all test cases.
+/// Returns the most recent last-modified timestamp from among the input files
+/// that are considered relevant to all tests (e.g. the compiler, std, and
+/// compiletest itself).
+///
+/// (Some of these inputs aren't actually relevant to _all_ tests, but they are
+/// common to some subset of tests, and are hopefully unlikely to be modified
+/// while working on other tests.)
 fn common_inputs_stamp(config: &Config) -> Stamp {
     let rust_src_dir = config.find_rust_src_root().expect("Could not find Rust source root");
 
@@ -902,14 +908,14 @@ fn is_up_to_date(
 
     // Check the timestamp of the stamp file against the last modified time
     // of all files known to be relevant to the test.
-    let mut inputs = cx.inputs.clone();
+    let mut inputs_stamp = cx.common_inputs_stamp.clone();
     for path in files_related_to_test(&cx.config, testpaths, props, revision) {
-        inputs.add_path(&path);
+        inputs_stamp.add_path(&path);
     }
 
     // If no relevant files have been modified since the stamp file was last
     // written, the test is up-to-date.
-    inputs < Stamp::from_path(&stamp_name)
+    inputs_stamp < Stamp::from_path(&stamp_name)
 }
 
 /// The maximum of a set of file-modified timestamps.
