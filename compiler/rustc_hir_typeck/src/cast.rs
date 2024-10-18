@@ -959,8 +959,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // dyn Auto -> dyn Auto'? ok.
                     (None, None) => Ok(CastKind::PtrPtrCast),
 
-                    // dyn Trait -> dyn Auto? should be ok, but we used to not allow it.
-                    // FIXME: allow this
+                    // dyn Trait -> dyn Auto? not ok (for now).
+                    //
+                    // As a validity invariant of pointers to trait objects, we
+                    // currently require the layout of the vtable in the metadata
+                    // to exactly match the pointee's expected vtable layout.
+                    //
+                    // Since ptr-to-ptr casts, unlike unsizing coercions, cannot change
+                    // the pointer metadata, dropping a the principal in a (non-coercion)
+                    // cast is currently not allowed.
                     (Some(_), None) => Err(CastError::DifferingKinds { src_kind, dst_kind }),
 
                     // dyn Auto -> dyn Trait? not ok.
