@@ -1,0 +1,9 @@
+error[E0220]: associated function `method` not found for `T`
+  --> $DIR/E0802.rs:7:8
+   |
+LL |     T::method(..): Send,
+   |        ^^^^^^ associated function `method` not found
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.
