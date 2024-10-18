@@ -215,6 +215,8 @@ running 31 tests
 test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
+> **Note**: The binary that was run can be captured with the command `cargo test --no-run --message-format=json --quiet | jq -r 'select(.profile.test == true) | .executable'`
+
 You should have one or more `.profraw` files now, one for each test binary. Run the `profdata` tool to merge them:
 
 ```shell
