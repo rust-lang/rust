@@ -1,3 +1,7 @@
+// 32-bit systems will return 128bit values using a return area pointer.
+//@ revisions: bit32 bit64
+//@[bit32] only-32bit
+//@[bit64] only-64bit
 //@ compile-flags: -O -C no-prepopulate-passes -Z randomize-layout=no
 
 #![crate_type = "lib"]
@@ -98,26 +102,36 @@ pub fn make_struct_1(a: i32) -> Struct1 {
 
 pub struct Struct2Asc(i16, i64);
 
-// CHECK-LABEL: { i64, i16 } @make_struct_2_asc(i16 noundef %a, i64 noundef %b)
+// bit32-LABEL: void @make_struct_2_asc({{.*}} sret({{[^,]*}}) {{.*}} %s,
+// bit64-LABEL: { i64, i16 } @make_struct_2_asc(
+// CHECK-SAME: i16 noundef %a, i64 noundef %b)
 #[no_mangle]
 pub fn make_struct_2_asc(a: i16, b: i64) -> Struct2Asc {
     // CHECK-NOT: alloca
-    // CHECK: %[[TEMP0:.+]] = insertvalue { i64, i16 } poison, i64 %b, 0
-    // CHECK: %[[TEMP1:.+]] = insertvalue { i64, i16 } %[[TEMP0]], i16 %a, 1
-    // CHECK: ret { i64, i16 } %[[TEMP1]]
+    // bit32: %[[GEP:.+]] = getelementptr inbounds i8, ptr %s, i32 8
+    // bit32: store i16 %a, ptr %[[GEP]]
+    // bit32: store i64 %b, ptr %s
+    // bit64: %[[TEMP0:.+]] = insertvalue { i64, i16 } poison, i64 %b, 0
+    // bit64: %[[TEMP1:.+]] = insertvalue { i64, i16 } %[[TEMP0]], i16 %a, 1
+    // bit64: ret { i64, i16 } %[[TEMP1]]
     let s = Struct2Asc(a, b);
     s
 }
 
 pub struct Struct2Desc(i64, i16);
 
-// CHECK-LABEL: { i64, i16 } @make_struct_2_desc(i64 noundef %a, i16 noundef %b)
+// bit32-LABEL: void @make_struct_2_desc({{.*}} sret({{[^,]*}}) {{.*}} %s,
+// bit64-LABEL: { i64, i16 } @make_struct_2_desc(
+// CHECK-SAME: i64 noundef %a, i16 noundef %b)
 #[no_mangle]
 pub fn make_struct_2_desc(a: i64, b: i16) -> Struct2Desc {
     // CHECK-NOT: alloca
-    // CHECK: %[[TEMP0:.+]] = insertvalue { i64, i16 } poison, i64 %a, 0
-    // CHECK: %[[TEMP1:.+]] = insertvalue { i64, i16 } %[[TEMP0]], i16 %b, 1
-    // CHECK: ret { i64, i16 } %[[TEMP1]]
+    // bit32: store i64 %a, ptr %s
+    // bit32: %[[GEP:.+]] = getelementptr inbounds i8, ptr %s, i32 8
+    // bit32: store i16 %b, ptr %[[GEP]]
+    // bit64: %[[TEMP0:.+]] = insertvalue { i64, i16 } poison, i64 %a, 0
+    // bit64: %[[TEMP1:.+]] = insertvalue { i64, i16 } %[[TEMP0]], i16 %b, 1
+    // bit64: ret { i64, i16 } %[[TEMP1]]
     let s = Struct2Desc(a, b);
     s
 }

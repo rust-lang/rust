@@ -1,7 +1,11 @@
 // 32-bit x86 returns `f32` and `f64` differently to avoid the x87 stack.
-//@ revisions: x86 other
+// 32-bit systems will return 128bit values using a return area pointer.
+//@ revisions: x86 bit32 bit64
 //@[x86] only-x86
-//@[other] ignore-x86
+//@[bit32] ignore-x86
+//@[bit32] only-32bit
+//@[bit64] ignore-x86
+//@[bit64] only-64bit
 
 // Verify that our intrinsics generate the correct LLVM calls for f128
 
@@ -52,42 +56,54 @@ pub fn f128_le(a: f128, b: f128) -> bool {
     a <= b
 }
 
-// CHECK-LABEL: fp128 @f128_neg(
+// x86-LABEL: void @f128_neg({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_neg({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f128_neg(
 #[no_mangle]
 pub fn f128_neg(a: f128) -> f128 {
     // CHECK: fneg fp128
     -a
 }
 
-// CHECK-LABEL: fp128 @f128_add(
+// x86-LABEL: void @f128_add({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_add({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f128_add(
 #[no_mangle]
 pub fn f128_add(a: f128, b: f128) -> f128 {
     // CHECK: fadd fp128 %{{.+}}, %{{.+}}
     a + b
 }
 
-// CHECK-LABEL: fp128 @f128_sub(
+// x86-LABEL: void @f128_sub({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_sub({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f128_sub(
 #[no_mangle]
 pub fn f128_sub(a: f128, b: f128) -> f128 {
     // CHECK: fsub fp128 %{{.+}}, %{{.+}}
     a - b
 }
 
-// CHECK-LABEL: fp128 @f128_mul(
+// x86-LABEL: void @f128_mul({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_mul({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f128_mul(
 #[no_mangle]
 pub fn f128_mul(a: f128, b: f128) -> f128 {
     // CHECK: fmul fp128 %{{.+}}, %{{.+}}
     a * b
 }
 
-// CHECK-LABEL: fp128 @f128_div(
+// x86-LABEL: void @f128_div({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_div({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f128_div(
 #[no_mangle]
 pub fn f128_div(a: f128, b: f128) -> f128 {
     // CHECK: fdiv fp128 %{{.+}}, %{{.+}}
     a / b
 }
 
-// CHECK-LABEL: fp128 @f128_rem(
+// x86-LABEL: void @f128_rem({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_rem({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f128_rem(
 #[no_mangle]
 pub fn f128_rem(a: f128, b: f128) -> f128 {
     // CHECK: frem fp128 %{{.+}}, %{{.+}}
@@ -143,44 +159,56 @@ pub fn f128_as_f16(a: f128) -> f16 {
     a as f16
 }
 
-// other-LABEL: float @f128_as_f32(
 // x86-LABEL: i32 @f128_as_f32(
+// bit32-LABEL: float @f128_as_f32(
+// bit64-LABEL: float @f128_as_f32(
 #[no_mangle]
 pub fn f128_as_f32(a: f128) -> f32 {
     // CHECK: fptrunc fp128 %{{.+}} to float
     a as f32
 }
 
-// other-LABEL: double @f128_as_f64(
 // x86-LABEL: void @f128_as_f64(
+// bit32-LABEL: double @f128_as_f64(
+// bit64-LABEL: double @f128_as_f64(
 #[no_mangle]
 pub fn f128_as_f64(a: f128) -> f64 {
     // CHECK: fptrunc fp128 %{{.+}} to double
     a as f64
 }
 
-// CHECK-LABEL: fp128 @f128_as_self(
+// x86-LABEL: void @f128_as_self({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_as_self({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f128_as_self(
 #[no_mangle]
 pub fn f128_as_self(a: f128) -> f128 {
-    // CHECK: ret fp128 %{{.+}}
+    // x86: store fp128 %a, ptr %_0, align 16
+    // bit32: store fp128 %a, ptr %_0, align 16
+    // bit64: ret fp128 %{{.+}}
     a as f128
 }
 
-// CHECK-LABEL: fp128 @f16_as_f128(
+// x86-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f16_as_f128(
 #[no_mangle]
 pub fn f16_as_f128(a: f16) -> f128 {
     // CHECK: fpext half %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @f32_as_f128(
+// x86-LABEL: void @f32_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f32_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f32_as_f128(
 #[no_mangle]
 pub fn f32_as_f128(a: f32) -> f128 {
     // CHECK: fpext float %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @f64_as_f128(
+// x86-LABEL: void @f64_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f64_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @f64_as_f128(
 #[no_mangle]
 pub fn f64_as_f128(a: f64) -> f128 {
     // CHECK: fpext double %{{.+}} to fp128
@@ -216,7 +244,9 @@ pub fn f128_as_u64(a: f128) -> u64 {
     a as u64
 }
 
-// CHECK-LABEL: i128 @f128_as_u128(
+// x86-LABEL: void @f128_as_u128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_as_u128({{.*}}sret([16 x i8])
+// bit64-LABEL: i128 @f128_as_u128(
 #[no_mangle]
 pub fn f128_as_u128(a: f128) -> u128 {
     // CHECK: call i128 @llvm.fptoui.sat.i128.f128(fp128 %{{.+}})
@@ -250,7 +280,9 @@ pub fn f128_as_i64(a: f128) -> i64 {
     a as i64
 }
 
-// CHECK-LABEL: i128 @f128_as_i128(
+// x86-LABEL: void @f128_as_i128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @f128_as_i128({{.*}}sret([16 x i8])
+// bit64-LABEL: i128 @f128_as_i128(
 #[no_mangle]
 pub fn f128_as_i128(a: f128) -> i128 {
     // CHECK: call i128 @llvm.fptosi.sat.i128.f128(fp128 %{{.+}})
@@ -259,70 +291,90 @@ pub fn f128_as_i128(a: f128) -> i128 {
 
 /* int to float conversions */
 
-// CHECK-LABEL: fp128 @u8_as_f128(
+// x86-LABEL: void @u8_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @u8_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @u8_as_f128(
 #[no_mangle]
 pub fn u8_as_f128(a: u8) -> f128 {
     // CHECK: uitofp i8 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @u16_as_f128(
+// x86-LABEL: void @u16_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @u16_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @u16_as_f128(
 #[no_mangle]
 pub fn u16_as_f128(a: u16) -> f128 {
     // CHECK: uitofp i16 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @u32_as_f128(
+// x86-LABEL: void @u32_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @u32_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @u32_as_f128(
 #[no_mangle]
 pub fn u32_as_f128(a: u32) -> f128 {
     // CHECK: uitofp i32 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @u64_as_f128(
+// x86-LABEL: void @u64_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @u64_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @u64_as_f128(
 #[no_mangle]
 pub fn u64_as_f128(a: u64) -> f128 {
     // CHECK: uitofp i64 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @u128_as_f128(
+// x86-LABEL: void @u128_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @u128_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @u128_as_f128(
 #[no_mangle]
 pub fn u128_as_f128(a: u128) -> f128 {
     // CHECK: uitofp i128 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @i8_as_f128(
+// x86-LABEL: void @i8_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @i8_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @i8_as_f128(
 #[no_mangle]
 pub fn i8_as_f128(a: i8) -> f128 {
     // CHECK: sitofp i8 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @i16_as_f128(
+// x86-LABEL: void @i16_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @i16_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @i16_as_f128(
 #[no_mangle]
 pub fn i16_as_f128(a: i16) -> f128 {
     // CHECK: sitofp i16 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @i32_as_f128(
+// x86-LABEL: void @i32_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @i32_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @i32_as_f128(
 #[no_mangle]
 pub fn i32_as_f128(a: i32) -> f128 {
     // CHECK: sitofp i32 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @i64_as_f128(
+// x86-LABEL: void @i64_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @i64_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @i64_as_f128(
 #[no_mangle]
 pub fn i64_as_f128(a: i64) -> f128 {
     // CHECK: sitofp i64 %{{.+}} to fp128
     a as f128
 }
 
-// CHECK-LABEL: fp128 @i128_as_f128(
+// x86-LABEL: void @i128_as_f128({{.*}}sret([16 x i8])
+// bit32-LABEL: void @i128_as_f128({{.*}}sret([16 x i8])
+// bit64-LABEL: fp128 @i128_as_f128(
 #[no_mangle]
 pub fn i128_as_f128(a: i128) -> f128 {
     // CHECK: sitofp i128 %{{.+}} to fp128
