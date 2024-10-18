@@ -3434,21 +3434,14 @@ impl Rewrite for ast::ForeignItem {
                     ref generics,
                     ref body,
                 } = **fn_kind;
-                if let Some(ref body) = body {
+                if body.is_some() {
                     let mut visitor = FmtVisitor::from_context(context);
                     visitor.block_indent = shape.indent;
                     visitor.last_pos = self.span.lo();
                     let inner_attrs = inner_attributes(&self.attrs);
                     let fn_ctxt = visit::FnCtxt::Foreign;
                     visitor.visit_fn(
-                        visit::FnKind::Fn(
-                            fn_ctxt,
-                            self.ident,
-                            sig,
-                            &self.vis,
-                            generics,
-                            Some(body),
-                        ),
+                        visit::FnKind::Fn(fn_ctxt, &self.ident, sig, &self.vis, generics, body),
                         &sig.decl,
                         self.span,
                         defaultness,

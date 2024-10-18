@@ -16,7 +16,7 @@ impl NodeCounter {
 }
 
 impl<'ast> Visitor<'ast> for NodeCounter {
-    fn visit_ident(&mut self, _ident: Ident) {
+    fn visit_ident(&mut self, _ident: &Ident) {
         self.count += 1;
     }
     fn visit_foreign_item(&mut self, i: &ForeignItem) {
@@ -85,7 +85,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
     }
     fn visit_variant_data(&mut self, s: &VariantData) {
         self.count += 1;
-        walk_struct_def(self, s)
+        walk_variant_data(self, s)
     }
     fn visit_field_def(&mut self, s: &FieldDef) {
         self.count += 1;
@@ -105,7 +105,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
     }
     fn visit_mac_call(&mut self, mac: &MacCall) {
         self.count += 1;
-        walk_mac(self, mac)
+        walk_mac_call(self, mac)
     }
     fn visit_path(&mut self, path: &Path, _id: NodeId) {
         self.count += 1;
