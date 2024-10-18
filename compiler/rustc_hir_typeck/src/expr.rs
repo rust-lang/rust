@@ -10,7 +10,8 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, StashKey, Subdiagnostic, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -2763,12 +2764,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field_ident.span,
             "field not available in `impl Future`, but it is available in its `Output`",
         );
-        err.span_suggestion_verbose(
-            base.span.shrink_to_hi(),
-            "consider `await`ing on the `Future` and access the field of its `Output`",
-            ".await",
-            Applicability::MaybeIncorrect,
-        );
+        match self.tcx.coroutine_kind(self.body_id) {
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+                err.span_suggestion_verbose(
+                    base.span.shrink_to_hi(),
+                    "consider `await`ing on the `Future` to access the field",
+                    ".await",
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {
+                let mut span: MultiSpan = base.span.into();
+                span.push_span_label(self.tcx.def_span(self.body_id), "this is not `async`");
+                err.span_note(
+                    span,
+                    "this implements `Future` and its output type has the field, \
+                    but the future cannot be awaited in a synchronous function",
+                );
+            }
+        }
     }
 
     fn ban_nonexisting_field(
