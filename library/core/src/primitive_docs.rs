@@ -1752,8 +1752,7 @@ mod prim_ref {}
 ///
 /// For two signatures to be considered *ABI-compatible*, they must use a compatible ABI string,
 /// must take the same number of arguments, the individual argument types and the return types must
-/// be ABI-compatible, and the target feature requirements must be met (see the subsection below for
-/// the last point). The ABI string is declared via `extern "ABI" fn(...) -> ...`; note that
+/// be ABI-compatible. The ABI string is declared via `extern "ABI" fn(...) -> ...`; note that
 /// `fn name(...) -> ...` implicitly uses the `"Rust"` ABI string and `extern fn name(...) -> ...`
 /// implicitly uses the `"C"` ABI string.
 ///
@@ -1820,24 +1819,6 @@ mod prim_ref {}
 /// `Option<NonZero<i32>>`, and the value used for the argument is `None`, then this call is Undefined
 /// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
-///
-/// #### Requirements concerning target features
-///
-/// Under some conditions, the signature used by the caller and the callee can be ABI-incompatible
-/// even if the exact same ABI string and types are being used. As an example, the
-/// `std::arch::x86_64::__m256` type has a different `extern "C"` ABI when the `avx` feature is
-/// enabled vs when it is not enabled.
-///
-/// Therefore, to ensure ABI compatibility when code using different target features is combined
-/// (such as via `#[target_feature]`), we further require that one of the following conditions is
-/// met:
-///
-/// - The function uses the `"Rust"` ABI string (which is the default without `extern`).
-/// - Caller and callee are using the exact same set of target features. For the callee we consider
-///   the features enabled (via `#[target_feature]` and `-C target-feature`/`-C target-cpu`) at the
-///   declaration site; for the caller we consider the features enabled at the call site.
-/// - Neither any argument nor the return value involves a SIMD type (`#[repr(simd)]`) that is not
-///   behind a pointer indirection (i.e., `*mut __m256` is fine, but `(i32, __m256)` is not).
 ///
 /// ### Trait implementations
 ///

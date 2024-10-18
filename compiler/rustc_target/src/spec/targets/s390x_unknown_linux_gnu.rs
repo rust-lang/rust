@@ -6,9 +6,6 @@ pub(crate) fn target() -> Target {
     base.endian = Endian::Big;
     // z10 is the oldest CPU supported by LLVM
     base.cpu = "z10".into();
-    // FIXME: The ABI implementation in abi/call/s390x.rs is for now hard-coded to assume the no-vector
-    // ABI. Pass the -vector feature string to LLVM to respect this assumption.
-    base.features = "-vector".into();
     base.max_atomic_width = Some(128);
     base.min_global_align = Some(16);
     base.stack_probes = StackProbeType::Inline;

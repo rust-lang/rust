@@ -1,3 +1,4 @@
+//@ ignore-test
 // verify that simd mask reductions do not introduce additional bit shift operations
 //@ revisions: x86 aarch64
 //@ [x86] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel

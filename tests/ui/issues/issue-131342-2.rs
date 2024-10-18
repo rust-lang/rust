@@ -1,5 +1,6 @@
-//@ known-bug: #131342
+//@ check-pass
 // see also: 131342.rs
+#![allow(unconditional_recursion)]
 
 fn main() {
     problem_thingy(Once);
