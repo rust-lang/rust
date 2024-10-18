@@ -203,7 +203,7 @@ mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
 
 mir_build_lower_range_bound_must_be_less_than_upper = lower range bound must be less than upper
 
-mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 
 mir_build_moved = value is moved into `{$name}` here
 
