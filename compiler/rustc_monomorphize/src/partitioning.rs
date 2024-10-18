@@ -179,6 +179,37 @@ where
         debug_dump(tcx, "INTERNALIZE", &codegen_units);
     }
 
+    // Mark items we're importing from upstream
+    for cgu in codegen_units.iter_mut() {
+        for (item, data) in cgu.items_mut() {
+            if let MonoItem::Fn(instance) = item {
+                let Some(def_id) = instance.def.def_id_if_not_guaranteed_local_codegen() else {
+                    continue;
+                };
+
+                if tcx.is_foreign_item(def_id) {
+                    continue;
+                }
+
+                if def_id.is_local() {
+                    continue;
+                }
+
+                if tcx.is_reachable_non_generic(instance.def_id())
+                    || instance.polymorphize(tcx).upstream_monomorphization(tcx).is_some()
+                {
+                    // We can link to the item in question, no instance needed in this crate.
+                    // However, we will still codegen this item locally *if* we have the MIR to do so.
+                    // This codegen will happen in LLVM with available_externally linkage, which lets us benefit
+                    // from inlining etc. while saving on binary size.
+                    if tcx.is_mir_available(instance.def_id()) {
+                        data.linkage = Linkage::AvailableExternally;
+                    }
+                }
+            }
+        }
+    }
+
     // Mark one CGU for dead code, if necessary.
     if tcx.sess.instrument_coverage() {
         mark_code_coverage_dead_code_cgu(&mut codegen_units);
