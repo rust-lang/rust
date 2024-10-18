@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxIndexMap, IndexRawEntryApiV1};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::sync::{Lock, OnceLock};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -23,7 +23,7 @@ pub trait QueryCache: Sized {
 }
 
 pub struct DefaultCache<K, V> {
-    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+    cache: Sharded<FxIndexMap<K, (V, DepNodeIndex)>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -44,7 +44,7 @@ where
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
         let key_hash = sharded::make_hash(key);
         let lock = self.cache.lock_shard_by_hash(key_hash);
-        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
+        let result = lock.raw_entry_v1().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result { Some(*value) } else { None }
     }

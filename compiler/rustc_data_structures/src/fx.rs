@@ -1,5 +1,6 @@
 use std::hash::BuildHasherDefault;
 
+pub use indexmap::map::RawEntryApiV1 as IndexRawEntryApiV1;
 pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 pub type StdEntry<'a, K, V> = std::collections::hash_map::Entry<'a, K, V>;
