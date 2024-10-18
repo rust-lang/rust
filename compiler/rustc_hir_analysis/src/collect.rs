@@ -76,7 +76,6 @@ pub fn provide(providers: &mut Providers) {
         explicit_implied_predicates_of: predicates_of::explicit_implied_predicates_of,
         explicit_supertraits_containing_assoc_item:
             predicates_of::explicit_supertraits_containing_assoc_item,
-        trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
         adt_def,
