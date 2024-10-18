@@ -1159,6 +1159,21 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, _whole_archive: bool) {
+        if name == "c" {
+            // Hack: drop -lc to work around buggy Emscripten behaviors when -lc
+            // is passed. See
+            // https://github.com/emscripten-core/emscripten/issues/22758
+            //
+            // Question: Does this bug affect any other libraries? Why this
+            // special case for libc?
+            //
+            // Answer: We think it's specific to libc. Emscripten can link
+            // binaries with many different ABIs and it has to build an
+            // appropriate libc depending on the target ABI. Passing -lc
+            // explicitly causes bugs in this process. If we find out other
+            // libraries are affected, we can reevaluate this approach.
+            return;
+        }
         self.link_or_cc_args(&["-l", name]);
     }
 
