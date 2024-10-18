@@ -627,3 +627,34 @@ add the `--scrape-tests` flag.
 
 This flag enables the generation of links in the source code pages which allow the reader
 to jump to a type definition.
+
+### `--document-tests`: show test items
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --cfg test --document-private-items --document-tests
+```
+
+By default, `rustdoc` does not document test items.
+
+```rust
+/// by default this test function would not be documented
+#[test]
+fn test_in_module() {
+     assert_eq!(2, 1 + 1);
+}
+/// by default this test module would not be documented
+#[cfg(test)]
+mod tests {
+    /// by default this test function would not be documented
+    #[test]
+    fn test_in_a_test_module() {
+        assert_eq!(2, 1 + 1);
+    }
+}
+```
+
+Note:
+* `--cfg test` must be set because tests are guarded by #[cfg(test)].
+* `--document-private-items` is typically required because it is standard practice to keep test items private. By enabling this option, you ensure that private items, including tests, are documented as needed while maintaining their non-public status.

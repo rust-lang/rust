@@ -1022,7 +1022,11 @@ fn clean_fn_or_proc_macro<'tcx>(
         None => {
             let mut func = clean_function(cx, sig, generics, FunctionArgs::Body(body_id));
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
-            FunctionItem(func)
+            if cx.cache.document_tests && cx.cache.tests.contains(&item.owner_id.to_def_id()) {
+                TestItem(func)
+            } else {
+                FunctionItem(func)
+            }
         }
     }
 }
