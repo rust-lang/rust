@@ -1,5 +1,6 @@
 use rustc_abi::Primitive::{Int, Pointer};
 use rustc_abi::{Align, FieldsShape, Size, TagEncoding, Variants};
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -388,13 +389,17 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                     let niche_value = (niche_value as u128).wrapping_add(niche_start);
-                    // FIXME(eddyb): check the actual primitive type here.
-                    let niche_llval = if niche_value == 0 {
-                        // HACK(eddyb): using `c_null` as it works on all types.
-                        bx.cx().const_null(niche_llty)
-                    } else {
-                        bx.cx().const_uint_big(niche_llty, niche_value)
+
+                    let rustc_abi::Abi::Scalar(scalar) = niche.layout.abi else {
+                        bug!("expected a scalar placeref for the niche");
                     };
+                    let max = niche.layout.size.unsigned_int_max();
+                    let wrapped = niche_value & max;
+                    let niche_llval = bx.cx().scalar_to_backend(
+                        Scalar::from_uint(wrapped, niche.layout.size),
+                        scalar,
+                        niche_llty,
+                    );
                     OperandValue::Immediate(niche_llval).store(bx, niche);
                 }
             }
