@@ -1,4 +1,4 @@
-// 32-bit x86 returns `f32` and `f64` differently to avoid the x87 stack.
+// 32-bit x86 returns float types differently to avoid the x87 stack.
 // 32-bit systems will return 128bit values using a return area pointer.
 //@ revisions: x86 bit32 bit64
 //@[x86] only-x86
@@ -152,7 +152,9 @@ pub fn f128_rem_assign(a: &mut f128, b: f128) {
 
 /* float to float conversions */
 
-// CHECK-LABEL: half @f128_as_f16(
+// x86-LABEL: i16 @f128_as_f16(
+// bits32-LABEL: half @f128_as_f16(
+// bits64-LABEL: half @f128_as_f16(
 #[no_mangle]
 pub fn f128_as_f16(a: f128) -> f16 {
     // CHECK: fptrunc fp128 %{{.+}} to half
