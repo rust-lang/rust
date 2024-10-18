@@ -71,6 +71,8 @@ xflags::xflags! {
             optional --with-deps
             /// Don't load sysroot crates (`std`, `core` & friends).
             optional --no-sysroot
+            /// Don't set #[cfg(test)].
+            optional --no-test
 
             /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
             optional --disable-build-scripts
@@ -233,6 +235,7 @@ pub struct AnalysisStats {
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
+    pub no_test: bool,
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
     pub proc_macro_srv: Option<PathBuf>,

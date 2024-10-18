@@ -6,6 +6,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use cfg::{CfgAtom, CfgDiff};
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ImportPathConfig,
@@ -31,7 +32,7 @@ use itertools::Itertools;
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
+use project_model::{CargoConfig, CfgOverrides, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{AstNode, SyntaxNode};
@@ -65,7 +66,11 @@ impl flags::AnalysisStats {
                 false => Some(RustLibSource::Discover),
             },
             all_targets: true,
-            set_test: true,
+            set_test: !self.no_test,
+            cfg_overrides: CfgOverrides {
+                global: CfgDiff::new(vec![CfgAtom::Flag(hir::sym::miri.clone())], vec![]).unwrap(),
+                selective: Default::default(),
+            },
             ..Default::default()
         };
         let no_progress = &|_| ();

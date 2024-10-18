@@ -222,8 +222,6 @@ fn rust_project_is_proc_macro_has_proc_macro_dep() {
 }
 
 #[test]
-// FIXME Remove the ignore
-#[ignore = "requires nightly until the sysroot ships a cargo workspace for library on stable"]
 fn smoke_test_real_sysroot_cargo() {
     let file_map = &mut FxHashMap::<AbsPathBuf, FileId>::default();
     let meta: Metadata = get_test_json_file("hello-world-metadata.json");
@@ -235,7 +233,6 @@ fn smoke_test_real_sysroot_cargo() {
         &Default::default(),
     );
     assert!(matches!(sysroot.mode(), SysrootMode::Workspace(_)));
-
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
             cargo: cargo_workspace,
