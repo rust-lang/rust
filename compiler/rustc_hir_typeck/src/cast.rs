@@ -959,8 +959,35 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // dyn Auto -> dyn Auto'? ok.
                     (None, None) => Ok(CastKind::PtrPtrCast),
 
-                    // dyn Trait -> dyn Auto? should be ok, but we used to not allow it.
-                    // FIXME: allow this
+                    // dyn Trait -> dyn Auto? not ok (for now).
+                    //
+                    // Although dropping the principal is already allowed for unsizing coercions
+                    // (e.g. `*const (dyn Trait + Auto)` to `*const dyn Auto`), dropping it is
+                    // currently **NOT** allowed for (non-coercion) ptr-to-ptr casts (e.g
+                    // `*const Foo` to `*const Bar` where `Foo` has a `dyn Trait + Auto` tail
+                    // and `Bar` has a `dyn Auto` tail), because the underlying MIR operations
+                    // currently work very differently:
+                    //
+                    // * A MIR unsizing coercion on raw pointers to trait objects (`*const dyn Src`
+                    //   to `*const dyn Dst`) is currently equivalent to downcasting the source to
+                    //   the concrete sized type that it was originally unsized from first (via a
+                    //   ptr-to-ptr cast from `*const Src` to `*const T` with `T: Sized`) and then
+                    //   unsizing this thin pointer to the target type (unsizing `*const T` to
+                    //   `*const Dst`). In particular, this means that the pointer's metadata
+                    //   (vtable) will semantically change, e.g. for const eval and miri, even
+                    //   though the vtables will always be merged for codegen.
+                    //
+                    // * A MIR ptr-to-ptr cast is currently equivalent to a transmute and does not
+                    //   change the pointer metadata (vtable) at all.
+                    //
+                    // In addition to this potentially surprising difference between coercion and
+                    // non-coercion casts, casting away the principal with a MIR ptr-to-ptr cast
+                    // is currently considered undefined behavior:
+                    //
+                    // As a validity invariant of pointers to trait objects, we currently require
+                    // that the principal of the vtable in the pointer metadata exactly matches
+                    // the principal of the pointee type, where "no principal" is also considered
+                    // a kind of principal.
                     (Some(_), None) => Err(CastError::DifferingKinds { src_kind, dst_kind }),
 
                     // dyn Auto -> dyn Trait? not ok.
