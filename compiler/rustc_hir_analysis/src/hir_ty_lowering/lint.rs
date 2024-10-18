@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::Applicability;
 use rustc_lint_defs::builtin::BARE_TRAIT_OBJECTS;
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 
 use super::HirTyLowerer;
@@ -181,14 +181,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Make sure that we are in the condition to suggest `impl Trait`.
     fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
         let tcx = self.tcx();
-        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
+        let parent_node = tcx.hir_node_by_def_id(tcx.hir().get_parent_item(self_ty.hir_id).def_id);
         // FIXME: If `type_alias_impl_trait` is enabled, also look for `Trait0<Ty = Trait1>`
         //        and suggest `Trait0<Ty = impl Trait1>`.
         // Functions are found in three different contexts.
         // 1. Independent functions
         // 2. Functions inside trait blocks
         // 3. Functions inside impl blocks
-        let (sig, generics) = match tcx.hir_node_by_def_id(parent_id) {
+        let (sig, generics) = match parent_node {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. }) => {
                 (sig, generics)
             }
@@ -223,10 +223,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             tcx.parent_hir_node(self_ty.hir_id),
             hir::Node::Ty(hir::Ty { kind: hir::TyKind::Ref(..), .. })
         );
+        let is_non_trait_object = |ty: &'tcx hir::Ty<'_>| {
+            if sig.header.is_async() {
+                Self::get_future_inner_return_ty(ty).map_or(false, |ty| ty.hir_id == self_ty.hir_id)
+            } else {
+                ty.peel_refs().hir_id == self_ty.hir_id
+            }
+        };
 
         // Suggestions for function return type.
         if let hir::FnRetTy::Return(ty) = sig.decl.output
-            && ty.peel_refs().hir_id == self_ty.hir_id
+            && is_non_trait_object(ty)
         {
             let pre = if !is_dyn_compatible {
                 format!("`{trait_name}` is dyn-incompatible, ")
@@ -311,10 +318,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {
-        let mut parents = self.tcx().hir().parent_iter(self_ty.hir_id);
+        let mut parents = self.tcx().hir().parent_iter(self_ty.hir_id).peekable();
+        let is_async_fn = if let Some((_, parent)) = parents.peek()
+            && let Some(sig) = parent.fn_sig()
+            && sig.header.is_async()
+            && let hir::FnRetTy::Return(ty) = sig.decl.output
+            && Self::get_future_inner_return_ty(ty).is_some()
+        {
+            true
+        } else {
+            false
+        };
 
         if let Some((_, hir::Node::AssocItemConstraint(constraint))) = parents.next()
             && let Some(obj_ty) = constraint.ty()
+            && !is_async_fn
         {
             if let Some((_, hir::Node::TraitRef(..))) = parents.next()
                 && let Some((_, hir::Node::Ty(ty))) = parents.next()
@@ -341,6 +359,36 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ": ",
                 Applicability::MaybeIncorrect,
             );
+        }
+    }
+
+    /// From the [`hir::Ty`] of an async function's lowered return type,
+    /// retrieve the `hir::Ty` representing the type the user originally wrote.
+    ///
+    /// e.g. given the function:
+    ///
+    /// ```
+    /// async fn foo() -> i32 { 2 }
+    /// ```
+    ///
+    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements `Future<Output=i32>`,
+    /// returns the `i32`.
+    ///
+    /// [`OpaqueDef`]: hir::TyKind::OpaqueDef
+    pub fn get_future_inner_return_ty<'a>(hir_ty: &'a hir::Ty<'a>) -> Option<&'a hir::Ty<'a>> {
+        let hir::TyKind::OpaqueDef(opaque_ty, _) = hir_ty.kind else {
+            return None;
+        };
+        if let hir::OpaqueTy { bounds: [hir::GenericBound::Trait(trait_ref)], .. } = opaque_ty
+            && let Some(segment) = trait_ref.trait_ref.path.segments.last()
+            && let Some(args) = segment.args
+            && let [constraint] = args.constraints
+            && constraint.ident.name == sym::Output
+            && let Some(ty) = constraint.ty()
+        {
+            Some(ty)
+        } else {
+            None
         }
     }
 }
