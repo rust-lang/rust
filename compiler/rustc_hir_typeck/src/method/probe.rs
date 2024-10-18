@@ -3,6 +3,7 @@ use std::cmp::max;
 use std::iter;
 use std::ops::Deref;
 
+use rustc_attr::collect_doc_alias_symbol_from_attrs;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -1918,9 +1919,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         };
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir().attrs(hir_id);
+
+        if collect_doc_alias_symbol_from_attrs(attrs.into_iter())
+            .iter()
+            .any(|alias| *alias == method.name)
+        {
+            return true;
+        }
+
         for attr in attrs {
-            if sym::doc == attr.name_or_empty() {
-            } else if sym::rustc_confusables == attr.name_or_empty() {
+            if sym::rustc_confusables == attr.name_or_empty() {
                 let Some(confusables) = attr.meta_item_list() else {
                     continue;
                 };
@@ -1932,35 +1940,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         return true;
                     }
                 }
-                continue;
-            } else {
-                continue;
-            };
-            let Some(values) = attr.meta_item_list() else {
-                continue;
-            };
-            for v in values {
-                if v.name_or_empty() != sym::alias {
-                    continue;
-                }
-                if let Some(nested) = v.meta_item_list() {
-                    // #[doc(alias("foo", "bar"))]
-                    for n in nested {
-                        if let Some(lit) = n.lit()
-                            && method.name == lit.symbol
-                        {
-                            return true;
-                        }
-                    }
-                } else if let Some(meta) = v.meta_item()
-                    && let Some(lit) = meta.name_value_literal()
-                    && method.name == lit.symbol
-                {
-                    // #[doc(alias = "foo")]
-                    return true;
-                }
             }
         }
+
         false
     }
 
