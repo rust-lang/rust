@@ -1785,30 +1785,66 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
         );
     }
     let len = len_utf8(code);
-    match (len, &mut *dst) {
-        (1, [a, ..]) => {
-            *a = code as u8;
-        }
-        (2, [a, b, ..]) => {
-            *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-            *b = (code & 0x3F) as u8 | TAG_CONT;
-        }
-        (3, [a, b, c, ..]) => {
-            *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-            *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-            *c = (code & 0x3F) as u8 | TAG_CONT;
-        }
-        (4, [a, b, c, d, ..]) => {
-            *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-            *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-            *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-            *d = (code & 0x3F) as u8 | TAG_CONT;
-        }
+    if dst.len() < len {
         // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
-        _ => const_eval_select((code, len, dst.len()), panic_at_const, panic_at_rt),
-    };
+        const_eval_select((code, len, dst.len()), panic_at_const, panic_at_rt);
+    }
+
+    // SAFETY: `dst` is checked to be at least the length needed to encode the codepoint.
+    unsafe { encode_utf8_raw_unchecked(code, dst.as_mut_ptr()) };
+
     // SAFETY: `<&mut [u8]>::as_mut_ptr` is guaranteed to return a valid pointer and `len` has been tested to be within bounds.
     unsafe { slice::from_raw_parts_mut(dst.as_mut_ptr(), len) }
+}
+
+/// Encodes a raw u32 value as UTF-8 to the provided destination buffer.
+///
+/// Unlike `char::encode_utf8`, this method also handles codepoints in the surrogate range.
+/// (Creating a `char` in the surrogate range is UB.)
+/// The result is valid [generalized UTF-8] but not valid UTF-8.
+///
+/// [generalized UTF-8]: https://simonsapin.github.io/wtf-8/#generalized-utf8
+///
+/// # Safety
+///
+/// The behavior is undefined if the buffer pointed to by `dst` is not
+/// large enough to hold the encoded codepoint. A buffer of length four
+/// is large enough to encode any `char`.
+///
+/// For a safe version of this function, see the [`encode_utf8_raw`] function.
+#[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+#[rustc_const_stable(feature = "const_char_encode_utf8", since = "CURRENT_RUSTC_VERSION")]
+#[doc(hidden)]
+#[inline]
+#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+pub const unsafe fn encode_utf8_raw_unchecked(code: u32, dst: *mut u8) {
+    let len = len_utf8(code);
+    // SAFETY: The caller must guarantee that the buffer pointed to by `dst`
+    // is at least `len` bytes long.
+    unsafe {
+        match len {
+            1 => {
+                *dst = code as u8;
+            }
+            2 => {
+                *dst = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+                *dst.add(1) = (code & 0x3F) as u8 | TAG_CONT;
+            }
+            3 => {
+                *dst = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+                *dst.add(1) = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+                *dst.add(2) = (code & 0x3F) as u8 | TAG_CONT;
+            }
+            4 => {
+                *dst = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+                *dst.add(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+                *dst.add(2) = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+                *dst.add(3) = (code & 0x3F) as u8 | TAG_CONT;
+            }
+            // SAFETY: `char` always takes between 1 and 4 bytes to encode in UTF-8.
+            _ => crate::hint::unreachable_unchecked(),
+        }
+    }
 }
 
 /// Encodes a raw `u32` value as UTF-16 into the provided `u16` buffer,
