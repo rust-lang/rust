@@ -15,6 +15,7 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
+#![feature(macro_metavar_expr)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
@@ -37,17 +38,17 @@ pub mod attr;
 pub mod entry;
 pub mod expand;
 pub mod format;
-pub mod mut_visit;
 pub mod node_id;
 pub mod ptr;
 pub mod token;
 pub mod tokenstream;
-pub mod visit;
+pub mod visitors;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 pub use self::ast::*;
 pub use self::ast_traits::{AstDeref, AstNodeWrapper, HasAttrs, HasNodeId, HasTokens};
+pub use self::visitors::{mut_visit, visit};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
