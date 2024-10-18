@@ -197,6 +197,9 @@ pub struct TestProps {
     pub no_auto_check_cfg: bool,
     /// Run tests which require enzyme being build
     pub has_enzyme: bool,
+    /// This `run-make` test should run a legacy Makefile, instead of building
+    /// and running `rmake.rs`.
+    pub legacy_makefile_test: bool,
 }
 
 mod directives {
@@ -242,6 +245,7 @@ mod directives {
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
+    pub const LEGACY_MAKEFILE_TEST: &'static str = "legacy-makefile-test";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -299,6 +303,7 @@ impl TestProps {
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
             has_enzyme: false,
+            legacy_makefile_test: false,
         }
     }
 
@@ -563,6 +568,12 @@ impl TestProps {
                     }
 
                     config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
+
+                    config.set_name_directive(
+                        ln,
+                        LEGACY_MAKEFILE_TEST,
+                        &mut self.legacy_makefile_test,
+                    );
                 },
             );
 
@@ -824,9 +835,6 @@ fn iter_header(
         }
     }
 
-    // NOTE(jieyouxu): once we get rid of `Makefile`s we can unconditionally check for `//@`.
-    let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//@" } else { "#" };
-
     let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
     let mut line_number = 0;
@@ -847,7 +855,7 @@ fn iter_header(
             return;
         }
 
-        let Some((header_revision, non_revisioned_directive_line)) = line_directive(comment, ln)
+        let Some((header_revision, non_revisioned_directive_line)) = line_directive("//@", ln)
         else {
             continue;
         };

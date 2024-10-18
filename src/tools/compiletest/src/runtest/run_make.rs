@@ -7,17 +7,18 @@ use crate::util::{copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
     pub(super) fn run_rmake_test(&self) {
-        let test_dir = &self.testpaths.file;
-        if test_dir.join("rmake.rs").exists() {
-            self.run_rmake_v2_test();
-        } else if test_dir.join("Makefile").exists() {
+        if self.props.legacy_makefile_test {
             self.run_rmake_legacy_test();
         } else {
-            self.fatal("failed to find either `rmake.rs` or `Makefile`")
+            self.run_rmake_v2_test();
         }
     }
 
     fn run_rmake_legacy_test(&self) {
+        if !self.testpaths.file.join("Makefile").exists() {
+            self.fatal("failed to find `Makefile` for legacy makefile test");
+        }
+
         let cwd = env::current_dir().unwrap();
         let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
         let src_root = cwd.join(&src_root);
