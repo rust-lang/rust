@@ -19,7 +19,7 @@ use rustc_macros::{
     Decodable, Encodable, MetadataDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
 use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
@@ -404,6 +404,7 @@ define_tables! {
     // individually instead of `DefId`s.
     module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
     cross_crate_inlinable: Table<DefIndex, bool>,
+    struct_target_features: Table<DefIndex, LazyArray<TargetFeature>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,

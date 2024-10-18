@@ -921,10 +921,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::IntrinsicCast);
                     }
 
-                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
-
+                    // Safe functions with explicit `#[target_feature]` attributes are not
+                    // assignable to safe fn pointers (RFC 2396).
                     if b_hdr.safety == hir::Safety::Safe
-                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                        && self
+                            .tcx
+                            .codegen_fn_attrs(def_id)
+                            .def_target_features
+                            .iter()
+                            .any(|x| !x.implied)
                     {
                         return Err(TypeError::TargetFeatureCast(def_id));
                     }
