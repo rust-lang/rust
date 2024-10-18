@@ -1,0 +1,4 @@
+error: values of the type `Hello16BitAlign` are too big for the target architecture
+
+error: aborting due to 1 previous error
+
