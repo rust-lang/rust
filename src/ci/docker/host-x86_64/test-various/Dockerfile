@@ -69,7 +69,11 @@ ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_T
   tests/assembly \
   library/core
 
-ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
+ENV NVPTX_TARGETS=nvptx64-nvidia-cuda \
+    CC_nvptx64_nvidia_cuda=clang-11 \
+    CXX_nvptx64_nvidia_cuda=clang++-11 \
+    CFLAGS_nvptx64_nvidia_cuda=-flto \
+    CXXFLAGS_nvptx64_nvidia_cuda=-flto
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \
   tests/run-make \
   tests/assembly
