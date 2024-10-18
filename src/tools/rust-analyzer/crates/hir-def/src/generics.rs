@@ -3,7 +3,7 @@
 //! generic parameters. See also the `Generics` type and the `generics_of` query
 //! in rustc.
 
-use std::ops;
+use std::{ops, sync::LazyLock};
 
 use either::Either;
 use hir_expand::{
@@ -412,7 +412,7 @@ impl GenericParams {
                         );
                     }
                     let generics = generic_params.finish(types_map, &mut types_source_maps);
-                    (Arc::new(generics), Some(Arc::new(types_source_maps)))
+                    (generics, Some(Arc::new(types_source_maps)))
                 }
             }
             GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics(db, id, enabled_params),
@@ -686,19 +686,32 @@ impl GenericParamsCollector {
         self,
         mut generics_types_map: TypesMap,
         generics_types_source_map: &mut TypesSourceMap,
-    ) -> GenericParams {
+    ) -> Arc<GenericParams> {
         let Self { mut lifetimes, mut type_or_consts, mut where_predicates } = self;
+
+        if lifetimes.is_empty() && type_or_consts.is_empty() && where_predicates.is_empty() {
+            static EMPTY: LazyLock<Arc<GenericParams>> = LazyLock::new(|| {
+                Arc::new(GenericParams {
+                    lifetimes: Arena::new(),
+                    type_or_consts: Arena::new(),
+                    where_predicates: Box::default(),
+                    types_map: TypesMap::default(),
+                })
+            });
+            return Arc::clone(&EMPTY);
+        }
+
         lifetimes.shrink_to_fit();
         type_or_consts.shrink_to_fit();
         where_predicates.shrink_to_fit();
         generics_types_map.shrink_to_fit();
         generics_types_source_map.shrink_to_fit();
-        GenericParams {
+        Arc::new(GenericParams {
             type_or_consts,
             lifetimes,
             where_predicates: where_predicates.into_boxed_slice(),
             types_map: generics_types_map,
-        }
+        })
     }
 }
 

@@ -895,7 +895,7 @@ impl<'a> Ctx<'a> {
         generics.fill(&body_ctx, node, add_param_attrs);
 
         let generics = generics.finish(types_map, &mut types_source_map);
-        (Arc::new(generics), types_source_map)
+        (generics, types_source_map)
     }
 
     fn lower_type_bounds(
