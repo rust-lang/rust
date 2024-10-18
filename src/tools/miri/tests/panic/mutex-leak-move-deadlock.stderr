@@ -1,0 +1,4 @@
+thread 'main' panicked at RUSTLIB/std/$FILE:LL:CC:
+failed to lock mutex: Os { code: 35, kind: Deadlock, message: "deadlock" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect

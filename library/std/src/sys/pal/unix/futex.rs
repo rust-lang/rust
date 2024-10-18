@@ -26,6 +26,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
     use super::time::Timespec;
     use crate::ptr::null;
     use crate::sync::atomic::Ordering::Relaxed;
+    use crate::sys::cvt;
 
     // Calculate the timeout as an absolute timespec.
     //
@@ -40,7 +41,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
             return true;
         }
 
-        let r = unsafe {
+        let r = cvt(unsafe {
             cfg_if::cfg_if! {
                 if #[cfg(target_os = "freebsd")] {
                     // FreeBSD doesn't have futex(), but it has
@@ -77,12 +78,16 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                     compile_error!("unknown target_os");
                 }
             }
-        };
+        });
 
-        match (r < 0).then(super::os::errno) {
-            Some(libc::ETIMEDOUT) => return false,
-            Some(libc::EINTR) => continue,
-            _ => return true,
+        match r {
+            Ok(_) => return true,
+            Err(e) => match e.raw_os_error() {
+                Some(libc::ETIMEDOUT) => return false,
+                Some(libc::EINTR) => continue,
+                Some(libc::EAGAIN) => return true,
+                _ => panic!("failed to wait on futex: {e:?}"),
+            },
         }
     }
 }
@@ -95,19 +100,22 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 /// On some platforms, this always returns false.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wake(futex: &AtomicU32) -> bool {
+    use crate::sys::cvt;
     let ptr = futex as *const AtomicU32;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
-    unsafe { libc::syscall(libc::SYS_futex, ptr, op, 1) > 0 }
+    cvt(unsafe { libc::syscall(libc::SYS_futex, ptr, op, 1) })
+        .expect("failed to wake futex waiters")
+        > 0
 }
 
 /// Wakes up all threads that are waiting on `futex_wait` on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wake_all(futex: &AtomicU32) {
+    use crate::sys::cvt;
     let ptr = futex as *const AtomicU32;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
-    unsafe {
-        libc::syscall(libc::SYS_futex, ptr, op, i32::MAX);
-    }
+    cvt(unsafe { libc::syscall(libc::SYS_futex, ptr, op, i32::MAX) })
+        .expect("failed to wake futex waiters");
 }
 
 // FreeBSD doesn't tell us how many threads are woken up, so this always returns false.
