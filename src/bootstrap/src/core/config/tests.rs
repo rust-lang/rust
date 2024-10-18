@@ -122,6 +122,7 @@ fn override_toml() {
             "--set=rust.deny-warnings=false".to_owned(),
             "--set=build.gdb=\"bar\"".to_owned(),
             "--set=build.tools=[\"cargo\"]".to_owned(),
+            "--set=build.jobs=1".to_owned(),
             "--set=llvm.build-config={\"foo\" = \"bar\"}".to_owned(),
             "--set=target.x86_64-unknown-linux-gnu.runner=bar".to_owned(),
             "--set=target.x86_64-unknown-linux-gnu.rpath=false".to_owned(),
@@ -139,6 +140,7 @@ deny-warnings = true
 [build]
 gdb = "foo"
 tools = []
+jobs = 2
 
 [llvm]
 download-ci-llvm = false
@@ -171,6 +173,7 @@ runner = "x86_64-runner"
         Some(["cargo".to_string()].into_iter().collect()),
         "setting list value"
     );
+    assert_eq!(config.jobs, Some(1));
     assert_eq!(
         config.llvm_build_config,
         [("foo".to_string(), "bar".to_string())].into_iter().collect(),
@@ -351,4 +354,10 @@ fn parse_rust_std_features_empty() {
 #[should_panic]
 fn parse_rust_std_features_invalid() {
     parse("rust.std-features = \"backtrace\"");
+}
+
+#[test]
+fn parse_jobs_zero() {
+    assert_eq!(parse("build.jobs = 0").jobs, None);
+    assert_eq!(parse("build.jobs = 1").jobs, Some(1));
 }
