@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::trait_ref_of_method;
 use itertools::Itertools;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    Visitor, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
-    walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_where_predicate,
+    Visitor, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref,
+    walk_trait_ref, walk_ty, walk_where_predicate,
 };
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind, Generics,
@@ -163,7 +163,7 @@ fn check_fn_inner<'tcx>(
                 if visitor.lts.iter().any(|lt| matches!(lt.res, LifetimeName::Param(_))) {
                     return;
                 }
-                if let GenericBound::Trait(ref trait_ref, _) = *bound {
+                if let GenericBound::Trait(ref trait_ref) = *bound {
                     let params = &trait_ref
                         .trait_ref
                         .path
@@ -311,7 +311,7 @@ fn could_use_elision<'tcx>(
     Some((elidable_lts, usages))
 }
 
-fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<LocalDefId> {
+fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefId> {
     named_generics
         .iter()
         .filter_map(|par| {
@@ -420,11 +420,9 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_>) {
         match ty.kind {
-            TyKind::OpaqueDef(item, bounds, _) => {
-                let map = self.cx.tcx.hir();
-                let item = map.item(item);
+            TyKind::OpaqueDef(opaque, bounds) => {
                 let len = self.lts.len();
-                walk_item(self, item);
+                self.visit_opaque_ty(opaque);
                 self.lts.truncate(len);
                 self.lts.extend(bounds.iter().filter_map(|bound| match bound {
                     GenericArg::Lifetime(&l) => Some(l),
@@ -440,7 +438,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }
-                for (bound, _) in bounds {
+                for bound in bounds {
                     self.visit_poly_trait_ref(bound);
                 }
             },
@@ -499,7 +497,7 @@ struct Usage {
 
 struct LifetimeChecker<'cx, 'tcx, F> {
     cx: &'cx LateContext<'tcx>,
-    map: FxHashMap<LocalDefId, Vec<Usage>>,
+    map: FxIndexMap<LocalDefId, Vec<Usage>>,
     where_predicate_depth: usize,
     generic_args_depth: usize,
     phantom: std::marker::PhantomData<F>,
@@ -621,7 +619,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
 fn report_elidable_impl_lifetimes<'tcx>(
     cx: &LateContext<'tcx>,
     impl_: &'tcx Impl<'_>,
-    map: &FxHashMap<LocalDefId, Vec<Usage>>,
+    map: &FxIndexMap<LocalDefId, Vec<Usage>>,
 ) {
     let single_usages = map
         .iter()
