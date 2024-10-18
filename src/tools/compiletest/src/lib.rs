@@ -543,6 +543,21 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     }
 }
 
+/// Read-only context data used during test collection.
+struct TestCollectorCx {
+    config: Arc<Config>,
+    cache: HeadersCache,
+    inputs: Stamp,
+    modified_tests: Vec<PathBuf>,
+}
+
+/// Mutable state used during test collection.
+struct TestCollector {
+    tests: Vec<test::TestDescAndFn>,
+    found_paths: HashSet<PathBuf>,
+    poisoned: bool,
+}
+
 /// Creates libtest structures for every test/revision in the test suite directory.
 ///
 /// This always inspects _all_ test files in the suite (e.g. all 17k+ ui tests),
@@ -556,24 +571,16 @@ pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
     });
     let cache = HeadersCache::load(&config);
 
-    let mut tests = vec![];
-    let mut found_paths = HashSet::new();
-    let mut poisoned = false;
+    let cx = TestCollectorCx { config, cache, inputs, modified_tests };
+    let mut collector =
+        TestCollector { tests: vec![], found_paths: HashSet::new(), poisoned: false };
 
-    collect_tests_from_dir(
-        config.clone(),
-        &cache,
-        &config.src_base,
-        &PathBuf::new(),
-        &inputs,
-        &mut tests,
-        &mut found_paths,
-        &modified_tests,
-        &mut poisoned,
-    )
-    .unwrap_or_else(|reason| {
-        panic!("Could not read tests from {}: {reason}", config.src_base.display())
-    });
+    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, &PathBuf::new())
+        .unwrap_or_else(|reason| {
+            panic!("Could not read tests from {}: {reason}", cx.config.src_base.display())
+        });
+
+    let TestCollector { tests, found_paths, poisoned } = collector;
 
     if poisoned {
         eprintln!();
@@ -663,15 +670,10 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
 /// Recursively scans a directory to find test files and create test structures
 /// that will be handed over to libtest.
 fn collect_tests_from_dir(
-    config: Arc<Config>,
-    cache: &HeadersCache,
+    cx: &TestCollectorCx,
+    collector: &mut TestCollector,
     dir: &Path,
     relative_dir_path: &Path,
-    inputs: &Stamp,
-    tests: &mut Vec<test::TestDescAndFn>,
-    found_paths: &mut HashSet<PathBuf>,
-    modified_tests: &Vec<PathBuf>,
-    poisoned: &mut bool,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
@@ -680,7 +682,7 @@ fn collect_tests_from_dir(
 
     // For run-make tests, a "test file" is actually a directory that contains
     // an `rmake.rs` or `Makefile`"
-    if config.mode == Mode::RunMake {
+    if cx.config.mode == Mode::RunMake {
         if dir.join("Makefile").exists() && dir.join("rmake.rs").exists() {
             return Err(io::Error::other(
                 "run-make tests cannot have both `Makefile` and `rmake.rs`",
@@ -692,7 +694,7 @@ fn collect_tests_from_dir(
                 file: dir.to_path_buf(),
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
-            tests.extend(make_test(config, cache, &paths, inputs, poisoned));
+            make_test(cx, collector, &paths);
             // This directory is a test, so don't try to find other tests inside it.
             return Ok(());
         }
@@ -704,7 +706,7 @@ fn collect_tests_from_dir(
     // sequential loop because otherwise, if we do it in the
     // tests themselves, they race for the privilege of
     // creating the directories and sometimes fail randomly.
-    let build_dir = output_relative_path(&config, relative_dir_path);
+    let build_dir = output_relative_path(&cx.config, relative_dir_path);
     fs::create_dir_all(&build_dir).unwrap();
 
     // Add each `.rs` file as a test, and recurse further on any
@@ -716,33 +718,25 @@ fn collect_tests_from_dir(
         let file_path = file.path();
         let file_name = file.file_name();
 
-        if is_test(&file_name) && (!config.only_modified || modified_tests.contains(&file_path)) {
+        if is_test(&file_name)
+            && (!cx.config.only_modified || cx.modified_tests.contains(&file_path))
+        {
             // We found a test file, so create the corresponding libtest structures.
             debug!("found test file: {:?}", file_path.display());
 
             // Record the stem of the test file, to check for overlaps later.
             let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
-            found_paths.insert(rel_test_path);
+            collector.found_paths.insert(rel_test_path);
 
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
-            tests.extend(make_test(config.clone(), cache, &paths, inputs, poisoned))
+            make_test(cx, collector, &paths);
         } else if file_path.is_dir() {
             // Recurse to find more tests in a subdirectory.
             let relative_file_path = relative_dir_path.join(file.file_name());
             if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(
-                    config.clone(),
-                    cache,
-                    &file_path,
-                    &relative_file_path,
-                    inputs,
-                    tests,
-                    found_paths,
-                    modified_tests,
-                    poisoned,
-                )?;
+                collect_tests_from_dir(cx, collector, &file_path, &relative_file_path)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
@@ -766,17 +760,11 @@ pub fn is_test(file_name: &OsString) -> bool {
 
 /// For a single test file, creates one or more test structures (one per revision)
 /// that can be handed over to libtest to run, possibly in parallel.
-fn make_test(
-    config: Arc<Config>,
-    cache: &HeadersCache,
-    testpaths: &TestPaths,
-    inputs: &Stamp,
-    poisoned: &mut bool,
-) -> Vec<test::TestDescAndFn> {
+fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &TestPaths) {
     // For run-make tests, each "test file" is actually a _directory_ containing
     // an `rmake.rs` or `Makefile`. But for the purposes of directive parsing,
     // we want to look at that recipe file, not the directory itself.
-    let test_path = if config.mode == Mode::RunMake {
+    let test_path = if cx.config.mode == Mode::RunMake {
         if testpaths.file.join("rmake.rs").exists() && testpaths.file.join("Makefile").exists() {
             panic!("run-make tests cannot have both `rmake.rs` and `Makefile`");
         }
@@ -793,7 +781,7 @@ fn make_test(
     };
 
     // Scan the test file to discover its revisions, if any.
-    let early_props = EarlyProps::from_file(&config, &test_path);
+    let early_props = EarlyProps::from_file(&cx.config, &test_path);
 
     // Normally we create one libtest structure per revision, with two exceptions:
     // - If a test doesn't use revisions, create a dummy revision (None) so that
@@ -801,44 +789,44 @@ fn make_test(
     // - Incremental tests inherently can't run their revisions in parallel, so
     //   we treat them like non-revisioned tests here. Incremental revisions are
     //   handled internally by `runtest::run` instead.
-    let revisions = if early_props.revisions.is_empty() || config.mode == Mode::Incremental {
+    let revisions = if early_props.revisions.is_empty() || cx.config.mode == Mode::Incremental {
         vec![None]
     } else {
         early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
     };
 
-    // For each revision (or the sole dummy revision), create and return a
+    // For each revision (or the sole dummy revision), create and append a
     // `test::TestDescAndFn` that can be handed over to libtest.
-    revisions
-        .into_iter()
-        .map(|revision| {
-            // Create a test name and description to hand over to libtest.
-            let src_file =
-                std::fs::File::open(&test_path).expect("open test file to parse ignores");
-            let test_name = crate::make_test_name(&config, testpaths, revision);
-            // Create a libtest description for the test/revision.
-            // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
-            // because they need to set the libtest ignored flag.
-            let mut desc = make_test_description(
-                &config, cache, test_name, &test_path, src_file, revision, poisoned,
-            );
+    collector.tests.extend(revisions.into_iter().map(|revision| {
+        // Create a test name and description to hand over to libtest.
+        let src_file = fs::File::open(&test_path).expect("open test file to parse ignores");
+        let test_name = make_test_name(&cx.config, testpaths, revision);
+        // Create a libtest description for the test/revision.
+        // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
+        // because they need to set the libtest ignored flag.
+        let mut desc = make_test_description(
+            &cx.config,
+            &cx.cache,
+            test_name,
+            &test_path,
+            src_file,
+            revision,
+            &mut collector.poisoned,
+        );
 
-            // If a test's inputs haven't changed since the last time it ran,
-            // mark it as ignored so that libtest will skip it.
-            if !config.force_rerun
-                && is_up_to_date(&config, testpaths, &early_props, revision, inputs)
-            {
-                desc.ignore = true;
-                // Keep this in sync with the "up-to-date" message detected by bootstrap.
-                desc.ignore_message = Some("up-to-date");
-            }
+        // If a test's inputs haven't changed since the last time it ran,
+        // mark it as ignored so that libtest will skip it.
+        if !cx.config.force_rerun && is_up_to_date(cx, testpaths, &early_props, revision) {
+            desc.ignore = true;
+            // Keep this in sync with the "up-to-date" message detected by bootstrap.
+            desc.ignore_message = Some("up-to-date");
+        }
 
-            // Create the callback that will run this test/revision when libtest calls it.
-            let testfn = make_test_closure(config.clone(), testpaths, revision);
+        // Create the callback that will run this test/revision when libtest calls it.
+        let testfn = make_test_closure(Arc::clone(&cx.config), testpaths, revision);
 
-            test::TestDescAndFn { desc, testfn }
-        })
-        .collect()
+        test::TestDescAndFn { desc, testfn }
+    }));
 }
 
 /// The path of the `stamp` file that gets created or updated whenever a
@@ -892,13 +880,12 @@ fn files_related_to_test(
 /// (This is not very reliable in some circumstances, so the `--force-rerun`
 /// flag can be used to ignore up-to-date checking and always re-run tests.)
 fn is_up_to_date(
-    config: &Config,
+    cx: &TestCollectorCx,
     testpaths: &TestPaths,
     props: &EarlyProps,
     revision: Option<&str>,
-    inputs: &Stamp, // Last-modified timestamp of the compiler, compiletest etc
 ) -> bool {
-    let stamp_name = stamp(config, testpaths, revision);
+    let stamp_name = stamp(&cx.config, testpaths, revision);
     // Check the config hash inside the stamp file.
     let contents = match fs::read_to_string(&stamp_name) {
         Ok(f) => f,
@@ -906,7 +893,7 @@ fn is_up_to_date(
         // The test hasn't succeeded yet, so it is not up-to-date.
         Err(_) => return false,
     };
-    let expected_hash = runtest::compute_stamp_hash(config);
+    let expected_hash = runtest::compute_stamp_hash(&cx.config);
     if contents != expected_hash {
         // Some part of compiletest configuration has changed since the test
         // last succeeded, so it is not up-to-date.
@@ -915,8 +902,8 @@ fn is_up_to_date(
 
     // Check the timestamp of the stamp file against the last modified time
     // of all files known to be relevant to the test.
-    let mut inputs = inputs.clone();
-    for path in files_related_to_test(config, testpaths, props, revision) {
+    let mut inputs = cx.inputs.clone();
+    for path in files_related_to_test(&cx.config, testpaths, props, revision) {
         inputs.add_path(&path);
     }
 
