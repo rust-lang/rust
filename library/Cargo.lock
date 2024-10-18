@@ -340,7 +340,6 @@ dependencies = [
  "object",
  "panic_abort",
  "panic_unwind",
- "profiler_builtins",
  "r-efi",
  "r-efi-alloc",
  "rand",
@@ -368,6 +367,7 @@ name = "sysroot"
 version = "0.0.0"
 dependencies = [
  "proc_macro",
+ "profiler_builtins",
  "std",
  "test",
 ]
