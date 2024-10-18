@@ -72,7 +72,7 @@ pub(crate) struct CollapseMacroDebuginfoIllegal {
 pub(crate) struct MacroConstStability {
     #[primary_span]
     #[label]
-    pub span: Span,
+    pub spans: Vec<Span>,
     #[label(expand_label2)]
     pub head_span: Span,
 }
@@ -82,7 +82,7 @@ pub(crate) struct MacroConstStability {
 pub(crate) struct MacroBodyStability {
     #[primary_span]
     #[label]
-    pub span: Span,
+    pub spans: Vec<Span>,
     #[label(expand_label2)]
     pub head_span: Span,
 }

@@ -8,7 +8,6 @@ use arrayvec::ArrayVec;
 use rustc_ast::MetaItemInner;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
-use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -387,8 +386,8 @@ impl Item {
     /// Returns the effective stability of the item.
     ///
     /// This method should only be called after the `propagate-stability` pass has been run.
-    pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<Stability> {
-        let stability = self.inner.stability;
+    pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<&Stability> {
+        let stability = self.inner.stability.as_ref();
         debug_assert!(
             stability.is_some()
                 || self.def_id().is_none_or(|did| tcx.lookup_stability(did).is_none()),
@@ -397,7 +396,7 @@ impl Item {
         stability
     }
 
-    pub(crate) fn const_stability(&self, tcx: TyCtxt<'_>) -> Option<ConstStability> {
+    pub(crate) fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ConstStability> {
         self.def_id().and_then(|did| tcx.lookup_const_stability(did))
     }
 
@@ -641,12 +640,11 @@ impl Item {
             asyncness: ty::Asyncness,
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
-            let constness =
-                if tcx.is_const_fn(def_id) || is_unstable_const_fn(tcx, def_id).is_some() {
-                    hir::Constness::Const
-                } else {
-                    hir::Constness::NotConst
-                };
+            let constness = if tcx.is_const_fn(def_id) || tcx.is_unstable_const_fn(def_id) {
+                hir::Constness::Const
+            } else {
+                hir::Constness::NotConst
+            };
             let asyncness = match asyncness {
                 ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
                 ty::Asyncness::No => hir::IsAsync::NotAsync,
@@ -664,9 +662,7 @@ impl Item {
                         safety
                     },
                     abi,
-                    constness: if tcx.is_const_fn(def_id)
-                        || is_unstable_const_fn(tcx, def_id).is_some()
-                    {
+                    constness: if tcx.is_const_fn(def_id) || tcx.is_unstable_const_fn(def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst

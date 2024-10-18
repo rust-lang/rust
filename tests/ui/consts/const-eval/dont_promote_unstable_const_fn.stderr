@@ -4,7 +4,9 @@ error: `foo` is not yet stable as a const fn
 LL | const fn bar() -> u32 { foo() }
    |                         ^^^^^
    |
+   = note: use of unstable library feature `foo`
    = help: add `#![feature(foo)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:17:28

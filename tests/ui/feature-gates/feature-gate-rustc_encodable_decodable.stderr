@@ -6,7 +6,7 @@ LL | extern crate rustc_serialize;
    |
    = help: maybe you need to install the missing components with: `rustup component add rust-src rustc-dev llvm-tools-preview`
 
-error: use of unstable library feature 'rustc_encodable_decodable': derive macro for `rustc-serialize`; should not be used in new code
+error: use of unstable library feature `rustc_encodable_decodable`: derive macro for `rustc-serialize`; should not be used in new code
   --> $DIR/feature-gate-rustc_encodable_decodable.rs:7:5
    |
 LL |     RustcEncodable,
@@ -14,6 +14,8 @@ LL |     RustcEncodable,
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = help: add `#![feature(rustc_encodable_decodable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `#[deny(soft_unstable)]` on by default
 
 warning: use of deprecated macro `RustcEncodable`: rustc-serialize is deprecated and no longer supported
@@ -24,7 +26,7 @@ LL |     RustcEncodable,
    |
    = note: `#[warn(deprecated)]` on by default
 
-error: use of unstable library feature 'rustc_encodable_decodable': derive macro for `rustc-serialize`; should not be used in new code
+error: use of unstable library feature `rustc_encodable_decodable`: derive macro for `rustc-serialize`; should not be used in new code
   --> $DIR/feature-gate-rustc_encodable_decodable.rs:11:5
    |
 LL |     RustcDecodable,
@@ -32,6 +34,8 @@ LL |     RustcDecodable,
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = help: add `#![feature(rustc_encodable_decodable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: use of deprecated macro `RustcDecodable`: rustc-serialize is deprecated and no longer supported
   --> $DIR/feature-gate-rustc_encodable_decodable.rs:11:5
@@ -43,7 +47,7 @@ error: aborting due to 3 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0463`.
 Future incompatibility report: Future breakage diagnostic:
-error: use of unstable library feature 'rustc_encodable_decodable': derive macro for `rustc-serialize`; should not be used in new code
+error: use of unstable library feature `rustc_encodable_decodable`: derive macro for `rustc-serialize`; should not be used in new code
   --> $DIR/feature-gate-rustc_encodable_decodable.rs:7:5
    |
 LL |     RustcEncodable,
@@ -51,10 +55,12 @@ LL |     RustcEncodable,
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = help: add `#![feature(rustc_encodable_decodable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `#[deny(soft_unstable)]` on by default
 
 Future breakage diagnostic:
-error: use of unstable library feature 'rustc_encodable_decodable': derive macro for `rustc-serialize`; should not be used in new code
+error: use of unstable library feature `rustc_encodable_decodable`: derive macro for `rustc-serialize`; should not be used in new code
   --> $DIR/feature-gate-rustc_encodable_decodable.rs:11:5
    |
 LL |     RustcDecodable,
@@ -62,5 +68,7 @@ LL |     RustcDecodable,
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = help: add `#![feature(rustc_encodable_decodable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `#[deny(soft_unstable)]` on by default
 

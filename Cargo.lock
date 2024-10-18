@@ -3340,6 +3340,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "smallvec",
 ]
 
 [[package]]
@@ -4222,6 +4223,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "smallvec",
  "tracing",
 ]
 

@@ -977,13 +977,13 @@ pub(crate) struct MissingOneOfTraitItem {
 pub(crate) struct MissingTraitItemUnstable {
     #[primary_span]
     pub span: Span,
-    #[note(hir_analysis_some_note)]
-    pub some_note: bool,
-    #[note(hir_analysis_none_note)]
-    pub none_note: bool,
     pub missing_item_name: Symbol,
-    pub feature: Symbol,
-    pub reason: String,
+    #[subdiagnostic]
+    pub features: rustc_middle::error::UnstableLibraryFeatureNote,
+    #[subdiagnostic]
+    pub info: Vec<rustc_middle::error::UnstableLibraryFeatureInfo>,
+    #[subdiagnostic]
+    pub nightly_subdiags: Vec<rustc_session::errors::NightlyFeatureDiagnostic>,
 }
 
 #[derive(Diagnostic)]

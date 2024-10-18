@@ -11,6 +11,7 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
+use crate::Session;
 use crate::config::CrateType;
 use crate::parse::ParseSess;
 
@@ -28,50 +29,39 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for FeatureGateError {
 
 #[derive(Subdiagnostic)]
 #[note(session_feature_diagnostic_for_issue)]
-pub(crate) struct FeatureDiagnosticForIssue {
-    pub(crate) n: NonZero<u32>,
+pub struct FeatureDiagnosticForIssue {
+    pub n: NonZero<u32>,
 }
 
 #[derive(Subdiagnostic)]
-#[note(session_feature_suggest_upgrade_compiler)]
-pub(crate) struct SuggestUpgradeCompiler {
-    date: &'static str,
+pub enum NightlyFeatureDiagnostic {
+    #[help(session_feature_diagnostic_help)]
+    Help { feature: String },
+    #[suggestion(
+        session_feature_diagnostic_suggestion,
+        applicability = "maybe-incorrect",
+        code = "#![feature({feature})]\n"
+    )]
+    Suggestion {
+        feature: String,
+        #[primary_span]
+        span: Span,
+    },
+    #[help(session_cli_feature_diagnostic_help)]
+    CliHelp { feature: String },
+    #[note(session_feature_suggest_upgrade_compiler)]
+    SuggestUpgradeCompiler { date: &'static str },
 }
 
-impl SuggestUpgradeCompiler {
-    pub(crate) fn ui_testing() -> Self {
-        Self { date: "YYYY-MM-DD" }
+impl NightlyFeatureDiagnostic {
+    pub fn suggest_upgrade_compiler(sess: &Session) -> Option<Self> {
+        if sess.opts.unstable_opts.ui_testing {
+            Some(Self::SuggestUpgradeCompiler { date: "YYYY-MM-DD" })
+        } else {
+            let date = option_env!("CFG_VER_DATE")?;
+            Some(Self::SuggestUpgradeCompiler { date })
+        }
     }
-
-    pub(crate) fn new() -> Option<Self> {
-        let date = option_env!("CFG_VER_DATE")?;
-
-        Some(Self { date })
-    }
-}
-
-#[derive(Subdiagnostic)]
-#[help(session_feature_diagnostic_help)]
-pub(crate) struct FeatureDiagnosticHelp {
-    pub(crate) feature: Symbol,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    session_feature_diagnostic_suggestion,
-    applicability = "maybe-incorrect",
-    code = "#![feature({feature})]\n"
-)]
-pub struct FeatureDiagnosticSuggestion {
-    pub feature: Symbol,
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Subdiagnostic)]
-#[help(session_cli_feature_diagnostic_help)]
-pub(crate) struct CliFeatureDiagnosticHelp {
-    pub(crate) feature: Symbol,
 }
 
 #[derive(Diagnostic)]

@@ -115,6 +115,14 @@ pub(crate) struct UnstableConstFn {
     #[primary_span]
     pub span: Span,
     pub def_path: String,
+    #[help(const_eval_const_stable)]
+    pub in_const_stable_context: bool,
+    #[subdiagnostic]
+    pub features: Option<rustc_middle::error::UnstableLibraryFeatureNote>,
+    #[subdiagnostic]
+    pub info: Vec<rustc_middle::error::UnstableLibraryFeatureInfo>,
+    #[subdiagnostic]
+    pub nightly_subdiags: Vec<rustc_session::errors::NightlyFeatureDiagnostic>,
 }
 
 #[derive(Diagnostic)]
