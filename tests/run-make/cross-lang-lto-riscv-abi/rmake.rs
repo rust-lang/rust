@@ -1,21 +1,20 @@
-//! Make sure that cross-language LTO works on riscv targets,
-//! which requires extra `target-abi` metadata to be emitted.
+//! Make sure that cross-language LTO works on riscv targets, which requires extra `target-abi`
+//! metadata to be emitted.
 //@ needs-force-clang-based-tests
-//@ needs-llvm-components riscv
+//@ needs-llvm-components: riscv
 
-//@ needs-force-clang-based-tests
-// FIXME(#126180): This test can only run on `x86_64-gnu-debug`, because that CI job sets
-// RUSTBUILD_FORCE_CLANG_BASED_TESTS and only runs tests which contain "clang" in their
-// name.
-// However, this test does not run at all as its name does not contain "clang".
+// ignore-tidy-linelength
 
-use std::path::PathBuf;
-use std::process::{Command, Output};
-use std::{env, str};
+use object::elf;
+use object::read::elf as readelf;
+use run_make_support::{bin_name, clang, object, rfs, rustc};
 
-use run_make_support::{bin_name, clang, llvm_readobj, rustc};
-
-fn check_target(target: &str, clang_target: &str, carch: &str, is_double_float: bool) {
+fn check_target<H: readelf::FileHeader<Endian = object::Endianness>>(
+    target: &str,
+    clang_target: &str,
+    carch: &str,
+    is_double_float: bool,
+) {
     eprintln!("Checking target {target}");
     // Rust part
     rustc()
@@ -39,16 +38,55 @@ fn check_target(target: &str, clang_target: &str, carch: &str, is_double_float: 
 
     // Check that the built binary has correct float abi
     let executable = bin_name("riscv-xlto");
-    let output = llvm_readobj().input(&executable).file_header().run();
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    eprintln!("obj:\n{}", stdout);
-
-    assert!(!(is_double_float ^ stdout.contains("EF_RISCV_FLOAT_ABI_DOUBLE")));
+    let data = rfs::read(&executable);
+    let header = <H>::parse(&*data).unwrap();
+    let endian = match header.e_ident().data {
+        elf::ELFDATA2LSB => object::Endianness::Little,
+        elf::ELFDATA2MSB => object::Endianness::Big,
+        x => unreachable!("invalid e_ident data: {:#010b}", x),
+    };
+    // Check `(e_flags & EF_RISCV_FLOAT_ABI) == EF_RISCV_FLOAT_ABI_DOUBLE`.
+    //
+    // See
+    // <https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-elf.adoc#elf-object-files>.
+    if is_double_float {
+        assert_eq!(
+            header.e_flags(endian) & elf::EF_RISCV_FLOAT_ABI,
+            elf::EF_RISCV_FLOAT_ABI_DOUBLE,
+            "expected {target} to use double ABI, but it did not"
+        );
+    } else {
+        assert_ne!(
+            header.e_flags(endian) & elf::EF_RISCV_FLOAT_ABI,
+            elf::EF_RISCV_FLOAT_ABI_DOUBLE,
+            "did not expected {target} to use double ABI"
+        );
+    }
 }
 
 fn main() {
-    check_target("riscv64gc-unknown-linux-gnu", "riscv64-linux-gnu", "rv64gc", true);
-    check_target("riscv64imac-unknown-none-elf", "riscv64-unknown-elf", "rv64imac", false);
-    check_target("riscv32imac-unknown-none-elf", "riscv32-unknown-elf", "rv32imac", false);
-    check_target("riscv32gc-unknown-linux-gnu", "riscv32-linux-gnu", "rv32gc", true);
+    check_target::<elf::FileHeader64<object::Endianness>>(
+        "riscv64gc-unknown-linux-gnu",
+        "riscv64-linux-gnu",
+        "rv64gc",
+        true,
+    );
+    check_target::<elf::FileHeader64<object::Endianness>>(
+        "riscv64imac-unknown-none-elf",
+        "riscv64-unknown-elf",
+        "rv64imac",
+        false,
+    );
+    check_target::<elf::FileHeader32<object::Endianness>>(
+        "riscv32imac-unknown-none-elf",
+        "riscv32-unknown-elf",
+        "rv32imac",
+        false,
+    );
+    check_target::<elf::FileHeader32<object::Endianness>>(
+        "riscv32gc-unknown-linux-gnu",
+        "riscv32-linux-gnu",
+        "rv32gc",
+        true,
+    );
 }
