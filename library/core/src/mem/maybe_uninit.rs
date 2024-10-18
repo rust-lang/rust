@@ -485,9 +485,10 @@ impl<T> MaybeUninit<T> {
     ///     }
     /// }
     /// ```
-    #[stable(feature = "maybe_uninit_write", since = "1.55.0")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_write", issue = "63567")]
     #[inline(always)]
+    #[stable(feature = "maybe_uninit_write", since = "1.55.0")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+    #[rustc_const_stable(feature = "const_maybe_uninit_write", since = "CURRENT_RUSTC_VERSION")]
     pub const fn write(&mut self, val: T) -> &mut T {
         *self = MaybeUninit::new(val);
         // SAFETY: We just initialized this value.
