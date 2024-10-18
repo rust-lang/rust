@@ -521,6 +521,12 @@ impl SpanData {
     }
 }
 
+impl Default for SpanData {
+    fn default() -> Self {
+        Self { lo: BytePos(0), hi: BytePos(0), ctxt: SyntaxContext::root(), parent: None }
+    }
+}
+
 // The interner is pointed to by a thread local value which is only set on the main thread
 // with parallelization is disabled. So we don't allow `Span` to transfer between threads
 // to avoid panics and other errors, even though it would be memory safe to do so.
