@@ -353,7 +353,7 @@ pub enum ErrorKind {
     #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     Deadlock,
     /// Cross-device or cross-filesystem (hard) link or rename.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_crosses_devices", since = "CURRENT_RUSTC_VERSION")]
     CrossesDevices,
     /// Too many (hard) links to the same filesystem object.
     ///
