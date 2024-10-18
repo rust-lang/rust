@@ -2146,10 +2146,13 @@ mod unsafe_keyword {}
 
 #[doc(keyword = "use")]
 //
-/// Import or rename items from other crates or modules.
+/// Import or rename items from other crates or modules, or specify precise capturing
+/// with `use<..>`.
 ///
-/// Usually a `use` keyword is used to shorten the path required to refer to a module item.
-/// The keyword may appear in modules, blocks and even functions, usually at the top.
+/// ## Importing items
+///
+/// The `use` keyword is employed to shorten the path required to refer to a module item.
+/// The keyword may appear in modules, blocks, and even functions, typically at the top.
 ///
 /// The most basic usage of the keyword is `use path::to::item;`,
 /// though a number of convenient shortcuts are supported:
@@ -2190,19 +2193,48 @@ mod unsafe_keyword {}
 /// // Compiles.
 /// let _ = VariantA;
 ///
-/// // Does not compile !
+/// // Does not compile!
 /// let n = new();
 /// ```
 ///
-/// For more information on `use` and paths in general, see the [Reference].
+/// For more information on `use` and paths in general, see the [Reference][ref-use-decls].
 ///
 /// The differences about paths and the `use` keyword between the 2015 and 2018 editions
-/// can also be found in the [Reference].
+/// can also be found in the [Reference][ref-use-decls].
+///
+/// ## Precise capturing
+///
+/// The `use<..>` syntax is used within certain `impl Trait` bounds to control which generic
+/// parameters are captured. This is important for return-position `impl Trait` (RPIT) types,
+/// as it affects borrow checking by controlling which generic parameters can be used in the
+/// hidden type.
+///
+/// For example, the following function demonstrates an error without precise capturing in
+/// Rust 2021 and earlier editions:
+///
+/// ```rust,compile_fail,edition2021
+/// fn f(x: &()) -> impl Sized { x }
+/// ```
+///
+/// By using `use<'_>` for precise capturing, it can be resolved:
+///
+/// ```rust
+/// fn f(x: &()) -> impl Sized + use<'_> { x }
+/// ```
+///
+/// This syntax specifies that the elided lifetime be captured and therefore available for
+/// use in the hidden type.
+///
+/// In Rust 2024, opaque types automatically capture all lifetime parameters in scope.
+/// `use<..>` syntax serves as an important way of opting-out of that default.
+///
+/// For more details about precise capturing, see the [Reference][ref-impl-trait].
 ///
 /// [`crate`]: keyword.crate.html
 /// [`self`]: keyword.self.html
 /// [`super`]: keyword.super.html
-/// [Reference]: ../reference/items/use-declarations.html
+/// [ref-use-decls]: ../reference/items/use-declarations.html
+/// [ref-impl-trait]: ../reference/types/impl-trait.html
 mod use_keyword {}
 
 #[doc(keyword = "where")]
