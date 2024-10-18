@@ -28,6 +28,8 @@ pub static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::produce_ice::PRODUCE_ICE_INFO,
     #[cfg(feature = "internal")]
+    crate::utils::internal_lints::slow_symbol_comparisons::SLOW_SYMBOL_COMPARISONS_INFO,
+    #[cfg(feature = "internal")]
     crate::utils::internal_lints::unnecessary_def_path::UNNECESSARY_DEF_PATH_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS_INFO,

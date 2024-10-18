@@ -235,7 +235,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
         if self.initialization_found
             && let ExprKind::MethodCall(path, self_arg, [extend_arg], _) = expr.kind
             && path_to_local_id(self_arg, self.vec_alloc.local_id)
-            && path.ident.name == sym!(extend)
+            && path.ident.name.as_str() == "extend"
             && self.is_repeat_take(extend_arg)
         {
             self.slow_expression = Some(InitializationType::Extend(expr));
@@ -247,7 +247,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
         if self.initialization_found
             && let ExprKind::MethodCall(path, self_arg, [len_arg, fill_arg], _) = expr.kind
             && path_to_local_id(self_arg, self.vec_alloc.local_id)
-            && path.ident.name == sym!(resize)
+            && path.ident.name.as_str() == "resize"
             // Check that is filled with 0
             && is_integer_literal(fill_arg, 0)
         {
@@ -269,7 +269,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&mut self, expr: &'tcx Expr<'tcx>) -> bool {
         if let ExprKind::MethodCall(take_path, recv, [len_arg], _) = expr.kind
-            && take_path.ident.name == sym!(take)
+            && take_path.ident.name.as_str() == "take"
             // Check that take is applied to `repeat(0)`
             && self.is_repeat_zero(recv)
         {

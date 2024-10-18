@@ -286,7 +286,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
 
         if !in_external_macro(cx.sess(), e.span)
             && let ExprKind::MethodCall(path, receiver, ..) = &e.kind
-            && path.ident.name == sym!(as_bytes)
+            && path.ident.name.as_str() == "as_bytes"
             && let ExprKind::Lit(lit) = &receiver.kind
             && let LitKind::Str(lit_content, _) = &lit.node
         {
@@ -332,7 +332,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if let ExprKind::MethodCall(path, recv, [], _) = &e.kind
-            && path.ident.name == sym!(into_bytes)
+            && path.ident.name.as_str() == "into_bytes"
             && let ExprKind::MethodCall(path, recv, [], _) = &recv.kind
             && matches!(path.ident.name.as_str(), "to_owned" | "to_string")
             && let ExprKind::Lit(lit) = &recv.kind
@@ -493,7 +493,7 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         let tyckres = cx.typeck_results();
         if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind
-            && path.ident.name == sym!(split_whitespace)
+            && path.ident.name.as_str() == "split_whitespace"
             && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id)
             && let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind

@@ -68,7 +68,7 @@ impl LateLintPass<'_> for ManualHashOne {
             && let Some(init) = local.init
             && !init.span.from_expansion()
             && let ExprKind::MethodCall(seg, build_hasher, [], _) = init.kind
-            && seg.ident.name == sym!(build_hasher)
+            && seg.ident.name.as_str() == "build_hasher"
 
             && let Node::Stmt(local_stmt) = cx.tcx.parent_hir_node(local.hir_id)
             && let Node::Block(block) = cx.tcx.parent_hir_node(local_stmt.hir_id)
@@ -96,7 +96,7 @@ impl LateLintPass<'_> for ManualHashOne {
             && let Node::Expr(finish_expr) = cx.tcx.parent_hir_node(path_expr.hir_id)
             && !finish_expr.span.from_expansion()
             && let ExprKind::MethodCall(seg, _, [], _) = finish_expr.kind
-            && seg.ident.name == sym!(finish)
+            && seg.ident.name.as_str() == "finish"
 
             && self.msrv.meets(msrvs::BUILD_HASHER_HASH_ONE)
         {

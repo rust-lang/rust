@@ -218,9 +218,7 @@ pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
 
 fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'_>) {
     if let Some(value) = extract_clippy_version_value(cx, item) {
-        // The `sym!` macro doesn't work as it only expects a single token.
-        // It's better to keep it this way and have a direct `Symbol::intern` call here.
-        if value == Symbol::intern("pre 1.29.0") {
+        if value.as_str() == "pre 1.29.0" {
             return;
         }
 
