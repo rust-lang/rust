@@ -615,7 +615,7 @@ pub(crate) fn thread_id() -> Result<ThreadId, Error> {
 /// An error is generated if the `knob` is not a valid limit, or if the call
 /// would not succeed.
 pub(crate) fn adjust_limit(knob: Limits, current: usize, new: usize) -> Result<usize, Error> {
-    let mut a0 = Syscall::JoinThread as usize;
+    let mut a0 = Syscall::AdjustProcessLimit as usize;
     let mut a1 = knob as usize;
     let a2 = current;
     let a3 = new;
