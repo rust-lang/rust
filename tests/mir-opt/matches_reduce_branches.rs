@@ -19,6 +19,40 @@ fn foo(bar: Option<()>) {
     }
 }
 
+// EMIT_MIR matches_reduce_branches.my_is_some.MatchBranchSimplification.diff
+// Test for #131219. UnreachableEnumBranching introduces the third branch normally,
+// but is disabled during testing, so recreate the same MIR here.
+#[custom_mir(dialect = "built")]
+fn my_is_some<T>(bar: Option<T>) -> bool {
+    // CHECK-LABEL: fn my_is_some(
+    // CHECK: = Ne
+    // CHECK: return
+    mir! {
+        {
+            let a = Discriminant(bar);
+            match a {
+                0 => bb1,
+                1 => bb2,
+                _ => unreachable_bb,
+            }
+        }
+        bb1 = {
+            RET = false;
+            Goto(ret)
+        }
+        bb2 = {
+            RET = true;
+            Goto(ret)
+        }
+        unreachable_bb = {
+            Unreachable()
+        }
+        ret = {
+            Return()
+        }
+    }
+}
+
 // EMIT_MIR matches_reduce_branches.bar.MatchBranchSimplification.diff
 fn bar(i: i32) -> (bool, bool, bool, bool) {
     // CHECK-LABEL: fn bar(
@@ -651,4 +685,7 @@ fn main() {
     let _: u8 = match_trunc_u16_u8_failed(EnumAu16::u0_0x0000);
 
     let _ = match_i128_u128(EnumAi128::A);
+
+    let _ = my_is_some::<()>(None);
+    let _ = my_is_some(Some(()));
 }
