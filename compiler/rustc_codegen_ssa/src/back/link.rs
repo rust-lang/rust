@@ -1920,10 +1920,20 @@ fn add_post_link_objects(
 
 /// Add arbitrary "pre-link" args defined by the target spec or from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+fn add_pre_link_args(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    flavor: LinkerFlavor,
+    codegen_results: &CodegenResults,
+) {
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
         cmd.verbatim_args(args.iter().map(Deref::deref));
     }
+
+    if sess.target.arch == "avr" {
+        cmd.verbatim_arg(format!("-mmcu={}", codegen_results.crate_info.target_cpu));
+    }
+
     cmd.verbatim_args(&sess.opts.unstable_opts.pre_link_args);
 }
 
@@ -2215,7 +2225,7 @@ fn linker_with_args(
     // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
     // introduce a target spec option for order-independent linker options and migrate built-in
     // specs to it.
-    add_pre_link_args(cmd, sess, flavor);
+    add_pre_link_args(cmd, sess, flavor, codegen_results);
 
     // ------------ Object code and libraries, order-dependent ------------
 
