@@ -672,11 +672,10 @@ pub(crate) struct MainFunctionGenericParameters {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_variadic_function_compatible_convention, code = E0045)]
-pub(crate) struct VariadicFunctionCompatibleConvention<'a> {
+pub(crate) struct VariadicFunctionCompatibleConvention {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub conventions: &'a str,
 }
 
 #[derive(Diagnostic)]
