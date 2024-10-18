@@ -4,6 +4,8 @@
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
+use core::ffi::c_void;
+
 use crate::ffi::OsStr;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
@@ -368,6 +370,14 @@ pub trait CommandExt: Sealed {
         attribute: usize,
         value: T,
     ) -> &mut process::Command;
+
+    #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
+    unsafe fn raw_attribute_ptr(
+        &mut self,
+        attribute: usize,
+        value_ptr: *const c_void,
+        value_size: usize,
+    ) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -407,6 +417,18 @@ impl CommandExt for process::Command {
         value: T,
     ) -> &mut process::Command {
         unsafe { self.as_inner_mut().raw_attribute(attribute, value) };
+        self
+    }
+
+    unsafe fn raw_attribute_ptr(
+        &mut self,
+        attribute: usize,
+        value_ptr: *const c_void,
+        value_size: usize,
+    ) -> &mut process::Command {
+        unsafe {
+            self.as_inner_mut().raw_attribute_ptr(attribute, value_ptr, value_size);
+        }
         self
     }
 }
