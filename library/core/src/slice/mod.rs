@@ -50,6 +50,8 @@ pub use index::SliceIndex;
 pub use index::{range, try_range};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
+#[unstable(feature = "split_pattern", issue = "49036")]
+pub use iter::SplitPattern;
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use iter::{ArrayChunks, ArrayChunksMut};
 #[stable(feature = "slice_group_by", since = "1.77.0")]
@@ -4028,6 +4030,16 @@ impl<T> [T] {
         // SAFETY: The simd types have the same layout as arrays, just with
         // potentially-higher alignment, so the de-facto transmutes are sound.
         unsafe { self.align_to() }
+    }
+
+    /// Splits a slice by a pattern
+    #[unstable(feature = "split_pattern", issue = "49036")]
+    #[inline]
+    pub fn split_pattern<'a, 'b>(&'a self, pattern: &'b [T]) -> SplitPattern<'a, 'b, T>
+    where
+        T: PartialEq,
+    {
+        SplitPattern::new(&self, pattern)
     }
 
     /// Splits a mutable slice into a mutable prefix, a middle of aligned SIMD types,
