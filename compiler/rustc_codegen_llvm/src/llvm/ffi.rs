@@ -646,6 +646,7 @@ unsafe extern "C" {
     pub type Attribute;
     pub type Metadata;
     pub type BasicBlock;
+    pub type Comdat;
 }
 #[repr(C)]
 pub struct Builder<'a>(InvariantOpaque<'a>);
@@ -1490,6 +1491,9 @@ unsafe extern "C" {
     pub fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
 
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
+
+    pub fn LLVMGetOrInsertComdat(M: &Module, Name: *const c_char) -> &Comdat;
+    pub fn LLVMSetComdat(V: &Value, C: &Comdat);
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2320,7 +2324,6 @@ unsafe extern "C" {
 
     pub fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
-    pub fn LLVMRustSetComdat<'a>(M: &'a Module, V: &'a Value, Name: *const c_char, NameLen: size_t);
     pub fn LLVMRustSetModulePICLevel(M: &Module);
     pub fn LLVMRustSetModulePIELevel(M: &Module);
     pub fn LLVMRustSetModuleCodeModel(M: &Module, Model: CodeModel);

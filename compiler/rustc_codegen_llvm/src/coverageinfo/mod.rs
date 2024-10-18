@@ -340,7 +340,7 @@ pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     llvm::set_section(llglobal, covfun_section_name);
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
     llvm::set_alignment(llglobal, Align::EIGHT);
-    llvm::set_comdat(cx.llmod, llglobal, func_record_var_name.to_str().unwrap());
+    llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
     cx.add_used_global(llglobal);
 }
 
