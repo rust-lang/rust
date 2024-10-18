@@ -15,7 +15,16 @@ if (!Array.prototype.toSpliced) {
     };
 }
 
-(function() {
+function onEachBtwn(arr, func, funcBtwn) {
+    let skipped = true;
+    for (const value of arr) {
+        if (!skipped) {
+            funcBtwn(value);
+        }
+        skipped = func(value);
+    }
+}
+
 // ==================== Core search logic begin ====================
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
@@ -50,8 +59,10 @@ const itemTypes = [
 ];
 
 // used for special search precedence
+const TY_PRIMITIVE = itemTypes.indexOf("primitive");
 const TY_GENERIC = itemTypes.indexOf("generic");
 const TY_IMPORT = itemTypes.indexOf("import");
+const TY_TRAIT = itemTypes.indexOf("trait");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -276,7 +287,7 @@ function getFilteredNextElem(query, parserState, elems, isInGenerics) {
         // The type filter doesn't count as an element since it's a modifier.
         const typeFilterElem = elems.pop();
         checkExtraTypeFilterCharacters(start, parserState);
-        parserState.typeFilter = typeFilterElem.name;
+        parserState.typeFilter = typeFilterElem.normalizedPathLast;
         parserState.pos += 1;
         parserState.totalElems -= 1;
         query.literalSearch = false;
@@ -686,7 +697,7 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
     } else if (quadcolon !== null) {
         throw ["Unexpected ", quadcolon[0]];
     }
-    const pathSegments = path.split(/(?:::\s*)|(?:\s+(?:::\s*)?)/);
+    const pathSegments = path.split(/(?:::\s*)|(?:\s+(?:::\s*)?)/).map(x => x.toLowerCase());
     // In case we only have something like `<p>`, there is no name.
     if (pathSegments.length === 0
         || (pathSegments.length === 1 && pathSegments[0] === "")) {
@@ -726,7 +737,10 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
                 if (gen.name !== null) {
                     gen.bindingName.generics.unshift(gen);
                 }
-                bindings.set(gen.bindingName.name, gen.bindingName.generics);
+                bindings.set(
+                    gen.bindingName.name.toLowerCase().replace(/_/g, ""),
+                    gen.bindingName.generics,
+                );
                 return false;
             }
             return true;
@@ -1114,6 +1128,13 @@ class DocSearch {
          * @type {Map<string, {id: integer, assocOnly: boolean}>}
          */
         this.typeNameIdMap = new Map();
+        /**
+         * Map from type ID to associated type name. Used for display,
+         * not for search.
+         *
+         * @type {Map<integer, string>}
+         */
+        this.assocTypeIdNameMap = new Map();
         this.ALIASES = new Map();
         this.rootPath = rootPath;
         this.searchState = searchState;
@@ -1158,6 +1179,14 @@ class DocSearch {
          * Special type name IDs for searching higher order functions (`->` syntax).
          */
         this.typeNameIdOfHof = this.buildTypeMapIndex("->");
+        /**
+         * Special type name IDs the output assoc type.
+         */
+        this.typeNameIdOfOutput = this.buildTypeMapIndex("output", true);
+        /**
+         * Special type name IDs for searching by reference.
+         */
+        this.typeNameIdOfReference = this.buildTypeMapIndex("reference");
 
         /**
          * Empty, immutable map used in item search types with no bindings.
@@ -1234,9 +1263,9 @@ class DocSearch {
      *
      * @return {Array<FunctionSearchType>}
      */
-    buildItemSearchTypeAll(types, lowercasePaths) {
+    buildItemSearchTypeAll(types, paths, lowercasePaths) {
         return types.length > 0 ?
-            types.map(type => this.buildItemSearchType(type, lowercasePaths)) :
+            types.map(type => this.buildItemSearchType(type, paths, lowercasePaths)) :
             this.EMPTY_GENERICS_ARRAY;
     }
 
@@ -1245,7 +1274,7 @@ class DocSearch {
      *
      * @param {RawFunctionType} type
      */
-    buildItemSearchType(type, lowercasePaths, isAssocType) {
+    buildItemSearchType(type, paths, lowercasePaths, isAssocType) {
         const PATH_INDEX_DATA = 0;
         const GENERICS_DATA = 1;
         const BINDINGS_DATA = 2;
@@ -1258,6 +1287,7 @@ class DocSearch {
             pathIndex = type[PATH_INDEX_DATA];
             generics = this.buildItemSearchTypeAll(
                 type[GENERICS_DATA],
+                paths,
                 lowercasePaths,
             );
             if (type.length > BINDINGS_DATA && type[BINDINGS_DATA].length > 0) {
@@ -1274,8 +1304,8 @@ class DocSearch {
                     //
                     // As a result, the key should never have generics on it.
                     return [
-                        this.buildItemSearchType(assocType, lowercasePaths, true).id,
-                        this.buildItemSearchTypeAll(constraints, lowercasePaths),
+                        this.buildItemSearchType(assocType, paths, lowercasePaths, true).id,
+                        this.buildItemSearchTypeAll(constraints, paths, lowercasePaths),
                     ];
                 }));
             } else {
@@ -1291,6 +1321,7 @@ class DocSearch {
             // the actual names of generic parameters aren't stored, since they aren't API
             result = {
                 id: pathIndex,
+                name: "",
                 ty: TY_GENERIC,
                 path: null,
                 exactPath: null,
@@ -1301,6 +1332,7 @@ class DocSearch {
             // `0` is used as a sentinel because it's fewer bytes than `null`
             result = {
                 id: null,
+                name: "",
                 ty: null,
                 path: null,
                 exactPath: null,
@@ -1309,8 +1341,13 @@ class DocSearch {
             };
         } else {
             const item = lowercasePaths[pathIndex - 1];
+            const id = this.buildTypeMapIndex(item.name, isAssocType);
+            if (isAssocType) {
+                this.assocTypeIdNameMap.set(id, paths[pathIndex - 1].name);
+            }
             result = {
-                id: this.buildTypeMapIndex(item.name, isAssocType),
+                id,
+                name: paths[pathIndex - 1].name,
                 ty: item.ty,
                 path: item.path,
                 exactPath: item.exactPath,
@@ -1352,7 +1389,7 @@ class DocSearch {
             }
             if (cr.ty === result.ty && cr.path === result.path
                 && cr.bindings === result.bindings && cr.generics === result.generics
-                && cr.ty === result.ty
+                && cr.ty === result.ty && cr.name === result.name
             ) {
                 return cr;
             }
@@ -1463,11 +1500,12 @@ class DocSearch {
          * The raw function search type format is generated using serde in
          * librustdoc/html/render/mod.rs: IndexItemFunctionType::write_to_string
          *
+         * @param {Array<{name: string, ty: number}>} paths
          * @param {Array<{name: string, ty: number}>} lowercasePaths
          *
          * @return {null|FunctionSearchType}
          */
-        const buildFunctionSearchTypeCallback = lowercasePaths => {
+        const buildFunctionSearchTypeCallback = (paths, lowercasePaths) => {
             return functionSearchType => {
                 if (functionSearchType === 0) {
                     return null;
@@ -1477,11 +1515,16 @@ class DocSearch {
                 let inputs, output;
                 if (typeof functionSearchType[INPUTS_DATA] === "number") {
                     inputs = [
-                        this.buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths),
+                        this.buildItemSearchType(
+                            functionSearchType[INPUTS_DATA],
+                            paths,
+                            lowercasePaths,
+                        ),
                     ];
                 } else {
                     inputs = this.buildItemSearchTypeAll(
                         functionSearchType[INPUTS_DATA],
+                        paths,
                         lowercasePaths,
                     );
                 }
@@ -1490,12 +1533,14 @@ class DocSearch {
                         output = [
                             this.buildItemSearchType(
                                 functionSearchType[OUTPUT_DATA],
+                                paths,
                                 lowercasePaths,
                             ),
                         ];
                     } else {
                         output = this.buildItemSearchTypeAll(
                             functionSearchType[OUTPUT_DATA],
+                            paths,
                             lowercasePaths,
                         );
                     }
@@ -1506,8 +1551,12 @@ class DocSearch {
                 const l = functionSearchType.length;
                 for (let i = 2; i < l; ++i) {
                     where_clause.push(typeof functionSearchType[i] === "number"
-                        ? [this.buildItemSearchType(functionSearchType[i], lowercasePaths)]
-                        : this.buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
+                        ? [this.buildItemSearchType(functionSearchType[i], paths, lowercasePaths)]
+                        : this.buildItemSearchTypeAll(
+                            functionSearchType[i],
+                            paths,
+                            lowercasePaths,
+                        ));
                 }
                 return {
                     inputs, output, where_clause,
@@ -1551,6 +1600,13 @@ class DocSearch {
             this.searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
             let descIndex = 0;
 
+            /**
+             * List of generic function type parameter names.
+             * Used for display, not for searching.
+             * @type {[string]}
+             */
+            let lastParamNames = [];
+
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
@@ -1565,6 +1621,7 @@ class DocSearch {
                 desc: crateCorpus.doc,
                 parent: undefined,
                 type: null,
+                paramNames: lastParamNames,
                 id,
                 word: crate,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
@@ -1601,6 +1658,10 @@ class DocSearch {
             // an array of [(String) alias name
             //             [Number] index to items]
             const aliases = crateCorpus.a;
+            // an array of [(Number) item index,
+            //              (String) comma-separated list of function generic param names]
+            // an item whose index is not present will fall back to the previous present path
+            const itemParamNames = new Map(crateCorpus.P);
 
             // an array of [{name: String, ty: Number}]
             const lowercasePaths = [];
@@ -1608,7 +1669,7 @@ class DocSearch {
             // a string representing the list of function types
             const itemFunctionDecoder = new VlqHexDecoder(
                 crateCorpus.f,
-                buildFunctionSearchTypeCallback(lowercasePaths),
+                buildFunctionSearchTypeCallback(paths, lowercasePaths),
             );
 
             // convert `rawPaths` entries into object form
@@ -1659,6 +1720,9 @@ class DocSearch {
                 const name = itemNames[i] === "" ? lastName : itemNames[i];
                 const word = itemNames[i] === "" ? lastWord : itemNames[i].toLowerCase();
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
+                const paramNames = itemParamNames.has(i) ?
+                    itemParamNames.get(i).split(",") :
+                    lastParamNames;
                 const type = itemFunctionDecoder.next();
                 if (type !== null) {
                     if (type) {
@@ -1691,6 +1755,7 @@ class DocSearch {
                         itemPaths.get(itemReexports.get(i)) : path,
                     parent: itemParentIdx > 0 ? paths[itemParentIdx - 1] : undefined,
                     type,
+                    paramNames,
                     id,
                     word,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
@@ -1701,6 +1766,7 @@ class DocSearch {
                 id += 1;
                 searchIndex.push(row);
                 lastPath = row.path;
+                lastParamNames = row.paramNames;
                 if (!this.searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
                     descIndex += 1;
                 }
@@ -1786,8 +1852,7 @@ class DocSearch {
          */
         function newParsedQuery(userQuery) {
             return {
-                original: userQuery,
-                userQuery: userQuery.toLowerCase(),
+                userQuery,
                 elems: [],
                 returned: [],
                 // Total number of "top" elements (does not include generics).
@@ -1909,7 +1974,7 @@ class DocSearch {
             genericsElems: 0,
             typeFilter: null,
             isInBinding: null,
-            userQuery: userQuery.toLowerCase(),
+            userQuery,
         };
         let query = newParsedQuery(userQuery);
 
@@ -2046,18 +2111,21 @@ class DocSearch {
          * marked for removal.
          *
          * @param {[ResultObject]} results
+         * @param {"sig"|"elems"|"returned"|null} typeInfo
+         * @param {ParsedQuery} query
          * @returns {[ResultObject]}
          */
-        const transformResults = results => {
+        const transformResults = (results, typeInfo) => {
             const duplicates = new Set();
             const out = [];
 
             for (const result of results) {
                 if (result.id !== -1) {
-                    const obj = this.searchIndex[result.id];
-                    obj.dist = result.dist;
-                    const res = buildHrefAndPath(obj);
-                    obj.displayPath = pathSplitter(res[0]);
+                    const res = buildHrefAndPath(this.searchIndex[result.id]);
+                    const obj = Object.assign({
+                        dist: result.dist,
+                        displayPath: pathSplitter(res[0]),
+                    }, this.searchIndex[result.id]);
 
                     // To be sure than it some items aren't considered as duplicate.
                     obj.fullPath = res[2] + "|" + obj.ty;
@@ -2076,6 +2144,11 @@ class DocSearch {
                     duplicates.add(obj.fullPath);
                     duplicates.add(res[2]);
 
+                    if (typeInfo !== null) {
+                        obj.displayTypeSignature =
+                            this.formatDisplayTypeSignature(obj, typeInfo);
+                    }
+
                     obj.href = res[1];
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
@@ -2087,6 +2160,327 @@ class DocSearch {
         };
 
         /**
+         * Add extra data to result objects, and filter items that have been
+         * marked for removal.
+         *
+         * The output is formatted as an array of hunks, where odd numbered
+         * hunks are highlighted and even numbered ones are not.
+         *
+         * @param {ResultObject} obj
+         * @param {"sig"|"elems"|"returned"|null} typeInfo
+         * @param {ParsedQuery} query
+         * @returns Promise<
+         *   "type": Array<string>,
+         *   "mappedNames": Map<string, string>,
+         *   "whereClause": Map<string, Array<string>>,
+         * >
+         */
+        this.formatDisplayTypeSignature = async(obj, typeInfo) => {
+            let fnInputs = null;
+            let fnOutput = null;
+            let mgens = null;
+            if (typeInfo !== "elems" && typeInfo !== "returned") {
+                fnInputs = unifyFunctionTypes(
+                    obj.type.inputs,
+                    parsedQuery.elems,
+                    obj.type.where_clause,
+                    null,
+                    mgensScratch => {
+                        fnOutput = unifyFunctionTypes(
+                            obj.type.output,
+                            parsedQuery.returned,
+                            obj.type.where_clause,
+                            mgensScratch,
+                            mgensOut => {
+                                mgens = mgensOut;
+                                return true;
+                            },
+                            0,
+                        );
+                        return !!fnOutput;
+                    },
+                    0,
+                );
+            } else {
+                const arr = typeInfo === "elems" ? obj.type.inputs : obj.type.output;
+                const highlighted = unifyFunctionTypes(
+                    arr,
+                    parsedQuery.elems,
+                    obj.type.where_clause,
+                    null,
+                    mgensOut => {
+                        mgens = mgensOut;
+                        return true;
+                    },
+                    0,
+                );
+                if (typeInfo === "elems") {
+                    fnInputs = highlighted;
+                } else {
+                    fnOutput = highlighted;
+                }
+            }
+            if (!fnInputs) {
+                fnInputs = obj.type.inputs;
+            }
+            if (!fnOutput) {
+                fnOutput = obj.type.output;
+            }
+            const mappedNames = new Map();
+            const whereClause = new Map();
+
+            const fnParamNames = obj.paramNames;
+            const queryParamNames = [];
+            /**
+             * Recursively writes a map of IDs to query generic names,
+             * which are later used to map query generic names to function generic names.
+             * For example, when the user writes `X -> Option<X>` and the function
+             * is actually written as `T -> Option<T>`, this function stores the
+             * mapping `(-1, "X")`, and the writeFn function looks up the entry
+             * for -1 to form the final, user-visible mapping of "X is T".
+             *
+             * @param {QueryElement} queryElem
+             */
+            const remapQuery = queryElem => {
+                if (queryElem.id < 0) {
+                    queryParamNames[-1 - queryElem.id] = queryElem.name;
+                }
+                if (queryElem.generics.length > 0) {
+                    queryElem.generics.forEach(remapQuery);
+                }
+                if (queryElem.bindings.size > 0) {
+                    [...queryElem.bindings.values()].flat().forEach(remapQuery);
+                }
+            };
+
+            parsedQuery.elems.forEach(remapQuery);
+            parsedQuery.returned.forEach(remapQuery);
+
+            /**
+             * Write text to a highlighting array.
+             * Index 0 is not highlighted, index 1 is highlighted,
+             * index 2 is not highlighted, etc.
+             *
+             * @param {{name: string, highlighted: bool|undefined}} fnType - input
+             * @param {[string]} result
+             */
+            const pushText = (fnType, result) => {
+                // If !!(result.length % 2) == false, then pushing a new slot starts an even
+                // numbered slot. Even numbered slots are not highlighted.
+                //
+                // `highlighted` will not be defined if an entire subtree is not highlighted,
+                // so `!!` is used to coerce it to boolean. `result.length % 2` is used to
+                // check if the number is even, but it evaluates to a number, so it also
+                // needs coerced to a boolean.
+                if (!!(result.length % 2) === !!fnType.highlighted) {
+                    result.push("");
+                } else if (result.length === 0 && !!fnType.highlighted) {
+                    result.push("");
+                    result.push("");
+                }
+
+                result[result.length - 1] += fnType.name;
+            };
+
+            /**
+             * Write a higher order function type: either a function pointer
+             * or a trait bound on Fn, FnMut, or FnOnce.
+             *
+             * @param {FunctionType} fnType - input
+             * @param {[string]} result
+             */
+            const writeHof = (fnType, result) => {
+                const hofOutput = fnType.bindings.get(this.typeNameIdOfOutput) || [];
+                const hofInputs = fnType.generics;
+                pushText(fnType, result);
+                pushText({name: " (", highlighted: false}, result);
+                let needsComma = false;
+                for (const fnType of hofInputs) {
+                    if (needsComma) {
+                        pushText({ name: ", ", highlighted: false }, result);
+                    }
+                    needsComma = true;
+                    writeFn(fnType, result);
+                }
+                pushText({
+                    name: hofOutput.length === 0 ? ")" : ") -> ",
+                    highlighted: false,
+                }, result);
+                if (hofOutput.length > 1) {
+                    pushText({name: "(", highlighted: false}, result);
+                }
+                needsComma = false;
+                for (const fnType of hofOutput) {
+                    if (needsComma) {
+                        pushText({ name: ", ", highlighted: false }, result);
+                    }
+                    needsComma = true;
+                    writeFn(fnType, result);
+                }
+                if (hofOutput.length > 1) {
+                    pushText({name: ")", highlighted: false}, result);
+                }
+            };
+
+            /**
+             * Write a primitive type with special syntax, like `!` or `[T]`.
+             * Returns `false` if the supplied type isn't special.
+             *
+             * @param {FunctionType} fnType
+             * @param {[string]} result
+             */
+            const writeSpecialPrimitive = (fnType, result) => {
+                if (fnType.id === this.typeNameIdOfArray || fnType.id === this.typeNameIdOfSlice ||
+                    fnType.id === this.typeNameIdOfTuple || fnType.id === this.typeNameIdOfUnit) {
+                    const [ob, sb] =
+                        fnType.id === this.typeNameIdOfArray ||
+                            fnType.id === this.typeNameIdOfSlice ?
+                        ["[", "]"] :
+                        ["(", ")"];
+                    pushText({ name: ob, highlighted: fnType.highlighted }, result);
+                    onEachBtwn(
+                        fnType.generics,
+                        nested => writeFn(nested, result),
+                        () => pushText({ name: ", ", highlighted: false }, result),
+                    );
+                    pushText({ name: sb, highlighted: fnType.highlighted }, result);
+                    return true;
+                } else if (fnType.id === this.typeNameIdOfReference) {
+                    pushText({ name: "&", highlighted: fnType.highlighted }, result);
+                    let prevHighlighted = false;
+                    onEachBtwn(
+                        fnType.generics,
+                        value => {
+                            prevHighlighted = value.highlighted;
+                            writeFn(value, result);
+                        },
+                        value => pushText({
+                            name: " ",
+                            highlighted: prevHighlighted && value.highlighted,
+                        }, result),
+                    );
+                    return true;
+                } else if (fnType.id === this.typeNameIdOfFn) {
+                    writeHof(fnType, result);
+                    return true;
+                }
+                return false;
+            };
+            /**
+             * Write a type. This function checks for special types,
+             * like slices, with their own formatting. It also handles
+             * updating the where clause and generic type param map.
+             *
+             * @param {FunctionType} fnType
+             * @param {[string]} result
+             */
+            const writeFn = (fnType, result) => {
+                if (fnType.id < 0) {
+                    const queryId =  mgens && mgens.has(fnType.id) ? mgens.get(fnType.id) : null;
+                    if (fnParamNames[-1 - fnType.id] === "") {
+                        for (const nested of fnType.generics) {
+                            writeFn(nested, result);
+                        }
+                        return;
+                    } else if (queryId < 0) {
+                        mappedNames.set(
+                            fnParamNames[-1 - fnType.id],
+                            queryParamNames[-1 - queryId],
+                        );
+                    }
+                    pushText({
+                        name: fnParamNames[-1 - fnType.id],
+                        highlighted: !!fnType.highlighted,
+                    }, result);
+                    const where = [];
+                    onEachBtwn(
+                        fnType.generics,
+                        nested => writeFn(nested, where),
+                        () => pushText({ name: " + ", highlighted: false }, where),
+                    );
+                    if (where.length > 0) {
+                        whereClause.set(fnParamNames[-1 - fnType.id], where);
+                    }
+                } else {
+                    if (fnType.ty === TY_PRIMITIVE) {
+                        if (writeSpecialPrimitive(fnType, result)) {
+                            return;
+                        }
+                    } else if (fnType.ty === TY_TRAIT && (
+                        fnType.id === this.typeNameIdOfFn ||
+                            fnType.id === this.typeNameIdOfFnMut ||
+                            fnType.id === this.typeNameIdOfFnOnce)) {
+                        writeHof(fnType, result);
+                        return;
+                    }
+                    pushText(fnType, result);
+                    let hasBindings = false;
+                    if (fnType.bindings.size > 0) {
+                        onEachBtwn(
+                            fnType.bindings,
+                            ([key, values]) => {
+                                const name = this.assocTypeIdNameMap.get(key);
+                                if (values.length === 1 && values[0].id < 0 &&
+                                    `${fnType.name}::${name}` === fnParamNames[-1 - values[0].id]) {
+                                    // the internal `Item=Iterator::Item` type variable should be
+                                    // shown in the where clause and name mapping output, but is
+                                    // redundant in this spot
+                                    for (const value of values) {
+                                        writeFn(value, []);
+                                    }
+                                    return true;
+                                }
+                                if (!hasBindings) {
+                                    hasBindings = true;
+                                    pushText({ name: "<", highlighted: false }, result);
+                                }
+                                pushText({ name, highlighted: false }, result);
+                                pushText({
+                                    name: values.length > 1 ? "=(" : "=",
+                                    highlighted: false,
+                                }, result);
+                                onEachBtwn(
+                                    values,
+                                    value => writeFn(value, result),
+                                    () => pushText({ name: " + ",  highlighted: false }, result),
+                                );
+                                if (values.length > 1) {
+                                    pushText({ name: ")", highlighted: false }, result);
+                                }
+                            },
+                            () => pushText({ name: ", ",  highlighted: false }, result),
+                        );
+                    }
+                    if (fnType.generics.length > 0) {
+                        pushText({ name: hasBindings ? ", " : "<", highlighted: false }, result);
+                    }
+                    onEachBtwn(
+                        fnType.generics,
+                        value => writeFn(value, result),
+                        () => pushText({ name: ", ",  highlighted: false }, result),
+                    );
+                    if (hasBindings || fnType.generics.length > 0) {
+                        pushText({ name: ">", highlighted: false }, result);
+                    }
+                }
+            };
+            const type = [];
+            onEachBtwn(
+                fnInputs,
+                fnType => writeFn(fnType, type),
+                () => pushText({ name: ", ",  highlighted: false }, type),
+            );
+            pushText({ name: " -> ", highlighted: false }, type);
+            onEachBtwn(
+                fnOutput,
+                fnType => writeFn(fnType, type),
+                () => pushText({ name: ", ",  highlighted: false }, type),
+            );
+
+            return {type, mappedNames, whereClause};
+        };
+
+        /**
          * This function takes a result map, and sorts it by various criteria, including edit
          * distance, substring match, and the crate it comes from.
          *
@@ -2095,9 +2489,9 @@ class DocSearch {
          * @param {string} preferredCrate
          * @returns {Promise<[ResultObject]>}
          */
-        const sortResults = async(results, isType, preferredCrate) => {
+        const sortResults = async(results, typeInfo, preferredCrate) => {
             const userQuery = parsedQuery.userQuery;
-            const casedUserQuery = parsedQuery.original;
+            const normalizedUserQuery = parsedQuery.userQuery.toLowerCase();
             const result_list = [];
             for (const result of results.values()) {
                 result.item = this.searchIndex[result.id];
@@ -2109,15 +2503,15 @@ class DocSearch {
                 let a, b;
 
                 // sort by exact case-sensitive match
-                a = (aaa.item.name !== casedUserQuery);
-                b = (bbb.item.name !== casedUserQuery);
+                a = (aaa.item.name !== userQuery);
+                b = (bbb.item.name !== userQuery);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort by exact match with regard to the last word (mismatch goes later)
-                a = (aaa.word !== userQuery);
-                b = (bbb.word !== userQuery);
+                a = (aaa.word !== normalizedUserQuery);
+                b = (bbb.word !== normalizedUserQuery);
                 if (a !== b) {
                     return a - b;
                 }
@@ -2205,17 +2599,17 @@ class DocSearch {
                 return 0;
             });
 
-            return transformResults(result_list);
+            return transformResults(result_list, typeInfo);
         };
 
         /**
          * This function checks if a list of search query `queryElems` can all be found in the
          * search index (`fnTypes`).
          *
-         * This function returns `true` on a match, or `false` if none. If `solutionCb` is
+         * This function returns highlighted results on a match, or `null`. If `solutionCb` is
          * supplied, it will call that function with mgens, and that callback can accept or
-         * reject the result bu returning `true` or `false`. If the callback returns false,
-         * then this function will try with a different solution, or bail with false if it
+         * reject the result by returning `true` or `false`. If the callback returns false,
+         * then this function will try with a different solution, or bail with null if it
          * runs out of candidates.
          *
          * @param {Array<FunctionType>} fnTypesIn - The objects to check.
@@ -2228,7 +2622,7 @@ class DocSearch {
          *     - Limit checks that Ty matches Vec<Ty>,
          *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
          *
-         * @return {boolean} - Returns true if a match, false otherwise.
+         * @return {[FunctionType]|null} - Returns highlighed results if a match, null otherwise.
          */
         function unifyFunctionTypes(
             fnTypesIn,
@@ -2239,17 +2633,17 @@ class DocSearch {
             unboxingDepth,
         ) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
-                return false;
+                return null;
             }
             /**
              * @type Map<integer, integer>|null
              */
             const mgens = mgensIn === null ? null : new Map(mgensIn);
             if (queryElems.length === 0) {
-                return !solutionCb || solutionCb(mgens);
+                return (!solutionCb || solutionCb(mgens)) ? fnTypesIn : null;
             }
             if (!fnTypesIn || fnTypesIn.length === 0) {
-                return false;
+                return null;
             }
             const ql = queryElems.length;
             const fl = fnTypesIn.length;
@@ -2258,7 +2652,7 @@ class DocSearch {
             if (ql === 1 && queryElems[0].generics.length === 0
                 && queryElems[0].bindings.size === 0) {
                 const queryElem = queryElems[0];
-                for (const fnType of fnTypesIn) {
+                for (const [i, fnType] of fnTypesIn.entries()) {
                     if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
                         continue;
                     }
@@ -2270,14 +2664,33 @@ class DocSearch {
                         const mgensScratch = new Map(mgens);
                         mgensScratch.set(fnType.id, queryElem.id);
                         if (!solutionCb || solutionCb(mgensScratch)) {
-                            return true;
+                            const highlighted = [...fnTypesIn];
+                            highlighted[i] = Object.assign({
+                                highlighted: true,
+                            }, fnType, {
+                                generics: whereClause[-1 - fnType.id],
+                            });
+                            return highlighted;
                         }
                     } else if (!solutionCb || solutionCb(mgens ? new Map(mgens) : null)) {
                         // unifyFunctionTypeIsMatchCandidate already checks that ids match
-                        return true;
+                        const highlighted = [...fnTypesIn];
+                        highlighted[i] = Object.assign({
+                            highlighted: true,
+                        }, fnType, {
+                            generics: unifyFunctionTypes(
+                                fnType.generics,
+                                queryElem.generics,
+                                whereClause,
+                                mgens ? new Map(mgens) : null,
+                                solutionCb,
+                                unboxingDepth,
+                            ) || fnType.generics,
+                        });
+                        return highlighted;
                     }
                 }
-                for (const fnType of fnTypesIn) {
+                for (const [i, fnType] of fnTypesIn.entries()) {
                     if (!unifyFunctionTypeIsUnboxCandidate(
                         fnType,
                         queryElem,
@@ -2294,25 +2707,42 @@ class DocSearch {
                         }
                         const mgensScratch = new Map(mgens);
                         mgensScratch.set(fnType.id, 0);
-                        if (unifyFunctionTypes(
+                        const highlightedGenerics = unifyFunctionTypes(
                             whereClause[(-fnType.id) - 1],
                             queryElems,
                             whereClause,
                             mgensScratch,
                             solutionCb,
                             unboxingDepth + 1,
-                        )) {
-                            return true;
+                        );
+                        if (highlightedGenerics) {
+                            const highlighted = [...fnTypesIn];
+                            highlighted[i] = Object.assign({
+                                highlighted: true,
+                            }, fnType, {
+                                generics: highlightedGenerics,
+                            });
+                            return highlighted;
                         }
-                    } else if (unifyFunctionTypes(
-                        [...fnType.generics, ...Array.from(fnType.bindings.values()).flat()],
-                        queryElems,
-                        whereClause,
-                        mgens ? new Map(mgens) : null,
-                        solutionCb,
-                        unboxingDepth + 1,
-                    )) {
-                        return true;
+                    } else {
+                        const highlightedGenerics = unifyFunctionTypes(
+                            [...Array.from(fnType.bindings.values()).flat(), ...fnType.generics],
+                            queryElems,
+                            whereClause,
+                            mgens ? new Map(mgens) : null,
+                            solutionCb,
+                            unboxingDepth + 1,
+                        );
+                        if (highlightedGenerics) {
+                            const highlighted = [...fnTypesIn];
+                            highlighted[i] = Object.assign({}, fnType, {
+                                generics: highlightedGenerics,
+                                bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
+                                    return [k, highlightedGenerics.splice(0, v.length)];
+                                })),
+                            });
+                            return highlighted;
+                        }
                     }
                 }
                 return false;
@@ -2369,6 +2799,8 @@ class DocSearch {
                 if (!queryElemsTmp) {
                     queryElemsTmp = queryElems.slice(0, qlast);
                 }
+                let unifiedGenerics = [];
+                let unifiedGenericsMgens = null;
                 const passesUnification = unifyFunctionTypes(
                     fnTypes,
                     queryElemsTmp,
@@ -2391,7 +2823,7 @@ class DocSearch {
                         }
                         const simplifiedGenerics = solution.simplifiedGenerics;
                         for (const simplifiedMgens of solution.mgens) {
-                            const passesUnification = unifyFunctionTypes(
+                            unifiedGenerics = unifyFunctionTypes(
                                 simplifiedGenerics,
                                 queryElem.generics,
                                 whereClause,
@@ -2399,7 +2831,8 @@ class DocSearch {
                                 solutionCb,
                                 unboxingDepth,
                             );
-                            if (passesUnification) {
+                            if (unifiedGenerics) {
+                                unifiedGenericsMgens = simplifiedMgens;
                                 return true;
                             }
                         }
@@ -2408,7 +2841,23 @@ class DocSearch {
                     unboxingDepth,
                 );
                 if (passesUnification) {
-                    return true;
+                    passesUnification.length = fl;
+                    passesUnification[flast] = passesUnification[i];
+                    passesUnification[i] = Object.assign({}, fnType, {
+                        highlighted: true,
+                        generics: unifiedGenerics,
+                        bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
+                            return [k, queryElem.bindings.has(k) ? unifyFunctionTypes(
+                                v,
+                                queryElem.bindings.get(k),
+                                whereClause,
+                                unifiedGenericsMgens,
+                                solutionCb,
+                                unboxingDepth,
+                            ) : unifiedGenerics.splice(0, v.length)];
+                        })),
+                    });
+                    return passesUnification;
                 }
                 // backtrack
                 fnTypes[flast] = fnTypes[i];
@@ -2443,7 +2892,7 @@ class DocSearch {
                     Array.from(fnType.bindings.values()).flat() :
                     [];
                 const passesUnification = unifyFunctionTypes(
-                    fnTypes.toSpliced(i, 1, ...generics, ...bindings),
+                    fnTypes.toSpliced(i, 1, ...bindings, ...generics),
                     queryElems,
                     whereClause,
                     mgensScratch,
@@ -2451,10 +2900,24 @@ class DocSearch {
                     unboxingDepth + 1,
                 );
                 if (passesUnification) {
-                    return true;
+                    const highlightedGenerics = passesUnification.slice(
+                        i,
+                        i + generics.length + bindings.length,
+                    );
+                    const highlightedFnType = Object.assign({}, fnType, {
+                        generics: highlightedGenerics,
+                        bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
+                            return [k, highlightedGenerics.splice(0, v.length)];
+                        })),
+                    });
+                    return passesUnification.toSpliced(
+                        i,
+                        generics.length + bindings.length,
+                        highlightedFnType,
+                    );
                 }
             }
-            return false;
+            return null;
         }
         /**
          * Check if this function is a match candidate.
@@ -2625,7 +3088,7 @@ class DocSearch {
                     }
                 });
                 if (simplifiedGenerics.length > 0) {
-                    simplifiedGenerics = [...simplifiedGenerics, ...binds];
+                    simplifiedGenerics = [...binds, ...simplifiedGenerics];
                 } else {
                     simplifiedGenerics = binds;
                 }
@@ -2727,33 +3190,18 @@ class DocSearch {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
             }
-            if (row.bindings.size === 0 && elem.bindings.size === 0) {
-                if (elem.id < 0 && mgens === null) {
-                    return row.id < 0 || checkIfInList(
-                        row.generics,
-                        elem,
-                        whereClause,
-                        mgens,
-                        unboxingDepth + 1,
-                    );
-                }
-                if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
-                    typePassesFilter(elem.typeFilter, row.ty) && elem.generics.length === 0 &&
-                    // special case
-                    elem.id !== this.typeNameIdOfArrayOrSlice
-                    && elem.id !== this.typeNameIdOfTupleOrUnit
-                    && elem.id !== this.typeNameIdOfHof
-                ) {
-                    return row.id === elem.id || checkIfInList(
-                        row.generics,
-                        elem,
-                        whereClause,
-                        mgens,
-                        unboxingDepth,
-                    );
-                }
+            if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
+                row.generics.length === 0 && elem.generics.length === 0 &&
+                row.bindings.size === 0 && elem.bindings.size === 0 &&
+                // special case
+                elem.id !== this.typeNameIdOfArrayOrSlice &&
+                elem.id !== this.typeNameIdOfHof &&
+                elem.id !== this.typeNameIdOfTupleOrUnit
+            ) {
+                return row.id === elem.id && typePassesFilter(elem.typeFilter, row.ty);
+            } else {
+                return unifyFunctionTypes([row], [elem], whereClause, mgens, null, unboxingDepth);
             }
-            return unifyFunctionTypes([row], [elem], whereClause, mgens, null, unboxingDepth);
         };
 
         /**
@@ -3178,21 +3626,25 @@ class DocSearch {
                 if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1
                     && elem.generics.length === 0 && elem.bindings.size === 0)
                     || elem.typeFilter === TY_GENERIC) {
-                    if (genericSymbols.has(elem.name)) {
-                        elem.id = genericSymbols.get(elem.name);
+                    if (genericSymbols.has(elem.normalizedPathLast)) {
+                        elem.id = genericSymbols.get(elem.normalizedPathLast);
                     } else {
                         elem.id = -(genericSymbols.size + 1);
-                        genericSymbols.set(elem.name, elem.id);
+                        genericSymbols.set(elem.normalizedPathLast, elem.id);
                     }
-                    if (elem.typeFilter === -1 && elem.name.length >= 3) {
+                    if (elem.typeFilter === -1 && elem.normalizedPathLast.length >= 3) {
                         // Silly heuristic to catch if the user probably meant
                         // to not write a generic parameter. We don't use it,
                         // just bring it up.
-                        const maxPartDistance = Math.floor(elem.name.length / 3);
+                        const maxPartDistance = Math.floor(elem.normalizedPathLast.length / 3);
                         let matchDist = maxPartDistance + 1;
                         let matchName = "";
                         for (const name of this.typeNameIdMap.keys()) {
-                            const dist = editDistance(name, elem.name, maxPartDistance);
+                            const dist = editDistance(
+                                name,
+                                elem.normalizedPathLast,
+                                maxPartDistance,
+                            );
                             if (dist <= matchDist && dist <= maxPartDistance) {
                                 if (dist === matchDist && matchName > name) {
                                     continue;
@@ -3294,17 +3746,18 @@ class DocSearch {
             innerRunQuery();
         }
 
+        const isType = parsedQuery.foundElems !== 1 || parsedQuery.hasReturnArrow;
         const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
-            sortResults(results_in_args, true, currentCrate),
-            sortResults(results_returned, true, currentCrate),
-            sortResults(results_others, false, currentCrate),
+            sortResults(results_in_args, "elems", currentCrate),
+            sortResults(results_returned, "returned", currentCrate),
+            sortResults(results_others, (isType ? "query" : null), currentCrate),
         ]);
         const ret = createQueryResults(
             sorted_in_args,
             sorted_returned,
             sorted_others,
             parsedQuery);
-        await handleAliases(ret, parsedQuery.original.replace(/"/g, ""),
+        await handleAliases(ret, parsedQuery.userQuery.replace(/"/g, ""),
             filterCrates, currentCrate);
         await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
             const descs = await Promise.all(list.map(result => {
@@ -3323,6 +3776,7 @@ class DocSearch {
         return ret;
     }
 }
+
 
 // ==================== Core search logic end ====================
 
@@ -3455,15 +3909,18 @@ function focusSearchResult() {
  * @param {Array<?>}    array   - The search results for this tab
  * @param {ParsedQuery} query
  * @param {boolean}     display - True if this is the active tab
+ * @param {"sig"|"elems"|"returned"|null} typeInfo
  */
 async function addTab(array, query, display) {
     const extraClass = display ? " active" : "";
 
-    const output = document.createElement("div");
+    const output = document.createElement(
+        array.length === 0 && query.error === null ? "div" : "ul",
+    );
     if (array.length > 0) {
         output.className = "search-results " + extraClass;
 
-        for (const item of array) {
+        const lis = Promise.all(array.map(async item => {
             const name = item.name;
             const type = itemTypes[item.ty];
             const longType = longItemTypes[item.ty];
@@ -3473,7 +3930,7 @@ async function addTab(array, query, display) {
             link.className = "result-" + type;
             link.href = item.href;
 
-            const resultName = document.createElement("div");
+            const resultName = document.createElement("span");
             resultName.className = "result-name";
 
             resultName.insertAdjacentHTML(
@@ -3496,10 +3953,73 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const description = document.createElement("div");
             description.className = "desc";
             description.insertAdjacentHTML("beforeend", item.desc);
+            if (item.displayTypeSignature) {
+                const {type, mappedNames, whereClause} = await item.displayTypeSignature;
+                const displayType = document.createElement("div");
+                type.forEach((value, index) => {
+                    if (index % 2 !== 0) {
+                        const highlight = document.createElement("strong");
+                        highlight.appendChild(document.createTextNode(value));
+                        displayType.appendChild(highlight);
+                    } else {
+                        displayType.appendChild(document.createTextNode(value));
+                    }
+                });
+                if (mappedNames.size > 0 || whereClause.size > 0) {
+                    let addWhereLineFn = () => {
+                        const line = document.createElement("div");
+                        line.className = "where";
+                        line.appendChild(document.createTextNode("where"));
+                        displayType.appendChild(line);
+                        addWhereLineFn = () => {};
+                    };
+                    for (const [name, qname] of mappedNames) {
+                        // don't care unless the generic name is different
+                        if (name === qname) {
+                            continue;
+                        }
+                        addWhereLineFn();
+                        const line = document.createElement("div");
+                        line.className = "where";
+                        line.appendChild(document.createTextNode(`    ${qname} matches `));
+                        const lineStrong = document.createElement("strong");
+                        lineStrong.appendChild(document.createTextNode(name));
+                        line.appendChild(lineStrong);
+                        displayType.appendChild(line);
+                    }
+                    for (const [name, innerType] of whereClause) {
+                        // don't care unless there's at least one highlighted entry
+                        if (innerType.length <= 1) {
+                            continue;
+                        }
+                        addWhereLineFn();
+                        const line = document.createElement("div");
+                        line.className = "where";
+                        line.appendChild(document.createTextNode(`    ${name}: `));
+                        innerType.forEach((value, index) => {
+                            if (index % 2 !== 0) {
+                                const highlight = document.createElement("strong");
+                                highlight.appendChild(document.createTextNode(value));
+                                line.appendChild(highlight);
+                            } else {
+                                line.appendChild(document.createTextNode(value));
+                            }
+                        });
+                        displayType.appendChild(line);
+                    }
+                }
+                displayType.className = "type-signature";
+                link.appendChild(displayType);
+            }
 
             link.appendChild(description);
-            output.appendChild(link);
-        }
+            return link;
+        }));
+        lis.then(lis => {
+            for (const li of lis) {
+                output.appendChild(li);
+            }
+        });
     } else if (query.error === null) {
         output.className = "search-failed" + extraClass;
         output.innerHTML = "No results :(<br/>" +
@@ -3516,7 +4036,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             "href=\"https://docs.rs\">Docs.rs</a> for documentation of crates released on" +
             " <a href=\"https://crates.io/\">crates.io</a>.</li></ul>";
     }
-    return [output, array.length];
+    return output;
 }
 
 function makeTabHeader(tabNb, text, nbElems) {
@@ -3573,24 +4093,18 @@ async function showResults(results, go_to_first, filterCrates) {
 
     currentResults = results.query.userQuery;
 
-    const [ret_others, ret_in_args, ret_returned] = await Promise.all([
-        addTab(results.others, results.query, true),
-        addTab(results.in_args, results.query, false),
-        addTab(results.returned, results.query, false),
-    ]);
-
     // Navigate to the relevant tab if the current tab is empty, like in case users search
     // for "-> String". If they had selected another tab previously, they have to click on
     // it again.
     let currentTab = searchState.currentTab;
-    if ((currentTab === 0 && ret_others[1] === 0) ||
-        (currentTab === 1 && ret_in_args[1] === 0) ||
-        (currentTab === 2 && ret_returned[1] === 0)) {
-        if (ret_others[1] !== 0) {
+    if ((currentTab === 0 && results.others.length === 0) ||
+        (currentTab === 1 && results.in_args.length === 0) ||
+        (currentTab === 2 && results.returned.length === 0)) {
+        if (results.others.length !== 0) {
             currentTab = 0;
-        } else if (ret_in_args[1] !== 0) {
+        } else if (results.in_args.length) {
             currentTab = 1;
-        } else if (ret_returned[1] !== 0) {
+        } else if (results.returned.length) {
             currentTab = 2;
         }
     }
@@ -3619,14 +4133,14 @@ async function showResults(results, go_to_first, filterCrates) {
         });
         output += `<h3 class="error">Query parser error: "${error.join("")}".</h3>`;
         output += "<div id=\"search-tabs\">" +
-            makeTabHeader(0, "In Names", ret_others[1]) +
+            makeTabHeader(0, "In Names", results.others.length) +
             "</div>";
         currentTab = 0;
     } else if (results.query.foundElems <= 1 && results.query.returned.length === 0) {
         output += "<div id=\"search-tabs\">" +
-            makeTabHeader(0, "In Names", ret_others[1]) +
-            makeTabHeader(1, "In Parameters", ret_in_args[1]) +
-            makeTabHeader(2, "In Return Types", ret_returned[1]) +
+            makeTabHeader(0, "In Names", results.others.length) +
+            makeTabHeader(1, "In Parameters", results.in_args.length) +
+            makeTabHeader(2, "In Return Types", results.returned.length) +
             "</div>";
     } else {
         const signatureTabTitle =
@@ -3634,7 +4148,7 @@ async function showResults(results, go_to_first, filterCrates) {
                 results.query.returned.length === 0 ? "In Function Parameters" :
                     "In Function Signatures";
         output += "<div id=\"search-tabs\">" +
-            makeTabHeader(0, signatureTabTitle, ret_others[1]) +
+            makeTabHeader(0, signatureTabTitle, results.others.length) +
             "</div>";
         currentTab = 0;
     }
@@ -3656,11 +4170,17 @@ async function showResults(results, go_to_first, filterCrates) {
             `Consider searching for "${targ}" instead.</h3>`;
     }
 
+    const [ret_others, ret_in_args, ret_returned] = await Promise.all([
+        addTab(results.others, results.query, currentTab === 0),
+        addTab(results.in_args, results.query, currentTab === 1),
+        addTab(results.returned, results.query, currentTab === 2),
+    ]);
+
     const resultsElem = document.createElement("div");
     resultsElem.id = "results";
-    resultsElem.appendChild(ret_others[0]);
-    resultsElem.appendChild(ret_in_args[0]);
-    resultsElem.appendChild(ret_returned[0]);
+    resultsElem.appendChild(ret_others);
+    resultsElem.appendChild(ret_in_args);
+    resultsElem.appendChild(ret_returned);
 
     search.innerHTML = output;
     if (searchState.rustdocToolbar) {
@@ -3724,11 +4244,11 @@ async function search(forced) {
     }
 
     // Update document title to maintain a meaningful browser history
-    searchState.title = "\"" + query.original + "\" Search - Rust";
+    searchState.title = "\"" + query.userQuery + "\" Search - Rust";
 
     // Because searching is incremental by character, only the most
     // recent search query is added to the browser history.
-    updateSearchHistory(buildUrl(query.original, filterCrates));
+    updateSearchHistory(buildUrl(query.userQuery, filterCrates));
 
     await showResults(
         await docSearch.execQuery(query, filterCrates, window.currentCrate),
@@ -3942,4 +4462,3 @@ if (typeof window !== "undefined") {
     // exports.
     initSearch(new Map());
 }
-})();
