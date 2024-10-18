@@ -4,10 +4,7 @@
 #![feature(staged_api)]
 #![feature(strict_provenance)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
-#![cfg_attr(
-    all(target_family = "wasm", not(target_os = "emscripten")),
-    feature(simd_wasm64, wasm_exception_handling_intrinsics)
-)]
+#![cfg_attr(all(target_family = "wasm"), feature(simd_wasm64, wasm_exception_handling_intrinsics))]
 #![allow(internal_features)]
 
 // Force libc to be included even if unused. This is required by many platforms.
