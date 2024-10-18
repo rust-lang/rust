@@ -39,6 +39,29 @@ fn thread_local_containing_const_statements() {
 }
 
 #[test]
+fn thread_local_hygeiene() {
+    // Previously `thread_local_inner!` had use imports for `LocalKey`, `Storage`, `EagerStorage`
+    // and `LazyStorage`. The use imports will shadow a user-provided type or type alias if the
+    // user-provided type or type alias has the same name. Make sure that this does not happen. See
+    // <https://github.com/rust-lang/rust/issues/131863>.
+    //
+    // NOTE: if the internal implementation details change (i.e. get renamed), this test should be
+    // updated.
+
+    #![allow(dead_code)]
+    type LocalKey = ();
+    type Storage = ();
+    type LazyStorage = ();
+    type EagerStorage = ();
+    thread_local! {
+        static A: LocalKey = const { () };
+        static B: Storage = const { () };
+        static C: LazyStorage = const { () };
+        static D: EagerStorage = const { () };
+    }
+}
+
+#[test]
 // Include an ignore list on purpose, so that new platforms don't miss it
 #[cfg_attr(
     any(
