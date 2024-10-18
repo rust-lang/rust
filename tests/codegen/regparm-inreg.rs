@@ -4,7 +4,6 @@
 
 //@ compile-flags: --target i686-unknown-linux-gnu -O -C no-prepopulate-passes
 //@ needs-llvm-components: x86
-//@ only-x86
 
 //@ revisions:regparm0 regparm1 regparm2 regparm3
 //@[regparm0] compile-flags: -Zregparm=0
