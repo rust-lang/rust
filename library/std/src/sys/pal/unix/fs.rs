@@ -1254,6 +1254,43 @@ impl File {
         }
     }
 
+    pub fn lock(&self) -> io::Result<()> {
+        cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX) })?;
+        return Ok(());
+    }
+
+    pub fn lock_shared(&self) -> io::Result<()> {
+        cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH) })?;
+        return Ok(());
+    }
+
+    pub fn try_lock(&self) -> io::Result<bool> {
+        let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) });
+        if let Err(ref err) = result {
+            if err.kind() == io::ErrorKind::WouldBlock {
+                return Ok(false);
+            }
+        }
+        result?;
+        return Ok(true);
+    }
+
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) });
+        if let Err(ref err) = result {
+            if err.kind() == io::ErrorKind::WouldBlock {
+                return Ok(false);
+            }
+        }
+        result?;
+        return Ok(true);
+    }
+
+    pub fn unlock(&self) -> io::Result<()> {
+        cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_UN) })?;
+        return Ok(());
+    }
+
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         let size: off64_t =
             size.try_into().map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
