@@ -386,6 +386,8 @@ auto:
     <<: *job-windows-8c
 
   # Temporary builder to workaround CI issues
+  # See <https://github.com/rust-lang/rust/issues/127883>
+  #FIXME: Remove this, and re-enable the same tests in `checktools.sh`, once CI issues are fixed.
   - image: x86_64-msvc-ext2
     env:
       SCRIPT: >

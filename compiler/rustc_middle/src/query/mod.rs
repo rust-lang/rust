@@ -570,6 +570,7 @@ rustc_queries! {
     /// either `#[coverage(on)]` or no coverage attribute was found.
     query coverage_attr_on(key: LocalDefId) -> bool {
         desc { |tcx| "checking for `#[coverage(..)]` on `{}`", tcx.def_path_str(key) }
+        feedable
     }
 
     /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
