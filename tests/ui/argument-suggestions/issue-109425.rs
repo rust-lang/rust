@@ -15,6 +15,10 @@ fn main() {
     //~^ error: this function takes 1 argument but 3 arguments were supplied
     is(0, 1, 2, ""); // is(0, "")
     //~^ error: this function takes 2 arguments but 4 arguments were supplied
+    is((), 1, "", ());
+    //~^ error: this function takes 2 arguments but 4 arguments were supplied
+    is(1, (), "", ());
+    //~^ error: this function takes 2 arguments but 4 arguments were supplied
     s(0, 1, "");     // s("")
     //~^ error: this function takes 1 argument but 3 arguments were supplied
 }
