@@ -9,6 +9,7 @@ use std::{env, fs, iter};
 
 use clap_complete::shells;
 
+use crate::core::build_steps::compile::run_cargo;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
@@ -2171,6 +2172,8 @@ struct BookTest {
     path: PathBuf,
     name: &'static str,
     is_ext_doc: bool,
+    dependencies: Vec<PathBuf>,
+    cli_args: Vec<String>,
 }
 
 impl Step for BookTest {
@@ -2223,6 +2226,27 @@ impl BookTest {
         // Books often have feature-gated example text.
         rustbook_cmd.env("RUSTC_BOOTSTRAP", "1");
         rustbook_cmd.env("PATH", new_path).arg("test").arg(path);
+
+        if !self.dependencies.is_empty() {
+            for dep in self.dependencies {
+                // TODO: get a Cargo etc.
+                let output_paths = run_cargo(
+                    builder,
+                    cargo,
+                    tail_args,
+                    stamp,
+                    additional_target_deps,
+                    is_check,
+                    rlib_only_metadata,
+                );
+                todo!("run cargo build {dep}");
+            }
+        }
+
+        if !self.cli_args.is_empty() {
+            rustbook_cmd.args(self.cli_args);
+        }
+
         builder.add_rust_test_threads(&mut rustbook_cmd);
         let _guard = builder.msg(
             Kind::Test,
@@ -2281,6 +2305,7 @@ macro_rules! test_book {
         $name:ident, $path:expr, $book_name:expr,
         default=$default:expr
         $(,submodules = $submodules:expr)?
+        $(,dependencies=$dependencies:expr)?
         ;
     )+) => {
         $(
@@ -2310,11 +2335,33 @@ macro_rules! test_book {
                             builder.require_submodule(submodule, None);
                         }
                     )*
+
+                    let dependencies = vec![];
+                    let cli_args = vec![];
+                    $(
+                        let mut dependencies = dependencies;
+                        let mut cli_args = cli_args;
+                        for dep in $dependencies {
+                            dependencies.push(dep.to_string());
+                        }
+
+                        if !dependencies.is_empty() {
+                            cli_args.push(String::from("--library-path"));
+                            let lib_paths = dependencies
+                                .iter()
+                                .map(|dep| format!("{dep}/target/debug/deps"))
+                                .collect::<Vec<String>>();
+                            cli_args.extend(lib_paths);
+                        }
+                    )?
+
                     builder.ensure(BookTest {
                         compiler: self.compiler,
                         path: PathBuf::from($path),
                         name: $book_name,
                         is_ext_doc: !$default,
+                        dependencies,
+                        cli_args,
                     });
                 }
             }
@@ -2329,7 +2376,7 @@ test_book!(
     RustcBook, "src/doc/rustc", "rustc", default=true;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false, submodules=["src/doc/rust-by-example"];
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", default=false, submodules=["src/doc/embedded-book"];
-    TheBook, "src/doc/book", "book", default=false, submodules=["src/doc/book"];
+    TheBook, "src/doc/book", "book", default=false, submodules=["src/doc/book"], dependencies=["src/doc/book/packages/trpl"];
     UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
     EditionGuide, "src/doc/edition-guide", "edition-guide", default=false, submodules=["src/doc/edition-guide"];
 );
