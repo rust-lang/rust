@@ -18,6 +18,7 @@ use crate::{fmt, io};
 #[derive(Debug)]
 pub struct Command {
     prog: OsString,
+    args: Vec<OsString>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 }
@@ -39,12 +40,11 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        Command { prog: program.to_os_string(), stdout: None, stderr: None }
+        Command { prog: program.to_os_string(), args: Vec::new(), stdout: None, stderr: None }
     }
 
-    // FIXME: Implement arguments as reverse of parsing algorithm
-    pub fn arg(&mut self, _arg: &OsStr) {
-        panic!("unsupported")
+    pub fn arg(&mut self, arg: &OsStr) {
+        self.args.push(arg.to_os_string());
     }
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
@@ -72,7 +72,7 @@ impl Command {
     }
 
     pub fn get_args(&self) -> CommandArgs<'_> {
-        panic!("unsupported")
+        CommandArgs { iter: self.args.iter() }
     }
 
     pub fn get_envs(&self) -> CommandEnvs<'_> {
@@ -115,6 +115,12 @@ impl Command {
 
     pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
         let mut cmd = uefi_command_internal::Image::load_image(&self.prog)?;
+
+        // UEFI adds the bin name by default
+        if !self.args.is_empty() {
+            let args = uefi_command_internal::create_args(&self.prog, &self.args);
+            cmd.set_args(args);
+        }
 
         // Setup Stdout
         let stdout = self.stdout.unwrap_or(Stdio::MakePipe);
@@ -315,7 +321,7 @@ mod uefi_command_internal {
         stdout: Option<helpers::OwnedProtocol<PipeProtocol>>,
         stderr: Option<helpers::OwnedProtocol<PipeProtocol>>,
         st: OwnedTable<r_efi::efi::SystemTable>,
-        args: Option<Vec<u16>>,
+        args: Option<(*mut u16, usize)>,
     }
 
     impl Image {
@@ -449,20 +455,20 @@ mod uefi_command_internal {
             }
         }
 
-        pub fn set_args(&mut self, args: &OsStr) {
+        pub fn set_args(&mut self, args: Box<[u16]>) {
             let loaded_image: NonNull<loaded_image::Protocol> =
                 helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
 
-            let mut args = args.encode_wide().collect::<Vec<u16>>();
-            let args_size = (crate::mem::size_of::<u16>() * args.len()) as u32;
+            let len = args.len();
+            let args_size: u32 = crate::mem::size_of_val(&args).try_into().unwrap();
+            let ptr = Box::into_raw(args).as_mut_ptr();
 
             unsafe {
-                (*loaded_image.as_ptr()).load_options =
-                    args.as_mut_ptr() as *mut crate::ffi::c_void;
+                (*loaded_image.as_ptr()).load_options = ptr as *mut crate::ffi::c_void;
                 (*loaded_image.as_ptr()).load_options_size = args_size;
             }
 
-            self.args = Some(args);
+            self.args = Some((ptr, len));
         }
 
         fn update_st_crc32(&mut self) -> io::Result<()> {
@@ -501,6 +507,10 @@ mod uefi_command_internal {
                 unsafe {
                     ((*bt.as_ptr()).unload_image)(self.handle.as_ptr());
                 }
+            }
+
+            if let Some((ptr, len)) = self.args {
+                let _ = unsafe { Box::from_raw(crate::ptr::slice_from_raw_parts_mut(ptr, len)) };
             }
         }
     }
@@ -680,5 +690,39 @@ mod uefi_command_internal {
                 let _ = Box::from_raw(self.mode);
             }
         }
+    }
+
+    pub fn create_args(prog: &OsStr, args: &[OsString]) -> Box<[u16]> {
+        const QUOTE: u16 = 0x0022;
+        const SPACE: u16 = 0x0020;
+        const CARET: u16 = 0x005e;
+        const NULL: u16 = 0;
+
+        // This is the lower bound on the final length under the assumption that
+        // the arguments only contain ASCII characters.
+        let mut res = Vec::with_capacity(args.iter().map(|arg| arg.len() + 3).sum());
+
+        // Wrap program name in quotes to avoid any problems
+        res.push(QUOTE);
+        res.extend(prog.encode_wide());
+        res.push(QUOTE);
+        res.push(SPACE);
+
+        for arg in args {
+            // Wrap the argument in quotes to be treat as single arg
+            res.push(QUOTE);
+            for c in arg.encode_wide() {
+                // CARET in quotes is used to escape CARET or QUOTE
+                if c == QUOTE || c == CARET {
+                    res.push(CARET);
+                }
+                res.push(c);
+            }
+            res.push(QUOTE);
+
+            res.push(SPACE);
+        }
+
+        res.into_boxed_slice()
     }
 }
