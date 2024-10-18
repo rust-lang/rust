@@ -391,7 +391,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr = self.read_pointer(src)?;
                 let val = Immediate::new_slice(
                     ptr,
-                    length.eval_target_usize(*self.tcx, self.param_env),
+                    length
+                        .try_to_target_usize(*self.tcx)
+                        .expect("expected monomorphic const in const eval"),
                     self,
                 );
                 self.write_immediate(val, dest)

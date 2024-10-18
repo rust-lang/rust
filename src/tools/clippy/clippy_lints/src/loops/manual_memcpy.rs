@@ -472,7 +472,7 @@ fn is_array_length_equal_to_range(cx: &LateContext<'_>, start: &Expr<'_>, end: &
     let arr_ty = cx.typeck_results().expr_ty(arr).peel_refs();
 
     if let ty::Array(_, s) = arr_ty.kind() {
-        let size: u128 = if let Some(size) = s.try_eval_target_usize(cx.tcx, cx.param_env) {
+        let size: u128 = if let Some(size) = s.try_to_target_usize(cx.tcx) {
             size.into()
         } else {
             return false;

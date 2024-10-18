@@ -85,7 +85,6 @@ mod rustc {
     use rustc_macros::TypeVisitable;
     use rustc_middle::traits::ObligationCause;
     use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt, ValTree};
-    use rustc_span::DUMMY_SP;
 
     use super::*;
 
@@ -134,13 +133,8 @@ mod rustc {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::symbol::sym;
 
-            let Ok((ty, cv)) = c.eval(tcx, param_env, DUMMY_SP) else {
-                return Some(Self {
-                    alignment: true,
-                    lifetimes: true,
-                    safety: true,
-                    validity: true,
-                });
+            let Some((cv, ty)) = c.try_to_valtree() else {
+                return None;
             };
 
             let adt_def = ty.ty_adt_def()?;

@@ -1,8 +1,7 @@
 use either::Either;
 use rustc_apfloat::{Float, Round};
-use rustc_middle::ty::FloatTy;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
-use rustc_middle::{mir, ty};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::{mir, ty, ty::FloatTy};
 use rustc_span::{Symbol, sym};
 use rustc_target::abi::{Endian, HasDataLayout};
 
@@ -633,9 +632,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let index = generic_args[2]
                     .expect_const()
-                    .eval(*this.tcx, this.param_env(), this.tcx.span)
+                    .try_to_valtree()
                     .unwrap()
-                    .1
+                    .0
                     .unwrap_branch();
                 let index_len = index.len();
 

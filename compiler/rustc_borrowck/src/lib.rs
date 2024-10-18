@@ -187,10 +187,10 @@ fn do_mir_borrowck<'tcx>(
 
     let location_table = LocationTable::new(body);
 
-    let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
+    let move_data = MoveData::gather_moves(body, tcx, |_| true);
     let promoted_move_data = promoted
         .iter_enumerated()
-        .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, param_env, |_| true)));
+        .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
         .into_engine(tcx, body)

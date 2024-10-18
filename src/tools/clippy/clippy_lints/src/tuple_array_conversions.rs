@@ -190,7 +190,7 @@ fn all_bindings_are_for_conv<'tcx>(
                     tys.len() == elements.len() && tys.iter().chain(final_tys.iter().copied()).all_equal()
                 },
                 (ToType::Tuple, ty::Array(ty, len)) => {
-                    let Some(len) = len.try_eval_target_usize(cx.tcx, cx.param_env) else { return false };
+                    let Some(len) = len.try_to_target_usize(cx.tcx) else { return false };
                     len as usize == elements.len() && final_tys.iter().chain(once(ty)).all_equal()
                 },
                 _ => false,

@@ -30,7 +30,7 @@ pub(super) fn check(
                 return;
             }
         } else if count
-            .try_eval_target_usize(cx.tcx, cx.param_env)
+            .try_to_target_usize(cx.tcx)
             .map_or(true, |x| x > 32)
             && !msrv.meets(msrvs::ARRAY_IMPL_ANY_LEN)
         {

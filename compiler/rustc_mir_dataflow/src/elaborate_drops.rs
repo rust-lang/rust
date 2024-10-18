@@ -863,7 +863,7 @@ where
             ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
-                let size = size.try_eval_target_usize(self.tcx(), self.elaborator.param_env());
+                let size = size.try_to_target_usize(self.tcx());
                 self.open_drop_for_array(*ety, size)
             }
             ty::Slice(ety) => self.drop_loop_pair(*ety),
