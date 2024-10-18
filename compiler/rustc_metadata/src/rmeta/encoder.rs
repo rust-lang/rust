@@ -736,6 +736,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 impls,
                 incoherent_impls,
                 exported_symbols,
+                is_mir_only: tcx.building_mir_only_rlib(),
                 interpret_alloc_index,
                 tables,
                 syntax_contexts,
@@ -1058,12 +1059,13 @@ fn should_encode_mir(
     reachable_set: &LocalDefIdSet,
     def_id: LocalDefId,
 ) -> (bool, bool) {
+    let opts = &tcx.sess.opts;
+    let mir_required = opts.unstable_opts.always_encode_mir || tcx.building_mir_only_rlib();
     match tcx.def_kind(def_id) {
         // Constructors
         DefKind::Ctor(_, _) => {
-            let mir_opt_base = tcx.sess.opts.output_types.should_codegen()
-                || tcx.sess.opts.unstable_opts.always_encode_mir;
-            (true, mir_opt_base)
+            let opt = mir_required || opts.output_types.should_codegen();
+            (true, opt)
         }
         // Constants
         DefKind::AnonConst | DefKind::InlineConst | DefKind::AssocConst | DefKind::Const => {
@@ -1075,7 +1077,7 @@ fn should_encode_mir(
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
-            let opt = tcx.sess.opts.unstable_opts.always_encode_mir
+            let opt = mir_required
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
