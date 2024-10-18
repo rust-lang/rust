@@ -7,6 +7,7 @@ use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
+use tracing::instrument;
 
 use super::simplify::simplify_cfg;
 
@@ -57,7 +58,7 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
 }
 
 trait SimplifyMatch<'tcx> {
-    /// Simplifies a match statement, returning true if the simplification succeeds, false
+    /// Simplifies a match statement, returning `Some` if the simplification succeeds, `None`
     /// otherwise. Generic code is written here, and we generally don't need a custom
     /// implementation.
     fn simplify(
@@ -156,6 +157,7 @@ struct SimplifyToIf;
 /// }
 /// ```
 impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
+    #[instrument(level = "debug", skip(self, tcx), ret)]
     fn can_simplify(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -164,12 +166,15 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         _discr_ty: Ty<'tcx>,
     ) -> Option<()> {
-        if targets.iter().len() != 1 {
-            return None;
-        }
+        let (first, second) = match targets.all_targets() {
+            &[first, otherwise] => (first, otherwise),
+            &[first, second, otherwise] if bbs[otherwise].is_empty_unreachable() => (first, second),
+            _ => {
+                return None;
+            }
+        };
+
         // We require that the possible target blocks all be distinct.
-        let (_, first) = targets.iter().next().unwrap();
-        let second = targets.otherwise();
         if first == second {
             return None;
         }
@@ -218,8 +223,14 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
         discr_local: Local,
         discr_ty: Ty<'tcx>,
     ) {
-        let (val, first) = targets.iter().next().unwrap();
-        let second = targets.otherwise();
+        let ((val, first), second) = match (targets.all_targets(), targets.all_values()) {
+            (&[first, otherwise], &[val]) => ((val, first), otherwise),
+            (&[first, second, otherwise], &[val, _]) if bbs[otherwise].is_empty_unreachable() => {
+                ((val, first), second)
+            }
+            _ => unreachable!(),
+        };
+
         // We already checked that first and second are different blocks,
         // and bb_idx has a different terminator from both of them.
         let first = &bbs[first];
@@ -294,7 +305,7 @@ struct SimplifyToExp {
     transform_kinds: Vec<TransformKind>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum ExpectedTransformKind<'a, 'tcx> {
     /// Identical statements.
     Same(&'a StatementKind<'tcx>),
@@ -359,6 +370,7 @@ impl From<ExpectedTransformKind<'_, '_>> for TransformKind {
 /// }
 /// ```
 impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
+    #[instrument(level = "debug", skip(self, tcx), ret)]
     fn can_simplify(
         &mut self,
         tcx: TyCtxt<'tcx>,
