@@ -402,23 +402,23 @@ impl DiagInner {
     ) -> (
         &Level,
         &[(DiagMessage, Style)],
-        &Option<ErrCode>,
+        Option<ErrCode>,
         &MultiSpan,
         &[Subdiag],
         &Suggestions,
         Vec<(&DiagArgName, &DiagArgValue)>,
-        &Option<IsLint>,
+        Option<&IsLint>,
     ) {
         (
             &self.level,
             &self.messages,
-            &self.code,
+            self.code,
             &self.span,
             &self.children,
             &self.suggestions,
             self.args.iter().collect(),
             // omit self.sort_span
-            &self.is_lint,
+            self.is_lint.as_ref(),
             // omit self.emitted_at
         )
     }

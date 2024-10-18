@@ -96,7 +96,7 @@ use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync;
@@ -1167,7 +1167,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
     // Output monomorphization stats per def_id
     if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats {
         if let Err(err) =
-            dump_mono_items_stats(tcx, codegen_units, path, tcx.crate_name(LOCAL_CRATE))
+            dump_mono_items_stats(tcx, codegen_units, path.as_deref(), tcx.crate_name(LOCAL_CRATE))
         {
             tcx.dcx().emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
         }
@@ -1232,7 +1232,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
 fn dump_mono_items_stats<'tcx>(
     tcx: TyCtxt<'tcx>,
     codegen_units: &[CodegenUnit<'tcx>],
-    output_directory: &Option<PathBuf>,
+    output_directory: Option<&Path>,
     crate_name: Symbol,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let output_directory = if let Some(ref directory) = output_directory {
