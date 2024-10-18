@@ -125,6 +125,40 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     }
 
     let compiler = cfg.get_compiler();
+
+    // When the cc crate cannot find the appropriate C compiler for the requested target, rather
+    // than erroring out it returns the default C compiler. In most cases, this is wrong.
+    //
+    // For example, let's say that you're cross-compiling for aarch64-unknown-none from an x86_64
+    // host, and that target is not recognized by the cc crate. In that case, the detected cc will
+    // be an x86_64 compiler, even though we're compiling for aarch64-unknown-none. If a crate then
+    // compiles some C code in its build script, the resulting rlib will have mixed AArch64 and
+    // x86_64 objects in it, and the linker will show rather unhelpful messages.
+    //
+    // To avoid the confusing error messages, we detect whether the configuration is likely broken,
+    // and if so we replace the detected C compiler with a stub binary that prints a useful error
+    // message, telling the user to manually configure their C compiler.
+    //
+    // We use a custom binary rather than erroring out directly here because some build steps might
+    // not need a C compiler at all, and it would be annoying to prevent the build in those cases.
+    let default_cc = new_cc_build(build, build.build).get_compiler();
+    if target != build.build && !compiler.is_like_clang() && compiler.path() == default_cc.path() {
+        let mut broken_cc = new_cc_build(build, target);
+        broken_cc.compiler(
+            std::env::current_exe()
+                .expect("failed to retrieve path to the bootstrap executable")
+                .parent()
+                .unwrap()
+                .join(format!("broken-cc{}", std::env::consts::EXE_SUFFIX)),
+        );
+        broken_cc.flag(&format!("--broken-cc-target={target}"));
+        broken_cc.flag(&format!("--broken-cc-detected={}", default_cc.path().display()));
+
+        build.cc.borrow_mut().insert(target, broken_cc.get_compiler());
+        build.cxx.borrow_mut().insert(target, broken_cc.get_compiler());
+        return;
+    }
+
     let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
         ar
     } else {
