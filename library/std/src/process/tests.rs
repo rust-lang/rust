@@ -377,6 +377,42 @@ fn test_interior_nul_in_env_value_is_error() {
     }
 }
 
+#[test]
+fn test_empty_env_key_is_error() {
+    match env_cmd().env("", "value").spawn() {
+        Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+        Ok(_) => panic!(),
+    }
+}
+
+#[test]
+fn test_interior_equals_in_env_key_is_error() {
+    match env_cmd().env("has=equals", "value").spawn() {
+        Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+        Ok(_) => panic!(),
+    }
+}
+
+#[test]
+fn test_env_leading_equals() {
+    let mut cmd;
+    if cfg!(not(target_os = "windows")) {
+        cmd = env_cmd();
+    } else {
+        cmd = Command::new("cmd");
+        cmd.arg("/c");
+        cmd.arg("echo =RUN_TEST_LEADING_EQUALS=%=RUN_TEST_LEADING_EQUALS%");
+    }
+    cmd.env("=RUN_TEST_LEADING_EQUALS", "789=012");
+    let result = cmd.output().unwrap();
+    let output = String::from_utf8_lossy(&result.stdout).to_string();
+
+    assert!(
+        output.contains("=RUN_TEST_LEADING_EQUALS=789=012"),
+        "didn't find =RUN_TEST_LEADING_EQUALS inside of:\n\n{output}",
+    );
+}
+
 /// Tests that process creation flags work by debugging a process.
 /// Other creation flags make it hard or impossible to detect
 /// behavioral changes in the process.
