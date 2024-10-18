@@ -903,7 +903,6 @@ fn check_impl_item<'tcx>(
         hir::ImplItemKind::Type(ty) if ty.span != DUMMY_SP => (None, ty.span),
         _ => (None, impl_item.span),
     };
-
     check_associated_item(tcx, impl_item.owner_id.def_id, span, method_sig)
 }
 
@@ -1706,62 +1705,68 @@ fn check_method_receiver<'tcx>(
         None
     };
 
-    if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, arbitrary_self_types_level) {
-        return Err(match arbitrary_self_types_level {
-            // Wherever possible, emit a message advising folks that the features
-            // `arbitrary_self_types` or `arbitrary_self_types_pointers` might
-            // have helped.
-            None if receiver_is_valid(
-                wfcx,
-                span,
-                receiver_ty,
-                self_ty,
-                Some(ArbitrarySelfTypesLevel::Basic),
-            ) =>
-            {
-                // Report error; would have worked with `arbitrary_self_types`.
-                feature_err(
-                    &tcx.sess,
-                    sym::arbitrary_self_types,
-                    span,
-                    format!(
-                        "`{receiver_ty}` cannot be used as the type of `self` without \
-                            the `arbitrary_self_types` feature",
-                    ),
-                )
-                .with_help(fluent::hir_analysis_invalid_receiver_ty_help)
-                .emit()
-            }
-            None | Some(ArbitrarySelfTypesLevel::Basic)
-                if receiver_is_valid(
+    let impl_block_def_id =
+        tcx.impl_of_method(method.def_id).unwrap_or(method.def_id).expect_local();
+
+    let receiver_validity = enter_wf_checking_ctxt(tcx, span, impl_block_def_id, |wfcx| {
+        if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, arbitrary_self_types_level) {
+            return Err(match arbitrary_self_types_level {
+                // Wherever possible, emit a message advising folks that the features
+                // `arbitrary_self_types` or `arbitrary_self_types_pointers` might
+                // have helped.
+                None if receiver_is_valid(
                     wfcx,
                     span,
                     receiver_ty,
                     self_ty,
-                    Some(ArbitrarySelfTypesLevel::WithPointers),
+                    Some(ArbitrarySelfTypesLevel::Basic),
                 ) =>
-            {
-                // Report error; would have worked with `arbitrary_self_types_pointers`.
-                feature_err(
-                    &tcx.sess,
-                    sym::arbitrary_self_types_pointers,
-                    span,
-                    format!(
-                        "`{receiver_ty}` cannot be used as the type of `self` without \
-                            the `arbitrary_self_types_pointers` feature",
-                    ),
-                )
-                .with_help(fluent::hir_analysis_invalid_receiver_ty_help)
-                .emit()
-            }
-            _ =>
-            // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
-            {
-                tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
-            }
-        });
-    }
-    Ok(())
+                {
+                    // Report error; would have worked with `arbitrary_self_types`.
+                    feature_err(
+                        &tcx.sess,
+                        sym::arbitrary_self_types,
+                        span,
+                        format!(
+                            "`{receiver_ty}` cannot be used as the type of `self` without \
+                                the `arbitrary_self_types` feature",
+                        ),
+                    )
+                    .with_help(fluent::hir_analysis_invalid_receiver_ty_help)
+                    .emit()
+                }
+                None | Some(ArbitrarySelfTypesLevel::Basic)
+                    if receiver_is_valid(
+                        wfcx,
+                        span,
+                        receiver_ty,
+                        self_ty,
+                        Some(ArbitrarySelfTypesLevel::WithPointers),
+                    ) =>
+                {
+                    // Report error; would have worked with `arbitrary_self_types_pointers`.
+                    feature_err(
+                        &tcx.sess,
+                        sym::arbitrary_self_types_pointers,
+                        span,
+                        format!(
+                            "`{receiver_ty}` cannot be used as the type of `self` without \
+                                the `arbitrary_self_types_pointers` feature",
+                        ),
+                    )
+                    .with_help(fluent::hir_analysis_invalid_receiver_ty_help)
+                    .emit()
+                }
+                _ =>
+                // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
+                {
+                    tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
+                }
+            });
+        }
+        Ok(())
+    });
+    receiver_validity
 }
 
 /// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If
