@@ -4,11 +4,10 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_item};
-use rustc_hir::{CRATE_HIR_ID, Node};
+use rustc_hir::{self as hir, CRATE_HIR_ID, Node, TyKind};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -86,6 +85,7 @@ pub(crate) struct RustdocVisitor<'a, 'tcx> {
     modules: Vec<Module<'tcx>>,
     is_importable_from_parent: bool,
     inside_body: bool,
+    next_is_test: bool,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -110,6 +110,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             modules: vec![om],
             is_importable_from_parent: true,
             inside_body: false,
+            next_is_test: false,
         }
     }
 
@@ -385,6 +386,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 _ => false,
             }
         {
+            if self.cx.cache.document_tests
+                && let hir::ItemKind::Fn(..) = item.kind
+                && self.next_is_test
+            {
+                self.cx.cache.tests.insert(item.owner_id.to_def_id());
+                self.next_is_test = false;
+            };
             self.modules
                 .last_mut()
                 .unwrap()
@@ -499,8 +507,16 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::Mod(ref m) => {
                 self.enter_mod(item.owner_id.def_id, m, name, renamed, import_id);
             }
-            hir::ItemKind::Fn(..)
-            | hir::ItemKind::ExternCrate(..)
+            hir::ItemKind::Fn(fn_sig, _, _) => {
+                // Don't show auto created function "main" that is not in the source code (empty span) when documenting tests.
+                if !(self.cx.cache.document_tests
+                    && fn_sig.span.is_empty()
+                    && name.as_str() == "main")
+                {
+                    self.add_to_current_mod(item, renamed, import_id);
+                }
+            }
+            hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)
@@ -510,11 +526,35 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::TraitAlias(..) => {
                 self.add_to_current_mod(item, renamed, import_id);
             }
-            hir::ItemKind::Const(..) => {
+            hir::ItemKind::Const(ty, _, _) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if name != kw::Underscore {
-                    self.add_to_current_mod(item, renamed, import_id);
+                    if self.cx.cache.document_tests
+                        && let TyKind::Path(rustc_hir::QPath::Resolved(_, path)) = ty.kind
+                    {
+                        let path: String = path
+                            .segments
+                            .iter()
+                            .map(|s| {
+                                if s.ident.name == kw::PathRoot {
+                                    ""
+                                } else {
+                                    s.ident.name.as_str()
+                                }
+                            })
+                            .intersperse("::")
+                            .collect();
+                        if path == "test::TestDescAndFn" {
+                            // Intentionally do not add this, since we want to document the test
+                            // and not the generated constants.
+                            self.next_is_test = true;
+                        } else {
+                            self.add_to_current_mod(item, renamed, import_id);
+                        }
+                    } else {
+                        self.add_to_current_mod(item, renamed, import_id);
+                    }
                 }
             }
             hir::ItemKind::Impl(impl_) => {

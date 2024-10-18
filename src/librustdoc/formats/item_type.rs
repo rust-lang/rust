@@ -57,6 +57,7 @@ pub(crate) enum ItemType {
     TraitAlias = 25,
     // This number is reserved for use in JavaScript
     // Generic = 26,
+    Test = 27,
 }
 
 impl Serialize for ItemType {
@@ -83,6 +84,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::UnionItem(..) => ItemType::Union,
             clean::EnumItem(..) => ItemType::Enum,
             clean::FunctionItem(..) => ItemType::Function,
+            clean::TestItem(..) => ItemType::Test,
             clean::TypeAliasItem(..) => ItemType::TypeAlias,
             clean::StaticItem(..) => ItemType::Static,
             clean::ConstantItem(..) => ItemType::Constant,
@@ -176,6 +178,7 @@ impl ItemType {
             ItemType::Union => "union",
             ItemType::Enum => "enum",
             ItemType::Function => "fn",
+            ItemType::Test => "test",
             ItemType::TypeAlias => "type",
             ItemType::Static => "static",
             ItemType::Trait => "trait",
