@@ -329,7 +329,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // Determine the type of the thing we are indexing.
                     && let ty::Array(_, len) = place_base.ty(self.body, self.tcx).ty.kind()
                     // It's an array; determine its length.
-                    && let Some(len) = len.try_eval_target_usize(self.tcx, self.param_env)
+                    && let Some(len) = len.try_to_target_usize(self.tcx)
                     // If the index is in-bounds, go ahead.
                     && idx < len
                 {
@@ -407,7 +407,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // mutably without consequences. However, only &mut []
                 // is allowed right now.
                 if let ty::Array(_, len) = ty.kind() {
-                    match len.try_eval_target_usize(self.tcx, self.param_env) {
+                    match len.try_to_target_usize(self.tcx) {
                         Some(0) => {}
                         _ => return Err(Unpromotable),
                     }

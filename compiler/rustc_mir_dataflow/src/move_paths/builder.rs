@@ -18,18 +18,12 @@ struct MoveDataBuilder<'a, 'tcx, F> {
     body: &'a Body<'tcx>,
     loc: Location,
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
     filter: F,
 }
 
 impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
-    fn new(
-        body: &'a Body<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        filter: F,
-    ) -> Self {
+    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>, filter: F) -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
         let mut init_path_map = IndexVec::new();
@@ -59,7 +53,6 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             body,
             loc: Location::START,
             tcx,
-            param_env,
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),
@@ -308,10 +301,9 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
 pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     filter: impl Fn(Ty<'tcx>) -> bool,
 ) -> MoveData<'tcx> {
-    let mut builder = MoveDataBuilder::new(body, tcx, param_env, filter);
+    let mut builder = MoveDataBuilder::new(body, tcx, filter);
 
     builder.gather_args();
 
@@ -550,7 +542,9 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             };
             let base_ty = base_place.ty(self.body, self.tcx).ty;
             let len: u64 = match base_ty.kind() {
-                ty::Array(_, size) => size.eval_target_usize(self.tcx, self.param_env),
+                ty::Array(_, size) => size
+                    .try_to_target_usize(self.tcx)
+                    .expect("expected subslice projection on fixed-size array"),
                 _ => bug!("from_end: false slice pattern of non-array type"),
             };
             for offset in from..to {

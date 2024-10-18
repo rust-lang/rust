@@ -170,12 +170,12 @@ fn layout_of_uncached<'tcx>(
                     if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &mut layout.abi {
                         if let Some(start) = start {
                             scalar.valid_range_mut().start = start
-                                .try_eval_bits(tcx, param_env)
+                                .try_to_bits(tcx, param_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
                             let mut end = end
-                                .try_eval_bits(tcx, param_env)
+                                .try_to_bits(tcx, param_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
                                 end = end.wrapping_sub(1);
@@ -315,7 +315,7 @@ fn layout_of_uncached<'tcx>(
             }
 
             let count = count
-                .try_eval_target_usize(tcx, param_env)
+                .try_to_target_usize(tcx)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
             let element = cx.layout_of(element)?;
             let size = element

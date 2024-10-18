@@ -989,7 +989,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),
         (Err(_), ty::Array(t, n)) => {
-            n.try_eval_target_usize(cx.tcx, cx.param_env).unwrap_or_default() * approx_ty_size(cx, *t)
+            n.try_to_target_usize(cx.tcx).unwrap_or_default() * approx_ty_size(cx, *t)
         },
         (Err(_), ty::Adt(def, subst)) if def.is_struct() => def
             .variants()
@@ -1207,7 +1207,7 @@ impl<'tcx> InteriorMut<'tcx> {
             ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.is_interior_mut_ty(cx, inner_ty),
             ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.is_interior_mut_ty(cx, inner_ty),
             ty::Array(inner_ty, size) => {
-                size.try_eval_target_usize(cx.tcx, cx.param_env)
+                size.try_to_target_usize(cx.tcx)
                     .map_or(true, |u| u != 0)
                     && self.is_interior_mut_ty(cx, inner_ty)
             },
