@@ -37,17 +37,17 @@ LL |     F: Fn<i32, Output = i32>,
 note: required by a bound in `Fn`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
-error[E0059]: cannot use call notation; the first type parameter for the function trait is neither a tuple nor unit
-  --> $DIR/fn-trait-notation.rs:9:5
-   |
-LL |     f(3);
-   |     ^^^^
-
 error[E0277]: `i32` is not a tuple
   --> $DIR/fn-trait-notation.rs:9:5
    |
 LL |     f(3);
    |     ^^^^ the trait `Tuple` is not implemented for `i32`
+
+error[E0059]: cannot use call notation; the first type parameter for the function trait is neither a tuple nor unit
+  --> $DIR/fn-trait-notation.rs:9:5
+   |
+LL |     f(3);
+   |     ^^^^
 
 error[E0308]: mismatched types
   --> $DIR/fn-trait-notation.rs:17:5

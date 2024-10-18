@@ -52,15 +52,6 @@ LL | pub struct InvariantRef<'a, T: ?Sized>(&'a T, PhantomData<&'a mut &'a T>);
 LL |     pub const NEW: Self = InvariantRef::new(&());
    |                                         ^^^ function or associated item not found in `InvariantRef<'_, _>`
 
-error[E0308]: mismatched types
-  --> $DIR/correct_body_owner_parent_found_in_diagnostics.rs:22:53
-   |
-LL |     reuse <u8 as Trait>::{foo, bar, meh} { &const { InvariantRef::<'a>::NEW } }
-   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `InvariantRef<'_, ()>`
-   |
-   = note: expected type `u8`
-            found struct `InvariantRef<'_, ()>`
-
 error[E0277]: the trait bound `u8: Trait` is not satisfied
   --> $DIR/correct_body_owner_parent_found_in_diagnostics.rs:22:12
    |
@@ -77,7 +68,6 @@ LL |     reuse <u8 as Trait>::{foo, bar, meh} { &const { InvariantRef::<'a>::NEW
    |
    = note: expected type `u8`
             found struct `InvariantRef<'_, ()>`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `u8: Trait` is not satisfied
   --> $DIR/correct_body_owner_parent_found_in_diagnostics.rs:22:12
@@ -105,6 +95,16 @@ LL |     reuse <u8 as Trait>::{foo, bar, meh} { &const { InvariantRef::<'a>::NEW
    |            ^^ the trait `Trait` is not implemented for `u8`
    |
    = help: the trait `Trait` is implemented for `Z`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/correct_body_owner_parent_found_in_diagnostics.rs:22:53
+   |
+LL |     reuse <u8 as Trait>::{foo, bar, meh} { &const { InvariantRef::<'a>::NEW } }
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `InvariantRef<'_, ()>`
+   |
+   = note: expected type `u8`
+            found struct `InvariantRef<'_, ()>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 10 previous errors
