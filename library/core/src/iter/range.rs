@@ -15,6 +15,7 @@ macro_rules! unsafe_impl_trusted_step {
     )*};
 }
 unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize Ipv4Addr Ipv6Addr];
+unsafe_impl_trusted_step![NonZero<u8> NonZero<u16> NonZero<u32> NonZero<u64> NonZero<u128> NonZero<usize>];
 
 /// Objects that have a notion of *successor* and *predecessor* operations.
 ///
@@ -428,6 +429,138 @@ step_integer_impls! {
 step_integer_impls! {
     narrower than or same width as usize: [u8 i8], [u16 i16], [usize isize];
     wider than usize: [u32 i32], [u64 i64], [u128 i128];
+}
+
+// These are still macro-generated because the integer literals resolve to different types.
+macro_rules! step_nonzero_identical_methods {
+    ($int:ident) => {
+        #[inline]
+        unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
+            // SAFETY: the caller has to guarantee that `start + n` doesn't overflow.
+            unsafe { Self::new_unchecked(start.get().unchecked_add(n as $int)) }
+        }
+
+        #[inline]
+        unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
+            // SAFETY: the caller has to guarantee that `start - n` doesn't overflow or hit zero.
+            unsafe { Self::new_unchecked(start.get().unchecked_sub(n as $int)) }
+        }
+
+        #[inline]
+        #[allow(arithmetic_overflow)]
+        #[rustc_inherit_overflow_checks]
+        fn forward(start: Self, n: usize) -> Self {
+            // In debug builds, trigger a panic on overflow.
+            // This should optimize completely out in release builds.
+            if Self::forward_checked(start, n).is_none() {
+                let _ = $int::MAX + 1;
+            }
+            // Do saturating math (wrapping math causes UB if it wraps to Zero)
+            start.saturating_add(n as $int)
+        }
+
+        #[inline]
+        #[allow(arithmetic_overflow)]
+        #[rustc_inherit_overflow_checks]
+        fn backward(start: Self, n: usize) -> Self {
+            // In debug builds, trigger a panic on overflow.
+            // This should optimize completely out in release builds.
+            if Self::backward_checked(start, n).is_none() {
+                let _ = $int::MIN - 1;
+            }
+            // Do saturating math (wrapping math causes UB if it wraps to Zero)
+            Self::new(start.get().saturating_sub(n as $int)).unwrap_or(Self::MIN)
+        }
+    };
+}
+
+macro_rules! step_nonzero_impls {
+    {
+        narrower than or same width as usize:
+            $( $narrower:ident ),+;
+        wider than usize:
+            $( $wider:ident ),+;
+    } => {
+        $(
+            #[allow(unreachable_patterns)]
+            #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+            impl Step for NonZero<$narrower> {
+                step_nonzero_identical_methods!($narrower);
+
+                #[inline]
+                fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    if *start <= *end {
+                        // This relies on $u_narrower <= usize
+                        Some((end.get() - start.get()) as usize)
+                    } else {
+                        None
+                    }
+                }
+
+                #[inline]
+                fn forward_checked(start: Self, n: usize) -> Option<Self> {
+                    match $narrower::try_from(n) {
+                        Ok(n) => start.checked_add(n),
+                        Err(_) => None, // if n is out of range, `unsigned_start + n` is too
+                    }
+                }
+
+                #[inline]
+                fn backward_checked(start: Self, n: usize) -> Option<Self> {
+                    match $narrower::try_from(n) {
+                        // *_sub() is not implemented on NonZero<T>
+                        Ok(n) => start.get().checked_sub(n).and_then(Self::new),
+                        Err(_) => None, // if n is out of range, `unsigned_start - n` is too
+                    }
+                }
+            }
+        )+
+
+        $(
+            #[allow(unreachable_patterns)]
+            #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+            impl Step for NonZero<$wider> {
+                step_nonzero_identical_methods!($wider);
+
+                #[inline]
+                fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    if *start <= *end {
+                        usize::try_from(end.get() - start.get()).ok()
+                    } else {
+                        None
+                    }
+                }
+
+                #[inline]
+                fn forward_checked(start: Self, n: usize) -> Option<Self> {
+                    start.checked_add(n as $wider)
+                }
+
+                #[inline]
+                fn backward_checked(start: Self, n: usize) -> Option<Self> {
+                    start.get().checked_sub(n as $wider).and_then(Self::new)
+                }
+            }
+        )+
+    };
+}
+
+#[cfg(target_pointer_width = "64")]
+step_nonzero_impls! {
+    narrower than or same width as usize: u8, u16, u32, u64, usize;
+    wider than usize: u128;
+}
+
+#[cfg(target_pointer_width = "32")]
+step_nonzero_impls! {
+    narrower than or same width as usize: u8, u16, u32, usize;
+    wider than usize: u64, u128;
+}
+
+#[cfg(target_pointer_width = "16")]
+step_nonzero_impls! {
+    narrower than or same width as usize: u8, u16, usize;
+    wider than usize: u32, u64, u128;
 }
 
 #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
@@ -922,6 +1055,7 @@ impl<A: Step> Iterator for ops::Range<A> {
 range_exact_iter_impl! {
     usize u8 u16
     isize i8 i16
+    NonZero<usize> NonZero<u8> NonZero<u16>
 
     // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.0.0.
@@ -931,25 +1065,35 @@ range_exact_iter_impl! {
     i32
 }
 
+#[cfg(target_pointer_width = "32")]
+range_exact_iter_impl! { NonZero<u32> }
+
+#[cfg(target_pointer_width = "64")]
+range_exact_iter_impl! { NonZero<u64> }
+
 unsafe_range_trusted_random_access_impl! {
     usize u8 u16
     isize i8 i16
+    NonZero<usize> NonZero<u8> NonZero<u16>
 }
 
 #[cfg(target_pointer_width = "32")]
 unsafe_range_trusted_random_access_impl! {
     u32 i32
+    NonZero<u32>
 }
 
 #[cfg(target_pointer_width = "64")]
 unsafe_range_trusted_random_access_impl! {
     u32 i32
     u64 i64
+    NonZero<u32> NonZero<u64>
 }
 
 range_incl_exact_iter_impl! {
     u8
     i8
+    NonZero<u8>
 
     // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.26.0.
@@ -958,6 +1102,12 @@ range_incl_exact_iter_impl! {
     u16
     i16
 }
+
+#[cfg(target_pointer_width = "32")]
+range_incl_exact_iter_impl! { NonZero<u16> }
+
+#[cfg(target_pointer_width = "64")]
+range_incl_exact_iter_impl! { NonZero<u32> }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step> DoubleEndedIterator for ops::Range<A> {
