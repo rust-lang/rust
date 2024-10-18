@@ -623,6 +623,25 @@ pub(crate) enum InvalidFormatStringSuggestion {
         #[primary_span]
         span: Span,
     },
+    #[multipart_suggestion(
+        builtin_macros_format_reorder,
+        style = "tool-only",
+        applicability = "machine-applicable"
+    )]
+    ReorderFormat {
+        #[suggestion_part(code = "{string}")]
+        span: Span,
+        string: String,
+    },
+    #[multipart_suggestion(
+        builtin_macros_format_remove,
+        style = "tool-only",
+        applicability = "machine-applicable"
+    )]
+    RemoveCharacter {
+        #[suggestion_part(code = "")]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
