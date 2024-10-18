@@ -267,7 +267,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             match header.map(|h| h.polarity) {
                 // `None` means this is an inherent impl
                 Some(ty::ImplPolarity::Positive) | None => {
-                    res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
+                    res = res.and(check_impl(tcx, item, impl_.self_ty, impl_.of_trait.as_ref()));
                 }
                 Some(ty::ImplPolarity::Negative) => {
                     let ast::ImplPolarity::Negative(span) = impl_.polarity else {
@@ -1330,7 +1330,7 @@ fn check_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::Item<'tcx>,
     hir_self_ty: &hir::Ty<'_>,
-    hir_trait_ref: &Option<hir::TraitRef<'_>>,
+    hir_trait_ref: Option<&hir::TraitRef<'_>>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
         match hir_trait_ref {
