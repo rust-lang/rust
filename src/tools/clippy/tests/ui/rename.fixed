@@ -54,7 +54,7 @@
 #![allow(enum_intrinsics_non_enums)]
 #![allow(non_fmt_panics)]
 #![allow(named_arguments_used_positionally)]
-#![allow(temporary_cstring_as_ptr)]
+#![allow(dangling_pointers_from_temporaries)]
 #![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
@@ -120,7 +120,7 @@
 #![warn(unexpected_cfgs)] //~ ERROR: lint `clippy::mismatched_target_os`
 #![warn(non_fmt_panics)] //~ ERROR: lint `clippy::panic_params`
 #![warn(named_arguments_used_positionally)] //~ ERROR: lint `clippy::positional_named_format_parameters`
-#![warn(temporary_cstring_as_ptr)] //~ ERROR: lint `clippy::temporary_cstring_as_ptr`
+#![warn(dangling_pointers_from_temporaries)] //~ ERROR: lint `clippy::temporary_cstring_as_ptr`
 #![warn(undropped_manually_drops)] //~ ERROR: lint `clippy::undropped_manually_drops`
 #![warn(unknown_lints)] //~ ERROR: lint `clippy::unknown_clippy_lints`
 #![warn(unused_labels)] //~ ERROR: lint `clippy::unused_label`
