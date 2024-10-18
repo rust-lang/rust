@@ -3,6 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::TypingMode;
 use rustc_middle::{bug, ty};
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
@@ -157,7 +158,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 Some(ty_def) if cx.tcx.is_lang_item(ty_def.did(), LangItem::String),
             );
 
-            let infcx = cx.tcx.infer_ctxt().build();
+            let infcx = cx.tcx.infer_ctxt().build(TypingMode::from_param_env(cx.param_env));
             let suggest_display = is_str
                 || cx.tcx.get_diagnostic_item(sym::Display).is_some_and(|t| {
                     infcx.type_implements_trait(t, [ty], cx.param_env).may_apply()

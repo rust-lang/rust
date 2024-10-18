@@ -3,7 +3,7 @@
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_trait_selection::traits;
 
 fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
@@ -29,7 +29,7 @@ fn is_item_raw<'tcx>(
 ) -> bool {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(item, None);
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
     traits::type_known_to_meet_bound_modulo_regions(&infcx, param_env, ty, trait_def_id)
 }
 

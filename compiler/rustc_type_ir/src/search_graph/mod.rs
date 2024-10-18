@@ -22,7 +22,6 @@ use rustc_index::{Idx, IndexVec};
 use tracing::debug;
 
 use crate::data_structures::HashMap;
-use crate::solve::SolverMode;
 
 mod global_cache;
 use global_cache::CacheData;
@@ -48,11 +47,7 @@ pub trait Cx: Copy {
     fn get_tracked<T: Debug + Clone>(self, tracked: &Self::Tracked<T>) -> T;
     fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, Self::DepNodeIndex);
 
-    fn with_global_cache<R>(
-        self,
-        mode: SolverMode,
-        f: impl FnOnce(&mut GlobalCache<Self>) -> R,
-    ) -> R;
+    fn with_global_cache<R>(self, f: impl FnOnce(&mut GlobalCache<Self>) -> R) -> R;
 
     fn evaluation_is_concurrent(&self) -> bool;
 }
@@ -358,7 +353,6 @@ struct ProvisionalCacheEntry<X: Cx> {
 }
 
 pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
-    mode: SolverMode,
     root_depth: AvailableDepth,
     /// The stack of goals currently being computed.
     ///
@@ -374,18 +368,13 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
 }
 
 impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
-    pub fn new(mode: SolverMode, root_depth: usize) -> SearchGraph<D> {
+    pub fn new(root_depth: usize) -> SearchGraph<D> {
         Self {
-            mode,
             root_depth: AvailableDepth(root_depth),
             stack: Default::default(),
             provisional_cache: Default::default(),
             _marker: PhantomData,
         }
-    }
-
-    pub fn solver_mode(&self) -> SolverMode {
-        self.mode
     }
 
     /// Lazily update the stack entry for the parent goal.
@@ -829,7 +818,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         input: X::Input,
         available_depth: AvailableDepth,
     ) -> Option<X::Result> {
-        cx.with_global_cache(self.mode, |cache| {
+        cx.with_global_cache(|cache| {
             cache
                 .get(cx, input, available_depth, |nested_goals| {
                     Self::candidate_is_applicable(
@@ -852,7 +841,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         input: X::Input,
         available_depth: AvailableDepth,
     ) -> Option<X::Result> {
-        cx.with_global_cache(self.mode, |cache| {
+        cx.with_global_cache(|cache| {
             let CacheData { result, additional_depth, encountered_overflow, nested_goals } = cache
                 .get(cx, input, available_depth, |nested_goals| {
                     Self::candidate_is_applicable(
@@ -1041,7 +1030,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     ) {
         let additional_depth = final_entry.reached_depth.as_usize() - self.stack.len();
         debug!(?final_entry, ?result, "insert global cache");
-        cx.with_global_cache(self.mode, |cache| {
+        cx.with_global_cache(|cache| {
             cache.insert(
                 cx,
                 input,

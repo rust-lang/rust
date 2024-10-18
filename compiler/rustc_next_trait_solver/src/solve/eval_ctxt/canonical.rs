@@ -71,10 +71,7 @@ where
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
-        let query_input = ty::CanonicalQueryInput {
-            canonical,
-            defining_opaque_types: self.delegate.defining_opaque_types(),
-        };
+        let query_input = ty::CanonicalQueryInput { canonical, typing_mode: self.typing_mode() };
         (orig_values, query_input)
     }
 

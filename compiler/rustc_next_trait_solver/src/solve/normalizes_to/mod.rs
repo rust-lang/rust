@@ -6,7 +6,7 @@ mod weak_types;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, NormalizesTo, Upcast as _};
+use rustc_type_ir::{self as ty, Interner, NormalizesTo, TypingMode, Upcast as _};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -15,7 +15,7 @@ use crate::solve::assembly::{self, Candidate};
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, QueryResult, Reveal,
+    NoSolution, QueryResult,
 };
 
 impl<D, I> EvalCtxt<'_, D>
@@ -71,21 +71,21 @@ where
                 Ok(())
             }
             ty::AliasTermKind::OpaqueTy => {
-                match param_env.reveal() {
-                    // In user-facing mode, paques are only rigid if we may not define it.
-                    Reveal::UserFacing => {
+                match self.typing_mode() {
+                    // Opaques are never rigid outside of analysis mode.
+                    TypingMode::Coherence | TypingMode::PostAnalysis => Err(NoSolution),
+                    // During analysis, paques are only rigid if we may not define it.
+                    TypingMode::Analysis { defining_opaque_types } => {
                         if rigid_alias
                             .def_id
                             .as_local()
-                            .is_some_and(|def_id| self.can_define_opaque_ty(def_id))
+                            .is_some_and(|def_id| defining_opaque_types.contains(&def_id))
                         {
                             Err(NoSolution)
                         } else {
                             Ok(())
                         }
                     }
-                    // Opaques are never rigid in reveal-all mode.
-                    Reveal::All => Err(NoSolution),
                 }
             }
             // FIXME(generic_const_exprs): we would need to support generic consts here

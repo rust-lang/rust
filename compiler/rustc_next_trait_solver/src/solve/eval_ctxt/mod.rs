@@ -10,7 +10,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner};
+use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypingMode};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{instrument, trace};
 
@@ -21,7 +21,6 @@ use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
     CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind, GoalSource,
     HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult,
-    SolverMode,
 };
 
 pub(super) mod canonical;
@@ -215,8 +214,8 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    pub(super) fn solver_mode(&self) -> SolverMode {
-        self.search_graph.solver_mode()
+    pub(super) fn typing_mode(&self) -> TypingMode<I> {
+        self.delegate.typing_mode()
     }
 
     pub(super) fn set_is_normalizes_to_goal(&mut self) {
@@ -232,7 +231,7 @@ where
         generate_proof_tree: GenerateProofTree,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<I>>) {
-        let mut search_graph = SearchGraph::new(delegate.solver_mode(), root_depth);
+        let mut search_graph = SearchGraph::new(root_depth);
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -279,7 +278,7 @@ where
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
         let (ref delegate, input, var_values) =
-            SolverDelegate::build_with_canonical(cx, search_graph.solver_mode(), &canonical_input);
+            SolverDelegate::build_with_canonical(cx, &canonical_input);
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -950,10 +949,6 @@ where
             trait_assoc_def_id,
             impl_def_id,
         )
-    }
-
-    pub(super) fn can_define_opaque_ty(&self, def_id: I::LocalDefId) -> bool {
-        self.delegate.defining_opaque_types().contains(&def_id)
     }
 
     pub(super) fn insert_hidden_type(

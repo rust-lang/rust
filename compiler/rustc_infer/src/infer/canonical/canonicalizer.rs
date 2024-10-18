@@ -72,7 +72,7 @@ impl<'tcx> InferCtxt<'tcx> {
             query_state,
         )
         .unchecked_map(|(param_env, value)| param_env.and(value));
-        CanonicalQueryInput { canonical, defining_opaque_types: self.defining_opaque_types() }
+        CanonicalQueryInput { canonical, typing_mode: self.typing_mode() }
     }
 
     /// Canonicalizes a query *response* `V`. When we canonicalize a
