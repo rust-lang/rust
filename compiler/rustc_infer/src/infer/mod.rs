@@ -899,6 +899,13 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Const::new_var(self.tcx, vid)
     }
 
+    fn next_effect_var(&self) -> ty::Const<'tcx> {
+        let effect_vid =
+            self.inner.borrow_mut().effect_unification_table().new_key(EffectVarValue::Unknown).vid;
+
+        ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(effect_vid))
+    }
+
     pub fn next_int_var(&self) -> Ty<'tcx> {
         let next_int_var_id =
             self.inner.borrow_mut().int_unification_table().new_key(ty::IntVarValue::Unknown);
@@ -1001,15 +1008,13 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn var_for_effect(&self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
-        let effect_vid =
-            self.inner.borrow_mut().effect_unification_table().new_key(EffectVarValue::Unknown).vid;
         let ty = self
             .tcx
             .type_of(param.def_id)
             .no_bound_vars()
             .expect("const parameter types cannot be generic");
         debug_assert_eq!(self.tcx.types.bool, ty);
-        ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(effect_vid)).into()
+        self.next_effect_var().into()
     }
 
     /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
