@@ -501,6 +501,10 @@ impl<'a> Linker for GccLinker<'a> {
                 }
             }
             LinkOutputKind::StaticNoPicExe => {
+                // Hint static again, as we would otherwise emit
+                // a dynamically linked executable with no interp
+                // (due to libc/builtins wrongly being linked dynamically)
+                self.hint_static();
                 // `-static` works for both gcc wrapper and ld.
                 self.link_or_cc_arg("-static");
                 if !self.is_ld && self.is_gnu {
@@ -508,6 +512,8 @@ impl<'a> Linker for GccLinker<'a> {
                 }
             }
             LinkOutputKind::StaticPicExe => {
+                // See the StaticNoPicExe case above
+                self.hint_static();
                 if !self.is_ld {
                     // Note that combination `-static -pie` doesn't work as expected
                     // for the gcc wrapper, `-static` in that case suppresses `-pie`.
@@ -523,6 +529,8 @@ impl<'a> Linker for GccLinker<'a> {
             }
             LinkOutputKind::DynamicDylib => self.build_dylib(crate_type, out_filename),
             LinkOutputKind::StaticDylib => {
+                // Ditto
+                self.hint_static();
                 self.link_or_cc_arg("-static");
                 self.build_dylib(crate_type, out_filename);
             }
