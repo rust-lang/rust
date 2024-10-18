@@ -19,6 +19,113 @@ impl<'a, T> IterMut<'a, T> {
     pub(super) fn new(i1: slice::IterMut<'a, T>, i2: slice::IterMut<'a, T>) -> Self {
         Self { i1, i2 }
     }
+
+    /// Views the underlying data as a pair of subslices of the original data.
+    ///
+    /// The slices contain, in order, the contents of the deque not yet yielded
+    /// by the iterator.
+    ///
+    /// To avoid creating `&mut` references that alias, this is forced to
+    /// consume the iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_iter_as_slices)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::new();
+    /// deque.push_back(0);
+    /// deque.push_back(1);
+    /// deque.push_back(2);
+    /// deque.push_front(10);
+    /// deque.push_front(9);
+    /// deque.push_front(8);
+    ///
+    /// let mut iter = deque.iter_mut();
+    /// iter.next();
+    /// iter.next_back();
+    ///
+    /// let slices = iter.into_slices();
+    /// slices.0[0] = 42;
+    /// slices.1[0] = 24;
+    /// assert_eq!(deque.as_slices(), (&[8, 42, 10][..], &[24, 1, 2][..]));
+    /// ```
+    #[unstable(feature = "vec_deque_iter_as_slices", issue = "123947")]
+    pub fn into_slices(self) -> (&'a mut [T], &'a mut [T]) {
+        (self.i1.into_slice(), self.i2.into_slice())
+    }
+
+    /// Views the underlying data as a pair of subslices of the original data.
+    ///
+    /// The slices contain, in order, the contents of the deque not yet yielded
+    /// by the iterator.
+    ///
+    /// To avoid creating `&mut [T]` references that alias, the returned slices
+    /// borrow their lifetimes from the iterator the method is applied on.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_iter_as_slices)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::new();
+    /// deque.push_back(0);
+    /// deque.push_back(1);
+    /// deque.push_back(2);
+    /// deque.push_front(10);
+    /// deque.push_front(9);
+    /// deque.push_front(8);
+    ///
+    /// let mut iter = deque.iter_mut();
+    /// iter.next();
+    /// iter.next_back();
+    ///
+    /// assert_eq!(iter.as_slices(), (&[9, 10][..], &[0, 1][..]));
+    /// ```
+    #[unstable(feature = "vec_deque_iter_as_slices", issue = "123947")]
+    pub fn as_slices(&self) -> (&[T], &[T]) {
+        (self.i1.as_slice(), self.i2.as_slice())
+    }
+
+    /// Views the underlying data as a pair of subslices of the original data.
+    ///
+    /// The slices contain, in order, the contents of the deque not yet yielded
+    /// by the iterator.
+    ///
+    /// To avoid creating `&mut [T]` references that alias, the returned slices
+    /// borrow their lifetimes from the iterator the method is applied on.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_iter_as_slices)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::new();
+    /// deque.push_back(0);
+    /// deque.push_back(1);
+    /// deque.push_back(2);
+    /// deque.push_front(10);
+    /// deque.push_front(9);
+    /// deque.push_front(8);
+    ///
+    /// let mut iter = deque.iter_mut();
+    /// iter.next();
+    /// iter.next_back();
+    ///
+    /// iter.as_mut_slices().0[0] = 42;
+    /// iter.as_mut_slices().1[0] = 24;
+    /// assert_eq!(deque.as_slices(), (&[8, 42, 10][..], &[24, 1, 2][..]));
+    /// ```
+    #[unstable(feature = "vec_deque_iter_as_slices", issue = "123947")]
+    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
+        (self.i1.as_mut_slice(), self.i2.as_mut_slice())
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
