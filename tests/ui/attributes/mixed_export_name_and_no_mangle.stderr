@@ -1,0 +1,19 @@
+warning: the `#[export_name]` attribute may not be used in combination with `#[no_mangle]`
+  --> $DIR/mixed_export_name_and_no_mangle.rs:6:1
+   |
+LL | #[export_name = "foo"]
+   | ^^^^^^^^^^^^^^^^^^^^^^ `#[export_name]` takes precedence
+   |
+note: `#[no_mangle]` is ignored
+  --> $DIR/mixed_export_name_and_no_mangle.rs:5:1
+   |
+LL | #[no_mangle]
+   | ^^^^^^^^^^^^
+   = note: `#[warn(mixed_export_name_and_no_mangle)]` on by default
+help: remove the `#[no_mangle]` attribute
+   |
+LL - #[no_mangle]
+   |
+
+warning: 1 warning emitted
+
