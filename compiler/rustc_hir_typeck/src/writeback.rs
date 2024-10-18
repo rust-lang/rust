@@ -782,6 +782,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     p.into(),
                     TypeAnnotationNeeded::E0282,
                     false,
+                    self.fcx.param_env,
+                    None,
                 )
                 .emit()
         }
