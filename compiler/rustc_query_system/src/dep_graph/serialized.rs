@@ -252,8 +252,27 @@ impl SerializedDepGraph {
             .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
             .collect();
 
+        let mut duplicates = Vec::new();
         for (idx, node) in nodes.iter_enumerated() {
-            index[node.kind.as_usize()].insert(node.hash, idx);
+            if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
+                duplicates.push(node);
+            }
+        }
+
+        // Creating the index detected a duplicated DepNode.
+        //
+        // If the new session presents us with a DepNode among those, we have no
+        // way to know which SerializedDepNodeIndex it corresponds to. To avoid
+        // making the wrong connection between a DepNodeIndex and a SerializedDepNodeIndex,
+        // we remove all the duplicates from the index.
+        //
+        // This way, when the new session presents us with a DepNode among the duplicates,
+        // we just create a new node with no counterpart in the previous graph.
+        //
+        // Red/green marking still works for those nodes, as that algorithm does not
+        // need to know about DepNode at all.
+        for node in duplicates {
+            index[node.kind.as_usize()].remove(&node.hash);
         }
 
         Arc::new(SerializedDepGraph {
