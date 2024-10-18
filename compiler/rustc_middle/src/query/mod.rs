@@ -120,6 +120,16 @@ rustc_queries! {
         desc { "perform lints prior to macro expansion" }
     }
 
+    /// Useful for the implementation of `std::env!`, `proc-macro`s change
+    /// detection and target-dependent compiler flags.
+    ///
+    /// Will emit an error and return `None` if the variable is not UTF-8.
+    query env_var(key: Symbol) -> Option<Symbol> {
+        // Environment variables are global state
+        eval_always
+        desc { "get the value of an environment variable" }
+    }
+
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
         no_hash
         desc { "getting the resolver outputs" }
