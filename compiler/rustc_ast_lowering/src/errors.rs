@@ -451,3 +451,10 @@ pub(crate) struct YieldInClosure {
     #[suggestion(code = "#[coroutine] ", applicability = "maybe-incorrect", style = "verbose")]
     pub suggestion: Option<Span>,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_invalid_legacy_const_generic_arg)]
+pub(crate) struct InvalidLegacyConstGenericArg {
+    #[primary_span]
+    pub span: Span,
+}
