@@ -1,4 +1,10 @@
-//@ check-pass
+//@ run-pass
+//@ revisions: edition2021 edition2024
+//@ [edition2021] edition: 2021
+//@ [edition2024] edition: 2024
+//@ [edition2024] compile-flags: -Z unstable-options
+
+#![cfg_attr(edition2024, feature(shorter_tail_lifetimes))]
 
 fn temp() -> (String, i32) {
     (String::from("Hello"), 1)
@@ -13,11 +19,7 @@ fn main() {
         let _ = 123;
         &(*temp().0)[..]
     };
-    let f = if true {
-        &temp()
-    } else {
-        &temp()
-    };
+    let f = if true { &temp() } else { &temp() };
     let g = match true {
         true => &temp(),
         false => {
