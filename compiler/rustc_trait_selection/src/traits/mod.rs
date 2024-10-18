@@ -33,7 +33,8 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFolder, TypeSuperVisitable, Upcast,
+    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFolder, TypeSuperVisitable, TypingMode,
+    Upcast,
 };
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -273,7 +274,7 @@ fn do_normalize_predicates<'tcx>(
     // by wfcheck anyway, so I'm not sure we have to check
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
-    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let predicates = ocx.normalize(&cause, elaborated_env, predicates);
 
@@ -477,8 +478,8 @@ pub fn normalize_param_env_or_error<'tcx>(
 /// hold. Used when creating vtables to check for unsatisfiable methods.
 pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
     debug!("impossible_predicates(predicates={:?})", predicates);
-
-    let infcx = tcx.infer_ctxt().build();
+    // FIXME(@lcnr): Why do we check these in post-analysis mode?
+    let infcx = tcx.infer_ctxt().build(TypingMode::PostAnalysis);
     let param_env = ty::ParamEnv::reveal_all();
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
@@ -580,7 +581,7 @@ fn is_impossible_associated_item(
         })
     });
 
-    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     for obligation in predicates_for_trait {
         // Ignore overflow error, to be conservative.
         if let Ok(result) = infcx.evaluate_obligation(&obligation)

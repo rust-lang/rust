@@ -1,8 +1,7 @@
 ///! Definition of `InferCtxtLike` from the librarified type layer.
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::traits::solve::SolverMode;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
@@ -22,11 +21,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
-    fn solver_mode(&self) -> ty::solve::SolverMode {
-        match self.intercrate {
-            true => SolverMode::Coherence,
-            false => SolverMode::Normal,
-        }
+    fn typing_mode(&self) -> ty::TypingMode<'tcx> {
+        self.typing_mode()
     }
 
     fn universe(&self) -> ty::UniverseIndex {
@@ -99,10 +95,6 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
-    }
-
-    fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
-        self.defining_opaque_types()
     }
 
     fn next_ty_infer(&self) -> Ty<'tcx> {

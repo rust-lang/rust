@@ -12,7 +12,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{
     self, CoroutineArgsExt, InstanceKind, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
-    Variance,
+    TypingMode, Variance,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{FIRST_VARIANT, Size};
@@ -606,7 +606,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        let infcx = self.tcx.infer_ctxt().build();
+        let infcx = self.tcx.infer_ctxt().build(TypingMode::from_param_env(self.param_env));
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
             self.tcx,

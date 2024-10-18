@@ -1,8 +1,45 @@
+use derive_where::derive_where;
+#[cfg(feature = "nightly")]
+use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+
 use crate::fold::TypeFoldable;
+use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::solve::SolverMode;
+use crate::solve::Reveal;
 use crate::{self as ty, Interner};
+
+#[derive_where(Clone; I: Interner)]
+#[derive_where(Hash; I: Interner)]
+#[derive_where(PartialEq; I: Interner)]
+#[derive_where(Eq; I: Interner)]
+#[derive_where(Debug; I: Interner)]
+#[derive_where(Copy; I: Interner)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+pub enum TypingMode<I: Interner> {
+    Coherence,
+    Analysis { defining_opaque_types: I::DefiningOpaqueTypes },
+    PostAnalysis,
+}
+
+impl<I: Interner> TypingMode<I> {
+    pub fn non_body_analysis() -> TypingMode<I> {
+        TypingMode::Analysis { defining_opaque_types: Default::default() }
+    }
+
+    pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+        TypingMode::Analysis { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
+    }
+
+    // FIXME(@lcnr): Using this function is questionable as the `param_env`
+    // does not track `defining_opaque_types` and whether we're in coherence mode.
+    pub fn from_param_env(param_env: I::ParamEnv) -> TypingMode<I> {
+        match param_env.reveal() {
+            Reveal::UserFacing => TypingMode::non_body_analysis(),
+            Reveal::All => TypingMode::PostAnalysis,
+        }
+    }
+}
 
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
@@ -16,7 +53,7 @@ pub trait InferCtxtLike: Sized {
         true
     }
 
-    fn solver_mode(&self) -> SolverMode;
+    fn typing_mode(&self) -> TypingMode<Self::Interner>;
 
     fn universe(&self) -> ty::UniverseIndex;
     fn create_next_universe(&self) -> ty::UniverseIndex;
@@ -46,8 +83,6 @@ pub trait InferCtxtLike: Sized {
         &self,
         vid: ty::RegionVid,
     ) -> <Self::Interner as Interner>::Region;
-
-    fn defining_opaque_types(&self) -> <Self::Interner as Interner>::DefiningOpaqueTypes;
 
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
     fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;

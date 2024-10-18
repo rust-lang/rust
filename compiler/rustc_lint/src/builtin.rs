@@ -38,7 +38,7 @@ use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Upcast, VariantDef};
 use rustc_session::lint::FutureIncompatibilityReason;
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
@@ -610,7 +610,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             && cx
                 .tcx
                 .infer_ctxt()
-                .build()
+                .build(TypingMode::from_param_env(cx.param_env))
                 .type_implements_trait(iter_trait, [ty], cx.param_env)
                 .must_apply_modulo_regions()
         {
@@ -654,7 +654,9 @@ fn type_implements_negative_copy_modulo_regions<'tcx>(
         predicate: pred.upcast(tcx),
     };
 
-    tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
+    tcx.infer_ctxt()
+        .build(TypingMode::from_param_env(param_env))
+        .predicate_must_hold_modulo_regions(&obligation)
 }
 
 declare_lint! {

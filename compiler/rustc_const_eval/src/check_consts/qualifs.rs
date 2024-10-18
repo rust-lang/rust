@@ -7,7 +7,7 @@ use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::traits::BuiltinImplSource;
-use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty};
+use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty, TypingMode};
 use rustc_middle::{bug, mir};
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext,
@@ -117,11 +117,10 @@ impl Qualif for HasMutInterior {
             ty::TraitRef::new(cx.tcx, freeze_def_id, [ty::GenericArg::from(ty)]),
         );
 
-        let infcx = cx
-            .tcx
-            .infer_ctxt()
-            .with_opaque_type_inference(cx.body.source.def_id().expect_local())
-            .build();
+        let infcx = cx.tcx.infer_ctxt().build(ty::TypingMode::analysis_in_body(
+            cx.tcx,
+            cx.body.source.def_id().expect_local(),
+        ));
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(obligation);
         let errors = ocx.select_all_or_error();
@@ -212,7 +211,7 @@ impl Qualif for NeedsNonConstDrop {
             ]),
         );
 
-        let infcx = cx.tcx.infer_ctxt().build();
+        let infcx = cx.tcx.infer_ctxt().build(TypingMode::from_param_env(cx.param_env));
         let mut selcx = SelectionContext::new(&infcx);
         let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
             // If we couldn't select a const destruct candidate, then it's bad

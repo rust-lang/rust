@@ -3,7 +3,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::{PrintTraitPredicateExt as _, TraitPredPrintModifiersAndPath};
-use rustc_middle::ty::{self, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TypeFoldable, TypingMode};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 use rustc_span::symbol::kw;
@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         }
 
         let def_id = opaque.def_id.to_def_id();
-        let infcx = &cx.tcx.infer_ctxt().build();
+        let infcx = &cx.tcx.infer_ctxt().build(TypingMode::from_param_env(cx.param_env));
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.

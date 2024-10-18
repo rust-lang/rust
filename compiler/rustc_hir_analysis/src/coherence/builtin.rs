@@ -15,7 +15,9 @@ use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, suggest_constraining_type_params};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeVisitableExt, TypingMode, suggest_constraining_type_params,
+};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::misc::{
@@ -213,7 +215,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
 
     let param_env = tcx.param_env(impl_did);
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let cause = ObligationCause::misc(span, impl_did);
 
     // Later parts of the compiler rely on all DispatchFromDyn types to be ABI-compatible with raw
@@ -354,7 +356,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
 
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)", source, target);
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let cause = ObligationCause::misc(span, impl_did);
     let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                        mt_b: ty::TypeAndMut<'tcx>,

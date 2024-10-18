@@ -28,7 +28,7 @@
 use relate::lattice::{LatticeOp, LatticeOpKind};
 use rustc_middle::bug;
 use rustc_middle::ty::relate::solver_relating::RelateExt as NextSolverRelate;
-use rustc_middle::ty::{Const, ImplSubject};
+use rustc_middle::ty::{Const, ImplSubject, TypingMode};
 
 use super::*;
 use crate::infer::relate::type_relating::TypeRelating;
@@ -67,16 +67,9 @@ impl<'tcx> InferCtxt<'tcx> {
     /// variables in the same state. This can be used to "branch off" many tests from the same
     /// common state.
     pub fn fork(&self) -> Self {
-        self.fork_with_intercrate(self.intercrate)
-    }
-
-    /// Forks the inference context, creating a new inference context with the same inference
-    /// variables in the same state, except possibly changing the intercrate mode. This can be
-    /// used to "branch off" many tests from the same common state. Used in negative coherence.
-    pub fn fork_with_intercrate(&self, intercrate: bool) -> Self {
         Self {
             tcx: self.tcx,
-            defining_opaque_types: self.defining_opaque_types,
+            typing_mode: self.typing_mode,
             considering_regions: self.considering_regions,
             skip_leak_check: self.skip_leak_check,
             inner: self.inner.clone(),
@@ -87,10 +80,35 @@ impl<'tcx> InferCtxt<'tcx> {
             reported_signature_mismatch: self.reported_signature_mismatch.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
-            intercrate,
             next_trait_solver: self.next_trait_solver,
             obligation_inspector: self.obligation_inspector.clone(),
         }
+    }
+
+    /// Forks the inference context, creating a new inference context with the same inference
+    /// variables in the same state, except possibly changing the intercrate mode. This can be
+    /// used to "branch off" many tests from the same common state. Used in negative coherence.
+    pub fn fork_with_typing_mode(&self, typing_mode: TypingMode<'tcx>) -> Self {
+        // Unlike `fork`, this invalidates all cache entries as they may depend on the
+        // typing mode.
+        let forked = Self {
+            tcx: self.tcx,
+            typing_mode,
+            considering_regions: self.considering_regions,
+            skip_leak_check: self.skip_leak_check,
+            inner: self.inner.clone(),
+            lexical_region_resolutions: self.lexical_region_resolutions.clone(),
+            selection_cache: Default::default(),
+            evaluation_cache: Default::default(),
+            reported_trait_errors: self.reported_trait_errors.clone(),
+            reported_signature_mismatch: self.reported_signature_mismatch.clone(),
+            tainted_by_errors: self.tainted_by_errors.clone(),
+            universe: self.universe.clone(),
+            next_trait_solver: self.next_trait_solver,
+            obligation_inspector: self.obligation_inspector.clone(),
+        };
+        forked.inner.borrow_mut().projection_cache().clear();
+        forked
     }
 }
 
