@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const fn `_print` in constant functions
-  --> $DIR/issue-79450.rs:11:9
+  --> $DIR/issue-79450.rs:10:9
    |
 LL |         println!("lul");
    |         ^^^^^^^^^^^^^^^
