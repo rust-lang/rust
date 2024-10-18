@@ -837,7 +837,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
 
 /// The path of the `stamp` file that gets created or updated whenever a
 /// particular test completes successfully.
-fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
@@ -891,9 +891,9 @@ fn is_up_to_date(
     props: &EarlyProps,
     revision: Option<&str>,
 ) -> bool {
-    let stamp_name = stamp(&cx.config, testpaths, revision);
+    let stamp_file_path = stamp_file_path(&cx.config, testpaths, revision);
     // Check the config hash inside the stamp file.
-    let contents = match fs::read_to_string(&stamp_name) {
+    let contents = match fs::read_to_string(&stamp_file_path) {
         Ok(f) => f,
         Err(ref e) if e.kind() == ErrorKind::InvalidData => panic!("Can't read stamp contents"),
         // The test hasn't succeeded yet, so it is not up-to-date.
@@ -915,7 +915,7 @@ fn is_up_to_date(
 
     // If no relevant files have been modified since the stamp file was last
     // written, the test is up-to-date.
-    inputs_stamp < Stamp::from_path(&stamp_name)
+    inputs_stamp < Stamp::from_path(&stamp_file_path)
 }
 
 /// The maximum of a set of file-modified timestamps.
