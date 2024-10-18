@@ -6,7 +6,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 
 use crate::abi::{self, Abi, Align, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, WasmCAbi};
+use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -631,7 +631,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     ) -> Result<(), AdjustForForeignAbiError>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
-        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt,
+        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt + HasX86AbiOpt,
     {
         if abi == spec::abi::Abi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
@@ -643,14 +643,18 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch[..] {
             "x86" => {
-                let flavor = if let spec::abi::Abi::Fastcall { .. }
-                | spec::abi::Abi::Vectorcall { .. } = abi
-                {
-                    x86::Flavor::FastcallOrVectorcall
-                } else {
-                    x86::Flavor::General
+                let (flavor, regparm) = match abi {
+                    spec::abi::Abi::Fastcall { .. } | spec::abi::Abi::Vectorcall { .. } => {
+                        (x86::Flavor::FastcallOrVectorcall, None)
+                    }
+                    spec::abi::Abi::C { .. }
+                    | spec::abi::Abi::Cdecl { .. }
+                    | spec::abi::Abi::Stdcall { .. } => {
+                        (x86::Flavor::General, cx.x86_abi_opt().regparm)
+                    }
+                    _ => (x86::Flavor::General, None),
                 };
-                x86::compute_abi_info(cx, self, flavor);
+                x86::compute_abi_info(cx, self, x86::X86Options { flavor, regparm });
             }
             "x86_64" => match abi {
                 spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
