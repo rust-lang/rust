@@ -252,6 +252,6 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
             PatKind::Never => TestCase::Never,
         };
 
-        MatchPairTree { place, test_case, subpairs, pattern }
+        MatchPairTree { place, test_case, subpairs, pattern, coverage_id: Default::default() }
     }
 }

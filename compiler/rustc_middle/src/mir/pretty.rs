@@ -538,7 +538,7 @@ fn write_coverage_info_hi(
     let coverage::CoverageInfoHi {
         num_block_markers: _,
         branch_spans,
-        mcdc_degraded_branch_spans,
+        mcdc_degraded_spans,
         mcdc_spans,
     } = coverage_info_hi;
 
@@ -553,32 +553,35 @@ fn write_coverage_info_hi(
         did_print = true;
     }
 
-    for coverage::MCDCBranchSpan { span, true_marker, false_marker, .. } in
-        mcdc_degraded_branch_spans
-    {
+    for coverage::MCDCBranchSpan { span, true_markers, false_markers, .. } in mcdc_degraded_spans {
         writeln!(
             w,
-            "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
+            "{INDENT}coverage branch {{ true: {true_markers:?}, false: {false_markers:?} }} => {span:?}",
         )?;
         did_print = true;
     }
 
     for (
-        coverage::MCDCDecisionSpan { span, end_markers, decision_depth, num_conditions: _ },
+        coverage::MCDCDecisionSpan {
+            span,
+            update_end_markers: end_markers,
+            discard_end_markers: discard_markers,
+            decision_depth,
+        },
         conditions,
     ) in mcdc_spans
     {
         let num_conditions = conditions.len();
         writeln!(
             w,
-            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
+            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, discard_markers: {discard_markers:?} depth: {decision_depth:?} }} => {span:?}"
         )?;
-        for coverage::MCDCBranchSpan { span, condition_info, true_marker, false_marker } in
+        for coverage::MCDCBranchSpan { span, condition_info, true_markers, false_markers } in
             conditions
         {
             writeln!(
                 w,
-                "{INDENT}coverage mcdc branch {{ condition_id: {:?}, true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
+                "{INDENT}coverage mcdc branch {{ condition_id: {:?}, true: {true_markers:?}, false: {false_markers:?} }} => {span:?}",
                 condition_info.condition_id
             )?;
         }
