@@ -99,7 +99,7 @@ the need to specify them manually.
 Well known names and values are implicitly added as long as at least one `--check-cfg` argument
 is present.
 
-As of `2024-08-20T`, the list of known names is as follows:
+As of `2024-10-15T`, the list of known names is as follows:
 
 <!--- See CheckCfg::fill_well_known in compiler/rustc_session/src/config.rs -->
 
@@ -130,10 +130,12 @@ As of `2024-08-20T`, the list of known names is as follows:
  - `target_pointer_width`
  - `target_thread_local`
  - `target_vendor`
- - `test`
  - `ub_checks`
  - `unix`
  - `windows`
+
+> Starting with CURRENT_RUSTC_VERSION, the `test` cfg is consider to be a "userspace" config
+> despite being also set by `rustc` and should be managed by the build-system it-self.
 
 Like with `values(any())`, well known names checking can be disabled by passing `cfg(any())`
 as argument to `--check-cfg`.
