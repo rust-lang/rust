@@ -5,7 +5,8 @@ use std::num::NonZero;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
+    EmissionGuarantee, IntoDiagArg, LintDiagnostic, MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    SuggestionStyle,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
@@ -224,9 +225,39 @@ pub(crate) struct BuiltinConstNoMangle {
     pub suggestion: Span,
 }
 
+// This would be more convenient as `from: String` and `to: String`, but then we'll ICE for formatting a `Ty`
+// when the lint is `#[allow]`ed.
+pub(crate) struct TransmuteBreadcrumbs<'a> {
+    pub before_ty: &'static str,
+    pub ty: Ty<'a>,
+    pub after_ty: String,
+}
+
+impl IntoDiagArg for TransmuteBreadcrumbs<'_> {
+    fn into_diag_arg(self) -> DiagArgValue {
+        format!("{}{}{}", self.before_ty, self.ty, self.after_ty).into_diag_arg()
+    }
+}
+
+// mutable_transmutes.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_mutable_transmutes)]
-pub(crate) struct BuiltinMutablesTransmutes;
+#[note]
+pub(crate) struct BuiltinMutablesTransmutes<'a> {
+    pub from: TransmuteBreadcrumbs<'a>,
+    pub to: TransmuteBreadcrumbs<'a>,
+}
+
+// mutable_transmutes.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_unsafe_cell_transmutes)]
+#[note]
+pub(crate) struct UnsafeCellTransmutes<'a> {
+    #[label]
+    pub orig_cast: Option<Span>,
+    pub from: TransmuteBreadcrumbs<'a>,
+    pub to: TransmuteBreadcrumbs<'a>,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unstable_features)]
