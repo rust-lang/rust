@@ -1550,7 +1550,7 @@ pub(crate) mod builtin {
     /// MODE is any of Forward, Reverse, ForwardFirst, ReverseFirst.
     /// INPUT_ACTIVITIES consists of one valid activity for each input parameter.
     /// OUTPUT_ACTIVITY must not be set if we implicitely return nothing (or explicitely return
-    /// `-> ()`. Otherwise it must be set to one of the allowed activities.
+    /// `-> ()`). Otherwise it must be set to one of the allowed activities.
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
