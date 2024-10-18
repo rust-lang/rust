@@ -7,6 +7,12 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(strict_provenance)]
 
+
+//! Tests type sizes, niches and field orderings.
+//! Many asserts in this file are desirable optimizations, not guarantees.
+//! Some of them are not even optimal, future layout improvements may break them.
+
+
 use std::mem::size_of;
 use std::num::NonZero;
 use std::ptr;
@@ -238,6 +244,12 @@ struct VecDummy {
     len: usize,
 }
 
+
+struct DynTail {
+    a: usize,
+    b: [u8]
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -355,4 +367,7 @@ pub fn main() {
     assert!(ptr::from_ref(&v.a).addr() > ptr::from_ref(&v.b).addr());
 
 
+    // beyond NPO: address-space, alignment or metadata niches
+    assert_eq!(size_of::<Option<Option<&'static str>>>(), size_of::<&'static str>());
+    assert_eq!(size_of::<Option<Option<&'static DynTail>>>(), size_of::<&'static DynTail>());
 }
