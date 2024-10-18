@@ -5182,7 +5182,8 @@ impl ShouldImplTraitCase {
 }
 
 #[rustfmt::skip]
-static TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
+#[expect(clippy::large_const_arrays, reason = "`Span` is not sync, so this can't be static")]
+const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
     ShouldImplTraitCase::new("std::ops::Add", "add",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
     ShouldImplTraitCase::new("std::convert::AsMut", "as_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
     ShouldImplTraitCase::new("std::convert::AsRef", "as_ref",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
