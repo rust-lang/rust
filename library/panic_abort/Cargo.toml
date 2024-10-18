@@ -19,3 +19,6 @@ compiler_builtins = "0.1.0"
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
 libc = { version = "0.2", default-features = false }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("vexos"))'] }
