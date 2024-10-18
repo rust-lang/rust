@@ -20,6 +20,7 @@ pub(crate) fn from_target_feature(
     attr: &ast::Attribute,
     supported_target_features: &UnordMap<String, Option<Symbol>>,
     target_features: &mut Vec<TargetFeature>,
+    mut features_from_args: Option<&mut bool>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };
     let bad_item = |span| {
@@ -33,6 +34,14 @@ pub(crate) fn from_target_feature(
     let rust_features = tcx.features();
     let mut added_target_features = Vec::new();
     for item in list {
+        if let Some(ref mut from_args) = features_from_args
+            && item.ident().is_some_and(|x| x.name == sym::from_args)
+            && tcx.features().struct_target_features
+        {
+            **from_args = true;
+            continue;
+        }
+
         // Only `enable = ...` is accepted in the meta-item list.
         if !item.has_name(sym::enable) {
             bad_item(item.span());
@@ -128,7 +137,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
-        target_features.extend(attrs.target_features.iter().map(|feature| feature.name));
+        target_features.extend(attrs.def_target_features.iter().map(|feature| feature.name));
         match attrs.instruction_set {
             None => {}
             Some(InstructionSetAttr::ArmA32) => {
@@ -144,7 +153,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     tcx.arena.alloc(target_features)
 }
 
-/// Checks the function annotated with `#[target_feature]` is not a safe
+/// Checks the function annotated with `#[target_feature(enable = ...)]` is not a safe
 /// trait method implementation, reporting an error if it is.
 pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
     if let DefKind::AssocFn = tcx.def_kind(id) {

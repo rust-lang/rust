@@ -48,7 +48,7 @@ use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
@@ -1256,6 +1256,11 @@ rustc_queries! {
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
         feedable
+    }
+
+    query struct_target_features(def_id: DefId) -> &'tcx [TargetFeature] {
+        separate_provide_extern
+        desc { |tcx| "computing target features for struct `{}`", tcx.def_path_str(def_id) }
     }
 
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {

@@ -469,14 +469,18 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     };
                     self.requires_unsafe(expr.span, CallToUnsafeFunction(func_id));
                 } else if let &ty::FnDef(func_did, _) = self.thir[fun].ty.kind() {
-                    // If the called function has target features the calling function hasn't,
+                    // If the called function has explicit target features the calling function hasn't,
                     // the call requires `unsafe`. Don't check this on wasm
                     // targets, though. For more information on wasm see the
                     // is_like_wasm check in hir_analysis/src/collect.rs
-                    let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
+                    // Implicit target features are OK because they are either a consequence of some
+                    // explicit target feature (which is checked to be present in the caller) or
+                    // come from a witness argument.
+                    let callee_features = &self.tcx.codegen_fn_attrs(func_did).def_target_features;
                     if !self.tcx.sess.target.options.is_like_wasm
                         && !callee_features.iter().all(|feature| {
-                            self.body_target_features.iter().any(|f| f.name == feature.name)
+                            feature.implied
+                                || self.body_target_features.iter().any(|f| f.name == feature.name)
                         })
                     {
                         let missing: Vec<_> = callee_features
@@ -551,10 +555,49 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 user_ty: _,
                 fields: _,
                 base: _,
-            }) => match self.tcx.layout_scalar_valid_range(adt_def.did()) {
-                (Bound::Unbounded, Bound::Unbounded) => {}
-                _ => self.requires_unsafe(expr.span, InitializingTypeWith),
-            },
+            }) => {
+                match self.tcx.layout_scalar_valid_range(adt_def.did()) {
+                    (Bound::Unbounded, Bound::Unbounded) => {}
+                    _ => self.requires_unsafe(expr.span, InitializingTypeWith),
+                }
+                let struct_features = self.tcx.struct_target_features(adt_def.did());
+                if !struct_features.is_empty() {
+                    if !self.tcx.sess.target.options.is_like_wasm
+                        && !struct_features.iter().all(|feature| {
+                            feature.implied
+                                || self.body_target_features.iter().any(|f| f.name == feature.name)
+                        })
+                    {
+                        // Matches the logic for calling non-unsafe `target_feature` functions.
+                        let missing: Vec<_> = struct_features
+                            .iter()
+                            .copied()
+                            .filter(|feature| {
+                                !feature.implied
+                                    && !self
+                                        .body_target_features
+                                        .iter()
+                                        .any(|body_feature| body_feature.name == feature.name)
+                            })
+                            .map(|feature| feature.name)
+                            .collect();
+                        let build_enabled = self
+                            .tcx
+                            .sess
+                            .target_features
+                            .iter()
+                            .copied()
+                            .filter(|feature| missing.contains(feature))
+                            .collect();
+                        self.requires_unsafe(expr.span, ConstructingTargetFeaturesTypeWith {
+                            adt: adt_def.did(),
+                            missing,
+                            build_enabled,
+                        });
+                    }
+                }
+            }
+
             ExprKind::Closure(box ClosureExpr {
                 closure_id,
                 args: _,
@@ -656,6 +699,15 @@ enum UnsafeOpKind {
     CallToUnsafeFunction(Option<DefId>),
     UseOfInlineAssembly,
     InitializingTypeWith,
+    ConstructingTargetFeaturesTypeWith {
+        adt: DefId,
+        /// Target features enabled in callee's `#[target_feature]` but missing in
+        /// caller's `#[target_feature]`.
+        missing: Vec<Symbol>,
+        /// Target features in `missing` that are enabled at compile time
+        /// (e.g., with `-C target-feature`).
+        build_enabled: Vec<Symbol>,
+    },
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
@@ -737,6 +789,29 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
+            ConstructingTargetFeaturesTypeWith { adt, missing, build_enabled } => tcx
+                .emit_node_span_lint(
+                    UNSAFE_OP_IN_UNSAFE_FN,
+                    hir_id,
+                    span,
+                    UnsafeOpInUnsafeFnInitializingTypeWithTargetFeatureRequiresUnsafe {
+                        span,
+                        adt: with_no_trimmed_paths!(tcx.def_path_str(*adt)),
+                        missing_target_features: DiagArgValue::StrListSepByAnd(
+                            missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
+                        ),
+                        missing_target_features_count: missing.len(),
+                        note: !build_enabled.is_empty(),
+                        build_target_features: DiagArgValue::StrListSepByAnd(
+                            build_enabled
+                                .iter()
+                                .map(|feature| Cow::from(feature.to_string()))
+                                .collect(),
+                        ),
+                        build_target_features_count: build_enabled.len(),
+                        unsafe_not_inherited_note,
+                    },
+                ),
             UseOfMutableStatic => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
@@ -894,6 +969,48 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 });
             }
+            ConstructingTargetFeaturesTypeWith { adt, missing, build_enabled }
+                if unsafe_op_in_unsafe_fn_allowed =>
+            {
+                dcx.emit_err(
+                    InitializingTypeWithTargetFeatureRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                        span,
+                        adt: with_no_trimmed_paths!(tcx.def_path_str(*adt)),
+                        missing_target_features: DiagArgValue::StrListSepByAnd(
+                            missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
+                        ),
+                        missing_target_features_count: missing.len(),
+                        note: !build_enabled.is_empty(),
+                        build_target_features: DiagArgValue::StrListSepByAnd(
+                            build_enabled
+                                .iter()
+                                .map(|feature| Cow::from(feature.to_string()))
+                                .collect(),
+                        ),
+                        build_target_features_count: build_enabled.len(),
+                        unsafe_not_inherited_note,
+                    },
+                );
+            }
+            ConstructingTargetFeaturesTypeWith { adt, missing, build_enabled } => {
+                dcx.emit_err(InitializingTypeWithTargetFeatureRequiresUnsafe {
+                    span,
+                    adt: with_no_trimmed_paths!(tcx.def_path_str(*adt)),
+                    missing_target_features: DiagArgValue::StrListSepByAnd(
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
+                    ),
+                    missing_target_features_count: missing.len(),
+                    note: !build_enabled.is_empty(),
+                    build_target_features: DiagArgValue::StrListSepByAnd(
+                        build_enabled
+                            .iter()
+                            .map(|feature| Cow::from(feature.to_string()))
+                            .collect(),
+                    ),
+                    build_target_features_count: build_enabled.len(),
+                    unsafe_not_inherited_note,
+                });
+            }
             UseOfMutableStatic if unsafe_op_in_unsafe_fn_allowed => {
                 dcx.emit_err(UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
@@ -1026,7 +1143,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
             SafetyContext::Safe
         }
     });
-    let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
+    let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).def_target_features;
     let mut warnings = Vec::new();
     let mut visitor = UnsafetyVisitor {
         tcx,

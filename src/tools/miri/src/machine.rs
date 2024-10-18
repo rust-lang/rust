@@ -16,7 +16,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::static_assert_size;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{
+    HasParamEnv, HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
+};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
@@ -971,12 +973,12 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     ) -> InterpResult<'tcx> {
         let attrs = ecx.tcx.codegen_fn_attrs(instance.def_id());
         if attrs
-            .target_features
+            .target_features_for_instance(ecx.tcx.tcx, ecx.param_env(), instance)
             .iter()
             .any(|feature| !ecx.tcx.sess.target_features.contains(&feature.name))
         {
             let unavailable = attrs
-                .target_features
+                .target_features_for_instance(ecx.tcx.tcx, ecx.param_env(), instance)
                 .iter()
                 .filter(|&feature| {
                     !feature.implied && !ecx.tcx.sess.target_features.contains(&feature.name)

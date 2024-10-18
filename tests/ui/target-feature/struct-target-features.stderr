@@ -1,0 +1,32 @@
+warning: the feature `struct_target_features` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/struct-target-features.rs:2:12
+   |
+LL | #![feature(struct_target_features)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #129107 <https://github.com/rust-lang/rust/issues/129107> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: cannot use a struct with target features in a #[inline(always)] function
+  --> $DIR/struct-target-features.rs:44:1
+   |
+LL | fn inline_fun(_: Avx) {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot use `#[inline(always)]` with `#[target_feature]`
+  --> $DIR/struct-target-features.rs:41:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
+error[E0133]: initializing type `Avx` with `#[target_feature]` is unsafe and requires unsafe function or block
+  --> $DIR/struct-target-features.rs:76:5
+   |
+LL |     Avx {};
+   |     ^^^^^^ call to function with `#[target_feature]`
+   |
+   = note: the  target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0133`.

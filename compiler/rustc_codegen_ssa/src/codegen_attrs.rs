@@ -9,7 +9,8 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_hir::{LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, TargetFeature,
+    extend_with_struct_target_features,
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
@@ -79,6 +80,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
 
+    let fn_sig_outer = || {
+        use DefKind::*;
+
+        let def_kind = tcx.def_kind(did);
+        if let Fn | AssocFn | Variant | Ctor(..) = def_kind { Some(tcx.fn_sig(did)) } else { None }
+    };
+
     for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
         // pass that check that they aren't used anywhere else, rather this module.
@@ -86,16 +94,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         // functions (such as calling `fn_sig`, which ICEs if given a non-function). We also
         // report a delayed bug, just in case `check_attr` isn't doing its job.
         let fn_sig = || {
-            use DefKind::*;
-
-            let def_kind = tcx.def_kind(did);
-            if let Fn | AssocFn | Variant | Ctor(..) = def_kind {
-                Some(tcx.fn_sig(did))
-            } else {
+            let sig = fn_sig_outer();
+            if sig.is_none() {
                 tcx.dcx()
                     .span_delayed_bug(attr.span, "this attribute can only be applied to functions");
-                None
             }
+            sig
         };
 
         let Some(Ident { name, .. }) = attr.ident() else {
@@ -247,7 +251,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().safety() == hir::Safety::Safe
                 {
-                    if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                    if attr.meta_item_list().is_some_and(|list| {
+                        list.len() == 1 && list[0].ident().is_some_and(|x| x.name == sym::from_args)
+                    }) {
+                        // #[target_feature(from_args)] can be applied to safe functions and safe
+                        // trait methods.
+                    } else if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on
                         // WebAssembly targets on all functions, including safe
                         // ones. Other targets require that `#[target_feature]` is
@@ -285,7 +294,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     tcx,
                     attr,
                     supported_target_features,
-                    &mut codegen_fn_attrs.target_features,
+                    &mut codegen_fn_attrs.def_target_features,
+                    Some(&mut codegen_fn_attrs.target_features_from_args),
                 );
             }
             sym::linkage => {
@@ -591,16 +601,39 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         let owner_id = tcx.parent(did.to_def_id());
         if tcx.def_kind(owner_id).has_codegen_attrs() {
             codegen_fn_attrs
-                .target_features
-                .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
+                .def_target_features
+                .extend(tcx.codegen_fn_attrs(owner_id).def_target_features.iter().copied());
         }
     }
 
-    // If a function uses #[target_feature] it can't be inlined into general
+    if let Some(sig) = fn_sig_outer()
+        && codegen_fn_attrs.target_features_from_args
+    {
+        let mut additional_tf = vec![];
+        for ty in sig.skip_binder().inputs().skip_binder() {
+            extend_with_struct_target_features(
+                tcx,
+                tcx.param_env(did.to_def_id()).and(*ty),
+                &mut additional_tf,
+            )
+        }
+        if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
+            tcx.dcx().span_err(
+                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
+                "cannot use a struct with target features in a #[inline(always)] function",
+            );
+        }
+        codegen_fn_attrs
+            .def_target_features
+            .extend(additional_tf.iter().map(|tf| TargetFeature { implied: true, ..*tf }));
+    }
+
+    // If a function uses non-default target_features it can't be inlined into general
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-    if !codegen_fn_attrs.target_features.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always
+    if !codegen_fn_attrs.def_target_features.is_empty()
+        && codegen_fn_attrs.inline == InlineAttr::Always
     {
         if let Some(span) = inline_span {
             tcx.dcx().span_err(
@@ -666,7 +699,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     if let Some(features) = check_tied_features(
         tcx.sess,
         &codegen_fn_attrs
-            .target_features
+            .def_target_features
             .iter()
             .map(|features| (features.name.as_str(), true))
             .collect(),
@@ -779,6 +812,20 @@ fn check_link_name_xor_ordinal(
     }
 }
 
+fn struct_target_features(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[TargetFeature] {
+    let mut features = vec![];
+    let supported_features = tcx.supported_target_features(LOCAL_CRATE);
+    for attr in tcx.get_attrs(def_id, sym::target_feature) {
+        from_target_feature(tcx, attr, supported_features, &mut features, None);
+    }
+    tcx.arena.alloc_slice(&features)
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
+    *providers = Providers {
+        codegen_fn_attrs,
+        should_inherit_track_caller,
+        struct_target_features,
+        ..*providers
+    };
 }
