@@ -8,7 +8,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{DynEmitter, HumanEmitter, stderr_destination};
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
+use rustc_errors::{ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -21,8 +21,8 @@ use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input, ResolveDocLinks};
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{Session, lint};
+use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, source_map};
 use tracing::{debug, info};
 
 use crate::clean::inline::build_external_trait;
@@ -381,45 +381,10 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    fn report_deprecated_attr(name: &str, dcx: DiagCtxtHandle<'_>, sp: Span) {
-        let mut msg =
-            dcx.struct_span_warn(sp, format!("the `#![doc({name})]` attribute is deprecated"));
-        msg.note(
-            "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-            for more information",
-        );
-
-        if name == "no_default_passes" {
-            msg.help("`#![doc(no_default_passes)]` no longer functions; you may want to use `#![doc(document_private_items)]`");
-        } else if name.starts_with("passes") {
-            msg.help("`#![doc(passes = \"...\")]` no longer functions; you may want to use `#![doc(document_private_items)]`");
-        } else if name.starts_with("plugins") {
-            msg.warn("`#![doc(plugins = \"...\")]` no longer functions; see CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>");
-        }
-
-        msg.emit();
-    }
-
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
     for attr in krate.module.attrs.lists(sym::doc) {
-        let dcx = ctxt.sess().dcx();
-
         let name = attr.name_or_empty();
-        // `plugins = "..."`, `no_default_passes`, and `passes = "..."` have no effect
-        if attr.is_word() && name == sym::no_default_passes {
-            report_deprecated_attr("no_default_passes", dcx, attr.span());
-        } else if attr.value_str().is_some() {
-            match name {
-                sym::passes => {
-                    report_deprecated_attr("passes = \"...\"", dcx, attr.span());
-                }
-                sym::plugins => {
-                    report_deprecated_attr("plugins = \"...\"", dcx, attr.span());
-                }
-                _ => (),
-            }
-        }
 
         if attr.is_word() && name == sym::document_private_items {
             ctxt.render_options.document_private = true;
