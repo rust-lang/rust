@@ -224,6 +224,7 @@ pub struct Config {
     pub llvm_assertions: bool,
     pub llvm_tests: bool,
     pub llvm_enzyme: bool,
+    pub llvm_offload: bool,
     pub llvm_plugins: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
@@ -933,6 +934,7 @@ define_config! {
         use_libcxx: Option<bool> = "use-libcxx",
         use_linker: Option<String> = "use-linker",
         allow_old_toolchain: Option<bool> = "allow-old-toolchain",
+        offload: Option<bool> = "offload",
         polly: Option<bool> = "polly",
         clang: Option<bool> = "clang",
         enable_warnings: Option<bool> = "enable-warnings",
@@ -1639,6 +1641,7 @@ impl Config {
         // we'll infer default values for them later
         let mut llvm_tests = None;
         let mut llvm_enzyme = None;
+        let mut llvm_offload = None;
         let mut llvm_plugins = None;
         let mut debug = None;
         let mut debug_assertions = None;
@@ -1876,6 +1879,7 @@ impl Config {
                 use_libcxx,
                 use_linker,
                 allow_old_toolchain,
+                offload,
                 polly,
                 clang,
                 enable_warnings,
@@ -1892,6 +1896,7 @@ impl Config {
             set(&mut config.ninja_in_file, ninja);
             llvm_tests = tests;
             llvm_enzyme = enzyme;
+            llvm_offload = offload;
             llvm_plugins = plugins;
             set(&mut config.llvm_optimize, optimize_toml);
             set(&mut config.llvm_thin_lto, thin_lto);
@@ -1913,6 +1918,7 @@ impl Config {
             set(&mut config.llvm_use_libcxx, use_libcxx);
             config.llvm_use_linker.clone_from(&use_linker);
             config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
+            config.llvm_offload = offload.unwrap_or(false);
             config.llvm_polly = polly.unwrap_or(false);
             config.llvm_clang = clang.unwrap_or(false);
             config.llvm_enable_warnings = enable_warnings.unwrap_or(false);
@@ -2089,6 +2095,7 @@ impl Config {
 
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_enzyme = llvm_enzyme.unwrap_or(false);
+        config.llvm_offload = llvm_offload.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
 
@@ -2978,6 +2985,7 @@ pub(crate) fn check_incompatible_options_for_ci_llvm(
         use_libcxx,
         use_linker,
         allow_old_toolchain,
+        offload,
         polly,
         clang,
         enable_warnings,
@@ -3000,6 +3008,7 @@ pub(crate) fn check_incompatible_options_for_ci_llvm(
     err!(current_llvm_config.use_libcxx, use_libcxx);
     err!(current_llvm_config.use_linker, use_linker);
     err!(current_llvm_config.allow_old_toolchain, allow_old_toolchain);
+    err!(current_llvm_config.offload, offload);
     err!(current_llvm_config.polly, polly);
     err!(current_llvm_config.clang, clang);
     err!(current_llvm_config.build_config, build_config);

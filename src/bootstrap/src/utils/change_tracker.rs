@@ -275,4 +275,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `./x setup editor` added, replacing `./x setup vscode` and adding support for vim, emacs and helix.",
     },
+    ChangeInfo {
+        change_id: 131513,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.offload` to control whether the llvm offload runtime for GPU support is built. Implicitly enables the openmp runtime as dependency.",
+    },
 ];
