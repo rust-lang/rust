@@ -8,10 +8,11 @@ use rustc_data_structures::fx::IndexEntry;
 use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_middle::bug;
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty};
-use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::symbol::{Symbol, kw};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use tracing::{debug, instrument};
@@ -722,7 +723,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             .output;
                         span = output.span();
                         if let hir::FnRetTy::Return(ret) = output {
-                            hir_ty = Some(self.get_future_inner_return_ty(ret));
+                            hir_ty = <dyn HirTyLowerer<'_>>::get_future_inner_return_ty(ret);
                         }
                         " of async function"
                     }
@@ -814,43 +815,6 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             name: self.synthesize_region_name(),
             source: RegionNameSource::AnonRegionFromOutput(highlight, mir_description),
         })
-    }
-
-    /// From the [`hir::Ty`] of an async function's lowered return type,
-    /// retrieve the `hir::Ty` representing the type the user originally wrote.
-    ///
-    /// e.g. given the function:
-    ///
-    /// ```
-    /// async fn foo() -> i32 { 2 }
-    /// ```
-    ///
-    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements `Future<Output=i32>`,
-    /// returns the `i32`.
-    ///
-    /// [`OpaqueDef`]: hir::TyKind::OpaqueDef
-    fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
-        let hir::TyKind::OpaqueDef(opaque_ty, _) = hir_ty.kind else {
-            span_bug!(
-                hir_ty.span,
-                "lowered return type of async fn is not OpaqueDef: {:?}",
-                hir_ty
-            );
-        };
-        if let hir::OpaqueTy { bounds: [hir::GenericBound::Trait(trait_ref)], .. } = opaque_ty
-            && let Some(segment) = trait_ref.trait_ref.path.segments.last()
-            && let Some(args) = segment.args
-            && let [constraint] = args.constraints
-            && constraint.ident.name == sym::Output
-            && let Some(ty) = constraint.ty()
-        {
-            ty
-        } else {
-            span_bug!(
-                hir_ty.span,
-                "bounds from lowered return type of async fn did not match expected format: {opaque_ty:?}",
-            );
-        }
     }
 
     #[instrument(level = "trace", skip(self))]
