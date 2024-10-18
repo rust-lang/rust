@@ -1072,7 +1072,7 @@ project-const-traits = [
 project-stable-mir = [
     "@celinval",
     "@oli-obk",
-    "@ouz-a",
+    "@scottmcm",
 ]
 
 project-exploit-mitigations = [
