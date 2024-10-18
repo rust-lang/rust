@@ -859,6 +859,17 @@ macro_rules! define_queries {
                 }
             }
 
+            pub(crate) fn Metadata<'tcx>() -> DepKindStruct<'tcx> {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Unit,
+                    force_from_dep_node: None,
+                    try_load_from_on_disk_cache: None,
+                    name: &"Metadata",
+                }
+            }
+
             $(pub(crate) fn $name<'tcx>()-> DepKindStruct<'tcx> {
                 $crate::plumbing::query_callback::<query_impl::$name::QueryType<'tcx>>(
                     is_anon!([$($modifiers)*]),
