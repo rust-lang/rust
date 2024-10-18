@@ -84,6 +84,26 @@ pub trait BuilderMethods<'a, 'tcx>:
         then_llbb: Self::BasicBlock,
         else_llbb: Self::BasicBlock,
     );
+
+    // Conditional with expectation.
+    //
+    // This function is opt-in for back ends.
+    //
+    // The default implementation calls `self.expect()` before emiting the branch
+    // by calling `self.cond_br()`
+    fn cond_br_with_expect(
+        &mut self,
+        mut cond: Self::Value,
+        then_llbb: Self::BasicBlock,
+        else_llbb: Self::BasicBlock,
+        expect: Option<bool>,
+    ) {
+        if let Some(expect) = expect {
+            cond = self.expect(cond, expect);
+        }
+        self.cond_br(cond, then_llbb, else_llbb)
+    }
+
     fn switch(
         &mut self,
         v: Self::Value,

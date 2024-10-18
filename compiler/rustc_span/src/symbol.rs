@@ -596,6 +596,7 @@ symbols! {
         cmse_nonsecure_entry,
         coerce_unsized,
         cold,
+        cold_path,
         collapse_debuginfo,
         column,
         compare_bytes,
