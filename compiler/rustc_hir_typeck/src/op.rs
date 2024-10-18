@@ -36,6 +36,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (lhs_ty, rhs_ty, return_ty) =
             self.check_overloaded_binop(expr, lhs, rhs, op, IsAssign::Yes, expected);
+        let lhs_ty = self.try_structurally_resolve_type(lhs.span, lhs_ty);
+        let rhs_ty = self.try_structurally_resolve_type(rhs.span, rhs_ty);
 
         let ty =
             if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
@@ -231,7 +233,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr(lhs_expr)
             }
         };
-        let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
 
         // N.B., as we have not yet type-checked the RHS, we don't have the
         // type at hand. Make a variable to represent it. The whole reason
@@ -250,7 +251,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercible_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
-        let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {
             Ok(method) => {
@@ -296,6 +296,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_misc_error(self.tcx)
             }
             Err(errors) => {
+                let lhs_ty = self.try_structurally_resolve_type(lhs_expr.span, lhs_ty);
+                let rhs_ty = self.try_structurally_resolve_type(rhs_expr.span, rhs_ty);
+
                 let (_, trait_def_id) =
                     lang_item_for_op(self.tcx, Op::Binary(op, is_assign), op.span);
                 let missing_trait = trait_def_id

@@ -208,11 +208,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
+        // Guide inference on the formal output ty if necessary.
+        self.select_obligations_where_possible(|_| {});
+
         // First, let's unify the formal method signature with the expectation eagerly.
         // We use this to guide coercion inference; it's output is "fudged" which means
         // any remaining type variables are assigned to new, unrelated variables. This
         // is because the inference guidance here is only speculative.
-        let formal_output = self.resolve_vars_with_obligations(formal_output);
         let expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
             .and_then(|expected_output| {

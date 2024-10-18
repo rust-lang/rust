@@ -1865,8 +1865,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) {
         let tcx = self.tcx;
+        self.select_obligations_where_possible(|_| {});
 
-        let adt_ty = self.try_structurally_resolve_type(span, adt_ty);
         let adt_ty_hint = expected.only_has_type(self).and_then(|expected| {
             self.fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
