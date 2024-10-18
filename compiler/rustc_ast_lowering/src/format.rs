@@ -5,6 +5,7 @@ use rustc_ast::visit::Visitor;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_session::config::FmtDebug;
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{Span, Symbol, sym};
@@ -22,6 +23,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fmt = self.inline_literals(fmt);
         }
         expand_format_args(self, sp, &fmt, allow_const)
+    }
+
+    /// Wraps given `ExprKind` in an inline const block.
+    ///
+    /// Caller must ensure it's safe and sound to do so.
+    fn wrap_in_const_context(
+        &mut self,
+        sp: Span,
+        kind: hir::ExprKind<'hir>,
+    ) -> hir::ExprKind<'hir> {
+        let expr = hir::Expr { hir_id: self.next_id(), kind, span: self.lower_span(sp) };
+        let const_node_id = self.next_node_id();
+        let parent_def_id = self.current_def_id_parent;
+        let def_id =
+            self.create_def(parent_def_id, const_node_id, kw::Empty, DefKind::InlineConst, sp);
+        let hir_id = self.lower_node_id(const_node_id);
+        let const_block = self.with_new_scopes(sp, |this| hir::ConstBlock {
+            def_id,
+            hir_id,
+            body: this.with_def_id_parent(def_id, |this| this.lower_body(|_| (&[], expr))),
+        });
+        hir::ExprKind::ConstBlock(const_block)
     }
 
     /// Try to convert a literal into an interned string
@@ -464,14 +487,14 @@ fn expand_format_args<'hir>(
 
     if allow_const && arguments.is_empty() && argmap.is_empty() {
         // Generate:
-        //     <core::fmt::Arguments>::new_const(lit_pieces)
+        //    const { <core::fmt::Arguments>::new_const(lit_pieces) }
         let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
             macsp,
             hir::LangItem::FormatArguments,
             sym::new_const,
         ));
         let new_args = ctx.arena.alloc_from_iter([lit_pieces]);
-        return hir::ExprKind::Call(new, new_args);
+        return ctx.wrap_in_const_context(macsp, hir::ExprKind::Call(new, new_args));
     }
 
     // If the args array contains exactly all the original arguments once,
