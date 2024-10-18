@@ -217,8 +217,7 @@ pub fn set_section(llglobal: &Value, section_name: &str) {
     }
 }
 
-pub fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name: &str) -> &'a Value {
-    let name_cstr = CString::new(name).expect("unexpected CString error");
+pub fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name_cstr: &CStr) -> &'a Value {
     unsafe { LLVMAddGlobal(llmod, ty, name_cstr.as_ptr()) }
 }
 

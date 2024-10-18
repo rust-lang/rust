@@ -132,7 +132,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
             .collect::<Vec<_>>();
         let initializer = cx.const_array(cx.type_ptr(), &name_globals);
 
-        let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), "__llvm_coverage_names");
+        let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), c"__llvm_coverage_names");
         llvm::set_global_constant(array, true);
         llvm::set_linkage(array, llvm::Linkage::InternalLinkage);
         llvm::set_initializer(array, initializer);
