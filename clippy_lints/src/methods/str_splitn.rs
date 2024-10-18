@@ -333,7 +333,7 @@ fn parse_iter_usage<'tcx>(
                     kind: ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, ..)),
                     ..
                 },
-                _,
+                [_],
             ) => {
                 let parent_span = e.span.parent_callsite().unwrap();
                 if parent_span.ctxt() == ctxt {

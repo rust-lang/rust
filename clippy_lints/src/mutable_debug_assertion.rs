@@ -96,10 +96,6 @@ impl<'tcx> Visitor<'tcx> for MutArgVisitor<'_, 'tcx> {
                 self.found = true;
                 return;
             },
-            ExprKind::If(..) => {
-                self.found = true;
-                return;
-            },
             ExprKind::Path(_) => {
                 if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id) {
                     if adj

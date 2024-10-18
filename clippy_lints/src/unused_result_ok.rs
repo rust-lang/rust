@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// # fn some_function() -> Result<(), ()> { Ok(()) }
     /// let _ = some_function();
     /// ```
-    #[clippy::version = "1.70.0"]
+    #[clippy::version = "1.82.0"]
     pub UNUSED_RESULT_OK,
     restriction,
     "Use of `.ok()` to silence `Result`'s `#[must_use]` is misleading. Use `let _ =` instead."

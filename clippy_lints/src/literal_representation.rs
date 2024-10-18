@@ -412,7 +412,6 @@ impl LiteralDigitGrouping {
     }
 }
 
-#[expect(clippy::module_name_repetitions)]
 pub struct DecimalLiteralRepresentation {
     threshold: u64,
 }

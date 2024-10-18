@@ -47,7 +47,7 @@ impl LateLintPass<'_> for BoxDefault {
             // And the call is that of a `Box` method
             && path_def_id(cx, ty).map_or(false, |id| Some(id) == cx.tcx.lang_items().owned_box())
             // And the single argument to the call is another function call
-            // This is the `T::default()` of `Box::new(T::default())`
+            // This is the `T::default()` (or default equivalent) of `Box::new(T::default())`
             && let ExprKind::Call(arg_path, _) = arg.kind
             // And we are not in a foreign crate's macro
             && !in_external_macro(cx.sess(), expr.span)

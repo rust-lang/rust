@@ -1,5 +1,6 @@
 #![deny(clippy::trait_duplication_in_bounds)]
 #![allow(unused)]
+#![feature(const_trait_impl)]
 
 use std::any::Any;
 
@@ -142,6 +143,36 @@ fn f<P: Proj>(obj: &dyn Derived<P>) {
     obj.is_derived();
     Base::<P::S>::is_base(obj);
     Base::<()>::is_base(obj);
+}
+
+// #13476
+trait Value<const N: usize> {}
+fn const_generic<T: Value<0> + Value<1>>() {}
+
+// #11067 and #9626
+fn assoc_tys_generics<'a, 'b, T, U>()
+where
+    T: IntoIterator<Item = ()> + IntoIterator<Item = i32>,
+    U: From<&'a str> + From<&'b [u16]>,
+{
+}
+
+// #13476
+#[const_trait]
+trait ConstTrait {}
+const fn const_trait_bounds_good<T: ConstTrait + ~const ConstTrait>() {}
+
+const fn const_trait_bounds_bad<T: ~const ConstTrait + ~const ConstTrait>() {}
+//~^ trait_duplication_in_bounds
+
+fn projections<T, U, V>()
+where
+    U: ToOwned,
+    V: ToOwned,
+    T: IntoIterator<Item = U::Owned> + IntoIterator<Item = U::Owned>,
+    //~^ trait_duplication_in_bounds
+    V: IntoIterator<Item = U::Owned> + IntoIterator<Item = V::Owned>,
+{
 }
 
 fn main() {

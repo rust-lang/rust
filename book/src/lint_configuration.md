@@ -329,7 +329,7 @@ arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
 ## `array-size-threshold`
 The maximum allowed size for arrays on the stack
 
-**Default Value:** `512000`
+**Default Value:** `16384`
 
 ---
 **Affected lints:**

@@ -1,556 +1,82 @@
-(function () {
-    const md = window.markdownit({
-        html: true,
-        linkify: true,
-        typographer: true,
-        highlight: function (str, lang) {
-            if (lang && hljs.getLanguage(lang)) {
-                try {
-                    return '<pre class="hljs"><code>' +
-                        hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
-                        '</code></pre>';
-                } catch (__) {}
-            }
-
-            return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+window.searchState = {
+    timeout: null,
+    inputElem: document.getElementById("search-input"),
+    lastSearch: '',
+    clearInput: () => {
+        searchState.inputElem.value = "";
+        searchState.filterLints();
+    },
+    clearInputTimeout: () => {
+        if (searchState.timeout !== null) {
+            clearTimeout(searchState.timeout);
+            searchState.timeout = null
         }
-    });
+    },
+    resetInputTimeout: () => {
+        searchState.clearInputTimeout();
+        setTimeout(searchState.filterLints, 50);
+    },
+    filterLints: () => {
+        function matchesSearch(lint, terms, searchStr) {
+            // Search by id
+            if (lint.elem.id.indexOf(searchStr) !== -1) {
+                return true;
+            }
+            // Search the description
+            // The use of `for`-loops instead of `foreach` enables us to return early
+            const docsLowerCase = lint.elem.textContent.toLowerCase();
+            for (const term of terms) {
+                // This is more likely and will therefore be checked first
+                if (docsLowerCase.indexOf(term) !== -1) {
+                    return true;
+                }
 
-    function scrollToLint(lintId) {
-        const target = document.getElementById(lintId);
-        if (!target) {
+                if (lint.elem.id.indexOf(term) !== -1) {
+                    return true;
+                }
+
+                return false;
+            }
+            return true;
+        }
+
+        searchState.clearInputTimeout();
+
+        let searchStr = searchState.inputElem.value.trim().toLowerCase();
+        if (searchStr.startsWith("clippy::")) {
+            searchStr = searchStr.slice(8);
+        }
+        if (searchState.lastSearch === searchStr) {
             return;
         }
-        target.scrollIntoView();
-    }
+        searchState.lastSearch = searchStr;
+        const terms = searchStr.split(" ");
+        const cleanedSearchStr = searchStr.replaceAll("-", "_");
 
-    function scrollToLintByURL($scope, $location) {
-        const removeListener = $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
-            scrollToLint($location.path().substring(1));
-            removeListener();
-        });
-    }
-
-    function selectGroup($scope, selectedGroup) {
-        const groups = $scope.groups;
-        for (const group in groups) {
-            if (groups.hasOwnProperty(group)) {
-                groups[group] = group === selectedGroup;
+        for (const lint of filters.getAllLints()) {
+            lint.searchFilteredOut = !matchesSearch(lint, terms, cleanedSearchStr);
+            if (lint.filteredOut) {
+                continue;
+            }
+            if (lint.searchFilteredOut) {
+                lint.elem.style.display = "none";
+            } else {
+                lint.elem.style.display = "";
             }
         }
-    }
-
-    angular.module("clippy", [])
-        .filter('markdown', function ($sce) {
-            return function (text) {
-                return $sce.trustAsHtml(
-                    md.render(text || '')
-                        // Oh deer, what a hack :O
-                        .replace('<table', '<table class="table"')
-                );
-            };
-        })
-        .directive('filterDropdown', function ($document) {
-            return {
-                restrict: 'A',
-                link: function ($scope, $element, $attr) {
-                    $element.bind('click', function (event) {
-                        if (event.target.closest('button')) {
-                            $element.toggleClass('open');
-                        } else {
-                            $element.addClass('open');
-                        }
-                        $element.addClass('open-recent');
-                    });
-
-                    $document.bind('click', function () {
-                        if (!$element.hasClass('open-recent')) {
-                            $element.removeClass('open');
-                        }
-                        $element.removeClass('open-recent');
-                    })
-                }
-            }
-        })
-        .directive('onFinishRender', function ($timeout) {
-            return {
-                restrict: 'A',
-                link: function (scope, element, attr) {
-                    if (scope.$last === true) {
-                        $timeout(function () {
-                            scope.$emit(attr.onFinishRender);
-                        });
-                    }
-                }
-            };
-        })
-        .controller("lintList", function ($scope, $http, $location, $timeout) {
-            // Level filter
-            const LEVEL_FILTERS_DEFAULT = {allow: true, warn: true, deny: true, none: true};
-            $scope.levels = { ...LEVEL_FILTERS_DEFAULT };
-            $scope.byLevels = function (lint) {
-                return $scope.levels[lint.level];
-            };
-
-            const GROUPS_FILTER_DEFAULT = {
-                cargo: true,
-                complexity: true,
-                correctness: true,
-                nursery: true,
-                pedantic: true,
-                perf: true,
-                restriction: true,
-                style: true,
-                suspicious: true,
-                deprecated: false,
-            }
-
-            $scope.groups = {
-                ...GROUPS_FILTER_DEFAULT
-            };
-
-            $scope.versionFilters = {
-                "≥": {enabled: false, minorVersion: null },
-                "≤": {enabled: false, minorVersion: null },
-                "=": {enabled: false, minorVersion: null },
-            };
-
-            // Map the versionFilters to the query parameters in a way that is easier to work with in a URL
-            const versionFilterKeyMap = {
-                "≥": "gte",
-                "≤": "lte",
-                "=": "eq"
-            };
-            const reverseVersionFilterKeyMap = Object.fromEntries(
-                Object.entries(versionFilterKeyMap).map(([key, value]) => [value, key])
-            );
-
-            const APPLICABILITIES_FILTER_DEFAULT = {
-                MachineApplicable: true,
-                MaybeIncorrect: true,
-                HasPlaceholders: true,
-                Unspecified: true,
-            };
-
-            $scope.applicabilities = {
-                ...APPLICABILITIES_FILTER_DEFAULT
-            }
-
-            // loadFromURLParameters retrieves filter settings from the URL parameters and assigns them
-            // to corresponding $scope variables.
-            function loadFromURLParameters() {
-                // Extract parameters from URL
-                const urlParameters = $location.search();
-
-                // Define a helper function that assigns URL parameters to a provided scope variable
-                const handleParameter = (parameter, scopeVariable, defaultValues) => {
-                    if (urlParameters[parameter]) {
-                        const items = urlParameters[parameter].split(',');
-                        for (const key in scopeVariable) {
-                            if (scopeVariable.hasOwnProperty(key)) {
-                                scopeVariable[key] = items.includes(key);
-                            }
-                        }
-                    } else if (defaultValues) {
-                        for (const key in defaultValues) {
-                            if (scopeVariable.hasOwnProperty(key)) {
-                                scopeVariable[key] = defaultValues[key];
-                            }
-                        }
-                    }
-                };
-
-                handleParameter('levels', $scope.levels, LEVEL_FILTERS_DEFAULT);
-                handleParameter('groups', $scope.groups, GROUPS_FILTER_DEFAULT);
-                handleParameter('applicabilities', $scope.applicabilities, APPLICABILITIES_FILTER_DEFAULT);
-
-                // Handle 'versions' parameter separately because it needs additional processing
-                if (urlParameters.versions) {
-                    const versionFilters = urlParameters.versions.split(',');
-                    for (const versionFilter of versionFilters) {
-                        const [key, minorVersion] = versionFilter.split(':');
-                        const parsedMinorVersion = parseInt(minorVersion);
-
-                        // Map the key from the URL parameter to its original form
-                        const originalKey = reverseVersionFilterKeyMap[key];
-
-                        if (originalKey in $scope.versionFilters && !isNaN(parsedMinorVersion)) {
-                            $scope.versionFilters[originalKey].enabled = true;
-                            $scope.versionFilters[originalKey].minorVersion = parsedMinorVersion;
-                        }
-                    }
-                }
-
-                // Load the search parameter from the URL path
-                const searchParameter = $location.path().substring(1); // Remove the leading slash
-                if (searchParameter) {
-                    $scope.search = searchParameter;
-                    $scope.open[searchParameter] = true;
-                    scrollToLintByURL($scope, $location);
-                }
-            }
-
-            // updateURLParameter updates the URL parameter with the given key to the given value
-            function updateURLParameter(filterObj, urlKey, defaultValue = {}, processFilter = filter => filter) {
-                const parameter = Object.keys(filterObj)
-                    .filter(filter => filterObj[filter])
-                    .sort()
-                    .map(processFilter)
-                    .filter(Boolean) // Filters out any falsy values, including null
-                    .join(',');
-
-                const defaultParameter = Object.keys(defaultValue)
-                    .filter(filter => defaultValue[filter])
-                    .sort()
-                    .map(processFilter)
-                    .filter(Boolean) // Filters out any falsy values, including null
-                    .join(',');
-
-                // if we ended up back at the defaults, just remove it from the URL
-                if (parameter === defaultParameter) {
-                    $location.search(urlKey, null);
-                } else {
-                    $location.search(urlKey, parameter || null);
-                }
-            }
-
-            // updateVersionURLParameter updates the version URL parameter with the given version filters
-            function updateVersionURLParameter(versionFilters) {
-                updateURLParameter(
-                    versionFilters,
-                    'versions', {},
-                    versionFilter => versionFilters[versionFilter].enabled && versionFilters[versionFilter].minorVersion != null
-                        ? `${versionFilterKeyMap[versionFilter]}:${versionFilters[versionFilter].minorVersion}`
-                        : null
-                );
-            }
-
-            // updateAllURLParameters updates all the URL parameters with the current filter settings
-            function updateAllURLParameters() {
-                updateURLParameter($scope.levels, 'levels', LEVEL_FILTERS_DEFAULT);
-                updateURLParameter($scope.groups, 'groups', GROUPS_FILTER_DEFAULT);
-                updateVersionURLParameter($scope.versionFilters);
-                updateURLParameter($scope.applicabilities, 'applicabilities', APPLICABILITIES_FILTER_DEFAULT);
-            }
-
-            // Add $watches to automatically update URL parameters when the data changes
-            $scope.$watch('levels', function (newVal, oldVal) {
-                if (newVal !== oldVal) {
-                    updateURLParameter(newVal, 'levels', LEVEL_FILTERS_DEFAULT);
-                }
-            }, true);
-
-            $scope.$watch('groups', function (newVal, oldVal) {
-                if (newVal !== oldVal) {
-                    updateURLParameter(newVal, 'groups', GROUPS_FILTER_DEFAULT);
-                }
-            }, true);
-
-            $scope.$watch('versionFilters', function (newVal, oldVal) {
-                if (newVal !== oldVal) {
-                    updateVersionURLParameter(newVal);
-                }
-            }, true);
-
-            $scope.$watch('applicabilities', function (newVal, oldVal) {
-                if (newVal !== oldVal) {
-                    updateURLParameter(newVal, 'applicabilities', APPLICABILITIES_FILTER_DEFAULT)
-                }
-            }, true);
-
-            // Watch for changes in the URL path and update the search and lint display
-            $scope.$watch(function () { return $location.path(); }, function (newPath) {
-                const searchParameter = newPath.substring(1);
-                if ($scope.search !== searchParameter) {
-                    $scope.search = searchParameter;
-                    $scope.open[searchParameter] = true;
-                    scrollToLintByURL($scope, $location);
-                }
-            });
-
-            let debounceTimeout;
-            $scope.$watch('search', function (newVal, oldVal) {
-                if (newVal !== oldVal) {
-                    if (debounceTimeout) {
-                        $timeout.cancel(debounceTimeout);
-                    }
-
-                    debounceTimeout = $timeout(function () {
-                        $location.path(newVal);
-                    }, 1000);
-                }
-            });
-
-            $scope.$watch(function () { return $location.search(); }, function (newParameters) {
-                loadFromURLParameters();
-            }, true);
-
-            $scope.updatePath = function () {
-                if (debounceTimeout) {
-                    $timeout.cancel(debounceTimeout);
-                }
-
-                $location.path($scope.search);
-            }
-
-            $scope.toggleLevels = function (value) {
-                const levels = $scope.levels;
-                for (const key in levels) {
-                    if (levels.hasOwnProperty(key)) {
-                        levels[key] = value;
-                    }
-                }
-            };
-
-            $scope.toggleGroups = function (value) {
-                const groups = $scope.groups;
-                for (const key in groups) {
-                    if (groups.hasOwnProperty(key)) {
-                        groups[key] = value;
-                    }
-                }
-            };
-
-            $scope.toggleApplicabilities = function (value) {
-                const applicabilities = $scope.applicabilities;
-                for (const key in applicabilities) {
-                    if (applicabilities.hasOwnProperty(key)) {
-                        applicabilities[key] = value;
-                    }
-                }
-            }
-
-            $scope.resetGroupsToDefault = function () {
-                $scope.groups = {
-                    ...GROUPS_FILTER_DEFAULT
-                };
-            };
-
-            $scope.selectedValuesCount = function (obj) {
-                return Object.values(obj).filter(x => x).length;
-            }
-
-            $scope.clearVersionFilters = function () {
-                for (const filter in $scope.versionFilters) {
-                    $scope.versionFilters[filter] = { enabled: false, minorVersion: null };
-                }
-            }
-
-            $scope.versionFilterCount = function(obj) {
-                return Object.values(obj).filter(x => x.enabled).length;
-            }
-
-            $scope.updateVersionFilters = function() {
-                for (const filter in $scope.versionFilters) {
-                    const minorVersion = $scope.versionFilters[filter].minorVersion;
-
-                    // 1.29.0 and greater
-                    if (minorVersion && minorVersion > 28) {
-                        $scope.versionFilters[filter].enabled = true;
-                        continue;
-                    }
-
-                    $scope.versionFilters[filter].enabled = false;
-                }
-            }
-
-            $scope.byVersion = function(lint) {
-                const filters = $scope.versionFilters;
-                for (const filter in filters) {
-                    if (filters[filter].enabled) {
-                        const minorVersion = filters[filter].minorVersion;
-
-                        // Strip the "pre " prefix for pre 1.29.0 lints
-                        const lintVersion = lint.version.startsWith("pre ") ? lint.version.substring(4, lint.version.length) : lint.version;
-                        const lintMinorVersion = lintVersion.substring(2, 4);
-
-                        switch (filter) {
-                            // "=" gets the highest priority, since all filters are inclusive
-                            case "=":
-                                return (lintMinorVersion == minorVersion);
-                            case "≥":
-                                if (lintMinorVersion < minorVersion) { return false; }
-                                break;
-                            case "≤":
-                                if (lintMinorVersion > minorVersion) { return false; }
-                                break;
-                            default:
-                                return true
-                        }
-                    }
-                }
-
-                return true;
-            }
-
-            $scope.byGroups = function (lint) {
-                return $scope.groups[lint.group];
-            };
-
-            $scope.bySearch = function (lint, index, array) {
-                let searchStr = $scope.search;
-                // It can be `null` I haven't missed this value
-                if (searchStr == null) {
-                    return true;
-                }
-                searchStr = searchStr.toLowerCase();
-                if (searchStr.startsWith("clippy::")) {
-                    searchStr = searchStr.slice(8);
-                }
-
-                // Search by id
-                if (lint.id.indexOf(searchStr.replaceAll("-", "_")) !== -1) {
-                    return true;
-                }
-
-                // Search the description
-                // The use of `for`-loops instead of `foreach` enables us to return early
-                const terms = searchStr.split(" ");
-                const docsLowerCase = lint.docs.toLowerCase();
-                for (index = 0; index < terms.length; index++) {
-                    // This is more likely and will therefore be checked first
-                    if (docsLowerCase.indexOf(terms[index]) !== -1) {
-                        continue;
-                    }
-
-                    if (lint.id.indexOf(terms[index]) !== -1) {
-                        continue;
-                    }
-
-                    return false;
-                }
-
-                return true;
-            }
-
-            $scope.byApplicabilities = function (lint) {
-                return $scope.applicabilities[lint.applicability];
-            };
-
-            // Show details for one lint
-            $scope.openLint = function (lint) {
-                $scope.open[lint.id] = true;
-                $location.path(lint.id);
-            };
-
-            $scope.toggleExpansion = function(lints, isExpanded) {
-                lints.forEach(lint => {
-                    $scope.open[lint.id] = isExpanded;
-                });
-            }
-
-            $scope.copyToClipboard = function (lint) {
-                const clipboard = document.getElementById("clipboard-" + lint.id);
-                if (clipboard) {
-                    let resetClipboardTimeout = null;
-                    const resetClipboardIcon = clipboard.innerHTML;
-
-                    function resetClipboard() {
-                        resetClipboardTimeout = null;
-                        clipboard.innerHTML = resetClipboardIcon;
-                    }
-
-                    navigator.clipboard.writeText("clippy::" + lint.id);
-
-                    clipboard.innerHTML = "&#10003;";
-                    if (resetClipboardTimeout !== null) {
-                        clearTimeout(resetClipboardTimeout);
-                    }
-                    resetClipboardTimeout = setTimeout(resetClipboard, 1000);
-                }
-            }
-
-            // Get data
-            $scope.open = {};
-            $scope.loading = true;
-
-            // This will be used to jump into the source code of the version that this documentation is for.
-            $scope.docVersion = window.location.pathname.split('/')[2] || "master";
-
-            // Set up the filters from the URL parameters before we start loading the data
-            loadFromURLParameters();
-
-            $http.get('./lints.json')
-                .success(function (data) {
-                    $scope.data = data;
-                    $scope.loading = false;
-
-                    const selectedGroup = getQueryVariable("sel");
-                    if (selectedGroup) {
-                        selectGroup($scope, selectedGroup.toLowerCase());
-                    }
-
-                    scrollToLintByURL($scope, $location);
-
-                    setTimeout(function () {
-                        const el = document.getElementById('filter-input');
-                        if (el) { el.focus() }
-                    }, 0);
-                })
-                .error(function (data) {
-                    $scope.error = data;
-                    $scope.loading = false;
-                });
-        });
-})();
-
-function getQueryVariable(variable) {
-    const query = window.location.search.substring(1);
-    const vars = query.split('&');
-    for (const entry of vars) {
-        const pair = entry.split('=');
-        if (decodeURIComponent(pair[0]) == variable) {
-            return decodeURIComponent(pair[1]);
+        if (searchStr.length > 0) {
+            window.location.hash = `/${searchStr}`;
+        } else {
+            window.location.hash = '';
         }
+    },
+};
+
+function handleInputChanged(event) {
+    if (event.target !== document.activeElement) {
+        return;
     }
-}
-
-function storeValue(settingName, value) {
-    try {
-        localStorage.setItem(`clippy-lint-list-${settingName}`, value);
-    } catch (e) { }
-}
-
-function loadValue(settingName) {
-    return localStorage.getItem(`clippy-lint-list-${settingName}`);
-}
-
-function setTheme(theme, store) {
-    let enableHighlight = false;
-    let enableNight = false;
-    let enableAyu = false;
-
-    switch(theme) {
-        case "ayu":
-            enableAyu = true;
-            break;
-        case "coal":
-        case "navy":
-            enableNight = true;
-            break;
-        case "rust":
-            enableHighlight = true;
-            break;
-        default:
-            enableHighlight = true;
-            theme = "light";
-            break;
-    }
-
-    document.getElementsByTagName("body")[0].className = theme;
-
-    document.getElementById("githubLightHighlight").disabled = enableNight || !enableHighlight;
-    document.getElementById("githubDarkHighlight").disabled = !enableNight && !enableAyu;
-
-    document.getElementById("styleHighlight").disabled = !enableHighlight;
-    document.getElementById("styleNight").disabled = !enableNight;
-    document.getElementById("styleAyu").disabled = !enableAyu;
-
-    if (store) {
-        storeValue("theme", theme);
-    } else {
-        document.getElementById(`theme-choice`).value = theme;
-    }
+    searchState.resetInputTimeout();
 }
 
 function handleShortcut(ev) {
@@ -576,8 +102,27 @@ function handleShortcut(ev) {
     }
 }
 
-document.addEventListener("keypress", handleShortcut);
-document.addEventListener("keydown", handleShortcut);
+function toggleElements(filter, value) {
+    let needsUpdate = false;
+    let count = 0;
+
+    const element = document.getElementById(filters[filter].id);
+    onEachLazy(
+        element.querySelectorAll("ul input"),
+        el => {
+            if (el.checked !== value) {
+                el.checked = value;
+                filters[filter][el.getAttribute("data-value")] = value;
+                needsUpdate = true;
+            }
+            count += 1;
+        }
+    );
+    element.querySelector(".badge").innerText = value ? count : 0;
+    if (needsUpdate) {
+        filters.filterLints();
+    }
+}
 
 function changeSetting(elem) {
     if (elem.id === "disable-shortcuts") {
@@ -593,8 +138,52 @@ function onEachLazy(lazyArray, func) {
     }
 }
 
-function handleBlur(event) {
-    const parent = document.getElementById("settings-dropdown");
+function highlightIfNeeded(elem) {
+    onEachLazy(elem.querySelectorAll("pre > code.language-rust:not(.highlighted)"), el => {
+        hljs.highlightElement(el.parentElement)
+        el.classList.add("highlighted");
+    });
+}
+
+function expandLint(lintId) {
+    const lintElem = document.getElementById(lintId);
+    const isCollapsed = lintElem.classList.toggle("collapsed");
+    lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "−";
+    highlightIfNeeded(lintElem);
+}
+
+// Show details for one lint
+function openLint(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    expandLint(event.target.getAttribute("href").slice(1));
+}
+
+function copyToClipboard(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const clipboard = event.target;
+
+    let resetClipboardTimeout = null;
+    const resetClipboardIcon = clipboard.innerHTML;
+
+    function resetClipboard() {
+        resetClipboardTimeout = null;
+        clipboard.innerHTML = resetClipboardIcon;
+    }
+
+    navigator.clipboard.writeText("clippy::" + clipboard.parentElement.id.slice(5));
+
+    clipboard.innerHTML = "&#10003;";
+    if (resetClipboardTimeout !== null) {
+        clearTimeout(resetClipboardTimeout);
+    }
+    resetClipboardTimeout = setTimeout(resetClipboard, 1000);
+}
+
+function handleBlur(event, elementId) {
+    const parent = document.getElementById(elementId);
     if (!parent.contains(document.activeElement) &&
         !parent.contains(event.relatedTarget)
     ) {
@@ -602,28 +191,377 @@ function handleBlur(event) {
     }
 }
 
-function generateSettings() {
-    const settings = document.getElementById("settings-dropdown");
-    const settingsButton = settings.querySelector(".settings-icon")
-    settingsButton.onclick = () => settings.classList.toggle("open");
-    settingsButton.onblur = handleBlur;
-    const settingsMenu = settings.querySelector(".settings-menu");
-    settingsMenu.onblur = handleBlur;
+function toggleExpansion(expand) {
     onEachLazy(
-        settingsMenu.querySelectorAll("input"),
-        el => el.onblur = handleBlur,
+        document.querySelectorAll("article"),
+        expand ? el => {
+            el.classList.remove("collapsed");
+            highlightIfNeeded(el);
+        } : el => el.classList.add("collapsed"),
     );
 }
 
-generateSettings();
-
-// loading the theme after the initial load
-const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
-const theme = loadValue('theme');
-if (prefersDark.matches && !theme) {
-    setTheme("coal", false);
-} else {
-    setTheme(theme, false);
+// Returns the current URL without any query parameter or hash.
+function getNakedUrl() {
+    return window.location.href.split("?")[0].split("#")[0];
 }
+
+const GROUPS_FILTER_DEFAULT = {
+    cargo: true,
+    complexity: true,
+    correctness: true,
+    nursery: true,
+    pedantic: true,
+    perf: true,
+    restriction: true,
+    style: true,
+    suspicious: true,
+    deprecated: false,
+};
+const LEVEL_FILTERS_DEFAULT = {
+    allow: true,
+    warn: true,
+    deny: true,
+    none: true,
+};
+const APPLICABILITIES_FILTER_DEFAULT = {
+    Unspecified: true,
+    MachineApplicable: true,
+    MaybeIncorrect: true,
+    HasPlaceholders: true,
+};
+const URL_PARAMS_CORRESPONDANCE = {
+    "groups_filter": "groups",
+    "levels_filter": "levels",
+    "applicabilities_filter": "applicabilities",
+    "version_filter": "versions",
+};
+const VERSIONS_CORRESPONDANCE = {
+    "lte": "≤",
+    "gte": "≥",
+    "eq": "=",
+};
+
+window.filters = {
+    groups_filter: { id: "lint-groups", ...GROUPS_FILTER_DEFAULT },
+    levels_filter: { id: "lint-levels", ...LEVEL_FILTERS_DEFAULT },
+    applicabilities_filter: { id: "lint-applicabilities", ...APPLICABILITIES_FILTER_DEFAULT },
+    version_filter: {
+        "≥": null,
+        "≤": null,
+        "=": null,
+    },
+    allLints: null,
+    getAllLints: () => {
+        if (filters.allLints === null) {
+            filters.allLints = Array.prototype.slice.call(
+                document.getElementsByTagName("article"),
+            ).map(elem => {
+                let version = elem.querySelector(".label-version").innerText;
+                // Strip the "pre " prefix for pre 1.29.0 lints
+                if (version.startsWith("pre ")) {
+                    version = version.slice(4);
+                }
+                return {
+                    elem: elem,
+                    group: elem.querySelector(".label-lint-group").innerText,
+                    level: elem.querySelector(".label-lint-level").innerText,
+                    version: parseInt(version.split(".")[1]),
+                    applicability: elem.querySelector(".label-applicability").innerText,
+                    filteredOut: false,
+                    searchFilteredOut: false,
+                };
+            });
+        }
+        return filters.allLints;
+    },
+    regenerateURLparams: () => {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        function compareObjects(obj1, obj2) {
+            return (JSON.stringify(obj1) === JSON.stringify({ id: obj1.id, ...obj2 }));
+        }
+        function updateIfNeeded(filterName, obj2) {
+            const obj1 = filters[filterName];
+            const name = URL_PARAMS_CORRESPONDANCE[filterName];
+            if (!compareObjects(obj1, obj2)) {
+                urlParams.set(
+                    name,
+                    Object.entries(obj1).filter(
+                        ([key, value]) => value && key !== "id"
+                    ).map(
+                        ([key, _]) => key
+                    ).join(","),
+                );
+            } else {
+                urlParams.delete(name);
+            }
+        }
+
+        updateIfNeeded("groups_filter", GROUPS_FILTER_DEFAULT);
+        updateIfNeeded("levels_filter", LEVEL_FILTERS_DEFAULT);
+        updateIfNeeded(
+            "applicabilities_filter", APPLICABILITIES_FILTER_DEFAULT);
+
+        const versions = [];
+        if (filters.version_filter["="] !== null) {
+            versions.push(`eq:${filters.version_filter["="]}`);
+        }
+        if (filters.version_filter["≥"] !== null) {
+            versions.push(`gte:${filters.version_filter["≥"]}`);
+        }
+        if (filters.version_filter["≤"] !== null) {
+            versions.push(`lte:${filters.version_filter["≤"]}`);
+        }
+        if (versions.length !== 0) {
+            urlParams.set(URL_PARAMS_CORRESPONDANCE["version_filter"], versions.join(","));
+        } else {
+            urlParams.delete(URL_PARAMS_CORRESPONDANCE["version_filter"]);
+        }
+
+        let params = urlParams.toString();
+        if (params.length !== 0) {
+            params = `?${params}`;
+        }
+
+        const url = getNakedUrl() + params + window.location.hash
+        if (!history.state) {
+            history.pushState(null, "", url);
+        } else {
+            history.replaceState(null, "", url);
+        }
+    },
+    filterLints: () => {
+        // First we regenerate the URL parameters.
+        filters.regenerateURLparams();
+        for (const lint of filters.getAllLints()) {
+            lint.filteredOut = (!filters.groups_filter[lint.group]
+                || !filters.levels_filter[lint.level]
+                || !filters.applicabilities_filter[lint.applicability]
+                || !(filters.version_filter["="] === null || lint.version === filters.version_filter["="])
+                || !(filters.version_filter["≥"] === null || lint.version > filters.version_filter["≥"])
+                || !(filters.version_filter["≤"] === null || lint.version < filters.version_filter["≤"])
+            );
+            if (lint.filteredOut || lint.searchFilteredOut) {
+                lint.elem.style.display = "none";
+            } else {
+                lint.elem.style.display = "";
+            }
+        }
+    },
+};
+
+function updateFilter(elem, filter, skipLintsFiltering) {
+    const value = elem.getAttribute("data-value");
+    if (filters[filter][value] !== elem.checked) {
+        filters[filter][value] = elem.checked;
+        const counter = document.querySelector(`#${filters[filter].id} .badge`);
+        counter.innerText = parseInt(counter.innerText) + (elem.checked ? 1 : -1);
+        if (!skipLintsFiltering) {
+            filters.filterLints();
+        }
+    }
+}
+
+function updateVersionFilters(elem, skipLintsFiltering) {
+    let value = elem.value.trim();
+    if (value.length === 0) {
+        value = null;
+    } else if (/^\d+$/.test(value)) {
+        value = parseInt(value);
+    } else {
+        console.error(`Failed to get version number from "${value}"`);
+        return;
+    }
+
+    const counter = document.querySelector("#version-filter .badge");
+    let count = 0;
+    onEachLazy(document.querySelectorAll("#version-filter input"), el => {
+        if (el.value.trim().length !== 0) {
+            count += 1;
+        }
+    });
+    counter.innerText = count;
+
+    const comparisonKind = elem.getAttribute("data-value");
+    if (filters.version_filter[comparisonKind] !== value) {
+        filters.version_filter[comparisonKind] = value;
+        if (!skipLintsFiltering) {
+            filters.filterLints();
+        }
+    }
+}
+
+function clearVersionFilters() {
+    let needsUpdate = false;
+
+    onEachLazy(document.querySelectorAll("#version-filter input"), el => {
+        el.value = "";
+        const comparisonKind = el.getAttribute("data-value");
+        if (filters.version_filter[comparisonKind] !== null) {
+            needsUpdate = true;
+            filters.version_filter[comparisonKind] = null;
+        }
+    });
+    document.querySelector("#version-filter .badge").innerText = 0;
+    if (needsUpdate) {
+        filters.filterLints();
+    }
+}
+
+function resetGroupsToDefault() {
+    let needsUpdate = false;
+    let count = 0;
+
+    onEachLazy(document.querySelectorAll("#lint-groups-selector input"), el => {
+        const key = el.getAttribute("data-value");
+        const value = GROUPS_FILTER_DEFAULT[key];
+        if (filters.groups_filter[key] !== value) {
+            filters.groups_filter[key] = value;
+            el.checked = value;
+            needsUpdate = true;
+        }
+        if (value) {
+            count += 1;
+        }
+    });
+    document.querySelector("#lint-groups .badge").innerText = count;
+    if (needsUpdate) {
+        filters.filterLints();
+    }
+}
+
+function generateListOfOptions(list, elementId, filter) {
+    let html = '';
+    let nbEnabled = 0;
+    for (const [key, value] of Object.entries(list)) {
+        const attr = value ? " checked" : "";
+        html += `\
+<li class="checkbox">\
+    <label class="text-capitalize">\
+        <input type="checkbox" data-value="${key}" \
+               onchange="updateFilter(this, '${filter}')"${attr}/>${key}\
+    </label>\
+</li>`;
+        if (value) {
+            nbEnabled += 1;
+        }
+    }
+
+    const elem = document.getElementById(`${elementId}-selector`);
+    elem.previousElementSibling.querySelector(".badge").innerText = `${nbEnabled}`;
+    elem.innerHTML += html;
+
+    setupDropdown(elementId);
+}
+
+function setupDropdown(elementId) {
+    const elem = document.getElementById(elementId);
+    const button = document.querySelector(`#${elementId} > button`);
+    button.onclick = () => elem.classList.toggle("open");
+
+    const setBlur = child => {
+        child.onblur = event => handleBlur(event, elementId);
+    };
+    onEachLazy(elem.children, setBlur);
+    onEachLazy(elem.querySelectorAll("select"), setBlur);
+    onEachLazy(elem.querySelectorAll("input"), setBlur);
+    onEachLazy(elem.querySelectorAll("ul button"), setBlur);
+}
+
+function generateSettings() {
+    setupDropdown("settings-dropdown");
+
+    generateListOfOptions(LEVEL_FILTERS_DEFAULT, "lint-levels", "levels_filter");
+    generateListOfOptions(GROUPS_FILTER_DEFAULT, "lint-groups", "groups_filter");
+    generateListOfOptions(
+        APPLICABILITIES_FILTER_DEFAULT, "lint-applicabilities", "applicabilities_filter");
+
+    let html = '';
+    for (const kind of ["≥", "≤", "="]) {
+        html += `\
+<li class="checkbox">\
+    <label>${kind}</label>\
+    <span>1.</span> \
+    <input type="number" \
+           min="29" \
+           class="version-filter-input form-control filter-input" \
+           maxlength="2" \
+           data-value="${kind}" \
+           onchange="updateVersionFilters(this)" \
+           oninput="updateVersionFilters(this)" \
+           onkeydown="updateVersionFilters(this)" \
+           onkeyup="updateVersionFilters(this)" \
+           onpaste="updateVersionFilters(this)" \
+    />
+    <span>.0</span>\
+</li>`;
+    }
+    document.getElementById("version-filter-selector").innerHTML += html;
+    setupDropdown("version-filter");
+}
+
+function generateSearch() {
+    searchState.inputElem.addEventListener("change", handleInputChanged);
+    searchState.inputElem.addEventListener("input", handleInputChanged);
+    searchState.inputElem.addEventListener("keydown", handleInputChanged);
+    searchState.inputElem.addEventListener("keyup", handleInputChanged);
+    searchState.inputElem.addEventListener("paste", handleInputChanged);
+}
+
+function scrollToLint(lintId) {
+    const target = document.getElementById(lintId);
+    if (!target) {
+        return;
+    }
+    target.scrollIntoView();
+    expandLint(lintId);
+}
+
+// If the page we arrive on has link to a given lint, we scroll to it.
+function scrollToLintByURL() {
+    const lintId = window.location.hash.substring(2);
+    if (lintId.length > 0) {
+        scrollToLint(lintId);
+    }
+}
+
+function parseURLFilters() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    for (const [key, value] of urlParams.entries()) {
+        for (const [corres_key, corres_value] of Object.entries(URL_PARAMS_CORRESPONDANCE)) {
+            if (corres_value === key) {
+                if (key !== "versions") {
+                    const settings  = new Set(value.split(","));
+                    onEachLazy(document.querySelectorAll(`#lint-${key} ul input`), elem => {
+                        elem.checked = settings.has(elem.getAttribute("data-value"));
+                        updateFilter(elem, corres_key, true);
+                    });
+                } else {
+                    const settings = value.split(",").map(elem => elem.split(":"));
+
+                    for (const [kind, value] of settings) {
+                        const elem = document.querySelector(
+                            `#version-filter input[data-value="${VERSIONS_CORRESPONDANCE[kind]}"]`);
+                        elem.value = value;
+                        updateVersionFilters(elem, true);
+                    }
+                }
+            }
+        }
+    }
+}
+
+document.getElementById(`theme-choice`).value = loadValue("theme");
 let disableShortcuts = loadValue('disable-shortcuts') === "true";
 document.getElementById("disable-shortcuts").checked = disableShortcuts;
+
+document.addEventListener("keypress", handleShortcut);
+document.addEventListener("keydown", handleShortcut);
+
+generateSettings();
+generateSearch();
+parseURLFilters();
+scrollToLintByURL();
+filters.filterLints();
