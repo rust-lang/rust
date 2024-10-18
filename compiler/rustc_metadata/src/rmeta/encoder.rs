@@ -2036,6 +2036,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut trait_impls: FxIndexMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxIndexMap::default();
 
+        for (impl_def_id, simplified_self_ty) in tcx.impls_in_crate(LOCAL_CRATE) {
+            if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
+                let trait_ref = trait_ref.subst_identity();
+                fx_hash_map
+                    .entry(trait_ref.def_id)
+                    .or_default()
+                    .push((impl_def_id.index, simplified_self_ty));
+            }
+        }
+    
         for id in tcx.hir().items() {
             let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else {
                 continue;
