@@ -123,6 +123,9 @@ auto:
   - image: aarch64-gnu
     <<: *job-aarch64-linux
 
+  - image: aarch64-gnu-debug
+    <<: *job-aarch64-linux
+
   - image: arm-android
     <<: *job-linux-4c
 
