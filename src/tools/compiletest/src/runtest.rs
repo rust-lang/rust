@@ -29,7 +29,7 @@ use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{PathBufExt, add_dylib_path, logv, static_regex};
-use crate::{ColorConfig, json};
+use crate::{ColorConfig, json, stamp_file_path};
 
 mod debugger;
 
@@ -2595,8 +2595,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let stamp = crate::stamp(&self.config, self.testpaths, self.revision);
-        fs::write(&stamp, compute_stamp_hash(&self.config)).unwrap();
+        let stamp_file_path = stamp_file_path(&self.config, self.testpaths, self.revision);
+        fs::write(&stamp_file_path, compute_stamp_hash(&self.config)).unwrap();
     }
 
     fn init_incremental_test(&self) {
