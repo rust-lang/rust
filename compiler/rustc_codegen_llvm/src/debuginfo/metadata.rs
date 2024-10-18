@@ -7,7 +7,6 @@ use std::{iter, ptr};
 use libc::{c_char, c_longlong, c_uint};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
-use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
@@ -979,33 +978,8 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             debug_name_table_kind,
         );
 
-        if tcx.sess.opts.unstable_opts.profile {
-            let default_gcda_path = &output_filenames.with_extension("gcda");
-            let gcda_path =
-                tcx.sess.opts.unstable_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
-
-            let gcov_cu_info = [
-                path_to_mdstring(debug_context.llcontext, &output_filenames.with_extension("gcno")),
-                path_to_mdstring(debug_context.llcontext, gcda_path),
-                unit_metadata,
-            ];
-            let gcov_metadata = llvm::LLVMMDNodeInContext2(
-                debug_context.llcontext,
-                gcov_cu_info.as_ptr(),
-                gcov_cu_info.len(),
-            );
-            let val = llvm::LLVMMetadataAsValue(debug_context.llcontext, gcov_metadata);
-
-            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, c"llvm.gcov".as_ptr(), val);
-        }
-
         return unit_metadata;
     };
-
-    fn path_to_mdstring<'ll>(llcx: &'ll llvm::Context, path: &Path) -> &'ll llvm::Metadata {
-        let path_str = path_to_c_string(path);
-        unsafe { llvm::LLVMMDStringInContext2(llcx, path_str.as_ptr(), path_str.as_bytes().len()) }
-    }
 }
 
 /// Creates a `DW_TAG_member` entry inside the DIE represented by the given `type_di_node`.
