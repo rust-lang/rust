@@ -1018,7 +1018,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // #2 (region bounds).
                 let principal_def_id_a = a_data.principal_def_id();
                 let principal_def_id_b = b_data.principal_def_id();
-                if principal_def_id_a == principal_def_id_b {
+                if principal_def_id_a == principal_def_id_b || principal_def_id_b.is_none() {
                     // We may upcast to auto traits that are either explicitly listed in
                     // the object type's bounds, or implied by the principal trait ref's
                     // supertraits.
