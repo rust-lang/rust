@@ -67,7 +67,6 @@ declare_lint_pass! {
         MISSING_ABI,
         MISSING_FRAGMENT_SPECIFIER,
         MISSING_UNSAFE_ON_EXTERN,
-        MIXED_EXPORT_NAME_AND_NO_MANGLE,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
@@ -5082,33 +5081,4 @@ declare_lint! {
         reference: "issue #123735 <https://github.com/rust-lang/rust/issues/123735>",
     };
     crate_level_only
-}
-
-declare_lint! {
-    /// The `mixed_export_name_and_no_mangle` lint detects usage of both
-    /// `#[export_name]` and `#[no_mangle]` on the same item which result
-    /// on `#[no_mangle]` being ignored.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(mixed_export_name_and_no_mangle)]
-    ///
-    /// #[no_mangle]
-    /// #[export_name = "foo"]
-    /// pub fn bar() {}
-    ///
-    /// fn main() {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The compiler will not use the `no_mangle` attribute when generating the symbol name for the function,
-    /// as the `export_name` attribute is used instead. This can lead to confusion and is unnecessary.
-    ///
-    pub MIXED_EXPORT_NAME_AND_NO_MANGLE,
-    Warn,
-    "mixed usage of `#[export_name]` and `#[no_mangle]`, where `#[export_name]` takes precedence"
 }

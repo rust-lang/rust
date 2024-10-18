@@ -1097,9 +1097,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
 #[diag(codegen_ssa_mixed_export_name_and_no_mangle)]
 pub(crate) struct MixedExportNameAndNoMangle {
     #[label]
-    pub export_name: Span,
-    #[note]
     pub no_mangle: Span,
+    #[note]
+    pub export_name: Span,
     #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
     pub removal_span: Span,
 }

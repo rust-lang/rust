@@ -3,8 +3,8 @@
 //@ check-pass
 
 #[no_mangle]
+//~^ WARN the `#[no_mangle]` attribute may not be used in combination with `#[export_name]`
 #[export_name = "foo"]
-//~^ WARN the `#[export_name]` attribute may not be used in combination with `#[no_mangle]`
 pub fn bar() {}
 
 fn main() {}

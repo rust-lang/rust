@@ -117,7 +117,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::no_mangle => {
                 if tcx.opt_item_name(did.to_def_id()).is_some() {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-                    mixed_export_name_no_mangle_lint_state.track_no_mangle(attr.span);
+                    mixed_export_name_no_mangle_lint_state
+                        .track_no_mangle(attr.span, tcx.local_def_id_to_hir_id(did));
                 } else {
                     tcx.dcx()
                         .struct_span_err(
@@ -241,8 +242,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .emit();
                     }
                     codegen_fn_attrs.export_name = Some(s);
-                    mixed_export_name_no_mangle_lint_state
-                        .track_export_name(attr.span, tcx.local_def_id_to_hir_id(did));
+                    mixed_export_name_no_mangle_lint_state.track_export_name(attr.span);
                 }
             }
             sym::target_feature => {
@@ -792,13 +792,13 @@ struct MixedExportNameAndNoMangleState {
 }
 
 impl MixedExportNameAndNoMangleState {
-    fn track_export_name(&mut self, span: Span, hir_id: HirId) {
+    fn track_export_name(&mut self, span: Span) {
         self.export_name = Some(span);
-        self.hir_id = Some(hir_id);
     }
 
-    fn track_no_mangle(&mut self, span: Span) {
+    fn track_no_mangle(&mut self, span: Span, hir_id: HirId) {
         self.no_mangle = Some(span);
+        self.hir_id = Some(hir_id);
     }
 
     /// Emit diagnostics if the lint condition is met.
@@ -810,12 +810,12 @@ impl MixedExportNameAndNoMangleState {
         } = self
         {
             tcx.emit_node_span_lint(
-                lint::builtin::MIXED_EXPORT_NAME_AND_NO_MANGLE,
+                lint::builtin::UNUSED_ATTRIBUTES,
                 hir_id,
-                export_name,
+                no_mangle,
                 errors::MixedExportNameAndNoMangle {
+                    no_mangle,
                     export_name,
-                    no_mangle: no_mangle.clone(),
                     removal_span: no_mangle,
                 },
             );
