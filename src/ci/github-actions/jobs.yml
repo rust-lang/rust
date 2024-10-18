@@ -2,7 +2,7 @@
 # dynamically in CI from ci.yml.
 runners:
   - &base-job
-    env: { }
+    env: {}
 
   - &job-linux-4c
     os: ubuntu-20.04
@@ -56,8 +56,7 @@ envs:
     NO_DEBUG_ASSERTIONS: 1
     NO_OVERFLOW_CHECKS: 1
 
-  production:
-    &production
+  production: &production
     DEPLOY_BUCKET: rust-lang-ci2
     # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
     # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
@@ -89,19 +88,11 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - image: mingw-check
-    <<: *job-linux-4c
-  - image: mingw-check-tidy
-    continue_on_error: true
-    <<: *job-linux-4c
-  - image: x86_64-gnu-llvm-18
+  - image: x86_64-msvc
     env:
-      ENABLE_GCC_CODEGEN: "1"
-      # We are adding (temporarily) a dummy commit on the compiler
-      READ_ONLY_SRC: "0"
-    <<: *job-linux-16c
-  - image: x86_64-gnu-tools
-    <<: *job-linux-16c
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      SCRIPT: make ci-msvc
+    <<: *job-windows-8c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
