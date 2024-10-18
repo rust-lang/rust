@@ -73,7 +73,7 @@ impl<'tcx> MonoItem<'tcx> {
                     InstanceKind::Item(..)
                     | InstanceKind::DropGlue(..)
                     | InstanceKind::AsyncDropGlueCtorShim(..) => {
-                        let mir = tcx.instance_mir(instance.def);
+                        let mir = tcx.build_codegen_mir(instance);
                         mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
                     }
                     // Other compiler-generated shims size estimate: 1

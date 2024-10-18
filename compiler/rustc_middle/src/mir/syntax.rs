@@ -99,6 +99,7 @@ impl MirPhase {
             MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
             MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
             MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
+            MirPhase::Runtime(RuntimePhase::Codegen) => "codegen",
         }
     }
 
@@ -153,6 +154,7 @@ pub enum RuntimePhase {
     /// * [`ProjectionElem::Deref`] of `Box`
     PostCleanup = 1,
     Optimized = 2,
+    Codegen = 3,
 }
 
 ///////////////////////////////////////////////////////////////////////////

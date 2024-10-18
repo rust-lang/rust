@@ -7,10 +7,10 @@
 //@ dont-check-compiler-stderr
 //@ error-pattern: encountered critical edge in `Call` terminator
 #![feature(custom_mir, core_intrinsics)]
-use core::intrinsics::mir::*;
+use std::intrinsics::mir::*;
 
-#[custom_mir(dialect = "runtime", phase = "optimized")]
-#[inline(always)]
+#[custom_mir(dialect = "runtime", phase = "codegen")]
+#[inline(never)] // Force codegen so we go through codegen MIR validation
 pub fn f(a: u32) -> u32 {
     mir! {
         {

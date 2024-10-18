@@ -56,8 +56,10 @@
           StorageDead(_7);
           StorageLive(_11);
           StorageLive(_8);
-          _8 = UbChecks();
-          switchInt(move _8) -> [0: bb5, otherwise: bb3];
+-         _8 = UbChecks();
+-         switchInt(move _8) -> [0: bb5, otherwise: bb3];
++         _8 = const false;
++         switchInt(const false) -> [0: bb5, otherwise: bb3];
       }
   
       bb1: {

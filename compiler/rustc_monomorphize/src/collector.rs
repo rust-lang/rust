@@ -1207,7 +1207,7 @@ fn collect_items_of_instance<'tcx>(
     mentioned_items: &mut MonoItems<'tcx>,
     mode: CollectionMode,
 ) {
-    let body = tcx.instance_mir(instance.def);
+    let body = tcx.build_codegen_mir(instance);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
     // visited, but at that point each mentioned item has been monomorphized, added to the

@@ -1,25 +1,17 @@
 error[E0080]: evaluation of `Bar::<0>::ASSERT` failed
-  --> $DIR/mono-reachable-invalid-const.rs:8:9
+  --> $DIR/mono-reachable-invalid-const.rs:9:9
    |
 LL |         ["oops"][b];
    |         ^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
 
 note: erroneous constant encountered
-  --> $DIR/mono-reachable-invalid-const.rs:13:19
+  --> $DIR/mono-reachable-invalid-const.rs:14:19
    |
 LL |         let val = Self::ASSERT;
    |                   ^^^^^^^^^^^^
-
-note: erroneous constant encountered
-  --> $DIR/mono-reachable-invalid-const.rs:13:19
-   |
-LL |         let val = Self::ASSERT;
-   |                   ^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 note: the above error was encountered while instantiating `fn Bar::<0>::assert`
-  --> $DIR/mono-reachable-invalid-const.rs:22:5
+  --> $DIR/mono-reachable-invalid-const.rs:23:5
    |
 LL |     Bar::<0>::assert();
    |     ^^^^^^^^^^^^^^^^^^

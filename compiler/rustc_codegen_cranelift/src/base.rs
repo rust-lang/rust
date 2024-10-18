@@ -41,7 +41,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let symbol_name = tcx.symbol_name(instance).name.to_string();
     let _timer = tcx.prof.generic_activity_with_arg("codegen fn", &*symbol_name);
 
-    let mir = tcx.instance_mir(instance.def);
+    let mir = tcx.build_codegen_mir(instance);
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
         with_no_trimmed_paths!({
