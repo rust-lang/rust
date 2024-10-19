@@ -42,7 +42,7 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
-use rustc_attr::MaybeParsedAttribute;
+use rustc_attr::{AttributeParseContext, MaybeParsedAttribute};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -134,10 +134,13 @@ struct LoweringContext<'a, 'hir> {
     allow_async_iterator: Lrc<[Symbol]>,
     allow_for_await: Lrc<[Symbol]>,
     allow_async_fn_traits: Lrc<[Symbol]>,
+
+    attribute_parse_context: AttributeParseContext<'hir>,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a mut ResolverAstLowering) -> Self {
+        let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             // Pseudo-globals.
             tcx,
@@ -177,6 +180,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
+            attribute_parse_context: AttributeParseContext::new(tcx.dcx(), registered_tools),
         }
     }
 
@@ -212,7 +216,6 @@ impl ResolverAstLowering {
         None
     }
 
-    /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         self.partial_res_map.get(&id).copied()
     }
@@ -858,7 +861,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &'x self,
         attrs: &'x [Attribute],
     ) -> impl Iterator<Item = hir::Attribute> + use<'x, 'hir> {
-        let maybe_parsed = rustc_attr::parse_attribute_list(self.dcx(), attrs);
+        let maybe_parsed = self.attribute_parse_context.parse_attribute_list(attrs);
         let attrs_with_kinds = maybe_parsed.map(|(maybe_parsed, attr)| {
             (attr, match maybe_parsed {
                 MaybeParsedAttribute::Parsed(p) => hir::AttributeKind::Parsed(p),

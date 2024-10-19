@@ -26,57 +26,22 @@ pub use IntType::*;
 pub use ReprAttr::*;
 pub use StabilityLevel::*;
 pub use builtin::*;
-use rustc_errors::DiagCtxtHandle;
+pub use context::AttributeParseContext;
 pub(crate) use rustc_session::HashStableContext;
-use rustc_span::ErrorGuaranteed;
+use {rustc_ast as ast, rustc_hir as hir};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
-use rustc_ast as ast;
-use rustc_hir::attribute::{Attribute, ParsedAttributeKind};
+mod context;
+mod parser;
 
 pub enum MaybeParsedAttribute<'a> {
-    Parsed(ParsedAttributeKind),
+    Parsed(hir::ParsedAttributeKind),
     MustRemainUnparsed(&'a ast::NormalAttr),
 }
 
-pub fn parse_attribute_list<'a>(
-    dcx: DiagCtxtHandle<'a>,
-    attrs: &'a [ast::Attribute],
-) -> impl Iterator<Item = (MaybeParsedAttribute<'a>, &'a ast::Attribute)> + use<'a> {
-    attrs
-        .iter()
-        .map(move |attr| (parse_attribute(dcx, attr), attr))
-        .filter_map(|(r, a)| Some((r.ok()?, a)))
-}
-
-/// Parses an attribute, if it can.
-///
-/// All attributes go through here to be parsed.
-/// This function should return [`MaybeParsedAttribute::MustRemainUnparsed`] as little as possible,
-/// because any time it does it implies that the attribute needs to be parsed somewhere else while
-/// what we want is to centralize parsing.
-///
-/// Only [custom tool attributes](https://github.com/rust-lang/rust/issues/66079) can definitely not
-/// be parsed and should remain unparsed. For any other attribute you better have a very good reason
-/// not to parse it here.
-pub fn parse_attribute<'a>(
-    dcx: DiagCtxtHandle<'_>,
-    attr: &'a ast::Attribute,
-) -> Result<MaybeParsedAttribute<'a>, ErrorGuaranteed> {
-    let res = match &attr.kind {
-        ast::AttrKind::DocComment(comment_kind, symbol) => {
-            MaybeParsedAttribute::Parsed(ParsedAttributeKind::DocComment(*comment_kind, *symbol))
-        }
-        // FIXME(jdonszelmann): check whether n is a registered tool to reduce mistakes
-        ast::AttrKind::Normal(n) => MaybeParsedAttribute::MustRemainUnparsed(&*n),
-    };
-
-    Ok(res)
-}
-
 pub trait AttributeCollection<'a> {
-    fn iter(self) -> impl Iterator<Item = &'a Attribute> + 'a;
+    fn iter(self) -> impl Iterator<Item = &'a hir::Attribute> + 'a;
     // pub fn filter_by_name<A: AttributeExt>(attrs: &[A], name: Symbol) -> impl Iterator<Item = &A> {
     //     attrs.iter().filter(move |attr| attr.has_name(name))
     // }
@@ -94,14 +59,14 @@ pub trait AttributeCollection<'a> {
     // }
 }
 
-impl<'a> AttributeCollection<'a> for &'a [Attribute] {
-    fn iter(self) -> impl Iterator<Item = &'a Attribute> + 'a {
+impl<'a> AttributeCollection<'a> for &'a [hir::Attribute] {
+    fn iter(self) -> impl Iterator<Item = &'a hir::Attribute> + 'a {
         self.iter()
     }
 }
-impl<'a> AttributeCollection<'a> for &'a Vec<Attribute> {
-    fn iter(self) -> impl Iterator<Item = &'a Attribute> + 'a {
-        <&[_]>::iter(self)
+impl<'a> AttributeCollection<'a> for &'a Vec<hir::Attribute> {
+    fn iter(self) -> impl Iterator<Item = &'a hir::Attribute> + 'a {
+        <[_]>::iter(self)
     }
 }
 
@@ -112,8 +77,8 @@ impl<'a, I> AttributeIterator<'a, I> {
     }
 }
 
-impl<'a, I: Iterator<Item = &'a Attribute>> Iterator for AttributeIterator<'a, I> {
-    type Item = &'a Attribute;
+impl<'a, I: Iterator<Item = &'a hir::Attribute>> Iterator for AttributeIterator<'a, I> {
+    type Item = &'a hir::Attribute;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -121,10 +86,10 @@ impl<'a, I: Iterator<Item = &'a Attribute>> Iterator for AttributeIterator<'a, I
     }
 }
 
-impl<'a, I: Iterator<Item = &'a Attribute> + 'a> AttributeCollection<'a>
+impl<'a, I: Iterator<Item = &'a hir::Attribute> + 'a> AttributeCollection<'a>
     for AttributeIterator<'a, I>
 {
-    fn iter(self) -> impl Iterator<Item = &'a Attribute> + 'a {
+    fn iter(self) -> impl Iterator<Item = &'a hir::Attribute> + 'a {
         self
     }
 }
