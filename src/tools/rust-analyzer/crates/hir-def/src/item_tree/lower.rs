@@ -198,12 +198,14 @@ impl<'a> Ctx<'a> {
     }
 
     fn add_attrs(&mut self, item: AttrOwner, attrs: RawAttrs) {
-        match self.tree.attrs.entry(item) {
-            Entry::Occupied(mut entry) => {
-                *entry.get_mut() = entry.get().merge(attrs);
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(attrs);
+        if !attrs.is_empty() {
+            match self.tree.attrs.entry(item) {
+                Entry::Occupied(mut entry) => {
+                    *entry.get_mut() = entry.get().merge(attrs);
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(attrs);
+                }
             }
         }
     }
