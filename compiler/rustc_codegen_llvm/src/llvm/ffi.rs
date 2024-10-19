@@ -1754,8 +1754,14 @@ unsafe extern "C" {
         NumVirtualFileMappingIDs: c_uint,
         Expressions: *const crate::coverageinfo::ffi::CounterExpression,
         NumExpressions: c_uint,
-        MappingRegions: *const crate::coverageinfo::ffi::CounterMappingRegion,
-        NumMappingRegions: c_uint,
+        CodeRegions: *const crate::coverageinfo::ffi::CodeRegion,
+        NumCodeRegions: c_uint,
+        BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
+        NumBranchRegions: c_uint,
+        MCDCBranchRegions: *const crate::coverageinfo::ffi::MCDCBranchRegion,
+        NumMCDCBranchRegions: c_uint,
+        MCDCDecisionRegions: *const crate::coverageinfo::ffi::MCDCDecisionRegion,
+        NumMCDCDecisionRegions: c_uint,
         BufferOut: &RustString,
     );
 
