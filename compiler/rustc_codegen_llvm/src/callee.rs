@@ -136,7 +136,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
                         || !cx.tcx.is_reachable_non_generic(instance_def_id))
             };
             if is_hidden {
-                llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+                llvm::set_visibility(llfn, llvm::Visibility::Hidden);
             }
 
             // MinGW: For backward compatibility we rely on the linker to decide whether it
