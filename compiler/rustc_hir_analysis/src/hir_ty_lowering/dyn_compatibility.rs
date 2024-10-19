@@ -20,7 +20,7 @@ use tracing::{debug, instrument};
 use super::HirTyLowerer;
 use crate::bounds::Bounds;
 use crate::hir_ty_lowering::{
-    GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds, RegionInferReason,
+    GenericArgCountMismatch, GenericArgCountResult, PredicateFilter, RegionInferReason,
 };
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
@@ -55,9 +55,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::PredicatePolarity::Positive,
                 dummy_self,
                 &mut bounds,
-                // True so we don't populate `bounds` with associated type bounds, even
-                // though they're disallowed from object types.
-                OnlySelfBounds(true),
+                PredicateFilter::SelfOnly,
             ) {
                 potential_assoc_types.extend(cur_potential_assoc_types);
             }
