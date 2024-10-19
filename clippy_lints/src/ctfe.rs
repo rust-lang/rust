@@ -8,7 +8,6 @@ use rustc_span::Span;
 
 /// Ensures that Constant-time Function Evaluation is being done (specifically, MIR lint passes).
 /// As Clippy deactivates codegen, this lint ensures that CTFE (used in hard errors) is still ran.
-#[clippy::version = "1.82.0"]
 pub static CLIPPY_CTFE: &Lint = &Lint {
     name: &"clippy::CLIPPY_CTFE",
     default_level: Deny,
