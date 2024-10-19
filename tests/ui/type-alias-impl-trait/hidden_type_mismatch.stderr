@@ -2,18 +2,18 @@ error[E0271]: type mismatch resolving `<() as Proj>::Assoc == i32`
   --> $DIR/hidden_type_mismatch.rs:43:9
    |
 LL |     pub type Sep = impl Sized + std::fmt::Display;
-   |                    ------------------------------ the expected opaque type
+   |                    ------------------------------ the found opaque type
 ...
 LL |         Bar { inner: 1i32, _marker: () }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Proj>::Assoc == i32`
    |
-note: expected this to be `Sep`
+note: expected this to be `i32`
   --> $DIR/hidden_type_mismatch.rs:20:22
    |
 LL |         type Assoc = sus::Sep;
    |                      ^^^^^^^^
-   = note: expected opaque type `Sep`
-                     found type `i32`
+   = note:     expected type `i32`
+           found opaque type `Sep`
 note: required for `Bar<()>` to implement `Copy`
   --> $DIR/hidden_type_mismatch.rs:32:39
    |

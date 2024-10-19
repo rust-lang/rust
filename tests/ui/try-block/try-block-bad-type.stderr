@@ -15,13 +15,13 @@ error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == &str
   --> $DIR/try-block-bad-type.rs:12:9
    |
 LL |         ""
-   |         ^^ expected `i32`, found `&str`
+   |         ^^ expected `&str`, found `i32`
 
 error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == ()`
   --> $DIR/try-block-bad-type.rs:15:39
    |
 LL |     let res: Result<i32, i32> = try { };
-   |                                       ^ expected `i32`, found `()`
+   |                                       ^ expected `()`, found `i32`
 
 error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-block-bad-type.rs:17:25
