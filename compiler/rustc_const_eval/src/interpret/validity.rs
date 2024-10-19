@@ -17,8 +17,8 @@ use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::ValidationErrorKind::{self, *};
 use rustc_middle::mir::interpret::{
-    ExpectedKind, InterpError, InterpErrorInfo, InvalidMetaKind, Misalignment, PointerKind,
-    Provenance, UnsupportedOpInfo, ValidationErrorInfo, alloc_range, interp_ok,
+    ExpectedKind, InterpErrorKind, InvalidMetaKind, Misalignment, PointerKind, Provenance,
+    UnsupportedOpInfo, ValidationErrorInfo, alloc_range, interp_ok,
 };
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -37,8 +37,8 @@ use super::{
 
 // for the validation errors
 #[rustfmt::skip]
-use super::InterpError::UndefinedBehavior as Ub;
-use super::InterpError::Unsupported as Unsup;
+use super::InterpErrorKind::UndefinedBehavior as Ub;
+use super::InterpErrorKind::Unsupported as Unsup;
 use super::UndefinedBehaviorInfo::*;
 use super::UnsupportedOpInfo::*;
 
@@ -97,20 +97,19 @@ macro_rules! try_validation {
     ($e:expr, $where:expr,
     $( $( $p:pat_param )|+ => $kind: expr ),+ $(,)?
     ) => {{
-        $e.map_err(|e| {
+        $e.map_err_kind(|e| {
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            let (kind, backtrace) = e.into_parts();
-            match kind {
+            match e {
                 $(
                     $($p)|+ => {
                         err_validation_failure!(
                             $where,
                             $kind
-                        ).into()
+                        )
                     }
                 ),+,
-                _ => InterpErrorInfo::from_parts(kind, backtrace),
+                e => e,
             }
         })?
     }};
@@ -1230,11 +1229,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // No need for an alignment check here, this is not an actual memory access.
                 let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size)?.expect("we already excluded size 0");
 
-                alloc.get_bytes_strip_provenance().map_err(|err| {
+                alloc.get_bytes_strip_provenance().map_err_kind(|kind| {
                     // Some error happened, try to provide a more detailed description.
                     // For some errors we might be able to provide extra information.
                     // (This custom logic does not fit the `try_validation!` macro.)
-                    let (kind, backtrace) = err.into_parts();
                     match kind {
                         Ub(InvalidUninitBytes(Some((_alloc_id, access)))) | Unsup(ReadPointerAsInt(Some((_alloc_id, access)))) => {
                             // Some byte was uninitialized, determine which
@@ -1247,14 +1245,14 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                             self.path.push(PathElem::ArrayElem(i));
 
                             if matches!(kind, Ub(InvalidUninitBytes(_))) {
-                                err_validation_failure!(self.path, Uninit { expected }).into()
+                                err_validation_failure!(self.path, Uninit { expected })
                             } else {
-                                err_validation_failure!(self.path, PointerAsInt { expected }).into()
+                                err_validation_failure!(self.path, PointerAsInt { expected })
                             }
                         }
 
                         // Propagate upwards (that will also check for unexpected errors).
-                        _ => return InterpErrorInfo::from_parts(kind, backtrace),
+                        err => err,
                     }
                 })?;
 
@@ -1368,12 +1366,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             v.reset_padding(val)?;
             interp_ok(())
         })
-        .map_err(|err| {
+        .map_err_info(|err| {
             if !matches!(
                 err.kind(),
                 err_ub!(ValidationError { .. })
-                    | InterpError::InvalidProgram(_)
-                    | InterpError::Unsupported(UnsupportedOpInfo::ExternTypeField)
+                    | InterpErrorKind::InvalidProgram(_)
+                    | InterpErrorKind::Unsupported(UnsupportedOpInfo::ExternTypeField)
             ) {
                 bug!(
                     "Unexpected error during validation: {}",

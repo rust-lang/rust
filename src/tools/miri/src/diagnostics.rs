@@ -214,7 +214,7 @@ pub fn report_error<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     e: InterpErrorInfo<'tcx>,
 ) -> Option<(i64, bool)> {
-    use InterpError::*;
+    use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
     let mut msg = vec![];
