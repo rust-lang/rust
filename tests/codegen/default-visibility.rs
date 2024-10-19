@@ -1,8 +1,8 @@
+// ignore-tidy-linelength
 // Verifies that `Session::default_visibility` is affected when using the related cmdline
 // flag.  This is a regression test for https://github.com/rust-lang/compiler-team/issues/782.  See
 // also https://github.com/rust-lang/rust/issues/73295 and
 // https://github.com/rust-lang/rust/issues/37530.
-
 //@ revisions:DEFAULT HIDDEN PROTECTED INTERPOSABLE
 //@[HIDDEN] compile-flags: -Zdefault-visibility=hidden
 //@[PROTECTED] compile-flags: -Zdefault-visibility=protected
@@ -27,10 +27,10 @@ pub static tested_symbol: [u8; 6] = *b"foobar";
 //
 //@     only-x86_64-unknown-linux-gnu
 
-// HIDDEN:       @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = hidden constant
-// PROTECTED:    @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = protected constant
-// INTERPOSABLE: @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
-// DEFAULT:      @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
+// HIDDEN:       @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = hidden unnamed_addr constant
+// PROTECTED:    @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = protected unnamed_addr constant
+// INTERPOSABLE: @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = unnamed_addr constant
+// DEFAULT:      @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = unnamed_addr constant
 
 pub fn do_memcmp(left: &[u8], right: &[u8]) -> i32 {
     left.cmp(right) as i32

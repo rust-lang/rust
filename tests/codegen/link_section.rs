@@ -3,7 +3,7 @@
 
 #![crate_type = "lib"]
 
-// CHECK: @VAR1 = {{(dso_local )?}}constant <{ [4 x i8] }> <{ [4 x i8] c"\01\00\00\00" }>, section ".test_one"
+// CHECK: @VAR1 = {{(dso_local )?}}unnamed_addr constant <{ [4 x i8] }> <{ [4 x i8] c"\01\00\00\00" }>, section ".test_one"
 #[no_mangle]
 #[link_section = ".test_one"]
 #[cfg(target_endian = "little")]
@@ -19,12 +19,12 @@ pub enum E {
     B(f32),
 }
 
-// CHECK: @VAR2 = {{(dso_local )?}}constant {{.*}}, section ".test_two"
+// CHECK: @VAR2 = {{(dso_local )?}}unnamed_addr constant {{.*}}, section ".test_two"
 #[no_mangle]
 #[link_section = ".test_two"]
 pub static VAR2: E = E::A(666);
 
-// CHECK: @VAR3 = {{(dso_local )?}}constant {{.*}}, section ".test_three"
+// CHECK: @VAR3 = {{(dso_local )?}}unnamed_addr constant {{.*}}, section ".test_three"
 #[no_mangle]
 #[link_section = ".test_three"]
 pub static VAR3: E = E::B(1.);

@@ -413,6 +413,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
                 llvm::LLVMRustSetLinkage(new_g, linkage);
                 llvm::LLVMRustSetVisibility(new_g, visibility);
+                llvm::LLVMSetUnnamedAddress(new_g, llvm::UnnamedAddr::Global);
 
                 // The old global has had its name removed but is returned by
                 // get_static since it is in the instance cache. Provide an
