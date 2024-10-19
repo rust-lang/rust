@@ -18,7 +18,7 @@ use tracing::{debug, instrument, trace};
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
 use crate::interpret::{
-    CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpError,
+    CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpErrorKind,
     InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup, create_static_alloc,
     eval_nullary_intrinsic, intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
@@ -463,7 +463,7 @@ fn report_validation_error<'tcx>(
     error: InterpErrorInfo<'tcx>,
     alloc_id: AllocId,
 ) -> ErrorHandled {
-    if !matches!(error.kind(), InterpError::UndefinedBehavior(_)) {
+    if !matches!(error.kind(), InterpErrorKind::UndefinedBehavior(_)) {
         // Some other error happened during validation, e.g. an unsupported operation.
         return report_eval_error(ecx, cid, error);
     }
