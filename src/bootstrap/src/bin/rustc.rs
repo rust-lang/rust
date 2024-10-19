@@ -75,7 +75,8 @@ fn main() {
             args.drain(..2);
             rustc_real
         } else {
-            // The first param is the clippy-driver we should call.
+            // The first param is the clippy-driver we should call. The 2nd param is the dummy rustc.
+            args.remove(1);
             args.remove(0)
         }
     } else {
