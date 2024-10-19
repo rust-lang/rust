@@ -5,7 +5,7 @@ use rustc_middle::mir::coverage::{
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub enum CounterKind {
+pub(crate) enum CounterKind {
     Zero = 0,
     CounterValueReference = 1,
     Expression = 2,
@@ -25,9 +25,9 @@ pub enum CounterKind {
 /// Must match the layout of `LLVMRustCounter`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct Counter {
+pub(crate) struct Counter {
     // Important: The layout (order and types of fields) must match its C++ counterpart.
-    pub kind: CounterKind,
+    pub(crate) kind: CounterKind,
     id: u32,
 }
 
@@ -36,7 +36,7 @@ impl Counter {
     pub(crate) const ZERO: Self = Self { kind: CounterKind::Zero, id: 0 };
 
     /// Constructs a new `Counter` of kind `CounterValueReference`.
-    pub fn counter_value_reference(counter_id: CounterId) -> Self {
+    pub(crate) fn counter_value_reference(counter_id: CounterId) -> Self {
         Self { kind: CounterKind::CounterValueReference, id: counter_id.as_u32() }
     }
 
@@ -59,7 +59,7 @@ impl Counter {
 /// Must match the layout of `LLVMRustCounterExprKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub enum ExprKind {
+pub(crate) enum ExprKind {
     Subtract = 0,
     Add = 1,
 }
@@ -69,10 +69,10 @@ pub enum ExprKind {
 /// Must match the layout of `LLVMRustCounterExpression`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct CounterExpression {
-    pub kind: ExprKind,
-    pub lhs: Counter,
-    pub rhs: Counter,
+pub(crate) struct CounterExpression {
+    pub(crate) kind: ExprKind,
+    pub(crate) lhs: Counter,
+    pub(crate) rhs: Counter,
 }
 
 /// Corresponds to enum `llvm::coverage::CounterMappingRegion::RegionKind`.
@@ -199,7 +199,7 @@ mod mcdc {
 /// Must match the layout of `LLVMRustCounterMappingRegion`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct CounterMappingRegion {
+pub(crate) struct CounterMappingRegion {
     /// The counter type and type-dependent counter data, if any.
     counter: Counter,
 

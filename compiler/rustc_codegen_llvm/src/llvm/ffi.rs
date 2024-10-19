@@ -1740,7 +1740,7 @@ unsafe extern "C" {
     ) -> bool;
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
+    pub(crate) fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
         Filenames: *const *const c_char,
         FilenamesLen: size_t,
         Lengths: *const size_t,
@@ -1749,7 +1749,7 @@ unsafe extern "C" {
     );
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMappingToBuffer(
+    pub(crate) fn LLVMRustCoverageWriteMappingToBuffer(
         VirtualFileMappingIDs: *const c_uint,
         NumVirtualFileMappingIDs: c_uint,
         Expressions: *const crate::coverageinfo::ffi::CounterExpression,
@@ -1759,23 +1759,23 @@ unsafe extern "C" {
         BufferOut: &RustString,
     );
 
-    pub fn LLVMRustCoverageCreatePGOFuncNameVar(
+    pub(crate) fn LLVMRustCoverageCreatePGOFuncNameVar(
         F: &Value,
         FuncName: *const c_char,
         FuncNameLen: size_t,
     ) -> &Value;
-    pub fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
+    pub(crate) fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMapSectionNameToString(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteMapSectionNameToString(M: &Module, Str: &RustString);
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteFuncSectionNameToString(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteFuncSectionNameToString(M: &Module, Str: &RustString);
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
 
-    pub fn LLVMRustCoverageMappingVersion() -> u32;
+    pub(crate) fn LLVMRustCoverageMappingVersion() -> u32;
     pub fn LLVMRustDebugMetadataVersion() -> u32;
     pub fn LLVMRustVersionMajor() -> u32;
     pub fn LLVMRustVersionMinor() -> u32;
