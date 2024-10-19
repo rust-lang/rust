@@ -505,9 +505,11 @@ impl () {}
 ///
 /// *[See also the `std::ptr` module](ptr).*
 ///
-/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
-/// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
-/// dereferenced (using the `*` operator), it must be non-null and aligned.
+/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns. Raw pointers
+/// can be out-of-bounds, unaligned, or [`null`]. However, when loading from or storing to a raw
+/// pointer, it must be [valid] for the given access and aligned. When using a field expression,
+/// tuple index expression, or array/slice index expression on a raw pointer, it follows the rules
+/// of [in-bounds pointer arithmetic][`offset`].
 ///
 /// Storing through a raw pointer using `*ptr = data` calls `drop` on the old value, so
 /// [`write`] must be used if the type has drop glue and memory is not already
@@ -613,6 +615,7 @@ impl () {}
 /// [`offset`]: pointer::offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
 /// [`write`]: ptr::write
+/// [valid]: ptr#safety
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
