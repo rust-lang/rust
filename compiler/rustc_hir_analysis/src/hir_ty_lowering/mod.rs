@@ -65,9 +65,6 @@ use crate::require_c_abi_if_c_variadic;
 pub struct GenericPathSegment(pub DefId, pub usize);
 
 #[derive(Copy, Clone, Debug)]
-pub struct OnlySelfBounds(pub bool);
-
-#[derive(Copy, Clone, Debug)]
 pub enum PredicateFilter {
     /// All predicates may be implied by the trait.
     All,
@@ -76,7 +73,8 @@ pub enum PredicateFilter {
     SelfOnly,
 
     /// Only traits that reference `Self: ..` and define an associated type
-    /// with the given ident are implied by the trait.
+    /// with the given ident are implied by the trait. This mode exists to
+    /// side-step query cycles when lowering associated types.
     SelfThatDefines(Ident),
 
     /// Only traits that reference `Self: ..` and their associated type bounds.
@@ -683,7 +681,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         polarity: ty::PredicatePolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
-        only_self_bounds: OnlySelfBounds,
+        predicate_filter: PredicateFilter,
     ) -> GenericArgCountResult {
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
         let trait_segment = trait_ref.path.segments.last().unwrap();
@@ -720,7 +718,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             polarity,
             constness,
-            only_self_bounds,
+            predicate_filter,
         );
 
         let mut dup_constraints = FxIndexMap::default();
@@ -744,7 +742,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 bounds,
                 &mut dup_constraints,
                 constraint.span,
-                only_self_bounds,
+                predicate_filter,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
