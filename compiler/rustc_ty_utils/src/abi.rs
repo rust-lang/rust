@@ -1,6 +1,5 @@
 use std::iter;
 
-use rustc_abi::Float::*;
 use rustc_abi::Primitive::{Float, Pointer};
 use rustc_abi::{Abi, AddressSpace, PointerKind, Scalar, Size};
 use rustc_hir as hir;
@@ -695,37 +694,31 @@ fn fn_abi_adjust_for_abi<'tcx>(
             }
 
             // Avoid returning floats in x87 registers on x86 as loading and storing from x87
-            // registers will quiet signalling NaNs.
+            // registers will quiet signalling NaNs. Also avoid using SSE registers since they
+            // are not always available (depending on target features).
             if tcx.sess.target.arch == "x86"
                 && arg_idx.is_none()
                 // Intrinsics themselves are not actual "real" functions, so theres no need to
                 // change their ABIs.
                 && abi != SpecAbi::RustIntrinsic
             {
-                match arg.layout.abi {
-                    // Handle similar to the way arguments with an `Abi::Aggregate` abi are handled
-                    // below, by returning arguments up to the size of a pointer (32 bits on x86)
-                    // cast to an appropriately sized integer.
-                    Abi::Scalar(s) if s.primitive() == Float(F32) => {
-                        // Same size as a pointer, return in a register.
-                        arg.cast_to(Reg::i32());
-                        return;
+                let has_float = match arg.layout.abi {
+                    Abi::Scalar(s) => matches!(s.primitive(), Float(_)),
+                    Abi::ScalarPair(s1, s2) => {
+                        matches!(s1.primitive(), Float(_)) || matches!(s2.primitive(), Float(_))
                     }
-                    Abi::Scalar(s) if s.primitive() == Float(F64) => {
-                        // Larger than a pointer, return indirectly.
-                        arg.make_indirect();
-                        return;
-                    }
-                    Abi::ScalarPair(s1, s2)
-                        if matches!(s1.primitive(), Float(F32 | F64))
-                            || matches!(s2.primitive(), Float(F32 | F64)) =>
-                    {
-                        // Larger than a pointer, return indirectly.
-                        arg.make_indirect();
-                        return;
-                    }
-                    _ => {}
+                    _ => false, // anyway not passed via registers on x86
                 };
+                if has_float {
+                    if arg.layout.size <= Pointer(AddressSpace::DATA).size(cx) {
+                        // Same size or smaller than pointer, return in a register.
+                        arg.cast_to(Reg { kind: RegKind::Integer, size: arg.layout.size });
+                    } else {
+                        // Larger than a pointer, return indirectly.
+                        arg.make_indirect();
+                    }
+                    return;
+                }
             }
 
             match arg.layout.abi {
