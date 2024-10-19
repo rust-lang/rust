@@ -288,9 +288,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             let g = self.declare_global(sym, llty);
 
             if !self.tcx.is_reachable_non_generic(def_id) {
-                unsafe {
-                    llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
-                }
+                llvm::set_visibility(g, llvm::Visibility::Hidden);
             }
 
             g
@@ -308,7 +306,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_thread_local_mode(g, self.tls_model);
         }
 
-        let dso_local = unsafe { self.should_assume_dso_local(g, true) };
+        let dso_local = self.should_assume_dso_local(g, true);
         if dso_local {
             unsafe {
                 llvm::LLVMRustSetDSOLocal(g, true);
@@ -398,7 +396,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 llvm::set_value_name(g, b"");
 
                 let linkage = llvm::get_linkage(g);
-                let visibility = llvm::LLVMRustGetVisibility(g);
+                let visibility = llvm::get_visibility(g);
 
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(
                     self.llmod,
@@ -408,7 +406,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 );
 
                 llvm::set_linkage(new_g, linkage);
-                llvm::LLVMRustSetVisibility(new_g, visibility);
+                llvm::set_visibility(new_g, visibility);
 
                 // The old global has had its name removed but is returned by
                 // get_static since it is in the instance cache. Provide an

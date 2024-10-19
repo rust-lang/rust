@@ -242,6 +242,10 @@ pub fn set_linkage(llglobal: &Value, linkage: Linkage) {
     }
 }
 
+pub fn get_visibility(llglobal: &Value) -> Visibility {
+    unsafe { LLVMRustGetVisibility(llglobal) }
+}
+
 pub fn set_visibility(llglobal: &Value, visibility: Visibility) {
     unsafe {
         LLVMRustSetVisibility(llglobal, visibility);

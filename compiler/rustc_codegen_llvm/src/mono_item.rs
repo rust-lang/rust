@@ -40,8 +40,8 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         });
 
         llvm::set_linkage(g, base::linkage_to_llvm(linkage));
+        llvm::set_visibility(g, base::visibility_to_llvm(visibility));
         unsafe {
-            llvm::LLVMRustSetVisibility(g, base::visibility_to_llvm(visibility));
             if self.should_assume_dso_local(g, false) {
                 llvm::LLVMRustSetDSOLocal(g, true);
             }
@@ -78,21 +78,15 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             && linkage != Linkage::Private
             && self.tcx.is_compiler_builtins(LOCAL_CRATE)
         {
-            unsafe {
-                llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
-            }
+            llvm::set_visibility(lldecl, llvm::Visibility::Hidden);
         } else {
-            unsafe {
-                llvm::LLVMRustSetVisibility(lldecl, base::visibility_to_llvm(visibility));
-            }
+            llvm::set_visibility(lldecl, base::visibility_to_llvm(visibility));
         }
 
         debug!("predefine_fn: instance = {:?}", instance);
 
-        unsafe {
-            if self.should_assume_dso_local(lldecl, false) {
-                llvm::LLVMRustSetDSOLocal(lldecl, true);
-            }
+        if self.should_assume_dso_local(lldecl, false) {
+            unsafe { llvm::LLVMRustSetDSOLocal(lldecl, true) };
         }
 
         self.instances.borrow_mut().insert(instance, lldecl);
@@ -102,13 +96,13 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 impl CodegenCx<'_, '_> {
     /// Whether a definition or declaration can be assumed to be local to a group of
     /// libraries that form a single DSO or executable.
-    pub(crate) unsafe fn should_assume_dso_local(
+    pub(crate) fn should_assume_dso_local(
         &self,
         llval: &llvm::Value,
         is_declaration: bool,
     ) -> bool {
         let linkage = llvm::get_linkage(llval);
-        let visibility = unsafe { llvm::LLVMRustGetVisibility(llval) };
+        let visibility = llvm::get_visibility(llval);
 
         if matches!(linkage, llvm::Linkage::InternalLinkage | llvm::Linkage::PrivateLinkage) {
             return true;
