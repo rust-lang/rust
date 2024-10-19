@@ -3138,7 +3138,7 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 /// [violate memory safety][read-ownership].
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointers must be non-null and properly aligned.
+/// `0`, the pointers must be properly aligned.
 ///
 /// [`read`]: crate::ptr::read
 /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
@@ -3261,7 +3261,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// [violate memory safety][read-ownership].
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointers must be non-null and properly aligned.
+/// `0`, the pointers must be properly aligned.
 ///
 /// [`read`]: crate::ptr::read
 /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
@@ -3342,7 +3342,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// * `dst` must be properly aligned.
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointer must be non-null and properly aligned.
+/// `0`, the pointer must be properly aligned.
 ///
 /// Additionally, note that changing `*dst` in this way can easily lead to undefined behavior (UB)
 /// later if the written bytes are not a valid representation of some `T`. For instance, the
