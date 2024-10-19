@@ -3,10 +3,15 @@
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
 
+#[cfg(not(feature = "rustc-hash"))]
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub use rustc_hash::FxHashMap;
+#[cfg(feature = "rustc-hash")]
+use rustc_hash::FxHashMap as HashMap;
 use serde::{Deserialize, Serialize};
+
+pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 
 /// The version of JSON output that this crate represents.
 ///
@@ -30,11 +35,11 @@ pub struct Crate {
     pub includes_private: bool,
     /// A collection of all items in the local crate as well as some external traits and their
     /// items that are referenced locally.
-    pub index: FxHashMap<Id, Item>,
+    pub index: HashMap<Id, Item>,
     /// Maps IDs to fully qualified paths and other info helpful for generating links.
-    pub paths: FxHashMap<Id, ItemSummary>,
+    pub paths: HashMap<Id, ItemSummary>,
     /// Maps `crate_id` of items to a crate name and html_root_url if it exists.
-    pub external_crates: FxHashMap<u32, ExternalCrate>,
+    pub external_crates: HashMap<u32, ExternalCrate>,
     /// A single version number to be used in the future when making backwards incompatible changes
     /// to the JSON output.
     pub format_version: u32,
@@ -95,7 +100,7 @@ pub struct Item {
     /// Some("") if there is some documentation but it is empty (EG `#[doc = ""]`).
     pub docs: Option<String>,
     /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
-    pub links: FxHashMap<String, Id>,
+    pub links: HashMap<String, Id>,
     /// Stringified versions of the attributes on this item (e.g. `"#[inline]"`)
     pub attrs: Vec<String>,
     /// Information about the item’s deprecation, if present.
