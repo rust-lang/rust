@@ -414,6 +414,9 @@
 # Specify the location of the Android NDK. Used when targeting Android.
 #android-ndk = "/path/to/android-ndk-r26d"
 
+# What custom diff tool to use for displaying compiletest tests.
+#compiletest-diff-tool = <none>
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
