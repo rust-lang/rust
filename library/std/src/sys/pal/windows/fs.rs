@@ -346,27 +346,63 @@ impl File {
         self.fsync()
     }
 
-    pub fn lock(&self) -> io::Result<()> {
-        cvt(unsafe {
-            let mut overlapped = mem::zeroed();
-            c::LockFileEx(
+    fn acquire_lock(&self, flags: c::LOCK_FILE_FLAGS) -> io::Result<()> {
+        unsafe {
+            let mut overlapped: c::OVERLAPPED = mem::zeroed();
+            let event = c::CreateEventW(ptr::null_mut(), c::FALSE, c::FALSE, ptr::null());
+            if event.is_null() {
+                return Err(io::Error::last_os_error());
+            }
+            overlapped.hEvent = event;
+            let lock_result = cvt(c::LockFileEx(
                 self.handle.as_raw_handle(),
-                c::LOCKFILE_EXCLUSIVE_LOCK,
+                flags,
                 0,
                 u32::MAX,
                 u32::MAX,
                 &mut overlapped,
-            )
-        })?;
-        Ok(())
+            ));
+
+            let final_result = match lock_result {
+                Ok(_) => Ok(()),
+                Err(err) => {
+                    if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32) {
+                        // Wait for the lock to be acquired. This can happen asynchronously,
+                        // if the file handle was opened for async IO
+                        let wait_result = c::WaitForSingleObject(overlapped.hEvent, c::INFINITE);
+                        if wait_result == c::WAIT_OBJECT_0 {
+                            // Wait completed successfully, get the lock operation status
+                            let mut bytes_transferred = 0;
+                            cvt(c::GetOverlappedResult(
+                                self.handle.as_raw_handle(),
+                                &mut overlapped,
+                                &mut bytes_transferred,
+                                c::TRUE,
+                            ))
+                            .map(|_| ())
+                        } else if wait_result == c::WAIT_FAILED {
+                            // Wait failed
+                            Err(io::Error::last_os_error())
+                        } else {
+                            // WAIT_ABANDONED and WAIT_TIMEOUT should not be possible
+                            unreachable!()
+                        }
+                    } else {
+                        Err(err)
+                    }
+                }
+            };
+            c::CloseHandle(overlapped.hEvent);
+            final_result
+        }
+    }
+
+    pub fn lock(&self) -> io::Result<()> {
+        self.acquire_lock(c::LOCKFILE_EXCLUSIVE_LOCK)
     }
 
     pub fn lock_shared(&self) -> io::Result<()> {
-        cvt(unsafe {
-            let mut overlapped = mem::zeroed();
-            c::LockFileEx(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX, &mut overlapped)
-        })?;
-        Ok(())
+        self.acquire_lock(0)
     }
 
     pub fn try_lock(&self) -> io::Result<bool> {

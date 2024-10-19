@@ -284,6 +284,44 @@ fn file_lock_double_unlock() {
 }
 
 #[test]
+#[cfg(windows)]
+fn file_lock_blocking_async() {
+    use crate::thread::{sleep, spawn};
+    const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_blocking_async.txt");
+    let f1 = check!(File::create(filename));
+    let f2 =
+        check!(OpenOptions::new().custom_flags(FILE_FLAG_OVERLAPPED).write(true).open(filename));
+
+    check!(f1.lock());
+
+    // Ensure that lock() is synchronous when the file is opened for asynchronous IO
+    let t = spawn(move || {
+        check!(f2.lock());
+    });
+    sleep(Duration::from_secs(1));
+    assert!(!t.is_finished());
+    check!(f1.unlock());
+    t.join().unwrap();
+
+    // Ensure that lock_shared() is synchronous when the file is opened for asynchronous IO
+    let f2 =
+        check!(OpenOptions::new().custom_flags(FILE_FLAG_OVERLAPPED).write(true).open(filename));
+    check!(f1.lock());
+
+    // Ensure that lock() is synchronous when the file is opened for asynchronous IO
+    let t = spawn(move || {
+        check!(f2.lock_shared());
+    });
+    sleep(Duration::from_secs(1));
+    assert!(!t.is_finished());
+    check!(f1.unlock());
+    t.join().unwrap();
+}
+
+#[test]
 fn file_test_io_seek_shakedown() {
     //                   01234567890123
     let initial_msg = "qwer-asdf-zxcv";
