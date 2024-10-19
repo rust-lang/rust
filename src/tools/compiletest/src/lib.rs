@@ -88,7 +88,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "has-enzyme", "run tests that require enzyme")
-        .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
+        .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
+        .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
         .optmulti(
             "",
             "skip",
@@ -234,7 +235,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
-    let with_debug_assertions = matches.opt_present("with-debug-assertions");
+    let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
+    let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
     let has_html_tidy = if mode == Mode::Rustdoc {
         Command::new("tidy")
@@ -292,7 +294,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         suite: matches.opt_str("suite").unwrap(),
         debugger: None,
         run_ignored,
-        with_debug_assertions,
+        with_rustc_debug_assertions,
+        with_std_debug_assertions,
         filters,
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
