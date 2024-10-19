@@ -324,13 +324,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     dist.checked_neg().unwrap(), // i64::MIN is impossible as no allocation can be that large
                     CheckInAllocMsg::OffsetFromTest,
                 )
-                .map_err(|_| {
+                .map_err_kind(|_| {
                     // Make the error more specific.
                     err_ub_custom!(
                         fluent::const_eval_offset_from_different_allocations,
                         name = intrinsic_name,
                     )
-                    .into()
                 })?;
 
                 // Perform division by size to compute return value.

@@ -13,7 +13,7 @@ fn err_sb_ub<'tcx>(
     msg: String,
     help: Vec<String>,
     history: Option<TagHistory>,
-) -> InterpError<'tcx> {
+) -> InterpErrorKind<'tcx> {
     err_machine_stop!(TerminationInfo::StackedBorrowsUb { msg, help, history })
 }
 
@@ -376,7 +376,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
 
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
     #[inline(never)] // This is only called on fatal code paths
-    pub(super) fn grant_error(&self, stack: &Stack) -> InterpError<'tcx> {
+    pub(super) fn grant_error(&self, stack: &Stack) -> InterpErrorKind<'tcx> {
         let Operation::Retag(op) = &self.operation else {
             unreachable!("grant_error should only be called during a retag")
         };
@@ -402,7 +402,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
 
     /// Report a descriptive error when `access` is not permitted based on `tag`.
     #[inline(never)] // This is only called on fatal code paths
-    pub(super) fn access_error(&self, stack: &Stack) -> InterpError<'tcx> {
+    pub(super) fn access_error(&self, stack: &Stack) -> InterpErrorKind<'tcx> {
         // Deallocation and retagging also do an access as part of their thing, so handle that here, too.
         let op = match &self.operation {
             Operation::Access(op) => op,
@@ -424,7 +424,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
     }
 
     #[inline(never)] // This is only called on fatal code paths
-    pub(super) fn protector_error(&self, item: &Item, kind: ProtectorKind) -> InterpError<'tcx> {
+    pub(super) fn protector_error(&self, item: &Item, kind: ProtectorKind) -> InterpErrorKind<'tcx> {
         let protected = match kind {
             ProtectorKind::WeakProtector => "weakly protected",
             ProtectorKind::StrongProtector => "strongly protected",
@@ -445,7 +445,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
     }
 
     #[inline(never)] // This is only called on fatal code paths
-    pub fn dealloc_error(&self, stack: &Stack) -> InterpError<'tcx> {
+    pub fn dealloc_error(&self, stack: &Stack) -> InterpErrorKind<'tcx> {
         let Operation::Dealloc(op) = &self.operation else {
             unreachable!("dealloc_error should only be called during a deallocation")
         };
