@@ -516,7 +516,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self_ty,
                     trait_segment,
                     false,
-                    ty::BoundConstness::NotConst,
                 );
 
                 // SUBTLE: As noted at the end of `try_append_return_type_notation_params`
