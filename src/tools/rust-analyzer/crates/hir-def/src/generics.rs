@@ -21,7 +21,7 @@ use crate::{
     item_tree::{AttrOwner, FileItemTreeId, GenericModItem, GenericsItemTreeNode, ItemTree},
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
-    path::{AssociatedTypeBinding, GenericArg, GenericArgs, Path},
+    path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef, TypeRefId, TypesMap, TypesSourceMap},
     AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LifetimeParamId,
     LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
@@ -788,19 +788,16 @@ fn copy_path(
     to_source_map: &mut TypesSourceMap,
 ) -> Path {
     match path {
-        Path::Normal { type_anchor, mod_path, generic_args } => {
-            let type_anchor = type_anchor
+        Path::BarePath(mod_path) => Path::BarePath(mod_path.clone()),
+        Path::Normal(path) => {
+            let type_anchor = path
+                .type_anchor()
                 .map(|type_ref| copy_type_ref(type_ref, from, from_source_map, to, to_source_map));
-            let mod_path = mod_path.clone();
-            let generic_args = generic_args.as_ref().map(|generic_args| {
-                generic_args
-                    .iter()
-                    .map(|generic_args| {
-                        copy_generic_args(generic_args, from, from_source_map, to, to_source_map)
-                    })
-                    .collect()
+            let mod_path = path.mod_path().clone();
+            let generic_args = path.generic_args().iter().map(|generic_args| {
+                copy_generic_args(generic_args, from, from_source_map, to, to_source_map)
             });
-            Path::Normal { type_anchor, mod_path, generic_args }
+            Path::Normal(NormalPath::new(type_anchor, mod_path, generic_args))
         }
         Path::LangItem(lang_item, name) => Path::LangItem(*lang_item, name.clone()),
     }

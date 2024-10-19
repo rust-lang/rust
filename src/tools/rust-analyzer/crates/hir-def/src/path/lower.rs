@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use crate::{lower::LowerCtx, type_ref::ConstRef};
+use crate::{lower::LowerCtx, path::NormalPath, type_ref::ConstRef};
 
 use hir_expand::{
     mod_path::resolve_crate_root,
@@ -74,11 +74,9 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
-                        let Path::Normal { mod_path, generic_args: path_generic_args, .. } =
-                            Path::from_src(ctx, trait_ref.path()?)?
-                        else {
-                            return None;
-                        };
+                        let path = Path::from_src(ctx, trait_ref.path()?)?;
+                        let mod_path = path.mod_path()?;
+                        let path_generic_args = path.generic_args();
                         let num_segments = mod_path.segments().len();
                         kind = mod_path.kind;
 
@@ -136,7 +134,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
         };
     }
     segments.reverse();
-    if !generic_args.is_empty() {
+    if !generic_args.is_empty() || type_anchor.is_some() {
         generic_args.resize(segments.len(), None);
         generic_args.reverse();
     }
@@ -165,11 +163,11 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
     }
 
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
-    return Some(Path::Normal {
-        type_anchor,
-        mod_path,
-        generic_args: if generic_args.is_empty() { None } else { Some(generic_args.into()) },
-    });
+    if type_anchor.is_none() && generic_args.is_empty() {
+        return Some(Path::BarePath(mod_path));
+    } else {
+        return Some(Path::Normal(NormalPath::new(type_anchor, mod_path, generic_args)));
+    }
 
     fn qualifier(path: &ast::Path) -> Option<ast::Path> {
         if let Some(q) = path.qualifier() {

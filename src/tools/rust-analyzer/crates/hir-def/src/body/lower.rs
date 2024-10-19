@@ -720,12 +720,8 @@ impl ExprCollector<'_> {
     fn collect_expr_path(&mut self, e: ast::PathExpr) -> Option<(Path, HygieneId)> {
         e.path().and_then(|path| {
             let path = self.parse_path(path)?;
-            let Path::Normal { type_anchor, mod_path, generic_args } = &path else {
-                panic!("path parsing produced a non-normal path");
-            };
             // Need to enable `mod_path.len() < 1` for `self`.
-            let may_be_variable =
-                type_anchor.is_none() && mod_path.len() <= 1 && generic_args.is_none();
+            let may_be_variable = matches!(&path, Path::BarePath(mod_path) if mod_path.len() <= 1);
             let hygiene = if may_be_variable {
                 self.hygiene_id_for(e.syntax().text_range().start())
             } else {
@@ -797,7 +793,7 @@ impl ExprCollector<'_> {
             ast::Expr::PathExpr(e) => {
                 let (path, hygiene) = self
                     .collect_expr_path(e.clone())
-                    .map(|(path, hygiene)| (Pat::Path(Box::new(path)), hygiene))
+                    .map(|(path, hygiene)| (Pat::Path(path), hygiene))
                     .unwrap_or((Pat::Missing, HygieneId::ROOT));
                 let pat_id = self.alloc_pat_from_expr(path, syntax_ptr);
                 if !hygiene.is_root() {
@@ -1059,7 +1055,7 @@ impl ExprCollector<'_> {
             syntax_ptr,
         );
         let none_arm = MatchArm {
-            pat: self.alloc_pat_desugared(Pat::Path(Box::new(option_none))),
+            pat: self.alloc_pat_desugared(Pat::Path(option_none)),
             guard: None,
             expr: self.alloc_expr(Expr::Break { expr: None, label: None }, syntax_ptr),
         };
@@ -1561,7 +1557,7 @@ impl ExprCollector<'_> {
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {
-                let path = p.path().and_then(|path| self.parse_path(path)).map(Box::new);
+                let path = p.path().and_then(|path| self.parse_path(path));
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::OrPat(p) => 'b: {

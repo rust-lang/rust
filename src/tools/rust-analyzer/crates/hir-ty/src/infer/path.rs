@@ -222,7 +222,7 @@ impl InferenceContext<'_> {
 
         let _d;
         let (resolved_segment, remaining_segments) = match path {
-            Path::Normal { .. } => {
+            Path::Normal { .. } | Path::BarePath(_) => {
                 assert!(remaining_index < path.segments().len());
                 (
                     path.segments().get(remaining_index - 1).unwrap(),

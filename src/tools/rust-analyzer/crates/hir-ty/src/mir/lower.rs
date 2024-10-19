@@ -1373,12 +1373,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     ),
                 };
                 let edition = self.edition();
-                let unresolved_name = || {
-                    MirLowerError::unresolved_path(self.db, c.as_ref(), edition, &self.body.types)
-                };
+                let unresolved_name =
+                    || MirLowerError::unresolved_path(self.db, c, edition, &self.body.types);
                 let pr = self
                     .resolver
-                    .resolve_path_in_value_ns(self.db.upcast(), c.as_ref(), HygieneId::ROOT)
+                    .resolve_path_in_value_ns(self.db.upcast(), c, HygieneId::ROOT)
                     .ok_or_else(unresolved_name)?;
                 match pr {
                     ResolveValueResult::ValueNs(v, _) => {

@@ -201,7 +201,7 @@ pub enum TypeBound {
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: [(); 48] = [(); ::std::mem::size_of::<TypeBound>()];
+const _: [(); 32] = [(); ::std::mem::size_of::<TypeBound>()];
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum UseArgRef {
