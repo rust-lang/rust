@@ -113,7 +113,7 @@ impl ItemTree {
         let ctx = lower::Ctx::new(db, file_id);
         let syntax = db.parse_or_expand(file_id);
         let mut top_attrs = None;
-        let (mut item_tree, mut source_maps) = match_ast! {
+        let (mut item_tree, source_maps) = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
                     top_attrs = Some(RawAttrs::new(db.upcast(), &file, ctx.span_map()));
@@ -155,7 +155,6 @@ impl ItemTree {
                 .clone()
         } else {
             item_tree.shrink_to_fit();
-            source_maps.shrink_to_fit();
             (Arc::new(item_tree), Arc::new(source_maps))
         }
     }
@@ -175,7 +174,7 @@ impl ItemTree {
         let block = loc.ast_id.to_node(db.upcast());
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
-        let (mut item_tree, mut source_maps) = ctx.lower_block(&block);
+        let (mut item_tree, source_maps) = ctx.lower_block(&block);
         if item_tree.data.is_none() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
         {
             EMPTY
@@ -192,7 +191,6 @@ impl ItemTree {
                 .clone()
         } else {
             item_tree.shrink_to_fit();
-            source_maps.shrink_to_fit();
             (Arc::new(item_tree), Arc::new(source_maps))
         }
     }
@@ -331,29 +329,59 @@ struct ItemTreeData {
 }
 
 #[derive(Default, Debug, Eq, PartialEq)]
-pub struct GenericItemSourceMap {
+pub struct ItemTreeSourceMaps {
+    all_concatenated: Box<[TypesSourceMap]>,
+    structs_offset: u32,
+    unions_offset: u32,
+    enum_generics_offset: u32,
+    variants_offset: u32,
+    consts_offset: u32,
+    statics_offset: u32,
+    trait_generics_offset: u32,
+    trait_alias_generics_offset: u32,
+    impls_offset: u32,
+    type_aliases_offset: u32,
+}
+
+#[derive(Clone, Copy)]
+pub struct GenericItemSourceMap<'a>(&'a [TypesSourceMap; 2]);
+
+impl<'a> GenericItemSourceMap<'a> {
+    #[inline]
+    pub fn item(self) -> &'a TypesSourceMap {
+        &self.0[0]
+    }
+
+    #[inline]
+    pub fn generics(self) -> &'a TypesSourceMap {
+        &self.0[1]
+    }
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+pub struct GenericItemSourceMapBuilder {
     pub item: TypesSourceMap,
     pub generics: TypesSourceMap,
 }
 
 #[derive(Default, Debug, Eq, PartialEq)]
-pub struct ItemTreeSourceMaps {
-    functions: Vec<GenericItemSourceMap>,
-    structs: Vec<GenericItemSourceMap>,
-    unions: Vec<GenericItemSourceMap>,
+struct ItemTreeSourceMapsBuilder {
+    functions: Vec<GenericItemSourceMapBuilder>,
+    structs: Vec<GenericItemSourceMapBuilder>,
+    unions: Vec<GenericItemSourceMapBuilder>,
     enum_generics: Vec<TypesSourceMap>,
     variants: Vec<TypesSourceMap>,
     consts: Vec<TypesSourceMap>,
     statics: Vec<TypesSourceMap>,
     trait_generics: Vec<TypesSourceMap>,
     trait_alias_generics: Vec<TypesSourceMap>,
-    impls: Vec<GenericItemSourceMap>,
-    type_aliases: Vec<GenericItemSourceMap>,
+    impls: Vec<GenericItemSourceMapBuilder>,
+    type_aliases: Vec<GenericItemSourceMapBuilder>,
 }
 
-impl ItemTreeSourceMaps {
-    fn shrink_to_fit(&mut self) {
-        let ItemTreeSourceMaps {
+impl ItemTreeSourceMapsBuilder {
+    fn build(self) -> ItemTreeSourceMaps {
+        let ItemTreeSourceMapsBuilder {
             functions,
             structs,
             unions,
@@ -366,44 +394,92 @@ impl ItemTreeSourceMaps {
             impls,
             type_aliases,
         } = self;
-        functions.shrink_to_fit();
-        structs.shrink_to_fit();
-        unions.shrink_to_fit();
-        enum_generics.shrink_to_fit();
-        variants.shrink_to_fit();
-        consts.shrink_to_fit();
-        statics.shrink_to_fit();
-        trait_generics.shrink_to_fit();
-        trait_alias_generics.shrink_to_fit();
-        impls.shrink_to_fit();
-        type_aliases.shrink_to_fit();
+        let structs_offset = functions.len() as u32 * 2;
+        let unions_offset = structs_offset + (structs.len() as u32 * 2);
+        let enum_generics_offset = unions_offset + (unions.len() as u32 * 2);
+        let variants_offset = enum_generics_offset + (enum_generics.len() as u32);
+        let consts_offset = variants_offset + (variants.len() as u32);
+        let statics_offset = consts_offset + (consts.len() as u32);
+        let trait_generics_offset = statics_offset + (statics.len() as u32);
+        let trait_alias_generics_offset = trait_generics_offset + (trait_generics.len() as u32);
+        let impls_offset = trait_alias_generics_offset + (trait_alias_generics.len() as u32);
+        let type_aliases_offset = impls_offset + (impls.len() as u32 * 2);
+        let all_concatenated = generics_concat(functions)
+            .chain(generics_concat(structs))
+            .chain(generics_concat(unions))
+            .chain(enum_generics)
+            .chain(variants)
+            .chain(consts)
+            .chain(statics)
+            .chain(trait_generics)
+            .chain(trait_alias_generics)
+            .chain(generics_concat(impls))
+            .chain(generics_concat(type_aliases))
+            .collect();
+        return ItemTreeSourceMaps {
+            all_concatenated,
+            structs_offset,
+            unions_offset,
+            enum_generics_offset,
+            variants_offset,
+            consts_offset,
+            statics_offset,
+            trait_generics_offset,
+            trait_alias_generics_offset,
+            impls_offset,
+            type_aliases_offset,
+        };
+
+        fn generics_concat(
+            source_maps: Vec<GenericItemSourceMapBuilder>,
+        ) -> impl Iterator<Item = TypesSourceMap> {
+            source_maps.into_iter().flat_map(|it| [it.item, it.generics])
+        }
     }
 }
 
-macro_rules! index_source_maps {
-    ( $( $field:ident[$tree_id:ident] = $result:ident, )* ) => {
-        $(
-            impl Index<FileItemTreeId<$tree_id>> for ItemTreeSourceMaps {
-                type Output = $result;
-                fn index(&self, index: FileItemTreeId<$tree_id>) -> &Self::Output {
-                    &self.$field[index.0.into_raw().into_u32() as usize]
+impl ItemTreeSourceMaps {
+    #[inline]
+    fn generic_item(&self, offset: u32, index: u32) -> GenericItemSourceMap<'_> {
+        GenericItemSourceMap(
+            self.all_concatenated[(offset + (index * 2)) as usize..][..2].try_into().unwrap(),
+        )
+    }
+
+    #[inline]
+    fn non_generic_item(&self, offset: u32, index: u32) -> &TypesSourceMap {
+        &self.all_concatenated[(offset + index) as usize]
+    }
+
+    #[inline]
+    pub fn function(&self, index: FileItemTreeId<Function>) -> GenericItemSourceMap<'_> {
+        self.generic_item(0, index.0.into_raw().into_u32())
+    }
+}
+
+macro_rules! index_item_source_maps {
+    ( $( $name:ident; $field:ident[$tree_id:ident]; $fn:ident; $ret:ty, )* ) => {
+        impl ItemTreeSourceMaps {
+            $(
+                #[inline]
+                pub fn $name(&self, index: FileItemTreeId<$tree_id>) -> $ret {
+                    self.$fn(self.$field, index.0.into_raw().into_u32())
                 }
-            }
-        )*
+            )*
+        }
     };
 }
-index_source_maps! {
-    functions[Function] = GenericItemSourceMap,
-    structs[Struct] = GenericItemSourceMap,
-    unions[Union] = GenericItemSourceMap,
-    enum_generics[Enum] = TypesSourceMap,
-    variants[Variant] = TypesSourceMap,
-    consts[Const] = TypesSourceMap,
-    statics[Static] = TypesSourceMap,
-    trait_generics[Trait] = TypesSourceMap,
-    trait_alias_generics[TraitAlias] = TypesSourceMap,
-    impls[Impl] = GenericItemSourceMap,
-    type_aliases[TypeAlias] = GenericItemSourceMap,
+index_item_source_maps! {
+    strukt; structs_offset[Struct]; generic_item; GenericItemSourceMap<'_>,
+    union; unions_offset[Union]; generic_item; GenericItemSourceMap<'_>,
+    enum_generic; enum_generics_offset[Enum]; non_generic_item; &TypesSourceMap,
+    variant; variants_offset[Variant]; non_generic_item; &TypesSourceMap,
+    konst; consts_offset[Const]; non_generic_item; &TypesSourceMap,
+    statik; statics_offset[Static]; non_generic_item; &TypesSourceMap,
+    trait_generic; trait_generics_offset[Trait]; non_generic_item; &TypesSourceMap,
+    trait_alias_generic; trait_alias_generics_offset[TraitAlias]; non_generic_item; &TypesSourceMap,
+    impl_; impls_offset[Impl]; generic_item; GenericItemSourceMap<'_>,
+    type_alias; type_aliases_offset[TypeAlias]; generic_item; GenericItemSourceMap<'_>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

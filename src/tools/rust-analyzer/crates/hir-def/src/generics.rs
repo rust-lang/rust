@@ -385,7 +385,7 @@ impl GenericParams {
                     (enabled_params, None)
                 } else {
                     let source_maps = loc.id.item_tree_with_source_map(db).1;
-                    let item_source_maps = &source_maps[loc.id.value];
+                    let item_source_maps = source_maps.function(loc.id.value);
                     let mut generic_params = GenericParamsCollector {
                         type_or_consts: enabled_params.type_or_consts.clone(),
                         lifetimes: enabled_params.lifetimes.clone(),
@@ -393,7 +393,7 @@ impl GenericParams {
                     };
 
                     let (mut types_map, mut types_source_maps) =
-                        (enabled_params.types_map.clone(), item_source_maps.generics.clone());
+                        (enabled_params.types_map.clone(), item_source_maps.generics().clone());
                     // Don't create an `Expander` if not needed since this
                     // could cause a reparse after the `ItemTree` has been created due to the spanmap.
                     let mut expander = None;
@@ -408,7 +408,7 @@ impl GenericParams {
                             },
                             param,
                             &item.types_map,
-                            &item_source_maps.item,
+                            item_source_maps.item(),
                         );
                     }
                     let generics = generic_params.finish(types_map, &mut types_source_maps);

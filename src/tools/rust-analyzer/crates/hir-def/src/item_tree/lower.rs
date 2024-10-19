@@ -23,11 +23,12 @@ use crate::{
     generics::{GenericParams, GenericParamsCollector, TypeParamData, TypeParamProvenance},
     item_tree::{
         AssocItem, AttrOwner, Const, Either, Enum, ExternBlock, ExternCrate, Field, FieldParent,
-        FieldsShape, FileItemTreeId, FnFlags, Function, GenericArgs, GenericItemSourceMap,
+        FieldsShape, FileItemTreeId, FnFlags, Function, GenericArgs, GenericItemSourceMapBuilder,
         GenericModItem, Idx, Impl, ImportAlias, Interned, ItemTree, ItemTreeData,
-        ItemTreeSourceMaps, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, ModPath,
-        Mutability, Name, Param, Path, Range, RawAttrs, RawIdx, RawVisibilityId, Static, Struct,
-        StructKind, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind, Variant,
+        ItemTreeSourceMaps, ItemTreeSourceMapsBuilder, Macro2, MacroCall, MacroRules, Mod, ModItem,
+        ModKind, ModPath, Mutability, Name, Param, Path, Range, RawAttrs, RawIdx, RawVisibilityId,
+        Static, Struct, StructKind, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind,
+        Variant,
     },
     lower::LowerCtx,
     path::AssociatedTypeBinding,
@@ -51,7 +52,7 @@ pub(super) struct Ctx<'a> {
         FxHashMap<Either<LocalTypeOrConstParamId, LocalLifetimeParamId>, RawAttrs>,
     span_map: OnceCell<SpanMap>,
     file: HirFileId,
-    source_maps: ItemTreeSourceMaps,
+    source_maps: ItemTreeSourceMapsBuilder,
 }
 
 impl<'a> Ctx<'a> {
@@ -63,7 +64,7 @@ impl<'a> Ctx<'a> {
             source_ast_id_map: db.ast_id_map(file),
             file,
             span_map: OnceCell::new(),
-            source_maps: ItemTreeSourceMaps::default(),
+            source_maps: ItemTreeSourceMapsBuilder::default(),
         }
     }
 
@@ -97,7 +98,7 @@ impl<'a> Ctx<'a> {
         self.tree.top_level =
             item_owner.items().flat_map(|item| self.lower_mod_item(&item)).collect();
         assert!(self.generic_param_attr_buffer.is_empty());
-        (self.tree, self.source_maps)
+        (self.tree, self.source_maps.build())
     }
 
     pub(super) fn lower_macro_stmts(
@@ -134,7 +135,7 @@ impl<'a> Ctx<'a> {
         }
 
         assert!(self.generic_param_attr_buffer.is_empty());
-        (self.tree, self.source_maps)
+        (self.tree, self.source_maps.build())
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> (ItemTree, ItemTreeSourceMaps) {
@@ -163,7 +164,7 @@ impl<'a> Ctx<'a> {
         }
 
         assert!(self.generic_param_attr_buffer.is_empty());
-        (self.tree, self.source_maps)
+        (self.tree, self.source_maps.build())
     }
 
     fn data(&mut self) -> &mut ItemTreeData {
@@ -249,9 +250,10 @@ impl<'a> Ctx<'a> {
             types_map: Arc::new(types_map),
         };
         let id = id(self.data().structs.alloc(res));
-        self.source_maps
-            .structs
-            .push(GenericItemSourceMap { item: types_source_map, generics: generics_source_map });
+        self.source_maps.structs.push(GenericItemSourceMapBuilder {
+            item: types_source_map,
+            generics: generics_source_map,
+        });
         for (idx, attr) in attrs {
             self.add_attrs(
                 AttrOwner::Field(
@@ -352,9 +354,10 @@ impl<'a> Ctx<'a> {
             types_map: Arc::new(types_map),
         };
         let id = id(self.data().unions.alloc(res));
-        self.source_maps
-            .unions
-            .push(GenericItemSourceMap { item: types_source_map, generics: generics_source_map });
+        self.source_maps.unions.push(GenericItemSourceMapBuilder {
+            item: types_source_map,
+            generics: generics_source_map,
+        });
         for (idx, attr) in attrs {
             self.add_attrs(
                 AttrOwner::Field(
@@ -558,9 +561,10 @@ impl<'a> Ctx<'a> {
         };
 
         let id = id(self.data().functions.alloc(res));
-        self.source_maps
-            .functions
-            .push(GenericItemSourceMap { item: types_source_map, generics: generics_source_map });
+        self.source_maps.functions.push(GenericItemSourceMapBuilder {
+            item: types_source_map,
+            generics: generics_source_map,
+        });
         for (idx, attr) in attrs {
             self.add_attrs(AttrOwner::Param(id, Idx::from_raw(RawIdx::from_u32(idx as u32))), attr);
         }
@@ -594,9 +598,10 @@ impl<'a> Ctx<'a> {
             types_map: Arc::new(types_map),
         };
         let id = id(self.data().type_aliases.alloc(res));
-        self.source_maps
-            .type_aliases
-            .push(GenericItemSourceMap { item: types_source_map, generics: generics_source_map });
+        self.source_maps.type_aliases.push(GenericItemSourceMapBuilder {
+            item: types_source_map,
+            generics: generics_source_map,
+        });
         self.write_generic_params_attributes(id.into());
         Some(id)
     }
@@ -751,9 +756,10 @@ impl<'a> Ctx<'a> {
             types_map: Arc::new(types_map),
         };
         let id = id(self.data().impls.alloc(res));
-        self.source_maps
-            .impls
-            .push(GenericItemSourceMap { item: types_source_map, generics: generics_source_map });
+        self.source_maps.impls.push(GenericItemSourceMapBuilder {
+            item: types_source_map,
+            generics: generics_source_map,
+        });
         self.write_generic_params_attributes(id.into());
         id
     }
