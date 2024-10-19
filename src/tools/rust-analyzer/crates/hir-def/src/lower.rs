@@ -6,6 +6,7 @@ use hir_expand::{
     AstId, HirFileId, InFile,
 };
 use span::{AstIdMap, AstIdNode};
+use stdx::thin_vec::ThinVec;
 use syntax::ast;
 use triomphe::Arc;
 
@@ -20,7 +21,7 @@ pub struct LowerCtx<'a> {
     file_id: HirFileId,
     span_map: OnceCell<SpanMap>,
     ast_id_map: OnceCell<Arc<AstIdMap>>,
-    impl_trait_bounds: RefCell<Vec<Vec<TypeBound>>>,
+    impl_trait_bounds: RefCell<Vec<ThinVec<TypeBound>>>,
     // Prevent nested impl traits like `impl Foo<impl Bar>`.
     outer_impl_trait: RefCell<bool>,
     types_map: RefCell<(&'a mut TypesMap, &'a mut TypesSourceMap)>,
@@ -95,11 +96,11 @@ impl<'a> LowerCtx<'a> {
         )
     }
 
-    pub fn update_impl_traits_bounds(&self, bounds: Vec<TypeBound>) {
+    pub fn update_impl_traits_bounds(&self, bounds: ThinVec<TypeBound>) {
         self.impl_trait_bounds.borrow_mut().push(bounds);
     }
 
-    pub fn take_impl_traits_bounds(&self) -> Vec<Vec<TypeBound>> {
+    pub fn take_impl_traits_bounds(&self) -> Vec<ThinVec<TypeBound>> {
         self.impl_trait_bounds.take()
     }
 

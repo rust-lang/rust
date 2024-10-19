@@ -9,6 +9,7 @@ use hir_expand::{
     name::{AsName, Name},
 };
 use intern::{sym, Interned};
+use stdx::thin_vec::EmptyOptimizedThinVec;
 use syntax::ast::{self, AstNode, HasGenericArgs, HasTypeBounds};
 
 use crate::{
@@ -267,8 +268,9 @@ fn lower_generic_args_from_fn_path(
         let type_ref = TypeRef::from_ast_opt(ctx, param.ty());
         param_types.push(type_ref);
     }
-    let args =
-        Box::new([GenericArg::Type(ctx.alloc_type_ref_desugared(TypeRef::Tuple(param_types)))]);
+    let args = Box::new([GenericArg::Type(
+        ctx.alloc_type_ref_desugared(TypeRef::Tuple(EmptyOptimizedThinVec::from_iter(param_types))),
+    )]);
     let bindings = if let Some(ret_type) = ret_type {
         let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());
         Box::new([AssociatedTypeBinding {
@@ -279,7 +281,7 @@ fn lower_generic_args_from_fn_path(
         }])
     } else {
         // -> ()
-        let type_ref = ctx.alloc_type_ref_desugared(TypeRef::Tuple(Vec::new()));
+        let type_ref = ctx.alloc_type_ref_desugared(TypeRef::unit());
         Box::new([AssociatedTypeBinding {
             name: Name::new_symbol_root(sym::Output.clone()),
             args: None,

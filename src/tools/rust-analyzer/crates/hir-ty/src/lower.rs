@@ -297,37 +297,39 @@ impl<'a> TyLoweringContext<'a> {
                 let inner_ty = self.lower_ty(inner);
                 TyKind::Raw(lower_to_chalk_mutability(mutability), inner_ty).intern(Interner)
             }
-            TypeRef::Array(inner, len) => {
-                let inner_ty = self.lower_ty(*inner);
-                let const_len = self.lower_const(len, TyBuilder::usize());
+            TypeRef::Array(array) => {
+                let inner_ty = self.lower_ty(array.ty);
+                let const_len = self.lower_const(&array.len, TyBuilder::usize());
                 TyKind::Array(inner_ty, const_len).intern(Interner)
             }
             &TypeRef::Slice(inner) => {
                 let inner_ty = self.lower_ty(inner);
                 TyKind::Slice(inner_ty).intern(Interner)
             }
-            TypeRef::Reference(inner, lifetime, mutability) => {
-                let inner_ty = self.lower_ty(*inner);
+            TypeRef::Reference(ref_) => {
+                let inner_ty = self.lower_ty(ref_.ty);
                 // FIXME: It should infer the eldided lifetimes instead of stubbing with static
-                let lifetime =
-                    lifetime.as_ref().map_or_else(error_lifetime, |lr| self.lower_lifetime(lr));
-                TyKind::Ref(lower_to_chalk_mutability(*mutability), lifetime, inner_ty)
+                let lifetime = ref_
+                    .lifetime
+                    .as_ref()
+                    .map_or_else(error_lifetime, |lr| self.lower_lifetime(lr));
+                TyKind::Ref(lower_to_chalk_mutability(ref_.mutability), lifetime, inner_ty)
                     .intern(Interner)
             }
             TypeRef::Placeholder => TyKind::Error.intern(Interner),
-            &TypeRef::Fn { ref params, is_varargs: variadic, is_unsafe, ref abi } => {
+            TypeRef::Fn(fn_) => {
                 let substs = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
                     Substitution::from_iter(
                         Interner,
-                        params.iter().map(|&(_, tr)| ctx.lower_ty(tr)),
+                        fn_.params().iter().map(|&(_, tr)| ctx.lower_ty(tr)),
                     )
                 });
                 TyKind::Function(FnPointer {
                     num_binders: 0, // FIXME lower `for<'a> fn()` correctly
                     sig: FnSig {
-                        abi: abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
-                        safety: if is_unsafe { Safety::Unsafe } else { Safety::Safe },
-                        variadic,
+                        abi: fn_.abi().as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
+                        safety: if fn_.is_unsafe() { Safety::Unsafe } else { Safety::Safe },
+                        variadic: fn_.is_varargs(),
                     },
                     substitution: FnSubst(substs),
                 })

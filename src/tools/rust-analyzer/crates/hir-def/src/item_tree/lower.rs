@@ -12,6 +12,7 @@ use intern::{sym, Symbol};
 use la_arena::Arena;
 use rustc_hash::FxHashMap;
 use span::{AstIdMap, SyntaxContextId};
+use stdx::thin_vec::ThinVec;
 use syntax::{
     ast::{self, HasModuleItem, HasName, HasTypeBounds, IsString},
     AstNode,
@@ -33,8 +34,8 @@ use crate::{
     lower::LowerCtx,
     path::AssociatedTypeBinding,
     type_ref::{
-        LifetimeRef, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId, TypesMap,
-        TypesSourceMap,
+        LifetimeRef, RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId,
+        TypesMap, TypesSourceMap,
     },
     visibility::RawVisibility,
     LocalLifetimeParamId, LocalTypeOrConstParamId,
@@ -463,20 +464,20 @@ impl<'a> Ctx<'a> {
                         ));
                         match self_param.kind() {
                             ast::SelfParamKind::Owned => self_type,
-                            ast::SelfParamKind::Ref => {
-                                body_ctx.alloc_type_ref_desugared(TypeRef::Reference(
-                                    self_type,
-                                    self_param.lifetime().as_ref().map(LifetimeRef::new),
-                                    Mutability::Shared,
-                                ))
-                            }
-                            ast::SelfParamKind::MutRef => {
-                                body_ctx.alloc_type_ref_desugared(TypeRef::Reference(
-                                    self_type,
-                                    self_param.lifetime().as_ref().map(LifetimeRef::new),
-                                    Mutability::Mut,
-                                ))
-                            }
+                            ast::SelfParamKind::Ref => body_ctx.alloc_type_ref_desugared(
+                                TypeRef::Reference(Box::new(RefType {
+                                    ty: self_type,
+                                    lifetime: self_param.lifetime().as_ref().map(LifetimeRef::new),
+                                    mutability: Mutability::Shared,
+                                })),
+                            ),
+                            ast::SelfParamKind::MutRef => body_ctx.alloc_type_ref_desugared(
+                                TypeRef::Reference(Box::new(RefType {
+                                    ty: self_type,
+                                    lifetime: self_param.lifetime().as_ref().map(LifetimeRef::new),
+                                    mutability: Mutability::Mut,
+                                })),
+                            ),
                         }
                     }
                 };
@@ -511,7 +512,7 @@ impl<'a> Ctx<'a> {
         let ret_type = if func.async_token().is_some() {
             let future_impl = desugar_future_path(ret_type);
             let ty_bound = TypeBound::Path(future_impl, TraitBoundModifier::None);
-            body_ctx.alloc_type_ref_desugared(TypeRef::ImplTrait(vec![ty_bound]))
+            body_ctx.alloc_type_ref_desugared(TypeRef::ImplTrait(ThinVec::from_iter([ty_bound])))
         } else {
             ret_type
         };

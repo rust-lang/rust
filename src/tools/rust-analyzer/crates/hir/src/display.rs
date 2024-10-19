@@ -196,13 +196,13 @@ impl HirDisplay for SelfParam {
         let param = *data.params.first().unwrap();
         match &data.types_map[param] {
             TypeRef::Path(p) if p.is_self_type() => f.write_str("self"),
-            TypeRef::Reference(inner, lifetime, mut_) if matches!(&data.types_map[*inner], TypeRef::Path(p) if p.is_self_type()) =>
+            TypeRef::Reference(ref_) if matches!(&data.types_map[ref_.ty], TypeRef::Path(p) if p.is_self_type()) =>
             {
                 f.write_char('&')?;
-                if let Some(lifetime) = lifetime {
+                if let Some(lifetime) = &ref_.lifetime {
                     write!(f, "{} ", lifetime.name.display(f.db.upcast(), f.edition()))?;
                 }
-                if let hir_def::type_ref::Mutability::Mut = mut_ {
+                if let hir_def::type_ref::Mutability::Mut = ref_.mutability {
                     f.write_str("mut ")?;
                 }
                 f.write_str("self")

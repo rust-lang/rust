@@ -2420,8 +2420,8 @@ impl SelfParam {
         func_data
             .params
             .first()
-            .map(|&param| match func_data.types_map[param] {
-                TypeRef::Reference(.., mutability) => match mutability {
+            .map(|&param| match &func_data.types_map[param] {
+                TypeRef::Reference(ref_) => match ref_.mutability {
                     hir_def::type_ref::Mutability::Shared => Access::Shared,
                     hir_def::type_ref::Mutability::Mut => Access::Exclusive,
                 },

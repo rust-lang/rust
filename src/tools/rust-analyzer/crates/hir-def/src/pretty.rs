@@ -187,35 +187,35 @@ pub(crate) fn print_type_ref(
             write!(buf, "{mtbl} ")?;
             print_type_ref(db, *pointee, map, buf, edition)?;
         }
-        TypeRef::Reference(pointee, lt, mtbl) => {
-            let mtbl = match mtbl {
+        TypeRef::Reference(ref_) => {
+            let mtbl = match ref_.mutability {
                 Mutability::Shared => "",
                 Mutability::Mut => "mut ",
             };
             write!(buf, "&")?;
-            if let Some(lt) = lt {
+            if let Some(lt) = &ref_.lifetime {
                 write!(buf, "{} ", lt.name.display(db.upcast(), edition))?;
             }
             write!(buf, "{mtbl}")?;
-            print_type_ref(db, *pointee, map, buf, edition)?;
+            print_type_ref(db, ref_.ty, map, buf, edition)?;
         }
-        TypeRef::Array(elem, len) => {
+        TypeRef::Array(array) => {
             write!(buf, "[")?;
-            print_type_ref(db, *elem, map, buf, edition)?;
-            write!(buf, "; {}]", len.display(db.upcast(), edition))?;
+            print_type_ref(db, array.ty, map, buf, edition)?;
+            write!(buf, "; {}]", array.len.display(db.upcast(), edition))?;
         }
         TypeRef::Slice(elem) => {
             write!(buf, "[")?;
             print_type_ref(db, *elem, map, buf, edition)?;
             write!(buf, "]")?;
         }
-        TypeRef::Fn { params: args_and_ret, is_varargs: varargs, is_unsafe, abi } => {
+        TypeRef::Fn(fn_) => {
             let ((_, return_type), args) =
-                args_and_ret.split_last().expect("TypeRef::Fn is missing return type");
-            if *is_unsafe {
+                fn_.params().split_last().expect("TypeRef::Fn is missing return type");
+            if fn_.is_unsafe() {
                 write!(buf, "unsafe ")?;
             }
-            if let Some(abi) = abi {
+            if let Some(abi) = fn_.abi() {
                 buf.write_str("extern ")?;
                 buf.write_str(abi.as_str())?;
                 buf.write_char(' ')?;
@@ -227,7 +227,7 @@ pub(crate) fn print_type_ref(
                 }
                 print_type_ref(db, *typeref, map, buf, edition)?;
             }
-            if *varargs {
+            if fn_.is_varargs() {
                 if !args.is_empty() {
                     write!(buf, ", ")?;
                 }

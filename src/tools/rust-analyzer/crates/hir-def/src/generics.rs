@@ -11,7 +11,10 @@ use hir_expand::{
     ExpandResult,
 };
 use la_arena::{Arena, RawIdx};
-use stdx::impl_from;
+use stdx::{
+    impl_from,
+    thin_vec::{EmptyOptimizedThinVec, ThinVec},
+};
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
 use triomphe::Arc;
 
@@ -22,7 +25,10 @@ use crate::{
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
-    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef, TypeRefId, TypesMap, TypesSourceMap},
+    type_ref::{
+        ArrayType, ConstRef, FnType, LifetimeRef, RefType, TypeBound, TypeRef, TypeRefId, TypesMap,
+        TypesSourceMap,
+    },
     AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LifetimeParamId,
     LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
@@ -590,7 +596,7 @@ impl GenericParamsCollector {
         self.where_predicates.push(predicate);
     }
 
-    fn fill_impl_trait_bounds(&mut self, impl_bounds: Vec<Vec<TypeBound>>) {
+    fn fill_impl_trait_bounds(&mut self, impl_bounds: Vec<ThinVec<TypeBound>>) {
         for bounds in impl_bounds {
             let param = TypeParamData {
                 name: None,
@@ -598,10 +604,10 @@ impl GenericParamsCollector {
                 provenance: TypeParamProvenance::ArgumentImplTrait,
             };
             let param_id = self.type_or_consts.alloc(param.into());
-            for bound in bounds {
+            for bound in &bounds {
                 self.where_predicates.push(WherePredicate::TypeBound {
                     target: WherePredicateTypeTarget::TypeOrConstParam(param_id),
-                    bound,
+                    bound: bound.clone(),
                 });
             }
         }
@@ -725,46 +731,45 @@ fn copy_type_ref(
     to_source_map: &mut TypesSourceMap,
 ) -> TypeRefId {
     let result = match &from[type_ref] {
-        &TypeRef::Fn { ref params, is_varargs, is_unsafe, ref abi } => {
-            let params = params
-                .iter()
-                .map(|(name, param_type)| {
-                    (
-                        name.clone(),
-                        copy_type_ref(*param_type, from, from_source_map, to, to_source_map),
-                    )
-                })
-                .collect();
-            TypeRef::Fn { params, is_varargs, is_unsafe, abi: abi.clone() }
+        TypeRef::Fn(fn_) => {
+            let params = fn_.params().iter().map(|(name, param_type)| {
+                (name.clone(), copy_type_ref(*param_type, from, from_source_map, to, to_source_map))
+            });
+            TypeRef::Fn(FnType::new(fn_.is_varargs(), fn_.is_unsafe(), fn_.abi().clone(), params))
         }
-        TypeRef::Tuple(types) => TypeRef::Tuple(
-            types
-                .iter()
-                .map(|&t| copy_type_ref(t, from, from_source_map, to, to_source_map))
-                .collect(),
-        ),
+        TypeRef::Tuple(types) => TypeRef::Tuple(EmptyOptimizedThinVec::from_iter(
+            types.iter().map(|&t| copy_type_ref(t, from, from_source_map, to, to_source_map)),
+        )),
         &TypeRef::RawPtr(type_ref, mutbl) => TypeRef::RawPtr(
             copy_type_ref(type_ref, from, from_source_map, to, to_source_map),
             mutbl,
         ),
-        TypeRef::Reference(type_ref, lifetime, mutbl) => TypeRef::Reference(
-            copy_type_ref(*type_ref, from, from_source_map, to, to_source_map),
-            lifetime.clone(),
-            *mutbl,
-        ),
-        TypeRef::Array(type_ref, len) => TypeRef::Array(
-            copy_type_ref(*type_ref, from, from_source_map, to, to_source_map),
-            len.clone(),
-        ),
+        TypeRef::Reference(ref_) => TypeRef::Reference(Box::new(RefType {
+            ty: copy_type_ref(ref_.ty, from, from_source_map, to, to_source_map),
+            lifetime: ref_.lifetime.clone(),
+            mutability: ref_.mutability,
+        })),
+        TypeRef::Array(array) => TypeRef::Array(Box::new(ArrayType {
+            ty: copy_type_ref(array.ty, from, from_source_map, to, to_source_map),
+            len: array.len.clone(),
+        })),
         &TypeRef::Slice(type_ref) => {
             TypeRef::Slice(copy_type_ref(type_ref, from, from_source_map, to, to_source_map))
         }
-        TypeRef::ImplTrait(bounds) => TypeRef::ImplTrait(
-            copy_type_bounds(bounds, from, from_source_map, to, to_source_map).into(),
-        ),
-        TypeRef::DynTrait(bounds) => TypeRef::DynTrait(
-            copy_type_bounds(bounds, from, from_source_map, to, to_source_map).into(),
-        ),
+        TypeRef::ImplTrait(bounds) => TypeRef::ImplTrait(ThinVec::from_iter(copy_type_bounds(
+            bounds,
+            from,
+            from_source_map,
+            to,
+            to_source_map,
+        ))),
+        TypeRef::DynTrait(bounds) => TypeRef::DynTrait(ThinVec::from_iter(copy_type_bounds(
+            bounds,
+            from,
+            from_source_map,
+            to,
+            to_source_map,
+        ))),
         TypeRef::Path(path) => {
             TypeRef::Path(copy_path(path, from, from_source_map, to, to_source_map))
         }
@@ -833,7 +838,8 @@ fn copy_generic_args(
                     copy_type_ref(type_ref, from, from_source_map, to, to_source_map)
                 });
                 let bounds =
-                    copy_type_bounds(&binding.bounds, from, from_source_map, to, to_source_map);
+                    copy_type_bounds(&binding.bounds, from, from_source_map, to, to_source_map)
+                        .collect();
                 AssociatedTypeBinding { name, args, type_ref, bounds }
             })
             .collect();
@@ -846,17 +852,14 @@ fn copy_generic_args(
     })
 }
 
-fn copy_type_bounds(
-    bounds: &[TypeBound],
-    from: &TypesMap,
-    from_source_map: &TypesSourceMap,
-    to: &mut TypesMap,
-    to_source_map: &mut TypesSourceMap,
-) -> Box<[TypeBound]> {
-    bounds
-        .iter()
-        .map(|bound| copy_type_bound(bound, from, from_source_map, to, to_source_map))
-        .collect()
+fn copy_type_bounds<'a>(
+    bounds: &'a [TypeBound],
+    from: &'a TypesMap,
+    from_source_map: &'a TypesSourceMap,
+    to: &'a mut TypesMap,
+    to_source_map: &'a mut TypesSourceMap,
+) -> impl stdx::thin_vec::TrustedLen<Item = TypeBound> + 'a {
+    bounds.iter().map(|bound| copy_type_bound(bound, from, from_source_map, to, to_source_map))
 }
 
 fn copy_type_bound(

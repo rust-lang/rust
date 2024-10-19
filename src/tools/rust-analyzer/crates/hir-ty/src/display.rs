@@ -1964,39 +1964,39 @@ impl HirDisplayWithTypesMap for TypeRefId {
                 write!(f, "{mutability}")?;
                 inner.hir_fmt(f, types_map)?;
             }
-            TypeRef::Reference(inner, lifetime, mutability) => {
-                let mutability = match mutability {
+            TypeRef::Reference(ref_) => {
+                let mutability = match ref_.mutability {
                     hir_def::type_ref::Mutability::Shared => "",
                     hir_def::type_ref::Mutability::Mut => "mut ",
                 };
                 write!(f, "&")?;
-                if let Some(lifetime) = lifetime {
+                if let Some(lifetime) = &ref_.lifetime {
                     write!(f, "{} ", lifetime.name.display(f.db.upcast(), f.edition()))?;
                 }
                 write!(f, "{mutability}")?;
-                inner.hir_fmt(f, types_map)?;
+                ref_.ty.hir_fmt(f, types_map)?;
             }
-            TypeRef::Array(inner, len) => {
+            TypeRef::Array(array) => {
                 write!(f, "[")?;
-                inner.hir_fmt(f, types_map)?;
-                write!(f, "; {}]", len.display(f.db.upcast(), f.edition()))?;
+                array.ty.hir_fmt(f, types_map)?;
+                write!(f, "; {}]", array.len.display(f.db.upcast(), f.edition()))?;
             }
             TypeRef::Slice(inner) => {
                 write!(f, "[")?;
                 inner.hir_fmt(f, types_map)?;
                 write!(f, "]")?;
             }
-            &TypeRef::Fn { params: ref parameters, is_varargs, is_unsafe, ref abi } => {
-                if is_unsafe {
+            TypeRef::Fn(fn_) => {
+                if fn_.is_unsafe() {
                     write!(f, "unsafe ")?;
                 }
-                if let Some(abi) = abi {
+                if let Some(abi) = fn_.abi() {
                     f.write_str("extern \"")?;
                     f.write_str(abi.as_str())?;
                     f.write_str("\" ")?;
                 }
                 write!(f, "fn(")?;
-                if let Some(((_, return_type), function_parameters)) = parameters.split_last() {
+                if let Some(((_, return_type), function_parameters)) = fn_.params().split_last() {
                     for index in 0..function_parameters.len() {
                         let (param_name, param_type) = &function_parameters[index];
                         if let Some(name) = param_name {
@@ -2009,8 +2009,8 @@ impl HirDisplayWithTypesMap for TypeRefId {
                             write!(f, ", ")?;
                         }
                     }
-                    if is_varargs {
-                        write!(f, "{}...", if parameters.len() == 1 { "" } else { ", " })?;
+                    if fn_.is_varargs() {
+                        write!(f, "{}...", if fn_.params().len() == 1 { "" } else { ", " })?;
                     }
                     write!(f, ")")?;
                     match &types_map[*return_type] {
