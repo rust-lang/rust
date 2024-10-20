@@ -68,7 +68,7 @@ pub fn enum2_value(x: Enum2) -> Enum2 {
     x
 }
 
-// CHECK: noundef [[USIZE]] @takes_slice(ptr noalias noundef nonnull readonly align 4 %x.0, [[USIZE]] noundef %x.1)
+// CHECK: noundef [[USIZE]] @takes_slice(ptr noalias noundef nonnull readonly align 4 %x.0, [[USIZE]] noundef range([[USIZE]] 0, -{{[0-9]+}}) %x.1)
 #[no_mangle]
 pub fn takes_slice(x: &[i32]) -> usize {
     x.len()

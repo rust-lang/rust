@@ -1,4 +1,5 @@
 //@ compile-flags: -O -C no-prepopulate-passes
+//@ min-llvm-version: 19
 #![crate_type = "lib"]
 #![feature(dyn_star)]
 #![feature(allocator_api)]
@@ -193,17 +194,17 @@ pub fn struct_return() -> S {
 #[no_mangle]
 pub fn helper(_: usize) {}
 
-// CHECK: @slice(ptr noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef %_1.1)
+// CHECK: @slice(ptr noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef range([[USIZE]] 0, -{{[0-9]+}}) %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn slice(_: &[u8]) {}
 
-// CHECK: @mutable_slice(ptr noalias noundef nonnull align 1 %_1.0, [[USIZE]] noundef %_1.1)
+// CHECK: @mutable_slice(ptr noalias noundef nonnull align 1 %_1.0, [[USIZE]] noundef range([[USIZE]] 0, -{{[0-9]+}}) %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {}
 
-// CHECK: @unsafe_slice(ptr noundef nonnull align 2 %_1.0, [[USIZE]] noundef %_1.1)
+// CHECK: @unsafe_slice(ptr noundef nonnull align 2 %_1.0, [[USIZE]] noundef range([[USIZE]] 0, -{{[0-9]+}}) %_1.1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_slice(_: &[UnsafeInner]) {}
@@ -212,7 +213,7 @@ pub fn unsafe_slice(_: &[UnsafeInner]) {}
 #[no_mangle]
 pub fn raw_slice(_: *const [u8]) {}
 
-// CHECK: @str(ptr noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef %_1.1)
+// CHECK: @str(ptr noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef range([[USIZE]] 0, -{{[0-9]+}}) %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn str(_: &[u8]) {}
@@ -244,7 +245,7 @@ pub fn trait_option(x: Option<Box<dyn Drop + Unpin>>) -> Option<Box<dyn Drop + U
     x
 }
 
-// CHECK: { ptr, [[USIZE]] } @return_slice(ptr noalias noundef nonnull readonly align 2 %x.0, [[USIZE]] noundef %x.1)
+// CHECK: { ptr, [[USIZE]] } @return_slice(ptr noalias noundef nonnull readonly align 2 %x.0, [[USIZE]] noundef range([[USIZE]] 0, -{{[0-9]+}}) %x.1)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
     x

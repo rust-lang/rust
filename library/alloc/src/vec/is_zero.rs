@@ -94,14 +94,12 @@ macro_rules! impl_is_zero_tuples {
 
 impl_is_zero_tuples!(A, B, C, D, E, F, G, H);
 
-// `Option<&T>` and `Option<Box<T>>` are guaranteed to represent `None` as null.
-// For fat pointers, the bytes that would be the pointer metadata in the `Some`
-// variant are padding in the `None` variant, so ignoring them and
-// zero-initializing instead is ok.
+// For thin pointers `Option<&T>` and `Option<Box<T>>` are guaranteed to represent
+// `None` as null.
 // `Option<&mut T>` never implements `Clone`, so there's no need for an impl of
 // `SpecFromElem`.
 
-unsafe impl<T: ?Sized> IsZero for Option<&T> {
+unsafe impl<T> IsZero for Option<&T> {
     #[inline]
     fn is_zero(&self) -> bool {
         self.is_none()

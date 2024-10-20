@@ -5,7 +5,8 @@
 // CHECK-NEXT: {{.*}}:
 // CHECK-NEXT: icmp ugt
 // CHECK-NEXT: getelementptr
-// CHECK-NEXT: select i1 {{.+}} null
+// CHECK-NEXT: select i1 {{.+}}
+// CHECK-NEXT: select i1 {{.+}}
 // CHECK-NEXT: insertvalue
 // CHECK-NEXT: insertvalue
 // CHECK-NEXT: ret
