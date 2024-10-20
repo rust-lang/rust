@@ -114,7 +114,7 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.handle.0 == c::INVALID_HANDLE_VALUE {
             // This iterator was initialized with an `INVALID_HANDLE_VALUE` as its handle.
-            // Simply return `None` because this is only the case when `FindFirstFileW` in
+            // Simply return `None` because this is only the case when `FindFirstFileExW` in
             // the construction of this iterator returns `ERROR_FILE_NOT_FOUND` which means
             // no matchhing files can be found.
             return None;
@@ -1071,7 +1071,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
                 first: Some(wfd),
             })
         } else {
-            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileW` function
+            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileExW` function
             // if no matching files can be found, but not necessarily that the path to find the
             // files in does not exist.
             //
@@ -1093,7 +1093,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
             // Just return the error constructed from the raw OS error if the above is not the case.
             //
-            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileW` function
+            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileExW` function
             // when the path to search in does not exist in the first place.
             Err(Error::from_raw_os_error(last_error.code as i32))
         }
@@ -1234,7 +1234,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | reparse.as_flag());
 
     // Attempt to open the file normally.
-    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileW`.
+    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileExW`.
     // If the fallback fails for any reason we return the original error.
     match File::open(path, &opts) {
         Ok(file) => file.file_attr(),
@@ -1251,7 +1251,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
             unsafe {
                 let path = maybe_verbatim(path)?;
 
-                // `FindFirstFileW` accepts wildcard file names.
+                // `FindFirstFileExW` accepts wildcard file names.
                 // Fortunately wildcards are not valid file names and
                 // `ERROR_SHARING_VIOLATION` means the file exists (but is locked)
                 // therefore it's safe to assume the file name given does not
@@ -1274,7 +1274,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
                     // We no longer need the find handle.
                     c::FindClose(handle);
 
-                    // `FindFirstFileW` reads the cached file information from the
+                    // `FindFirstFileExW` reads the cached file information from the
                     // directory. The downside is that this metadata may be outdated.
                     let attrs = FileAttr::from(wfd);
                     if reparse == ReparsePoint::Follow && attrs.file_type().is_symlink() {
