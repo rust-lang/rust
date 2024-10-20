@@ -45,23 +45,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let hir::GenericBound::Trait(ptr) = hir_bound else {
                     continue;
                 };
-                match ptr.modifiers {
-                    hir::TraitBoundModifier::Maybe => unbounds.push(ptr),
-                    hir::TraitBoundModifier::Negative => {
+                match ptr.modifiers.polarity {
+                    hir::BoundPolarity::Maybe(_) => unbounds.push(ptr),
+                    hir::BoundPolarity::Negative(_) => {
                         if let Some(sized_def_id) = sized_def_id
                             && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
                         {
                             seen_negative_sized_bound = true;
                         }
                     }
-                    hir::TraitBoundModifier::None => {
+                    hir::BoundPolarity::Positive => {
                         if let Some(sized_def_id) = sized_def_id
                             && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
                         {
                             seen_positive_sized_bound = true;
                         }
                     }
-                    _ => {}
                 }
             }
         };
@@ -169,20 +168,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref) => {
-                    let (constness, polarity) = match poly_trait_ref.modifiers {
-                        hir::TraitBoundModifier::Const => {
-                            (Some(ty::BoundConstness::Const), ty::PredicatePolarity::Positive)
-                        }
-                        hir::TraitBoundModifier::MaybeConst => (
-                            Some(ty::BoundConstness::ConstIfConst),
-                            ty::PredicatePolarity::Positive,
-                        ),
-                        hir::TraitBoundModifier::None => (None, ty::PredicatePolarity::Positive),
-                        hir::TraitBoundModifier::Negative => {
-                            (None, ty::PredicatePolarity::Negative)
-                        }
-                        hir::TraitBoundModifier::Maybe => continue,
+                    let hir::TraitBoundModifiers { constness, polarity } = poly_trait_ref.modifiers;
+                    // FIXME: We could pass these directly into `lower_poly_trait_ref`
+                    // so that we could use these spans in diagnostics within that function...
+                    let constness = match constness {
+                        hir::BoundConstness::Never => None,
+                        hir::BoundConstness::Always(_) => Some(ty::BoundConstness::Const),
+                        hir::BoundConstness::Maybe(_) => Some(ty::BoundConstness::ConstIfConst),
                     };
+                    let polarity = match polarity {
+                        rustc_ast::BoundPolarity::Positive => ty::PredicatePolarity::Positive,
+                        rustc_ast::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
+                        rustc_ast::BoundPolarity::Maybe(_) => continue,
+                    };
+
                     let _ = self.lower_poly_trait_ref(
                         &poly_trait_ref.trait_ref,
                         poly_trait_ref.span,

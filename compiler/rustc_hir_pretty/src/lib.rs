@@ -16,7 +16,6 @@ use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
     HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
-    TraitBoundModifier,
 };
 use rustc_span::FileName;
 use rustc_span::source_map::SourceMap;
@@ -676,9 +675,16 @@ impl<'a> State<'a> {
     }
 
     fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef<'_>) {
-        // FIXME: This isn't correct!
-        if t.modifiers == TraitBoundModifier::Maybe {
-            self.word("?");
+        let hir::TraitBoundModifiers { constness, polarity } = t.modifiers;
+        match constness {
+            hir::BoundConstness::Never => {}
+            hir::BoundConstness::Always(_) => self.word("const"),
+            hir::BoundConstness::Maybe(_) => self.word("~const"),
+        }
+        match polarity {
+            hir::BoundPolarity::Positive => {}
+            hir::BoundPolarity::Negative(_) => self.word("!"),
+            hir::BoundPolarity::Maybe(_) => self.word("?"),
         }
         self.print_formal_generic_params(t.bound_generic_params);
         self.print_trait_ref(&t.trait_ref);
