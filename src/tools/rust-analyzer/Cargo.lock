@@ -731,7 +731,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "limit",
- "line-index 0.1.1",
+ "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr",
  "nohash-hasher",
  "parser",
@@ -939,20 +939,20 @@ version = "0.0.0"
 
 [[package]]
 name = "line-index"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67d61795376ae2683928c218fda7d7d7db136fd38c06b7552904667f0d55580a"
+version = "0.1.2"
 dependencies = [
  "nohash-hasher",
+ "oorandom",
  "text-size",
 ]
 
 [[package]]
 name = "line-index"
 version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e27e0ed5a392a7f5ba0b3808a2afccff16c64933312c84b57618b49d1209bd2"
 dependencies = [
  "nohash-hasher",
- "oorandom",
  "text-size",
 ]
 
