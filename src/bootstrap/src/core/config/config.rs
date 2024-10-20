@@ -65,6 +65,7 @@ pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
     ":!x",
     ":!x.ps1",
     ":!x.py",
+    ":!src/bootstrap",
     ":!src/ci/cpu-usage-over-time.py",
     ":!src/ci/publish_toolstate.sh",
     ":!src/doc",
