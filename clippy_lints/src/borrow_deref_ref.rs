@@ -4,7 +4,7 @@ use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{get_parent_expr, is_from_proc_macro, is_lint_allowed};
 use rustc_errors::Applicability;
-use rustc_hir::{ExprKind, UnOp};
+use rustc_hir::{BorrowKind, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
@@ -49,7 +49,7 @@ declare_lint_pass!(BorrowDerefRef => [BORROW_DEREF_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &rustc_hir::Expr<'tcx>) {
-        if let ExprKind::AddrOf(_, Mutability::Not, addrof_target) = e.kind
+        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, addrof_target) = e.kind
             && let ExprKind::Unary(UnOp::Deref, deref_target) = addrof_target.kind
             && !matches!(deref_target.kind, ExprKind::Unary(UnOp::Deref, ..))
             && !e.span.from_expansion()
