@@ -338,8 +338,8 @@ pub struct Config {
     /// created in `/<build_base>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
-    /// whether to run `tidy` when a rustdoc test fails
-    pub has_tidy: bool,
+    /// whether to run `tidy` (html-tidy) when a rustdoc test fails
+    pub has_html_tidy: bool,
 
     /// whether to run `enzyme` autodiff tests
     pub has_enzyme: bool,
