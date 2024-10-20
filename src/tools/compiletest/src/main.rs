@@ -18,7 +18,7 @@ fn main() {
 
     let config = Arc::new(parse_config(env::args().collect()));
 
-    if !config.has_tidy && config.mode == Mode::Rustdoc {
+    if !config.has_html_tidy && config.mode == Mode::Rustdoc {
         eprintln!("warning: `tidy` (html-tidy.org) is not installed; diffs will not be generated");
     }
 

@@ -5,7 +5,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 use rustc_target::abi::*;
 
 /// Enforce some basic invariants on layouts.
-pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
+pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
     let tcx = cx.tcx();
 
     // Type-level uninhabitedness should always imply ABI uninhabitedness.

@@ -230,14 +230,14 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let run_ignored = matches.opt_present("ignored");
     let with_debug_assertions = matches.opt_present("with-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_tidy = if mode == Mode::Rustdoc {
+    let has_html_tidy = if mode == Mode::Rustdoc {
         Command::new("tidy")
             .arg("--version")
             .stdout(Stdio::null())
             .status()
             .map_or(false, |status| status.success())
     } else {
-        // Avoid spawning an external command when we know tidy won't be used.
+        // Avoid spawning an external command when we know html-tidy won't be used.
         false
     };
     let has_enzyme = matches.opt_present("has-enzyme");
@@ -336,7 +336,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             .opt_str("compare-mode")
             .map(|s| s.parse().expect("invalid --compare-mode provided")),
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
-        has_tidy,
+        has_html_tidy,
         has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),

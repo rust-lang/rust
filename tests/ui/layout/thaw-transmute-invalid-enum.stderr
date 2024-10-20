@@ -1,0 +1,68 @@
+error[E0412]: cannot find type `Subset` in this scope
+  --> $DIR/thaw-transmute-invalid-enum.rs:34:41
+   |
+LL |     assert::is_transmutable::<Superset, Subset>();
+   |                                         ^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | fn test<Subset>() {
+   |        ++++++++
+
+error[E0517]: attribute should be applied to a struct or union
+  --> $DIR/thaw-transmute-invalid-enum.rs:21:11
+   |
+LL |   #[repr(C, packed(2))]
+   |             ^^^^^^^^^
+LL |
+LL | / enum OxFF {
+LL | |     V = 0xFF,
+LL | | }
+   | |_- not a struct or union
+
+error[E0658]: use of unstable library feature 'transmutability'
+  --> $DIR/thaw-transmute-invalid-enum.rs:4:20
+   |
+LL |     use std::mem::{Assume, TransmuteFrom};
+   |                    ^^^^^^
+   |
+   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
+   = help: add `#![feature(transmutability)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'transmutability'
+  --> $DIR/thaw-transmute-invalid-enum.rs:4:28
+   |
+LL |     use std::mem::{Assume, TransmuteFrom};
+   |                            ^^^^^^^^^^^^^
+   |
+   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
+   = help: add `#![feature(transmutability)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'transmutability'
+  --> $DIR/thaw-transmute-invalid-enum.rs:10:14
+   |
+LL |         Dst: TransmuteFrom<Src>,
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
+   = help: add `#![feature(transmutability)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/thaw-transmute-invalid-enum.rs:29:9
+   |
+LL |         a: Ox00,
+   |         ^^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |         a: std::mem::ManuallyDrop<Ox00>,
+   |            +++++++++++++++++++++++    +
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0412, E0517, E0658, E0740.
+For more information about an error, try `rustc --explain E0412`.
