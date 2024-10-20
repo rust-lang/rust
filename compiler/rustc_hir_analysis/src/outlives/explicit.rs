@@ -53,7 +53,8 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                     | ty::ClauseKind::Projection(_)
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
-                    | ty::ClauseKind::ConstEvaluatable(_) => {}
+                    | ty::ClauseKind::ConstEvaluatable(_)
+                    | ty::ClauseKind::HostEffect(..) => {}
                 }
             }
 

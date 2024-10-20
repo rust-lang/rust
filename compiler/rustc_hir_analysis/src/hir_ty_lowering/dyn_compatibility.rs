@@ -78,7 +78,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::ConstArgHasType(..)
                 | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_) => {
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::HostEffect(..) => {
                     span_bug!(span, "did not expect {pred} clause in object bounds");
                 }
             }

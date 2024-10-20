@@ -1423,6 +1423,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let g = tcx.generics_of(def_id);
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
+                record!(self.tables.const_conditions[def_id] <- self.tcx.const_conditions(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
                 record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
 
@@ -1456,7 +1457,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder());
                 record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
-
+                record_defaulted_array!(self.tables.implied_const_bounds[def_id]
+                    <- self.tcx.implied_const_bounds(def_id).skip_binder());
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
@@ -1467,6 +1469,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder());
                 record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
+                record_defaulted_array!(self.tables.implied_const_bounds[def_id]
+                    <- self.tcx.implied_const_bounds(def_id).skip_binder());
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
@@ -1649,6 +1653,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if let ty::AssocKind::Type = item.kind {
                     self.encode_explicit_item_bounds(def_id);
                     self.encode_explicit_item_super_predicates(def_id);
+                    record_defaulted_array!(self.tables.implied_const_bounds[def_id]
+                        <- self.tcx.implied_const_bounds(def_id).skip_binder());
                 }
             }
             AssocItemContainer::ImplContainer => {

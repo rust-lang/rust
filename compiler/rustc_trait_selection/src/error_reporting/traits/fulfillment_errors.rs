@@ -156,8 +156,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             (leaf_trait_predicate, &obligation)
                         };
 
-                        let (main_trait_predicate, leaf_trait_predicate, predicate_constness) = self.get_effects_trait_pred_override(main_trait_predicate, leaf_trait_predicate, span);
-
                         let main_trait_ref = main_trait_predicate.to_poly_trait_ref();
                         let leaf_trait_ref = leaf_trait_predicate.to_poly_trait_ref();
 
@@ -228,7 +226,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let err_msg = self.get_standard_error_message(
                             main_trait_predicate,
                             message,
-                            predicate_constness,
+                            None,
                             append_const_msg,
                             post_message,
                         );
@@ -287,13 +285,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 obligation.cause.code().peel_derives(),
                                 &mut err,
                             );
-                        }
-
-                        if tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Drop)
-                            && matches!(predicate_constness, Some(ty::BoundConstness::ConstIfConst | ty::BoundConstness::Const))
-                        {
-                            err.note("`~const Drop` was renamed to `~const Destruct`");
-                            err.note("See <https://github.com/rust-lang/rust/pull/94901> for more details");
                         }
 
                         let explanation = get_explanation_based_on_obligation(
@@ -539,6 +530,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
 
                         err
+                    }
+
+                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
+                        // FIXME(effects): We should recompute the predicate with `~const`
+                        // if it's `const`, and if it holds, explain that this bound only
+                        // *conditionally* holds. If that fails, we should also do selection
+                        // to drill this down to an impl or built-in source, so we can
+                        // point at it and explain that while the trait *is* implemented,
+                        // that implementation is not const.
+                        let err_msg = self.get_standard_error_message(
+                            bound_predicate.rebind(ty::TraitPredicate {
+                                trait_ref: predicate.trait_ref,
+                                polarity: ty::PredicatePolarity::Positive,
+                            }),
+                            None,
+                            Some(match predicate.host {
+                                ty::HostPolarity::Maybe => ty::BoundConstness::ConstIfConst,
+                                ty::HostPolarity::Const => ty::BoundConstness::Const,
+                            }),
+                            None,
+                            String::new(),
+                        );
+                        struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg)
                     }
 
                     ty::PredicateKind::Subtype(predicate) => {
@@ -2372,16 +2386,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 },
             }
         })
-    }
-
-    // FIXME(effects): Remove this.
-    fn get_effects_trait_pred_override(
-        &self,
-        p: ty::PolyTraitPredicate<'tcx>,
-        leaf: ty::PolyTraitPredicate<'tcx>,
-        _span: Span,
-    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, ty::BoundConstness) {
-        (p, leaf, ty::BoundConstness::NotConst)
     }
 
     fn add_tuple_trait_message(

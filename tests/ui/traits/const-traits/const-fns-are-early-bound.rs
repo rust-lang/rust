@@ -1,4 +1,6 @@
 //@ known-bug: #110395
+//@ failure-status: 101
+//@ dont-check-compiler-stderr
 // FIXME(effects) check-pass
 //@ compile-flags: -Znext-solver
 

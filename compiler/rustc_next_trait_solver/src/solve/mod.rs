@@ -13,6 +13,7 @@
 
 mod alias_relate;
 mod assembly;
+mod effect_goals;
 mod eval_ctxt;
 pub mod inspect;
 mod normalizes_to;

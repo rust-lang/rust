@@ -78,10 +78,10 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst,
-    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
-    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    Visibility,
+    GenericArgsRef, GenericParamDefKind, HostPolarity, ImplPolarity, List, ListWithCachedTypeInfo,
+    ParamConst, ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
+    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
+    TyKind, TyVid, Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -381,6 +381,28 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
         self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+    }
+
+    fn is_const_impl(self, def_id: DefId) -> bool {
+        self.constness(def_id) == hir::Constness::Const
+    }
+
+    fn const_conditions(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
+        ty::EarlyBinder::bind(
+            self.const_conditions(def_id).instantiate_identity(self).into_iter().map(|(c, _)| c),
+        )
+    }
+
+    fn implied_const_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
+        ty::EarlyBinder::bind(
+            self.implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
+        )
     }
 
     fn has_target_features(self, def_id: DefId) -> bool {
@@ -2189,7 +2211,7 @@ macro_rules! nop_slice_lift {
 nop_slice_lift! {ty::ValTree<'a> => ty::ValTree<'tcx>}
 
 TrivialLiftImpls! {
-    ImplPolarity, PredicatePolarity, Promoted
+    ImplPolarity, PredicatePolarity, Promoted, HostPolarity,
 }
 
 macro_rules! sty_debug_print {

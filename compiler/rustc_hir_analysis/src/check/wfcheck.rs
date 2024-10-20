@@ -32,7 +32,8 @@ use rustc_trait_selection::traits::misc::{
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
+    self, FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    WellFormedLoc,
 };
 use rustc_type_ir::TypeFlags;
 use rustc_type_ir::solve::NoSolution;
@@ -86,7 +87,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             self.body_def_id,
             ObligationCauseCode::WellFormed(loc),
         );
-        self.ocx.register_obligation(traits::Obligation::new(
+        self.ocx.register_obligation(Obligation::new(
             self.tcx(),
             cause,
             self.param_env,
@@ -1173,7 +1174,7 @@ fn check_type_defn<'tcx>(
                     wfcx.body_def_id,
                     ObligationCauseCode::Misc,
                 );
-                wfcx.register_obligation(traits::Obligation::new(
+                wfcx.register_obligation(Obligation::new(
                     tcx,
                     cause,
                     wfcx.param_env,
@@ -1369,6 +1370,30 @@ fn check_impl<'tcx>(
                         obligation.cause.span = hir_self_ty.span;
                     }
                 }
+
+                // Ensure that the `~const` where clauses of the trait hold for the impl.
+                if tcx.constness(item.owner_id.def_id) == hir::Constness::Const {
+                    for (bound, _) in
+                        tcx.const_conditions(trait_ref.def_id).instantiate(tcx, trait_ref.args)
+                    {
+                        let bound = wfcx.normalize(
+                            item.span,
+                            Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
+                            bound,
+                        );
+                        wfcx.register_obligation(Obligation::new(
+                            tcx,
+                            ObligationCause::new(
+                                hir_self_ty.span,
+                                wfcx.body_def_id,
+                                ObligationCauseCode::WellFormed(None),
+                            ),
+                            wfcx.param_env,
+                            bound.to_host_effect_clause(tcx, ty::HostPolarity::Maybe),
+                        ))
+                    }
+                }
+
                 debug!(?obligations);
                 wfcx.register_obligations(obligations);
             }
@@ -1561,7 +1586,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 wfcx.body_def_id,
                 ObligationCauseCode::WhereClause(def_id.to_def_id(), DUMMY_SP),
             );
-            traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
+            Obligation::new(tcx, cause, wfcx.param_env, pred)
         });
 
     let predicates = predicates.instantiate_identity(tcx);
@@ -1852,7 +1877,7 @@ fn receiver_is_implemented<'tcx>(
     let tcx = wfcx.tcx();
     let trait_ref = ty::TraitRef::new(tcx, receiver_trait_def_id, [receiver_ty]);
 
-    let obligation = traits::Obligation::new(tcx, cause, wfcx.param_env, trait_ref);
+    let obligation = Obligation::new(tcx, cause, wfcx.param_env, trait_ref);
 
     if wfcx.infcx.predicate_must_hold_modulo_regions(&obligation) {
         true
@@ -2188,7 +2213,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                         .unwrap_or(obligation_span);
                 }
 
-                let obligation = traits::Obligation::new(
+                let obligation = Obligation::new(
                     tcx,
                     traits::ObligationCause::new(
                         span,

@@ -422,3 +422,73 @@ impl<'tcx> GenericPredicates<'tcx> {
         instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
     }
 }
+
+/// `~const` bounds for a given item. This is represented using a struct much like
+/// `GenericPredicates`, where you can either choose to only instantiate the "own"
+/// bounds or all of the bounds including those from the parent. This distinction
+/// is necessary for code like `compare_method_predicate_entailment`.
+#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct ConstConditions<'tcx> {
+    pub parent: Option<DefId>,
+    pub predicates: &'tcx [(ty::PolyTraitRef<'tcx>, Span)],
+}
+
+impl<'tcx> ConstConditions<'tcx> {
+    pub fn instantiate(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> Vec<(ty::PolyTraitRef<'tcx>, Span)> {
+        let mut instantiated = vec![];
+        self.instantiate_into(tcx, &mut instantiated, args);
+        instantiated
+    }
+
+    pub fn instantiate_own(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
+    {
+        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
+    }
+
+    pub fn instantiate_own_identity(
+        self,
+    ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
+    {
+        EarlyBinder::bind(self.predicates).iter_identity_copied()
+    }
+
+    #[instrument(level = "debug", skip(self, tcx))]
+    fn instantiate_into(
+        self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+        args: GenericArgsRef<'tcx>,
+    ) {
+        if let Some(def_id) = self.parent {
+            tcx.const_conditions(def_id).instantiate_into(tcx, instantiated, args);
+        }
+        instantiated.extend(
+            self.predicates.iter().map(|&(p, s)| (EarlyBinder::bind(p).instantiate(tcx, args), s)),
+        );
+    }
+
+    pub fn instantiate_identity(self, tcx: TyCtxt<'tcx>) -> Vec<(ty::PolyTraitRef<'tcx>, Span)> {
+        let mut instantiated = vec![];
+        self.instantiate_identity_into(tcx, &mut instantiated);
+        instantiated
+    }
+
+    fn instantiate_identity_into(
+        self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+    ) {
+        if let Some(def_id) = self.parent {
+            tcx.const_conditions(def_id).instantiate_identity_into(tcx, instantiated);
+        }
+        instantiated.extend(self.predicates.iter().copied());
+    }
+}

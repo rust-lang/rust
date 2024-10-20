@@ -836,14 +836,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_sig.output()
     }
 
-    #[tracing::instrument(level = "debug", skip(self, _span))]
+    #[tracing::instrument(level = "debug", skip(self, span))]
     pub(super) fn enforce_context_effects(
         &self,
-        _span: Span,
-        _callee_did: DefId,
-        _callee_args: GenericArgsRef<'tcx>,
+        span: Span,
+        callee_did: DefId,
+        callee_args: GenericArgsRef<'tcx>,
     ) {
-        todo!()
+        // FIXME(effects): We should be enforcing these effects unconditionally.
+        // This can be done as soon as we convert the standard library back to
+        // using const traits, since if we were to enforce these conditions now,
+        // we'd fail on basically every builtin trait call (i.e. `1 + 2`).
+        if !self.tcx.features().effects() {
+            return;
+        }
+
+        let host = match self.tcx.hir().body_const_context(self.body_id) {
+            Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {
+                ty::HostPolarity::Const
+            }
+            Some(hir::ConstContext::ConstFn) => ty::HostPolarity::Maybe,
+            None => return,
+        };
+
+        // FIXME(effects): Should this be `is_const_fn_raw`? It depends on if we move
+        // const stability checking here too, I guess.
+        if self.tcx.is_const_fn(callee_did)
+            || self
+                .tcx
+                .trait_of_item(callee_did)
+                .is_some_and(|def_id| self.tcx.is_const_trait(def_id))
+        {
+            let q = self.tcx.const_conditions(callee_did);
+            // FIXME(effects): Use this span with a better cause code.
+            for (cond, _) in q.instantiate(self.tcx, callee_args) {
+                self.register_predicate(Obligation::new(
+                    self.tcx,
+                    self.misc(span),
+                    self.param_env,
+                    cond.to_host_effect_clause(self.tcx, host),
+                ));
+            }
+        } else {
+            // FIXME(effects): This should eventually be caught here.
+            // For now, though, we defer some const checking to MIR.
+        }
     }
 
     fn confirm_overloaded_call(

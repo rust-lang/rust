@@ -155,6 +155,16 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     ),
                 };
             }
+            // `T: ~const Trait` implies `T: ~const Supertrait`.
+            ty::ClauseKind::HostEffect(data) => self.extend_deduped(
+                cx.implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
+                    elaboratable.child(
+                        trait_ref
+                            .to_host_effect_clause(cx, data.host)
+                            .instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
+                    )
+                }),
+            ),
             ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that

@@ -81,6 +81,17 @@ impl<'tcx> Bounds<'tcx> {
         self.clauses.insert(0, (trait_ref.upcast(tcx), span));
     }
 
+    /// Push a `const` or `~const` bound as a `HostEffect` predicate.
+    pub(crate) fn push_const_bound(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        bound_trait_ref: ty::PolyTraitRef<'tcx>,
+        host: ty::HostPolarity,
+        span: Span,
+    ) {
+        self.clauses.push((bound_trait_ref.to_host_effect_clause(tcx, host), span));
+    }
+
     pub(crate) fn clauses(
         &self,
         // FIXME(effects): remove tcx
