@@ -2991,7 +2991,9 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         let len = self.len();
 
         if new_len > len {
-            self.extend_with(new_len - len, value)
+            self.reserve(new_len - len);
+            // SAFETY: Just reserved space
+            unsafe { self.extend_with(new_len - len, value) }
         } else {
             self.truncate(new_len);
         }
@@ -3109,8 +3111,11 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[track_caller]
     /// Extend the vector by `n` clones of value.
-    fn extend_with(&mut self, n: usize, value: T) {
-        self.reserve(n);
+    ///
+    /// # Safety
+    /// The vector must already have allocated capacity for `n` additional elements
+    unsafe fn extend_with(&mut self, n: usize, value: T) {
+        debug_assert!(self.capacity() - self.len() >= n);
 
         unsafe {
             let mut ptr = self.as_mut_ptr().add(self.len());

@@ -13,7 +13,10 @@ impl<T: Clone> SpecFromElem for T {
     #[track_caller]
     default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
         let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, elem);
+        // SAFETY: Allocated with the correct capacity
+        unsafe {
+            v.extend_with(n, elem);
+        }
         v
     }
 }
@@ -26,7 +29,10 @@ impl<T: Clone + IsZero> SpecFromElem for T {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
         let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, elem);
+        // SAFETY: Allocated with the correct capacity
+        unsafe {
+            v.extend_with(n, elem);
+        }
         v
     }
 }
