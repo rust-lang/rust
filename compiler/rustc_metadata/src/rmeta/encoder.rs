@@ -1479,9 +1479,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 for &def_id in associated_item_def_ids {
                     self.encode_info_for_assoc_item(def_id);
                 }
-                if let Some(assoc_def_id) = self.tcx.associated_type_for_effects(def_id) {
-                    record!(self.tables.associated_type_for_effects[def_id] <- assoc_def_id);
-                }
             }
             if let DefKind::Closure | DefKind::SyntheticCoroutineBody = def_kind
                 && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)

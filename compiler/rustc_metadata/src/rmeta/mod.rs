@@ -394,7 +394,6 @@ define_tables! {
     explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
-    associated_type_for_effects: Table<DefIndex, Option<LazyValue<DefId>>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     is_effects_desugaring: Table<DefIndex, bool>,
     unused_generic_params: Table<DefIndex, UnusedGenericParams>,

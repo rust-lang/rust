@@ -1,6 +1,5 @@
 ///! Definition of `InferCtxtLike` from the librarified type layer.
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::SolverMode;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -88,15 +87,6 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn opportunistic_resolve_effect_var(&self, vid: ty::EffectVid) -> ty::Const<'tcx> {
-        match self.probe_effect_var(vid) {
-            Some(ct) => ct,
-            None => {
-                ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(self.root_effect_var(vid)))
-            }
-        }
-    }
-
     fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
@@ -152,10 +142,6 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().const_unification_table().union(a, b);
     }
 
-    fn equate_effect_vids_raw(&self, a: rustc_type_ir::EffectVid, b: rustc_type_ir::EffectVid) {
-        self.inner.borrow_mut().effect_unification_table().union(a, b);
-    }
-
     fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
@@ -187,13 +173,6 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         value: rustc_type_ir::FloatVarValue,
     ) {
         self.inner.borrow_mut().float_unification_table().union_value(vid, value);
-    }
-
-    fn instantiate_effect_var_raw(&self, vid: rustc_type_ir::EffectVid, value: ty::Const<'tcx>) {
-        self.inner
-            .borrow_mut()
-            .effect_unification_table()
-            .union_value(vid, EffectVarValue::Known(value));
     }
 
     fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(

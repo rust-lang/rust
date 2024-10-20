@@ -592,9 +592,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
         match c.kind() {
             ConstKind::Infer(InferConst::Var(_)) if self.infer_suggestable => {}
 
-            // effect variables are always suggestable, because they are not visible
-            ConstKind::Infer(InferConst::EffectVar(_)) => {}
-
             ConstKind::Infer(..)
             | ConstKind::Bound(..)
             | ConstKind::Placeholder(..)

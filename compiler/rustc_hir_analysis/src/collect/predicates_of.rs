@@ -78,7 +78,6 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
-    use rustc_middle::ty::Ty;
 
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) => {
@@ -343,26 +342,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
         compute_bidirectional_outlives_predicates(tcx, &generics.own_params, &mut predicates);
         debug!(?predicates);
-    }
-
-    // add `Self::Effects: Compat<HOST>` to ensure non-const impls don't get called
-    // in const contexts.
-    if let Node::TraitItem(&TraitItem { kind: TraitItemKind::Fn(..), .. }) = node
-        && let Some(host_effect_index) = generics.host_effect_index
-    {
-        let parent = generics.parent.unwrap();
-        let Some(assoc_def_id) = tcx.associated_type_for_effects(parent) else {
-            bug!("associated_type_for_effects returned None when there is host effect in generics");
-        };
-        let effects =
-            Ty::new_projection(tcx, assoc_def_id, ty::GenericArgs::identity_for_item(tcx, parent));
-        let param = generics.param_at(host_effect_index, tcx);
-        let span = tcx.def_span(param.def_id);
-        let host = ty::Const::new_param(tcx, ty::ParamConst::for_def(param));
-        let compat = tcx.require_lang_item(LangItem::EffectsCompat, Some(span));
-        let trait_ref =
-            ty::TraitRef::new(tcx, compat, [ty::GenericArg::from(effects), host.into()]);
-        predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
     }
 
     ty::GenericPredicates {

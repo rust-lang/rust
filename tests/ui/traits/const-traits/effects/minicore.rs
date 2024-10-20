@@ -536,35 +536,3 @@ fn test_const_eval_select() {
 
     const_eval_select((), const_fn, rt_fn);
 }
-
-mod effects {
-    use super::Sized;
-
-    #[lang = "EffectsNoRuntime"]
-    pub struct NoRuntime;
-    #[lang = "EffectsMaybe"]
-    pub struct Maybe;
-    #[lang = "EffectsRuntime"]
-    pub struct Runtime;
-
-    #[lang = "EffectsCompat"]
-    pub trait Compat<#[rustc_runtime] const RUNTIME: bool> {}
-
-    impl Compat<false> for NoRuntime {}
-    impl Compat<true> for Runtime {}
-    impl<#[rustc_runtime] const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
-
-    #[lang = "EffectsTyCompat"]
-    #[marker]
-    pub trait TyCompat<T: ?Sized> {}
-
-    impl<T: ?Sized> TyCompat<T> for T {}
-    impl<T: ?Sized> TyCompat<T> for Maybe {}
-    impl<T: ?Sized> TyCompat<Maybe> for T {}
-
-    #[lang = "EffectsIntersection"]
-    pub trait Intersection {
-        #[lang = "EffectsIntersectionOutput"]
-        type Output: ?Sized;
-    }
-}

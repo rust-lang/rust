@@ -854,12 +854,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query associated_type_for_effects(def_id: DefId) -> Option<DefId> {
-        desc { |tcx| "creating associated items for effects in `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
-        separate_provide_extern
-    }
-
     /// Given an impl trait in trait `opaque_ty_def_id`, create and return the corresponding
     /// associated item.
     query associated_type_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {

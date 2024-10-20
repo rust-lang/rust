@@ -20,7 +20,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
@@ -836,37 +836,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_sig.output()
     }
 
-    #[tracing::instrument(level = "debug", skip(self, span))]
+    #[tracing::instrument(level = "debug", skip(self, _span))]
     pub(super) fn enforce_context_effects(
         &self,
-        span: Span,
-        callee_did: DefId,
-        callee_args: GenericArgsRef<'tcx>,
+        _span: Span,
+        _callee_did: DefId,
+        _callee_args: GenericArgsRef<'tcx>,
     ) {
-        let tcx = self.tcx;
-
-        // fast-reject if callee doesn't have the host effect param (non-const)
-        let generics = tcx.generics_of(callee_did);
-        let Some(host_effect_index) = generics.host_effect_index else { return };
-
-        let effect = tcx.expected_host_effect_param_for_body(self.body_id);
-
-        trace!(?effect, ?generics, ?callee_args);
-
-        let param = callee_args.const_at(host_effect_index);
-        let cause = self.misc(span);
-        // We know the type of `effect` to be `bool`, there will be no opaque type inference.
-        match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::Yes, effect, param) {
-            Ok(infer::InferOk { obligations, value: () }) => {
-                self.register_predicates(obligations);
-            }
-            Err(e) => {
-                // FIXME(effects): better diagnostic
-                self.err_ctxt()
-                    .report_mismatched_consts(&cause, self.param_env, effect, param, e)
-                    .emit();
-            }
-        }
+        todo!()
     }
 
     fn confirm_overloaded_call(

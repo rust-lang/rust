@@ -1366,8 +1366,7 @@ impl GenericParamDef {
 
     pub(crate) fn is_synthetic_param(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime { .. } => false,
-            GenericParamDefKind::Const { synthetic: is_host_effect, .. } => is_host_effect,
+            GenericParamDefKind::Lifetime { .. } | GenericParamDefKind::Const { .. } => false,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
         }
     }

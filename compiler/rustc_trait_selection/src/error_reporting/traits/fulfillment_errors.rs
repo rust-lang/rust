@@ -2374,50 +2374,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
     }
 
-    /// For effects predicates such as `<u32 as Add>::Effects: Compat<host>`, pretend that the
-    /// predicate that failed was `u32: Add`. Return the constness of such predicate to later
-    /// print as `u32: ~const Add`.
+    // FIXME(effects): Remove this.
     fn get_effects_trait_pred_override(
         &self,
         p: ty::PolyTraitPredicate<'tcx>,
         leaf: ty::PolyTraitPredicate<'tcx>,
-        span: Span,
-    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, Option<ty::BoundConstness>)
-    {
-        let trait_ref = p.to_poly_trait_ref();
-        if !self.tcx.is_lang_item(trait_ref.def_id(), LangItem::EffectsCompat) {
-            return (p, leaf, None);
-        }
-
-        let Some(ty::Alias(ty::AliasTyKind::Projection, projection)) =
-            trait_ref.self_ty().no_bound_vars().map(Ty::kind)
-        else {
-            return (p, leaf, None);
-        };
-
-        let constness = trait_ref.skip_binder().args.const_at(1);
-
-        let constness = if constness == self.tcx.consts.true_ || constness.is_ct_infer() {
-            None
-        } else if constness == self.tcx.consts.false_ {
-            Some(ty::BoundConstness::Const)
-        } else if matches!(constness.kind(), ty::ConstKind::Param(_)) {
-            Some(ty::BoundConstness::ConstIfConst)
-        } else {
-            self.dcx().span_bug(span, format!("Unknown constness argument: {constness:?}"));
-        };
-
-        let new_pred = p.map_bound(|mut trait_pred| {
-            trait_pred.trait_ref = projection.trait_ref(self.tcx);
-            trait_pred
-        });
-
-        let new_leaf = leaf.map_bound(|mut trait_pred| {
-            trait_pred.trait_ref = projection.trait_ref(self.tcx);
-            trait_pred
-        });
-
-        (new_pred, new_leaf, constness)
+        _span: Span,
+    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, ty::BoundConstness) {
+        (p, leaf, ty::BoundConstness::NotConst)
     }
 
     fn add_tuple_trait_message(

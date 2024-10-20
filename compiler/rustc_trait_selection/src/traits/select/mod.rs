@@ -1821,8 +1821,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             |cand: ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, `ConstDestructCandidate`
-        // to anything else.
+        // or `DiscriminantKindCandidate` to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
