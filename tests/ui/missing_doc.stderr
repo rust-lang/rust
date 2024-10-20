@@ -88,5 +88,14 @@ error: missing documentation for a function
 LL |         fn also_undocumented2() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: missing documentation for a function
+  --> tests/ui/missing_doc.rs:122:1
+   |
+LL | / fn issue13298() {
+LL | |     // Rustdoc doesn't generate documentation for items within other items like fns or consts
+LL | |     const MSG: &str = "Hello, world!";
+LL | | }
+   | |_^
+
+error: aborting due to 14 previous errors
 

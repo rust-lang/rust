@@ -119,6 +119,11 @@ with_span!(span pub const FOO2_PM: u32 = 0;);
 // Don't lint unnamed constants
 const _: () = ();
 
+fn issue13298() {
+    // Rustdoc doesn't generate documentation for items within other items like fns or consts
+    const MSG: &str = "Hello, world!";
+}
+
 // issue #12197
 // Undocumented field originated inside of spanned proc-macro attribute
 /// Some dox for struct.

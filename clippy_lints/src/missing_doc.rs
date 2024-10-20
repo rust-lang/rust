@@ -12,6 +12,7 @@ use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::Visibility;
@@ -108,6 +109,21 @@ impl MissingDoc {
                 return;
             }
         } else if def_id != CRATE_DEF_ID && cx.effective_visibilities.is_exported(def_id) {
+            return;
+        }
+
+        if let Some(parent_def_id) = cx.tcx.opt_parent(def_id.to_def_id())
+            && let DefKind::AnonConst
+            | DefKind::AssocConst
+            | DefKind::AssocFn
+            | DefKind::Closure
+            | DefKind::Const
+            | DefKind::Fn
+            | DefKind::InlineConst
+            | DefKind::Static { .. }
+            | DefKind::SyntheticCoroutineBody = cx.tcx.def_kind(parent_def_id)
+        {
+            // Nested item has no generated documentation, so it doesn't need to be documented.
             return;
         }
 
