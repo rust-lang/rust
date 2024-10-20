@@ -13,6 +13,7 @@ use tracing::{debug, instrument};
 
 use super::ItemCtxt;
 use super::predicates_of::assert_only_contains_predicates_from;
+use crate::bounds::Bounds;
 use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 
 /// For associated types we include both bounds written on the type
@@ -36,7 +37,8 @@ fn associated_type_bounds<'tcx>(
     );
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
-    let mut bounds = icx.lowerer().lower_mono_bounds(item_ty, hir_bounds, filter);
+    let mut bounds = Bounds::default();
+    icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
     // Associated types are implicitly sized unless a `?Sized` bound is found
     icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
 
@@ -303,7 +305,8 @@ fn opaque_type_bounds<'tcx>(
 ) -> &'tcx [(ty::Clause<'tcx>, Span)] {
     ty::print::with_reduced_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
-        let mut bounds = icx.lowerer().lower_mono_bounds(item_ty, hir_bounds, filter);
+        let mut bounds = Bounds::default();
+        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
         // Opaque types are implicitly sized unless a `?Sized` bound is found
         icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
         debug!(?bounds);
