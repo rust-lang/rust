@@ -823,7 +823,10 @@ pub struct Const {
 pub struct Static {
     pub name: Name,
     pub visibility: RawVisibilityId,
+    // TODO: use bitflags when we have more flags
     pub mutable: bool,
+    pub has_safe_kw: bool,
+    pub has_unsafe_kw: bool,
     pub type_ref: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Static>,
 }
