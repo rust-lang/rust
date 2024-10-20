@@ -84,7 +84,10 @@ fn issue_10449() {
 }
 
 // Pointers cannot be cast to integers in const contexts
-#[allow(ptr_to_integer_transmute_in_consts, reason = "This is tested in the compiler test suite")]
+#[allow(
+    ptr_to_integer_transmute_in_consts,
+    reason = "This is tested in the compiler test suite"
+)]
 const fn issue_12402<P>(ptr: *const P) {
     // This test exists even though the compiler lints against it
     // to test that clippy's transmute lints do not trigger on this.

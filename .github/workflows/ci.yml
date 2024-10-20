@@ -104,6 +104,18 @@ jobs:
         with:
           fetch-depth: 2
 
+      # Free up disk space on Linux by removing preinstalled components that
+      # we do not need. We do this to enable some of the less resource
+      # intensive jobs to run on free runners, which however also have
+      # less disk space.
+      - name: free up disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        if: contains(matrix.os, 'ubuntu')
+        with:
+          # Removing packages with APT saves ~5 GiB, but takes several
+          # minutes (and potentially removes important packages).
+          large-packages: false
+
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
       # point it in the right direction.
@@ -193,6 +205,11 @@ jobs:
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
+
+      - name: print disk usage
+        run: |
+          echo "disk usage:"
+          df -h
 
       - name: upload artifacts to github
         uses: actions/upload-artifact@v4

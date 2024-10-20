@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             && unwrap_fun.ident.name == sym::unwrap
             // match call to write_fmt
             && let ExprKind::MethodCall(write_fun, write_recv, [write_arg], _) = *look_in_block(cx, &write_call.kind)
-            && let ExprKind::Call(write_recv_path, _) = write_recv.kind
+            && let ExprKind::Call(write_recv_path, []) = write_recv.kind
             && write_fun.ident.name == sym!(write_fmt)
             && let Some(def_id) = path_def_id(cx, write_recv_path)
         {

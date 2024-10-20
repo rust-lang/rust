@@ -43,7 +43,8 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
         for_each_local_use_after_expr(cx, local_id, call.hir_id, |expr| {
             if let Some(parent) = get_parent_expr(cx, expr) {
                 let data = if let ExprKind::MethodCall(segment, recv, args, span) = parent.kind {
-                    if segment.ident.name == sym!(parse)
+                    if args.is_empty()
+                        && segment.ident.name == sym!(parse)
                         && let parse_result_ty = cx.typeck_results().expr_ty(parent)
                         && is_type_diagnostic_item(cx, parse_result_ty, sym::Result)
                         && let ty::Adt(_, substs) = parse_result_ty.kind()

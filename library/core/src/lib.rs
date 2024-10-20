@@ -129,7 +129,7 @@
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
 #![feature(const_option_ext)]
-#![feature(const_pin)]
+#![feature(const_pin_2)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_is_null)]
 #![feature(const_ptr_sub_ptr)]

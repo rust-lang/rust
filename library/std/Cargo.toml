@@ -17,8 +17,7 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
-compiler_builtins = { version = "0.1.133" }
-profiler_builtins = { path = "../profiler_builtins", optional = true }
+compiler_builtins = { version = "0.1.134" }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
@@ -39,7 +38,7 @@ miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
 addr2line = { version = "0.22.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.159", default-features = false, features = [
+libc = { version = "0.2.161", default-features = false, features = [
     'rustc-dep-of-std',
 ], public = true }
 
@@ -98,7 +97,6 @@ backtrace = [
 ]
 
 panic-unwind = ["panic_unwind"]
-profiler = ["profiler_builtins"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
 compiler-builtins-no-asm = ["alloc/compiler-builtins-no-asm"]

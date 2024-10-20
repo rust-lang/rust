@@ -8988,3 +8988,33 @@ mod m {
         "#]],
     );
 }
+
+#[test]
+fn regression_18238() {
+    check(
+        r#"
+macro_rules! foo {
+    ($name:ident) => {
+        pub static $name = Foo::new(|| {
+            $crate;
+        });
+    };
+}
+
+foo!(BAR_$0);
+"#,
+        expect![[r#"
+        *BAR_*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        pub static BAR_: {error} = Foo::new(||{
+            crate;
+        })
+        ```
+        "#]],
+    );
+}

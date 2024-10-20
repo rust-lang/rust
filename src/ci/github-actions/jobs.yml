@@ -5,6 +5,11 @@ runners:
     env: { }
 
   - &job-linux-4c
+    os: ubuntu-20.04
+    <<: *base-job
+
+  # Large runner used mainly for its bigger disk capacity
+  - &job-linux-4c-largedisk
     os: ubuntu-20.04-4core-16gb
     <<: *base-job
 
@@ -127,7 +132,7 @@ auto:
   - image: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-android
     <<: *job-linux-4c
@@ -148,28 +153,28 @@ auto:
     <<: *job-linux-4c
 
   - image: dist-loongarch64-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-loongarch64-musl
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-ohos
     <<: *job-linux-4c
 
   - image: dist-powerpc-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-powerpc64-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-powerpc64le-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-riscv64-linux
     <<: *job-linux-4c
 
   - image: dist-s390x-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-various-1
     <<: *job-linux-4c
@@ -381,6 +386,8 @@ auto:
     <<: *job-windows-8c
 
   # Temporary builder to workaround CI issues
+  # See <https://github.com/rust-lang/rust/issues/127883>
+  #FIXME: Remove this, and re-enable the same tests in `checktools.sh`, once CI issues are fixed.
   - image: x86_64-msvc-ext2
     env:
       SCRIPT: >

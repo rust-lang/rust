@@ -178,10 +178,10 @@ pub fn SetFunctionCallConv(fn_: &Value, cc: CallConv) {
 // function.
 // For more details on COMDAT sections see e.g., https://www.airs.com/blog/archives/52
 pub fn SetUniqueComdat(llmod: &Module, val: &Value) {
-    unsafe {
-        let name = get_value_name(val);
-        LLVMRustSetComdat(llmod, val, name.as_ptr().cast(), name.len());
-    }
+    let name_buf = get_value_name(val).to_vec();
+    let name =
+        CString::from_vec_with_nul(name_buf).or_else(|buf| CString::new(buf.into_bytes())).unwrap();
+    set_comdat(llmod, val, &name);
 }
 
 pub fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
@@ -210,15 +210,13 @@ impl MemoryEffects {
     }
 }
 
-pub fn set_section(llglobal: &Value, section_name: &str) {
-    let section_name_cstr = CString::new(section_name).expect("unexpected CString error");
+pub fn set_section(llglobal: &Value, section_name: &CStr) {
     unsafe {
-        LLVMSetSection(llglobal, section_name_cstr.as_ptr());
+        LLVMSetSection(llglobal, section_name.as_ptr());
     }
 }
 
-pub fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name: &str) -> &'a Value {
-    let name_cstr = CString::new(name).expect("unexpected CString error");
+pub fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name_cstr: &CStr) -> &'a Value {
     unsafe { LLVMAddGlobal(llmod, ty, name_cstr.as_ptr()) }
 }
 
@@ -252,9 +250,14 @@ pub fn set_alignment(llglobal: &Value, align: Align) {
     }
 }
 
-pub fn set_comdat(llmod: &Module, llglobal: &Value, name: &str) {
+/// Get the `name`d comdat from `llmod` and assign it to `llglobal`.
+///
+/// Inserts the comdat into `llmod` if it does not exist.
+/// It is an error to call this if the target does not support comdat.
+pub fn set_comdat(llmod: &Module, llglobal: &Value, name: &CStr) {
     unsafe {
-        LLVMRustSetComdat(llmod, llglobal, name.as_ptr().cast(), name.len());
+        let comdat = LLVMGetOrInsertComdat(llmod, name.as_ptr());
+        LLVMSetComdat(llglobal, comdat);
     }
 }
 

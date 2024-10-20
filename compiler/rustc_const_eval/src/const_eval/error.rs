@@ -11,7 +11,8 @@ use rustc_span::{Span, Symbol};
 use super::CompileTimeMachine;
 use crate::errors::{self, FrameNote, ReportErrorExt};
 use crate::interpret::{
-    ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType, err_inval, err_machine_stop,
+    ErrorHandled, Frame, InterpErrorInfo, InterpErrorKind, MachineStopType, err_inval,
+    err_machine_stop,
 };
 
 /// The CTFE machine has some custom error kinds.
@@ -57,7 +58,7 @@ impl MachineStopType for ConstEvalErrKind {
     }
 }
 
-/// The errors become [`InterpError::MachineStop`] when being raised.
+/// The errors become [`InterpErrorKind::MachineStop`] when being raised.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
         err_machine_stop!(self).into()
@@ -124,7 +125,7 @@ pub fn get_span_and_frames<'tcx>(
 /// `get_span_and_frames`.
 pub(super) fn report<'tcx, C, F, E>(
     tcx: TyCtxt<'tcx>,
-    error: InterpError<'tcx>,
+    error: InterpErrorKind<'tcx>,
     span: Span,
     get_span_and_frames: C,
     mk: F,

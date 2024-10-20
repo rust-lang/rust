@@ -272,8 +272,9 @@ L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.649
   height: 18px;
   display: block;
   filter: invert(0.7);
-  padding-left: 4px;
-  padding-top: 3px;
+  position: absolute;
+  top: 4px;
+  left: 5px;
 }
 
 .settings-menu * {
@@ -327,6 +328,18 @@ L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.649
 
 #version-filter-selector .checkbox {
     display: flex;
+}
+
+ul.dropdown-menu li.checkbox > button {
+    border: 0;
+    width: 100%;
+    background: var(--theme-popup-bg);
+    color: var(--fg);
+}
+
+ul.dropdown-menu li.checkbox > button:hover {
+    background: var(--theme-hover);
+    box-shadow: none;
 }
 
 #version-filter {
@@ -395,4 +408,38 @@ html {
 body {
     background: var(--bg);
     color: var(--fg);
+}
+
+article.collapsed .lint-docs {
+    display: none;
+}
+
+.github-corner svg {
+    fill: var(--fg);
+    color: var(--bg);
+}
+.github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out;
+}
+@keyframes octocat-wave {
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+    20%,
+    60% {
+        transform: rotate(-25deg);
+    }
+    40%,
+    80% {
+        transform: rotate(10deg);
+    }
+}
+@media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+        animation: none;
+    }
+    .github-corner .octo-arm {
+        animation: octocat-wave 560ms ease-in-out;
+    }
 }

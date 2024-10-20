@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local};
+use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
 use hir::LifetimeName;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::hir_id::{HirId, HirIdMap};
@@ -294,14 +294,16 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         };
 
         for &arg_idx in arg_indices {
-            if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg)) {
+            if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg))
+                && let Some(std_or_core) = std_or_core(cx)
+            {
                 span_lint_and_sugg(
                     cx,
                     INVALID_NULL_PTR_USAGE,
                     arg.span,
                     "pointer must be non-null",
                     "change this to",
-                    "core::ptr::NonNull::dangling().as_ptr()".to_string(),
+                    format!("{std_or_core}::ptr::NonNull::dangling().as_ptr()"),
                     Applicability::MachineApplicable,
                 );
             }

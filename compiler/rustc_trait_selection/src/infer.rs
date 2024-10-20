@@ -5,7 +5,9 @@ use rustc_hir::lang_items::LangItem;
 pub use rustc_infer::infer::*;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
+use rustc_middle::infer::canonical::{
+    Canonical, CanonicalQueryInput, CanonicalQueryResponse, QueryResponse,
+};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_span::DUMMY_SP;
@@ -132,7 +134,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// `K: TypeFoldable<TyCtxt<'tcx>>`.)
     fn enter_canonical_trait_query<K, R>(
         self,
-        canonical_key: &Canonical<'tcx, K>,
+        canonical_key: &CanonicalQueryInput<'tcx, K>,
         operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Result<R, NoSolution>,
     ) -> Result<CanonicalQueryResponse<'tcx, R>, NoSolution>
     where

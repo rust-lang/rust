@@ -223,6 +223,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
 
     // Inherited from the by-ref coroutine.
     body_def.codegen_fn_attrs(tcx.codegen_fn_attrs(coroutine_def_id).clone());
+    body_def.coverage_attr_on(tcx.coverage_attr_on(coroutine_def_id));
     body_def.constness(tcx.constness(coroutine_def_id));
     body_def.coroutine_kind(tcx.coroutine_kind(coroutine_def_id));
     body_def.def_ident_span(tcx.def_ident_span(coroutine_def_id));

@@ -4011,6 +4011,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 let instead = res.is_some();
                 let suggestion = if let Some((start, end)) = this.diag_metadata.in_range
                     && path[0].ident.span.lo() == end.span.lo()
+                    && !matches!(start.kind, ExprKind::Lit(_))
                 {
                     let mut sugg = ".";
                     let mut span = start.span.between(end.span);

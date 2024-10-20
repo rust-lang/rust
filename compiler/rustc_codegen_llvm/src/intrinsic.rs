@@ -787,7 +787,9 @@ fn codegen_msvc_try<'ll>(
         let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
         unsafe {
             llvm::LLVMRustSetLinkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
-            llvm::SetUniqueComdat(bx.llmod, tydesc);
+            if bx.cx.tcx.sess.target.supports_comdat() {
+                llvm::SetUniqueComdat(bx.llmod, tydesc);
+            }
             llvm::LLVMSetInitializer(tydesc, type_info);
         }
 

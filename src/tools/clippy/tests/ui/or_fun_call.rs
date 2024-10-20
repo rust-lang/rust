@@ -341,18 +341,18 @@ fn fn_call_in_nested_expr() {
     }
     let opt: Option<i32> = Some(1);
 
-    //~v ERROR: use of `unwrap_or` followed by a function call
+    //~v ERROR: function call inside of `unwrap_or`
     let _ = opt.unwrap_or({ f() }); // suggest `.unwrap_or_else(f)`
     //
-    //~v ERROR: use of `unwrap_or` followed by a function call
+    //~v ERROR: function call inside of `unwrap_or`
     let _ = opt.unwrap_or(f() + 1); // suggest `.unwrap_or_else(|| f() + 1)`
     //
-    //~v ERROR: use of `unwrap_or` followed by a function call
+    //~v ERROR: function call inside of `unwrap_or`
     let _ = opt.unwrap_or({
         let x = f();
         x + 1
     });
-    //~v ERROR: use of `map_or` followed by a function call
+    //~v ERROR: function call inside of `map_or`
     let _ = opt.map_or(f() + 1, |v| v); // suggest `.map_or_else(|| f() + 1, |v| v)`
     //
     //~v ERROR: use of `unwrap_or` to construct default value
@@ -361,7 +361,7 @@ fn fn_call_in_nested_expr() {
     let opt_foo = Some(Foo {
         val: String::from("123"),
     });
-    //~v ERROR: use of `unwrap_or` followed by a function call
+    //~v ERROR: function call inside of `unwrap_or`
     let _ = opt_foo.unwrap_or(Foo { val: String::default() });
 }
 

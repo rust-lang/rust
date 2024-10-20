@@ -452,7 +452,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.82.0"]
     pub TOO_LONG_FIRST_DOC_PARAGRAPH,
-    style,
+    nursery,
     "ensure that the first line of a documentation paragraph isn't too long"
 }
 

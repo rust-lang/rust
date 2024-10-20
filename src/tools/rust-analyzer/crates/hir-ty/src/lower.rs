@@ -11,7 +11,7 @@ use std::{
     ops::{self, Not as _},
 };
 
-use base_db::{salsa::Cycle, CrateId};
+use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{
     cast::Cast,
     fold::{Shift, TypeFoldable},

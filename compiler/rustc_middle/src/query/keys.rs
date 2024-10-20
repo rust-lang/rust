@@ -7,7 +7,7 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi;
 
-use crate::infer::canonical::Canonical;
+use crate::infer::canonical::CanonicalQueryInput;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{TyAndLayout, ValidityRequirement};
 use crate::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
@@ -485,7 +485,7 @@ impl Key for Option<Symbol> {
 
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
-impl<'tcx, T: Clone> Key for Canonical<'tcx, T> {
+impl<'tcx, T: Clone> Key for CanonicalQueryInput<'tcx, T> {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {

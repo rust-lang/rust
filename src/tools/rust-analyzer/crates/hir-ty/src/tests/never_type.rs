@@ -539,3 +539,249 @@ fn test() {
 "#,
     );
 }
+
+#[test]
+fn diverging_place_match1() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn not_a_read() -> ! {
+    unsafe {
+        let x: *const ! = 0 as _;
+        let _: ! = *x;
+    }
+}
+"#,
+        expect![[r#"
+            21..100 '{     ...   } }': !
+            27..98 'unsafe...     }': !
+            48..49 'x': *const !
+            62..63 '0': i32
+            62..68 '0 as _': *const !
+            82..83 '_': !
+            89..91 '*x': !
+            90..91 'x': *const !
+            27..98: expected !, got ()
+        "#]],
+    )
+}
+
+#[test]
+fn diverging_place_match2() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn not_a_read_implicit() -> ! {
+    unsafe {
+        let x: *const ! = 0 as _;
+        let _ = *x;
+    }
+}
+"#,
+        expect![[r#"
+            30..106 '{     ...   } }': !
+            36..104 'unsafe...     }': !
+            57..58 'x': *const !
+            71..72 '0': i32
+            71..77 '0 as _': *const !
+            91..92 '_': !
+            95..97 '*x': !
+            96..97 'x': *const !
+            36..104: expected !, got ()
+        "#]],
+    )
+}
+
+#[test]
+fn diverging_place_match3() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn not_a_read_guide_coercion() -> ! {
+    unsafe {
+        let x: *const ! = 0 as _;
+        let _: () = *x;
+    }
+}
+"#,
+        expect![[r#"
+            36..116 '{     ...   } }': !
+            42..114 'unsafe...     }': !
+            63..64 'x': *const !
+            77..78 '0': i32
+            77..83 '0 as _': *const !
+            97..98 '_': ()
+            105..107 '*x': !
+            106..107 'x': *const !
+            42..114: expected !, got ()
+            105..107: expected (), got !
+        "#]],
+    )
+}
+
+#[test]
+fn diverging_place_match4() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn empty_match() -> ! {
+    unsafe {
+        let x: *const ! = 0 as _;
+        match *x { _ => {} };
+    }
+}
+"#,
+        expect![[r#"
+            22..108 '{     ...   } }': !
+            28..106 'unsafe...     }': !
+            49..50 'x': *const !
+            63..64 '0': i32
+            63..69 '0 as _': *const !
+            79..99 'match ...> {} }': ()
+            85..87 '*x': !
+            86..87 'x': *const !
+            90..91 '_': !
+            95..97 '{}': ()
+            28..106: expected !, got ()
+        "#]],
+    )
+}
+
+#[test]
+fn diverging_place_match5() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn field_projection() -> ! {
+    unsafe {
+        let x: *const (!, ()) = 0 as _;
+        let _ = (*x).0;
+    }
+}
+"#,
+        expect![[r#"
+            27..113 '{     ...   } }': !
+            33..111 'unsafe...     }': !
+            54..55 'x': *const (!, ())
+            74..75 '0': i32
+            74..80 '0 as _': *const (!, ())
+            94..95 '_': !
+            98..104 '(*x).0': !
+            99..101 '*x': (!, ())
+            100..101 'x': *const (!, ())
+            33..111: expected !, got ()
+        "#]],
+    )
+}
+
+#[test]
+fn diverging_place_match6() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn covered_arm() -> ! {
+    unsafe {
+        let x: *const ! = 0 as _;
+        let (_ | 1i32) = *x;
+    }
+}
+"#,
+        expect![[r#"
+            22..107 '{     ...   } }': !
+            28..105 'unsafe...     }': !
+            49..50 'x': *const !
+            63..64 '0': i32
+            63..69 '0 as _': *const !
+            84..85 '_': !
+            84..92 '_ | 1i32': !
+            88..92 '1i32': i32
+            88..92 '1i32': i32
+            96..98 '*x': !
+            97..98 'x': *const !
+            28..105: expected !, got ()
+            88..92: expected !, got i32
+        "#]],
+    )
+}
+
+#[test]
+fn diverging_place_match7() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn uncovered_arm() -> ! {
+    unsafe {
+        let x: *const ! = 0 as _;
+        let (1i32 | _) = *x;
+    }
+}
+"#,
+        expect![[r#"
+            24..109 '{     ...   } }': !
+            30..107 'unsafe...     }': !
+            51..52 'x': *const !
+            65..66 '0': i32
+            65..71 '0 as _': *const !
+            86..90 '1i32': i32
+            86..90 '1i32': i32
+            86..94 '1i32 | _': !
+            93..94 '_': !
+            98..100 '*x': !
+            99..100 'x': *const !
+            30..107: expected !, got ()
+            86..90: expected !, got i32
+        "#]],
+    )
+}
+
+#[test]
+fn diverging_place_match8() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn coerce_ref_binding() -> ! {
+    unsafe {
+        let x: *const ! = 0 as _;
+        let ref _x: () = *x;
+    }
+}
+"#,
+        expect![[r#"
+            29..114 '{     ...   } }': !
+            35..112 'unsafe...     }': !
+            56..57 'x': *const !
+            70..71 '0': i32
+            70..76 '0 as _': *const !
+            90..96 'ref _x': &'? ()
+            103..105 '*x': !
+            104..105 'x': *const !
+            103..105: expected (), got !
+        "#]],
+    )
+}
+
+#[test]
+fn never_place_isnt_diverging() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn make_up_a_pointer<T>() -> *const T {
+    unsafe {
+        let x: *const ! = 0 as _;
+        &raw const *x
+    }
+}
+"#,
+        expect![[r#"
+            38..116 '{     ...   } }': *const T
+            44..114 'unsafe...     }': *const T
+            65..66 'x': *const !
+            79..80 '0': i32
+            79..85 '0 as _': *const !
+            95..108 '&raw const *x': *const !
+            106..108 '*x': !
+            107..108 'x': *const !
+            95..108: expected *const T, got *const !
+        "#]],
+    )
+}

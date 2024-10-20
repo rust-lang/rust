@@ -56,7 +56,7 @@ use std::{
     hash::{BuildHasherDefault, Hash},
 };
 
-use base_db::salsa::InternValueTrivial;
+use base_db::ra_salsa::InternValueTrivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
