@@ -31,6 +31,22 @@ LL |     T: ~const Fn<()> + ~const Destruct,
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:13:15
+   |
+LL |     T: ~const Fn<()> + ~const Destruct,
+   |               ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:13:31
+   |
+LL |     T: ~const Fn<()> + ~const Destruct,
+   |                               ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:20:15
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
@@ -51,10 +67,34 @@ LL |     T: ~const FnMut<()> + ~const Destruct,
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:20:15
+   |
+LL |     T: ~const FnMut<()> + ~const Destruct,
+   |               ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:20:34
+   |
+LL |     T: ~const FnMut<()> + ~const Destruct,
+   |                                  ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:27:15
    |
 LL |     T: ~const FnOnce<()>,
    |               ^^^^^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:27:15
+   |
+LL |     T: ~const FnOnce<()>,
+   |               ^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:27:15
@@ -85,6 +125,22 @@ LL |     T: ~const Fn<()> + ~const Destruct,
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:34:15
+   |
+LL |     T: ~const Fn<()> + ~const Destruct,
+   |               ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:34:31
+   |
+LL |     T: ~const Fn<()> + ~const Destruct,
+   |                               ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:48:15
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
@@ -101,6 +157,22 @@ error: `~const` can only be applied to `#[const_trait]` traits
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |               ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:48:15
+   |
+LL |     T: ~const FnMut<()> + ~const Destruct,
+   |               ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:48:34
+   |
+LL |     T: ~const FnMut<()> + ~const Destruct,
+   |                                  ^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -212,7 +284,7 @@ LL | const fn test_fn_mut<T>(mut f: T) -> (T::Output, T::Output)
 LL | }
    | - value is dropped here
 
-error: aborting due to 25 previous errors
+error: aborting due to 34 previous errors
 
 Some errors have detailed explanations: E0015, E0493, E0635.
 For more information about an error, try `rustc --explain E0015`.

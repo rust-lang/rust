@@ -3073,6 +3073,15 @@ define_print! {
         p!(print(self.trait_ref.print_trait_sugared()))
     }
 
+    ty::HostEffectPredicate<'tcx> {
+        let constness = match self.host {
+            ty::HostPolarity::Const => { "const" }
+            ty::HostPolarity::Maybe => { "~const" }
+        };
+        p!(print(self.trait_ref.self_ty()), ": {constness}");
+        p!(print(self.trait_ref.print_trait_sugared()))
+    }
+
     ty::TypeAndMut<'tcx> {
         p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
@@ -3091,6 +3100,9 @@ define_print! {
             ty::ClauseKind::WellFormed(arg) => p!(print(arg), " well-formed"),
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
+            }
+            ty::ClauseKind::HostEffect(predicate) => {
+                p!("the trait `", print(predicate.trait_ref), "` is const")
             }
         }
     }

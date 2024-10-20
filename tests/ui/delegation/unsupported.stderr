@@ -81,15 +81,15 @@ LL |         pub reuse to_reuse2::foo;
 LL |     reuse to_reuse1::foo;
    |                      ^^^
 
-error: delegation to a function with effect parameter is not supported yet
+error[E0283]: type annotations needed
   --> $DIR/unsupported.rs:53:18
    |
-LL |         fn foo();
-   |         --------- callee defined here
-...
 LL |     reuse Trait::foo;
-   |                  ^^^
+   |                  ^^^ cannot infer type
+   |
+   = note: cannot satisfy `_: effects::Trait`
 
 error: aborting due to 5 previous errors; 2 warnings emitted
 
-For more information about this error, try `rustc --explain E0391`.
+Some errors have detailed explanations: E0283, E0391.
+For more information about an error, try `rustc --explain E0283`.

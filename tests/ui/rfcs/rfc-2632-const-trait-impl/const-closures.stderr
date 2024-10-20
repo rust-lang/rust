@@ -17,10 +17,42 @@ LL |         F: ~const Fn() -> u8,
    |                   ^^^^^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closures.rs:8:19
+   |
+LL |         F: ~const FnOnce() -> u8,
+   |                   ^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closures.rs:9:19
+   |
+LL |         F: ~const FnMut() -> u8,
+   |                   ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closures.rs:10:19
+   |
+LL |         F: ~const Fn() -> u8,
+   |                   ^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closures.rs:23:27
    |
 LL | const fn answer<F: ~const Fn() -> u8>(f: &F) -> u8 {
    |                           ^^^^^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closures.rs:23:27
+   |
+LL | const fn answer<F: ~const Fn() -> u8>(f: &F) -> u8 {
+   |                           ^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/const-closures.rs:24:5
@@ -70,6 +102,6 @@ help: add `#![feature(effects)]` to the crate attributes to enable
 LL + #![feature(effects)]
    |
 
-error: aborting due to 7 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

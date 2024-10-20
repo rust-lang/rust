@@ -13,6 +13,14 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                          ^^^^^^^^
 
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-drop-fail-2.rs:20:26
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                          ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/const-drop-fail-2.rs:20:36
    |
@@ -33,7 +41,7 @@ help: add `#![feature(effects)]` to the crate attributes to enable
 LL + #![feature(effects)]
    |
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0015, E0493.
 For more information about an error, try `rustc --explain E0015`.

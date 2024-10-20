@@ -1,16 +1,8 @@
-error[E0391]: cycle detected when computing generics of `Trait::foo`
+error: recursive delegation is not supported yet
   --> $DIR/ice-issue-124347.rs:6:18
    |
 LL |     reuse Trait::foo { &self.0 }
-   |                  ^^^
-   |
-   = note: ...which immediately requires computing generics of `Trait::foo` again
-note: cycle used when inheriting delegation signature
-  --> $DIR/ice-issue-124347.rs:6:18
-   |
-LL |     reuse Trait::foo { &self.0 }
-   |                  ^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   |                  ^^^ callee defined here
 
 error[E0391]: cycle detected when computing generics of `foo`
   --> $DIR/ice-issue-124347.rs:10:7

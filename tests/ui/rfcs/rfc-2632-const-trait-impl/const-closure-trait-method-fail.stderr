@@ -1,17 +1,16 @@
-error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
-  --> $DIR/const-closure-trait-method-fail.rs:5:1
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closure-trait-method-fail.rs:14:39
    |
-LL | #[const_trait]
-   | ^^^^^^^^^^^^^^ found 1 const parameter
-LL | trait Tr {
-LL |     fn a(self) -> i32;
-   |         - expected 0 const parameters
+LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {
+   |                                       ^^^^^^^^^^^^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closure-trait-method-fail.rs:14:39
    |
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {
    |                                       ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/const-closure-trait-method-fail.rs:15:5
@@ -31,5 +30,4 @@ LL + #![feature(effects)]
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0015, E0049.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.

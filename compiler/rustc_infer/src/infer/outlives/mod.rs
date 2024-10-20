@@ -24,19 +24,9 @@ pub fn explicit_outlives_bounds<'tcx>(
     param_env
         .caller_bounds()
         .into_iter()
-        .map(ty::Clause::kind)
+        .filter_map(ty::Clause::as_region_outlives_clause)
         .filter_map(ty::Binder::no_bound_vars)
-        .filter_map(move |kind| match kind {
-            ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
-                Some(OutlivesBound::RegionSubRegion(r_b, r_a))
-            }
-            ty::ClauseKind::Trait(_)
-            | ty::ClauseKind::TypeOutlives(_)
-            | ty::ClauseKind::Projection(_)
-            | ty::ClauseKind::ConstArgHasType(_, _)
-            | ty::ClauseKind::WellFormed(_)
-            | ty::ClauseKind::ConstEvaluatable(_) => None,
-        })
+        .map(|ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a))
 }
 
 impl<'tcx> InferCtxt<'tcx> {

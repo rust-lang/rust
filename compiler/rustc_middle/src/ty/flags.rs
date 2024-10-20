@@ -265,6 +265,12 @@ impl FlagComputation {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 self.add_args(trait_pred.trait_ref.args);
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                trait_ref,
+                host: _,
+            })) => {
+                self.add_args(trait_ref.args);
+            }
             ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
                 a,
                 b,

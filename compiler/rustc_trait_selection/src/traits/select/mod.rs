@@ -645,6 +645,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.evaluate_trait_predicate_recursively(previous_stack, obligation)
                 }
 
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
+                    // FIXME(effects): It should be relatively straightforward to implement
+                    // old trait solver support for `HostEffect` bounds; or at least basic
+                    // support for them.
+                    todo!()
+                }
+
                 ty::PredicateKind::Subtype(p) => {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?

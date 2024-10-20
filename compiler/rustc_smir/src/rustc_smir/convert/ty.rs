@@ -689,6 +689,9 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
             ClauseKind::ConstEvaluatable(const_) => {
                 stable_mir::ty::ClauseKind::ConstEvaluatable(const_.stable(tables))
             }
+            ClauseKind::HostEffect(..) => {
+                todo!()
+            }
         }
     }
 }
