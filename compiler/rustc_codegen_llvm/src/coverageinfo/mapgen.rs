@@ -1,3 +1,5 @@
+use std::ffi::CStr;
+
 use itertools::Itertools as _;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -305,7 +307,7 @@ fn generate_coverage_map<'ll>(
 /// specific, well-known section and name.
 fn save_function_record(
     cx: &CodegenCx<'_, '_>,
-    covfun_section_name: &str,
+    covfun_section_name: &CStr,
     mangled_function_name: &str,
     source_hash: u64,
     filenames_ref: u64,

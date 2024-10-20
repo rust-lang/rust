@@ -210,10 +210,9 @@ impl MemoryEffects {
     }
 }
 
-pub fn set_section(llglobal: &Value, section_name: &str) {
-    let section_name_cstr = CString::new(section_name).expect("unexpected CString error");
+pub fn set_section(llglobal: &Value, section_name: &CStr) {
     unsafe {
-        LLVMSetSection(llglobal, section_name_cstr.as_ptr());
+        LLVMSetSection(llglobal, section_name.as_ptr());
     }
 }
 
