@@ -116,6 +116,9 @@ with_span!(span pub fn foo_pm() {});
 with_span!(span pub static FOO_PM: u32 = 0;);
 with_span!(span pub const FOO2_PM: u32 = 0;);
 
+// Don't lint unnamed constants
+const _: () = ();
+
 // issue #12197
 // Undocumented field originated inside of spanned proc-macro attribute
 /// Some dox for struct.

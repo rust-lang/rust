@@ -17,6 +17,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::Visibility;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
@@ -184,8 +185,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                     }
                 }
             },
-            hir::ItemKind::Const(..)
-            | hir::ItemKind::Enum(..)
+            hir::ItemKind::Const(..) => {
+                if it.ident.name == kw::Underscore {
+                    note_prev_span_then_ret!(self.prev_span, it.span);
+                }
+            },
+            hir::ItemKind::Enum(..)
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::Static(..)
