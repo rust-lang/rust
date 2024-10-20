@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
@@ -292,10 +292,10 @@ pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
     .unwrap();
     debug!("covmap var name: {:?}", covmap_var_name);
 
-    let covmap_section_name = llvm::build_string(|s| unsafe {
+    let covmap_section_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
         llvm::LLVMRustCoverageWriteMapSectionNameToString(cx.llmod, s);
-    })
-    .expect("Rust Coverage section name failed UTF-8 conversion");
+    }))
+    .expect("covmap section name should not contain NUL");
     debug!("covmap section name: {:?}", covmap_section_name);
 
     let llglobal = llvm::add_global(cx.llmod, cx.val_ty(cov_data_val), &covmap_var_name);
@@ -310,7 +310,7 @@ pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
 
 pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    covfun_section_name: &str,
+    covfun_section_name: &CStr,
     func_name_hash: u64,
     func_record_val: &'ll llvm::Value,
     is_used: bool,
@@ -354,9 +354,9 @@ pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
 /// - `__llvm_covfun` on Linux
 /// - `__LLVM_COV,__llvm_covfun` on macOS (includes `__LLVM_COV,` segment prefix)
 /// - `.lcovfun$M` on Windows (includes `$M` sorting suffix)
-pub(crate) fn covfun_section_name(cx: &CodegenCx<'_, '_>) -> String {
-    llvm::build_string(|s| unsafe {
+pub(crate) fn covfun_section_name(cx: &CodegenCx<'_, '_>) -> CString {
+    CString::new(llvm::build_byte_buffer(|s| unsafe {
         llvm::LLVMRustCoverageWriteFuncSectionNameToString(cx.llmod, s);
-    })
-    .expect("Rust Coverage function record section name failed UTF-8 conversion")
+    }))
+    .expect("covfun section name should not contain NUL")
 }
