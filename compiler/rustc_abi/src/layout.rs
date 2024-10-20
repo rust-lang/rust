@@ -54,6 +54,9 @@ pub enum LayoutCalculatorError<F> {
 
     /// A union had no fields.
     EmptyUnion,
+
+    /// The fields or variants have irreconcilable reprs
+    ReprConflict,
 }
 
 impl<F> LayoutCalculatorError<F> {
@@ -64,6 +67,7 @@ impl<F> LayoutCalculatorError<F> {
             }
             LayoutCalculatorError::SizeOverflow => LayoutCalculatorError::SizeOverflow,
             LayoutCalculatorError::EmptyUnion => LayoutCalculatorError::EmptyUnion,
+            LayoutCalculatorError::ReprConflict => LayoutCalculatorError::ReprConflict,
         }
     }
 
@@ -77,6 +81,7 @@ impl<F> LayoutCalculatorError<F> {
             }
             LayoutCalculatorError::SizeOverflow => "size overflow",
             LayoutCalculatorError::EmptyUnion => "type is a union with no fields",
+            LayoutCalculatorError::ReprConflict => "type has an invalid repr",
         })
     }
 }
@@ -514,6 +519,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
 
         let dl = self.cx.data_layout();
+        // bail if the enum has an incoherent repr that cannot be computed
+        if repr.packed() {
+            return Err(LayoutCalculatorError::ReprConflict);
+        }
 
         let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx, VariantIdx>> {
             if dont_niche_optimize_enum {
