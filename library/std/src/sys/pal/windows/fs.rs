@@ -1047,8 +1047,22 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let path = maybe_verbatim(&star)?;
 
     unsafe {
-        let mut wfd = mem::zeroed();
-        let find_handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+        let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
+        // this is like FindFirstFileW (see https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfileexw),
+        // but with FindExInfoBasic it should skip filling WIN32_FIND_DATAW.cAlternateFileName
+        // (see https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataw)
+        // (which will be always null string value and currently unused) and should be faster.
+        //
+        // We can pass FIND_FIRST_EX_LARGE_FETCH to dwAdditionalFlags to speed up things more,
+        // but as we don't know user's use profile of this function, lets be conservative.
+        let find_handle = c::FindFirstFileExW(
+            path.as_ptr(),
+            c::FindExInfoBasic,
+            &mut wfd as *mut _ as _,
+            c::FindExSearchNameMatch,
+            ptr::null(),
+            0,
+        );
 
         if find_handle != c::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
@@ -1242,8 +1256,15 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
                 // `ERROR_SHARING_VIOLATION` means the file exists (but is locked)
                 // therefore it's safe to assume the file name given does not
                 // include wildcards.
-                let mut wfd = mem::zeroed();
-                let handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+                let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
+                let handle = c::FindFirstFileExW(
+                    path.as_ptr(),
+                    c::FindExInfoBasic,
+                    &mut wfd as *mut _ as _,
+                    c::FindExSearchNameMatch,
+                    ptr::null(),
+                    0,
+                );
 
                 if handle == c::INVALID_HANDLE_VALUE {
                     // This can fail if the user does not have read access to the
