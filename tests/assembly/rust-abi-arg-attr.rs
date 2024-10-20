@@ -1,11 +1,13 @@
 //@ assembly-output: emit-asm
-//@ revisions: riscv64 riscv64-zbb
+//@ revisions: riscv64 riscv64-zbb loongarch64
 //@ compile-flags: -C opt-level=3
 //@ [riscv64] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@ [riscv64] needs-llvm-components: riscv
 //@ [riscv64-zbb] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@ [riscv64-zbb] compile-flags: -C target-feature=+zbb
 //@ [riscv64-zbb] needs-llvm-components: riscv
+//@ [loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
+//@ [loongarch64] needs-llvm-components: loongarch
 
 #![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![crate_type = "lib"]
@@ -76,6 +78,11 @@ pub fn issue_114508_u32(a: u32, b: u32) -> u32 {
 
     // riscv64-zbb-NEXT: maxu a0, a0, a1
 
+    // loongarch64-NEXT: sltu $a2, $a1, $a0
+    // loongarch64-NEXT: masknez $a1, $a1, $a2
+    // loongarch64-NEXT: maskeqz $a0, $a0, $a2
+    // loongarch64-NEXT: or $a0, $a0, $a1
+
     // CHECK-NEXT:       ret
     max!(a, b)
 }
@@ -90,6 +97,11 @@ pub fn issue_114508_i32(a: i32, b: i32) -> i32 {
     // riscv64-NEXT: .[[RET]]:
 
     // riscv64-zbb-NEXT: max a0, a0, a1
+
+    // loongarch64-NEXT: slt $a2, $a1, $a0
+    // loongarch64-NEXT: masknez $a1, $a1, $a2
+    // loongarch64-NEXT: maskeqz $a0, $a0, $a2
+    // loongarch64-NEXT: or $a0, $a0, $a1
 
     // CHECK-NEXT:       ret
     max!(a, b)

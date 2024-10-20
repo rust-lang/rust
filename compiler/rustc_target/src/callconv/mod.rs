@@ -733,6 +733,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         match &spec.arch[..] {
             "x86" => x86::compute_rust_abi_info(cx, self, abi),
             "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self, abi),
+            "loongarch64" => loongarch::compute_rust_abi_info(cx, self, abi),
             _ => {}
         };
 
