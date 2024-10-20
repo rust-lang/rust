@@ -440,47 +440,46 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 } else {
                     (None, &[][..], 0)
                 };
+                let ty = place.ty(self.body, self.infcx.tcx).ty;
 
-                // If the moved value is a mut reference, it is used in a
-                // generic function and it's type is a generic param, it can be
-                // reborrowed to avoid moving.
-                // for example:
-                // struct Y(u32);
-                // x's type is '& mut Y' and it is used in `fn generic<T>(x: T) {}`.
+                let mut can_suggest_clone = true;
                 if let Some(def_id) = def_id
-                    && self.infcx.tcx.def_kind(def_id).is_fn_like()
                     && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
-                    && let Some(arg) = self
-                        .infcx
-                        .tcx
-                        .fn_sig(def_id)
-                        .skip_binder()
-                        .skip_binder()
-                        .inputs()
-                        .get(pos + offset)
-                    && let ty::Param(_) = arg.kind()
                 {
-                    let place = &self.move_data.move_paths[mpi].place;
-                    let ty = place.ty(self.body, self.infcx.tcx).ty;
-                    if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
+                    // The move occurred as one of the arguments to a function call. Is that
+                    // argument generic? `def_id` can't be a closure here, so using `fn_sig` is fine
+                    let arg_param = if self.infcx.tcx.def_kind(def_id).is_fn_like()
+                        && let Some(arg_ty) = self
+                            .infcx
+                            .tcx
+                            .fn_sig(def_id)
+                            .instantiate_identity()
+                            .skip_binder()
+                            .inputs()
+                            .get(pos + offset)
+                        && let ty::Param(arg_param) = arg_ty.kind()
+                    {
+                        Some(arg_param)
+                    } else {
+                        None
+                    };
+
+                    // If the moved value is a mut reference, it is used in a
+                    // generic function and it's type is a generic param, it can be
+                    // reborrowed to avoid moving.
+                    // for example:
+                    // struct Y(u32);
+                    // x's type is '& mut Y' and it is used in `fn generic<T>(x: T) {}`.
+                    if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind()
+                        && arg_param.is_some()
+                    {
                         *has_suggest_reborrow = true;
                         self.suggest_reborrow(err, expr.span, moved_place);
                         return;
                     }
-                }
 
-                let mut can_suggest_clone = true;
-                if let Some(def_id) = def_id
-                    && let Some(local_def_id) = def_id.as_local()
-                    && let node = self.infcx.tcx.hir_node_by_def_id(local_def_id)
-                    && let Some(fn_sig) = node.fn_sig()
-                    && let Some(ident) = node.ident()
-                    && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
-                    && let Some(arg) = fn_sig.decl.inputs.get(pos + offset)
-                {
                     let mut is_mut = false;
-                    if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = arg.kind
-                        && let Res::Def(DefKind::TyParam, param_def_id) = path.res
+                    if let Some(param) = arg_param
                         && self
                             .infcx
                             .tcx
@@ -497,10 +496,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                         self.infcx.tcx.get_diagnostic_item(sym::BorrowMut),
                                     ]
                                     .contains(&Some(predicate.def_id()))
-                                    && let ty::Param(param) = predicate.self_ty().kind()
-                                    && let generics = self.infcx.tcx.generics_of(def_id)
-                                    && let param = generics.type_param(*param, self.infcx.tcx)
-                                    && param.def_id == param_def_id
+                                    && *predicate.self_ty().kind() == ty::Param(*param)
                                 {
                                     if [
                                         self.infcx.tcx.get_diagnostic_item(sym::AsMut),
@@ -522,10 +518,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             expr.span.shrink_to_lo(),
                             "borrow the value to avoid moving it",
                             format!("&{}", if is_mut { "mut " } else { "" }),
-                            Applicability::MachineApplicable,
+                            Applicability::MaybeIncorrect,
                         );
                         can_suggest_clone = is_mut;
-                    } else {
+                    } else if let Some(local_def_id) = def_id.as_local()
+                        && let node = self.infcx.tcx.hir_node_by_def_id(local_def_id)
+                        && let Some(fn_decl) = node.fn_decl()
+                        && let Some(ident) = node.ident()
+                        && let Some(arg) = fn_decl.inputs.get(pos + offset)
+                    {
+                        // If we can't suggest borrowing in the call, but the function definition
+                        // is local, instead offer changing the function to borrow that argument.
                         let mut span: MultiSpan = arg.span.into();
                         span.push_span_label(
                             arg.span,
@@ -546,8 +549,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         );
                     }
                 }
-                let place = &self.move_data.move_paths[mpi].place;
-                let ty = place.ty(self.body, self.infcx.tcx).ty;
                 if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call_expr, _) = parent_expr.kind
                     && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IntoIterIntoIter, _)) =

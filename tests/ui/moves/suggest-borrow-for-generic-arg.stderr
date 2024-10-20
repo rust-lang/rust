@@ -1,0 +1,63 @@
+error[E0382]: use of moved value: `bar`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:12:16
+   |
+LL |     let bar = aux::Bar;
+   |         --- move occurs because `bar` has type `Bar`, which does not implement the `Copy` trait
+LL |     aux::foo(bar);
+   |              --- value moved here
+LL |     let _baa = bar;
+   |                ^^^ value used here after move
+   |
+help: borrow the value to avoid moving it
+   |
+LL |     aux::foo(&bar);
+   |              +
+
+error[E0382]: use of moved value: `bar`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:15:16
+   |
+LL |     let mut bar = aux::Bar;
+   |         ------- move occurs because `bar` has type `Bar`, which does not implement the `Copy` trait
+LL |     aux::qux(bar);
+   |              --- value moved here
+LL |     let _baa = bar;
+   |                ^^^ value used here after move
+   |
+help: borrow the value to avoid moving it
+   |
+LL |     aux::qux(&mut bar);
+   |              ++++
+
+error[E0382]: use of moved value: `bar`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:18:16
+   |
+LL |     let bar = aux::Bar;
+   |         --- move occurs because `bar` has type `Bar`, which does not implement the `Copy` trait
+LL |     aux::bat(bar);
+   |              --- value moved here
+LL |     let _baa = bar;
+   |                ^^^ value used here after move
+   |
+help: borrow the value to avoid moving it
+   |
+LL |     aux::bat(&bar);
+   |              +
+
+error[E0382]: use of moved value: `bar`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:21:16
+   |
+LL |     let mut bar = aux::Bar;
+   |         ------- move occurs because `bar` has type `Bar`, which does not implement the `Copy` trait
+LL |     aux::baz(bar);
+   |              --- value moved here
+LL |     let _baa = bar;
+   |                ^^^ value used here after move
+   |
+help: borrow the value to avoid moving it
+   |
+LL |     aux::baz(&mut bar);
+   |              ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0382`.
