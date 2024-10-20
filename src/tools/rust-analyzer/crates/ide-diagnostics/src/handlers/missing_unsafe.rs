@@ -554,7 +554,7 @@ fn main() {
             r#"
 //- /ed2021.rs crate:ed2021 edition:2021
 #[rustc_deprecated_safe_2024]
-unsafe fn safe() -> u8 {
+unsafe fn safe_fn() -> u8 {
     0
 }
 //- /ed2024.rs crate:ed2024 edition:2024
@@ -564,7 +564,7 @@ unsafe fn not_safe() -> u8 {
 }
 //- /main.rs crate:main deps:ed2021,ed2024
 fn main() {
-    ed2021::safe();
+    ed2021::safe_fn();
     ed2024::not_safe();
   //^^^^^^^^^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
 }

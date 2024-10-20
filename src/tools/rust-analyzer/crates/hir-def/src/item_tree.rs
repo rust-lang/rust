@@ -754,6 +754,7 @@ bitflags::bitflags! {
         const HAS_ASYNC_KW = 1 << 4;
         const HAS_UNSAFE_KW = 1 << 5;
         const IS_VARARGS = 1 << 6;
+        const HAS_SAFE_KW = 1 << 7;
     }
 }
 

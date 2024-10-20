@@ -190,7 +190,7 @@ UseTreeList =
 
 Fn =
  Attr* Visibility?
- 'default'? 'const'? 'async'? 'gen'? 'unsafe'? Abi?
+ 'default'? 'const'? 'async'? 'gen'? 'unsafe'? 'safe'? Abi?
  'fn' Name GenericParamList? ParamList RetType? WhereClause?
  (body:BlockExpr | ';')
 
@@ -284,6 +284,7 @@ Const =
 
 Static =
   Attr* Visibility?
+  'unsafe'? 'safe'?
   'static' 'mut'? Name ':' Type
   ('=' body:Expr)? ';'
 

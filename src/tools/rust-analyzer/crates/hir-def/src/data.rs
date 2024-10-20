@@ -148,6 +148,10 @@ impl FunctionData {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
+    pub fn is_safe(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_SAFE_KW)
+    }
+
     pub fn is_varargs(&self) -> bool {
         self.flags.contains(FnFlags::IS_VARARGS)
     }

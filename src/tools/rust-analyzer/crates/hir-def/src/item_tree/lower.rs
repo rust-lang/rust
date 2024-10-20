@@ -440,6 +440,9 @@ impl<'a> Ctx<'a> {
         if func.unsafe_token().is_some() {
             flags |= FnFlags::HAS_UNSAFE_KW;
         }
+        if func.safe_token().is_some() {
+            flags |= FnFlags::HAS_SAFE_KW;
+        }
         if has_var_args {
             flags |= FnFlags::IS_VARARGS;
         }

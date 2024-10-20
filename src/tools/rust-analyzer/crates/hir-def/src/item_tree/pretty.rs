@@ -278,6 +278,9 @@ impl Printer<'_> {
                 if flags.contains(FnFlags::HAS_UNSAFE_KW) {
                     w!(self, "unsafe ");
                 }
+                if flags.contains(FnFlags::HAS_SAFE_KW) {
+                    w!(self, "safe ");
+                }
                 if let Some(abi) = abi {
                     w!(self, "extern \"{}\" ", abi);
                 }
