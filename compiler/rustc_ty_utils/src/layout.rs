@@ -116,6 +116,11 @@ fn map_error<'tcx>(
             cx.tcx().dcx().delayed_bug(format!("computed layout of empty union: {ty:?}"));
             LayoutError::Unknown(ty)
         }
+        LayoutCalculatorError::ReprConflict => {
+            // packed enums are the only known trigger of this, but others might arise
+            cx.tcx().dcx().delayed_bug(format!("computed impossible repr (packed enum?): {ty:?}"));
+            LayoutError::Unknown(ty)
+        }
     };
     error(cx, err)
 }
