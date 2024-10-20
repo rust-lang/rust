@@ -1540,7 +1540,8 @@ fn display_c_like_variant(
 ) {
     let name = item.name.unwrap();
     if let Some(ref value) = variant.discriminant {
-        write!(w, "{} = {}", name.as_str(), value.value(cx.tcx(), true));
+        let v = value.expr(cx.tcx()).unwrap_or(value.value(cx.tcx(), true));
+        write!(w, "{} = {}", name.as_str(), v);
     } else if should_show_enum_discriminant {
         let adt_def = cx.tcx().adt_def(enum_def_id);
         let discr = adt_def.discriminant_for_variant(cx.tcx(), index);
