@@ -2697,7 +2697,7 @@ impl fmt::Debug for ImplPolarity {
 }
 
 /// The polarity of a trait bound.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash)]
 #[derive(HashStable_Generic)]
 pub enum BoundPolarity {
     /// `Type: Trait`
@@ -2719,7 +2719,7 @@ impl BoundPolarity {
 }
 
 /// The constness of a trait bound.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash)]
 #[derive(HashStable_Generic)]
 pub enum BoundConstness {
     /// `Type: Trait`
