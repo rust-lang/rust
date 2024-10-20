@@ -2,6 +2,18 @@
 //!
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
+//!
+//! We expose a `rustc-hash` feature that is disabled by default. This feature switches the
+//! [`std::collections::HashMap`] for [`rustc_hash::FxHashMap`] to improve the performance of said
+//! `HashMap` in specific situations.
+//!
+//! `cargo-semver-checks` for example, saw a [-3% improvement][1] when benchmarking using the
+//! `aws_sdk_ec2` JSON output (~500MB of JSON). As always, we recommend measuring the impact before
+//! turning this feature on, as [`FxHashMap`][2] only concerns itself with hash speed, and may
+//! increase the number of collisions.
+//!
+//! [1]: https://rust-lang.zulipchat.com/#narrow/channel/266220-t-rustdoc/topic/rustc-hash.20and.20performance.20of.20rustdoc-types/near/474855731
+//! [2]: https://crates.io/crates/rustc-hash
 
 #[cfg(not(feature = "rustc-hash"))]
 use std::collections::HashMap;
