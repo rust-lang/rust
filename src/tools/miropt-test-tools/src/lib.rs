@@ -129,6 +129,9 @@ pub fn files_for_miropt_test(
 
             out.push(MiroptTestFile { expected_file, from_file, to_file });
         }
+        if !run_filecheck && l.trim_start().starts_with("// CHECK") {
+            panic!("error: test contains filecheck directive but is marked `skip-filecheck`");
+        }
     }
 
     MiroptTest { run_filecheck, suffix, files: out, passes }

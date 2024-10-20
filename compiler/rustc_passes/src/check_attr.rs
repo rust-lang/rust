@@ -124,7 +124,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 [sym::inline, ..] => self.check_inline(hir_id, attr, span, target),
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
-                [sym::optimize, ..] => self.check_optimize(hir_id, attr, target),
+                [sym::optimize, ..] => self.check_optimize(hir_id, attr, span, target),
                 [sym::no_sanitize, ..] => {
                     self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
@@ -433,23 +433,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that `#[optimize(..)]` is applied to a function/closure/method,
     /// or to an impl block or module.
-    // FIXME(#128488): this should probably be elevated to an error?
-    fn check_optimize(&self, hir_id: HirId, attr: &Attribute, target: Target) {
-        match target {
+    fn check_optimize(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+        let is_valid = matches!(
+            target,
             Target::Fn
-            | Target::Closure
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
-            | Target::Impl
-            | Target::Mod => {}
-
-            _ => {
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::OptimizeNotFnOrClosure,
-                );
-            }
+                | Target::Closure
+                | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
+        );
+        if !is_valid {
+            self.dcx().emit_err(errors::OptimizeInvalidTarget {
+                attr_span: attr.span,
+                defn_span: span,
+                on_crate: hir_id == CRATE_HIR_ID,
+            });
         }
     }
 
