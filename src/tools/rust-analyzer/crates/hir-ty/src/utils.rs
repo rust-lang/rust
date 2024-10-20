@@ -273,7 +273,7 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
                 !data.attrs.by_key(&sym::rustc_safe_intrinsic).exists()
             } else {
                 // Extern items without `safe` modifier are always unsafe
-                !db.function_data(func).is_safe()
+                !data.is_safe()
             }
         }
         _ => false,

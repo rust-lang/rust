@@ -135,8 +135,8 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
         has_mods = true;
     }
 
-    if p.at(T![safe]) {
-        p.eat(T![safe]);
+    if p.at_contextual_kw(T![safe]) {
+        p.eat_contextual_kw(T![safe]);
         has_mods = true;
     }
 
