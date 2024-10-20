@@ -554,7 +554,7 @@ fn main() {
             r#"
 //- /ed2021.rs crate:ed2021 edition:2021
 #[rustc_deprecated_safe_2024]
-unsafe fn safe() -> u8 {
+unsafe fn safe_fn() -> u8 {
     0
 }
 //- /ed2024.rs crate:ed2024 edition:2024
@@ -564,7 +564,7 @@ unsafe fn not_safe() -> u8 {
 }
 //- /main.rs crate:main deps:ed2021,ed2024
 fn main() {
-    ed2021::safe();
+    ed2021::safe_fn();
     ed2024::not_safe();
   //^^^^^^^^^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
 }
@@ -594,5 +594,40 @@ unsafe fn foo(p: *mut i32) {
 }
             "#,
         )
+    }
+
+    #[test]
+    fn no_unsafe_diagnostic_with_safe_kw() {
+        check_diagnostics(
+            r#"
+unsafe extern {
+    pub safe fn f();
+
+    pub unsafe fn g();
+
+    pub fn h();
+
+    pub safe static S1: i32;
+
+    pub unsafe static S2: i32;
+
+    pub static S3: i32;
+}
+
+fn main() {
+    f();
+    g();
+  //^^^💡 error: this operation is unsafe and requires an unsafe function or block
+    h();
+  //^^^💡 error: this operation is unsafe and requires an unsafe function or block
+
+    let _ = S1;
+    let _ = S2;
+          //^^💡 error: this operation is unsafe and requires an unsafe function or block
+    let _ = S3;
+          //^^💡 error: this operation is unsafe and requires an unsafe function or block
+}
+"#,
+        );
     }
 }

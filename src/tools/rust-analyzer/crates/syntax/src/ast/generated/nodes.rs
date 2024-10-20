@@ -668,6 +668,8 @@ impl Fn {
     #[inline]
     pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
     #[inline]
+    pub fn safe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![safe]) }
+    #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
 
@@ -1761,7 +1763,11 @@ impl Static {
     #[inline]
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     #[inline]
+    pub fn safe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![safe]) }
+    #[inline]
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
+    #[inline]
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
