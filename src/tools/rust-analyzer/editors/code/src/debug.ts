@@ -6,6 +6,7 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
+import { execSync } from "node:child_process";
 import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
 import type { Config } from "./config";
 
@@ -105,9 +106,11 @@ async function getDebugConfiguration(
         const commandCCpp: string = createCommandLink("ms-vscode.cpptools");
         const commandCodeLLDB: string = createCommandLink("vadimcn.vscode-lldb");
         const commandNativeDebug: string = createCommandLink("webfreak.debug");
+        const commandLLDBDap: string = createCommandLink("llvm-vs-code-extensions.lldb-dap");
 
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
+                `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
                 `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
                 `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
         );
@@ -220,10 +223,30 @@ type DebugConfigProvider<Type extends string, DebugConfig extends BaseDebugConfi
 
 type KnownEnginesType = (typeof knownEngines)[keyof typeof knownEngines];
 const knownEngines: {
+    "llvm-vs-code-extensions.lldb-dap": DebugConfigProvider<"lldb-dap", LldbDapDebugConfig>;
     "vadimcn.vscode-lldb": DebugConfigProvider<"lldb", CodeLldbDebugConfig>;
     "ms-vscode.cpptools": DebugConfigProvider<"cppvsdbg" | "cppdbg", CCppDebugConfig>;
     "webfreak.debug": DebugConfigProvider<"gdb", NativeDebugConfig>;
 } = {
+    "llvm-vs-code-extensions.lldb-dap": {
+        type: "lldb-dap",
+        executableProperty: "program",
+        environmentProperty: (env) => ["env", Object.entries(env).map(([k, v]) => `${k}=${v}`)],
+        runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
+            "args",
+            runnableArgs.executableArgs,
+        ],
+        additional: {
+            sourceMap: [
+                [
+                    `/rustc/${/commit-hash:\s(.*)$/m.exec(
+                        execSync("rustc -V -v", {}).toString(),
+                    )?.[1]}/library`,
+                    "${config:rust-analyzer.cargo.sysroot}/lib/rustlib/src/rust/library",
+                ],
+            ],
+        },
+    },
     "vadimcn.vscode-lldb": {
         type: "lldb",
         executableProperty: "program",
@@ -335,6 +358,13 @@ type CCppDebugConfig = {
         MIMode: "lldb";
     };
 } & BaseDebugConfig<"cppvsdbg" | "cppdbg">;
+
+type LldbDapDebugConfig = {
+    program: string;
+    args: string[];
+    env: string[];
+    sourceMap: [string, string][];
+} & BaseDebugConfig<"lldb-dap">;
 
 type CodeLldbDebugConfig = {
     program: string;

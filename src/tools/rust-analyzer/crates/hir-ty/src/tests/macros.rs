@@ -64,7 +64,7 @@ fn infer_macros_expanded() {
         "#,
         expect![[r#"
             !0..17 '{Foo(v...,2,])}': Foo
-            !1..4 'Foo': extern "rust-call" Foo({unknown}) -> Foo
+            !1..4 'Foo': fn Foo({unknown}) -> Foo
             !1..16 'Foo(vec![1,2,])': Foo
             !5..15 'vec![1,2,]': {unknown}
             155..181 '{     ...,2); }': ()
@@ -97,7 +97,7 @@ fn infer_legacy_textual_scoped_macros_expanded() {
         "#,
         expect![[r#"
             !0..17 '{Foo(v...,2,])}': Foo
-            !1..4 'Foo': extern "rust-call" Foo({unknown}) -> Foo
+            !1..4 'Foo': fn Foo({unknown}) -> Foo
             !1..16 'Foo(vec![1,2,])': Foo
             !5..15 'vec![1,2,]': {unknown}
             194..250 '{     ...,2); }': ()

@@ -18,6 +18,8 @@ use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
+mod improper_ctypes;
+
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
     AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
@@ -983,15 +985,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             // Empty enums are okay... although sort of useless.
                             return FfiSafe;
                         }
-
-                        if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
-                            return FfiUnsafe {
-                                ty,
-                                reason: fluent::lint_improper_ctypes_non_exhaustive,
-                                help: None,
-                            };
-                        }
-
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
                         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
@@ -1010,21 +1003,23 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
+                        use improper_ctypes::{
+                            check_non_exhaustive_variant, non_local_and_non_exhaustive,
+                        };
+
+                        let non_local_def = non_local_and_non_exhaustive(def);
                         // Check the contained variants.
-                        for variant in def.variants() {
-                            let is_non_exhaustive = variant.is_field_list_non_exhaustive();
-                            if is_non_exhaustive && !variant.def_id.is_local() {
-                                return FfiUnsafe {
-                                    ty,
-                                    reason: fluent::lint_improper_ctypes_non_exhaustive_variant,
-                                    help: None,
-                                };
-                            }
+                        let ret = def.variants().iter().try_for_each(|variant| {
+                            check_non_exhaustive_variant(non_local_def, variant)
+                                .map_break(|reason| FfiUnsafe { ty, reason, help: None })?;
 
                             match self.check_variant_for_ffi(acc, ty, def, variant, args) {
-                                FfiSafe => (),
-                                r => return r,
+                                FfiSafe => ControlFlow::Continue(()),
+                                r => ControlFlow::Break(r),
                             }
+                        });
+                        if let ControlFlow::Break(result) = ret {
+                            return result;
                         }
 
                         FfiSafe

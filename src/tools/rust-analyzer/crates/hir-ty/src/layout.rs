@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use base_db::salsa::Cycle;
+use base_db::ra_salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
@@ -72,6 +72,8 @@ pub type Variants = hir_def::layout::Variants<RustcFieldIdx, RustcEnumVariantIdx
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum LayoutError {
+    // FIXME: Remove variants that duplicate LayoutCalculatorError's variants after sync
+    BadCalc(LayoutCalculatorError<()>),
     EmptyUnion,
     HasErrorConst,
     HasErrorType,
@@ -90,6 +92,7 @@ impl std::error::Error for LayoutError {}
 impl fmt::Display for LayoutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            LayoutError::BadCalc(err) => err.fallback_fmt(f),
             LayoutError::EmptyUnion => write!(f, "type is an union with no fields"),
             LayoutError::HasErrorConst => write!(f, "type contains an unevaluatable const"),
             LayoutError::HasErrorType => write!(f, "type contains an error"),
@@ -114,11 +117,7 @@ impl fmt::Display for LayoutError {
 
 impl<F> From<LayoutCalculatorError<F>> for LayoutError {
     fn from(err: LayoutCalculatorError<F>) -> Self {
-        match err {
-            LayoutCalculatorError::EmptyUnion => LayoutError::EmptyUnion,
-            LayoutCalculatorError::UnexpectedUnsized(_) => LayoutError::UnexpectedUnsized,
-            LayoutCalculatorError::SizeOverflow => LayoutError::SizeOverflow,
-        }
+        LayoutError::BadCalc(err.without_payload())
     }
 }
 

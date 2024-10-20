@@ -523,7 +523,7 @@ fn test() -> u64 {
         expect![[r#"
             37..86 '{     ... a.1 }': u64
             47..48 'a': S
-            51..52 'S': extern "rust-call" S(i32, u64) -> S
+            51..52 'S': fn S(i32, u64) -> S
             51..58 'S(4, 6)': S
             53..54 '4': i32
             56..57 '6': u64
@@ -549,7 +549,7 @@ fn test() -> u64 {
         expect![[r#"
             43..108 '{     ...0(2) }': u64
             53..54 'a': S
-            57..58 'S': extern "rust-call" S(fn(u32) -> u64) -> S
+            57..58 'S': fn S(fn(u32) -> u64) -> S
             57..74 'S(|i| ...s u64)': S
             59..73 '|i| 2*i as u64': impl Fn(u32) -> u64
             60..61 'i': u32
@@ -1027,7 +1027,7 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
             201..202 'x': impl Trait<u64>
             208..209 'y': &'? impl Trait<u32>
             219..220 'z': S<u16>
-            223..224 'S': extern "rust-call" S<u16>(u16) -> S<u16>
+            223..224 'S': fn S<u16>(u16) -> S<u16>
             223..227 'S(1)': S<u16>
             225..226 '1': u16
             233..236 'bar': fn bar(S<u16>)
@@ -1269,10 +1269,10 @@ fn bar() {
             226..229 'foo': fn foo<i32>([R<(), i32>; 2]) -> i32
             226..250 'foo([R...B(7)])': i32
             230..249 '[R::A(...:B(7)]': [R<(), i32>; 2]
-            231..235 'R::A': extern "rust-call" A<(), i32>(()) -> R<(), i32>
+            231..235 'R::A': fn A<(), i32>(()) -> R<(), i32>
             231..239 'R::A(())': R<(), i32>
             236..238 '()': ()
-            241..245 'R::B': extern "rust-call" B<(), i32>(i32) -> R<(), i32>
+            241..245 'R::B': fn B<(), i32>(i32) -> R<(), i32>
             241..248 'R::B(7)': R<(), i32>
             246..247 '7': i32
         "#]],
@@ -1421,7 +1421,7 @@ fn foo<const C: u8, T>() -> (impl FnOnce(&str, T), impl Trait<u8>) {
             142..147 'input': &'? str
             149..150 't': T
             152..154 '{}': ()
-            156..159 'Bar': extern "rust-call" Bar<u8>(u8) -> Bar<u8>
+            156..159 'Bar': fn Bar<u8>(u8) -> Bar<u8>
             156..162 'Bar(C)': Bar<u8>
             160..161 'C': u8
         "#]],
@@ -2046,7 +2046,7 @@ fn test() {
             118..120 '{}': ()
             136..255 '{     ... 1); }': ()
             146..147 'x': Option<u32>
-            150..162 'Option::Some': extern "rust-call" Some<u32>(u32) -> Option<u32>
+            150..162 'Option::Some': fn Some<u32>(u32) -> Option<u32>
             150..168 'Option...(1u32)': Option<u32>
             163..167 '1u32': u32
             174..175 'x': Option<u32>
@@ -2602,7 +2602,7 @@ fn test() -> impl Trait<i32> {
             178..180 '{}': ()
             213..309 '{     ...t()) }': S<i32>
             223..225 's1': S<u32>
-            228..229 'S': extern "rust-call" S<u32>(u32) -> S<u32>
+            228..229 'S': fn S<u32>(u32) -> S<u32>
             228..240 'S(default())': S<u32>
             230..237 'default': fn default<u32>() -> u32
             230..239 'default()': u32
@@ -2612,11 +2612,11 @@ fn test() -> impl Trait<i32> {
             263..264 'x': i32
             272..275 'bar': fn bar<i32>(S<i32>) -> i32
             272..289 'bar(S(...lt()))': i32
-            276..277 'S': extern "rust-call" S<i32>(i32) -> S<i32>
+            276..277 'S': fn S<i32>(i32) -> S<i32>
             276..288 'S(default())': S<i32>
             278..285 'default': fn default<i32>() -> i32
             278..287 'default()': i32
-            295..296 'S': extern "rust-call" S<i32>(i32) -> S<i32>
+            295..296 'S': fn S<i32>(i32) -> S<i32>
             295..307 'S(default())': S<i32>
             297..304 'default': fn default<i32>() -> i32
             297..306 'default()': i32
@@ -2846,7 +2846,7 @@ fn main() {
             1036..1041 'x > 0': bool
             1040..1041 '0': i32
             1042..1060 '{ Some...u32) }': Option<u32>
-            1044..1048 'Some': extern "rust-call" Some<u32>(u32) -> Option<u32>
+            1044..1048 'Some': fn Some<u32>(u32) -> Option<u32>
             1044..1058 'Some(x as u32)': Option<u32>
             1049..1050 'x': i32
             1049..1057 'x as u32': u32
@@ -2982,9 +2982,9 @@ fn test() {
             175..185 'foo.test()': bool
             191..194 'bar': fn bar<{unknown}>({unknown}) -> {unknown}
             191..201 'bar.test()': bool
-            207..213 'Struct': extern "rust-call" Struct(usize) -> Struct
+            207..213 'Struct': fn Struct(usize) -> Struct
             207..220 'Struct.test()': bool
-            226..239 'Enum::Variant': extern "rust-call" Variant(usize) -> Enum
+            226..239 'Enum::Variant': fn Variant(usize) -> Enum
             226..246 'Enum::...test()': bool
         "#]],
     );
@@ -3563,12 +3563,12 @@ fn main(){
             95..99 'self': Wrapper
             101..104 'rhs': u32
             122..150 '{     ...     }': Wrapper
-            132..139 'Wrapper': extern "rust-call" Wrapper(u32) -> Wrapper
+            132..139 'Wrapper': fn Wrapper(u32) -> Wrapper
             132..144 'Wrapper(rhs)': Wrapper
             140..143 'rhs': u32
             162..248 '{     ...um;  }': ()
             172..179 'wrapped': Wrapper
-            182..189 'Wrapper': extern "rust-call" Wrapper(u32) -> Wrapper
+            182..189 'Wrapper': fn Wrapper(u32) -> Wrapper
             182..193 'Wrapper(10)': Wrapper
             190..192 '10': u32
             203..206 'num': u32

@@ -1,7 +1,7 @@
-use rustc_infer::infer::canonical::Canonical;
+use rustc_infer::infer::canonical::CanonicalQueryInput;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::OutlivesBound;
-use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
+use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFolder, TypeVisitableExt};
@@ -13,11 +13,6 @@ use tracing::debug;
 
 use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCtxt, wf};
-
-#[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
-pub struct ImpliedOutlivesBounds<'tcx> {
-    pub ty: Ty<'tcx>,
-}
 
 impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
     type QueryResponse = Vec<OutlivesBound<'tcx>>;
@@ -38,16 +33,8 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
-        // FIXME this `unchecked_map` is only necessary because the
-        // query is defined as taking a `ParamEnvAnd<Ty>`; it should
-        // take an `ImpliedOutlivesBounds` instead
-        let canonicalized = canonicalized.unchecked_map(|ParamEnvAnd { param_env, value }| {
-            let ImpliedOutlivesBounds { ty } = value;
-            param_env.and(ty)
-        });
-
         if tcx.sess.opts.unstable_opts.no_implied_bounds_compat {
             tcx.implied_outlives_bounds(canonicalized)
         } else {

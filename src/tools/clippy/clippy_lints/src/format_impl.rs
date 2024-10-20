@@ -151,7 +151,7 @@ struct FormatImplExpr<'a, 'tcx> {
 impl FormatImplExpr<'_, '_> {
     fn check_to_string_in_display(&self) {
         if self.format_trait_impl.name == sym::Display
-            && let ExprKind::MethodCall(path, self_arg, ..) = self.expr.kind
+            && let ExprKind::MethodCall(path, self_arg, [], _) = self.expr.kind
             // Get the hir_id of the object we are calling the method on
             // Is the method to_string() ?
             && path.ident.name == sym::to_string

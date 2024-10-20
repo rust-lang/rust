@@ -28,7 +28,7 @@ use std::{
 };
 
 use base_db::{
-    salsa::{self, ParallelDatabase},
+    ra_salsa::{self, ParallelDatabase},
     SourceRootDatabase, SourceRootId, Upcast,
 };
 use fst::{raw::IndexedValue, Automaton, Streamer};
@@ -99,7 +99,7 @@ impl Query {
     }
 }
 
-#[salsa::query_group(SymbolsDatabaseStorage)]
+#[ra_salsa::query_group(SymbolsDatabaseStorage)]
 pub trait SymbolsDatabase: HirDatabase + SourceRootDatabase + Upcast<dyn HirDatabase> {
     /// The symbol index for a given module. These modules should only be in source roots that
     /// are inside local_roots.
@@ -108,18 +108,18 @@ pub trait SymbolsDatabase: HirDatabase + SourceRootDatabase + Upcast<dyn HirData
     /// The symbol index for a given source root within library_roots.
     fn library_symbols(&self, source_root_id: SourceRootId) -> Arc<SymbolIndex>;
 
-    #[salsa::transparent]
+    #[ra_salsa::transparent]
     /// The symbol indices of modules that make up a given crate.
     fn crate_symbols(&self, krate: Crate) -> Box<[Arc<SymbolIndex>]>;
 
     /// The set of "local" (that is, from the current workspace) roots.
     /// Files in local roots are assumed to change frequently.
-    #[salsa::input]
+    #[ra_salsa::input]
     fn local_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
 
     /// The set of roots for crates.io libraries.
     /// Files in libraries are assumed to never change.
-    #[salsa::input]
+    #[ra_salsa::input]
     fn library_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
 }
 
@@ -155,13 +155,13 @@ pub fn crate_symbols(db: &dyn SymbolsDatabase, krate: Crate) -> Box<[Arc<SymbolI
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
-impl<DB: ParallelDatabase> Snap<salsa::Snapshot<DB>> {
+impl<DB: ParallelDatabase> Snap<ra_salsa::Snapshot<DB>> {
     fn new(db: &DB) -> Self {
         Self(db.snapshot())
     }
 }
-impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
-    fn clone(&self) -> Snap<salsa::Snapshot<DB>> {
+impl<DB: ParallelDatabase> Clone for Snap<ra_salsa::Snapshot<DB>> {
+    fn clone(&self) -> Snap<ra_salsa::Snapshot<DB>> {
         Snap(self.0.snapshot())
     }
 }

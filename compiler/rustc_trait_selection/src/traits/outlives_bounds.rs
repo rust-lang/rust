@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
 use rustc_middle::span_bug;
@@ -54,11 +55,12 @@ fn implied_outlives_bounds<'a, 'tcx>(
     assert!(!ty.has_non_region_infer());
 
     let mut canonical_var_values = OriginalQueryValues::default();
-    let canonical_ty = infcx.canonicalize_query(param_env.and(ty), &mut canonical_var_values);
+    let input = ImpliedOutlivesBounds { ty };
+    let canonical = infcx.canonicalize_query(param_env.and(input), &mut canonical_var_values);
     let implied_bounds_result = if compat {
-        infcx.tcx.implied_outlives_bounds_compat(canonical_ty)
+        infcx.tcx.implied_outlives_bounds_compat(canonical)
     } else {
-        infcx.tcx.implied_outlives_bounds(canonical_ty)
+        infcx.tcx.implied_outlives_bounds(canonical)
     };
     let Ok(canonical_result) = implied_bounds_result else {
         return vec![];

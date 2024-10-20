@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
@@ -87,8 +87,8 @@ declare_clippy_lint! {
 
 #[derive(Clone, Debug, Default)]
 pub struct LintWithoutLintPass {
-    declared_lints: FxHashMap<Symbol, Span>,
-    registered_lints: FxHashSet<Symbol>,
+    declared_lints: FxIndexMap<Symbol, Span>,
+    registered_lints: FxIndexSet<Symbol>,
 }
 
 impl_lint_pass!(LintWithoutLintPass => [
@@ -266,7 +266,7 @@ pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<
 }
 
 struct LintCollector<'a, 'tcx> {
-    output: &'a mut FxHashSet<Symbol>,
+    output: &'a mut FxIndexSet<Symbol>,
     cx: &'a LateContext<'tcx>,
 }
 

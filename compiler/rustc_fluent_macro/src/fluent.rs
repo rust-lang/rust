@@ -8,6 +8,7 @@ use fluent_syntax::ast::{
     Attribute, Entry, Expression, Identifier, InlineExpression, Message, Pattern, PatternElement,
 };
 use fluent_syntax::parser::ParserError;
+use proc_macro::tracked_path::path;
 use proc_macro::{Diagnostic, Level, Span};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -99,8 +100,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
 
     let crate_name = Ident::new(&crate_name, resource_str.span());
 
-    // As this macro also outputs an `include_str!` for this file, the macro will always be
-    // re-executed when the file changes.
+    path(absolute_ftl_path.to_str().unwrap());
     let resource_contents = match read_to_string(absolute_ftl_path) {
         Ok(resource_contents) => resource_contents,
         Err(e) => {

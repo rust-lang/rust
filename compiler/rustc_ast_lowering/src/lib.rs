@@ -268,8 +268,8 @@ impl ResolverAstLowering {
     ///
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
-    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
+    fn extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
+        self.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default()
     }
 }
 
@@ -885,7 +885,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut generic_params: Vec<_> = self
             .lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder)
             .collect();
-        let extra_lifetimes = self.resolver.take_extra_lifetime_params(binder);
+        let extra_lifetimes = self.resolver.extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
         generic_params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(ident, node_id, res, hir::GenericParamSource::Binder)
@@ -1495,62 +1495,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let captured_lifetimes_to_duplicate = if let Some(args) =
-            // We only look for one `use<...>` syntax since we syntactially reject more than one.
-            bounds.iter().find_map(
-                |bound| match bound {
-                    ast::GenericBound::Use(a, _) => Some(a),
-                    _ => None,
-                },
-            ) {
-            // We'll actually validate these later on; all we need is the list of
-            // lifetimes to duplicate during this portion of lowering.
-            args.iter()
-                .filter_map(|arg| match arg {
-                    PreciseCapturingArg::Lifetime(lt) => Some(*lt),
-                    PreciseCapturingArg::Arg(..) => None,
-                })
-                // Add in all the lifetimes mentioned in the bounds. We will error
-                // them out later, but capturing them here is important to make sure
-                // they actually get resolved in resolve_bound_vars.
-                .chain(lifetime_collector::lifetimes_in_bounds(self.resolver, bounds))
-                .collect()
-        } else {
-            match origin {
-                hir::OpaqueTyOrigin::TyAlias { .. } => {
-                    // type alias impl trait and associated type position impl trait were
-                    // decided to capture all in-scope lifetimes, which we collect for
-                    // all opaques during resolution.
-                    self.resolver
-                        .take_extra_lifetime_params(opaque_ty_node_id)
-                        .into_iter()
-                        .map(|(ident, id, _)| Lifetime { id, ident })
-                        .collect()
-                }
-                hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl, .. } => {
-                    if in_trait_or_impl.is_some()
-                        || self.tcx.features().lifetime_capture_rules_2024
-                        || span.at_least_rust_2024()
-                    {
-                        // return-position impl trait in trait was decided to capture all
-                        // in-scope lifetimes, which we collect for all opaques during resolution.
-                        self.resolver
-                            .take_extra_lifetime_params(opaque_ty_node_id)
-                            .into_iter()
-                            .map(|(ident, id, _)| Lifetime { id, ident })
-                            .collect()
-                    } else {
-                        // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
-                        // example, we only need to duplicate lifetimes that appear in the
-                        // bounds, since those are the only ones that are captured by the opaque.
-                        lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
-                    }
-                }
-                hir::OpaqueTyOrigin::AsyncFn { .. } => {
-                    unreachable!("should be using `lower_async_fn_ret_ty`")
-                }
+        // Whether this opaque always captures lifetimes in scope.
+        // Right now, this is all RPITIT and TAITs, and when `lifetime_capture_rules_2024`
+        // is enabled. We don't check the span of the edition, since this is done
+        // on a per-opaque basis to account for nested opaques.
+        let always_capture_in_scope = match origin {
+            _ if self.tcx.features().lifetime_capture_rules_2024 => true,
+            hir::OpaqueTyOrigin::TyAlias { .. } => true,
+            hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl, .. } => in_trait_or_impl.is_some(),
+            hir::OpaqueTyOrigin::AsyncFn { .. } => {
+                unreachable!("should be using `lower_coroutine_fn_ret_ty`")
             }
         };
+        let captured_lifetimes_to_duplicate = lifetime_collector::lifetimes_for_opaque(
+            self.resolver,
+            always_capture_in_scope,
+            opaque_ty_node_id,
+            bounds,
+            span,
+        );
         debug!(?captured_lifetimes_to_duplicate);
 
         // Feature gate for RPITIT + use<..>
@@ -1920,7 +1883,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let captured_lifetimes = self
             .resolver
-            .take_extra_lifetime_params(opaque_ty_node_id)
+            .extra_lifetime_params(opaque_ty_node_id)
             .into_iter()
             .map(|(ident, id, _)| Lifetime { id, ident })
             .collect();

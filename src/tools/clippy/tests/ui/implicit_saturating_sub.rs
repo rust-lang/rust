@@ -268,3 +268,13 @@ fn main() {
         a - b
     };
 }
+
+fn regression_13524(a: usize, b: usize, c: bool) -> usize {
+    if c {
+        123
+    } else if a >= b {
+        0
+    } else {
+        b - a
+    }
+}

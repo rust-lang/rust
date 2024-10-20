@@ -1,8 +1,8 @@
 // MIR for `main` after built
 
 | User Type Annotations
-| 0: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [&*b"AAAA"], user_self_ty: None }), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/issue_99325.rs:13:16: 13:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
-| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [UnevaluatedConst { def: DefId(0:8 ~ issue_99325[d56d]::main::{constant#1}), args: [] }], user_self_ty: None }), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 0: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [&*b"AAAA"], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:13:16: 13:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [UnevaluatedConst { def: DefId(0:8 ~ issue_99325[d56d]::main::{constant#1}), args: [] }], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
 |
 fn main() -> () {
     let mut _0: ();

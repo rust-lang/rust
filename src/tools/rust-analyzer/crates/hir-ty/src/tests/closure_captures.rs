@@ -1,4 +1,4 @@
-use base_db::salsa::InternKey;
+use base_db::ra_salsa::InternKey;
 use expect_test::{expect, Expect};
 use hir_def::db::DefDatabase;
 use hir_expand::files::InFileWrapper;

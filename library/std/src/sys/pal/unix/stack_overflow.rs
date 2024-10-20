@@ -265,9 +265,7 @@ mod imp {
     /// Modern kernels on modern hardware can have dynamic signal stack sizes.
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn sigstack_size() -> usize {
-        // FIXME: reuse const from libc when available?
-        const AT_MINSIGSTKSZ: crate::ffi::c_ulong = 51;
-        let dynamic_sigstksz = unsafe { libc::getauxval(AT_MINSIGSTKSZ) };
+        let dynamic_sigstksz = unsafe { libc::getauxval(libc::AT_MINSIGSTKSZ) };
         // If getauxval couldn't find the entry, it returns 0,
         // so take the higher of the "constant" and auxval.
         // This transparently supports older kernels which don't provide AT_MINSIGSTKSZ

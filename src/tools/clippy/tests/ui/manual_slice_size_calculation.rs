@@ -10,11 +10,15 @@ use proc_macros::external;
 fn main() {
     let v_i32 = Vec::<i32>::new();
     let s_i32 = v_i32.as_slice();
+    let s_i32_ref = &s_i32;
+    let s_i32_ref_ref = &s_i32_ref;
 
     // True positives:
     let _ = s_i32.len() * size_of::<i32>(); // WARNING
     let _ = size_of::<i32>() * s_i32.len(); // WARNING
     let _ = size_of::<i32>() * s_i32.len() * 5; // WARNING
+    let _ = size_of::<i32>() * s_i32_ref.len(); // WARNING
+    let _ = size_of::<i32>() * s_i32_ref_ref.len(); // WARNING
 
     let len = s_i32.len();
     let size = size_of::<i32>();

@@ -313,6 +313,5 @@ fn response_no_constraints_raw<I: Interner>(
             external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
-        defining_opaque_types: Default::default(),
     }
 }

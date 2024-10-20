@@ -2,8 +2,6 @@
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
 //@ error-pattern: unsafe precondition(s) violated: Layout::from_size_align_unchecked requires
 //@ revisions: toolarge badalign
-//@[toolarge] compile-flags: --cfg toolarge
-//@[badalign] compile-flags: --cfg badalign
 
 fn main() {
     unsafe {

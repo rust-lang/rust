@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.83"
+version = "0.1.84"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -23,7 +23,7 @@ path = "src/driver.rs"
 [dependencies]
 clippy_config = { path = "clippy_config" }
 clippy_lints = { path = "clippy_lints" }
-rustc_tools_util = "0.3.0"
+rustc_tools_util = "0.4.0"
 tempfile = { version = "3.3", optional = true }
 termize = "0.1"
 color-print = "0.3.4"
@@ -39,6 +39,8 @@ toml = "0.7.3"
 walkdir = "2.3"
 filetime = "0.2.9"
 itertools = "0.12"
+pulldown-cmark = "0.11"
+rinja = { version = "0.3", default-features = false, features = ["config"] }
 
 # UI test dependencies
 clippy_utils = { path = "clippy_utils" }
@@ -50,7 +52,7 @@ parking_lot = "0.12"
 tokio = { version = "1", features = ["io-util"] }
 
 [build-dependencies]
-rustc_tools_util = "0.3.0"
+rustc_tools_util = "0.4.0"
 
 [features]
 integration = ["tempfile"]

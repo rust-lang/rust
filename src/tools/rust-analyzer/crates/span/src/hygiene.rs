@@ -21,7 +21,7 @@
 //! `ExpnData::call_site` in rustc, [`MacroCallLoc::call_site`] in rust-analyzer.
 use std::fmt;
 
-use salsa::{InternId, InternValue};
+use ra_salsa::{InternId, InternValue};
 
 use crate::MacroCallId;
 
@@ -39,11 +39,11 @@ impl fmt::Debug for SyntaxContextId {
     }
 }
 
-impl salsa::InternKey for SyntaxContextId {
-    fn from_intern_id(v: salsa::InternId) -> Self {
+impl ra_salsa::InternKey for SyntaxContextId {
+    fn from_intern_id(v: ra_salsa::InternId) -> Self {
         SyntaxContextId(v)
     }
-    fn as_intern_id(&self) -> salsa::InternId {
+    fn as_intern_id(&self) -> ra_salsa::InternId {
         self.0
     }
 }

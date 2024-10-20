@@ -232,7 +232,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         f(self)
-            .map_err(|err| {
+            .map_err_info(|err| {
                 trace!("InterpCx operation failed: {:?}", err);
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,

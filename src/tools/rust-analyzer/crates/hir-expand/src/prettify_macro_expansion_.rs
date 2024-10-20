@@ -15,11 +15,14 @@ pub fn prettify_macro_expansion(
     span_map: &ExpansionSpanMap,
     target_crate_id: CrateId,
 ) -> SyntaxNode {
+    // Because `syntax_bridge::prettify_macro_expansion::prettify_macro_expansion()` clones subtree for `syn`,
+    // that means it will be offsetted to the beginning.
+    let span_offset = syn.text_range().start();
     let crate_graph = db.crate_graph();
     let target_crate = &crate_graph[target_crate_id];
     let mut syntax_ctx_id_to_dollar_crate_replacement = FxHashMap::default();
     syntax_bridge::prettify_macro_expansion::prettify_macro_expansion(syn, &mut |dollar_crate| {
-        let ctx = span_map.span_at(dollar_crate.text_range().start()).ctx;
+        let ctx = span_map.span_at(dollar_crate.text_range().start() + span_offset).ctx;
         let replacement =
             syntax_ctx_id_to_dollar_crate_replacement.entry(ctx).or_insert_with(|| {
                 let ctx_data = db.lookup_intern_syntax_context(ctx);

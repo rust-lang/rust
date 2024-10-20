@@ -45,7 +45,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="keyword">extern</span> <span class="keyword">crate</span> <span class="module crate_root default_library library">std</span><span class="semicolon">;</span>
+<pre><code><span class="keyword">extern</span> <span class="keyword">crate</span> <span class="self_keyword crate_root public">self</span> <span class="keyword">as</span> <span class="module crate_root declaration">this</span><span class="semicolon">;</span>
+<span class="keyword">extern</span> <span class="keyword">crate</span> <span class="module crate_root default_library library">std</span><span class="semicolon">;</span>
 <span class="keyword">extern</span> <span class="keyword">crate</span> <span class="module crate_root default_library library">alloc</span> <span class="keyword">as</span> <span class="module crate_root declaration">abc</span><span class="semicolon">;</span>
 <span class="keyword">extern</span> <span class="keyword">crate</span> <span class="unresolved_reference">unresolved</span> <span class="keyword">as</span> <span class="module crate_root declaration">definitely_unresolved</span><span class="semicolon">;</span>
+<span class="keyword">extern</span> <span class="keyword">crate</span> <span class="unresolved_reference">unresolved</span> <span class="keyword">as</span> <span class="punctuation">_</span><span class="semicolon">;</span>
+<span class="keyword">extern</span> <span class="keyword">crate</span> <span class="module crate_root default_library library">test</span> <span class="keyword">as</span> <span class="module crate_root declaration">opt_in_crate</span><span class="semicolon">;</span>
+<span class="keyword">extern</span> <span class="keyword">crate</span> <span class="module crate_root default_library library">test</span> <span class="keyword">as</span> <span class="punctuation">_</span><span class="semicolon">;</span>
+<span class="keyword">extern</span> <span class="keyword">crate</span> <span class="module crate_root default_library library">proc_macro</span><span class="semicolon">;</span>
 </code></pre>

@@ -145,7 +145,7 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
         T![for] => types::for_type(p, false),
         // test precise_capturing
         // fn captures<'a: 'a, 'b: 'b, T>() -> impl Sized + use<'b, T> {}
-        T![use] => {
+        T![use] if p.nth_at(1, T![<]) => {
             p.bump_any();
             generic_param_list(p)
         }

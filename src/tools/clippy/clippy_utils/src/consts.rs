@@ -484,10 +484,9 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             }),
             ExprKind::If(cond, then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
             ExprKind::Binary(op, left, right) => self.binop(op, left, right),
-            ExprKind::Call(callee, args) => {
+            ExprKind::Call(callee, []) => {
                 // We only handle a few const functions for now.
-                if args.is_empty()
-                    && let ExprKind::Path(qpath) = &callee.kind
+                if let ExprKind::Path(qpath) = &callee.kind
                     && let Some(did) = self.typeck.qpath_res(qpath, callee.hir_id).opt_def_id()
                 {
                     match self.tcx.get_diagnostic_name(did) {

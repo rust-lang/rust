@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
-    Canonical, CanonicalExt as _, CanonicalVarInfo, CanonicalVarValues,
+    Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::Goal;
@@ -36,6 +36,7 @@ impl<'tcx> Deref for SolverDelegate<'tcx> {
 }
 
 impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<'tcx> {
+    type Infcx = InferCtxt<'tcx>;
     type Interner = TyCtxt<'tcx>;
 
     fn cx(&self) -> TyCtxt<'tcx> {
@@ -47,7 +48,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn build_with_canonical<V>(
         interner: TyCtxt<'tcx>,
         solver_mode: SolverMode,
-        canonical: &Canonical<'tcx, V>,
+        canonical: &CanonicalQueryInput<'tcx, V>,
     ) -> (Self, V, CanonicalVarValues<'tcx>)
     where
         V: TypeFoldable<TyCtxt<'tcx>>,

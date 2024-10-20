@@ -153,13 +153,12 @@ fn collect_unwrap_info<'tcx>(
         }
     } else if let ExprKind::Unary(UnOp::Not, expr) = &expr.kind {
         return collect_unwrap_info(cx, if_expr, expr, branch, !invert, false);
-    } else if let ExprKind::MethodCall(method_name, receiver, args, _) = &expr.kind
+    } else if let ExprKind::MethodCall(method_name, receiver, [], _) = &expr.kind
         && let Some(local_id) = path_to_local(receiver)
         && let ty = cx.typeck_results().expr_ty(receiver)
         && let name = method_name.ident.as_str()
         && (is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name))
     {
-        assert!(args.is_empty());
         let unwrappable = match name {
             "is_some" | "is_ok" => true,
             "is_err" | "is_none" => false,
@@ -208,7 +207,7 @@ struct MutationVisitor<'tcx> {
 /// expression: that will be where the actual method call is.
 fn is_option_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
     if let Node::Expr(mutating_expr) = tcx.parent_hir_node(expr_id)
-        && let ExprKind::MethodCall(path, ..) = mutating_expr.kind
+        && let ExprKind::MethodCall(path, _, [], _) = mutating_expr.kind
     {
         path.ident.name.as_str() == "as_mut"
     } else {
@@ -275,7 +274,7 @@ enum AsRefKind {
 /// Checks if the expression is a method call to `as_{ref,mut}` and returns the receiver of it.
 /// If it isn't, the expression itself is returned.
 fn consume_option_as_ref<'tcx>(expr: &'tcx Expr<'tcx>) -> (&'tcx Expr<'tcx>, Option<AsRefKind>) {
-    if let ExprKind::MethodCall(path, recv, ..) = expr.kind {
+    if let ExprKind::MethodCall(path, recv, [], _) = expr.kind {
         if path.ident.name == sym::as_ref {
             (recv, Some(AsRefKind::AsRef))
         } else if path.ident.name.as_str() == "as_mut" {
@@ -303,7 +302,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                 self.visit_branch(expr, cond, else_inner, true);
             }
         } else {
-            // find `unwrap[_err]()` calls:
+            // find `unwrap[_err]()` or `expect("...")` calls:
             if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind
                 && let (self_arg, as_ref_kind) = consume_option_as_ref(self_arg)
                 && let Some(id) = path_to_local(self_arg)

@@ -280,14 +280,14 @@ fn completion_item(
     let mut something_to_resolve = false;
 
     let filter_text = if fields_to_resolve.resolve_filter_text {
-        something_to_resolve = !item.lookup().is_empty();
+        something_to_resolve |= !item.lookup().is_empty();
         None
     } else {
         Some(item.lookup().to_owned())
     };
 
     let text_edit = if fields_to_resolve.resolve_text_edit {
-        something_to_resolve = true;
+        something_to_resolve |= true;
         None
     } else {
         // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -319,14 +319,14 @@ fn completion_item(
 
     let insert_text_format = item.is_snippet.then_some(lsp_types::InsertTextFormat::SNIPPET);
     let tags = if fields_to_resolve.resolve_tags {
-        something_to_resolve = item.deprecated;
+        something_to_resolve |= item.deprecated;
         None
     } else {
         item.deprecated.then(|| vec![lsp_types::CompletionItemTag::DEPRECATED])
     };
     let command = if item.trigger_call_info && config.client_commands().trigger_parameter_hints {
         if fields_to_resolve.resolve_command {
-            something_to_resolve = true;
+            something_to_resolve |= true;
             None
         } else {
             Some(command::trigger_parameter_hints())
@@ -336,14 +336,14 @@ fn completion_item(
     };
 
     let detail = if fields_to_resolve.resolve_detail {
-        something_to_resolve = item.detail.is_some();
+        something_to_resolve |= item.detail.is_some();
         None
     } else {
-        item.detail
+        item.detail.clone()
     };
 
     let documentation = if fields_to_resolve.resolve_documentation {
-        something_to_resolve = item.documentation.is_some();
+        something_to_resolve |= item.documentation.is_some();
         None
     } else {
         item.documentation.map(documentation)
@@ -366,11 +366,11 @@ fn completion_item(
 
     if config.completion_label_details_support() {
         if fields_to_resolve.resolve_label_details {
-            something_to_resolve = true;
+            something_to_resolve |= true;
         } else {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
                 detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: lsp_item.detail.clone(),
+                description: item.detail,
             });
         }
     } else if let Some(label_detail) = item.label_detail {

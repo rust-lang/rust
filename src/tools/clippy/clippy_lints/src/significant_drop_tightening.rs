@@ -421,11 +421,10 @@ fn dummy_stmt_expr<'any>(expr: &'any hir::Expr<'any>) -> hir::Stmt<'any> {
 }
 
 fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_>) -> bool {
-    if let hir::ExprKind::Call(fun, args) = expr.kind
+    if let hir::ExprKind::Call(fun, [first_arg]) = expr.kind
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, fun_path)) = &fun.kind
         && let Res::Def(DefKind::Fn, did) = fun_path.res
         && lcx.tcx.is_diagnostic_item(sym::mem_drop, did)
-        && let [first_arg, ..] = args
     {
         let has_ident = |local_expr: &hir::Expr<'_>| {
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &local_expr.kind

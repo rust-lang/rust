@@ -112,7 +112,6 @@
 #![feature(const_eval_select)]
 #![feature(const_heap)]
 #![feature(const_maybe_uninit_write)]
-#![feature(const_pin)]
 #![feature(const_size_of_val)]
 #![feature(const_vec_string_slice)]
 #![feature(core_intrinsics)]
