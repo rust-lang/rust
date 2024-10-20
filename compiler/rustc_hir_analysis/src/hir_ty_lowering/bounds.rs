@@ -142,7 +142,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// There is an implied binder around `param_ty` and `hir_bounds`.
     /// See `lower_poly_trait_ref` for more details.
     #[instrument(level = "debug", skip(self, hir_bounds, bounds))]
-    pub(crate) fn lower_poly_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
+    pub(crate) fn lower_poly_bounds<'hir, I: IntoIterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
         hir_bounds: I,
@@ -231,7 +231,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         self.lower_poly_bounds(
             param_ty,
-            hir_bounds.iter(),
+            hir_bounds,
             &mut bounds,
             ty::List::empty(),
             predicate_filter,
@@ -446,7 +446,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
                         self.lower_poly_bounds(
                             param_ty,
-                            hir_bounds.iter(),
+                            hir_bounds,
                             bounds,
                             projection_ty.bound_vars(),
                             predicate_filter,

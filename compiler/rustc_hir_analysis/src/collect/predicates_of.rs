@@ -267,7 +267,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let mut bounds = Bounds::default();
                 icx.lowerer().lower_poly_bounds(
                     ty,
-                    bound_pred.bounds.iter(),
+                    bound_pred.bounds,
                     &mut bounds,
                     bound_vars,
                     PredicateFilter::All,
@@ -836,7 +836,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
             self.lowerer().lower_poly_bounds(
                 bound_ty,
-                predicate.bounds.iter(),
+                predicate.bounds,
                 &mut bounds,
                 bound_vars,
                 filter,
