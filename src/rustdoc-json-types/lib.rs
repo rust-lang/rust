@@ -305,7 +305,7 @@ pub enum AssocItemConstraintKind {
 // FIXME(aDotInTheVoid): Consider making this non-public in rustdoc-types.
 pub struct Id(pub u32);
 
-/// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any aditional info.
+/// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any additional info.
 ///
 /// Part of [`ItemSummary`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -698,7 +698,7 @@ pub enum Abi {
     Aapcs { unwind: bool },
     /// Can be specified as `extern "win64"`.
     Win64 { unwind: bool },
-    /// Can be specifed as `extern "sysv64"`.
+    /// Can be specified as `extern "sysv64"`.
     SysV64 { unwind: bool },
     /// Can be specified as `extern "system"`.
     System { unwind: bool },
@@ -996,7 +996,7 @@ pub enum Type {
     QualifiedPath {
         /// The name of the associated type in the parent type.
         ///
-        /// ```ignore (incomplete expresssion)
+        /// ```ignore (incomplete expression)
         /// <core::array::IntoIter<u32, 42> as Iterator>::Item
         /// //                                            ^^^^
         /// ```
@@ -1083,7 +1083,7 @@ pub struct FunctionSignature {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Trait {
     /// Whether the trait is marked `auto` and is thus implemented automatically
-    /// for all aplicable types.
+    /// for all applicable types.
     pub is_auto: bool,
     /// Whether the trait is marked as `unsafe`.
     pub is_unsafe: bool,
