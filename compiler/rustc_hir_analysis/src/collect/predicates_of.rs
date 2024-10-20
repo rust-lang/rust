@@ -181,9 +181,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
     if let Some(self_bounds) = is_trait {
-        let bounds = icx.lowerer().lower_mono_bounds(
+        let mut bounds = Bounds::default();
+        icx.lowerer().lower_bounds(
             tcx.types.self_param,
             self_bounds,
+            &mut bounds,
+            ty::List::empty(),
             PredicateFilter::All,
         );
         predicates.extend(bounds.clauses(tcx));
@@ -265,7 +268,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }
 
                 let mut bounds = Bounds::default();
-                icx.lowerer().lower_poly_bounds(
+                icx.lowerer().lower_bounds(
                     ty,
                     bound_pred.bounds,
                     &mut bounds,
@@ -626,7 +629,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
         bug!("trait_def_id {trait_def_id:?} is not an item");
     };
 
-    let (generics, bounds) = match item.kind {
+    let (generics, superbounds) = match item.kind {
         hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
         hir::ItemKind::TraitAlias(generics, supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
@@ -635,7 +638,8 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     let self_param_ty = tcx.types.self_param;
-    let superbounds = icx.lowerer().lower_mono_bounds(self_param_ty, bounds, filter);
+    let mut bounds = Bounds::default();
+    icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
 
     let where_bounds_that_match = icx.probe_ty_param_bounds_in_generics(
         generics,
@@ -646,7 +650,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
-        &*tcx.arena.alloc_from_iter(superbounds.clauses(tcx).chain(where_bounds_that_match));
+        &*tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
     // Now require that immediate supertraits are lowered, which will, in
@@ -834,7 +838,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             };
 
             let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
-            self.lowerer().lower_poly_bounds(
+            self.lowerer().lower_bounds(
                 bound_ty,
                 predicate.bounds,
                 &mut bounds,
