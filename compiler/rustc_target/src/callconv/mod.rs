@@ -732,6 +732,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch[..] {
             "x86" => x86::compute_rust_abi_info(cx, self, abi),
+            "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self, abi),
             _ => {}
         };
 
