@@ -193,7 +193,8 @@ if '--help' in sys.argv or '-h' in sys.argv:
         if option.value:
             print('\t{:30} {}'.format('--{}=VAL'.format(option.name), option.desc))
         else:
-            print('\t{:30} {}'.format('--enable-{}  OR  --disable-{}'.format(option.name, option.name), option.desc))
+            print('\t--enable-{:25} OR --disable-{}'.format(option.name, option.name))
+            print('\t\t' + option.desc)
     print('')
     print('This configure script is a thin configuration shim over the true')
     print('configuration system, `config.toml`. You can explore the comments')
