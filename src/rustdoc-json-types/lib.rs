@@ -308,7 +308,7 @@ pub struct Id(pub u32);
 /// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any aditional info.
 ///
 /// Part of [`ItemSummary`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemKind {
     /// A module declaration, e.g. `mod foo;` or `mod foo {}`
@@ -892,7 +892,7 @@ pub enum GenericBound {
 }
 
 /// A set of modifiers applied to a trait.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TraitBoundModifier {
     /// Marks the absence of a modifier.
@@ -1193,7 +1193,7 @@ pub struct ProcMacro {
 }
 
 /// The way a [`ProcMacro`] is declared to be used.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
