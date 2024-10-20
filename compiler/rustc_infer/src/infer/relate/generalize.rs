@@ -660,7 +660,6 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Infer(InferConst::EffectVar(_)) => Ok(c),
             // FIXME: Unevaluated constants are also not rigid, so the current
             // approach of always relating them structurally is incomplete.
             //

@@ -588,7 +588,6 @@ impl<'tcx> Stable<'tcx> for ty::Generics {
                 .has_late_bound_regions
                 .as_ref()
                 .map(|late_bound_regions| late_bound_regions.stable(tables)),
-            host_effect_index: self.host_effect_index,
         }
     }
 }
@@ -603,7 +602,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDefKind {
             ty::GenericParamDefKind::Type { has_default, synthetic } => {
                 GenericParamDefKind::Type { has_default: *has_default, synthetic: *synthetic }
             }
-            ty::GenericParamDefKind::Const { has_default, is_host_effect: _, synthetic: _ } => {
+            ty::GenericParamDefKind::Const { has_default, synthetic: _ } => {
                 GenericParamDefKind::Const { has_default: *has_default }
             }
         }

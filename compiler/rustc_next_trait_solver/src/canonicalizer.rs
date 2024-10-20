@@ -431,7 +431,6 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                     );
                     CanonicalVarKind::Const(self.delegate.universe_of_ct(vid).unwrap())
                 }
-                ty::InferConst::EffectVar(_) => CanonicalVarKind::Effect,
                 ty::InferConst::Fresh(_) => todo!(),
             },
             ty::ConstKind::Placeholder(placeholder) => match self.canonicalize_mode {

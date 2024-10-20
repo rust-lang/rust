@@ -7,8 +7,6 @@ use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::Visitor;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
@@ -48,7 +46,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
 
-        let fallback_occurred = self.fallback_types() | self.fallback_effects();
+        let fallback_occurred = self.fallback_types();
 
         if !fallback_occurred {
             return;
@@ -101,31 +99,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
 
         fallback_occurred
-    }
-
-    fn fallback_effects(&self) -> bool {
-        let unsolved_effects = self.unsolved_effects();
-
-        if unsolved_effects.is_empty() {
-            return false;
-        }
-
-        // not setting the `fallback_has_occurred` field here because
-        // that field is only used for type fallback diagnostics.
-        for effect in unsolved_effects {
-            let expected = self.tcx.consts.true_;
-            let cause = self.misc(DUMMY_SP);
-            match self.at(&cause, self.param_env).eq(DefineOpaqueTypes::Yes, expected, effect) {
-                Ok(InferOk { obligations, value: () }) => {
-                    self.register_predicates(obligations);
-                }
-                Err(e) => {
-                    bug!("cannot eq unsolved effect: {e:?}")
-                }
-            }
-        }
-
-        true
     }
 
     // Tries to apply a fallback to `ty` if it is an unsolved variable.

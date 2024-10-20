@@ -26,9 +26,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
-use rustc_middle::infer::unify_key::{
-    ConstVariableOrigin, ConstVariableValue, ConstVidKey, EffectVarValue, EffectVidKey,
-};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
@@ -39,7 +37,7 @@ use rustc_middle::ty::fold::{
 };
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
-    self, ConstVid, EffectVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
+    self, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
     GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid,
 };
 use rustc_middle::{bug, span_bug};
@@ -117,9 +115,6 @@ pub struct InferCtxtInner<'tcx> {
     /// Map from floating variable to the kind of float it represents.
     float_unification_storage: ut::UnificationTableStorage<ty::FloatVid>,
 
-    /// Map from effect variable to the effect param it represents.
-    effect_unification_storage: ut::UnificationTableStorage<EffectVidKey<'tcx>>,
-
     /// Tracks the set of region variables and the constraints between them.
     ///
     /// This is initially `Some(_)` but when
@@ -176,7 +171,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
             const_unification_storage: Default::default(),
             int_unification_storage: Default::default(),
             float_unification_storage: Default::default(),
-            effect_unification_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
             region_obligations: vec![],
             opaque_type_storage: Default::default(),
@@ -226,10 +220,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
     #[inline]
     fn const_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ConstVidKey<'tcx>> {
         self.const_unification_storage.with_log(&mut self.undo_log)
-    }
-
-    fn effect_unification_table(&mut self) -> UnificationTable<'_, 'tcx, EffectVidKey<'tcx>> {
-        self.effect_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
@@ -524,7 +514,6 @@ impl fmt::Display for FixupError {
             ),
             Ty(_) => write!(f, "unconstrained type"),
             Const(_) => write!(f, "unconstrained const value"),
-            Effect(_) => write!(f, "unconstrained effect value"),
         }
     }
 }
@@ -726,17 +715,6 @@ impl<'tcx> InferCtxt<'tcx> {
         vars
     }
 
-    pub fn unsolved_effects(&self) -> Vec<ty::Const<'tcx>> {
-        let mut inner = self.inner.borrow_mut();
-        let mut table = inner.effect_unification_table();
-
-        (0..table.len())
-            .map(|i| ty::EffectVid::from_usize(i))
-            .filter(|&vid| table.probe_value(vid).is_unknown())
-            .map(|v| ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(v)))
-            .collect()
-    }
-
     #[instrument(skip(self), level = "debug")]
     pub fn sub_regions(
         &self,
@@ -899,13 +877,6 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Const::new_var(self.tcx, vid)
     }
 
-    fn next_effect_var(&self) -> ty::Const<'tcx> {
-        let effect_vid =
-            self.inner.borrow_mut().effect_unification_table().new_key(EffectVarValue::Unknown).vid;
-
-        ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(effect_vid))
-    }
-
     pub fn next_int_var(&self) -> Ty<'tcx> {
         let next_int_var_id =
             self.inner.borrow_mut().int_unification_table().new_key(ty::IntVarValue::Unknown);
@@ -991,10 +962,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 Ty::new_var(self.tcx, ty_var_id).into()
             }
-            GenericParamDefKind::Const { is_host_effect, .. } => {
-                if is_host_effect {
-                    return self.var_for_effect(param);
-                }
+            GenericParamDefKind::Const { .. } => {
                 let origin = ConstVariableOrigin { param_def_id: Some(param.def_id), span };
                 let const_var_id = self
                     .inner
@@ -1005,16 +973,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::Const::new_var(self.tcx, const_var_id).into()
             }
         }
-    }
-
-    pub fn var_for_effect(&self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
-        let ty = self
-            .tcx
-            .type_of(param.def_id)
-            .no_bound_vars()
-            .expect("const parameter types cannot be generic");
-        debug_assert_eq!(self.tcx.types.bool, ty);
-        self.next_effect_var().into()
     }
 
     /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
@@ -1142,13 +1100,6 @@ impl<'tcx> InferCtxt<'tcx> {
                     .probe_value(vid)
                     .known()
                     .unwrap_or(ct),
-                InferConst::EffectVar(vid) => self
-                    .inner
-                    .borrow_mut()
-                    .effect_unification_table()
-                    .probe_value(vid)
-                    .known()
-                    .unwrap_or(ct),
                 InferConst::Fresh(_) => ct,
             },
             ty::ConstKind::Param(_)
@@ -1167,10 +1118,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
         self.inner.borrow_mut().const_unification_table().find(var).vid
-    }
-
-    pub fn root_effect_var(&self, var: ty::EffectVid) -> ty::EffectVid {
-        self.inner.borrow_mut().effect_unification_table().find(var).vid
     }
 
     /// Resolves an int var to a rigid int type, if it was constrained to one,
@@ -1236,10 +1183,6 @@ impl<'tcx> InferCtxt<'tcx> {
             ConstVariableValue::Known { value } => Ok(value),
             ConstVariableValue::Unknown { origin: _, universe } => Err(universe),
         }
-    }
-
-    pub fn probe_effect_var(&self, vid: EffectVid) -> Option<ty::Const<'tcx>> {
-        self.inner.borrow_mut().effect_unification_table().probe_value(vid).known()
     }
 
     /// Attempts to resolve all type/region/const variables in
@@ -1511,14 +1454,6 @@ impl<'tcx> InferCtxt<'tcx> {
                     ConstVariableValue::Known { .. } => true,
                 }
             }
-
-            TyOrConstInferVar::Effect(v) => {
-                // If `probe_value` returns `Some`, it never equals
-                // `ty::ConstKind::Infer(ty::InferConst::Effect(v))`.
-                //
-                // Not `inlined_probe_value(v)` because this call site is colder.
-                self.probe_effect_var(v).is_some()
-            }
         }
     }
 
@@ -1545,8 +1480,6 @@ pub enum TyOrConstInferVar {
 
     /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
     Const(ConstVid),
-    /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::EffectVar(_))`.
-    Effect(EffectVid),
 }
 
 impl<'tcx> TyOrConstInferVar {
@@ -1577,7 +1510,6 @@ impl<'tcx> TyOrConstInferVar {
     fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
         match ct.kind() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
-            ty::ConstKind::Infer(InferConst::EffectVar(v)) => Some(TyOrConstInferVar::Effect(v)),
             _ => None,
         }
     }

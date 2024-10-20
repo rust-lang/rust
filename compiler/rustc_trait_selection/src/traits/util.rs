@@ -215,22 +215,13 @@ pub(crate) fn closure_trait_ref_and_return_type<'tcx>(
     self_ty: Ty<'tcx>,
     sig: ty::PolyFnSig<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
-    fn_host_effect: ty::Const<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => Ty::new_tup(tcx, sig.skip_binder().inputs()),
     };
-    let trait_ref = if tcx.has_host_param(fn_trait_def_id) {
-        ty::TraitRef::new(tcx, fn_trait_def_id, [
-            ty::GenericArg::from(self_ty),
-            ty::GenericArg::from(arguments_tuple),
-            ty::GenericArg::from(fn_host_effect),
-        ])
-    } else {
-        ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple])
-    };
+    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple]);
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 

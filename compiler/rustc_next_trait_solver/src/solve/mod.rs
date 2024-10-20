@@ -182,12 +182,6 @@ where
         let (ct, ty) = goal.predicate;
 
         let ct_ty = match ct.kind() {
-            // FIXME: Ignore effect vars because canonicalization doesn't handle them correctly
-            // and if we stall on the var then we wind up creating ambiguity errors in a probe
-            // for this goal which contains an effect var. Which then ends up ICEing.
-            ty::ConstKind::Infer(ty::InferConst::EffectVar(_)) => {
-                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
-            }
             ty::ConstKind::Infer(_) => {
                 return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
             }

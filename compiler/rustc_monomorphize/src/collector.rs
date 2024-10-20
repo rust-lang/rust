@@ -1522,7 +1522,6 @@ fn create_mono_items_for_default_impls<'tcx>(
     // it, to validate whether or not the impl is legal to instantiate at all.
     let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
         GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-        GenericParamDefKind::Const { is_host_effect: true, .. } => tcx.consts.true_.into(),
         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
             unreachable!(
                 "`own_requires_monomorphization` check means that \

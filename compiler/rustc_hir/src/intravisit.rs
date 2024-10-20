@@ -935,7 +935,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, .. } => visit_opt!(visitor, visit_ty, default),
-        GenericParamKind::Const { ref ty, ref default, is_host_effect: _, synthetic: _ } => {
+        GenericParamKind::Const { ref ty, ref default, synthetic: _ } => {
             try_visit!(visitor.visit_ty(ty));
             if let Some(ref default) = default {
                 try_visit!(visitor.visit_const_param_default(param.hir_id, default));

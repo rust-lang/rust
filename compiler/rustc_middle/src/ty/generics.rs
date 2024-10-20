@@ -14,7 +14,7 @@ use crate::ty::{EarlyBinder, GenericArgsRef};
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool, is_host_effect: bool, synthetic: bool },
+    Const { has_default: bool, synthetic: bool },
 }
 
 impl GenericParamDefKind {
@@ -81,10 +81,6 @@ impl GenericParamDef {
         }
     }
 
-    pub fn is_host_effect(&self) -> bool {
-        matches!(self.kind, GenericParamDefKind::Const { is_host_effect: true, .. })
-    }
-
     pub fn default_value<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -133,9 +129,6 @@ pub struct Generics {
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
-
-    // The index of the host effect when instantiated. (i.e. might be index to parent args)
-    pub host_effect_index: Option<usize>,
 }
 
 impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
@@ -216,12 +209,10 @@ impl<'tcx> Generics {
     pub fn own_requires_monomorphization(&self) -> bool {
         for param in &self.own_params {
             match param.kind {
-                GenericParamDefKind::Type { .. }
-                | GenericParamDefKind::Const { is_host_effect: false, .. } => {
+                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                     return true;
                 }
-                GenericParamDefKind::Lifetime
-                | GenericParamDefKind::Const { is_host_effect: true, .. } => {}
+                GenericParamDefKind::Lifetime => {}
             }
         }
         false
@@ -300,8 +291,6 @@ impl<'tcx> Generics {
             own_params.start = 1;
         }
 
-        let verbose = tcx.sess.verbose_internals();
-
         // Filter the default arguments.
         //
         // This currently uses structural equality instead
@@ -316,8 +305,6 @@ impl<'tcx> Generics {
                 param.default_value(tcx).is_some_and(|default| {
                     default.instantiate(tcx, args) == args[param.index as usize]
                 })
-                // filter out trailing effect params, if we're not in `-Zverbose-internals`.
-                || (!verbose && matches!(param.kind, GenericParamDefKind::Const { is_host_effect: true, .. }))
             })
             .count();
 

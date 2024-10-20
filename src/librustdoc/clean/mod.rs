@@ -542,7 +542,7 @@ fn clean_generic_param_def(
                 synthetic,
             })
         }
-        ty::GenericParamDefKind::Const { has_default, synthetic, is_host_effect: _ } => {
+        ty::GenericParamDefKind::Const { has_default, synthetic } => {
             (def.name, GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
                     ty::Binder::dummy(
@@ -617,7 +617,7 @@ fn clean_generic_param<'tcx>(
                 synthetic,
             })
         }
-        hir::GenericParamKind::Const { ty, default, synthetic, is_host_effect: _ } => {
+        hir::GenericParamKind::Const { ty, default, synthetic } => {
             (param.name.ident().name, GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
@@ -797,7 +797,7 @@ fn clean_ty_generics<'tcx>(
                 }
                 true
             }
-            ty::GenericParamDefKind::Const { is_host_effect, .. } => !is_host_effect,
+            ty::GenericParamDefKind::Const { .. } => true,
         })
         .map(|param| clean_generic_param_def(param, ParamDefaults::Yes, cx))
         .collect();

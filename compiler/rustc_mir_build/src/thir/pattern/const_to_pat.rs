@@ -43,7 +43,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 }
 
 struct ConstToPat<'tcx> {
-    id: hir::HirId,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
 
@@ -62,7 +61,6 @@ impl<'tcx> ConstToPat<'tcx> {
     ) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat {
-            id,
             span,
             infcx,
             param_env: pat_ctxt.param_env,
@@ -149,15 +147,7 @@ impl<'tcx> ConstToPat<'tcx> {
             tcx,
             ObligationCause::dummy(),
             self.param_env,
-            ty::TraitRef::new_from_args(
-                tcx,
-                partial_eq_trait_id,
-                tcx.with_opt_host_effect_param(
-                    tcx.hir().enclosing_body_owner(self.id),
-                    partial_eq_trait_id,
-                    [ty, ty],
-                ),
-            ),
+            ty::TraitRef::new(tcx, partial_eq_trait_id, [ty, ty]),
         );
 
         // This *could* accept a type that isn't actually `PartialEq`, because region bounds get

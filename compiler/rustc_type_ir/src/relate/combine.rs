@@ -179,23 +179,9 @@ where
             Ok(a)
         }
 
-        (
-            ty::ConstKind::Infer(ty::InferConst::EffectVar(a_vid)),
-            ty::ConstKind::Infer(ty::InferConst::EffectVar(b_vid)),
-        ) => {
-            infcx.equate_effect_vids_raw(a_vid, b_vid);
-            Ok(a)
-        }
-
         // All other cases of inference with other variables are errors.
-        (
-            ty::ConstKind::Infer(ty::InferConst::Var(_) | ty::InferConst::EffectVar(_)),
-            ty::ConstKind::Infer(_),
-        )
-        | (
-            ty::ConstKind::Infer(_),
-            ty::ConstKind::Infer(ty::InferConst::Var(_) | ty::InferConst::EffectVar(_)),
-        ) => {
+        (ty::ConstKind::Infer(ty::InferConst::Var(_)), ty::ConstKind::Infer(_))
+        | (ty::ConstKind::Infer(_), ty::ConstKind::Infer(ty::InferConst::Var(_))) => {
             panic!(
                 "tried to combine ConstKind::Infer/ConstKind::Infer(InferConst::Var): {a:?} and {b:?}"
             )
@@ -208,16 +194,6 @@ where
 
         (_, ty::ConstKind::Infer(ty::InferConst::Var(vid))) => {
             infcx.instantiate_const_var_raw(relation, false, vid, a)?;
-            Ok(a)
-        }
-
-        (ty::ConstKind::Infer(ty::InferConst::EffectVar(vid)), _) => {
-            infcx.instantiate_effect_var_raw(vid, b);
-            Ok(b)
-        }
-
-        (_, ty::ConstKind::Infer(ty::InferConst::EffectVar(vid))) => {
-            infcx.instantiate_effect_var_raw(vid, a);
             Ok(a)
         }
 

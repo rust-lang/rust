@@ -450,7 +450,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ty::ConstKind::Infer(var) => {
                             let var = match var {
                                 ty::InferConst::Var(vid) => TyOrConstInferVar::Const(vid),
-                                ty::InferConst::EffectVar(vid) => TyOrConstInferVar::Effect(vid),
                                 ty::InferConst::Fresh(_) => {
                                     bug!("encountered fresh const in fulfill")
                                 }

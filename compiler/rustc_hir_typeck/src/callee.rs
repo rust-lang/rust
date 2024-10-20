@@ -20,7 +20,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
@@ -537,40 +537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
                 if let ty::FnDef(def_id, _args) = *arg_ty.kind() {
-                    let fn_once_def_id =
-                        self.tcx.require_lang_item(hir::LangItem::FnOnce, Some(span));
-                    let fn_once_output_def_id =
-                        self.tcx.require_lang_item(hir::LangItem::FnOnceOutput, Some(span));
-                    if self.tcx.has_host_param(fn_once_def_id) {
-                        let const_param: ty::GenericArg<'tcx> =
-                            ([self.tcx.consts.false_, self.tcx.consts.true_])[idx].into();
-                        self.register_predicate(traits::Obligation::new(
-                            self.tcx,
-                            self.misc(span),
-                            self.param_env,
-                            ty::TraitRef::new(self.tcx, fn_once_def_id, [
-                                arg_ty.into(),
-                                fn_sig.inputs()[0].into(),
-                                const_param,
-                            ]),
-                        ));
-
-                        self.register_predicate(traits::Obligation::new(
-                            self.tcx,
-                            self.misc(span),
-                            self.param_env,
-                            ty::ProjectionPredicate {
-                                projection_term: ty::AliasTerm::new(
-                                    self.tcx,
-                                    fn_once_output_def_id,
-                                    [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],
-                                ),
-                                term: fn_sig.output().into(),
-                            },
-                        ));
-
-                        self.select_obligations_where_possible(|_| {});
-                    } else if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
+                    if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
                         self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
                     }
                 } else {
@@ -869,35 +836,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_sig.output()
     }
 
-    #[tracing::instrument(level = "debug", skip(self, span))]
+    #[tracing::instrument(level = "debug", skip(self, _span))]
     pub(super) fn enforce_context_effects(
         &self,
-        span: Span,
-        callee_did: DefId,
-        callee_args: GenericArgsRef<'tcx>,
+        _span: Span,
+        _callee_did: DefId,
+        _callee_args: GenericArgsRef<'tcx>,
     ) {
-        let tcx = self.tcx;
-
-        // fast-reject if callee doesn't have the host effect param (non-const)
-        let generics = tcx.generics_of(callee_did);
-        let Some(host_effect_index) = generics.host_effect_index else { return };
-
-        let effect = tcx.expected_host_effect_param_for_body(self.body_id);
-
-        trace!(?effect, ?generics, ?callee_args);
-
-        let param = callee_args.const_at(host_effect_index);
-        let cause = self.misc(span);
-        // We know the type of `effect` to be `bool`, there will be no opaque type inference.
-        match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::Yes, effect, param) {
-            Ok(infer::InferOk { obligations, value: () }) => {
-                self.register_predicates(obligations);
-            }
-            Err(e) => {
-                // FIXME(effects): better diagnostic
-                self.err_ctxt().report_mismatched_consts(&cause, effect, param, e).emit();
-            }
-        }
+        todo!()
     }
 
     fn confirm_overloaded_call(
