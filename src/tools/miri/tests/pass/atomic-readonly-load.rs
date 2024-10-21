@@ -1,5 +1,6 @@
 // Stacked Borrows doesn't like this.
 //@compile-flags: -Zmiri-tree-borrows
+#![allow(unsafe_cell_transmutes)]
 
 use std::sync::atomic::*;
 
