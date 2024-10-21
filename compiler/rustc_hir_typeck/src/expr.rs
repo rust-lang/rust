@@ -1601,13 +1601,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let element_ty = if !args.is_empty() {
+            let mut size_ct = None;
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| match *uty.kind() {
-                    ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
+                    ty::Array(ty, sz_ct) => {
+                        size_ct = Some(sz_ct);
+                        Some(ty)
+                    }
+                    ty::Slice(ty) => Some(ty),
                     _ => None,
                 })
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
+
+            // Check if the expected type of array size is something
+            // other than `usize` which is clearly wrong. Fixes ICE #126359
+            if let Some(size_ct) = size_ct
+                && let ty::ConstKind::Value(size_ty, _) = size_ct.kind()
+                && !matches!(size_ty.kind(), ty::Uint(ty::UintTy::Usize))
+            {
+                let guar = self.dcx().span_delayed_bug(expr.span, "array size type is not `usize`");
+                self.set_tainted_by_errors(guar);
+
+                return Ty::new_error(self.tcx, guar);
+            }
+
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
             assert_eq!(self.diverges.get(), Diverges::Maybe);
             for e in args {

@@ -1,0 +1,14 @@
+error: the constant `N` is not of type `usize`
+  --> $DIR/ice-const-size-relate-126359.rs:7:10
+   |
+LL |     arr: [T; N],
+   |          ^^^^^^ expected `usize`, found `u8`
+
+error: the constant `3` is not of type `usize`
+  --> $DIR/ice-const-size-relate-126359.rs:12:39
+   |
+LL |     let _ = OppOrder::<3, u32> { arr: [0, 0, 0] };
+   |                                       ^^^^^^^^^ expected `usize`, found `u8`
+
+error: aborting due to 2 previous errors
+
