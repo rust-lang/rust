@@ -611,24 +611,6 @@ rustc_queries! {
         desc { "getting wasm import module map" }
     }
 
-    /// Returns everything that looks like a predicate written explicitly
-    /// by the user on a trait item.
-    ///
-    /// Traits are unusual, because predicates on associated types are
-    /// converted into bounds on that type for backwards compatibility:
-    ///
-    /// trait X where Self::U: Copy { type U; }
-    ///
-    /// becomes
-    ///
-    /// trait X { type U: Copy; }
-    ///
-    /// `explicit_predicates_of` and `explicit_item_bounds` will then take
-    /// the appropriate subsets of the predicates here.
-    query trait_explicit_predicates_and_bounds(key: LocalDefId) -> ty::GenericPredicates<'tcx> {
-        desc { |tcx| "computing explicit predicates of trait `{}`", tcx.def_path_str(key) }
-    }
-
     /// Returns the predicates written explicitly by the user.
     ///
     /// You should probably use `predicates_of` unless you're looking for

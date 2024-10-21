@@ -43,7 +43,7 @@ fn associated_type_bounds<'tcx>(
     icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
 
     let trait_def_id = tcx.local_parent(assoc_item_def_id);
-    let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
+    let trait_predicates = tcx.predicates_of(trait_def_id);
 
     let item_trait_ref = ty::TraitRef::identity(tcx, tcx.parent(assoc_item_def_id.to_def_id()));
     let bounds_from_parent =

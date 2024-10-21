@@ -460,122 +460,63 @@ fn const_evaluatable_predicates_of(
     collector.preds
 }
 
-pub(super) fn trait_explicit_predicates_and_bounds(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-) -> ty::GenericPredicates<'_> {
-    assert_eq!(tcx.def_kind(def_id), DefKind::Trait);
-    gather_explicit_predicates_of(tcx, def_id)
-}
-
 pub(super) fn explicit_predicates_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> ty::GenericPredicates<'tcx> {
     let def_kind = tcx.def_kind(def_id);
-    if let DefKind::Trait = def_kind {
-        // Remove bounds on associated types from the predicates, they will be
-        // returned by `explicit_item_bounds`.
-        let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id);
-        let trait_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+    if matches!(def_kind, DefKind::AnonConst)
+        && tcx.features().generic_const_exprs
+        && let Some(defaulted_param_def_id) =
+            tcx.hir().opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
+    {
+        // In `generics_of` we set the generics' parent to be our parent's parent which means that
+        // we lose out on the predicates of our actual parent if we dont return those predicates here.
+        // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
+        //
+        // struct Foo<T, const N: usize = { <T as Trait>::ASSOC }>(T) where T: Trait;
+        //        ^^^                     ^^^^^^^^^^^^^^^^^^^^^^^ the def id we are calling
+        //        ^^^                                             explicit_predicates_of on
+        //        parent item we dont have set as the
+        //        parent of generics returned by `generics_of`
+        //
+        // In the above code we want the anon const to have predicates in its param env for `T: Trait`
+        // and we would be calling `explicit_predicates_of(Foo)` here
+        let parent_def_id = tcx.local_parent(def_id);
+        let parent_preds = tcx.explicit_predicates_of(parent_def_id);
 
-        let is_assoc_item_ty = |ty: Ty<'tcx>| {
-            // For a predicate from a where clause to become a bound on an
-            // associated type:
-            // * It must use the identity args of the item.
-            //   * We're in the scope of the trait, so we can't name any
-            //     parameters of the GAT. That means that all we need to
-            //     check are that the args of the projection are the
-            //     identity args of the trait.
-            // * It must be an associated type for this trait (*not* a
-            //   supertrait).
-            if let ty::Alias(ty::Projection, projection) = ty.kind() {
-                projection.args == trait_identity_args
-                    // FIXME(return_type_notation): This check should be more robust
-                    && !tcx.is_impl_trait_in_trait(projection.def_id)
-                    && tcx.associated_item(projection.def_id).container_id(tcx)
-                        == def_id.to_def_id()
-            } else {
-                false
-            }
-        };
-
-        let predicates: Vec<_> = predicates_and_bounds
+        // If we dont filter out `ConstArgHasType` predicates then every single defaulted const parameter
+        // will ICE because of #106994. FIXME(generic_const_exprs): remove this when a more general solution
+        // to #106994 is implemented.
+        let filtered_predicates = parent_preds
             .predicates
-            .iter()
-            .copied()
-            .filter(|(pred, _)| match pred.kind().skip_binder() {
-                ty::ClauseKind::Trait(tr) => !is_assoc_item_ty(tr.self_ty()),
-                ty::ClauseKind::Projection(proj) => {
-                    !is_assoc_item_ty(proj.projection_term.self_ty())
-                }
-                ty::ClauseKind::TypeOutlives(outlives) => !is_assoc_item_ty(outlives.0),
-                _ => true,
-            })
-            .collect();
-        if predicates.len() == predicates_and_bounds.predicates.len() {
-            predicates_and_bounds
-        } else {
-            ty::GenericPredicates {
-                parent: predicates_and_bounds.parent,
-                predicates: tcx.arena.alloc_slice(&predicates),
-                effects_min_tys: predicates_and_bounds.effects_min_tys,
-            }
-        }
-    } else {
-        if matches!(def_kind, DefKind::AnonConst)
-            && tcx.features().generic_const_exprs
-            && let Some(defaulted_param_def_id) =
-                tcx.hir().opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
-        {
-            // In `generics_of` we set the generics' parent to be our parent's parent which means that
-            // we lose out on the predicates of our actual parent if we dont return those predicates here.
-            // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
-            //
-            // struct Foo<T, const N: usize = { <T as Trait>::ASSOC }>(T) where T: Trait;
-            //        ^^^                     ^^^^^^^^^^^^^^^^^^^^^^^ the def id we are calling
-            //        ^^^                                             explicit_predicates_of on
-            //        parent item we dont have set as the
-            //        parent of generics returned by `generics_of`
-            //
-            // In the above code we want the anon const to have predicates in its param env for `T: Trait`
-            // and we would be calling `explicit_predicates_of(Foo)` here
-            let parent_def_id = tcx.local_parent(def_id);
-            let parent_preds = tcx.explicit_predicates_of(parent_def_id);
-
-            // If we dont filter out `ConstArgHasType` predicates then every single defaulted const parameter
-            // will ICE because of #106994. FIXME(generic_const_exprs): remove this when a more general solution
-            // to #106994 is implemented.
-            let filtered_predicates = parent_preds
-                .predicates
-                .into_iter()
-                .filter(|(pred, _)| {
-                    if let ty::ClauseKind::ConstArgHasType(ct, _) = pred.kind().skip_binder() {
-                        match ct.kind() {
-                            ty::ConstKind::Param(param_const) => {
-                                let defaulted_param_idx = tcx
-                                    .generics_of(parent_def_id)
-                                    .param_def_id_to_index[&defaulted_param_def_id.to_def_id()];
-                                param_const.index < defaulted_param_idx
-                            }
-                            _ => bug!(
-                                "`ConstArgHasType` in `predicates_of`\
-                                 that isn't a `Param` const"
-                            ),
+            .into_iter()
+            .filter(|(pred, _)| {
+                if let ty::ClauseKind::ConstArgHasType(ct, _) = pred.kind().skip_binder() {
+                    match ct.kind() {
+                        ty::ConstKind::Param(param_const) => {
+                            let defaulted_param_idx = tcx
+                                .generics_of(parent_def_id)
+                                .param_def_id_to_index[&defaulted_param_def_id.to_def_id()];
+                            param_const.index < defaulted_param_idx
                         }
-                    } else {
-                        true
+                        _ => bug!(
+                            "`ConstArgHasType` in `predicates_of`\
+                                 that isn't a `Param` const"
+                        ),
                     }
-                })
-                .cloned();
-            return GenericPredicates {
-                parent: parent_preds.parent,
-                predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
-                effects_min_tys: parent_preds.effects_min_tys,
-            };
-        }
-        gather_explicit_predicates_of(tcx, def_id)
+                } else {
+                    true
+                }
+            })
+            .cloned();
+        return GenericPredicates {
+            parent: parent_preds.parent,
+            predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
+            effects_min_tys: parent_preds.effects_min_tys,
+        };
     }
+    gather_explicit_predicates_of(tcx, def_id)
 }
 
 /// Ensures that the super-predicates of the trait with a `DefId`
