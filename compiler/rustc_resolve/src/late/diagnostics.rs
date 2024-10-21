@@ -1040,7 +1040,10 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         .decl()
                         .inputs
                         .get(0)
-                        .map(|p| (p.span.shrink_to_lo(), "&self, "))
+                        .map(|p| {
+                            let suggestion = if p.ty.is_reference() { "&self, " } else { "self" };
+                            (p.span.shrink_to_lo(), suggestion)
+                        })
                         .unwrap_or_else(|| {
                             // Try to look for the "(" after the function name, if possible.
                             // This avoids placing the suggestion into the visibility specifier.
