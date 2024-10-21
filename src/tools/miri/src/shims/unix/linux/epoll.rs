@@ -266,8 +266,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Throw EINVAL if epfd and fd have the same value.
         if epfd_value == fd {
-            this.set_last_error(LibcError("EINVAL"))?;
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         }
 
         // Check if epfd is a valid epoll file descriptor.
@@ -332,15 +331,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Check the existence of fd in the interest list.
             if op == epoll_ctl_add {
                 if interest_list.contains_key(&epoll_key) {
-                    let eexist = this.eval_libc("EEXIST");
-                    this.set_last_error(eexist)?;
-                    return interp_ok(Scalar::from_i32(-1));
+                    return this.set_last_error_and_return_i32(LibcError("EEXIST"));
                 }
             } else {
                 if !interest_list.contains_key(&epoll_key) {
-                    let enoent = this.eval_libc("ENOENT");
-                    this.set_last_error(enoent)?;
-                    return interp_ok(Scalar::from_i32(-1));
+                    return this.set_last_error_and_return_i32(LibcError("ENOENT"));
                 }
             }
 
@@ -374,9 +369,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Remove epoll_event_interest from interest_list.
             let Some(epoll_interest) = interest_list.remove(&epoll_key) else {
-                let enoent = this.eval_libc("ENOENT");
-                this.set_last_error(enoent)?;
-                return interp_ok(Scalar::from_i32(-1));
+                return this.set_last_error_and_return_i32(LibcError("ENOENT"));
             };
             // All related Weak<EpollEventInterest> will fail to upgrade after the drop.
             drop(epoll_interest);
