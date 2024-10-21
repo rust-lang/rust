@@ -300,7 +300,10 @@ pub fn parse_asm_args<'a>(
     if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
         dcx.emit_err(errors::AsmPureNoOutput { spans: args.options_spans.clone() });
     }
-    if args.options.contains(ast::InlineAsmOptions::NORETURN) && !outputs_sp.is_empty() {
+    if args.options.contains(ast::InlineAsmOptions::NORETURN)
+        && !outputs_sp.is_empty()
+        && labels_sp.is_empty()
+    {
         let err = dcx.create_err(errors::AsmNoReturn { outputs_sp });
         // Bail out now since this is likely to confuse MIR
         return Err(err);
