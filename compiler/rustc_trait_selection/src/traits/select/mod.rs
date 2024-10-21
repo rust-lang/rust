@@ -8,6 +8,7 @@ use std::ops::ControlFlow;
 use std::{cmp, iter};
 
 use hir::def::DefKind;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};

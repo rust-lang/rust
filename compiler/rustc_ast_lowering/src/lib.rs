@@ -43,7 +43,6 @@
 use std::collections::hash_map::Entry;
 
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -101,7 +100,7 @@ struct LoweringContext<'a, 'hir> {
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// Attributes inside the owner being lowered.
-    attrs: SortedMap<hir::ItemLocalId, &'hir [Attribute]>,
+    attrs: SortedMap<hir::ItemLocalId, &'hir [hir::Attribute]>,
     /// Collect items that were created by lowering the current owner.
     children: Vec<(LocalDefId, hir::MaybeOwner<'hir>)>,
 
@@ -927,7 +926,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [Attribute] {
+    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [hir::Attribute] {
         if attrs.is_empty() {
             &[]
         } else {
@@ -939,25 +938,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attr(&self, attr: &Attribute) -> Attribute {
+    fn lower_attr(&self, attr: &Attribute) -> hir::Attribute {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
         // Tokens are also not needed after macro expansion and parsing.
         let kind = match attr.kind {
-            AttrKind::Normal(ref normal) => AttrKind::Normal(P(NormalAttr {
-                item: AttrItem {
-                    unsafety: normal.item.unsafety,
-                    path: normal.item.path.clone(),
-                    args: self.lower_attr_args(&normal.item.args),
-                    tokens: None,
+            AttrKind::Normal(ref normal) => hir::AttrKind::Normal(Box::new(hir::AttrItem {
+                unsafety: self.lower_safety(normal.item.unsafety, hir::Safety::Safe),
+                path: hir::AttrPath {
+                    segments: normal
+                        .item
+                        .path
+                        .segments
+                        .iter()
+                        .map(|i| i.ident)
+                        .collect::<Vec<_>>()
+                        .into_boxed_slice(),
+                    span: normal.item.path.span,
                 },
-                tokens: None,
+                args: self.lower_attr_args(&normal.item.args),
             })),
-            AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
+            AttrKind::DocComment(comment_kind, data) => {
+                hir::AttrKind::DocComment(comment_kind, data)
+            }
         };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
+        hir::Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
@@ -969,18 +976,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attr_args(&self, args: &AttrArgs) -> AttrArgs {
+    fn lower_attr_args(&self, args: &AttrArgs) -> hir::AttrArgs {
         match args {
-            AttrArgs::Empty => AttrArgs::Empty,
-            AttrArgs::Delimited(args) => AttrArgs::Delimited(self.lower_delim_args(args)),
+            AttrArgs::Empty => hir::AttrArgs::Empty,
+            AttrArgs::Delimited(args) => hir::AttrArgs::Delimited(self.lower_delim_args(args)),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
+            AttrArgs::Eq { eq_span, value } => {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
-                let lit = if let ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) = MetaItemLit::from_token_lit(token_lit, expr.span)
+                let lit = if let ExprKind::Lit(token_lit) = value.kind
+                    && let Ok(lit) = MetaItemLit::from_token_lit(token_lit, value.span)
                 {
                     lit
                 } else {
@@ -992,10 +999,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: DUMMY_SP,
                     }
                 };
-                AttrArgs::Eq(*eq_span, AttrArgsEq::Hir(lit))
-            }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when lowering mac args eq: {:?}", lit)
+                hir::AttrArgs::Eq { eq_span: *eq_span, value: lit }
             }
         }
     }
@@ -2475,7 +2479,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn stmt_let_pat(
         &mut self,
-        attrs: Option<&'hir [Attribute]>,
+        attrs: Option<&'hir [hir::Attribute]>,
         span: Span,
         init: Option<&'hir hir::Expr<'hir>>,
         pat: &'hir hir::Pat<'hir>,

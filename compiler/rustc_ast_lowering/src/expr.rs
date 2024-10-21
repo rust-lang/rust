@@ -1,5 +1,6 @@
 use std::assert_matches::assert_matches;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;

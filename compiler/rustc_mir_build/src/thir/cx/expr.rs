@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};

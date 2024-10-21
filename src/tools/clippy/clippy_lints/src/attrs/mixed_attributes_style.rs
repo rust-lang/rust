@@ -1,8 +1,9 @@
 use super::MIXED_ATTRIBUTES_STYLE;
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::{AttrKind, AttrStyle, Attribute};
+use rustc_ast::AttrStyle;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir::{AttrKind, Attribute};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{SourceFile, Span, Symbol};
@@ -18,13 +19,7 @@ impl From<&AttrKind> for SimpleAttrKind {
     fn from(value: &AttrKind) -> Self {
         match value {
             AttrKind::Normal(attr) => {
-                let path_symbols = attr
-                    .item
-                    .path
-                    .segments
-                    .iter()
-                    .map(|seg| seg.ident.name)
-                    .collect::<Vec<_>>();
+                let path_symbols = attr.path.segments.iter().map(|seg| seg.name).collect::<Vec<_>>();
                 Self::Normal(path_symbols)
             },
             AttrKind::DocComment(..) => Self::Doc,

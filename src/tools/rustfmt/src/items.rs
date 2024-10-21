@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::cmp::{Ordering, max, min};
 
 use regex::Regex;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, DUMMY_SP, Span, symbol};

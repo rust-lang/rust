@@ -3,6 +3,7 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;

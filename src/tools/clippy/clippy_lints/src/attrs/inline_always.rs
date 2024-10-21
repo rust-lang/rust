@@ -1,7 +1,8 @@
 use super::INLINE_ALWAYS;
 use super::utils::is_word;
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::Attribute;
+use rustc_ast::attr::AttributeExt;
+use rustc_hir::Attribute;
 use rustc_lint::LateContext;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};

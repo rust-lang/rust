@@ -1,8 +1,10 @@
 use std::ops::Range;
 use std::{io, thread};
 
+use super::Fragments;
 use crate::doc::{NEEDLESS_DOCTEST_MAIN, TEST_ATTR_IN_DOCTEST};
 use clippy_utils::diagnostics::span_lint;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::{CoroutineKind, Fn, FnRetTy, Item, ItemKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::HumanEmitter;
@@ -14,8 +16,6 @@ use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileName, Pos, sym};
-
-use super::Fragments;
 
 fn get_test_spans(item: &Item, test_attr_spans: &mut Vec<Range<usize>>) {
     test_attr_spans.extend(
