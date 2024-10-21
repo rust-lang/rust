@@ -51,7 +51,7 @@ envs:
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     MACOSX_DEPLOYMENT_TARGET: 10.12
     MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-    SELECT_XCODE: /Applications/Xcode_14.3.1.app
+    SELECT_XCODE: /Applications/Xcode_15.2.app
     NO_LLVM_ASSERTIONS: 1
     NO_DEBUG_ASSERTIONS: 1
     NO_OVERFLOW_CHECKS: 1
@@ -287,7 +287,7 @@ auto:
       RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       MACOSX_DEPLOYMENT_TARGET: 10.12
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      SELECT_XCODE: /Applications/Xcode_15.2.app
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
@@ -303,7 +303,7 @@ auto:
       RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set target.aarch64-apple-ios-macabi.sanitizers=false --set target.x86_64-apple-ios-macabi.sanitizers=false
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       MACOSX_DEPLOYMENT_TARGET: 10.12
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      SELECT_XCODE: /Applications/Xcode_15.2.app
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
@@ -332,7 +332,7 @@ auto:
         --set llvm.ninja=false
         --set rust.lto=thin
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
@@ -352,7 +352,7 @@ auto:
         --enable-profiler
         --set rust.jemalloc
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
