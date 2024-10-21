@@ -161,9 +161,7 @@ pub enum SelectionCandidate<'tcx> {
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
-    FnPointerCandidate {
-        fn_host_effect: ty::Const<'tcx>,
-    },
+    FnPointerCandidate,
 
     TraitAliasCandidate,
 
@@ -180,9 +178,6 @@ pub enum SelectionCandidate<'tcx> {
     BuiltinObjectCandidate,
 
     BuiltinUnsizeCandidate,
-
-    /// Implementation of `const Destruct`, optionally from a custom `impl const Drop`.
-    ConstDestructCandidate(Option<DefId>),
 }
 
 /// The result of trait evaluation. The order is important

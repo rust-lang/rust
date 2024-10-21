@@ -652,7 +652,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         trait_ref: &hir::TraitRef<'tcx>,
         span: Span,
-        constness: ty::BoundConstness,
+        constness: Option<ty::BoundConstness>,
         polarity: ty::PredicatePolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
@@ -675,7 +675,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(self_ty),
         );
 
-        if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
+        if let Some(constness) = constness
             && !self.tcx().is_const_trait(trait_def_id)
         {
             self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {

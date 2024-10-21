@@ -290,7 +290,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
 
                         if tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Drop)
-                            && matches!(predicate_constness, ty::BoundConstness::ConstIfConst | ty::BoundConstness::Const)
+                            && matches!(predicate_constness, Some(ty::BoundConstness::ConstIfConst | ty::BoundConstness::Const))
                         {
                             err.note("`~const Drop` was renamed to `~const Destruct`");
                             err.note("See <https://github.com/rust-lang/rust/pull/94901> for more details");
@@ -2192,7 +2192,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         message: Option<String>,
-        predicate_constness: ty::BoundConstness,
+        predicate_constness: Option<ty::BoundConstness>,
         append_const_msg: Option<AppendConstMessage>,
         post_message: String,
     ) -> String {
@@ -2200,19 +2200,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .and_then(|cannot_do_this| {
                 match (predicate_constness, append_const_msg) {
                     // do nothing if predicate is not const
-                    (ty::BoundConstness::NotConst, _) => Some(cannot_do_this),
+                    (None, _) => Some(cannot_do_this),
                     // suggested using default post message
                     (
-                        ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst,
+                        Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst),
                         Some(AppendConstMessage::Default),
                     ) => Some(format!("{cannot_do_this} in const contexts")),
                     // overridden post message
                     (
-                        ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst,
+                        Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst),
                         Some(AppendConstMessage::Custom(custom_msg, _)),
                     ) => Some(format!("{cannot_do_this}{custom_msg}")),
                     // fallback to generic message
-                    (ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst, None) => None,
+                    (Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst), None) => {
+                        None
+                    }
                 }
             })
             .unwrap_or_else(|| {
@@ -2377,26 +2379,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         p: ty::PolyTraitPredicate<'tcx>,
         leaf: ty::PolyTraitPredicate<'tcx>,
         span: Span,
-    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, ty::BoundConstness) {
+    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, Option<ty::BoundConstness>)
+    {
         let trait_ref = p.to_poly_trait_ref();
         if !self.tcx.is_lang_item(trait_ref.def_id(), LangItem::EffectsCompat) {
-            return (p, leaf, ty::BoundConstness::NotConst);
+            return (p, leaf, None);
         }
 
         let Some(ty::Alias(ty::AliasTyKind::Projection, projection)) =
             trait_ref.self_ty().no_bound_vars().map(Ty::kind)
         else {
-            return (p, leaf, ty::BoundConstness::NotConst);
+            return (p, leaf, None);
         };
 
         let constness = trait_ref.skip_binder().args.const_at(1);
 
         let constness = if constness == self.tcx.consts.true_ || constness.is_ct_infer() {
-            ty::BoundConstness::NotConst
+            None
         } else if constness == self.tcx.consts.false_ {
-            ty::BoundConstness::Const
+            Some(ty::BoundConstness::Const)
         } else if matches!(constness.kind(), ty::ConstKind::Param(_)) {
-            ty::BoundConstness::ConstIfConst
+            Some(ty::BoundConstness::ConstIfConst)
         } else {
             self.dcx().span_bug(span, format!("Unknown constness argument: {constness:?}"));
         };
