@@ -173,7 +173,8 @@ where
         // causing a coherence error in diesel, see #131969. We still bail with verflow
         // when later returning from the parent AliasRelate goal.
         if !self.is_normalizes_to_goal {
-            let num_non_region_vars = canonical.variables.iter().filter(|c| !c.is_region()).count();
+            let num_non_region_vars =
+                canonical.variables.iter().filter(|c| !c.is_region() && c.is_existential()).count();
             if num_non_region_vars > self.cx().recursion_limit() {
                 debug!(?num_non_region_vars, "too many inference variables -> overflow");
                 return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
