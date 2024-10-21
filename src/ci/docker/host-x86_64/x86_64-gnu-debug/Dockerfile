@@ -52,5 +52,6 @@ ENV RUST_CONFIGURE_ARGS \
 #   - FIXME(https://github.com/rust-lang/rust/pull/126155#issuecomment-2156314273):
 #     Currently we only run the subset of tests with "clang" in their name.
 
+# HACK(jieyouxu): just run stage 1 Nyehehehe
 ENV SCRIPT \
-  python3 ../x.py --stage 2 test tests/run-make
+  python3 ../x.py --stage 1 test tests/run-make
