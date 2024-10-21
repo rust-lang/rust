@@ -167,8 +167,6 @@ fn compare_method_predicate_entailment<'tcx>(
     trait_m: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_to_impl_args = impl_trait_ref.args;
-
     // This node-id should be used for the `body_id` field on each
     // `ObligationCause` (and the `FnCtxt`).
     //
@@ -183,26 +181,16 @@ fn compare_method_predicate_entailment<'tcx>(
             kind: impl_m.kind,
         });
 
-    // Create mapping from impl to placeholder.
-    let impl_to_placeholder_args = GenericArgs::identity_for_item(tcx, impl_m.def_id);
-
     // Create mapping from trait to placeholder.
-    let trait_to_placeholder_args =
-        impl_to_placeholder_args.rebase_onto(tcx, impl_m.container_id(tcx), trait_to_impl_args);
-    debug!("compare_impl_method: trait_to_placeholder_args={:?}", trait_to_placeholder_args);
+    let trait_to_impl_args = GenericArgs::identity_for_item(tcx, impl_m.def_id).rebase_onto(
+        tcx,
+        impl_m.container_id(tcx),
+        impl_trait_ref.args,
+    );
+    debug!("compare_impl_method: trait_to_placeholder_args={:?}", trait_to_impl_args);
 
     let impl_m_predicates = tcx.predicates_of(impl_m.def_id);
     let trait_m_predicates = tcx.predicates_of(trait_m.def_id);
-
-    // Create obligations for each predicate declared by the impl
-    // definition in the context of the trait's parameter
-    // environment. We can't just use `impl_env.caller_bounds`,
-    // however, because we want to replace all late-bound regions with
-    // region variables.
-    let impl_predicates = tcx.predicates_of(impl_m_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
-
-    debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
 
     // This is the only tricky bit of the new way we check implementation methods
     // We need to build a set of predicates where only the method-level bounds
@@ -211,17 +199,17 @@ fn compare_method_predicate_entailment<'tcx>(
     //
     // We then register the obligations from the impl_m and check to see
     // if all constraints hold.
-    hybrid_preds.predicates.extend(
-        trait_m_predicates
-            .instantiate_own(tcx, trait_to_placeholder_args)
-            .map(|(predicate, _)| predicate),
+    let impl_predicates = tcx.predicates_of(impl_m_predicates.parent.unwrap());
+    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
+    hybrid_preds.extend(
+        trait_m_predicates.instantiate_own(tcx, trait_to_impl_args).map(|(predicate, _)| predicate),
     );
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds.predicates), Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
 
     let infcx = &tcx.infer_ctxt().build();
@@ -229,7 +217,11 @@ fn compare_method_predicate_entailment<'tcx>(
 
     debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
 
-    let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_args);
+    // Create obligations for each predicate declared by the impl
+    // definition in the context of the hybrid param-env. This makes
+    // sure that the impl's method's where clauses are not more
+    // restrictive than the trait's method (and the impl itself).
+    let impl_m_own_bounds = impl_m_predicates.instantiate_own_identity();
     for (predicate, span) in impl_m_own_bounds {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
         let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
@@ -256,7 +248,6 @@ fn compare_method_predicate_entailment<'tcx>(
     // any associated types appearing in the fn arguments or return
     // type.
 
-    // Compute placeholder form of impl and trait method tys.
     let mut wf_tys = FxIndexSet::default();
 
     let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
@@ -269,7 +260,7 @@ fn compare_method_predicate_entailment<'tcx>(
     let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
     debug!("compare_impl_method: impl_fty={:?}", impl_sig);
 
-    let trait_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_placeholder_args);
+    let trait_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args);
     let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
 
     // Next, add all inputs and output as well-formed tys. Importantly,
@@ -455,8 +446,6 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // just so we don't ICE during instantiation later.
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
 
-    let trait_to_impl_args = impl_trait_ref.args;
-
     let impl_m_hir_id = tcx.local_def_id_to_hir_id(impl_m_def_id);
     let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
     let cause =
@@ -466,18 +455,18 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
             kind: impl_m.kind,
         });
 
-    // Create mapping from impl to placeholder.
-    let impl_to_placeholder_args = GenericArgs::identity_for_item(tcx, impl_m.def_id);
-
-    // Create mapping from trait to placeholder.
-    let trait_to_placeholder_args =
-        impl_to_placeholder_args.rebase_onto(tcx, impl_m.container_id(tcx), trait_to_impl_args);
+    // Create mapping from trait to impl (i.e. impl trait header + impl method identity args).
+    let trait_to_impl_args = GenericArgs::identity_for_item(tcx, impl_m.def_id).rebase_onto(
+        tcx,
+        impl_m.container_id(tcx),
+        impl_trait_ref.args,
+    );
 
     let hybrid_preds = tcx
         .predicates_of(impl_m.container_id(tcx))
         .instantiate_identity(tcx)
         .into_iter()
-        .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_placeholder_args))
+        .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
         .map(|(clause, _)| clause);
     let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(
@@ -511,7 +500,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .instantiate_binder_with_fresh_vars(
             return_span,
             infer::HigherRankedType,
-            tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_placeholder_args),
+            tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args),
         )
         .fold_with(&mut collector);
 
@@ -705,7 +694,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 // Also, we only need to account for a difference in trait and impl args,
                 // since we previously enforce that the trait method and impl method have the
                 // same generics.
-                let num_trait_args = trait_to_impl_args.len();
+                let num_trait_args = impl_trait_ref.args.len();
                 let num_impl_args = tcx.generics_of(impl_m.container_id(tcx)).own_params.len();
                 let ty = match ty.try_fold_with(&mut RemapHiddenTyRegions {
                     tcx,
@@ -1736,13 +1725,14 @@ fn compare_const_predicate_entailment<'tcx>(
     // because we shouldn't really have to deal with lifetimes or
     // predicates. In fact some of this should probably be put into
     // shared functions because of DRY violations...
-    let impl_args = GenericArgs::identity_for_item(tcx, impl_ct.def_id);
-    let trait_to_impl_args =
-        impl_args.rebase_onto(tcx, impl_ct.container_id(tcx), impl_trait_ref.args);
+    let trait_to_impl_args = GenericArgs::identity_for_item(tcx, impl_ct.def_id).rebase_onto(
+        tcx,
+        impl_ct.container_id(tcx),
+        impl_trait_ref.args,
+    );
 
     // Create a parameter environment that represents the implementation's
     // method.
-    // Compute placeholder form of impl and trait const tys.
     let impl_ty = tcx.type_of(impl_ct_def_id).instantiate_identity();
 
     let trait_ty = tcx.type_of(trait_ct.def_id).instantiate(tcx, trait_to_impl_args);
@@ -1759,14 +1749,14 @@ fn compare_const_predicate_entailment<'tcx>(
     // The predicates declared by the impl definition, the trait and the
     // associated const in the trait are assumed.
     let impl_predicates = tcx.predicates_of(impl_ct_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
-    hybrid_preds.predicates.extend(
+    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
+    hybrid_preds.extend(
         trait_ct_predicates
             .instantiate_own(tcx, trait_to_impl_args)
             .map(|(predicate, _)| predicate),
     );
 
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds.predicates), Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -1776,7 +1766,7 @@ fn compare_const_predicate_entailment<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
-    let impl_ct_own_bounds = impl_ct_predicates.instantiate_own(tcx, impl_args);
+    let impl_ct_own_bounds = impl_ct_predicates.instantiate_own_identity();
     for (predicate, span) in impl_ct_own_bounds {
         let cause = ObligationCause::misc(span, impl_ct_def_id);
         let predicate = ocx.normalize(&cause, param_env, predicate);
@@ -1870,14 +1860,16 @@ fn compare_type_predicate_entailment<'tcx>(
     trait_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_args = GenericArgs::identity_for_item(tcx, impl_ty.def_id);
-    let trait_to_impl_args =
-        impl_args.rebase_onto(tcx, impl_ty.container_id(tcx), impl_trait_ref.args);
+    let trait_to_impl_args = GenericArgs::identity_for_item(tcx, impl_ty.def_id).rebase_onto(
+        tcx,
+        impl_ty.container_id(tcx),
+        impl_trait_ref.args,
+    );
 
     let impl_ty_predicates = tcx.predicates_of(impl_ty.def_id);
     let trait_ty_predicates = tcx.predicates_of(trait_ty.def_id);
 
-    let impl_ty_own_bounds = impl_ty_predicates.instantiate_own(tcx, impl_args);
+    let impl_ty_own_bounds = impl_ty_predicates.instantiate_own_identity();
     if impl_ty_own_bounds.len() == 0 {
         // Nothing to check.
         return Ok(());
@@ -1892,8 +1884,8 @@ fn compare_type_predicate_entailment<'tcx>(
     // The predicates declared by the impl definition, the trait and the
     // associated type in the trait are assumed.
     let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
-    hybrid_preds.predicates.extend(
+    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
+    hybrid_preds.extend(
         trait_ty_predicates
             .instantiate_own(tcx, trait_to_impl_args)
             .map(|(predicate, _)| predicate),
@@ -1903,7 +1895,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     let impl_ty_span = tcx.def_span(impl_ty_def_id);
     let normalize_cause = ObligationCause::misc(impl_ty_span, impl_ty_def_id);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds.predicates), Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
