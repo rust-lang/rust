@@ -2909,6 +2909,20 @@ impl Config {
 
         Some(commit.to_string())
     }
+
+    /// Check for changes in specified directories since a given commit.
+    /// Returns true if changes exist, false if no changes
+    pub fn check_for_changes(&self, dirs: &[PathBuf], commit: &str) -> bool {
+        let mut git = helpers::git(Some(&self.src));
+        git.args(["diff-index", "--quiet", commit]);
+        if !dirs.is_empty() {
+            git.arg("--");
+            for dir in dirs {
+                git.arg(dir);
+            }
+        }
+        !t!(git.as_command_mut().status()).success()
+    }
 }
 
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.

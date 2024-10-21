@@ -10,7 +10,7 @@ use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{add_dylib_path, exe, git, t};
+use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::{Compiler, Kind, Mode, gha};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -603,20 +603,11 @@ impl Step for Rustdoc {
             )
             .unwrap();
 
-            let librustdoc_src = builder.config.src.join("src/librustdoc");
-            let rustdoc_src = builder.config.src.join("src/tools/rustdoc");
-
-            // FIXME: The change detection logic here is quite similar to `Config::download_ci_rustc_commit`.
-            // It would be better to unify them.
-            let has_changes = !git(Some(&builder.config.src))
-                .allow_failure()
-                .run_always()
-                .args(["diff-index", "--quiet", &commit])
-                .arg("--")
-                .arg(librustdoc_src)
-                .arg(rustdoc_src)
-                .run(builder);
-
+            let dirs = vec![
+                builder.config.src.join("src/librustdoc"),
+                builder.config.src.join("src/tools/rustdoc"),
+            ];
+            let has_changes = builder.config.check_for_changes(&dirs, &commit);
             if !has_changes {
                 let precompiled_rustdoc = builder
                     .config
