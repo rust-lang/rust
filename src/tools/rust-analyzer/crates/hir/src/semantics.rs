@@ -892,29 +892,8 @@ impl<'db> SemanticsImpl<'db> {
         f: &mut dyn FnMut(InFile<SyntaxToken>, SyntaxContextId) -> ControlFlow<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
-        let (sa, span, file_id) = token
-            .parent()
-            .and_then(|parent| {
-                self.analyze_impl(InRealFile::new(file_id, &parent).into(), None, false)
-            })
-            .and_then(|sa| {
-                let file_id = sa.file_id.file_id()?;
-                Some((
-                    sa,
-                    self.db.real_span_map(file_id).span_for_range(token.text_range()),
-                    HirFileId::from(file_id),
-                ))
-            })?;
 
-        let mut m_cache = self.macro_call_cache.borrow_mut();
-        let def_map = sa.resolver.def_map();
-
-        // A stack of tokens to process, along with the file they came from
-        // These are tracked to know which macro calls we still have to look into
-        // the tokens themselves aren't that interesting as the span that is being used to map
-        // things down never changes.
-        let mut stack: Vec<(_, SmallVec<[_; 2]>)> =
-            vec![(file_id, smallvec![(token, SyntaxContextId::ROOT)])];
+        let span = self.db.real_span_map(file_id).span_for_range(token.text_range());
 
         // Process the expansion of a call, pushing all tokens with our span in the expansion back onto our stack
         let process_expansion_for_token = |stack: &mut Vec<_>, macro_file| {
@@ -926,13 +905,39 @@ impl<'db> SemanticsImpl<'db> {
                         .map(SmallVec::<[_; 2]>::from_iter),
                 )
             })?;
-
             // we have found a mapping for the token if the vec is non-empty
             let res = mapped_tokens.is_empty().not().then_some(());
             // requeue the tokens we got from mapping our current token down
             stack.push((HirFileId::from(file_id), mapped_tokens));
             res
         };
+
+        // A stack of tokens to process, along with the file they came from
+        // These are tracked to know which macro calls we still have to look into
+        // the tokens themselves aren't that interesting as the span that is being used to map
+        // things down never changes.
+        let mut stack: Vec<(_, SmallVec<[_; 2]>)> = vec![];
+        let include = self.s2d_cache.borrow_mut().get_or_insert_include_for(self.db, file_id);
+        match include {
+            Some(include) => {
+                // include! inputs are always from real files, so they only need to be handled once upfront
+                process_expansion_for_token(&mut stack, include)?;
+            }
+            None => {
+                stack.push((file_id.into(), smallvec![(token, SyntaxContextId::ROOT)]));
+            }
+        }
+
+        let (file_id, tokens) = stack.first()?;
+        // make sure we pick the token in the expanded include if we encountered an include,
+        // otherwise we'll get the wrong semantics
+        let sa =
+            tokens.first()?.0.parent().and_then(|parent| {
+                self.analyze_impl(InFile::new(*file_id, &parent), None, false)
+            })?;
+
+        let mut m_cache = self.macro_call_cache.borrow_mut();
+        let def_map = sa.resolver.def_map();
 
         // Filters out all tokens that contain the given range (usually the macro call), any such
         // token is redundant as the corresponding macro call has already been processed
@@ -1011,6 +1016,7 @@ impl<'db> SemanticsImpl<'db> {
                                         ) {
                                         call.as_macro_file()
                                     } else {
+                                        // FIXME: This is wrong, the SourceAnalyzer might be invalid here
                                         sa.expand(self.db, mcall.as_ref())?
                                     };
                                     m_cache.insert(mcall, it);

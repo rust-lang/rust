@@ -104,7 +104,7 @@ use hir_expand::{
 };
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{FileId, MacroFileId};
+use span::{EditionedFileId, FileId, MacroFileId};
 use stdx::impl_from;
 use syntax::{
     ast::{self, HasName},
@@ -118,9 +118,27 @@ pub(super) struct SourceToDefCache {
     pub(super) dynmap_cache: FxHashMap<(ChildContainer, HirFileId), DynMap>,
     expansion_info_cache: FxHashMap<MacroFileId, ExpansionInfo>,
     pub(super) file_to_def_cache: FxHashMap<FileId, SmallVec<[ModuleId; 1]>>,
+    pub(super) included_file_cache: FxHashMap<EditionedFileId, Option<MacroFileId>>,
 }
 
 impl SourceToDefCache {
+    pub(super) fn get_or_insert_include_for(
+        &mut self,
+        db: &dyn HirDatabase,
+        file: EditionedFileId,
+    ) -> Option<MacroFileId> {
+        if let Some(&m) = self.included_file_cache.get(&file) {
+            return m;
+        }
+        self.included_file_cache.insert(file, None);
+        for &crate_id in db.relevant_crates(file.into()).iter() {
+            db.include_macro_invoc(crate_id).iter().for_each(|&(macro_call_id, file_id)| {
+                self.included_file_cache.insert(file_id, Some(MacroFileId { macro_call_id }));
+            });
+        }
+        self.included_file_cache.get(&file).copied().flatten()
+    }
+
     pub(super) fn get_or_insert_expansion(
         &mut self,
         sema: &SemanticsImpl<'_>,
@@ -163,9 +181,13 @@ impl SourceToDefCtx<'_, '_> {
                             .include_macro_invoc(crate_id)
                             .iter()
                             .filter(|&&(_, file_id)| file_id == file)
-                            .flat_map(|(call, _)| {
+                            .flat_map(|&(macro_call_id, file_id)| {
+                                self.cache
+                                    .included_file_cache
+                                    .insert(file_id, Some(MacroFileId { macro_call_id }));
                                 modules(
-                                    call.lookup(self.db.upcast())
+                                    macro_call_id
+                                        .lookup(self.db.upcast())
                                         .kind
                                         .file_id()
                                         .original_file(self.db.upcast())

@@ -27,7 +27,7 @@ pub struct AstPtr<N: AstNode> {
     _ty: PhantomData<fn() -> N>,
 }
 
-impl<N: AstNode + std::fmt::Debug> std::fmt::Debug for AstPtr<N> {
+impl<N: AstNode> std::fmt::Debug for AstPtr<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("AstPtr").field(&self.raw).finish()
     }
