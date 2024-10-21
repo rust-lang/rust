@@ -52,7 +52,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
-use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
+use rustc_hir::def::{CtorKind, DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::{
     self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, MissingLifetimeKind,
@@ -2299,7 +2299,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
     ) -> &'hir hir::ConstArg<'hir> {
         let ct_kind = match res {
-            Res::Def(DefKind::ConstParam, _) => {
+            // FIXME(min_generic_const_args): only allow one-segment const paths for now
+            Res::Def(
+                DefKind::ConstParam | DefKind::Const | DefKind::Ctor(_, CtorKind::Const),
+                _,
+            ) if path.is_potential_trivial_const_arg() => {
                 let qpath = self.lower_qpath(
                     ty_id,
                     &None,
@@ -2376,8 +2380,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!("res={:?}", maybe_res);
         // FIXME(min_generic_const_args): for now we only lower params to ConstArgKind::Path
         if let Some(res) = maybe_res
-            && let Res::Def(DefKind::ConstParam, _) = res
             && let ExprKind::Path(qself, path) = &expr.kind
+            // FIXME(min_generic_const_args): only allow one-segment const paths for now
+            && let Res::Def(
+                DefKind::ConstParam
+                | DefKind::Const
+                | DefKind::Ctor(_, CtorKind::Const),
+                _,
+            ) = res
+            && path.is_potential_trivial_const_arg()
         {
             let qpath = self.lower_qpath(
                 expr.id,

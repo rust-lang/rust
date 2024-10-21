@@ -46,7 +46,7 @@ use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
-use crate::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
+use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
 
 pub(crate) mod dump;
 mod generics_of;
@@ -86,6 +86,7 @@ pub fn provide(providers: &mut Providers) {
         coroutine_for_closure,
         is_type_alias_impl_trait,
         rendered_precise_capturing_args,
+        const_param_default,
         ..*providers
     };
 }
@@ -1776,4 +1777,23 @@ fn rendered_precise_capturing_args<'tcx>(
         }
         _ => None,
     })
+}
+
+fn const_param_default<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+    let default_ct = match tcx.hir_node_by_def_id(def_id) {
+        hir::Node::GenericParam(hir::GenericParam {
+            kind: hir::GenericParamKind::Const { default: Some(ct), .. },
+            ..
+        }) => ct,
+        _ => span_bug!(
+            tcx.def_span(def_id),
+            "`const_param_default` expected a generic parameter with a constant"
+        ),
+    };
+    let icx = ItemCtxt::new(tcx, def_id);
+    let ct = icx.lowerer().lower_const_arg(default_ct, FeedConstTy::No);
+    ty::EarlyBinder::bind(ct)
 }

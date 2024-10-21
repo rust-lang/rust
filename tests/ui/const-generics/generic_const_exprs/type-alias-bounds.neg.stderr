@@ -1,16 +1,4 @@
 error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/type-alias-bounds.rs:23:12
-   |
-LL |     let _: AliasConstUnused<String>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
-   |
-note: required by a bound in `ct_unused_0::AliasConstUnused`
-  --> $DIR/type-alias-bounds.rs:20:30
-   |
-LL |     type AliasConstUnused<T: Copy> = (T, I32<{ DATA }>);
-   |                              ^^^^ required by this bound in `AliasConstUnused`
-
-error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/type-alias-bounds.rs:31:12
    |
 LL |     let _: AliasConstUnused;
@@ -58,6 +46,6 @@ note: required by a bound in `AliasFnUsed`
 LL |     type AliasFnUsed<T: Trait + Copy> = I32<{ code::<T>() }>;
    |                                 ^^^^ required by this bound in `AliasFnUsed`
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

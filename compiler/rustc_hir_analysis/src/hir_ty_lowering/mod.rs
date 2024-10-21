@@ -29,7 +29,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, struct_span_code_err,
 };
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -209,6 +209,23 @@ impl AssocItemQSelf {
             Self::SelfTyAlias => kw::SelfUpper.to_string(),
         }
     }
+}
+
+/// In some cases, [`hir::ConstArg`]s that are being used in the type system
+/// through const generics need to have their type "fed" to them
+/// using the query system.
+///
+/// Use this enum with [`Const::from_const_arg`] to instruct it with the
+/// desired behavior.
+#[derive(Debug, Clone, Copy)]
+pub enum FeedConstTy {
+    /// Feed the type.
+    ///
+    /// The `DefId` belongs to the const param that we are supplying
+    /// this (anon) const arg to.
+    Param(DefId),
+    /// Don't feed the type.
+    No,
 }
 
 /// New-typed boolean indicating whether explicit late-bound lifetimes
@@ -486,8 +503,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::Param(param.def_id))
-                            .into()
+                        self.lowerer.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
                     }
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
@@ -904,8 +920,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 let term: ty::Term<'_> = match term {
                                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
-                                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No)
-                                            .into()
+                                        self.lower_const_arg(ct, FeedConstTy::No).into()
                                     }
                                 };
                                 // FIXME(#97583): This isn't syntactically well-formed!
@@ -1979,6 +1994,138 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
+    /// Convert a [`hir::ConstArg`] to a [`ty::Const`](Const).
+    #[instrument(skip(self), level = "debug")]
+    pub fn lower_const_arg(
+        &self,
+        const_arg: &hir::ConstArg<'tcx>,
+        feed: FeedConstTy,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        if let FeedConstTy::Param(param_def_id) = feed
+            && let hir::ConstArgKind::Anon(anon) = &const_arg.kind
+        {
+            tcx.feed_anon_const_type(anon.def_id, tcx.type_of(param_def_id));
+        }
+
+        match const_arg.kind {
+            hir::ConstArgKind::Path(qpath) => self.lower_const_arg_path(qpath, const_arg.hir_id),
+            hir::ConstArgKind::Anon(anon) => Const::from_anon_const(tcx, anon.def_id),
+        }
+    }
+
+    /// Lower a const path to a [`Const`].
+    fn lower_const_arg_path(&self, qpath: hir::QPath<'tcx>, hir_id: HirId) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        // TODO: handle path args properly
+        match qpath {
+            hir::QPath::Resolved(_, &hir::Path { res: Res::Def(DefKind::ConstParam, did), .. }) => {
+                self.lower_const_arg_param(did, hir_id)
+            }
+            hir::QPath::Resolved(
+                _,
+                &hir::Path { res: Res::Def(DefKind::Fn | DefKind::AssocFn, _), .. },
+            ) => ty::Const::new_error_with_message(
+                tcx,
+                qpath.span(),
+                "fn's cannot be used as const args",
+            ),
+            // hir::QPath::Resolved(_, path @ &hir::Path { res: Res::Def(_, did), .. }) => {
+            //     let (item_segment, _) = path.segments.split_last().unwrap();
+            //     let args = self.lower_generic_args_of_path_segment(path.span, did, item_segment);
+            //     ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
+            // }
+            // // TODO: type-relative paths
+            // _ => ty::Const::new_error_with_message(
+            //     tcx,
+            //     qpath.span(),
+            //     "Const::lower_const_arg_path: invalid qpath",
+            // ),
+            hir::QPath::Resolved(maybe_qself, path) => {
+                debug!(?maybe_qself, ?path);
+                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
+                self.lower_const_path_resolved(opt_self_ty, path, hir_id)
+            }
+
+            // TODO: type-relative paths
+            // hir::QPath::TypeRelative(qself, segment) => {
+            //     debug!(?qself, ?segment);
+            //     let ty = self.lower_ty(qself);
+            //     self.lower_assoc_path(hir_ty.hir_id, hir_ty.span, ty, qself, segment, false)
+            //         .map(|(ty, _, _)| ty)
+            //         .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
+            // }
+            _ => ty::Const::new_error_with_message(
+                tcx,
+                qpath.span(),
+                "Const::lower_const_arg_path: invalid qpath",
+            ),
+        }
+    }
+
+    fn lower_const_path_resolved(
+        &self,
+        opt_self_ty: Option<Ty<'tcx>>,
+        path: &hir::Path<'tcx>,
+        hir_id: HirId,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+        let span = path.span;
+        match path.res {
+            Res::Def(DefKind::ConstParam, def_id) => {
+                assert_eq!(opt_self_ty, None);
+                let _ = self.prohibit_generic_args(
+                    path.segments.iter(),
+                    GenericsArgsErrExtend::Param(def_id),
+                );
+                self.lower_const_arg_param(def_id, hir_id)
+            }
+            Res::Def(DefKind::Const | DefKind::Ctor(_, CtorKind::Const), did) => {
+                assert_eq!(opt_self_ty, None);
+                let _ = self.prohibit_generic_args(
+                    path.segments.split_last().unwrap().1.iter(),
+                    GenericsArgsErrExtend::None,
+                );
+                let args = self.lower_generic_args_of_path_segment(
+                    span,
+                    did,
+                    path.segments.last().unwrap(),
+                );
+                ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
+            }
+            // TODO: DefKind::AssocConst?
+            _ => Const::new_error(
+                tcx,
+                tcx.dcx().span_delayed_bug(span, "invalid Res for const path"),
+            ),
+        }
+    }
+
+    /// Lower a const param to a [`Const`]. This is only meant as a helper for [`Self::lower_const_arg_path`].
+    /// FIXME: dedup with lower_const_param
+    fn lower_const_arg_param(&self, param_def_id: DefId, path_hir_id: HirId) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        match tcx.named_bound_var(path_hir_id) {
+            Some(rbv::ResolvedArg::EarlyBound(_)) => {
+                // Find the name and index of the const parameter by indexing the generics of
+                // the parent item and construct a `ParamConst`.
+                let item_def_id = tcx.parent(param_def_id);
+                let generics = tcx.generics_of(item_def_id);
+                let index = generics.param_def_id_to_index[&param_def_id];
+                let name = tcx.item_name(param_def_id);
+                ty::Const::new_param(tcx, ty::ParamConst::new(index, name))
+            }
+            Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
+                ty::Const::new_bound(tcx, debruijn, ty::BoundVar::from_u32(index))
+            }
+            Some(rbv::ResolvedArg::Error(guar)) => ty::Const::new_error(tcx, guar),
+            arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", path_hir_id),
+        }
+    }
+
     fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
         let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
         match idx {
@@ -1988,13 +2135,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Lower a type from the HIR to our internal notion of a type given some extra data for diagnostics.
-    ///
-    /// Extra diagnostic data:
-    ///
-    /// 1. `borrowed`: Whether trait object types are borrowed like in `&dyn Trait`.
-    ///    Used to avoid emitting redundant errors.
-    /// 2. `in_path`: Whether the type appears inside of a path.
-    ///    Used to provide correct diagnostics for bare trait object types.
     #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -2129,7 +2269,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let length = match length {
                     hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
                     hir::ArrayLen::Body(constant) => {
-                        ty::Const::from_const_arg(tcx, constant, ty::FeedConstTy::No)
+                        self.lower_const_arg(constant, FeedConstTy::No)
                     }
                 };
 
