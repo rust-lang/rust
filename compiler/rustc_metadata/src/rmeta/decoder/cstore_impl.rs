@@ -575,6 +575,14 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                     .filter_map(|(cnum, data)| data.used().then_some(cnum)),
             )
         },
+        mir_only_crates: |tcx, ()| {
+            tcx.untracked().cstore.freeze();
+            let store = CStore::from_tcx(tcx);
+            let crates = store
+                .iter_crate_data()
+                .filter_map(|(cnum, data)| if data.root.is_mir_only { Some(cnum) } else { None });
+            tcx.arena.alloc_from_iter(crates)
+        },
         ..providers.queries
     };
     provide_extern(&mut providers.extern_queries);
