@@ -81,9 +81,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if relative_clocks.contains(&clk_id) {
             this.machine.clock.now().duration_since(this.machine.clock.epoch())
         } else {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
 
         let tv_sec = duration.as_secs();
@@ -109,9 +107,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
         if !this.ptr_is_null(tz)? {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         }
 
         let duration = system_time_to_duration(&SystemTime::now())?;
@@ -323,9 +319,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let duration = match this.read_timespec(&req)? {
             Some(duration) => duration,
             None => {
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
-                return interp_ok(Scalar::from_i32(-1));
+                return this.set_last_error_and_return_i32(LibcError("EINVAL"));
             }
         };
 

@@ -787,13 +787,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let ecode = if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
                 // since `path` is provided, either absolute or
                 // relative to CWD, `EACCES` is the most relevant.
-                this.eval_libc("EACCES")
+                LibcError("EACCES")
             } else {
                 // `dirfd` is set to target file, and `path` is empty
                 // (or we would have hit the `throw_unsup_format`
                 // above). `EACCES` would violate the spec.
                 assert!(empty_path_flag);
-                this.eval_libc("EBADF")
+                LibcError("EBADF")
             };
             return this.set_last_error_and_return_i32(ecode);
         }
@@ -1031,8 +1031,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir`", reject_with)?;
-            let eacc = this.eval_libc("EBADF");
-            this.set_last_error(eacc)?;
+            this.set_last_error(LibcError("EBADF"))?;
             return interp_ok(Scalar::null_ptr(this));
         }
 
@@ -1449,11 +1448,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if fd.is_tty(this.machine.communicate()) {
                 return interp_ok(Scalar::from_i32(1));
             } else {
-                this.eval_libc("ENOTTY")
+                LibcError("ENOTTY")
             }
         } else {
             // FD does not exist
-            this.eval_libc("EBADF")
+            LibcError("EBADF")
         };
         this.set_last_error(error)?;
         interp_ok(Scalar::from_i32(0))
@@ -1473,8 +1472,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`realpath`", reject_with)?;
-            let eacc = this.eval_libc("EACCES");
-            this.set_last_error(eacc)?;
+            this.set_last_error(LibcError("EACCES"))?;
             return interp_ok(Scalar::from_target_usize(0, this));
         }
 
@@ -1504,8 +1502,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // Note that we do not explicitly handle `FILENAME_MAX`
                         // (different from `PATH_MAX` above) as it is Linux-specific and
                         // seems like a bit of a mess anyway: <https://eklitzke.org/path-max-is-tricky>.
-                        let enametoolong = this.eval_libc("ENAMETOOLONG");
-                        this.set_last_error(enametoolong)?;
+                        this.set_last_error(LibcError("ENAMETOOLONG"))?;
                         return interp_ok(Scalar::from_target_usize(0, this));
                     }
                     processed_ptr
