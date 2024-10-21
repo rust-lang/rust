@@ -1,16 +1,35 @@
-// FIXME: The assumes we're using the non-vector ABI, i.e., compiling
-// for a pre-z13 machine or using -mno-vx.
-
-use crate::abi::call::{ArgAbi, FnAbi, Reg};
-use crate::abi::{HasDataLayout, TyAbiInterface};
+use crate::abi::call::{ArgAbi, FnAbi, Reg, RegKind};
+use crate::abi::{Abi, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
 use crate::spec::HasTargetSpec;
 
-fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
-    if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
-        ret.extend_integer_width_to(64);
-    } else {
-        ret.make_indirect();
+fn contains_vector<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>, expected_size: Size) -> bool
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
+    match layout.abi {
+        Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) => false,
+        Abi::Vector { .. } => layout.size == expected_size,
+        Abi::Aggregate { .. } => {
+            for i in 0..layout.fields.count() {
+                if contains_vector(cx, layout.field(cx, i), expected_size) {
+                    return true;
+                }
+            }
+            false
+        }
     }
+}
+
+fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+    let size = ret.layout.size;
+    if size.bits() <= 128 && matches!(ret.layout.abi, Abi::Vector { .. }) {
+        return;
+    }
+    if !ret.layout.is_aggregate() && size.bits() <= 64 {
+        ret.extend_integer_width_to(64);
+        return;
+    }
+    ret.make_indirect();
 }
 
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
@@ -32,19 +51,25 @@ where
         }
         return;
     }
-    if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
+
+    let size = arg.layout.size;
+    if size.bits() <= 128 && contains_vector(cx, arg.layout, size) {
+        arg.cast_to(Reg { kind: RegKind::Vector, size });
+        return;
+    }
+    if !arg.layout.is_aggregate() && size.bits() <= 64 {
         arg.extend_integer_width_to(64);
         return;
     }
 
     if arg.layout.is_single_fp_element(cx) {
-        match arg.layout.size.bytes() {
+        match size.bytes() {
             4 => arg.cast_to(Reg::f32()),
             8 => arg.cast_to(Reg::f64()),
             _ => arg.make_indirect(),
         }
     } else {
-        match arg.layout.size.bytes() {
+        match size.bytes() {
             1 => arg.cast_to(Reg::i8()),
             2 => arg.cast_to(Reg::i16()),
             4 => arg.cast_to(Reg::i32()),
