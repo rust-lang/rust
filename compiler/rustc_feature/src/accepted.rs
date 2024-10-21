@@ -244,6 +244,8 @@ declare_features! (
     (accepted, irrefutable_let_patterns, "1.33.0", Some(44495)),
     /// Allows `#[instruction_set(_)]` attribute.
     (accepted, isa_attribute, "1.67.0", Some(74727)),
+    /// Rescoping temporaries in `if let` to align with Rust 2024.
+    (accepted, if_let_rescope, "1.83.0", Some(124085)),
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120)),

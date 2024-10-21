@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/if-let-rescope-borrowck-suggestions.rs:22:39
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:21:39
    |
 LL |     do_something(if let Some(value) = Droppy.get_ref() { value } else { &0 });
    |                                       ^^^^^^                   - temporary value is freed at the end of this statement
@@ -7,7 +7,7 @@ LL |     do_something(if let Some(value) = Droppy.get_ref() { value } else { &0 
    |                                       creates a temporary value which is freed while still in use
    |
 note: lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead
-  --> $DIR/if-let-rescope-borrowck-suggestions.rs:22:64
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:21:64
    |
 LL |     do_something(if let Some(value) = Droppy.get_ref() { value } else { &0 });
    |                                                                ^
@@ -22,7 +22,7 @@ LL |     do_something({ match Droppy.get_ref()  { Some(value) => { value } _ => 
    |                  ~~~~~~~                   ++++++++++++++++           ~~~~       ++
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/if-let-rescope-borrowck-suggestions.rs:24:39
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:23:39
    |
 LL |     do_something(if let Some(value) = Droppy.get_ref() {
    |                                       ^^^^^^ creates a temporary value which is freed while still in use
@@ -31,7 +31,7 @@ LL |     } else if let Some(value) = Droppy.get_ref() {
    |     - temporary value is freed at the end of this statement
    |
 note: lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead
-  --> $DIR/if-let-rescope-borrowck-suggestions.rs:27:5
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:26:5
    |
 LL |     } else if let Some(value) = Droppy.get_ref() {
    |     ^
@@ -53,7 +53,7 @@ LL ~     }}});
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/if-let-rescope-borrowck-suggestions.rs:27:33
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:26:33
    |
 LL |     } else if let Some(value) = Droppy.get_ref() {
    |                                 ^^^^^^ creates a temporary value which is freed while still in use
@@ -62,7 +62,7 @@ LL |     } else {
    |     - temporary value is freed at the end of this statement
    |
 note: lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead
-  --> $DIR/if-let-rescope-borrowck-suggestions.rs:30:5
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:29:5
    |
 LL |     } else {
    |     ^

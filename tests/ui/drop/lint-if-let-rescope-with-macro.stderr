@@ -1,5 +1,5 @@
 error: `if let` assigns a shorter lifetime since Edition 2024
-  --> $DIR/lint-if-let-rescope-with-macro.rs:13:12
+  --> $DIR/lint-if-let-rescope-with-macro.rs:12:12
    |
 LL |           if let $p = $e { $($conseq)* } else { $($alt)* }
    |              ^^^
@@ -16,7 +16,7 @@ LL | |     };
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
 help: the value is now dropped here in Edition 2024
-  --> $DIR/lint-if-let-rescope-with-macro.rs:13:38
+  --> $DIR/lint-if-let-rescope-with-macro.rs:12:38
    |
 LL |           if let $p = $e { $($conseq)* } else { $($alt)* }
    |                                        ^
@@ -29,7 +29,7 @@ LL | |         {}
 LL | |     };
    | |_____- in this macro invocation
 note: the lint level is defined here
-  --> $DIR/lint-if-let-rescope-with-macro.rs:8:9
+  --> $DIR/lint-if-let-rescope-with-macro.rs:7:9
    |
 LL | #![deny(if_let_rescope)]
    |         ^^^^^^^^^^^^^^

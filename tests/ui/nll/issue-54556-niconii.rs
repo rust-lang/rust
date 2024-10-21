@@ -12,8 +12,6 @@
 //@ [edition2024] compile-flags: -Z unstable-options
 //@ [edition2024] check-pass
 
-#![cfg_attr(edition2024, feature(if_let_rescope))]
-
 struct Mutex;
 struct MutexGuard<'a>(&'a Mutex);
 
