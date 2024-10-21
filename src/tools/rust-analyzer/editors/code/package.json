@@ -349,6 +349,11 @@
                         "markdownDescription": "Whether to show the test explorer.",
                         "default": false,
                         "type": "boolean"
+                    },
+                    "rust-analyzer.initializeStopped": {
+                        "markdownDescription": "Do not start rust-analyzer server when the extension is activated.",
+                        "default": false,
+                        "type": "boolean"
                     }
                 }
             },

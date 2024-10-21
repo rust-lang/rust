@@ -330,6 +330,10 @@ export class Config {
     get statusBarClickAction() {
         return this.get<string>("statusBar.clickAction");
     }
+
+    get initializeStopped() {
+        return this.get<boolean>("initializeStopped");
+    }
 }
 
 export function prepareVSCodeConfig<T>(resp: T): T {
