@@ -25,6 +25,17 @@ mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspen
     .help = consider using a block (`{"{ ... }"}`) to shrink the value's scope, ending before the suspend point
 mir_transform_operation_will_panic = this operation will panic at runtime
 
+mir_transform_tail_expr_drop_order = relative drop order changing in Rust 2024
+    .temporaries = in Rust 2024, this temporary will be dropped first
+    .observers = in Rust 2024, this local variable or temporary value will be dropped second
+    .note_dtors =
+        dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
+    .note_observer_dtors =
+        dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
+    .drop_location =
+        temporary will be dropped on exiting the block, before the block's local variables
+    .note_epilogue = most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
+
 mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
     .note_ub = creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)

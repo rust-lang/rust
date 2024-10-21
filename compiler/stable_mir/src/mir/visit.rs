@@ -224,7 +224,9 @@ pub trait MirVisitor {
                     self.visit_operand(count, location);
                 }
             },
-            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
+            StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::ConstEvalCounter
+            | StatementKind::Nop => {}
         }
     }
 

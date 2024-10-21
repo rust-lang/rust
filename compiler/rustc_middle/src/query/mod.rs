@@ -1432,6 +1432,17 @@ rustc_queries! {
         cache_on_disk_if { false }
     }
 
+    /// A list of types where a type requires drop if and only if any of those types
+    /// has significant drop. A type marked with the attribute `rustc_insignificant_dtor`
+    /// is considered to not be significant. A drop is significant if it is implemented
+    /// by the user or does anything that will have any observable behavior (other than
+    /// freeing up memory). If the type is known to have a significant destructor then
+    /// `Err(AlwaysRequiresDrop)` is returned.
+    query list_significant_drop_tys(ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+        desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
+        cache_on_disk_if { false }
+    }
+
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
     query layout_of(

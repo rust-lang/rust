@@ -4,7 +4,7 @@ params: [
 body:
     Expr {
         ty: ()
-        temp_lifetime: Some(Node(2))
+        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
         span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
         kind: 
             Scope {
@@ -13,7 +13,7 @@ body:
                 value:
                     Expr {
                         ty: ()
-                        temp_lifetime: Some(Node(2))
+                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
                         span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
                         kind: 
                             Block {
