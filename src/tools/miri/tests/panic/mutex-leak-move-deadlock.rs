@@ -1,5 +1,4 @@
-//@error-in-other-file: deadlock
-//@ignore-target: linux
+//@only-target: linux
 //@normalize-stderr-test: "src/sys/.*\.rs" -> "$$FILE"
 //@normalize-stderr-test: "LL \| .*" -> "LL | $$CODE"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
