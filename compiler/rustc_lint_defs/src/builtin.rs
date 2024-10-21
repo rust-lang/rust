@@ -378,7 +378,8 @@ declare_lint! {
     /// will not overflow.
     pub ARITHMETIC_OVERFLOW,
     Deny,
-    "arithmetic operation overflows"
+    "arithmetic operation overflows",
+    @eval_always = true
 }
 
 declare_lint! {
@@ -402,7 +403,8 @@ declare_lint! {
     /// `panic!` or `unreachable!` macro instead in case the panic is intended.
     pub UNCONDITIONAL_PANIC,
     Deny,
-    "operation will cause a panic at runtime"
+    "operation will cause a panic at runtime",
+    @eval_always = true
 }
 
 declare_lint! {
@@ -633,7 +635,8 @@ declare_lint! {
     /// is only available in a newer version.
     pub UNKNOWN_LINTS,
     Warn,
-    "unrecognized lint attribute"
+    "unrecognized lint attribute",
+    @eval_always = true
 }
 
 declare_lint! {
