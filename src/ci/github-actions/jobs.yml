@@ -102,6 +102,22 @@ pr:
     <<: *job-linux-16c
   - image: x86_64-gnu-tools
     <<: *job-linux-16c
+  - image: aarch64-apple
+    env:
+      SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      USE_XCODE_CLANG: 1
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
+    <<: *job-macos-m1
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
