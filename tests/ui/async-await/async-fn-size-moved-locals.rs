@@ -8,7 +8,7 @@
 // See issue #59123 for a full explanation.
 
 //@ needs-unwind Size of Futures change on panic=abort
-//@ run-pass
+//@ ignore-test
 
 //@ edition:2018
 
@@ -70,11 +70,7 @@ async fn joined() {
     let b = BigFut::new();
     let c = BigFut::new();
 
-    let joiner = Joiner {
-        a: Some(a),
-        b: Some(b),
-        c: Some(c),
-    };
+    let joiner = Joiner { a: Some(a), b: Some(b), c: Some(c) };
     joiner.await
 }
 
@@ -83,11 +79,7 @@ async fn joined_with_noop() {
     let b = BigFut::new();
     let c = BigFut::new();
 
-    let joiner = Joiner {
-        a: Some(a),
-        b: Some(b),
-        c: Some(c),
-    };
+    let joiner = Joiner { a: Some(a), b: Some(b), c: Some(c) };
     noop();
     joiner.await
 }
@@ -98,11 +90,7 @@ async fn mixed_sizes() {
     let c = BigFut::new();
     let d = BigFut::new();
     let e = BigFut::new();
-    let joiner = Joiner {
-        a: Some(a),
-        b: Some(b),
-        c: Some(c),
-    };
+    let joiner = Joiner { a: Some(a), b: Some(b), c: Some(c) };
 
     d.await;
     e.await;

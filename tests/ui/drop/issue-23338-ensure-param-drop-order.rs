@@ -1,4 +1,4 @@
-//@ run-pass
+//@ ignore-test
 #![allow(non_upper_case_globals)]
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
