@@ -29,14 +29,14 @@ mod layout;
 mod tests;
 
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
-pub use layout::{
-    FIRST_VARIANT, FieldIdx, Layout, LayoutCalculator, LayoutCalculatorError, TyAbiInterface,
-    TyAndLayout, VariantIdx,
-};
+#[cfg(feature = "nightly")]
+pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
+pub use layout::{LayoutCalculator, LayoutCalculatorError};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
+#[cfg(feature = "nightly")]
 pub trait HashStableContext {}
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
@@ -1644,6 +1644,14 @@ pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
+    /// Returns `true` if this is an aggregate type (including a ScalarPair!)
+    pub fn is_aggregate(&self) -> bool {
+        match self.abi {
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
+            Abi::ScalarPair(..) | Abi::Aggregate { .. } => true,
+        }
+    }
+
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
