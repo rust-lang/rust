@@ -11,7 +11,6 @@
 #![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(rustdoc_internals)]
-#![feature(strict_provenance)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]

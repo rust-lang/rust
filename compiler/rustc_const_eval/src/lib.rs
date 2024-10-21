@@ -10,7 +10,6 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(slice_ptr_get)]
-#![feature(strict_provenance)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(unqualified_local_imports)]

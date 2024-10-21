@@ -1,5 +1,4 @@
 // Various tests ensuring that underscore patterns really just construct the place, but don't check its contents.
-#![feature(strict_provenance)]
 #![feature(never_type)]
 
 use std::ptr;

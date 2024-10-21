@@ -1,4 +1,3 @@
-#![feature(strict_provenance, exposed_provenance)]
 
 // Ensure that a `ptr::without_provenance` ptr is truly invalid.
 fn main() {
