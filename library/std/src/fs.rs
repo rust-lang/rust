@@ -279,7 +279,8 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// Reads the entire contents of a file into a string.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_string`]
-/// with fewer imports and without an intermediate variable.
+/// with fewer imports, without an intermediate variable, and with improved performance
+/// by referencing the file's metadata to preallocate buffer size.
 ///
 /// [`read_to_string`]: Read::read_to_string
 ///
