@@ -1,3 +1,5 @@
+#[cfg(not(bootstrap))]
+use crate::ffi::CStr;
 use crate::fmt;
 
 /// A struct containing information about the location of a panic.
@@ -32,7 +34,11 @@ use crate::fmt;
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
-    file: &'a str,
+    // When not bootstrapping the compiler, it is an invariant that the last byte of this string
+    // slice is a nul-byte.
+    //
+    // When bootstrapping the compiler, this string may be missing the nul-terminator.
+    file_with_nul: &'a str,
     line: u32,
     col: u32,
 }
@@ -127,7 +133,30 @@ impl<'a> Location<'a> {
     #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
     #[inline]
     pub const fn file(&self) -> &str {
-        self.file
+        // String slicing in const is very hard, see:
+        // <https://users.rust-lang.org/t/slicing-strings-in-const/119836>
+
+        let s = self.file_with_nul;
+
+        #[cfg(bootstrap)]
+        if !matches!(s.as_bytes().last(), Some(0)) {
+            return s;
+        }
+
+        #[cfg(debug_assertions)]
+        if !matches!(s.as_bytes().last(), Some(0)) {
+            panic!("filename is not nul-terminated");
+        }
+
+        // SAFETY: The string contains a nul-byte, so the length is at least one.
+        let len = unsafe { s.len().unchecked_sub(1) };
+
+        // SAFETY: `s.as_ptr()` is valid for `len+1` bytes, so it is valid for `len` bytes.
+        let file = unsafe { core::slice::from_raw_parts(s.as_ptr(), len) };
+
+        // SAFETY: This is valid utf-8 because the original string is valid utf-8 and the last
+        // character was a nul-byte, so removing it does not cut a codepoint in half.
+        unsafe { core::str::from_utf8_unchecked(file) }
     }
 
     /// Returns the line number from which the panic originated.
@@ -179,17 +208,22 @@ impl<'a> Location<'a> {
     pub const fn column(&self) -> u32 {
         self.col
     }
-}
 
-#[unstable(
-    feature = "panic_internals",
-    reason = "internal details of the implementation of the `panic!` and related macros",
-    issue = "none"
-)]
-impl<'a> Location<'a> {
-    #[doc(hidden)]
-    pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
-        Location { file, line, col }
+    /// Returns the name of the source file from which the panic originated as a nul-terminated
+    /// string.
+    ///
+    /// This function is like [`Location::file`], except that it returns a nul-terminated string. It
+    /// is mainly useful for passing the filename into C or C++ code.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "panic_file_with_nul", issue = "none")]
+    #[cfg(not(bootstrap))]
+    pub fn file_with_nul(&self) -> &CStr {
+        let file_with_nul = self.file_with_nul.as_bytes();
+
+        // SAFETY: This struct is only ever constructed by the compiler, which always inserts a
+        // nul-terminator in this string.
+        unsafe { CStr::from_bytes_with_nul_unchecked(file_with_nul) }
     }
 }
 
@@ -197,6 +231,6 @@ impl<'a> Location<'a> {
 impl fmt::Display for Location<'_> {
     #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
+        write!(formatter, "{}:{}:{}", self.file(), self.line, self.col)
     }
 }
