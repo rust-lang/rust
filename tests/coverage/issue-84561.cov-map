@@ -22,32 +22,27 @@ Number of file 0 mappings: 1
 Highest counter ID seen: c0
 
 Function name: issue_84561::test1
-Raw bytes (50): 0x[01, 01, 00, 09, 01, 9a, 01, 01, 01, 0b, 05, 01, 0c, 00, 1e, 01, 01, 05, 00, 0b, 09, 00, 0c, 00, 1e, 01, 01, 0d, 01, 0b, 0d, 01, 0c, 00, 1e, 01, 01, 05, 03, 0b, 11, 03, 0c, 00, 1e, 01, 01, 01, 00, 02]
+Raw bytes (30): 0x[01, 01, 00, 05, 01, 9a, 01, 01, 01, 1f, 01, 02, 05, 00, 1f, 01, 01, 0d, 01, 1f, 01, 02, 05, 03, 1f, 01, 04, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
-Number of file 0 mappings: 9
-- Code(Counter(0)) at (prev + 154, 1) to (start + 1, 11)
-- Code(Counter(1)) at (prev + 1, 12) to (start + 0, 30)
-- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 11)
-- Code(Counter(2)) at (prev + 0, 12) to (start + 0, 30)
-- Code(Counter(0)) at (prev + 1, 13) to (start + 1, 11)
-- Code(Counter(3)) at (prev + 1, 12) to (start + 0, 30)
-- Code(Counter(0)) at (prev + 1, 5) to (start + 3, 11)
-- Code(Counter(4)) at (prev + 3, 12) to (start + 0, 30)
-- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
-Highest counter ID seen: c4
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 154, 1) to (start + 1, 31)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 31)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 1, 31)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 3, 31)
+- Code(Counter(0)) at (prev + 4, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: issue_84561::test2
-Raw bytes (20): 0x[01, 01, 00, 03, 01, b0, 01, 01, 01, 10, 05, 01, 11, 00, 23, 01, 01, 01, 00, 02]
+Raw bytes (15): 0x[01, 01, 00, 02, 01, b0, 01, 01, 01, 24, 01, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
-Number of file 0 mappings: 3
-- Code(Counter(0)) at (prev + 176, 1) to (start + 1, 16)
-- Code(Counter(1)) at (prev + 1, 17) to (start + 0, 35)
-- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
-Highest counter ID seen: c1
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 176, 1) to (start + 1, 36)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: issue_84561::test2::call_print
 Raw bytes (10): 0x[01, 01, 00, 01, 01, a7, 01, 09, 02, 0a]
@@ -59,10 +54,10 @@ Number of file 0 mappings: 1
 Highest counter ID seen: c0
 
 Function name: issue_84561::test3
-Raw bytes (375): 0x[01, 01, 31, 05, 09, 0d, 00, 15, 19, 12, 00, 15, 19, 21, 00, 1e, 00, 21, 00, 31, 00, 3d, 00, 2e, 45, 3d, 00, 42, 49, 45, 00, 3f, 51, 42, 49, 45, 00, 7a, 55, 51, 00, 7a, 55, 51, 00, 77, 5d, 7a, 55, 51, 00, 77, 61, 7a, 55, 51, 00, 72, 65, 77, 61, 7a, 55, 51, 00, 75, be, 01, c2, 01, 79, 69, 6d, 69, 6d, 69, 6d, c2, 01, 00, 69, 6d, c2, 01, 79, 69, 6d, bb, 01, 7d, 75, be, 01, c2, 01, 79, 69, 6d, b6, 01, 00, bb, 01, 7d, 75, be, 01, c2, 01, 79, 69, 6d, 33, 01, 08, 01, 03, 1c, 05, 04, 09, 01, 1c, 02, 02, 05, 04, 1f, 0d, 05, 05, 00, 1f, 06, 01, 05, 00, 1f, 15, 01, 09, 01, 1c, 12, 02, 05, 00, 1f, 0e, 01, 05, 00, 0f, 00, 00, 20, 00, 30, 21, 01, 05, 03, 0f, 00, 03, 20, 00, 30, 00, 00, 33, 00, 41, 00, 00, 4b, 00, 5a, 1e, 01, 05, 00, 0f, 00, 05, 09, 03, 10, 00, 05, 0d, 00, 1b, 00, 02, 0d, 00, 1c, 1a, 04, 09, 05, 06, 31, 06, 05, 03, 06, 22, 04, 05, 03, 06, 3d, 04, 09, 04, 06, 2e, 05, 08, 00, 0f, 45, 01, 09, 03, 0a, 2a, 05, 09, 03, 0a, 3f, 05, 08, 00, 0f, 51, 01, 09, 00, 13, 00, 03, 0d, 00, 1d, 3a, 03, 09, 00, 13, 00, 03, 0d, 00, 1d, 77, 03, 05, 00, 0f, 77, 01, 0c, 00, 13, 5d, 01, 0d, 00, 13, 56, 02, 0d, 00, 13, 72, 04, 05, 02, 13, 65, 03, 0d, 00, 13, 6e, 02, 0d, 00, 13, bb, 01, 03, 05, 00, 0f, 69, 01, 0c, 00, 13, 6d, 01, 0d, 03, 0e, 75, 04, 0d, 00, 13, c2, 01, 02, 0d, 00, 17, c2, 01, 01, 14, 00, 1b, 00, 01, 15, 00, 1b, 92, 01, 02, 15, 00, 1b, be, 01, 04, 0d, 00, 13, 7d, 03, 09, 00, 19, b6, 01, 02, 05, 00, 0f, b2, 01, 03, 09, 00, 22, 00, 02, 05, 00, 0f, 00, 03, 09, 00, 2c, 00, 02, 01, 00, 02]
+Raw bytes (330): 0x[01, 01, 2c, 05, 09, 0d, 00, 15, 19, 12, 00, 15, 19, 21, 00, 1e, 00, 21, 00, 31, 00, 3d, 00, 2e, 45, 3d, 00, 42, 49, 45, 00, 3f, 51, 42, 49, 45, 00, 7a, 55, 51, 00, 7a, 55, 51, 00, 77, 5d, 7a, 55, 51, 00, 77, 61, 7a, 55, 51, 00, 72, 65, 77, 61, 7a, 55, 51, 00, 75, aa, 01, ae, 01, 79, 69, 6d, 69, 6d, 69, 6d, ae, 01, 00, 69, 6d, ae, 01, 79, 69, 6d, a7, 01, 7d, 75, aa, 01, ae, 01, 79, 69, 6d, 2d, 01, 08, 01, 03, 1c, 05, 04, 09, 01, 1c, 02, 02, 05, 04, 1f, 0d, 05, 05, 00, 1f, 06, 01, 05, 00, 1f, 15, 01, 09, 01, 1c, 12, 02, 05, 00, 1f, 0e, 01, 05, 00, 31, 21, 01, 05, 03, 0f, 00, 03, 20, 00, 30, 00, 00, 33, 00, 41, 00, 00, 4b, 00, 5a, 1e, 01, 05, 00, 0f, 00, 05, 09, 03, 10, 00, 05, 0d, 00, 1b, 00, 02, 0d, 00, 1c, 1a, 04, 09, 05, 06, 31, 06, 05, 03, 06, 22, 04, 05, 03, 06, 3d, 04, 09, 04, 06, 2e, 05, 08, 00, 0f, 45, 01, 09, 03, 0a, 2a, 05, 09, 03, 0a, 3f, 05, 08, 00, 0f, 51, 01, 09, 04, 0a, 3a, 06, 09, 04, 0a, 77, 06, 05, 00, 0f, 77, 01, 0c, 00, 13, 5d, 01, 0d, 00, 13, 56, 02, 0d, 00, 13, 72, 04, 05, 02, 13, 65, 03, 0d, 00, 13, 6e, 02, 0d, 00, 13, a7, 01, 03, 05, 00, 0f, 69, 01, 0c, 00, 13, 6d, 01, 0d, 03, 0e, 75, 04, 0d, 00, 13, ae, 01, 02, 0d, 00, 17, ae, 01, 01, 14, 00, 1b, 00, 01, 15, 00, 1b, 92, 01, 02, 15, 00, 1b, aa, 01, 04, 0d, 00, 13, a2, 01, 05, 05, 04, 06, 00, 05, 05, 04, 06, 00, 05, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 49
+Number of expressions: 44
 - expression 0 operands: lhs = Counter(1), rhs = Counter(2)
 - expression 1 operands: lhs = Counter(3), rhs = Zero
 - expression 2 operands: lhs = Counter(5), rhs = Counter(6)
@@ -94,25 +89,20 @@ Number of expressions: 49
 - expression 28 operands: lhs = Expression(29, Add), rhs = Counter(24)
 - expression 29 operands: lhs = Expression(30, Sub), rhs = Counter(21)
 - expression 30 operands: lhs = Counter(20), rhs = Zero
-- expression 31 operands: lhs = Counter(29), rhs = Expression(47, Sub)
-- expression 32 operands: lhs = Expression(48, Sub), rhs = Counter(30)
+- expression 31 operands: lhs = Counter(29), rhs = Expression(42, Sub)
+- expression 32 operands: lhs = Expression(43, Sub), rhs = Counter(30)
 - expression 33 operands: lhs = Counter(26), rhs = Counter(27)
 - expression 34 operands: lhs = Counter(26), rhs = Counter(27)
 - expression 35 operands: lhs = Counter(26), rhs = Counter(27)
-- expression 36 operands: lhs = Expression(48, Sub), rhs = Zero
+- expression 36 operands: lhs = Expression(43, Sub), rhs = Zero
 - expression 37 operands: lhs = Counter(26), rhs = Counter(27)
-- expression 38 operands: lhs = Expression(48, Sub), rhs = Counter(30)
+- expression 38 operands: lhs = Expression(43, Sub), rhs = Counter(30)
 - expression 39 operands: lhs = Counter(26), rhs = Counter(27)
-- expression 40 operands: lhs = Expression(46, Add), rhs = Counter(31)
-- expression 41 operands: lhs = Counter(29), rhs = Expression(47, Sub)
-- expression 42 operands: lhs = Expression(48, Sub), rhs = Counter(30)
+- expression 40 operands: lhs = Expression(41, Add), rhs = Counter(31)
+- expression 41 operands: lhs = Counter(29), rhs = Expression(42, Sub)
+- expression 42 operands: lhs = Expression(43, Sub), rhs = Counter(30)
 - expression 43 operands: lhs = Counter(26), rhs = Counter(27)
-- expression 44 operands: lhs = Expression(45, Sub), rhs = Zero
-- expression 45 operands: lhs = Expression(46, Add), rhs = Counter(31)
-- expression 46 operands: lhs = Counter(29), rhs = Expression(47, Sub)
-- expression 47 operands: lhs = Expression(48, Sub), rhs = Counter(30)
-- expression 48 operands: lhs = Counter(26), rhs = Counter(27)
-Number of file 0 mappings: 51
+Number of file 0 mappings: 45
 - Code(Counter(0)) at (prev + 8, 1) to (start + 3, 28)
 - Code(Counter(1)) at (prev + 4, 9) to (start + 1, 28)
 - Code(Expression(0, Sub)) at (prev + 2, 5) to (start + 4, 31)
@@ -123,9 +113,8 @@ Number of file 0 mappings: 51
 - Code(Counter(5)) at (prev + 1, 9) to (start + 1, 28)
 - Code(Expression(4, Sub)) at (prev + 2, 5) to (start + 0, 31)
     = (c5 - c6)
-- Code(Expression(3, Sub)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Expression(3, Sub)) at (prev + 1, 5) to (start + 0, 49)
     = ((c5 - c6) - Zero)
-- Code(Zero) at (prev + 0, 32) to (start + 0, 48)
 - Code(Counter(8)) at (prev + 1, 5) to (start + 3, 15)
 - Code(Zero) at (prev + 3, 32) to (start + 0, 48)
 - Code(Zero) at (prev + 0, 51) to (start + 0, 65)
@@ -148,12 +137,10 @@ Number of file 0 mappings: 51
     = ((c15 - Zero) - c17)
 - Code(Expression(15, Add)) at (prev + 5, 8) to (start + 0, 15)
     = ((c17 - Zero) + c18)
-- Code(Counter(20)) at (prev + 1, 9) to (start + 0, 19)
-- Code(Zero) at (prev + 3, 13) to (start + 0, 29)
-- Code(Expression(14, Sub)) at (prev + 3, 9) to (start + 0, 19)
+- Code(Counter(20)) at (prev + 1, 9) to (start + 4, 10)
+- Code(Expression(14, Sub)) at (prev + 6, 9) to (start + 4, 10)
     = (((c17 - Zero) + c18) - c20)
-- Code(Zero) at (prev + 3, 13) to (start + 0, 29)
-- Code(Expression(29, Add)) at (prev + 3, 5) to (start + 0, 15)
+- Code(Expression(29, Add)) at (prev + 6, 5) to (start + 0, 15)
     = ((c20 - Zero) + c21)
 - Code(Expression(29, Add)) at (prev + 1, 12) to (start + 0, 19)
     = ((c20 - Zero) + c21)
@@ -165,27 +152,23 @@ Number of file 0 mappings: 51
 - Code(Counter(25)) at (prev + 3, 13) to (start + 0, 19)
 - Code(Expression(27, Sub)) at (prev + 2, 13) to (start + 0, 19)
     = ((((c20 - Zero) + c21) - c24) - c25)
-- Code(Expression(46, Add)) at (prev + 3, 5) to (start + 0, 15)
+- Code(Expression(41, Add)) at (prev + 3, 5) to (start + 0, 15)
     = (c29 + ((c26 - c27) - c30))
 - Code(Counter(26)) at (prev + 1, 12) to (start + 0, 19)
 - Code(Counter(27)) at (prev + 1, 13) to (start + 3, 14)
 - Code(Counter(29)) at (prev + 4, 13) to (start + 0, 19)
-- Code(Expression(48, Sub)) at (prev + 2, 13) to (start + 0, 23)
+- Code(Expression(43, Sub)) at (prev + 2, 13) to (start + 0, 23)
     = (c26 - c27)
-- Code(Expression(48, Sub)) at (prev + 1, 20) to (start + 0, 27)
+- Code(Expression(43, Sub)) at (prev + 1, 20) to (start + 0, 27)
     = (c26 - c27)
 - Code(Zero) at (prev + 1, 21) to (start + 0, 27)
 - Code(Expression(36, Sub)) at (prev + 2, 21) to (start + 0, 27)
     = ((c26 - c27) - Zero)
-- Code(Expression(47, Sub)) at (prev + 4, 13) to (start + 0, 19)
+- Code(Expression(42, Sub)) at (prev + 4, 13) to (start + 0, 19)
     = ((c26 - c27) - c30)
-- Code(Counter(31)) at (prev + 3, 9) to (start + 0, 25)
-- Code(Expression(45, Sub)) at (prev + 2, 5) to (start + 0, 15)
+- Code(Expression(40, Sub)) at (prev + 5, 5) to (start + 4, 6)
     = ((c29 + ((c26 - c27) - c30)) - c31)
-- Code(Expression(44, Sub)) at (prev + 3, 9) to (start + 0, 34)
-    = (((c29 + ((c26 - c27) - c30)) - c31) - Zero)
-- Code(Zero) at (prev + 2, 5) to (start + 0, 15)
-- Code(Zero) at (prev + 3, 9) to (start + 0, 44)
-- Code(Zero) at (prev + 2, 1) to (start + 0, 2)
-Highest counter ID seen: c31
+- Code(Zero) at (prev + 5, 5) to (start + 4, 6)
+- Code(Zero) at (prev + 5, 1) to (start + 0, 2)
+Highest counter ID seen: c29
 
