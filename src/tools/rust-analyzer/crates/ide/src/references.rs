@@ -2750,4 +2750,25 @@ impl Foo {
             "#]],
         );
     }
+
+    #[test]
+    fn goto_ref_on_included_file() {
+        check(
+            r#"
+//- minicore:include
+//- /lib.rs
+include!("foo.rs");
+fn howdy() {
+    let _ = FOO;
+}
+//- /foo.rs
+const FOO$0: i32 = 0;
+"#,
+            expect![[r#"
+                FOO Const FileId(1) 0..19 6..9
+
+                FileId(0) 45..48
+            "#]],
+        );
+    }
 }

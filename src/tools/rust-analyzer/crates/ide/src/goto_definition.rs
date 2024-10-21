@@ -505,6 +505,44 @@ fn foo() {
     }
 
     #[test]
+    fn goto_def_in_included_file_inside_mod() {
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+mod a {
+    include!("b.rs");
+}
+//- /b.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
+
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+mod a {
+    include!("a.rs");
+}
+//- /a.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_def_if_items_same_name() {
         check(
             r#"
