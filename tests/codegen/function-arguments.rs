@@ -32,7 +32,7 @@ pub fn boolean(x: bool) -> bool {
     x
 }
 
-// CHECK: i8 @maybeuninit_boolean(i8 %x)
+// CHECK: i8 @maybeuninit_boolean(i8{{.*}} %x)
 #[no_mangle]
 pub fn maybeuninit_boolean(x: MaybeUninit<bool>) -> MaybeUninit<bool> {
     x
@@ -44,19 +44,19 @@ pub fn enum_bool(x: MyBool) -> MyBool {
     x
 }
 
-// CHECK: i8 @maybeuninit_enum_bool(i8 %x)
+// CHECK: i8 @maybeuninit_enum_bool(i8{{.*}} %x)
 #[no_mangle]
 pub fn maybeuninit_enum_bool(x: MaybeUninit<MyBool>) -> MaybeUninit<MyBool> {
     x
 }
 
-// CHECK: noundef{{( range\(i32 0, 1114112\))?}} i32 @char(i32 noundef{{( range\(i32 0, 1114112\))?}} %x)
+// CHECK: noundef{{( range\(i32 0, 1114112\))?}} i32 @char(i32{{.*}}{{( range\(i32 0, 1114112\))?}} %x)
 #[no_mangle]
 pub fn char(x: char) -> char {
     x
 }
 
-// CHECK: i32 @maybeuninit_char(i32 %x)
+// CHECK: i32 @maybeuninit_char(i32{{.*}} %x)
 #[no_mangle]
 pub fn maybeuninit_char(x: MaybeUninit<char>) -> MaybeUninit<char> {
     x

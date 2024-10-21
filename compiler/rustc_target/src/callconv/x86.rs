@@ -1,6 +1,10 @@
+use rustc_abi::Float::*;
+use rustc_abi::Primitive::Float;
+
 use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
 use crate::abi::{Abi, Align, HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::HasTargetSpec;
+use crate::spec::abi::Abi as SpecAbi;
 
 #[derive(PartialEq)]
 pub(crate) enum Flavor {
@@ -181,5 +185,40 @@ where
                 break;
             }
         }
+    }
+}
+
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(_cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: SpecAbi)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    // Avoid returning floats in x87 registers on x86 as loading and storing from x87
+    // registers will quiet signalling NaNs.
+    if !fn_abi.ret.is_ignore()
+        // Intrinsics themselves are not actual "real" functions, so theres no need to change their ABIs.
+        && abi != SpecAbi::RustIntrinsic
+    {
+        match fn_abi.ret.layout.abi {
+            // Handle similar to the way arguments with an `Abi::Aggregate` abi are handled
+            // in `adjust_for_rust_abi`, by returning arguments up to the size of a pointer (32 bits on x86)
+            // cast to an appropriately sized integer.
+            Abi::Scalar(s) if s.primitive() == Float(F32) => {
+                // Same size as a pointer, return in a register.
+                fn_abi.ret.cast_to(Reg::i32());
+            }
+            Abi::Scalar(s) if s.primitive() == Float(F64) => {
+                // Larger than a pointer, return indirectly.
+                fn_abi.ret.make_indirect();
+            }
+            Abi::ScalarPair(s1, s2)
+                if matches!(s1.primitive(), Float(F32 | F64))
+                    || matches!(s2.primitive(), Float(F32 | F64)) =>
+            {
+                // Larger than a pointer, return indirectly.
+                fn_abi.ret.make_indirect();
+            }
+            _ => {}
+        };
     }
 }

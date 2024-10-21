@@ -8,7 +8,7 @@
 // Thanks to poison semantics, this doesn't even need branches.
 
 // CHECK-LABEL: @checked_sub_unsigned
-// CHECK-SAME: (i16 noundef %a, i16 noundef %b)
+// CHECK-SAME: (i16{{.*}} %a, i16{{.*}} %b)
 #[no_mangle]
 pub fn checked_sub_unsigned(a: u16, b: u16) -> Option<u16> {
     // CHECK-DAG: %[[IS_SOME:.+]] = icmp uge i16 %a, %b
@@ -26,7 +26,7 @@ pub fn checked_sub_unsigned(a: u16, b: u16) -> Option<u16> {
 // looking for no-wrap flags, we just need there to not be any masking.
 
 // CHECK-LABEL: @checked_shl_unsigned
-// CHECK-SAME: (i32 noundef %a, i32 noundef %b)
+// CHECK-SAME: (i32{{.*}} %a, i32{{.*}} %b)
 #[no_mangle]
 pub fn checked_shl_unsigned(a: u32, b: u32) -> Option<u32> {
     // CHECK-DAG: %[[IS_SOME:.+]] = icmp ult i32 %b, 32
@@ -41,7 +41,7 @@ pub fn checked_shl_unsigned(a: u32, b: u32) -> Option<u32> {
 }
 
 // CHECK-LABEL: @checked_shr_unsigned
-// CHECK-SAME: (i32 noundef %a, i32 noundef %b)
+// CHECK-SAME: (i32{{.*}} %a, i32{{.*}} %b)
 #[no_mangle]
 pub fn checked_shr_unsigned(a: u32, b: u32) -> Option<u32> {
     // CHECK-DAG: %[[IS_SOME:.+]] = icmp ult i32 %b, 32
@@ -56,7 +56,7 @@ pub fn checked_shr_unsigned(a: u32, b: u32) -> Option<u32> {
 }
 
 // CHECK-LABEL: @checked_shl_signed
-// CHECK-SAME: (i32 noundef %a, i32 noundef %b)
+// CHECK-SAME: (i32{{.*}} %a, i32{{.*}} %b)
 #[no_mangle]
 pub fn checked_shl_signed(a: i32, b: u32) -> Option<i32> {
     // CHECK-DAG: %[[IS_SOME:.+]] = icmp ult i32 %b, 32
@@ -71,7 +71,7 @@ pub fn checked_shl_signed(a: i32, b: u32) -> Option<i32> {
 }
 
 // CHECK-LABEL: @checked_shr_signed
-// CHECK-SAME: (i32 noundef %a, i32 noundef %b)
+// CHECK-SAME: (i32{{.*}} %a, i32{{.*}} %b)
 #[no_mangle]
 pub fn checked_shr_signed(a: i32, b: u32) -> Option<i32> {
     // CHECK-DAG: %[[IS_SOME:.+]] = icmp ult i32 %b, 32
@@ -86,7 +86,7 @@ pub fn checked_shr_signed(a: i32, b: u32) -> Option<i32> {
 }
 
 // CHECK-LABEL: @checked_add_one_unwrap_unsigned
-// CHECK-SAME: (i32 noundef %x)
+// CHECK-SAME: (i32{{.*}} %x)
 #[no_mangle]
 pub fn checked_add_one_unwrap_unsigned(x: u32) -> u32 {
     // CHECK: %[[IS_MAX:.+]] = icmp eq i32 %x, -1

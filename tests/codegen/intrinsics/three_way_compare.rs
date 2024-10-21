@@ -10,8 +10,7 @@ use std::intrinsics::three_way_compare;
 
 #[no_mangle]
 // CHECK-LABEL: @signed_cmp
-// DEBUG-SAME: (i16 %a, i16 %b)
-// OPTIM-SAME: (i16 noundef %a, i16 noundef %b)
+// CHECK-SAME: (i16{{.*}} %a, i16{{.*}} %b)
 pub fn signed_cmp(a: i16, b: i16) -> std::cmp::Ordering {
     // DEBUG: %[[GT:.+]] = icmp sgt i16 %a, %b
     // DEBUG: %[[ZGT:.+]] = zext i1 %[[GT]] to i8
@@ -29,8 +28,7 @@ pub fn signed_cmp(a: i16, b: i16) -> std::cmp::Ordering {
 
 #[no_mangle]
 // CHECK-LABEL: @unsigned_cmp
-// DEBUG-SAME: (i16 %a, i16 %b)
-// OPTIM-SAME: (i16 noundef %a, i16 noundef %b)
+// CHECK-SAME: (i16{{.*}} %a, i16{{.*}} %b)
 pub fn unsigned_cmp(a: u16, b: u16) -> std::cmp::Ordering {
     // DEBUG: %[[GT:.+]] = icmp ugt i16 %a, %b
     // DEBUG: %[[ZGT:.+]] = zext i1 %[[GT]] to i8

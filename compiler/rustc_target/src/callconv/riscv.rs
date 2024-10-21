@@ -7,6 +7,7 @@
 use crate::abi::call::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
 use crate::abi::{self, Abi, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
 use crate::spec::HasTargetSpec;
+use crate::spec::abi::Abi as SpecAbi;
 
 #[derive(Copy, Clone)]
 enum RegPassKind {
@@ -363,5 +364,31 @@ where
             &mut avail_gprs,
             &mut avail_fprs,
         );
+    }
+}
+
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: SpecAbi)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    if abi == SpecAbi::RustIntrinsic {
+        return;
+    }
+
+    let xlen = cx.data_layout().pointer_size.bits();
+
+    for arg in fn_abi.args.iter_mut() {
+        if arg.is_ignore() {
+            continue;
+        }
+
+        // LLVM integers types do not differentiate between signed or unsigned integers.
+        // Some RISC-V instructions do not have a `.w` suffix version, they use all the
+        // XLEN bits. By explicitly setting the `signext` or `zeroext` attribute
+        // according to signedness to avoid unnecessary integer extending instructions.
+        //
+        // See https://github.com/rust-lang/rust/issues/114508 for details.
+        extend_integer_width(arg, xlen);
     }
 }
