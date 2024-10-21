@@ -1817,6 +1817,9 @@ rustc_queries! {
         separate_provide_extern
         arena_cache
     }
+    query impls_in_crate(_:CrateNum) -> &'tcx [(DefId, Option<SimplifiedType>)] {
+        desc { "fetching impls in a crate" }
+    }
     query stability_implications(_: CrateNum) -> &'tcx UnordMap<Symbol, Symbol> {
         arena_cache
         desc { "calculating the implications between `#[unstable]` features defined in a crate" }
