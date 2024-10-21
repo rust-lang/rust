@@ -3,7 +3,7 @@ use std::fmt;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
     self as ast, Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
-    LitKind, TraitObjectSyntax, UintTy,
+    LitIntType, LitKind, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, ByRef, CaptureBy, ImplPolarity, IsAuto, Movability,
@@ -1826,6 +1826,18 @@ impl Expr<'_> {
             | ExprKind::DropTemps(..)
             | ExprKind::Err(_) => false,
         }
+    }
+
+    /// Check if expression is an integer literal that can be used
+    /// where `usize` is expected.
+    pub fn is_size_lit(&self) -> bool {
+        matches!(
+            self.kind,
+            ExprKind::Lit(Lit {
+                node: LitKind::Int(_, LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::Usize)),
+                ..
+            })
+        )
     }
 
     /// If `Self.kind` is `ExprKind::DropTemps(expr)`, drill down until we get a non-`DropTemps`
