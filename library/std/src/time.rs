@@ -403,6 +403,12 @@ impl Instant {
     pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
         self.0.checked_sub_duration(&duration).map(Instant)
     }
+
+    // used by platform specific sleep_until implementations, no every platform has one
+    #[allow(unused)]
+    pub(crate) fn into_inner(self) -> time::Instant {
+        self.0
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
