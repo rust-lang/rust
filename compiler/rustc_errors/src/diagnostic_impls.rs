@@ -242,6 +242,12 @@ impl IntoDiagArg for std::ffi::CString {
     }
 }
 
+impl IntoDiagArg for std::ffi::OsString {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(self.to_string_lossy().into_owned()))
+    }
+}
+
 impl IntoDiagArg for rustc_data_structures::small_c_str::SmallCStr {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.to_string_lossy().into_owned()))
