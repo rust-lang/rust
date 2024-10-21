@@ -92,7 +92,12 @@ impl Alignment {
     #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn as_usize(self) -> usize {
-        self.0 as usize
+        // It would be possible to do this with `self.0 as _`, but that results
+        // in way more MIR -- mostly because of the assume -- which ends up
+        // impacting compilation time for things using `Layout`.
+
+        // SAFETY: this type is a subset of the possible values of usize.
+        unsafe { mem::transmute::<Alignment, usize>(self) }
     }
 
     /// Returns the alignment as a <code>[NonZero]<[usize]></code>.
