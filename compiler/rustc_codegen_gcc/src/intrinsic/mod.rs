@@ -139,8 +139,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::likely => self.expect(args[0].immediate(), true),
-            sym::unlikely => self.expect(args[0].immediate(), false),
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
                 let builtin = self.context.get_builtin_function("__builtin_constant_p");
