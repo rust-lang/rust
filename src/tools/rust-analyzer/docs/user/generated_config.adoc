@@ -95,8 +95,8 @@ avoid checking unnecessary things.
 Default:
 ----
 {
-  "debug_assertions": null,
-  "miri": null
+  "miri": null,
+  "debug_assertions": null
 }
 ----
 List of cfg options to enable with the given values.
@@ -321,18 +321,10 @@ Enables completions of private items and fields that are defined in the current 
 Default:
 ----
 {
-  "Arc::new": {
-    "postfix": "arc",
-    "body": "Arc::new(${receiver})",
-    "requires": "std::sync::Arc",
-    "description": "Put the expression into an `Arc`",
-    "scope": "expr"
-  },
-  "Rc::new": {
-    "postfix": "rc",
-    "body": "Rc::new(${receiver})",
-    "requires": "std::rc::Rc",
-    "description": "Put the expression into an `Rc`",
+  "Ok": {
+    "postfix": "ok",
+    "body": "Ok(${receiver})",
+    "description": "Wrap the expression in a `Result::Ok`",
     "scope": "expr"
   },
   "Box::pin": {
@@ -342,10 +334,11 @@ Default:
     "description": "Put the expression into a pinned `Box`",
     "scope": "expr"
   },
-  "Err": {
-    "postfix": "err",
-    "body": "Err(${receiver})",
-    "description": "Wrap the expression in a `Result::Err`",
+  "Arc::new": {
+    "postfix": "arc",
+    "body": "Arc::new(${receiver})",
+    "requires": "std::sync::Arc",
+    "description": "Put the expression into an `Arc`",
     "scope": "expr"
   },
   "Some": {
@@ -354,10 +347,17 @@ Default:
     "description": "Wrap the expression in an `Option::Some`",
     "scope": "expr"
   },
-  "Ok": {
-    "postfix": "ok",
-    "body": "Ok(${receiver})",
-    "description": "Wrap the expression in a `Result::Ok`",
+  "Err": {
+    "postfix": "err",
+    "body": "Err(${receiver})",
+    "description": "Wrap the expression in a `Result::Err`",
+    "scope": "expr"
+  },
+  "Rc::new": {
+    "postfix": "rc",
+    "body": "Rc::new(${receiver})",
+    "requires": "std::rc::Rc",
+    "description": "Put the expression into an `Rc`",
     "scope": "expr"
   }
 }

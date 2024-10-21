@@ -95,7 +95,8 @@ fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8], &MemoryMap)) {
 fn pretty_print_err(e: ConstEvalError, db: TestDB) -> String {
     let mut err = String::new();
     let span_formatter = |file, range| format!("{file:?} {range:?}");
-    let edition = db.crate_graph()[db.test_crate()].edition;
+    let edition =
+        db.crate_graph()[*db.crate_graph().crates_in_topological_order().last().unwrap()].edition;
     match e {
         ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter, edition),
         ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter, edition),
@@ -2896,7 +2897,7 @@ fn recursive_adt() {
                 {
                     const VARIANT_TAG_TREE: TagTree = TagTree::Choice(
                         &[
-                            TagTree::Leaf,
+                            TAG_TREE,
                         ],
                     );
                     VARIANT_TAG_TREE
@@ -2905,6 +2906,6 @@ fn recursive_adt() {
             TAG_TREE
         };
     "#,
-        |e| matches!(e, ConstEvalError::MirEvalError(MirEvalError::StackOverflow)),
+        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::Loop)),
     );
 }
