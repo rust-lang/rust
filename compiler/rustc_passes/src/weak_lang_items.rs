@@ -26,9 +26,9 @@ pub(crate) fn check_crate(
     if items.eh_personality().is_none() {
         items.missing.push(LangItem::EhPersonality);
     }
-    if tcx.sess.target.os == "emscripten" && items.eh_catch_typeinfo().is_none() {
-        items.missing.push(LangItem::EhCatchTypeinfo);
-    }
+    // if tcx.sess.target.os == "emscripten" && items.eh_catch_typeinfo().is_none() {
+    //     items.missing.push(LangItem::EhCatchTypeinfo);
+    // }
 
     visit::Visitor::visit_crate(&mut WeakLangItemVisitor { tcx, items }, krate);
 
