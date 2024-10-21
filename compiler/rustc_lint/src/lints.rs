@@ -344,6 +344,24 @@ pub(crate) struct BuiltinTrivialBounds<'a> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_builtin_double_negations)]
+#[note(lint_note)]
+#[note(lint_note_decrement)]
+pub(crate) struct BuiltinDoubleNegations {
+    #[subdiagnostic]
+    pub add_parens: BuiltinDoubleNegationsAddParens,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_add_parens_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct BuiltinDoubleNegationsAddParens {
+    #[suggestion_part(code = "(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
+#[derive(LintDiagnostic)]
 pub(crate) enum BuiltinEllipsisInclusiveRangePatternsLint {
     #[diag(lint_builtin_ellipsis_inclusive_range_patterns)]
     Parenthesise {
