@@ -77,6 +77,8 @@ pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     }
 }
 
+pub fn thread_cleanup() {}
+
 /// # SAFETY
 /// this is not guaranteed to run, for example when the program aborts.
 /// - must be called only once during runtime cleanup.
