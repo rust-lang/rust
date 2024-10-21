@@ -34,6 +34,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, Span};
+use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -1782,7 +1783,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | Target::Union
                         | Target::Enum
                         | Target::Fn
-                        | Target::Method(_) => continue,
+                        | Target::Method(_) => {}
                         _ => {
                             self.dcx().emit_err(
                                 errors::AttrApplication::StructEnumFunctionMethodUnion {
@@ -1790,6 +1791,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                     span,
                                 },
                             );
+                        }
+                    }
+
+                    // if the attribute is malformed, it may return None from this
+                    // but an error will have already been emitted, so this code should just skip such attributes
+                    if let Some((
+                        _,
+                        MetaItemLit {
+                            kind: ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed),
+                            ..
+                        },
+                    )) = hint.singleton_lit_list()
+                    {
+                        let val = literal.get() as u64;
+                        // ignore values greater than 2^29, a different error will be emitted
+                        if val <= 2_u64.pow(29) {
+                            let max = Size::from_bits(self.tcx.sess.target.pointer_width)
+                                .signed_int_max() as u64;
+                            if val > max {
+                                self.dcx().emit_err(errors::InvalidReprAlignForTarget {
+                                    span: hint.span(),
+                                    size: max,
+                                });
+                            }
                         }
                     }
                 }
