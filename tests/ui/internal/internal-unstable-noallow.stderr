@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'function'
+error[E0658]: use of unstable library feature `function`
   --> $DIR/internal-unstable-noallow.rs:16:5
    |
 LL |     call_unstable_noallow!();
@@ -8,7 +8,7 @@ LL |     call_unstable_noallow!();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: this error originates in the macro `call_unstable_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0658]: use of unstable library feature 'struct_field'
+error[E0658]: use of unstable library feature `struct_field`
   --> $DIR/internal-unstable-noallow.rs:18:5
    |
 LL |     construct_unstable_noallow!(0);
@@ -18,7 +18,7 @@ LL |     construct_unstable_noallow!(0);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: this error originates in the macro `construct_unstable_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0658]: use of unstable library feature 'method'
+error[E0658]: use of unstable library feature `method`
   --> $DIR/internal-unstable-noallow.rs:20:35
    |
 LL |     |x: internal_unstable::Foo| { call_method_noallow!(x) };
@@ -28,7 +28,7 @@ LL |     |x: internal_unstable::Foo| { call_method_noallow!(x) };
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: this error originates in the macro `call_method_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0658]: use of unstable library feature 'struct2_field'
+error[E0658]: use of unstable library feature `struct2_field`
   --> $DIR/internal-unstable-noallow.rs:22:35
    |
 LL |     |x: internal_unstable::Bar| { access_field_noallow!(x) };

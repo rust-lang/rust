@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'derive_smart_pointer'
+error[E0658]: use of unstable library feature `derive_smart_pointer`
   --> $DIR/feature-gate-derive-smart-pointer.rs:3:10
    |
 LL | #[derive(SmartPointer)]
@@ -8,7 +8,7 @@ LL | #[derive(SmartPointer)]
    = help: add `#![feature(derive_smart_pointer)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'derive_smart_pointer'
+error[E0658]: use of unstable library feature `derive_smart_pointer`
   --> $DIR/feature-gate-derive-smart-pointer.rs:1:5
    |
 LL | use std::marker::SmartPointer;

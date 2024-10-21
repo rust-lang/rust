@@ -28,7 +28,6 @@ use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
-use crate::const_eval::is_unstable_const_fn;
 use crate::errors::UnstableInStable;
 
 type QualifResults<'mir, 'tcx, Q> =
@@ -686,61 +685,79 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // If the `const fn` we are trying to call is not const-stable, ensure that we have
                 // the proper feature gate enabled.
-                if let Some((gate, implied_by)) = is_unstable_const_fn(tcx, callee) {
-                    trace!(?gate, "calling unstable const fn");
-                    if self.span.allows_unstable(gate) {
-                        return;
-                    }
-                    if let Some(implied_by_gate) = implied_by
-                        && self.span.allows_unstable(implied_by_gate)
-                    {
-                        return;
-                    }
+                let gates = if tcx.is_const_fn_raw(callee)
+                    && let Some(const_stab) = tcx.lookup_const_stability(callee)
+                    && let rustc_attr::Unstable { unstables, .. } = &const_stab.level
+                {
+                    unstables.as_slice()
+                } else {
+                    &[]
+                };
 
-                    // Calling an unstable function *always* requires that the corresponding gate
-                    // (or implied gate) be enabled, even if the function has
-                    // `#[rustc_allow_const_fn_unstable(the_gate)]`.
-                    let gate_declared = |gate| tcx.features().declared(gate);
-                    let feature_gate_declared = gate_declared(gate);
-                    let implied_gate_declared = implied_by.is_some_and(gate_declared);
-                    if !feature_gate_declared && !implied_gate_declared {
-                        self.check_op(ops::FnCallUnstable(callee, Some(gate)));
-                        return;
-                    }
+                if !gates.is_empty() {
+                    trace!(?gates, "calling unstable const fn");
+                    // Features that are not enabled, but must be to make this call const
+                    let mut bad_gates = vec![];
+                    for gate in gates {
+                        let &rustc_attr::Unstability { feature, implied_by, .. } = gate;
+                        if self.span.allows_unstable(feature) {
+                            continue;
+                        }
+                        if let Some(implied_by_gate) = implied_by
+                            && self.span.allows_unstable(implied_by_gate)
+                        {
+                            continue;
+                        }
 
-                    // If this crate is not using stability attributes, or the caller is not claiming to be a
-                    // stable `const fn`, that is all that is required.
-                    if !self.ccx.is_const_stable_const_fn() {
-                        trace!("crate not using stability attributes or caller not stably const");
-                        return;
-                    }
+                        // Calling an unstable function *always* requires that the corresponding
+                        // gate (or implied gate) be enabled, even if the function has
+                        // `#[rustc_allow_const_fn_unstable(the_gate)]`.
+                        let gate_declared = |gate| tcx.features().declared(gate);
+                        let feature_gate_declared = gate_declared(feature);
+                        let implied_gate_declared = implied_by.is_some_and(gate_declared);
+                        if !feature_gate_declared && !implied_gate_declared {
+                            bad_gates.push(gate.into());
+                            continue;
+                        }
 
-                    // Otherwise, we are something const-stable calling a const-unstable fn.
-                    if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
-                        trace!("rustc_allow_const_fn_unstable gate active");
-                        return;
-                    }
+                        // If this crate is not using stability attributes, or the caller is not
+                        // claiming to be a stable `const fn`, that is all that is required.
+                        if !self.ccx.is_const_stable_const_fn() {
+                            trace!(
+                                "crate not using stability attributes or caller not stably const"
+                            );
+                            continue;
+                        }
 
-                    self.check_op(ops::FnCallUnstable(callee, Some(gate)));
-                    return;
+                        // Otherwise, we are something const-stable calling a const-unstable fn.
+                        if super::rustc_allow_const_fn_unstable(tcx, caller, feature) {
+                            trace!("rustc_allow_const_fn_unstable gate active");
+                            continue;
+                        }
+
+                        bad_gates.push(gate.into());
+                    }
+                    if !bad_gates.is_empty() {
+                        self.check_op(ops::FnCallUnstable(callee, bad_gates));
+                    }
+                } else {
+                    // For compatibility, we consider `unstable` callees that have no
+                    // `rustc_const_stable` attributes to be const-unstable as well.
+                    let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
+                        && tcx.lookup_stability(callee).is_some_and(|s| s.is_unstable());
+                    if callee_is_unstable_unmarked {
+                        trace!("callee_is_unstable_unmarked");
+                        // We do not use `const` modifiers for intrinsic "functions", as intrinsics
+                        // are `extern` functions, and these have no way to get marked `const`.
+                        // So instead we use `rustc_const_(un)stable` attributes to mean that the
+                        // intrinsic is `const`
+                        if self.ccx.is_const_stable_const_fn() || tcx.intrinsic(callee).is_some() {
+                            self.check_op(ops::FnCallUnstable(callee, vec![]));
+                            return;
+                        }
+                    }
+                    trace!("permitting call");
                 }
-
-                // FIXME(ecstaticmorse); For compatibility, we consider `unstable` callees that
-                // have no `rustc_const_stable` attributes to be const-unstable as well. This
-                // should be fixed later.
-                let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
-                    && tcx.lookup_stability(callee).is_some_and(|s| s.is_unstable());
-                if callee_is_unstable_unmarked {
-                    trace!("callee_is_unstable_unmarked");
-                    // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
-                    // `extern` functions, and these have no way to get marked `const`. So instead we
-                    // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
-                    if self.ccx.is_const_stable_const_fn() || tcx.intrinsic(callee).is_some() {
-                        self.check_op(ops::FnCallUnstable(callee, None));
-                        return;
-                    }
-                }
-                trace!("permitting call");
             }
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no

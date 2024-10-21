@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'unicode_internals'
+error[E0658]: use of unstable library feature `unicode_internals`
   --> $DIR/accidental-stable-in-unstable.rs:6:5
    |
 LL | use core::unicode::UNICODE_VERSION;

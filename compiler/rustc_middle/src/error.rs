@@ -1,9 +1,10 @@
 use std::fmt;
+use std::num::NonZero;
 use std::path::PathBuf;
 
 use rustc_errors::codes::*;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, DiagSymbolList};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::ty::Ty;
@@ -163,4 +164,69 @@ pub struct TypeLengthLimit {
     pub was_written: bool,
     pub path: PathBuf,
     pub type_length: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_unstable_library_feature, code = E0658)]
+pub struct UnstableLibraryFeatureError {
+    #[primary_span]
+    pub span: Span,
+    pub features: DiagSymbolList,
+    pub count: usize,
+    pub single_feature_has_reason: bool,
+    pub reason_for_single_feature: String,
+    #[subdiagnostic]
+    pub info: Vec<UnstableLibraryFeatureInfo>,
+    #[subdiagnostic]
+    pub nightly_subdiags: Vec<rustc_session::errors::NightlyFeatureDiagnostic>,
+    #[subdiagnostic]
+    pub suggestions: Vec<UnstableLibraryFeatureSugg>,
+}
+
+/// Lint diagnostic for soft_unstable
+#[derive(LintDiagnostic)]
+#[diag(middle_unstable_library_feature)]
+pub struct SoftUnstableLibraryFeature {
+    pub features: DiagSymbolList,
+    pub count: usize,
+    pub single_feature_has_reason: bool,
+    pub reason_for_single_feature: String,
+    #[subdiagnostic]
+    pub info: Vec<UnstableLibraryFeatureInfo>,
+    #[subdiagnostic]
+    pub nightly_subdiags: Vec<rustc_session::errors::NightlyFeatureDiagnostic>,
+    #[subdiagnostic]
+    pub suggestions: Vec<UnstableLibraryFeatureSugg>,
+}
+
+/// A note for other diagnostics which report unstable library features
+#[derive(Subdiagnostic)]
+#[note(middle_unstable_library_feature)]
+pub struct UnstableLibraryFeatureNote {
+    pub features: DiagSymbolList,
+    pub count: usize,
+    pub single_feature_has_reason: bool,
+    pub reason_for_single_feature: String,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnstableLibraryFeatureInfo {
+    #[note(middle_unstable_library_feature_reason)]
+    Reason { reason: String, feature: Symbol },
+    #[note(middle_unstable_library_feature_issue)]
+    Issue { issue: NonZero<u32>, feature: Symbol, show_feature: bool },
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnstableLibraryFeatureSugg {
+    #[suggestion(
+        middle_unstable_library_feature_suggestion_for_allocator_api,
+        code = "({snippet})",
+        applicability = "maybe-incorrect"
+    )]
+    ForAllocatorApi {
+        #[primary_span]
+        inner_types: Span,
+        snippet: String,
+    },
 }

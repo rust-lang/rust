@@ -20,11 +20,11 @@ pub use lint_stability_reexport::unstable_text;
 // Ensure items which aren't marked as unstable can't re-export unstable items
 #[stable(feature = "lint_stability", since = "1.0.0")]
 pub use lint_stability::unstable as unstable2;
-//~^ ERROR use of unstable library feature 'unstable_test_feature'
+//~^ ERROR use of unstable library feature `unstable_test_feature`
 
 fn main() {
     // Since we didn't enable the feature in this crate, we still can't
     // use these items, even though they're in scope from the `use`s which are now allowed.
-    unstable(); //~ ERROR use of unstable library feature 'unstable_test_feature'
-    unstable_text(); //~ ERROR use of unstable library feature 'unstable_test_feature'
+    unstable(); //~ ERROR use of unstable library feature `unstable_test_feature`
+    unstable_text(); //~ ERROR use of unstable library feature `unstable_test_feature`
 }
