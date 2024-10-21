@@ -49,6 +49,16 @@ pub enum SocketAddr {
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
 /// [`IPv4` address]: Ipv4Addr
 ///
+/// # Textual representation
+///
+/// `SocketAddrV4` provides a [`FromStr`](crate::str::FromStr) implementation.
+/// It accepts an IPv4 address in its [textual representation],
+/// followed by a single `:`,
+/// followed by the port encoded as a decimal integer.
+/// Other formats are not accepted.
+///
+/// [textual representation]: Ipv4Addr#textual-representation
+///
 /// # Examples
 ///
 /// ```
@@ -81,6 +91,27 @@ pub struct SocketAddrV4 {
 ///
 /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
 /// [`IPv6` address]: Ipv6Addr
+///
+/// # Textual representation
+///
+/// `SocketAddrV6` provides a [`FromStr`](crate::str::FromStr) implementation,
+/// based on the bracketed format recommended by [IETF RFC 5952],
+/// with scope identifiers based on those specified in [IETF RFC 4007].
+///
+/// It accepts addresses consisting of the following elements, in order:
+///   - A left square bracket (`[`)
+///   - The [textual representation] of an IPv6 address
+///   - _Optionally_, a percent sign (`%`) followed by the scope identifier
+///     encoded as a decimal integer
+///   - A right square bracket (`]`)
+///   - A colon (`:`)
+///   - The port, encoded as a decimal integer.
+///
+/// Other formats are not accepted.
+///
+/// [IETF RFC 5952]: https://tools.ietf.org/html/rfc5952#section-6
+/// [IETF RFC 4007]: https://tools.ietf.org/html/rfc4007#section-11
+/// [textual representation]: Ipv6Addr#textual-representation
 ///
 /// # Examples
 ///
