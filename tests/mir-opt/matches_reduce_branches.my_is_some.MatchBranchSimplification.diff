@@ -1,0 +1,36 @@
+- // MIR for `my_is_some` before MatchBranchSimplification
++ // MIR for `my_is_some` after MatchBranchSimplification
+  
+  fn my_is_some(_1: Option<T>) -> bool {
+      let mut _0: bool;
+      let mut _2: isize;
++     let mut _3: isize;
+  
+      bb0: {
+          _2 = discriminant(_1);
+-         switchInt(copy _2) -> [0: bb1, 1: bb2, otherwise: bb3];
+-     }
+- 
+-     bb1: {
+-         _0 = const false;
+-         goto -> bb4;
+-     }
+- 
+-     bb2: {
+-         _0 = const true;
+-         goto -> bb4;
+-     }
+- 
+-     bb3: {
+-         unreachable;
+-     }
+- 
+-     bb4: {
++         StorageLive(_3);
++         _3 = copy _2;
++         _0 = Ne(copy _3, const 0_isize);
++         StorageDead(_3);
+          return;
+      }
+  }
+  
