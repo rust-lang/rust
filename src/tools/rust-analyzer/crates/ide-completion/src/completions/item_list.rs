@@ -29,7 +29,9 @@ pub(crate) fn complete_item_list(
     kind: &ItemListKind,
 ) {
     let _p = tracing::info_span!("complete_item_list").entered();
-    if path_ctx.is_trivial_path() {
+
+    // We handle completions for trait-impls in [`item_list::trait_impl`]
+    if path_ctx.is_trivial_path() && !matches!(kind, ItemListKind::TraitImpl(_)) {
         add_keywords(acc, ctx, Some(kind));
     }
 
@@ -81,7 +83,6 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
         matches!(kind, Some(ItemListKind::ExternBlock { is_unsafe: true }));
 
     let in_trait = matches!(kind, Some(ItemListKind::Trait));
-    let in_trait_impl = matches!(kind, Some(ItemListKind::TraitImpl(_)));
     let in_inherent_impl = matches!(kind, Some(ItemListKind::Impl));
     let in_block = kind.is_none();
 
@@ -90,38 +91,34 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
     let has_async_kw = ctx.qualifier_ctx.async_tok.is_some();
     let has_safe_kw = ctx.qualifier_ctx.safe_tok.is_some();
 
-    // We handle completions for trait-impls in [`item_list::trait_impl`]
-    if in_trait_impl {
+    // Some keywords are invalid after non-vis qualifiers, so we handle them first.
+    if (has_unsafe_kw || has_safe_kw) && in_extern_block {
+        add_keyword("fn", "fn $1($2);");
+        add_keyword("static", "static $1: $2;");
         return;
     }
 
-    // Some keywords are invalid after non-vis qualifiers, so we handle them first.
-    if has_unsafe_kw || has_async_kw || has_safe_kw {
-        if in_extern_block {
-            add_keyword("fn", "fn $1($2);");
-            add_keyword("static", "static $1: $2;");
-        } else {
-            if !has_unsafe_kw {
-                add_keyword("unsafe", "unsafe $0");
-            }
-            if !has_async_kw {
-                add_keyword("async", "async $0");
-            }
+    if has_unsafe_kw || has_async_kw {
+        if !has_unsafe_kw {
+            add_keyword("unsafe", "unsafe $0");
+        }
+        if !has_async_kw {
+            add_keyword("async", "async $0");
+        }
 
-            if in_item_list || in_assoc_non_trait_impl {
-                add_keyword("fn", "fn $1($2) {\n    $0\n}");
-            }
+        if in_item_list || in_assoc_non_trait_impl {
+            add_keyword("fn", "fn $1($2) {\n    $0\n}");
+        }
 
-            if has_unsafe_kw && in_item_list {
-                add_keyword("trait", "trait $1 {\n    $0\n}");
-                if no_vis_qualifiers {
-                    add_keyword("impl", "impl $1 {\n    $0\n}");
-                }
+        if has_unsafe_kw && in_item_list {
+            add_keyword("trait", "trait $1 {\n    $0\n}");
+            if no_vis_qualifiers {
+                add_keyword("impl", "impl $1 {\n    $0\n}");
             }
+        }
 
-            if !has_async_kw && no_vis_qualifiers && in_item_list {
-                add_keyword("extern", "extern $0");
-            }
+        if !has_async_kw && no_vis_qualifiers && in_item_list {
+            add_keyword("extern", "extern $0");
         }
 
         return;
