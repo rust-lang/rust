@@ -14,6 +14,8 @@ use r_efi::protocols::{device_path, device_path_to_text, shell};
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_io_error};
+use crate::iter::Iterator;
+use crate::marker::PhantomData;
 use crate::mem::{MaybeUninit, size_of};
 use crate::os::uefi::env::boot_services;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
@@ -22,6 +24,7 @@ use crate::ptr::NonNull;
 use crate::slice;
 use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sys_common::wstr::WStrUnits;
+use crate::time::Duration;
 
 type BootInstallMultipleProtocolInterfaces =
     unsafe extern "efiapi" fn(_: *mut r_efi::efi::Handle, _: ...) -> r_efi::efi::Status;
@@ -162,13 +165,63 @@ pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> io::Result<NonNul
     open_protocol(system_handle, protocol_guid)
 }
 
-pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::Result<OsString> {
+fn device_path_to_text_raw(path: NonNull<device_path::Protocol>) -> io::Result<Box<[u16]>> {
     fn path_to_text(
+        protocol: NonNull<device_path_to_text::Protocol>,
+        path: NonNull<device_path::Protocol>,
+    ) -> io::Result<Box<[u16]>> {
+        let path_ptr: *mut r_efi::efi::Char16 = unsafe {
+            ((*protocol.as_ptr()).convert_device_path_to_text)(
+                path.as_ptr(),
+                // DisplayOnly
+                r_efi::efi::Boolean::FALSE,
+                // AllowShortcuts
+                r_efi::efi::Boolean::FALSE,
+            )
+        };
+
+        owned_uefi_string_from_raw(path_ptr)
+            .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))
+    }
+
+    static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+        AtomicPtr::new(crate::ptr::null_mut());
+
+    if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
+        if let Ok(protocol) = open_protocol::<device_path_to_text::Protocol>(
+            handle,
+            device_path_to_text::PROTOCOL_GUID,
+        ) {
+            return path_to_text(protocol, path);
+        }
+    }
+
+    let device_path_to_text_handles = locate_handles(device_path_to_text::PROTOCOL_GUID)?;
+    for handle in device_path_to_text_handles {
+        if let Ok(protocol) = open_protocol::<device_path_to_text::Protocol>(
+            handle,
+            device_path_to_text::PROTOCOL_GUID,
+        ) {
+            LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
+            return path_to_text(protocol, path);
+        }
+    }
+
+    Err(io::const_io_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
+}
+
+pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::Result<OsString> {
+    let p = device_path_to_text_raw(path)?;
+    Ok(OsString::from_wide(&p))
+}
+
+fn device_node_to_text(path: NonNull<device_path::Protocol>) -> io::Result<OsString> {
+    fn node_to_text(
         protocol: NonNull<device_path_to_text::Protocol>,
         path: NonNull<device_path::Protocol>,
     ) -> io::Result<OsString> {
         let path_ptr: *mut r_efi::efi::Char16 = unsafe {
-            ((*protocol.as_ptr()).convert_device_path_to_text)(
+            ((*protocol.as_ptr()).convert_device_node_to_text)(
                 path.as_ptr(),
                 // DisplayOnly
                 r_efi::efi::Boolean::FALSE,
@@ -198,7 +251,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
             handle,
             device_path_to_text::PROTOCOL_GUID,
         ) {
-            return path_to_text(protocol, path);
+            return node_to_text(protocol, path);
         }
     }
 
@@ -209,7 +262,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
             device_path_to_text::PROTOCOL_GUID,
         ) {
             LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
-            return path_to_text(protocol, path);
+            return node_to_text(protocol, path);
         }
     }
 
@@ -224,14 +277,14 @@ pub(crate) fn runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>>
     NonNull::new(runtime_services)
 }
 
-pub(crate) struct DevicePath(NonNull<r_efi::protocols::device_path::Protocol>);
+pub(crate) struct OwnedDevicePath(pub(crate) NonNull<r_efi::protocols::device_path::Protocol>);
 
-impl DevicePath {
+impl OwnedDevicePath {
     pub(crate) fn from_text(p: &OsStr) -> io::Result<Self> {
         fn inner(
             p: &OsStr,
             protocol: NonNull<r_efi::protocols::device_path_from_text::Protocol>,
-        ) -> io::Result<DevicePath> {
+        ) -> io::Result<OwnedDevicePath> {
             let path_vec = p.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
             if path_vec[..path_vec.len() - 1].contains(&0) {
                 return Err(const_io_error!(
@@ -243,7 +296,7 @@ impl DevicePath {
             let path =
                 unsafe { ((*protocol.as_ptr()).convert_text_to_device_path)(path_vec.as_ptr()) };
 
-            NonNull::new(path).map(DevicePath).ok_or_else(|| {
+            NonNull::new(path).map(OwnedDevicePath).ok_or_else(|| {
                 const_io_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path")
             })
         }
@@ -277,12 +330,16 @@ impl DevicePath {
         ))
     }
 
-    pub(crate) fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
+    pub(crate) const fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
         self.0.as_ptr()
+    }
+
+    pub(crate) const fn borrow<'a>(&'a self) -> BorrowedDevicePath<'a> {
+        BorrowedDevicePath::new(self.0)
     }
 }
 
-impl Drop for DevicePath {
+impl Drop for OwnedDevicePath {
     fn drop(&mut self) {
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
@@ -290,6 +347,132 @@ impl Drop for DevicePath {
                 ((*bt.as_ptr()).free_pool)(self.0.as_ptr() as *mut crate::ffi::c_void);
             }
         }
+    }
+}
+
+impl crate::fmt::Debug for OwnedDevicePath {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        let p = device_path_to_text(self.0).unwrap();
+        p.fmt(f)
+    }
+}
+
+pub(crate) struct BorrowedDevicePath<'a> {
+    protocol: NonNull<r_efi::protocols::device_path::Protocol>,
+    phantom: PhantomData<&'a r_efi::protocols::device_path::Protocol>,
+}
+
+impl<'a> BorrowedDevicePath<'a> {
+    pub(crate) const fn new(protocol: NonNull<r_efi::protocols::device_path::Protocol>) -> Self {
+        Self { protocol, phantom: PhantomData }
+    }
+
+    pub(crate) const fn iter(&'a self) -> DevicePathIterator<'a> {
+        DevicePathIterator::new(DevicePathNode::new(self.protocol))
+    }
+
+    pub(crate) fn to_text_raw(&self) -> io::Result<Box<[u16]>> {
+        device_path_to_text_raw(self.protocol)
+    }
+}
+
+impl<'a> crate::fmt::Debug for BorrowedDevicePath<'a> {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        let p = device_path_to_text(self.protocol).unwrap();
+        p.fmt(f)
+    }
+}
+
+pub(crate) struct DevicePathIterator<'a>(Option<DevicePathNode<'a>>);
+
+impl<'a> DevicePathIterator<'a> {
+    const fn new(node: DevicePathNode<'a>) -> Self {
+        if node.is_end() { Self(None) } else { Self(Some(node)) }
+    }
+}
+
+impl<'a> Iterator for DevicePathIterator<'a> {
+    type Item = DevicePathNode<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let cur_node = self.0?;
+
+        let next_node = unsafe { cur_node.next_node() };
+        self.0 = if next_node.is_end() { None } else { Some(next_node) };
+
+        Some(cur_node)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) struct DevicePathNode<'a> {
+    protocol: NonNull<r_efi::protocols::device_path::Protocol>,
+    phantom: PhantomData<&'a r_efi::protocols::device_path::Protocol>,
+}
+
+impl<'a> DevicePathNode<'a> {
+    pub(crate) const fn new(protocol: NonNull<r_efi::protocols::device_path::Protocol>) -> Self {
+        Self { protocol, phantom: PhantomData }
+    }
+
+    pub(crate) const fn length(&self) -> u16 {
+        let len = unsafe { (*self.protocol.as_ptr()).length };
+        u16::from_le_bytes(len)
+    }
+
+    pub(crate) const fn node_type(&self) -> u8 {
+        unsafe { (*self.protocol.as_ptr()).r#type }
+    }
+
+    pub(crate) const fn sub_type(&self) -> u8 {
+        unsafe { (*self.protocol.as_ptr()).sub_type }
+    }
+
+    pub(crate) const fn is_end(&self) -> bool {
+        self.node_type() == r_efi::protocols::device_path::TYPE_END
+            && self.sub_type() == r_efi::protocols::device_path::End::SUBTYPE_ENTIRE
+    }
+
+    pub(crate) const fn is_end_instance(&self) -> bool {
+        self.node_type() == r_efi::protocols::device_path::TYPE_END
+            && self.sub_type() == r_efi::protocols::device_path::End::SUBTYPE_INSTANCE
+    }
+
+    pub(crate) unsafe fn next_node(&self) -> Self {
+        let node = unsafe {
+            self.protocol
+                .cast::<u8>()
+                .add(self.length().into())
+                .cast::<r_efi::protocols::device_path::Protocol>()
+        };
+        Self::new(node)
+    }
+
+    pub(crate) fn to_path(&'a self) -> BorrowedDevicePath<'a> {
+        BorrowedDevicePath::new(self.protocol)
+    }
+}
+
+impl<'a> PartialEq for DevicePathNode<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        let self_len = self.length();
+        let other_len = other.length();
+
+        self_len == other_len
+            && unsafe {
+                compiler_builtins::mem::memcmp(
+                    self.protocol.as_ptr().cast(),
+                    other.protocol.as_ptr().cast(),
+                    usize::from(self_len),
+                ) == 0
+            }
+    }
+}
+
+impl<'a> crate::fmt::Debug for DevicePathNode<'a> {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        let p = device_node_to_text(self.protocol).unwrap();
+        p.fmt(f)
     }
 }
 
@@ -413,6 +596,15 @@ impl<T> Drop for OwnedTable<T> {
     }
 }
 
+/// Create an Owned UEFI string from raw pointer. Allows string allocations and conversions
+///
+/// SAFETY: This function assumes that Rust has ownership over this string
+fn owned_uefi_string_from_raw(ptr: *mut r_efi::efi::Char16) -> Option<Box<[r_efi::efi::Char16]>> {
+    let str_len = unsafe { WStrUnits::new(ptr)?.count() };
+    let str_slice = crate::ptr::slice_from_raw_parts_mut(ptr.cast(), str_len);
+    Some(unsafe { Box::from_raw(str_slice) })
+}
+
 /// Create OsString from a pointer to NULL terminated UTF-16 string
 pub(crate) fn os_string_from_raw(ptr: *mut r_efi::efi::Char16) -> Option<OsString> {
     let path_len = unsafe { WStrUnits::new(ptr)?.count() };
@@ -444,4 +636,48 @@ pub(crate) fn open_shell() -> Option<NonNull<shell::Protocol>> {
     }
 
     None
+}
+
+// This algorithm is taken from: http://howardhinnant.github.io/date_algorithms.html
+pub const fn uefi_time_from_duration(
+    dur: Duration,
+    daylight: u8,
+    timezone: i16,
+) -> r_efi::system::Time {
+    const SECS_IN_MINUTE: u64 = 60;
+    const SECS_IN_HOUR: u64 = SECS_IN_MINUTE * 60;
+    const SECS_IN_DAY: u64 = SECS_IN_HOUR * 24;
+
+    let secs = dur.as_secs();
+
+    let days = secs / SECS_IN_DAY;
+    let remaining_secs = secs % SECS_IN_DAY;
+
+    let z = days + 719468;
+    let era = z / 146097;
+    let doe = z - (era * 146097);
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let mut y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+
+    if m <= 2 {
+        y += 1;
+    }
+
+    r_efi::system::Time {
+        year: y as u16,
+        month: m as u8,
+        day: d as u8,
+        hour: (remaining_secs / SECS_IN_HOUR) as u8,
+        minute: ((remaining_secs % SECS_IN_HOUR) / SECS_IN_MINUTE) as u8,
+        second: ((remaining_secs % SECS_IN_HOUR) % SECS_IN_MINUTE) as u8,
+        pad1: 0,
+        nanosecond: dur.subsec_nanos(),
+        timezone,
+        daylight,
+        pad2: 0,
+    }
 }
