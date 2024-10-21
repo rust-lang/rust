@@ -1,7 +1,7 @@
 //! See [`FamousDefs`].
 
 use base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase};
-use hir::{Crate, Enum, Function, Macro, Module, ScopeDef, Semantics, Trait};
+use hir::{Crate, Enum, Function, Macro, Module, ScopeDef, Semantics, Struct, Trait};
 
 use crate::RootDatabase;
 
@@ -102,6 +102,14 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:ops:Drop")
     }
 
+    pub fn core_ops_Range(&self) -> Option<Struct> {
+        self.find_struct("core:ops:Range")
+    }
+
+    pub fn core_ops_RangeInclusive(&self) -> Option<Struct> {
+        self.find_struct("core:ops:RangeInclusive")
+    }
+
     pub fn core_marker_Copy(&self) -> Option<Trait> {
         self.find_trait("core:marker:Copy")
     }
@@ -135,6 +143,13 @@ impl FamousDefs<'_, '_> {
             self.proc_macro(),
         ])
         .flatten()
+    }
+
+    fn find_struct(&self, path: &str) -> Option<Struct> {
+        match self.find_def(path)? {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(it))) => Some(it),
+            _ => None,
+        }
     }
 
     fn find_trait(&self, path: &str) -> Option<Trait> {
