@@ -15,6 +15,12 @@ test-multiprecision = ["dep:az", "dep:rug"]
 # Build our own musl for testing and benchmarks
 build-musl = ["dep:musl-math-sys"]
 
+# Enable report generation without bringing in more dependencies by default
+benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
+
+# Run with a reduced set of benchmarks, such as for CI
+short-benchmarks = []
+
 [dependencies]
 anyhow = "1.0.90"
 az = { version = "1.2.1", optional = true }
@@ -32,3 +38,10 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [build-dependencies]
 rand = { version = "0.8.5", optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "random"
+harness = false
