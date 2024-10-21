@@ -187,6 +187,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
             }
         }
         clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => "Function ",
+        clean::TestItem(..) => "Test ",
         clean::TraitItem(..) => "Trait ",
         clean::StructItem(..) => "Struct ",
         clean::UnionItem(..) => "Union ",
@@ -254,9 +255,9 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
 
     match &item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
-        clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f, _) => {
-            item_function(buf, cx, item, f)
-        }
+        clean::FunctionItem(ref f)
+        | clean::ForeignFunctionItem(ref f, _)
+        | clean::TestItem(ref f) => item_function(buf, cx, item, f),
         clean::TraitItem(ref t) => item_trait(buf, cx, item, t),
         clean::StructItem(ref s) => item_struct(buf, cx, item, s),
         clean::UnionItem(ref s) => item_union(buf, cx, item, s),
@@ -332,6 +333,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             ItemType::Static => 8,
             ItemType::Trait => 9,
             ItemType::Function => 10,
+            ItemType::Test => 11,
             ItemType::TypeAlias => 12,
             ItemType::Union => 13,
             _ => 14 + ty as u8,

@@ -170,6 +170,8 @@ Options:
         --scrape-examples-target-crate collect function call information for functions from the target crate
                         
         --scrape-tests  Include test code when scraping examples
+        --document-tests 
+                        Generate documentation for tests
         --with-examples path to function call information (for displaying examples in the documentation)
                         
         --merge none|shared|finalize
