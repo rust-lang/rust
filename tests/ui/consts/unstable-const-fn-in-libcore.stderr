@@ -4,6 +4,14 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
    |                                       ^^^^^^^^^^^^^
 
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:39
+   |
+LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
+   |                                       ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/unstable-const-fn-in-libcore.rs:24:26
    |
@@ -38,7 +46,7 @@ LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
 LL |     }
    |     - value is dropped here
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0015, E0493.
 For more information about an error, try `rustc --explain E0015`.

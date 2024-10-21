@@ -3701,12 +3701,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                         _ => None,
                     };
-                    // Also add host param, if present
-                    let host = self.tcx.generics_of(trait_pred.def_id()).host_effect_index.map(|idx| trait_pred.skip_binder().trait_ref.args[idx]);
                     let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
                         trait_ref: ty::TraitRef::new(self.tcx,
                             trait_pred.def_id(),
-                            [field_ty].into_iter().chain(trait_args).chain(host),
+                            [field_ty].into_iter().chain(trait_args),
                         ),
                         ..*tr
                     });

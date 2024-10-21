@@ -38,10 +38,6 @@ pub trait InferCtxtLike: Sized {
         &self,
         vid: ty::ConstVid,
     ) -> <Self::Interner as Interner>::Const;
-    fn opportunistic_resolve_effect_var(
-        &self,
-        vid: ty::EffectVid,
-    ) -> <Self::Interner as Interner>::Const;
     fn opportunistic_resolve_lt_var(
         &self,
         vid: ty::RegionVid,
@@ -71,7 +67,6 @@ pub trait InferCtxtLike: Sized {
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid);
     fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid);
     fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid);
-    fn equate_effect_vids_raw(&self, a: ty::EffectVid, b: ty::EffectVid);
 
     fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
@@ -83,11 +78,6 @@ pub trait InferCtxtLike: Sized {
     ) -> RelateResult<Self::Interner, ()>;
     fn instantiate_int_var_raw(&self, vid: ty::IntVid, value: ty::IntVarValue);
     fn instantiate_float_var_raw(&self, vid: ty::FloatVid, value: ty::FloatVarValue);
-    fn instantiate_effect_var_raw(
-        &self,
-        vid: ty::EffectVid,
-        value: <Self::Interner as Interner>::Const,
-    );
     fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,

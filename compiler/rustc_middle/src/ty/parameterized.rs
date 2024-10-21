@@ -132,6 +132,7 @@ parameterized_over_tcx! {
     ty::Ty,
     ty::FnSig,
     ty::GenericPredicates,
+    ty::ConstConditions,
     ty::TraitRef,
     ty::Const,
     ty::Predicate,

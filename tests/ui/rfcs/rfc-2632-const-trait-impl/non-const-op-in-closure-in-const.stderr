@@ -4,14 +4,13 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | impl<A, B> const Convert<B> for A where B: ~const From<A> {
    |                                                   ^^^^^^^
 
-error[E0049]: method `to` has 1 const parameter but its trait declaration has 0 const parameters
-  --> $DIR/non-const-op-in-closure-in-const.rs:5:1
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/non-const-op-in-closure-in-const.rs:10:51
    |
-LL | #[const_trait]
-   | ^^^^^^^^^^^^^^ found 1 const parameter
-LL | trait Convert<T> {
-LL |     fn to(self) -> T;
-   |          - expected 0 const parameters
+LL | impl<A, B> const Convert<B> for A where B: ~const From<A> {
+   |                                                   ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const fn `<B as From<A>>::from` in constant functions
   --> $DIR/non-const-op-in-closure-in-const.rs:12:9
@@ -27,5 +26,4 @@ LL + #![feature(effects)]
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0015, E0049.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.

@@ -150,6 +150,13 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         });
     }
 
+    predicates.extend(
+        tcx.const_conditions(def_id)
+            .instantiate_identity(tcx)
+            .into_iter()
+            .map(|(trait_ref, _)| trait_ref.to_host_effect(tcx, ty::HostPolarity::Maybe)),
+    );
+
     let local_did = def_id.as_local();
 
     let unnormalized_env =

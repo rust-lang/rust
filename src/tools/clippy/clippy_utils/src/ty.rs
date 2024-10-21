@@ -274,23 +274,10 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
         .collect::<Vec<_>>();
 
-    // If an effect arg was not specified, we need to specify it.
-    let effect_arg = if tcx
-        .generics_of(trait_id)
-        .host_effect_index
-        .is_some_and(|x| args.get(x - 1).is_none())
-    {
-        Some(GenericArg::from(callee_id.map_or(tcx.consts.true_, |def_id| {
-            tcx.expected_host_effect_param_for_body(def_id)
-        })))
-    } else {
-        None
-    };
-
     let trait_ref = TraitRef::new(
         tcx,
         trait_id,
-        [GenericArg::from(ty)].into_iter().chain(args).chain(effect_arg),
+        [GenericArg::from(ty)].into_iter().chain(args),
     );
 
     debug_assert_matches!(

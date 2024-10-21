@@ -114,10 +114,6 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
 
         // Elide internal host effect args.
         let param = generics.param_at(index, cx.tcx);
-        if param.is_host_effect() {
-            return None;
-        }
-
         let arg = ty::Binder::bind_with_vars(arg, bound_vars);
 
         // Elide arguments that coincide with their default.

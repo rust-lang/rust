@@ -719,47 +719,6 @@ where
             }
         })
     }
-
-    fn consider_builtin_effects_intersection_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
-            return Err(NoSolution);
-        }
-
-        let ty::Tuple(types) = goal.predicate.self_ty().kind() else {
-            return Err(NoSolution);
-        };
-
-        let cx = ecx.cx();
-        let maybe_count = types
-            .iter()
-            .filter_map(|ty| ty::EffectKind::try_from_ty(cx, ty))
-            .filter(|&ty| ty == ty::EffectKind::Maybe)
-            .count();
-
-        // Don't do concrete type check unless there are more than one type that will influence the result.
-        // This would allow `(Maybe, T): Min` pass even if we know nothing about `T`.
-        if types.len() - maybe_count > 1 {
-            let mut min = ty::EffectKind::Maybe;
-
-            for ty in types.iter() {
-                let Some(kind) = ty::EffectKind::try_from_ty(ecx.cx(), ty) else {
-                    return Err(NoSolution);
-                };
-
-                let Some(result) = ty::EffectKind::intersection(min, kind) else {
-                    return Err(NoSolution);
-                };
-
-                min = result;
-            }
-        }
-
-        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-            .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-    }
 }
 
 impl<D, I> EvalCtxt<'_, D>

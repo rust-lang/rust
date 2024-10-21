@@ -683,6 +683,24 @@ rustc_queries! {
         }
     }
 
+    query const_conditions(
+        key: DefId
+    ) -> ty::ConstConditions<'tcx> {
+        desc { |tcx| "computing the conditions for `{}` to be considered const",
+            tcx.def_path_str(key)
+        }
+        separate_provide_extern
+    }
+
+    query implied_const_bounds(
+        key: DefId
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
+        desc { |tcx| "computing the implied `~const` bounds for `{}`",
+            tcx.def_path_str(key)
+        }
+        separate_provide_extern
+    }
+
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
     query type_param_predicates(
@@ -851,12 +869,6 @@ rustc_queries! {
     query associated_types_for_impl_traits_in_associated_fn(fn_def_id: DefId) -> &'tcx [DefId] {
         desc { |tcx| "creating associated items for opaque types returned by `{}`", tcx.def_path_str(fn_def_id) }
         cache_on_disk_if { fn_def_id.is_local() }
-        separate_provide_extern
-    }
-
-    query associated_type_for_effects(def_id: DefId) -> Option<DefId> {
-        desc { |tcx| "creating associated items for effects in `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 

@@ -541,6 +541,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err
                     }
 
+                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
+                        // FIXME(effects): We should recompute the predicate with `~const`
+                        // if it's `const`, and if it holds, explain that this bound only
+                        // *conditionally* holds. If that fails, we should also do selection
+                        // to drill this down to an impl or built-in source, so we can
+                        // point at it and explain that while the trait *is* implemented,
+                        // that implementation is not const.
+                        let err_msg = self.get_standard_error_message(
+                            bound_predicate.rebind(ty::TraitPredicate {
+                                trait_ref: predicate.trait_ref,
+                                polarity: ty::PredicatePolarity::Positive,
+                            }),
+                            None,
+                            match predicate.host {
+                                ty::HostPolarity::Maybe => ty::BoundConstness::ConstIfConst,
+                                ty::HostPolarity::Const => ty::BoundConstness::Const,
+                            },
+                            None,
+                            String::new(),
+                        );
+                        struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg)
+                    }
+
                     ty::PredicateKind::Subtype(predicate) => {
                         // Errors for Subtype predicates show up as
                         // `FulfillmentErrorCode::SubtypeError`,
@@ -2369,49 +2392,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
     }
 
-    /// For effects predicates such as `<u32 as Add>::Effects: Compat<host>`, pretend that the
-    /// predicate that failed was `u32: Add`. Return the constness of such predicate to later
-    /// print as `u32: ~const Add`.
+    // FIXME(effects): Remove this.
     fn get_effects_trait_pred_override(
         &self,
         p: ty::PolyTraitPredicate<'tcx>,
         leaf: ty::PolyTraitPredicate<'tcx>,
-        span: Span,
+        _span: Span,
     ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, ty::BoundConstness) {
-        let trait_ref = p.to_poly_trait_ref();
-        if !self.tcx.is_lang_item(trait_ref.def_id(), LangItem::EffectsCompat) {
-            return (p, leaf, ty::BoundConstness::NotConst);
-        }
-
-        let Some(ty::Alias(ty::AliasTyKind::Projection, projection)) =
-            trait_ref.self_ty().no_bound_vars().map(Ty::kind)
-        else {
-            return (p, leaf, ty::BoundConstness::NotConst);
-        };
-
-        let constness = trait_ref.skip_binder().args.const_at(1);
-
-        let constness = if constness == self.tcx.consts.true_ || constness.is_ct_infer() {
-            ty::BoundConstness::NotConst
-        } else if constness == self.tcx.consts.false_ {
-            ty::BoundConstness::Const
-        } else if matches!(constness.kind(), ty::ConstKind::Param(_)) {
-            ty::BoundConstness::ConstIfConst
-        } else {
-            self.dcx().span_bug(span, format!("Unknown constness argument: {constness:?}"));
-        };
-
-        let new_pred = p.map_bound(|mut trait_pred| {
-            trait_pred.trait_ref = projection.trait_ref(self.tcx);
-            trait_pred
-        });
-
-        let new_leaf = leaf.map_bound(|mut trait_pred| {
-            trait_pred.trait_ref = projection.trait_ref(self.tcx);
-            trait_pred
-        });
-
-        (new_pred, new_leaf, constness)
+        (p, leaf, ty::BoundConstness::NotConst)
     }
 
     fn add_tuple_trait_message(

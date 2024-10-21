@@ -58,15 +58,9 @@ fn equate_intrinsic_type<'tcx>(
 
     // the host effect param should be invisible as it shouldn't matter
     // whether effects is enabled for the intrinsic provider crate.
-    let consts_count = if generics.host_effect_index.is_some() {
-        own_counts.consts - 1
-    } else {
-        own_counts.consts
-    };
-
     if gen_count_ok(own_counts.lifetimes, n_lts, "lifetime")
         && gen_count_ok(own_counts.types, n_tps, "type")
-        && gen_count_ok(consts_count, n_cts, "const")
+        && gen_count_ok(own_counts.consts, n_cts, "const")
     {
         let _ = check_function_signature(
             tcx,

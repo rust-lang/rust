@@ -96,6 +96,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 // FIXME(const_generics): Make sure that `<'a, 'b, const N: &'a &'b u32>` is sound
                 // if we ever support that
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
@@ -200,6 +201,7 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
                 // FIXME(const_generics): Make sure that `<'a, 'b, const N: &'a &'b u32>` is sound
                 // if we ever support that
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)

@@ -51,7 +51,7 @@ mod effects {
     }
 
     reuse Trait::foo;
-    //~^ ERROR delegation to a function with effect parameter is not supported yet
+    //~^ ERROR type annotations needed
 }
 
 fn main() {}

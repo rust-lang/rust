@@ -454,12 +454,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
-        let method = trait_method(
-            self.tcx,
-            eq_def_id,
-            sym::eq,
-            self.tcx.with_opt_host_effect_param(self.def_id, eq_def_id, [compare_ty, compare_ty]),
-        );
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, [compare_ty, compare_ty]);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);

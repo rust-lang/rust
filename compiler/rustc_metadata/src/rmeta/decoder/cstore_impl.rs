@@ -275,6 +275,8 @@ provide! { tcx, def_id, other, cdata,
     impl_parent => { table }
     defaultness => { table_direct }
     constness => { table_direct }
+    const_conditions => { table }
+    implied_const_bounds => { table_defaulted_array }
     coerce_unsized_info => {
         Ok(cdata
             .root
@@ -330,7 +332,6 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
 
-    associated_type_for_effects => { table }
     associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }

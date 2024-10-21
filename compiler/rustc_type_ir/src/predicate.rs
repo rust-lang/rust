@@ -111,6 +111,13 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
     pub fn def_id(&self) -> I::DefId {
         self.skip_binder().def_id
     }
+
+    pub fn to_host_effect(self, cx: I, host: HostPolarity) -> I::Clause {
+        self.map_bound(|trait_ref| {
+            ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, host })
+        })
+        .upcast(cx)
+    }
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
@@ -700,6 +707,54 @@ impl<I: Interner> fmt::Debug for NormalizesTo<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "NormalizesTo({:?}, {:?})", self.alias, self.term)
     }
+}
+
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+pub struct HostEffectPredicate<I: Interner> {
+    pub trait_ref: ty::TraitRef<I>,
+    pub host: HostPolarity,
+}
+
+impl<I: Interner> HostEffectPredicate<I> {
+    pub fn self_ty(self) -> I::Ty {
+        self.trait_ref.self_ty()
+    }
+
+    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        Self { trait_ref: self.trait_ref.with_self_ty(interner, self_ty), ..self }
+    }
+
+    pub fn def_id(self) -> I::DefId {
+        self.trait_ref.def_id
+    }
+}
+
+impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
+    pub fn def_id(self) -> I::DefId {
+        // Ok to skip binder since trait `DefId` does not care about regions.
+        self.skip_binder().def_id()
+    }
+
+    pub fn self_ty(self) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|trait_ref| trait_ref.self_ty())
+    }
+
+    #[inline]
+    pub fn host(self) -> HostPolarity {
+        self.skip_binder().host
+    }
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, PartialOrd, Ord)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+pub enum HostPolarity {
+    /// May be called in const environments if the callee is const.
+    Maybe,
+    /// Always allowed to be called in const environments.
+    Const,
 }
 
 /// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates

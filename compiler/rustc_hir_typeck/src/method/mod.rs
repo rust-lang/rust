@@ -369,17 +369,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         let (obligation, args) =
             self.obligation_for_method(cause, trait_def_id, self_ty, opt_input_types);
-        // FIXME(effects) find a better way to do this
-        // Operators don't have generic methods, but making them `#[const_trait]` gives them
-        // `const host: bool`.
-        let args = if self.tcx.is_const_trait(trait_def_id) {
-            self.tcx.mk_args_from_iter(
-                args.iter()
-                    .chain([self.tcx.expected_host_effect_param_for_body(self.body_id).into()]),
-            )
-        } else {
-            args
-        };
         self.construct_obligation_for_trait(m_name, trait_def_id, obligation, args)
     }
 
