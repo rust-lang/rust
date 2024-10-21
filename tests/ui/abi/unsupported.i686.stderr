@@ -75,7 +75,7 @@ LL | extern "riscv-interrupt-m" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:195:21
+  --> $DIR/unsupported.rs:185:21
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +84,7 @@ LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:203:22
+  --> $DIR/unsupported.rs:193:22
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -93,7 +93,7 @@ LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:208:1
+  --> $DIR/unsupported.rs:198:1
    |
 LL | extern "C-cmse-nonsecure-entry" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,7 +129,7 @@ LL | extern "riscv-interrupt-m" fn riscv() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:201:1
+  --> $DIR/unsupported.rs:191:1
    |
 LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

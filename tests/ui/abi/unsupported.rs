@@ -157,16 +157,11 @@ extern "thiscall" {}
 //[riscv64]~^^^^^ ERROR is not a supported ABI
 
 extern "stdcall" fn stdcall() {}
-//[x64]~^ WARN use of calling convention not supported
-//[x64]~^^ WARN this was previously accepted
-//[arm]~^^^ WARN use of calling convention not supported
-//[arm]~^^^^ WARN this was previously accepted
-//[aarch64]~^^^^^ WARN use of calling convention not supported
-//[aarch64]~^^^^^^ WARN this was previously accepted
-//[riscv32]~^^^^^^^ WARN use of calling convention not supported
-//[riscv32]~^^^^^^^^ WARN this was previously accepted
-//[riscv64]~^^^^^^^^^ WARN use of calling convention not supported
-//[riscv64]~^^^^^^^^^^ WARN this was previously accepted
+//[x64]~^ ERROR is not a supported ABI
+//[arm]~^^ ERROR is not a supported ABI
+//[aarch64]~^^^ ERROR is not a supported ABI
+//[riscv32]~^^^^ ERROR is not a supported ABI
+//[riscv64]~^^^^^ ERROR is not a supported ABI
 fn stdcall_ptr(f: extern "stdcall" fn()) {
     //[x64]~^ WARN unsupported_fn_ptr_calling_conventions
     //[x64]~^^ WARN this was previously accepted
@@ -181,16 +176,11 @@ fn stdcall_ptr(f: extern "stdcall" fn()) {
     f()
 }
 extern "stdcall" {}
-//[x64]~^ WARN use of calling convention not supported
-//[x64]~^^ WARN this was previously accepted
-//[arm]~^^^ WARN use of calling convention not supported
-//[arm]~^^^^ WARN this was previously accepted
-//[aarch64]~^^^^^ WARN use of calling convention not supported
-//[aarch64]~^^^^^^ WARN this was previously accepted
-//[riscv32]~^^^^^^^ WARN use of calling convention not supported
-//[riscv32]~^^^^^^^^ WARN this was previously accepted
-//[riscv64]~^^^^^^^^^ WARN use of calling convention not supported
-//[riscv64]~^^^^^^^^^^ WARN this was previously accepted
+//[x64]~^ ERROR is not a supported ABI
+//[arm]~^^ ERROR is not a supported ABI
+//[aarch64]~^^^ ERROR is not a supported ABI
+//[riscv32]~^^^^ ERROR is not a supported ABI
+//[riscv64]~^^^^^ ERROR is not a supported ABI
 
 fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
     //~^ WARN unsupported_fn_ptr_calling_conventions

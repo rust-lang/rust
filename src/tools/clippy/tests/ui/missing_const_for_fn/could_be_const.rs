@@ -1,7 +1,7 @@
 #![warn(clippy::missing_const_for_fn)]
 #![allow(incomplete_features, clippy::let_and_return, clippy::missing_transmute_annotations)]
-#![allow(unsupported_calling_conventions)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, abi_vectorcall)]
+
 
 use std::mem::transmute;
 
@@ -212,8 +212,8 @@ mod extern_fn {
     //~^ ERROR: this could be a `const fn`
     extern "system-unwind" fn system_unwind() {}
     //~^ ERROR: this could be a `const fn`
-    pub extern "stdcall" fn std_call() {}
+    pub extern "vectorcall" fn std_call() {}
     //~^ ERROR: this could be a `const fn`
-    pub extern "stdcall-unwind" fn std_call_unwind() {}
+    pub extern "vectorcall-unwind" fn std_call_unwind() {}
     //~^ ERROR: this could be a `const fn`
 }

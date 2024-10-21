@@ -123,7 +123,6 @@ declare_lint_pass! {
         UNSAFE_OP_IN_UNSAFE_FN,
         UNSTABLE_NAME_COLLISIONS,
         UNSTABLE_SYNTAX_PRE_EXPANSION,
-        UNSUPPORTED_CALLING_CONVENTIONS,
         UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
         UNUSED_ASSIGNMENTS,
         UNUSED_ASSOCIATED_TYPE_BOUNDS,
@@ -3787,53 +3786,6 @@ declare_lint! {
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/reserving-syntax.html>",
     };
     crate_level_only
-}
-
-declare_lint! {
-    /// The `unsupported_calling_conventions` lint is output whenever there is a use of the
-    /// `stdcall`, `fastcall`, `thiscall`, `vectorcall` calling conventions (or their unwind
-    /// variants) on targets that cannot meaningfully be supported for the requested target.
-    ///
-    /// For example `stdcall` does not make much sense for a x86_64 or, more apparently, powerpc
-    /// code, because this calling convention was never specified for those targets.
-    ///
-    /// Historically MSVC toolchains have fallen back to the regular C calling convention for
-    /// targets other than x86, but Rust doesn't really see a similar need to introduce a similar
-    /// hack across many more targets.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs specific targets)
-    /// extern "stdcall" fn stdcall() {}
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: use of calling convention not supported on this target
-    ///   --> $DIR/unsupported.rs:39:1
-    ///    |
-    /// LL | extern "stdcall" fn stdcall() {}
-    ///    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ///    |
-    ///    = note: `#[warn(unsupported_calling_conventions)]` on by default
-    ///    = warning: this was previously accepted by the compiler but is being phased out;
-    ///               it will become a hard error in a future release!
-    ///    = note: for more information, see issue ...
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// On most of the targets the behaviour of `stdcall` and similar calling conventions is not
-    /// defined at all, but was previously accepted due to a bug in the implementation of the
-    /// compiler.
-    pub UNSUPPORTED_CALLING_CONVENTIONS,
-    Warn,
-    "use of unsupported calling convention",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #87678 <https://github.com/rust-lang/rust/issues/87678>",
-    };
 }
 
 declare_lint! {

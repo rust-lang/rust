@@ -90,7 +90,7 @@ LL | extern "thiscall" {}
    | ^^^^^^^^^^^^^^^^^^^^
 
 warning: the calling convention "stdcall" is not supported on this target
-  --> $DIR/unsupported.rs:170:19
+  --> $DIR/unsupported.rs:165:19
    |
 LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    |                   ^^^^^^^^^^^^^^^^^^^^^
@@ -98,18 +98,14 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:183:1
+error[E0570]: `"stdcall"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:178:1
    |
 LL | extern "stdcall" {}
    | ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:195:21
+  --> $DIR/unsupported.rs:185:21
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -118,7 +114,7 @@ LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:203:22
+  --> $DIR/unsupported.rs:193:22
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -127,7 +123,7 @@ LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:208:1
+  --> $DIR/unsupported.rs:198:1
    |
 LL | extern "C-cmse-nonsecure-entry" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -168,21 +164,18 @@ error[E0570]: `"thiscall"` is not a supported ABI for the current target
 LL | extern "thiscall" fn thiscall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target
+error[E0570]: `"stdcall"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:159:1
    |
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
 
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:201:1
+  --> $DIR/unsupported.rs:191:1
    |
 LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors; 11 warnings emitted
+error: aborting due to 16 previous errors; 9 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
