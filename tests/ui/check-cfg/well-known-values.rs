@@ -76,8 +76,6 @@
     //~^ WARN unexpected `cfg` condition value
     target_vendor = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
-    test = "_UNEXPECTED_VALUE",
-    //~^ WARN unexpected `cfg` condition value
     ub_checks = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     unix = "_UNEXPECTED_VALUE",
