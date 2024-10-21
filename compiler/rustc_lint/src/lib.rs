@@ -67,6 +67,7 @@ mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod methods;
 mod multiple_supertrait_upcastable;
+mod never_block_without_tail_expr;
 mod non_ascii_idents;
 mod non_fmt_panic;
 mod non_local_def;
@@ -105,6 +106,7 @@ use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
 use methods::*;
 use multiple_supertrait_upcastable::*;
+use never_block_without_tail_expr::NeverBlockWithoutTailExpr;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use non_local_def::*;
@@ -196,6 +198,7 @@ late_lint_methods!(
     [
         BuiltinCombinedModuleLateLintPass,
         [
+            NeverBlockWithoutTailExpr: NeverBlockWithoutTailExpr,
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
