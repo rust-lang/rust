@@ -2,7 +2,60 @@ codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not imp
 
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
-codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
+codegen_ssa_apple_sdk_error_failed_reading =
+    failed reading `{$path}` while looking for SDK root: {$error}
+
+codegen_ssa_apple_sdk_error_missing =
+    failed finding SDK for platform `{$sdk_name}`. It looks like you have not installed Xcode?
+
+    { $sdk_name ->
+        [MacOSX] You should install Xcode via the App Store, or run `xcode-select --install` if you only intend on developing for macOS.
+        *[other] You should install Xcode via the App Store.
+    }
+
+codegen_ssa_apple_sdk_error_missing_commandline_tools =
+    failed finding SDK at `{$sdkroot}` in Command Line Tools installation.
+
+    { $sdk_name ->
+        [MacOSX] Perhaps you need to reinstall it with `xcode-select --install`?
+       *[other] When cross-compiling for iOS, tvOS, visionOS or watchOS, you will need a full installation of Xcode.
+    }
+
+codegen_ssa_apple_sdk_error_missing_cross_compile_non_macos =
+    failed finding Apple SDK with name `{$sdk_name}`.
+
+    The SDK is needed by the linker to know where to find symbols in system libraries.
+
+    The SDK can be downloaded and extracted from https://developer.apple.com/download/all/?q=xcode (requires an Apple ID).
+
+    You will then need to tell `rustc` about it using the `SDKROOT` environment variables.
+
+    Furthermore, you might need to install a linker capable of linking Mach-O files, or at least ensure that your linker is configured as `lld`.
+
+    { $sdk_name ->
+        [MacOSX] {""}
+       *[other] Beware that cross-compilation to iOS, tvOS, visionOS or watchOS is generally ill supported on non-macOS hosts.
+    }
+
+codegen_ssa_apple_sdk_error_missing_developer_dir =
+    failed finding SDK inside active developer path `{$dir}` set by the DEVELOPER_DIR environment variable. Looked in:
+    - `{$sdkroot}`
+    - `{$sdkroot_bare}`
+
+codegen_ssa_apple_sdk_error_missing_xcode =
+    failed finding SDK at `{$sdkroot}` in Xcode installation.
+
+    { $sdk_name ->
+        [MacOSX] {""}
+       *[other] Perhaps you need a newer version of Xcode?
+    }
+
+codegen_ssa_apple_sdk_error_missing_xcode_select =
+    failed finding SDK inside active developer path `{$dir}` set by `xcode-select`. Looked in:
+    - `{$sdkroot}`
+    - `{$sdkroot_bare}`
+
+    Consider using `sudo xcode-select --switch path/to/Xcode.app` or `sudo xcode-select --reset` to select a valid path.
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
@@ -341,8 +394,6 @@ codegen_ssa_unknown_atomic_operation = unknown atomic operation
 codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
 
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
-
-codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
 

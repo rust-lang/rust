@@ -50,6 +50,7 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
+use crate::apple::find_sdk_root;
 use crate::{
     CodegenResults, CompiledModule, CrateInfo, NativeLib, common, errors,
     looks_like_rust_object_file,
@@ -3125,81 +3126,70 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 }
 
 fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
-    let arch = &sess.target.arch;
-    let os = &sess.target.os;
-    let llvm_target = &sess.target.llvm_target;
-    if sess.target.vendor != "apple"
-        || !matches!(os.as_ref(), "ios" | "tvos" | "watchos" | "visionos" | "macos")
-        || !matches!(flavor, LinkerFlavor::Darwin(..))
-    {
+    if !sess.target.is_like_osx {
         return None;
     }
-
-    if os == "macos" && !matches!(flavor, LinkerFlavor::Darwin(Cc::No, _)) {
+    let LinkerFlavor::Darwin(cc, _) = flavor else {
         return None;
-    }
-
-    let sdk_name = match (arch.as_ref(), os.as_ref()) {
-        ("aarch64", "tvos") if llvm_target.ends_with("-simulator") => "appletvsimulator",
-        ("aarch64", "tvos") => "appletvos",
-        ("x86_64", "tvos") => "appletvsimulator",
-        ("arm", "ios") => "iphoneos",
-        ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
-        ("aarch64", "ios") if llvm_target.ends_with("-simulator") => "iphonesimulator",
-        ("aarch64", "ios") => "iphoneos",
-        ("x86", "ios") => "iphonesimulator",
-        ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",
-        ("x86_64", "ios") => "iphonesimulator",
-        ("x86_64", "watchos") => "watchsimulator",
-        ("arm64_32", "watchos") => "watchos",
-        ("aarch64", "watchos") if llvm_target.ends_with("-simulator") => "watchsimulator",
-        ("aarch64", "watchos") => "watchos",
-        ("aarch64", "visionos") if llvm_target.ends_with("-simulator") => "xrsimulator",
-        ("aarch64", "visionos") => "xros",
-        ("arm", "watchos") => "watchos",
-        (_, "macos") => "macosx",
-        _ => {
-            sess.dcx().emit_err(errors::UnsupportedArch { arch, os });
-            return None;
-        }
     };
-    let sdk_root = match get_apple_sdk_root(sdk_name) {
+
+    let sdk_name = rustc_target::spec::apple_sdk_name(&sess.target);
+
+    let sdkroot = match get_apple_sdk_root(sdk_name) {
         Ok(s) => s,
         Err(e) => {
-            sess.dcx().emit_err(e);
+            // If cross compiling from non-macOS, the user might be using something like `zig cc`.
+            //
+            // In that case, we shouldn't error when the SDK is missing, though we still warn.
+            if cfg!(target_os = "macos") {
+                sess.dcx().emit_err(e);
+            } else {
+                sess.dcx().emit_warn(e);
+            }
             return None;
         }
     };
 
-    match flavor {
-        LinkerFlavor::Darwin(Cc::Yes, _) => {
-            // Use `-isysroot` instead of `--sysroot`, as only the former
-            // makes Clang treat it as a platform SDK.
-            //
-            // This is admittedly a bit strange, as on most targets
-            // `-isysroot` only applies to include header files, but on Apple
-            // targets this also applies to libraries and frameworks.
-            cmd.cc_args(&["-isysroot", &sdk_root]);
-        }
-        LinkerFlavor::Darwin(Cc::No, _) => {
-            cmd.link_args(&["-syslibroot", &sdk_root]);
-        }
-        _ => unreachable!(),
+    if cc == Cc::Yes {
+        // To pass the SDK root to `cc`, we have a few options:
+        // 1. `--sysroot` flag.
+        // 2. `-isysroot` flag.
+        // 3. `SDKROOT` environment variable.
+        //
+        // `--sysroot` isn't actually enough to get Clang to treat it as a platform SDK, you need to
+        // specify `-isysroot` - this is admittedly a bit strange, as on most targets `-isysroot`
+        // only applies to include header files, but on Apple targets it also applies to libraries
+        // and frameworks.
+        //
+        // Now, while the `-isysroot` flag is pretty well supported (both Clang and GCC implements
+        // the desired behaviour), it may not be understood by any `cc`'s that the user might want
+        // to use.
+        //
+        // So to better support such use-cases, we pass the SDK root in the standard environment
+        // variable instead. This is also supported by GCC since 2019:
+        // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87243>
+        //
+        // This also works better with the trampoline `/usr/bin/cc` which calls `xcrun cc`
+        // internally, since the presence of `SDKROOT` means it won't have to look up the SDK root
+        // itself.
+        cmd.cmd().env("SDKROOT", &sdkroot);
+    } else {
+        // For `ld64`, we use the `-syslibroot` parameter (and there are no other options).
+        cmd.link_arg("-syslibroot");
+        cmd.link_arg(&sdkroot);
     }
 
-    Some(sdk_root.into())
+    Some(sdkroot)
 }
 
-fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {
+fn get_apple_sdk_root(sdk_name: &'static str) -> Result<PathBuf, errors::AppleSdkError> {
     // Following what clang does
     // (https://github.com/llvm/llvm-project/blob/
     // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
-    // to allow the SDK path to be set. (For clang, xcrun sets
-    // SDKROOT; for rustc, the user or build system can set it, or we
-    // can fall back to checking for xcrun on PATH.)
+    // to allow the SDK path to be set.
     if let Ok(sdkroot) = env::var("SDKROOT") {
-        let p = Path::new(&sdkroot);
-        match sdk_name {
+        let p = PathBuf::from(&sdkroot);
+        match &*sdk_name.to_lowercase() {
             // Ignore `SDKROOT` if it's clearly set for the wrong platform.
             "appletvos"
                 if sdkroot.contains("TVSimulator.platform")
@@ -3227,26 +3217,11 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
                 if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
-            _ => return Ok(sdkroot),
+            _ => return Ok(p),
         }
     }
-    let res =
-        Command::new("xcrun").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
-            |output| {
-                if output.status.success() {
-                    Ok(String::from_utf8(output.stdout).unwrap())
-                } else {
-                    let error = String::from_utf8(output.stderr);
-                    let error = format!("process exit with error: {}", error.unwrap());
-                    Err(io::Error::new(io::ErrorKind::Other, &error[..]))
-                }
-            },
-        );
 
-    match res {
-        Ok(output) => Ok(output.trim().to_string()),
-        Err(error) => Err(errors::AppleSdkRootError::SdkPath { sdk_name, error }),
-    }
+    find_sdk_root(sdk_name)
 }
 
 /// When using the linker flavors opting in to `lld`, add the necessary paths and arguments to
