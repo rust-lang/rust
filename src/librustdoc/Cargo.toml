@@ -2,6 +2,7 @@
 name = "rustdoc"
 version = "0.0.0"
 edition = "2021"
+build = "build.rs"
 
 [lib]
 path = "lib.rs"
@@ -24,12 +25,14 @@ tracing = "0.1"
 tracing-tree = "0.3.0"
 threadpool = "1.8.1"
 unicode-segmentation = "1.9"
-sha2 = "0.10.8"
 
 [dependencies.tracing-subscriber]
 version = "0.3.3"
 default-features = false
 features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
+
+[build-dependencies]
+sha2 = "0.10.8"
 
 [dev-dependencies]
 expect-test = "1.4.0"
