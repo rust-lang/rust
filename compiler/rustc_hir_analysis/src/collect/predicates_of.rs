@@ -884,10 +884,9 @@ pub(super) fn const_conditions<'tcx>(
                 }
             }
             DefKind::Impl { .. } => {
-                if !tcx
-                    .trait_id_of_impl(def_id.to_def_id())
-                    .is_some_and(|def_id| tcx.is_const_trait(def_id))
-                {
+                // FIXME(effects): Should be using a dedicated function to
+                // test if this is a const trait impl.
+                if tcx.constness(def_id) != hir::Constness::Const {
                     return Default::default();
                 }
             }
@@ -900,10 +899,9 @@ pub(super) fn const_conditions<'tcx>(
                         }
                     }
                     ty::AssocItemContainer::ImplContainer => {
-                        if !tcx
-                            .trait_id_of_impl(parent_def_id)
-                            .is_some_and(|def_id| tcx.is_const_trait(def_id))
-                        {
+                        // FIXME(effects): Should be using a dedicated function to
+                        // test if this is a const trait impl.
+                        if tcx.constness(parent_def_id) != hir::Constness::Const {
                             return Default::default();
                         }
                     }
@@ -922,12 +920,18 @@ pub(super) fn const_conditions<'tcx>(
             }
             _ => return Default::default(),
         },
+        // While associated types are not really const, we do allow them to have `~const`
+        // bounds and where clauses. `const_conditions` is responsible for gathering
+        // these up so we can check them in `compare_type_predicate_entailment`, and
+        // in `HostEffect` goal computation.
         Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Fn(_, _) => (item.generics, None, true),
+            hir::TraitItemKind::Fn(_, _) | hir::TraitItemKind::Type(_, _) => {
+                (item.generics, None, true)
+            }
             _ => return Default::default(),
         },
         Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Fn(_, _) => (item.generics, None, true),
+            hir::ImplItemKind::Fn(_, _) | hir::ImplItemKind::Type(_) => (item.generics, None, true),
             _ => return Default::default(),
         },
         _ => return Default::default(),
