@@ -32,8 +32,8 @@ use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, 
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, Const, GenericArgs, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
+    self, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -246,10 +246,10 @@ where
                         ty::ExistentialPredicate::Trait(trait_ref) => trait_ref,
                         ty::ExistentialPredicate::Projection(proj) => proj.trait_ref(tcx),
                         ty::ExistentialPredicate::AutoTrait(def_id) => {
-                            ty::ExistentialTraitRef { def_id, args: GenericArgs::empty() }
+                            ty::ExistentialTraitRef::new(tcx, def_id, ty::GenericArgs::empty())
                         }
                     };
-                    let ty::ExistentialTraitRef { def_id, args: _ } = trait_ref;
+                    let ty::ExistentialTraitRef { def_id, .. } = trait_ref;
                     try_visit!(self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref));
                 }
             }
