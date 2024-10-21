@@ -3038,6 +3038,45 @@ macro_rules! int_impl {
             }
         }
 
+        /// Calculates the remainder of `self / rhs` if the quotient is rounded toward negative infinity.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// ## Overflow behavior
+        ///
+        /// On overflow, this function will panic if overflow checks are enabled (default in debug
+        /// mode) and wrap if overflow checks are disabled (default in release mode).
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("let a: ", stringify!($SelfT)," = 8;")]
+        /// let b = 3;
+        ///
+        /// assert_eq!(a.rem_floor(b), 2);
+        /// assert_eq!(a.rem_floor(-b), -1);
+        /// assert_eq!((-a).rem_floor(b), 1);
+        /// assert_eq!((-a).rem_floor(-b), -2);
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn rem_floor(self, rhs: Self) -> Self {
+            let r = self % rhs;
+            if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
+                r + rhs
+            } else {
+                r
+            }
+        }
+
         /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
         ///
         /// # Panics
@@ -3075,6 +3114,48 @@ macro_rules! int_impl {
                 d + correction
             } else {
                 d
+            }
+        }
+
+        /// Calculates the remainder of `self / rhs` if the quotient is rounded towards positive infinity.
+        ///
+        /// This operation is *only* available for signed integers,
+        /// since the result would be negative if both operands are positive.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// ## Overflow behavior
+        ///
+        /// On overflow, this function will panic if overflow checks are enabled (default in debug
+        /// mode) and wrap if overflow checks are disabled (default in release mode).
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(rem_ceil)]
+        #[doc = concat!("let a: ", stringify!($SelfT)," = 8;")]
+        /// let b = 3;
+        ///
+        /// assert_eq!(a.rem_ceil(b), -1);
+        /// assert_eq!(a.rem_ceil(-b), 2);
+        /// assert_eq!((-a).rem_ceil(b), -2);
+        /// assert_eq!((-a).rem_ceil(-b), 1);
+        /// ```
+        #[unstable(feature = "rem_ceil", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn rem_ceil(self, rhs: Self) -> Self {
+            let r = self % rhs;
+            if (r > 0 && rhs > 0) || (r < 0 && rhs < 0) {
+                r - rhs
+            } else {
+                r
             }
         }
 
