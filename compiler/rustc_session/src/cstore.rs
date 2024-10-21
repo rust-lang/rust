@@ -130,6 +130,11 @@ impl DllImport {
             None
         }
     }
+
+    pub fn is_missing_decorations(&self) -> bool {
+        self.import_name_type == Some(PeImportNameType::Undecorated)
+            || self.import_name_type == Some(PeImportNameType::NoPrefix)
+    }
 }
 
 /// Calling convention for a function defined in an external library.
