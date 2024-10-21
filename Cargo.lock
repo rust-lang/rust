@@ -3462,6 +3462,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "rustc_type_ir",
+ "serde",
  "serde_json",
  "smallvec",
  "tempfile",

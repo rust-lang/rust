@@ -1,5 +1,5 @@
 use std::cmp;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
@@ -9,7 +9,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::par_map;
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::bug;
@@ -816,6 +817,15 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     ongoing_codegen.codegen_finished(tcx);
 
+    // ---
+
+    dump_def_use_info(tcx, &codegen_units);
+    if tcx.crate_types() == [CrateType::Executable] {
+        analyze_def_use_info(tcx);
+    }
+
+    // ---
+
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
     if tcx.sess.opts.unstable_opts.time_passes {
@@ -832,6 +842,447 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     ongoing_codegen.check_for_errors(tcx.sess);
     ongoing_codegen
+}
+
+mod analysis {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Default, Serialize, Deserialize)]
+    pub(crate) struct Analysis {
+        pub name: String,
+        pub metadata: String,
+
+        pub total_definitions: usize,
+        pub total_used: usize,
+        pub total_unused: usize,
+
+        pub codegened_symbols: Vec<ExpectedSymbol>,
+
+        pub components: Vec<CrateAnalysis>,
+    }
+
+    #[derive(Default, Serialize, Deserialize)]
+    pub(crate) struct CrateAnalysis {
+        pub name: String,
+        pub metadata: String,
+        pub key: String,
+        pub total_definitions: usize,
+        pub total_used: usize,
+        pub total_unused: usize,
+        pub definitions_codegened: Vec<Definition>,
+        pub definitions_unused: Vec<Definition>,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct Definition {
+        pub def_idx: usize,
+        pub symbol: String,
+        // FIXME: add span?
+    }
+
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
+    pub(crate) struct ExpectedSymbol {
+        pub symbol: String,
+        // pub monomorphized_in: String,
+        // pub source_crate: String,
+        // FIXME: add span?
+    }
+}
+
+#[allow(rustc::default_hash_types)]
+mod dump {
+    use std::collections::HashMap;
+
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Default, Serialize, Deserialize)]
+    pub(crate) struct DumpCrate {
+        pub name: String,
+        pub metadata: String,
+        pub key: String,
+        pub is_dylib_or_proc_macro: bool,
+        pub dependencies: Vec<CrateDependency>,
+        pub local_definitions: Vec<LocalDefinition>,
+        pub local_uses: Vec<LocalUse>,
+        pub foreign_uses: HashMap<usize, Vec<ForeignUse>>,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct CrateDependency {
+        pub name: String,
+        pub metadata: String,
+        pub key: String,
+        pub krate_idx: usize,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct LocalDefinition {
+        pub def_idx: usize,
+        pub symbol: String,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct LocalUse {
+        pub def_idx: usize,
+        pub symbol: String,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct ForeignUse {
+        pub krate_idx: usize,
+        pub def_idx: usize,
+        pub symbol: String,
+    }
+}
+
+#[allow(rustc::potential_query_instability)]
+fn analyze_def_use_info<'tcx>(tcx: TyCtxt<'tcx>) {
+    use analysis::*;
+
+    let Ok(dump_path) = std::env::var("DEF_USE_DUMPS") else { return };
+
+    let _timer = std::time::Instant::now();
+
+    // We're in a binary leaf crate, we can analyze each crate's unused definitions from all the
+    // recorded statistics about defs and uses.
+
+    let mut crates = Vec::new();
+    for &krate in tcx.crates(()) {
+        let metadata = get_metadata_suffix(tcx, krate);
+        let key = format!("{}-{}", tcx.crate_name(krate), metadata);
+        crates.push((krate, metadata, key));
+    }
+
+    let local_metadata = tcx.sess.opts.cg.metadata.first().unwrap().clone();
+    let local_key = format!("{}-{}", tcx.crate_name(LOCAL_CRATE), local_metadata);
+    crates.push((LOCAL_CRATE, local_metadata, local_key));
+
+    // Read all the json dumps for the local crate and dependencies
+    let mut dumps = FxHashMap::default();
+    for (krate, _, key) in &crates {
+        let path = format!("{}/{}.def_use.json", dump_path, key);
+        let contents = match std::fs::read_to_string(&path) {
+            Ok(result) => result,
+            Err(_e) => {
+                // FIXME: make std dependencies work?
+                // eprintln!("couldn't read crate def/use info from {path}: {_e}");
+                continue;
+            }
+        };
+        let dump: dump::DumpCrate = serde_json::from_str(&contents)
+            .expect("JSON decoding of the crate def/use info failed");
+        assert!(dumps.insert(key, (krate, dump)).is_none());
+    }
+
+    // And merge the uses of local definitions: local uses and foreign uses in dependent crates.
+    let mut merged_uses: FxHashMap<&str, BTreeSet<_>> = FxHashMap::default();
+    for (key, (_, dump)) in &dumps {
+        merged_uses
+            .entry(key)
+            .or_default()
+            .extend(dump.local_uses.iter().map(|local_use| local_use.def_idx));
+
+        for (&krate, crate_foreign_uses) in &dump.foreign_uses {
+            let foreign_crate = &dump.dependencies[krate].key;
+            merged_uses
+                .entry(foreign_crate)
+                .or_default()
+                .extend(crate_foreign_uses.iter().map(|foreign_use| foreign_use.def_idx));
+        }
+    }
+
+    let mut analysis = Analysis::default();
+    analysis.name = tcx.crate_name(LOCAL_CRATE).to_string();
+    analysis.metadata = tcx.sess.opts.cg.metadata.first().unwrap().clone();
+
+    // We can now compare each crate's definitions to what was actually codegened.
+    for (krate, metadata, key) in &crates {
+        let krate = *krate;
+        let Some((&dump_krate, dump)) = dumps.get(&key) else {
+            // eprintln!("- couldn't find dump for crate {:?}", krate);
+            continue;
+        };
+        assert_eq!(krate, dump_krate);
+
+        // We don't want to record symbols as being expected in the final binary for the cases where
+        // a different output file is used.
+        if dump.is_dylib_or_proc_macro {
+            continue;
+        }
+
+        // Local crate header
+        let mut local_analysis = CrateAnalysis::default();
+        local_analysis.name = tcx.crate_name(krate).to_string();
+        local_analysis.metadata = metadata.clone();
+        local_analysis.key = key.clone();
+
+        // Compute used and unused definitions from merged uses
+        let merged_uses = &merged_uses[key.as_str()];
+
+        let mut unused_definitions = Vec::new();
+        for local_defn in &dump.local_definitions {
+            if !merged_uses.contains(&local_defn.def_idx) {
+                unused_definitions.push(local_defn);
+            }
+        }
+
+        // Record stats
+        local_analysis.total_definitions = dump.local_definitions.len();
+        local_analysis.total_used = merged_uses.len();
+        local_analysis.total_unused = unused_definitions.len();
+        assert_eq!(
+            local_analysis.total_definitions,
+            local_analysis.total_used + local_analysis.total_unused
+        );
+
+        // Record used definitions
+        for &def_idx in merged_uses {
+            let Some(local_defn) =
+                dump.local_definitions.iter().find(|local_defn| local_defn.def_idx == def_idx)
+            else {
+                let def_id = DefId { index: DefIndex::from_usize(def_idx), krate };
+                let generics = tcx.generics_of(def_id);
+                panic!(
+                    "crate {:?}: couldn't find local definition of recorded use of def_id: {:?}, kind: {:?}, generics: {:?}",
+                    tcx.crate_name(krate),
+                    def_id,
+                    tcx.def_kind(def_id),
+                    generics,
+                );
+            };
+
+            let used_def = Definition { def_idx, symbol: local_defn.symbol.clone() };
+            local_analysis.definitions_codegened.push(used_def);
+        }
+
+        // Record unused definitions
+        for local_defn in unused_definitions {
+            let unused_def =
+                Definition { def_idx: local_defn.def_idx, symbol: local_defn.symbol.clone() };
+            local_analysis.definitions_unused.push(unused_def);
+        }
+
+        // Record used symbols that we expect to see in the linked binary, from:
+        // - local uses
+        // - foreign uses, instantiated in the local crate
+        for local_use in &dump.local_uses {
+            let symbol = ExpectedSymbol {
+                symbol: local_use.symbol.clone(),
+                // monomorphized_in: dump.key.clone(),
+                // source_crate: dump.key.clone(),
+            };
+            analysis.codegened_symbols.push(symbol);
+        }
+        for (&_krate, crate_foreign_uses) in &dump.foreign_uses {
+            for foreign_use in crate_foreign_uses {
+                let symbol = ExpectedSymbol {
+                    symbol: foreign_use.symbol.clone(),
+                    // monomorphized_in: dump.key.clone(),
+                    // source_crate: dump.dependencies[krate].key.clone(),
+                };
+                analysis.codegened_symbols.push(symbol);
+            }
+        }
+
+        // Integrate crate stats into root analysis
+        analysis.total_definitions += local_analysis.total_definitions;
+        analysis.total_used += local_analysis.total_used;
+        analysis.total_unused += local_analysis.total_unused;
+        analysis.components.push(local_analysis);
+    }
+
+    let path = format!("{}/{}-{}.analysis.json", dump_path, analysis.name, analysis.metadata);
+    let file = std::fs::File::create(&path)
+        .unwrap_or_else(|e| panic!("couldn't create dump file at {path}: {e}"));
+    if let Err(e) = serde_json::to_writer(file, &analysis) {
+        panic!("serializing analysis info file failed for {path}: {e}");
+    }
+
+    // eprintln!("analysis done for binary {:?}, serialized to {path}, elapsed: {:?}", tcx.crate_name(LOCAL_CRATE), _timer.elapsed());
+}
+
+fn get_metadata_suffix(tcx: TyCtxt<'_>, krate: CrateNum) -> String {
+    let used_crate_source = tcx.used_crate_source(krate);
+
+    // FIXME: maybe don't do anything if the path kind is not `ExternFlag` or `Dependency`, to
+    // filter out all the std dependencies?
+    let path = if let Some((path, _kind)) = &used_crate_source.rlib {
+        path
+    } else if let Some((path, _kind)) = &used_crate_source.rmeta {
+        path
+    } else {
+        let Some((path, _kind)) = &used_crate_source.dylib else { unreachable!() };
+        path
+    };
+
+    let stem = path.file_stem().unwrap();
+    let stem = stem.to_str().unwrap();
+    let metadata_start = stem.rfind("-").unwrap();
+    let metadata = &stem[metadata_start + 1..];
+    metadata.to_string()
+}
+
+#[allow(rustc::potential_query_instability)]
+fn dump_def_use_info<'tcx>(tcx: TyCtxt<'tcx>, codegen_units: &[&CodegenUnit<'tcx>]) {
+    use dump::*;
+
+    let Ok(dump_path) = std::env::var("DEF_USE_DUMPS") else { return };
+
+    let _timer = std::time::Instant::now();
+
+    // ---
+    // Dump the current crate's definitions and uses
+
+    // Record definitions from the local crate, they could be codegened locally or in dependent
+    // crates.
+    let mut local_definitions = Vec::new();
+
+    let defs = tcx.definitions_untracked();
+    for index in 0..defs.def_index_count() {
+        let def_id = DefId { index: DefIndex::from_usize(index), krate: LOCAL_CRATE };
+
+        match tcx.def_kind(def_id) {
+            // tmp: just these for now, but we'll want more
+            DefKind::Fn => {}
+            DefKind::AssocFn => {}
+            // DefKind::Closure => {}
+            _ => continue,
+        }
+
+        local_definitions.push(def_id);
+    }
+    local_definitions.sort_by_key(|def_id| def_id.index);
+
+    let mut dump = DumpCrate::default();
+    dump.name = tcx.crate_name(LOCAL_CRATE).to_string();
+    dump.metadata = tcx.sess.opts.cg.metadata.first().unwrap().clone();
+    dump.key = format!("{}-{}", dump.name, dump.metadata);
+
+    // Symbols from dylibs and proc-macros don't end up in the final executable, so we'll need to
+    // filter them out from the list of symbols we expect to be present there.
+    dump.is_dylib_or_proc_macro = tcx.crate_types().iter().any(|crate_type| {
+        matches!(crate_type, CrateType::ProcMacro | CrateType::Cdylib | CrateType::Dylib)
+    });
+
+    // reserve slot 0 for local crate to index by CrateNum
+    dump.dependencies.push(CrateDependency {
+        name: dump.name.clone(),
+        krate_idx: 0,
+        metadata: dump.metadata.clone(),
+        key: format!("{}-{}", dump.name, dump.metadata),
+    });
+
+    for &krate in tcx.crates(()) {
+        assert_eq!(dump.dependencies.len(), krate.as_usize());
+
+        let name = tcx.crate_name(krate).to_string();
+        let metadata = get_metadata_suffix(tcx, krate);
+        let key = format!("{}-{}", name, metadata);
+        dump.dependencies.push(CrateDependency {
+            krate_idx: krate.as_usize(),
+            name,
+            metadata,
+            key,
+        });
+    }
+
+    for &def_id in &local_definitions {
+        let generics = tcx.generics_of(def_id);
+        let symbol = if generics.is_empty() {
+            let instance = Instance::mono(tcx, def_id);
+            tcx.symbol_name(instance).name.to_string()
+        } else {
+            format!(
+                "generic function \"{}{}\"",
+                tcx.crate_name(LOCAL_CRATE),
+                tcx.def_path(def_id).to_string_no_crate_verbose(),
+            )
+        };
+
+        dump.local_definitions.push(LocalDefinition { def_idx: def_id.index.as_usize(), symbol });
+    }
+
+    // The current crate monomorphizes local and foreign definitions. We collect the instances we're
+    // asked to codegen per-crate. We'll be able to compare these uses across the entire session to
+    // each crate's own definitions.
+    let mut monomorphizations: BTreeMap<CrateNum, FxHashMap<_, _>> = BTreeMap::new();
+    for cgu in codegen_units {
+        for (item, _data) in cgu.items() {
+            match item {
+                MonoItem::Fn(instance) => {
+                    let def_id = instance.def_id();
+                    let def_kind = tcx.def_kind(def_id);
+
+                    // FIXME: we'll also want to support other instance kinds like dynamic dispatch,
+                    // intrinsics and the various shims and drop glue.
+                    if !matches!(instance.def, ty::InstanceKind::Item(_)) {
+                        continue;
+                    }
+
+                    match def_kind {
+                        DefKind::Fn => {}
+                        DefKind::AssocFn => {}
+
+                        // FIXME: while this won't change the number of fn definitions and their
+                        // tracking, support the following kinds to have less "unexpected" symbols
+                        // in the binary
+                        // - closures most importantly
+                        // - maybe coroutines and constructors
+                        //
+                        // We just don't record them as symbols to look for in the binary for now.
+                        DefKind::Closure => continue,
+                        DefKind::SyntheticCoroutineBody => continue,
+                        DefKind::Ctor(..) => continue,
+
+                        _ => {
+                            // panic!("Unsupported kind {:?}", def_kind)
+                            continue;
+                        }
+                    }
+
+                    monomorphizations.entry(def_id.krate).or_default().insert(def_id, *instance);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Record the monomorphizations of the local definitions, the monomorphizations whose defid's
+    // crate is the local crate.
+    if let Some(local_monomorphizations) = monomorphizations.remove(&LOCAL_CRATE) {
+        let local_monomorphizations = local_monomorphizations
+            .iter()
+            .map(|(&def_id, &instance)| (def_id, instance))
+            .sorted_by_key(|(def_id, _)| def_id.index);
+        for (def_id, instance) in local_monomorphizations {
+            let symbol = tcx.symbol_name(instance).name.to_string();
+            dump.local_uses.push(LocalUse { def_idx: def_id.index.as_usize(), symbol });
+        }
+    }
+
+    // Record the monomorphizations of foreign definitions, whose defid's crate is not the local
+    // crate.
+    for (krate, instances) in monomorphizations {
+        let instances: Vec<_> =
+            instances.into_iter().sorted_by_key(|(def_id, _)| def_id.index).collect();
+        for (def_id, instance) in instances {
+            let symbol = tcx.symbol_name(instance).name.to_string();
+            dump.foreign_uses.entry(krate.as_usize()).or_default().push(ForeignUse {
+                krate_idx: krate.as_usize(),
+                def_idx: def_id.index.as_usize(),
+                symbol,
+            });
+        }
+    }
+
+    let path = format!("{}/{}-{}.def_use.json", dump_path, dump.name, dump.metadata);
+    let file = std::fs::File::create(&path)
+        .unwrap_or_else(|e| panic!("couldn't create dump file at {path}: {e}"));
+    if let Err(e) = serde_json::to_writer(file, &dump) {
+        panic!("serializing def/use info file failed for {path}: {e}");
+    }
+
+    // eprintln!("dumped serialized def/use json to {path}, elapsed: {:?}", _timer.elapsed());
 }
 
 /// Returns whether a call from the current crate to the [`Instance`] would produce a call
