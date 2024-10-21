@@ -313,6 +313,7 @@ impl Test for () {
             ct const CONST1: () =
             fn async fn function2()
             fn fn function1()
+            fn fn function2()
             ma makro!(…)            macro_rules! makro
             md module
             ta type Type1 =

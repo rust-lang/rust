@@ -96,6 +96,7 @@ impl<'a> State<'a> {
             Node::Ty(a) => self.print_type(a),
             Node::AssocItemConstraint(a) => self.print_assoc_item_constraint(a),
             Node::TraitRef(a) => self.print_trait_ref(a),
+            Node::OpaqueTy(o) => self.print_opaque_ty(o),
             Node::Pat(a) => self.print_pat(a),
             Node::PatField(a) => self.print_patfield(a),
             Node::Arm(a) => self.print_arm(a),
@@ -300,15 +301,12 @@ impl<'a> State<'a> {
                     self.word_space("dyn");
                 }
                 let mut first = true;
-                for (bound, modifier) in bounds {
+                for bound in bounds {
                     if first {
                         first = false;
                     } else {
                         self.nbsp();
                         self.word_space("+");
-                    }
-                    if *modifier == TraitBoundModifier::Maybe {
-                        self.word("?");
                     }
                     self.print_poly_trait_ref(bound);
                 }
@@ -568,11 +566,6 @@ impl<'a> State<'a> {
                     state.print_type(ty);
                 });
             }
-            hir::ItemKind::OpaqueTy(opaque_ty) => {
-                self.print_item_type(item, opaque_ty.generics, |state| {
-                    state.print_bounds("= impl", opaque_ty.bounds)
-                });
-            }
             hir::ItemKind::Enum(ref enum_definition, params) => {
                 self.print_enum_def(enum_definition, params, item.ident.name, item.span);
             }
@@ -665,6 +658,15 @@ impl<'a> State<'a> {
         self.print_path(t.path, false);
     }
 
+    fn print_opaque_ty(&mut self, o: &hir::OpaqueTy<'_>) {
+        self.head("opaque");
+        self.print_generic_params(o.generics.params);
+        self.print_where_clause(o.generics);
+        self.word("{");
+        self.print_bounds("impl", o.bounds);
+        self.word("}");
+    }
+
     fn print_formal_generic_params(&mut self, generic_params: &[hir::GenericParam<'_>]) {
         if !generic_params.is_empty() {
             self.word("for");
@@ -674,6 +676,10 @@ impl<'a> State<'a> {
     }
 
     fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef<'_>) {
+        // FIXME: This isn't correct!
+        if t.modifiers == TraitBoundModifier::Maybe {
+            self.word("?");
+        }
         self.print_formal_generic_params(t.bound_generic_params);
         self.print_trait_ref(&t.trait_ref);
     }
@@ -2072,10 +2078,7 @@ impl<'a> State<'a> {
             }
 
             match bound {
-                GenericBound::Trait(tref, modifier) => {
-                    if modifier == &TraitBoundModifier::Maybe {
-                        self.word("?");
-                    }
+                GenericBound::Trait(tref) => {
                     self.print_poly_trait_ref(tref);
                 }
                 GenericBound::Outlives(lt) => {

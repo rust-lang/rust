@@ -18,6 +18,8 @@ use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
+mod improper_ctypes;
+
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
     AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
@@ -209,36 +211,32 @@ fn lint_nan<'tcx>(
     }
 
     fn eq_ne(
-        cx: &LateContext<'_>,
         e: &hir::Expr<'_>,
         l: &hir::Expr<'_>,
         r: &hir::Expr<'_>,
         f: impl FnOnce(Span, Span) -> InvalidNanComparisonsSuggestion,
     ) -> InvalidNanComparisons {
-        // FIXME(#72505): This suggestion can be restored if `f{32,64}::is_nan` is made const.
-        let suggestion = (!cx.tcx.hir().is_inside_const_context(e.hir_id)).then(|| {
-            if let Some(l_span) = l.span.find_ancestor_inside(e.span)
-                && let Some(r_span) = r.span.find_ancestor_inside(e.span)
-            {
-                f(l_span, r_span)
-            } else {
-                InvalidNanComparisonsSuggestion::Spanless
-            }
-        });
+        let suggestion = if let Some(l_span) = l.span.find_ancestor_inside(e.span)
+            && let Some(r_span) = r.span.find_ancestor_inside(e.span)
+        {
+            f(l_span, r_span)
+        } else {
+            InvalidNanComparisonsSuggestion::Spanless
+        };
 
         InvalidNanComparisons::EqNe { suggestion }
     }
 
     let lint = match binop.node {
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, l) => {
-            eq_ne(cx, e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
+            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.until(r_span),
                 float: r_span.shrink_to_hi(),
                 neg: (binop.node == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
             })
         }
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, r) => {
-            eq_ne(cx, e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
+            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.shrink_to_hi().to(r_span),
                 float: l_span.shrink_to_hi(),
                 neg: (binop.node == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
@@ -732,7 +730,6 @@ fn is_niche_optimization_candidate<'tcx>(
 /// can, return the type that `ty` can be safely converted to, otherwise return `None`.
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero`,
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
-/// FIXME: This duplicates code in codegen.
 pub(crate) fn repr_nullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -745,10 +742,6 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
                 ([], [field]) | ([field], []) => field.ty(tcx, args),
                 ([field1], [field2]) => {
-                    if !tcx.features().result_ffi_guarantees {
-                        return None;
-                    }
-
                     let ty1 = field1.ty(tcx, args);
                     let ty2 = field2.ty(tcx, args);
 
@@ -987,15 +980,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             // Empty enums are okay... although sort of useless.
                             return FfiSafe;
                         }
-
-                        if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
-                            return FfiUnsafe {
-                                ty,
-                                reason: fluent::lint_improper_ctypes_non_exhaustive,
-                                help: None,
-                            };
-                        }
-
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
                         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
@@ -1014,21 +998,23 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
+                        use improper_ctypes::{
+                            check_non_exhaustive_variant, non_local_and_non_exhaustive,
+                        };
+
+                        let non_local_def = non_local_and_non_exhaustive(def);
                         // Check the contained variants.
-                        for variant in def.variants() {
-                            let is_non_exhaustive = variant.is_field_list_non_exhaustive();
-                            if is_non_exhaustive && !variant.def_id.is_local() {
-                                return FfiUnsafe {
-                                    ty,
-                                    reason: fluent::lint_improper_ctypes_non_exhaustive_variant,
-                                    help: None,
-                                };
-                            }
+                        let ret = def.variants().iter().try_for_each(|variant| {
+                            check_non_exhaustive_variant(non_local_def, variant)
+                                .map_break(|reason| FfiUnsafe { ty, reason, help: None })?;
 
                             match self.check_variant_for_ffi(acc, ty, def, variant, args) {
-                                FfiSafe => (),
-                                r => return r,
+                                FfiSafe => ControlFlow::Continue(()),
+                                r => ControlFlow::Break(r),
                             }
+                        });
+                        if let ControlFlow::Break(result) = ret {
+                            return result;
                         }
 
                         FfiSafe
@@ -1423,7 +1409,6 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
             hir::ItemKind::Impl(..)
             | hir::ItemKind::TraitAlias(..)
             | hir::ItemKind::Trait(..)
-            | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Mod(..)

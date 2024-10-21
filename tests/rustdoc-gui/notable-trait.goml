@@ -84,9 +84,10 @@ call-function: ("check-notable-tooltip-position", {
 
 // Checking on mobile now.
 set-window-size: (650, 600)
+wait-for-size: ("body", {"width": 650})
 call-function: ("check-notable-tooltip-position-complete", {
-    "x": 15,
-    "i_x": 293,
+    "x": 25,
+    "i_x": 303,
     "popover_x": 0,
 })
 

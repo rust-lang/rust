@@ -12,8 +12,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::traits::{
-    ObjectSafetyViolation, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
-    SelectionError,
+    DynCompatibilityViolation, Obligation, ObligationCause, ObligationCauseCode,
+    PredicateObligation, SelectionError,
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -43,6 +43,7 @@ pub struct ImplCandidate<'tcx> {
 
 enum GetSafeTransmuteErrorAndReason {
     Silent,
+    Default,
     Error { err_msg: String, safe_transmute_explanation: Option<String> },
 }
 
@@ -406,12 +407,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 }
 
-pub fn report_object_safety_error<'tcx>(
+pub fn report_dyn_incompatibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     hir_id: Option<hir::HirId>,
     trait_def_id: DefId,
-    violations: &[ObjectSafetyViolation],
+    violations: &[DynCompatibilityViolation],
 ) -> Diag<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
@@ -438,7 +439,7 @@ pub fn report_object_safety_error<'tcx>(
         if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
             // Do not suggest `impl Trait` when dealing with things like super-traits.
             err.span_suggestion_verbose(
-                ty.span.until(trait_ref.0.span),
+                ty.span.until(trait_ref.span),
                 "consider using an opaque type instead",
                 "impl ",
                 Applicability::MaybeIncorrect,
@@ -449,12 +450,12 @@ pub fn report_object_safety_error<'tcx>(
     let mut multi_span = vec![];
     let mut messages = vec![];
     for violation in violations {
-        if let ObjectSafetyViolation::SizedSelf(sp) = &violation
+        if let DynCompatibilityViolation::SizedSelf(sp) = &violation
             && !sp.is_empty()
         {
             // Do not report `SizedSelf` without spans pointing at `SizedSelf` obligations
             // with a `Span`.
-            reported_violations.insert(ObjectSafetyViolation::SizedSelf(vec![].into()));
+            reported_violations.insert(DynCompatibilityViolation::SizedSelf(vec![].into()));
         }
         if reported_violations.insert(violation.clone()) {
             let spans = violation.spans();
@@ -481,9 +482,10 @@ pub fn report_object_safety_error<'tcx>(
     for (span, msg) in iter::zip(multi_span, messages) {
         note_span.push_span_label(span, msg);
     }
+    // FIXME(dyn_compat_renaming): Update the URL.
     err.span_note(
         note_span,
-        "for a trait to be \"object safe\" it needs to allow building a vtable to allow the call \
+        "for a trait to be \"dyn-compatible\" it needs to allow building a vtable to allow the call \
          to be resolvable dynamically; for more information visit \
          <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
     );

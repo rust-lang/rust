@@ -5,66 +5,61 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
     let mut _0: &[u8];
     scope 1 (inlined <Vec<u8> as Deref>::deref) {
         debug self => _1;
-        let mut _6: usize;
-        scope 2 (inlined Vec::<u8>::as_ptr) {
+        scope 2 (inlined Vec::<u8>::as_slice) {
             debug self => _1;
-            let mut _2: &alloc::raw_vec::RawVec<u8>;
-            scope 3 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
-                debug self => _2;
-                let mut _3: &alloc::raw_vec::RawVecInner;
-                scope 4 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
-                    debug self => _3;
-                    scope 5 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
+            let mut _6: usize;
+            scope 3 (inlined Vec::<u8>::as_ptr) {
+                debug self => _1;
+                let mut _2: &alloc::raw_vec::RawVec<u8>;
+                scope 4 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
+                    debug self => _2;
+                    let mut _3: &alloc::raw_vec::RawVecInner;
+                    scope 5 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
                         debug self => _3;
-                        let mut _4: std::ptr::NonNull<u8>;
-                        scope 6 (inlined Unique::<u8>::cast::<u8>) {
-                            debug ((self: Unique<u8>).0: std::ptr::NonNull<u8>) => _4;
-                            debug ((self: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
-                            scope 7 (inlined NonNull::<u8>::cast::<u8>) {
-                                debug self => _4;
-                                scope 8 (inlined NonNull::<u8>::as_ptr) {
+                        scope 6 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
+                            debug self => _3;
+                            let mut _4: std::ptr::NonNull<u8>;
+                            scope 7 (inlined Unique::<u8>::cast::<u8>) {
+                                debug ((self: Unique<u8>).0: std::ptr::NonNull<u8>) => _4;
+                                debug ((self: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
+                                scope 8 (inlined NonNull::<u8>::cast::<u8>) {
                                     debug self => _4;
-                                    let mut _5: *const u8;
+                                    scope 9 (inlined NonNull::<u8>::as_ptr) {
+                                        debug self => _4;
+                                        let mut _5: *const u8;
+                                    }
                                 }
                             }
-                        }
-                        scope 9 (inlined #[track_caller] <Unique<u8> as Into<NonNull<u8>>>::into) {
-                            debug ((self: Unique<u8>).0: std::ptr::NonNull<u8>) => _4;
-                            debug ((self: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
-                            scope 10 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
-                                debug ((unique: Unique<u8>).0: std::ptr::NonNull<u8>) => _4;
-                                debug ((unique: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
-                                scope 11 (inlined Unique::<u8>::as_non_null_ptr) {
-                                    debug ((self: Unique<u8>).0: std::ptr::NonNull<u8>) => _4;
-                                    debug ((self: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
-                                }
+                            scope 10 (inlined Unique::<u8>::as_non_null_ptr) {
+                                debug ((self: Unique<u8>).0: std::ptr::NonNull<u8>) => _4;
+                                debug ((self: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
                             }
                         }
-                    }
-                    scope 12 (inlined NonNull::<u8>::as_ptr) {
-                        debug self => _4;
+                        scope 11 (inlined NonNull::<u8>::as_ptr) {
+                            debug self => _4;
+                        }
                     }
                 }
             }
-        }
-        scope 13 (inlined std::slice::from_raw_parts::<'_, u8>) {
-            debug data => _5;
-            debug len => _6;
-            let _7: *const [u8];
-            scope 14 (inlined core::ub_checks::check_language_ub) {
-                scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
-                }
-            }
-            scope 16 (inlined std::mem::size_of::<u8>) {
-            }
-            scope 17 (inlined align_of::<u8>) {
-            }
-            scope 18 (inlined slice_from_raw_parts::<u8>) {
+            scope 12 (inlined std::slice::from_raw_parts::<'_, u8>) {
                 debug data => _5;
                 debug len => _6;
-                scope 19 (inlined std::ptr::from_raw_parts::<[u8], u8>) {
-                    debug data_pointer => _5;
-                    debug metadata => _6;
+                let _7: *const [u8];
+                scope 13 (inlined core::ub_checks::check_language_ub) {
+                    scope 14 (inlined core::ub_checks::check_language_ub::runtime) {
+                    }
+                }
+                scope 15 (inlined std::mem::size_of::<u8>) {
+                }
+                scope 16 (inlined align_of::<u8>) {
+                }
+                scope 17 (inlined slice_from_raw_parts::<u8>) {
+                    debug data => _5;
+                    debug len => _6;
+                    scope 18 (inlined std::ptr::from_raw_parts::<[u8], u8>) {
+                        debug data_pointer => _5;
+                        debug metadata => _6;
+                    }
                 }
             }
         }

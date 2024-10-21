@@ -18,7 +18,7 @@ use tracing::{debug, instrument};
 
 use super::{
     InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Provenance, Scalar, err_ub,
-    throw_ub, throw_unsup,
+    interp_ok, throw_ub, throw_unsup,
 };
 
 /// Describes the constraints placed on offset-projections.
@@ -54,7 +54,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
             // Go through the layout. There are lots of types that support a length,
             // e.g., SIMD types. (But not all repr(simd) types even have FieldsShape::Array!)
             match layout.fields {
-                abi::FieldsShape::Array { count, .. } => Ok(count),
+                abi::FieldsShape::Array { count, .. } => interp_ok(count),
                 _ => bug!("len not supported on sized type {:?}", layout.ty),
             }
         }
@@ -82,6 +82,10 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         self.offset_with_meta(offset, OffsetMode::Inbounds, MemPlaceMeta::None, layout, ecx)
     }
 
+    /// This does an offset-by-zero, which is effectively a transmute. Note however that
+    /// not all transmutes are supported by all projectables -- specifically, if this is an
+    /// `OpTy` or `ImmTy`, the new layout must have almost the same ABI as the old one
+    /// (only changing the `valid_range` is allowed and turning integers into pointers).
     fn transmute<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         layout: TyAndLayout<'tcx>,
@@ -115,9 +119,9 @@ impl<'a, 'tcx, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'a, '
         &mut self,
         ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Option<(u64, P)>> {
-        let Some(idx) = self.range.next() else { return Ok(None) };
+        let Some(idx) = self.range.next() else { return interp_ok(None) };
         // We use `Wrapping` here since the offset has already been checked when the iterator was created.
-        Ok(Some((
+        interp_ok(Some((
             idx,
             self.base.offset_with_meta(
                 self.stride * idx,
@@ -258,7 +262,7 @@ where
         // SIMD types must be newtypes around arrays, so all we have to do is project to their only field.
         let array = self.project_field(base, 0)?;
         let len = array.len(self)?;
-        Ok((array, len))
+        interp_ok((array, len))
     }
 
     fn project_constant_index<P: Projectable<'tcx, M::Provenance>>(
@@ -300,7 +304,13 @@ where
         debug!("project_array_fields: {base:?} {len}");
         base.offset(len * stride, self.layout_of(self.tcx.types.unit).unwrap(), self)?;
         // Create the iterator.
-        Ok(ArrayIterator { base, range: 0..len, stride, field_layout, _phantom: PhantomData })
+        interp_ok(ArrayIterator {
+            base,
+            range: 0..len,
+            stride,
+            field_layout,
+            _phantom: PhantomData,
+        })
     }
 
     /// Subslicing
@@ -367,7 +377,7 @@ where
         P: Projectable<'tcx, M::Provenance> + From<MPlaceTy<'tcx, M::Provenance>> + std::fmt::Debug,
     {
         use rustc_middle::mir::ProjectionElem::*;
-        Ok(match proj_elem {
+        interp_ok(match proj_elem {
             OpaqueCast(ty) => {
                 span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
             }

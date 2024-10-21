@@ -286,7 +286,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 parent: this.local_def_id(id),
                                 in_assoc_ty: false,
                             },
-                            fn_kind: None,
                         }),
                     },
                 );
@@ -983,7 +982,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     parent: this.local_def_id(i.id),
                                     in_assoc_ty: true,
                                 },
-                                fn_kind: None,
                             });
                             hir::ImplItemKind::Type(ty)
                         }
@@ -1506,8 +1504,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             for bound in &bound_pred.bounds {
                 if !matches!(
                     *bound,
-                    GenericBound::Trait(_, TraitBoundModifiers {
-                        polarity: BoundPolarity::Maybe(_),
+                    GenericBound::Trait(PolyTraitRef {
+                        modifiers: TraitBoundModifiers { polarity: BoundPolarity::Maybe(_), .. },
                         ..
                     })
                 ) {
@@ -1576,7 +1574,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .collect();
 
         // Introduce extra lifetimes if late resolution tells us to.
-        let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
+        let extra_lifetimes = self.resolver.extra_lifetime_params(parent_node_id);
         params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(
                 ident,

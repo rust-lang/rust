@@ -14,7 +14,7 @@ use crate::core::DocContext;
 use crate::visit::DocVisitor;
 
 pub(crate) const RUN_LINTS: Pass =
-    Pass { name: "run-lints", run: run_lints, description: "runs some of rustdoc's lints" };
+    Pass { name: "run-lints", run: Some(run_lints), description: "runs some of rustdoc's lints" };
 
 struct Linter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
@@ -25,7 +25,7 @@ pub(crate) fn run_lints(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     krate
 }
 
-impl<'a, 'tcx> DocVisitor for Linter<'a, 'tcx> {
+impl<'a, 'tcx> DocVisitor<'_> for Linter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         let Some(hir_id) = DocContext::as_local_hir_id(self.cx.tcx, item.item_id) else {
             // If non-local, no need to check anything.

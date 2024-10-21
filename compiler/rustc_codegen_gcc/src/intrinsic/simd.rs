@@ -76,8 +76,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
             ty::Array(elem, len)
                 if matches!(*elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
-                        == Some(expected_bytes) =>
+                    && len
+                        .try_to_target_usize(bx.tcx)
+                        .expect("expected monomorphic const in codegen")
+                        == expected_bytes =>
             {
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
@@ -198,7 +200,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         bx.context.new_bitcast(None, shuffled, v_type)
     };
 
-    if name == sym::simd_bswap || name == sym::simd_bitreverse {
+    if matches!(name, sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctpop) {
         require!(
             bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
             InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
@@ -207,6 +209,22 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     if name == sym::simd_bswap {
         return Ok(simd_bswap(bx, args[0].immediate()));
+    }
+
+    let simd_ctpop = |bx: &mut Builder<'a, 'gcc, 'tcx>, vector: RValue<'gcc>| -> RValue<'gcc> {
+        let mut vector_elements = vec![];
+        let elem_ty = bx.element_type(llret_ty);
+        for i in 0..in_len {
+            let index = bx.context.new_rvalue_from_long(bx.ulong_type, i as i64);
+            let element = bx.extract_element(vector, index).to_rvalue();
+            let result = bx.context.new_cast(None, bx.pop_count(element), elem_ty);
+            vector_elements.push(result);
+        }
+        bx.context.new_rvalue_from_vector(None, llret_ty, &vector_elements)
+    };
+
+    if name == sym::simd_ctpop {
+        return Ok(simd_ctpop(bx, args[0].immediate()));
     }
 
     // We use a different algorithm from non-vector bitreverse to take advantage of most
@@ -462,7 +480,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                require!(metadata.is_unit(), InvalidMonomorphization::CastFatPointer {
+                require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
                     name,
                     ty: in_elem
@@ -477,7 +495,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                require!(metadata.is_unit(), InvalidMonomorphization::CastFatPointer {
+                require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
                     name,
                     ty: out_elem
@@ -680,8 +698,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
             ty::Array(elem, len)
                 if matches!(*elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
-                        == Some(expected_bytes) =>
+                    && len
+                        .try_to_target_usize(bx.tcx)
+                        .expect("expected monomorphic const in codegen")
+                        == expected_bytes =>
             {
                 // Zero-extend iN to the array length:
                 let ze = bx.zext(result, bx.type_ix(expected_bytes * 8));
@@ -718,11 +738,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 return Err(());
             }};
         }
-        let (elem_ty_str, elem_ty) = if let ty::Float(ref f) = *in_elem.kind() {
+        let (elem_ty_str, elem_ty, cast_type) = if let ty::Float(ref f) = *in_elem.kind() {
             let elem_ty = bx.cx.type_float_from_ty(*f);
             match f.bit_width() {
-                32 => ("f", elem_ty),
-                64 => ("", elem_ty),
+                16 => ("", elem_ty, Some(bx.cx.double_type)),
+                32 => ("f", elem_ty, None),
+                64 => ("", elem_ty, None),
                 _ => {
                     return_error!(InvalidMonomorphization::FloatingPointVector {
                         span,
@@ -758,10 +779,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
         let builtin_name = format!("{}{}", intr_name, elem_ty_str);
-        let funcs = bx.cx.functions.borrow();
-        let function = funcs
-            .get(&builtin_name)
-            .unwrap_or_else(|| panic!("unable to find builtin function {}", builtin_name));
+        let function = bx.context.get_builtin_function(builtin_name);
 
         // TODO(antoyo): add platform-specific behavior here for architectures that have these
         // intrinsics as instructions (for instance, gpus)
@@ -769,17 +787,28 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.ulong_type, i as i64);
             // we have to treat fpowi specially, since fpowi's second argument is always an i32
-            let arguments = if name == sym::simd_fpowi {
-                vec![
+            let mut arguments = vec![];
+            if name == sym::simd_fpowi {
+                arguments = vec![
                     bx.extract_element(args[0].immediate(), index).to_rvalue(),
                     args[1].immediate(),
-                ]
+                ];
             } else {
-                args.iter()
-                    .map(|arg| bx.extract_element(arg.immediate(), index).to_rvalue())
-                    .collect()
+                for arg in args {
+                    let mut element = bx.extract_element(arg.immediate(), index).to_rvalue();
+                    // FIXME: it would probably be better to not have casts here and use the proper
+                    // instructions.
+                    if let Some(typ) = cast_type {
+                        element = bx.context.new_cast(None, element, typ);
+                    }
+                    arguments.push(element);
+                }
             };
-            vector_elements.push(bx.context.new_call(None, *function, &arguments));
+            let mut result = bx.context.new_call(None, function, &arguments);
+            if cast_type.is_some() {
+                result = bx.context.new_cast(None, result, elem_ty);
+            }
+            vector_elements.push(result);
         }
         let c = bx.context.new_rvalue_from_vector(None, vec_ty, &vector_elements);
         Ok(c)

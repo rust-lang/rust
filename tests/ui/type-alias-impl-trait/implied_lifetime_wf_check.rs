@@ -1,8 +1,9 @@
 #![feature(type_alias_impl_trait)]
 
-//@ known-bug: #99840
-// this should not compile
-//@ check-pass
+//@ revisions: pass error
+
+//@[pass] check-pass
+//@[error] check-fail
 
 type Alias = impl Sized;
 
@@ -21,7 +22,8 @@ impl HideIt for () {
 pub trait Yay {}
 
 impl Yay for <() as HideIt>::Assoc {}
-// impl Yay for i32 {} // this already errors
-// impl Yay for u32 {} // this also already errors
+#[cfg(error)]
+impl Yay for i32 {}
+//[error]~^ error conflicting implementations
 
 fn main() {}

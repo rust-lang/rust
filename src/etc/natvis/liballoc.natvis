@@ -95,7 +95,7 @@
       <Item Name="[Weak reference count]">ptr.pointer.data_ptr->weak</Item>
       <ArrayItems>
         <Size>ptr.pointer.length</Size>
-        <!-- We add +2 to the data_ptr in order to skip the ref count fields in the RcBox -->
+        <!-- We add +2 to the data_ptr in order to skip the ref count fields in the RcInner -->
         <ValuePointer>($T1*)(((size_t*)ptr.pointer.data_ptr) + 2)</ValuePointer>
       </ArrayItems>
     </Expand>

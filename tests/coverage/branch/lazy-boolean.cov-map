@@ -13,6 +13,7 @@ Number of file 0 mappings: 6
     false = (c1 - c2)
 - Code(Counter(2)) at (prev + 0, 18) to (start + 0, 19)
 - Code(Counter(1)) at (prev + 1, 5) to (start + 1, 2)
+Highest counter ID seen: c2
 
 Function name: lazy_boolean::branch_or
 Raw bytes (38): 0x[01, 01, 01, 05, 09, 06, 01, 1b, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0d, 00, 0e, 20, 09, 02, 00, 0d, 00, 0e, 02, 00, 12, 00, 13, 05, 01, 05, 01, 02]
@@ -30,6 +31,7 @@ Number of file 0 mappings: 6
 - Code(Expression(0, Sub)) at (prev + 0, 18) to (start + 0, 19)
     = (c1 - c2)
 - Code(Counter(1)) at (prev + 1, 5) to (start + 1, 2)
+Highest counter ID seen: c2
 
 Function name: lazy_boolean::chain
 Raw bytes (149): 0x[01, 01, 13, 11, 07, 0b, 16, 15, 1a, 09, 0d, 05, 09, 05, 09, 09, 0d, 47, 25, 4b, 21, 19, 1d, 03, 19, 03, 19, 3e, 1d, 03, 19, 3e, 1d, 03, 19, 47, 25, 4b, 21, 19, 1d, 13, 01, 24, 01, 01, 10, 03, 04, 09, 00, 0a, 05, 00, 0d, 00, 12, 20, 09, 16, 00, 0d, 00, 12, 09, 00, 16, 00, 1b, 20, 0d, 1a, 00, 16, 00, 1b, 0d, 00, 1f, 00, 24, 20, 11, 15, 00, 1f, 00, 24, 11, 00, 28, 00, 2d, 03, 01, 05, 00, 11, 43, 03, 09, 00, 0a, 03, 00, 0d, 00, 12, 20, 19, 3e, 00, 0d, 00, 12, 3e, 00, 16, 00, 1b, 20, 1d, 3a, 00, 16, 00, 1b, 3a, 00, 1f, 00, 24, 20, 21, 25, 00, 1f, 00, 24, 25, 00, 28, 00, 2d, 43, 01, 05, 01, 02]
@@ -94,6 +96,7 @@ Number of file 0 mappings: 19
 - Code(Counter(9)) at (prev + 0, 40) to (start + 0, 45)
 - Code(Expression(16, Add)) at (prev + 1, 5) to (start + 1, 2)
     = (((c6 + c7) + c8) + c9)
+Highest counter ID seen: c9
 
 Function name: lazy_boolean::nested_mixed
 Raw bytes (155): 0x[01, 01, 16, 33, 1a, 09, 0d, 1e, 0d, 05, 09, 05, 09, 05, 09, 1e, 0d, 05, 09, 09, 0d, 33, 11, 09, 0d, 33, 11, 09, 0d, 19, 57, 1d, 21, 03, 15, 15, 19, 4a, 4e, 15, 19, 03, 15, 19, 57, 1d, 21, 13, 01, 31, 01, 01, 10, 03, 04, 09, 00, 0a, 05, 00, 0e, 00, 13, 20, 09, 1e, 00, 0e, 00, 13, 1e, 00, 17, 00, 1d, 20, 0d, 1a, 00, 17, 00, 1d, 33, 00, 23, 00, 28, 20, 11, 2e, 00, 23, 00, 28, 2e, 00, 2c, 00, 33, 03, 01, 05, 00, 11, 53, 03, 09, 00, 0a, 03, 00, 0e, 00, 13, 20, 15, 4e, 00, 0e, 00, 13, 15, 00, 17, 00, 1c, 20, 19, 4a, 00, 17, 00, 1c, 47, 00, 22, 00, 28, 20, 1d, 21, 00, 22, 00, 28, 1d, 00, 2c, 00, 33, 53, 01, 05, 01, 02]
@@ -163,4 +166,5 @@ Number of file 0 mappings: 19
 - Code(Counter(7)) at (prev + 0, 44) to (start + 0, 51)
 - Code(Expression(20, Add)) at (prev + 1, 5) to (start + 1, 2)
     = (c6 + (c7 + c8))
+Highest counter ID seen: c8
 

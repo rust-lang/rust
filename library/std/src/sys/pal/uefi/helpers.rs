@@ -10,7 +10,7 @@
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::{self, Guid};
-use r_efi::protocols::{device_path, device_path_to_text};
+use r_efi::protocols::{device_path, device_path_to_text, shell};
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_io_error};
@@ -177,16 +177,8 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
             )
         };
 
-        // SAFETY: `convert_device_path_to_text` returns a pointer to a null-terminated UTF-16
-        // string, and that string cannot be deallocated prior to dropping the `WStrUnits`, so
-        // it's safe for `WStrUnits` to use.
-        let path_len = unsafe {
-            WStrUnits::new(path_ptr)
-                .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?
-                .count()
-        };
-
-        let path = OsString::from_wide(unsafe { slice::from_raw_parts(path_ptr.cast(), path_len) });
+        let path = os_string_from_raw(path_ptr)
+            .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
 
         if let Some(boot_services) = crate::os::uefi::env::boot_services() {
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
@@ -419,4 +411,37 @@ impl<T> Drop for OwnedTable<T> {
     fn drop(&mut self) {
         unsafe { crate::alloc::dealloc(self.ptr as *mut u8, self.layout) };
     }
+}
+
+/// Create OsString from a pointer to NULL terminated UTF-16 string
+pub(crate) fn os_string_from_raw(ptr: *mut r_efi::efi::Char16) -> Option<OsString> {
+    let path_len = unsafe { WStrUnits::new(ptr)?.count() };
+    Some(OsString::from_wide(unsafe { slice::from_raw_parts(ptr.cast(), path_len) }))
+}
+
+/// Create NULL terminated UTF-16 string
+pub(crate) fn os_string_to_raw(s: &OsStr) -> Option<Box<[r_efi::efi::Char16]>> {
+    let temp = s.encode_wide().chain(Some(0)).collect::<Box<[r_efi::efi::Char16]>>();
+    if temp[..temp.len() - 1].contains(&0) { None } else { Some(temp) }
+}
+
+pub(crate) fn open_shell() -> Option<NonNull<shell::Protocol>> {
+    static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+        AtomicPtr::new(crate::ptr::null_mut());
+
+    if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
+        if let Ok(protocol) = open_protocol::<shell::Protocol>(handle, shell::PROTOCOL_GUID) {
+            return Some(protocol);
+        }
+    }
+
+    let handles = locate_handles(shell::PROTOCOL_GUID).ok()?;
+    for handle in handles {
+        if let Ok(protocol) = open_protocol::<shell::Protocol>(handle, shell::PROTOCOL_GUID) {
+            LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
+            return Some(protocol);
+        }
+    }
+
+    None
 }

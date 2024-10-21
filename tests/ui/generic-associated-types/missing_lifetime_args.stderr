@@ -54,7 +54,7 @@ error[E0038]: the trait `X` cannot be made into an object
 LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y = (&'c u32, &'d u32)>>) {}
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `X` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/missing_lifetime_args.rs:2:10
    |
 LL | trait X {

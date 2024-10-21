@@ -8,8 +8,7 @@
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
 
-use std::mem;
-use std::ptr;
+use std::{mem, ptr};
 
 pub type Key = libc::pthread_key_t;
 

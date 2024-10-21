@@ -155,7 +155,7 @@ impl Alignment {
         !(unsafe { self.as_usize().unchecked_sub(1) })
     }
 
-    // Remove me once `Ord::max` is usable in const
+    // FIXME(const-hack) Remove me once `Ord::max` is usable in const
     pub(crate) const fn max(a: Self, b: Self) -> Self {
         if a.as_usize() > b.as_usize() { a } else { b }
     }

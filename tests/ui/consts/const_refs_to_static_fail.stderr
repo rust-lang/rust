@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refs_to_static_fail.rs:9:1
+  --> $DIR/const_refs_to_static_fail.rs:11:1
    |
 LL | const C1: &SyncUnsafeCell<i32> = &S;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -10,13 +10,13 @@ LL | const C1: &SyncUnsafeCell<i32> = &S;
            }
 
 note: erroneous constant encountered
-  --> $DIR/const_refs_to_static_fail.rs:12:14
+  --> $DIR/const_refs_to_static_fail.rs:14:14
    |
 LL |     assert!(*C1.get() == 0);
    |              ^^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_refs_to_static_fail.rs:16:13
+  --> $DIR/const_refs_to_static_fail.rs:18:13
    |
 LL |     assert!(*C2 == 0);
    |             ^^^ constant accesses mutable global memory

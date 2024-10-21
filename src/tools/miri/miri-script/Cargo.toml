@@ -13,7 +13,7 @@ edition = "2021"
 # This is needed to make this package build on stable when the parent package uses unstable cargo features.
 
 [dependencies]
-which = "4.4"
+which = "6.0"
 walkdir = "2.3"
 itertools = "0.11"
 path_macro = "1.0"

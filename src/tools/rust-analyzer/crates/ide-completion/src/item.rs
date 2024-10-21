@@ -19,8 +19,10 @@ use crate::{
 };
 
 /// `CompletionItem` describes a single completion entity which expands to 1 or more entries in the
-/// editor pop-up. It is basically a POD with various properties. To construct a
-/// [`CompletionItem`], use [`Builder::new`] method and the [`Builder`] struct.
+/// editor pop-up.
+///
+/// It is basically a POD with various properties. To construct a [`CompletionItem`],
+/// use [`Builder::new`] method and the [`Builder`] struct.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct CompletionItem {
@@ -129,7 +131,8 @@ impl fmt::Debug for CompletionItem {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct CompletionRelevance {
-    /// This is set in cases like these:
+    /// This is set when the identifier being completed matches up with the name that is expected,
+    /// like in a function argument.
     ///
     /// ```
     /// fn f(spam: String) {}
@@ -139,9 +142,9 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub exact_name_match: bool,
-    /// See CompletionRelevanceTypeMatch doc comments for cases where this is set.
+    /// See [`CompletionRelevanceTypeMatch`].
     pub type_match: Option<CompletionRelevanceTypeMatch>,
-    /// This is set in cases like these:
+    /// Set for local variables.
     ///
     /// ```
     /// fn foo(a: u32) {
@@ -150,24 +153,25 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub is_local: bool,
-    /// This is set when trait items are completed in an impl of that trait.
-    pub is_item_from_trait: bool,
-    /// This is set for when trait items are from traits with `#[doc(notable_trait)]`
-    pub is_item_from_notable_trait: bool,
-    /// This is set when an import is suggested whose name is already imported.
+    /// Populated when the completion item comes from a trait (impl).
+    pub trait_: Option<CompletionRelevanceTraitInfo>,
+    /// This is set when an import is suggested in a use item whose name is already imported.
     pub is_name_already_imported: bool,
     /// This is set for completions that will insert a `use` item.
     pub requires_import: bool,
-    /// Set for method completions of the `core::ops` and `core::cmp` family.
-    pub is_op_method: bool,
     /// Set for item completions that are private but in the workspace.
     pub is_private_editable: bool,
     /// Set for postfix snippet item completions
     pub postfix_match: Option<CompletionRelevancePostfixMatch>,
-    /// This is set for type inference results
-    pub is_definite: bool,
     /// This is set for items that are function (associated or method)
     pub function: Option<CompletionRelevanceFn>,
+}
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct CompletionRelevanceTraitInfo {
+    /// The trait this item is from is a `#[doc(notable_trait)]`
+    pub notable_trait: bool,
+    /// Set for method completions of the `core::ops` and `core::cmp` family.
+    pub is_op_method: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -182,7 +186,7 @@ pub enum CompletionRelevanceTypeMatch {
     /// }
     /// ```
     CouldUnify,
-    /// This is set in cases like these:
+    /// This is set in cases where the type matches the expected type, like:
     ///
     /// ```
     /// fn f(spam: String) {}
@@ -238,90 +242,82 @@ impl CompletionRelevance {
     /// See is_relevant if you need to make some judgement about score
     /// in an absolute sense.
     pub fn score(self) -> u32 {
-        let mut score = 0;
+        let mut score = !0 / 2;
         let CompletionRelevance {
             exact_name_match,
             type_match,
             is_local,
-            is_item_from_trait,
             is_name_already_imported,
             requires_import,
-            is_op_method,
             is_private_editable,
             postfix_match,
-            is_definite,
-            is_item_from_notable_trait,
+            trait_,
             function,
         } = self;
+
+        // only applicable for completions within use items
+        // lower rank for conflicting import names
+        if is_name_already_imported {
+            score -= 1;
+        }
+        // slightly prefer locals
+        if is_local {
+            score += 1;
+        }
 
         // lower rank private things
         if !is_private_editable {
             score += 1;
         }
-        // lower rank trait op methods
-        if !is_op_method {
-            score += 10;
+
+        if let Some(trait_) = trait_ {
+            // lower rank trait methods unless its notable
+            if !trait_.notable_trait {
+                score -= 5;
+            }
+            // lower rank trait op methods
+            if trait_.is_op_method {
+                score -= 5;
+            }
         }
-        // lower rank for conflicting import names
-        if !is_name_already_imported {
-            score += 1;
-        }
-        // lower rank for items that don't need an import
-        if !requires_import {
-            score += 1;
+        // lower rank for items that need an import
+        if requires_import {
+            score -= 1;
         }
         if exact_name_match {
-            score += 10;
+            score += 20;
         }
-        score += match postfix_match {
-            Some(CompletionRelevancePostfixMatch::Exact) => 100,
-            Some(CompletionRelevancePostfixMatch::NonExact) => 0,
-            None => 3,
+        match postfix_match {
+            Some(CompletionRelevancePostfixMatch::Exact) => score += 100,
+            Some(CompletionRelevancePostfixMatch::NonExact) => score -= 5,
+            None => (),
         };
         score += match type_match {
-            Some(CompletionRelevanceTypeMatch::Exact) => 8,
-            Some(CompletionRelevanceTypeMatch::CouldUnify) => 3,
+            Some(CompletionRelevanceTypeMatch::Exact) => 18,
+            Some(CompletionRelevanceTypeMatch::CouldUnify) => 5,
             None => 0,
         };
-        // slightly prefer locals
-        if is_local {
-            score += 1;
-        }
-        if is_item_from_trait {
-            score += 1;
-        }
-        if is_item_from_notable_trait {
-            score += 1;
-        }
-        if is_definite {
-            score += 10;
-        }
+        if let Some(function) = function {
+            let mut fn_score = match function.return_type {
+                CompletionRelevanceReturnType::DirectConstructor => 15,
+                CompletionRelevanceReturnType::Builder => 10,
+                CompletionRelevanceReturnType::Constructor => 5,
+                CompletionRelevanceReturnType::Other => 0u32,
+            };
 
-        score += function
-            .map(|asf| {
-                let mut fn_score = match asf.return_type {
-                    CompletionRelevanceReturnType::DirectConstructor => 15,
-                    CompletionRelevanceReturnType::Builder => 10,
-                    CompletionRelevanceReturnType::Constructor => 5,
-                    CompletionRelevanceReturnType::Other => 0,
-                };
+            // When a fn is bumped due to return type:
+            // Bump Constructor or Builder methods with no arguments,
+            // over them than with self arguments
+            if function.has_params {
+                // bump associated functions
+                fn_score = fn_score.saturating_sub(1);
+            } else if function.has_self_param {
+                // downgrade methods (below Constructor)
+                fn_score = fn_score.min(1);
+            }
 
-                // When a fn is bumped due to return type:
-                // Bump Constructor or Builder methods with no arguments,
-                // over them than with self arguments
-                if fn_score > 0 {
-                    if !asf.has_params {
-                        // bump associated functions
-                        fn_score += 1;
-                    } else if asf.has_self_param {
-                        // downgrade methods (below Constructor)
-                        fn_score = 1;
-                    }
-                }
-
-                fn_score
-            })
-            .unwrap_or_default();
+            score += fn_score;
+        };
 
         score
     }
@@ -364,6 +360,7 @@ impl CompletionItemKind {
                 SymbolKind::Field => "fd",
                 SymbolKind::Function => "fn",
                 SymbolKind::Impl => "im",
+                SymbolKind::InlineAsmRegOrRegClass => "ar",
                 SymbolKind::Label => "lb",
                 SymbolKind::LifetimeParam => "lt",
                 SymbolKind::Local => "lc",
@@ -701,8 +698,21 @@ mod tests {
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
             vec![],
-            vec![Cr { is_op_method: true, is_private_editable: true, ..default }],
-            vec![Cr { is_op_method: true, ..default }],
+            vec![Cr {
+                trait_: Some(crate::item::CompletionRelevanceTraitInfo {
+                    notable_trait: false,
+                    is_op_method: true,
+                }),
+                is_private_editable: true,
+                ..default
+            }],
+            vec![Cr {
+                trait_: Some(crate::item::CompletionRelevanceTraitInfo {
+                    notable_trait: false,
+                    is_op_method: true,
+                }),
+                ..default
+            }],
             vec![Cr { postfix_match: Some(CompletionRelevancePostfixMatch::NonExact), ..default }],
             vec![Cr { is_private_editable: true, ..default }],
             vec![default],

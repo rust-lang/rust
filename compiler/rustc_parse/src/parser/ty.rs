@@ -4,7 +4,8 @@ use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
     GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind,
+    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
+    TyKind,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{Ident, kw, sym};
@@ -126,17 +127,6 @@ impl<'a> Parser<'a> {
             Some(ty_params),
             RecoverQuestionMark::Yes,
         )
-    }
-
-    /// Parse a type suitable for a field definition.
-    /// The difference from `parse_ty` is that this version
-    /// allows anonymous structs and unions.
-    pub(super) fn parse_ty_for_field_def(&mut self) -> PResult<'a, P<Ty>> {
-        if self.can_begin_anon_struct_or_union() {
-            self.parse_anon_struct_or_union()
-        } else {
-            self.parse_ty()
-        }
     }
 
     /// Parse a type suitable for a function or function pointer parameter.
@@ -382,37 +372,6 @@ impl<'a> Parser<'a> {
         if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
     }
 
-    /// Parse an anonymous struct or union (only for field definitions):
-    /// ```ignore (feature-not-ready)
-    /// #[repr(C)]
-    /// struct Foo {
-    ///     _: struct { // anonymous struct
-    ///         x: u32,
-    ///         y: f64,
-    ///     }
-    ///     _: union { // anonymous union
-    ///         z: u32,
-    ///         w: f64,
-    ///     }
-    /// }
-    /// ```
-    fn parse_anon_struct_or_union(&mut self) -> PResult<'a, P<Ty>> {
-        assert!(self.token.is_keyword(kw::Union) || self.token.is_keyword(kw::Struct));
-        let is_union = self.token.is_keyword(kw::Union);
-
-        let lo = self.token.span;
-        self.bump();
-
-        let (fields, _recovered) =
-            self.parse_record_struct_body(if is_union { "union" } else { "struct" }, lo, false)?;
-        let span = lo.to(self.prev_token.span);
-        self.psess.gated_spans.gate(sym::unnamed_fields, span);
-        let id = ast::DUMMY_NODE_ID;
-        let kind =
-            if is_union { TyKind::AnonUnion(id, fields) } else { TyKind::AnonStruct(id, fields) };
-        Ok(self.mk_ty(span, kind))
-    }
-
     /// Parses either:
     /// - `(TYPE)`, a parenthesized type.
     /// - `(TYPE,)`, a tuple with a single field of type TYPE.
@@ -461,8 +420,13 @@ impl<'a> Parser<'a> {
         lo: Span,
         parse_plus: bool,
     ) -> PResult<'a, TyKind> {
-        let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_token.span));
-        let bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifiers::NONE)];
+        let poly_trait_ref = PolyTraitRef::new(
+            generic_params,
+            path,
+            TraitBoundModifiers::NONE,
+            lo.to(self.prev_token.span),
+        );
+        let bounds = vec![GenericBound::Trait(poly_trait_ref)];
         self.parse_remaining_bounds(bounds, parse_plus)
     }
 
@@ -529,7 +493,10 @@ impl<'a> Parser<'a> {
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
         let and_span = self.prev_token.span;
         let mut opt_lifetime = self.check_lifetime().then(|| self.expect_lifetime());
-        let mut mutbl = self.parse_mutability();
+        let (pinned, mut mutbl) = match self.parse_pin_and_mut() {
+            Some(pin_mut) => pin_mut,
+            None => (Pinnedness::Not, self.parse_mutability()),
+        };
         if self.token.is_lifetime() && mutbl == Mutability::Mut && opt_lifetime.is_none() {
             // A lifetime is invalid here: it would be part of a bare trait bound, which requires
             // it to be followed by a plus, but we disallow plus in the pointee type.
@@ -565,7 +532,35 @@ impl<'a> Parser<'a> {
             self.bump_with((dyn_tok, dyn_tok_sp));
         }
         let ty = self.parse_ty_no_plus()?;
-        Ok(TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }))
+        Ok(match pinned {
+            Pinnedness::Not => TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }),
+            Pinnedness::Pinned => TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl }),
+        })
+    }
+
+    /// Parses `pin` and `mut` annotations on references.
+    ///
+    /// It must be either `pin const` or `pin mut`.
+    pub(crate) fn parse_pin_and_mut(&mut self) -> Option<(Pinnedness, Mutability)> {
+        if self.token.is_ident_named(sym::pin) {
+            let result = self.look_ahead(1, |token| {
+                if token.is_keyword(kw::Const) {
+                    Some((Pinnedness::Pinned, Mutability::Not))
+                } else if token.is_keyword(kw::Mut) {
+                    Some((Pinnedness::Pinned, Mutability::Mut))
+                } else {
+                    None
+                }
+            });
+            if result.is_some() {
+                self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
+                self.bump();
+                self.bump();
+            }
+            result
+        } else {
+            None
+        }
     }
 
     // Parses the `typeof(EXPR)`.
@@ -811,11 +806,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok(bounds)
-    }
-
-    pub(super) fn can_begin_anon_struct_or_union(&mut self) -> bool {
-        (self.token.is_keyword(kw::Struct) || self.token.is_keyword(kw::Union))
-            && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace))
     }
 
     /// Can the current token begin a bound?
@@ -1132,8 +1122,9 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_token.span));
-        Ok(GenericBound::Trait(poly_trait, modifiers))
+        let poly_trait =
+            PolyTraitRef::new(lifetime_defs, path, modifiers, lo.to(self.prev_token.span));
+        Ok(GenericBound::Trait(poly_trait))
     }
 
     // recovers a `Fn(..)` parenthesized-style path from `fn(..)`

@@ -160,14 +160,14 @@ mod prelude {
     pub struct Box<T: ?Sized, A = Global>(Unique<T>, A);
 
     #[repr(C)]
-    struct RcBox<T: ?Sized> {
+    struct RcInner<T: ?Sized> {
         strong: UnsafeCell<usize>,
         weak: UnsafeCell<usize>,
         value: T,
     }
     pub struct Rc<T: ?Sized, A = Global> {
-        ptr: NonNull<RcBox<T>>,
-        phantom: PhantomData<RcBox<T>>,
+        ptr: NonNull<RcInner<T>>,
+        phantom: PhantomData<RcInner<T>>,
         alloc: A,
     }
 

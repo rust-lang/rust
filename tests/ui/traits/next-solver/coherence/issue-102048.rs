@@ -1,7 +1,7 @@
 // This must fail coherence.
 //
 // Getting this to pass was fairly difficult, so here's an explanation
-// of what's happening:
+// of what was previously happening for this to compile:
 //
 // Normalizing projections currently tries to replace them with inference variables
 // while emitting a nested `Projection` obligation. This cannot be done if the projection
@@ -17,7 +17,6 @@
 // that to `i32`. We then try to unify `i32` from `impl1` with `u32` from `impl2` which fails,
 // causing coherence to consider these two impls distinct.
 
-//@ compile-flags: -Znext-solver
 pub trait Trait<T> {}
 
 pub trait WithAssoc1<'a> {

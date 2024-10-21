@@ -59,7 +59,7 @@ fn not_outlives_predicate(p: ty::Predicate<'_>) -> bool {
         | ty::PredicateKind::NormalizesTo(..)
         | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
-        | ty::PredicateKind::ObjectSafe(..)
+        | ty::PredicateKind::DynCompatible(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))

@@ -25,6 +25,7 @@ Number of file 0 mappings: 9
 - Code(Expression(6, Add)) at (prev + 1, 9) to (start + 0, 23)
     = (c1 + (c2 + c3))
 - Code(Counter(4)) at (prev + 2, 5) to (start + 1, 2)
+Highest counter ID seen: c4
 
 Function name: panic_unwind::might_panic
 Raw bytes (21): 0x[01, 01, 01, 01, 05, 03, 01, 04, 01, 01, 14, 05, 02, 09, 01, 19, 02, 02, 0c, 03, 02]
@@ -37,4 +38,5 @@ Number of file 0 mappings: 3
 - Code(Counter(1)) at (prev + 2, 9) to (start + 1, 25)
 - Code(Expression(0, Sub)) at (prev + 2, 12) to (start + 3, 2)
     = (c0 - c1)
+Highest counter ID seen: c1
 

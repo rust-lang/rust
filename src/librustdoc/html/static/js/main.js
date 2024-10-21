@@ -1828,11 +1828,15 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         return;
     }
     but.onclick = () => {
-        const path = [];
-        onEachLazy(document.querySelectorAll(".rustdoc-breadcrumbs a"), a => {
-            path.push(a.textContent);
-        });
-        path.push(document.querySelector("title").textContent.split(" ")[0]);
+        // Most page titles are '<Item> in <path::to::module> - Rust', except
+        // modules (which don't have the first part) and keywords/primitives
+        // (which don't have a module path)
+        const title = document.querySelector("title").textContent.replace(" - Rust", "");
+        const [item, module] = title.split(" in ");
+        const path = [item];
+        if (module !== undefined) {
+            path.unshift(module);
+        }
 
         copyContentToClipboard(path.join("::"));
         copyButtonAnimation(but);

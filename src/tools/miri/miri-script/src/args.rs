@@ -1,5 +1,4 @@
-use std::env;
-use std::iter;
+use std::{env, iter};
 
 use anyhow::{Result, bail};
 

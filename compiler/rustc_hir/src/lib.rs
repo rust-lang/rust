@@ -33,6 +33,7 @@ pub mod weak_lang_items;
 #[cfg(test)]
 mod tests;
 
+#[doc(no_inline)]
 pub use hir::*;
 pub use hir_id::*;
 pub use lang_items::{LangItem, LanguageItems};

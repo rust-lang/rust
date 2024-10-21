@@ -672,6 +672,7 @@ fn build_module_items(
                     item_id: ItemId::DefId(did),
                     inner: Box::new(clean::ItemInner {
                         attrs: Default::default(),
+                        stability: None,
                         kind: clean::ImportItem(clean::Import::new_simple(
                             item.ident.name,
                             clean::ImportSource {
@@ -837,8 +838,7 @@ pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
     }
 
     {
-        if cx.external_traits.borrow().contains_key(&did) || cx.active_extern_traits.contains(&did)
-        {
+        if cx.external_traits.contains_key(&did) || cx.active_extern_traits.contains(&did) {
             return;
         }
     }
@@ -850,6 +850,6 @@ pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
     debug!("record_extern_trait: {did:?}");
     let trait_ = build_external_trait(cx, did);
 
-    cx.external_traits.borrow_mut().insert(did, trait_);
+    cx.external_traits.insert(did, trait_);
     cx.active_extern_traits.remove(&did);
 }

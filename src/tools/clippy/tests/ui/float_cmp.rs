@@ -8,7 +8,7 @@
     clippy::unnecessary_operation,
     clippy::cast_lossless
 )]
-//@no-rustfix
+//@no-rustfix: suggestions have an error margin placeholder
 use std::ops::Add;
 
 const ZERO: f32 = 0.0;

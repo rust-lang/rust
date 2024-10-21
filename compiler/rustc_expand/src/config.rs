@@ -5,7 +5,9 @@ use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
 };
-use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, NodeId};
+use rustc_ast::{
+    self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
+};
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
@@ -21,8 +23,9 @@ use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::errors::{
-    FeatureNotAllowed, FeatureRemoved, FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute,
-    MalformedFeatureAttributeHelp, RemoveExprNotSupported,
+    CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
+    FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute, MalformedFeatureAttributeHelp,
+    RemoveExprNotSupported,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -37,7 +40,7 @@ pub struct StripUnconfigured<'a> {
 }
 
 pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -> Features {
-    fn feature_list(attr: &Attribute) -> ThinVec<ast::NestedMetaItem> {
+    fn feature_list(attr: &Attribute) -> ThinVec<ast::MetaItemInner> {
         if attr.has_name(sym::feature)
             && let Some(list) = attr.meta_item_list()
         {
@@ -358,20 +361,10 @@ impl<'a> StripUnconfigured<'a> {
             item_span,
         );
         if attr.has_name(sym::crate_type) {
-            self.sess.psess.buffer_lint(
-                rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-                attr.span,
-                ast::CRATE_NODE_ID,
-                BuiltinLintDiag::CrateTypeInCfgAttr,
-            );
+            self.sess.dcx().emit_err(CrateTypeInCfgAttr { span: attr.span });
         }
         if attr.has_name(sym::crate_name) {
-            self.sess.psess.buffer_lint(
-                rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-                attr.span,
-                ast::CRATE_NODE_ID,
-                BuiltinLintDiag::CrateNameInCfgAttr,
-            );
+            self.sess.dcx().emit_err(CrateNameInCfgAttr { span: attr.span });
         }
         attr
     }
@@ -449,7 +442,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 }
 
-pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItem> {
+pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItemInner> {
     let span = meta_item.span;
     match meta_item.meta_item_list() {
         None => {
@@ -464,7 +457,7 @@ pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a Meta
             sess.dcx().emit_err(InvalidCfg::MultiplePredicates { span: l.span() });
             None
         }
-        Some([single]) => match single.meta_item() {
+        Some([single]) => match single.meta_item_or_bool() {
             Some(meta_item) => Some(meta_item),
             None => {
                 sess.dcx().emit_err(InvalidCfg::PredicateLiteral { span: single.span() });

@@ -7,7 +7,9 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{Certainty, EvalCtxt, Goal, NoSolution, QueryResult, Reveal, SolverMode};
+use crate::solve::{
+    Certainty, EvalCtxt, Goal, NoSolution, QueryResult, Reveal, SolverMode, inspect,
+};
 
 impl<D, I> EvalCtxt<'_, D>
 where
@@ -52,14 +54,28 @@ where
                 //
                 // If that fails, we insert `expected` as a new hidden type instead of
                 // eagerly emitting an error.
-                let matches =
-                    self.unify_existing_opaque_tys(goal.param_env, opaque_type_key, expected);
-                if !matches.is_empty() {
-                    if let Some(response) = self.try_merge_responses(&matches) {
-                        return Ok(response);
-                    } else {
-                        return self.flounder(&matches);
-                    }
+                let existing = self.probe_existing_opaque_ty(opaque_type_key);
+                if let Some((candidate_key, candidate_ty)) = existing {
+                    return self
+                        .probe(|result| inspect::ProbeKind::OpaqueTypeStorageLookup {
+                            result: *result,
+                        })
+                        .enter(|ecx| {
+                            for (a, b) in std::iter::zip(
+                                candidate_key.args.iter(),
+                                opaque_type_key.args.iter(),
+                            ) {
+                                ecx.eq(goal.param_env, a, b)?;
+                            }
+                            ecx.eq(goal.param_env, candidate_ty, expected)?;
+                            ecx.add_item_bounds_for_hidden_type(
+                                candidate_key.def_id.into(),
+                                candidate_key.args,
+                                goal.param_env,
+                                candidate_ty,
+                            );
+                            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        });
                 }
 
                 // Otherwise, define a new opaque type

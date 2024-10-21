@@ -44,7 +44,7 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for IncrementVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // If node is a variable
         if let Some(def_id) = path_to_local(expr) {
@@ -138,7 +138,7 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for InitializeVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_local(&mut self, l: &'tcx LetStmt<'_>) {

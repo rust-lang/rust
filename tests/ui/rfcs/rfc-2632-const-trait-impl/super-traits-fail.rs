@@ -17,6 +17,6 @@ impl Foo for S {
 }
 
 impl const Bar for S {}
-// FIXME(effects) bad span
+//~^ ERROR the trait bound
 
 fn main() {}

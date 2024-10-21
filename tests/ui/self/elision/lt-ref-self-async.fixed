@@ -11,34 +11,34 @@ struct Struct<'a> {
 impl<'a> Struct<'a> {
     // Test using `&self` sugar:
 
-    async fn ref_self<'b>(&'b self, f: &'b u32) -> &u32 {
+    async fn ref_self<'b>(&self, f: &'b u32) -> &'b u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
     // Test using `&Self` explicitly:
 
-    async fn ref_Self<'b>(self: &'b Self, f: &'b u32) -> &u32 {
+    async fn ref_Self<'b>(self: &Self, f: &'b u32) -> &'b u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    async fn box_ref_Self<'b>(self: Box<&'b Self>, f: &'b u32) -> &u32 {
+    async fn box_ref_Self<'b>(self: Box<&Self>, f: &'b u32) -> &'b u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    async fn pin_ref_Self<'b>(self: Pin<&'b Self>, f: &'b u32) -> &u32 {
+    async fn pin_ref_Self<'b>(self: Pin<&Self>, f: &'b u32) -> &'b u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    async fn box_box_ref_Self<'b>(self: Box<Box<&'b Self>>, f: &'b u32) -> &u32 {
+    async fn box_box_ref_Self<'b>(self: Box<Box<&Self>>, f: &'b u32) -> &'b u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    async fn box_pin_Self<'b>(self: Box<Pin<&'b Self>>, f: &'b u32) -> &u32 {
+    async fn box_pin_Self<'b>(self: Box<Pin<&Self>>, f: &'b u32) -> &'b u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }

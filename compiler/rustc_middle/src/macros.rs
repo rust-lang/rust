@@ -67,7 +67,7 @@ macro_rules! TrivialLiftImpls {
     };
 }
 
-/// Used for types that are `Copy` and which **do not care arena
+/// Used for types that are `Copy` and which **do not care about arena
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
 macro_rules! TrivialTypeTraversalImpls {

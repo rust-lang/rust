@@ -1,9 +1,21 @@
 use syntax::{
-    ast::{self, make, AstNode, HasName},
+    ast::{self, edit_in_place::Indent, make, AstNode, HasName},
     ted,
 };
 
 use crate::{utils, AssistContext, AssistId, AssistKind, Assists};
+
+fn insert_impl(impl_: ast::Impl, nominal: &ast::Adt) {
+    let indent = nominal.indent_level();
+    ted::insert_all_raw(
+        ted::Position::after(nominal.syntax()),
+        vec![
+            // Add a blank line after the ADT, and indentation for the impl to match the ADT
+            make::tokens::whitespace(&format!("\n\n{indent}")).into(),
+            impl_.syntax().clone().into(),
+        ],
+    );
+}
 
 // Assist: generate_impl
 //
@@ -46,12 +58,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
                 }
             }
 
-            // Add the impl after the adt
-            let nominal = edit.make_mut(nominal);
-            ted::insert_all_raw(
-                ted::Position::after(nominal.syntax()),
-                vec![make::tokens::blank_line().into(), impl_.syntax().clone().into()],
-            );
+            insert_impl(impl_, &edit.make_mut(nominal));
         },
     )
 }
@@ -97,12 +104,7 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 }
             }
 
-            // Add the impl after the adt
-            let nominal = edit.make_mut(nominal);
-            ted::insert_all_raw(
-                ted::Position::after(nominal.syntax()),
-                vec![make::tokens::blank_line().into(), impl_.syntax().clone().into()],
-            );
+            insert_impl(impl_, &edit.make_mut(nominal));
         },
     )
 }
@@ -416,6 +418,67 @@ mod tests {
                 struct EvenMoreIrrelevant;
             "#,
             "/// Has a lifetime parameter\nstruct Foo<'a, T: Foo<'a>> {}",
+        );
+    }
+
+    #[test]
+    fn add_impl_with_indent() {
+        check_assist(
+            generate_impl,
+            r#"
+                mod foo {
+                    struct Bar$0 {}
+                }
+            "#,
+            r#"
+                mod foo {
+                    struct Bar {}
+
+                    impl Bar {$0}
+                }
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_impl_with_multiple_indent() {
+        check_assist(
+            generate_impl,
+            r#"
+                mod foo {
+                    fn bar() {
+                        struct Baz$0 {}
+                    }
+                }
+            "#,
+            r#"
+                mod foo {
+                    fn bar() {
+                        struct Baz {}
+
+                        impl Baz {$0}
+                    }
+                }
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_trait_impl_with_indent() {
+        check_assist(
+            generate_trait_impl,
+            r#"
+                mod foo {
+                    struct Bar$0 {}
+                }
+            "#,
+            r#"
+                mod foo {
+                    struct Bar {}
+
+                    impl ${0:_} for Bar {}
+                }
+            "#,
         );
     }
 }

@@ -473,19 +473,19 @@ impl<'a> Parser<'a> {
             }
 
             pos = peek_pos;
-            description = format!("expected `'}}'`, found `{maybe:?}`");
+            description = format!("expected `}}`, found `{}`", maybe.escape_debug());
         } else {
-            description = "expected `'}'` but string was terminated".to_owned();
+            description = "expected `}` but string was terminated".to_owned();
             // point at closing `"`
             pos = self.input.len() - if self.append_newline { 1 } else { 0 };
         }
 
         let pos = self.to_span_index(pos);
 
-        let label = "expected `'}'`".to_owned();
+        let label = "expected `}`".to_owned();
         let (note, secondary_label) = if arg.format.fill == Some('}') {
             (
-                Some("the character `'}'` is interpreted as a fill character because of the `:` that precedes it".to_owned()),
+                Some("the character `}` is interpreted as a fill character because of the `:` that precedes it".to_owned()),
                 arg.format.fill_span.map(|sp| ("this is not interpreted as a formatting closing brace".to_owned(), sp)),
             )
         } else {

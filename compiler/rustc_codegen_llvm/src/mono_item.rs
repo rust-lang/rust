@@ -64,7 +64,9 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
         let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
         base::set_link_section(lldecl, attrs);
-        if linkage == Linkage::LinkOnceODR || linkage == Linkage::WeakODR {
+        if (linkage == Linkage::LinkOnceODR || linkage == Linkage::WeakODR)
+            && self.tcx.sess.target.supports_comdat()
+        {
             llvm::SetUniqueComdat(self.llmod, lldecl);
         }
 

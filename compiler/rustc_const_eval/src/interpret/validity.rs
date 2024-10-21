@@ -17,8 +17,8 @@ use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::ValidationErrorKind::{self, *};
 use rustc_middle::mir::interpret::{
-    ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
-    UnsupportedOpInfo, ValidationErrorInfo, alloc_range,
+    ExpectedKind, InterpErrorKind, InvalidMetaKind, Misalignment, PointerKind, Provenance,
+    UnsupportedOpInfo, ValidationErrorInfo, alloc_range, interp_ok,
 };
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -32,17 +32,17 @@ use super::machine::AllocMap;
 use super::{
     AllocId, AllocKind, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult,
     MPlaceTy, Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
-    format_interp_error, throw_ub,
+    format_interp_error,
 };
 
 // for the validation errors
 #[rustfmt::skip]
-use super::InterpError::UndefinedBehavior as Ub;
-use super::InterpError::Unsupported as Unsup;
+use super::InterpErrorKind::UndefinedBehavior as Ub;
+use super::InterpErrorKind::Unsupported as Unsup;
 use super::UndefinedBehaviorInfo::*;
 use super::UnsupportedOpInfo::*;
 
-macro_rules! throw_validation_failure {
+macro_rules! err_validation_failure {
     ($where:expr, $kind: expr) => {{
         let where_ = &$where;
         let path = if !where_.is_empty() {
@@ -53,8 +53,14 @@ macro_rules! throw_validation_failure {
             None
         };
 
-        throw_ub!(ValidationError(ValidationErrorInfo { path, kind: $kind }))
+        err_ub!(ValidationError(ValidationErrorInfo { path, kind: $kind }))
     }};
+}
+
+macro_rules! throw_validation_failure {
+    ($where:expr, $kind: expr) => {
+        do yeet err_validation_failure!($where, $kind)
+    };
 }
 
 /// If $e throws an error matching the pattern, throw a validation failure.
@@ -91,22 +97,21 @@ macro_rules! try_validation {
     ($e:expr, $where:expr,
     $( $( $p:pat_param )|+ => $kind: expr ),+ $(,)?
     ) => {{
-        match $e {
-            Ok(x) => x,
+        $e.map_err_kind(|e| {
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            Err(e) => match e.kind() {
+            match e {
                 $(
-                    $($p)|+ =>
-                       throw_validation_failure!(
+                    $($p)|+ => {
+                        err_validation_failure!(
                             $where,
                             $kind
                         )
+                    }
                 ),+,
-                #[allow(unreachable_patterns)]
-                _ => Err::<!, _>(e)?,
+                e => e,
             }
-        }
+        })?
     }};
 }
 
@@ -378,7 +383,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // Undo changes
         self.path.truncate(path_len);
         // Done
-        Ok(r)
+        interp_ok(r)
     }
 
     fn read_immediate(
@@ -386,7 +391,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         val: &PlaceTy<'tcx, M::Provenance>,
         expected: ExpectedKind,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        Ok(try_validation!(
+        interp_ok(try_validation!(
             self.ecx.read_immediate(val),
             self.path,
             Ub(InvalidUninitBytes(None)) =>
@@ -404,7 +409,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         val: &PlaceTy<'tcx, M::Provenance>,
         expected: ExpectedKind,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
-        Ok(self.read_immediate(val, expected)?.to_scalar())
+        interp_ok(self.read_immediate(val, expected)?.to_scalar())
     }
 
     fn deref_pointer(
@@ -469,7 +474,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             _ => bug!("Unexpected unsized type tail: {:?}", tail),
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Check a reference or `Box`.
@@ -510,7 +515,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
                 ptr_kind,
                 // FIXME this says "null pointer" when null but we need translate
-                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(*i))
+                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(i))
             },
             Ub(PointerOutOfBounds { .. }) => DanglingPtrOutOfBounds {
                 ptr_kind
@@ -632,7 +637,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 }
                 // Potentially skip recursive check.
                 if skip_recursive_check {
-                    return Ok(());
+                    return interp_ok(());
                 }
             } else {
                 // This is not CTFE, so it's Miri with recursive checking.
@@ -641,7 +646,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 // FIXME: should we also skip `UnsafeCell` behind shared references? Currently that is not
                 // needed since validation reads bypass Stacked Borrows and data race checks.
                 if matches!(ptr_kind, PointerKind::Box) {
-                    return Ok(());
+                    return interp_ok(());
                 }
             }
             let path = &self.path;
@@ -654,7 +659,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 new_path
             });
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Check if this is a value of primitive type, and if yes check the validity of the value
@@ -681,7 +686,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     self.ecx.clear_provenance(value)?;
                     self.add_data_range_place(value);
                 }
-                Ok(true)
+                interp_ok(true)
             }
             ty::Char => {
                 let scalar = self.read_scalar(value, ExpectedKind::Char)?;
@@ -696,7 +701,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     self.ecx.clear_provenance(value)?;
                     self.add_data_range_place(value);
                 }
-                Ok(true)
+                interp_ok(true)
             }
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
                 // NOTE: Keep this in sync with the array optimization for int/float
@@ -713,18 +718,18 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     self.ecx.clear_provenance(value)?;
                     self.add_data_range_place(value);
                 }
-                Ok(true)
+                interp_ok(true)
             }
             ty::RawPtr(..) => {
                 let place = self.deref_pointer(value, ExpectedKind::RawPtr)?;
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
-                Ok(true)
+                interp_ok(true)
             }
             ty::Ref(_, _ty, mutbl) => {
                 self.check_safe_pointer(value, PointerKind::Ref(*mutbl))?;
-                Ok(true)
+                interp_ok(true)
             }
             ty::FnPtr(..) => {
                 let scalar = self.read_scalar(value, ExpectedKind::FnPtr)?;
@@ -753,12 +758,12 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     }
                     self.add_data_range_place(value);
                 }
-                Ok(true)
+                interp_ok(true)
             }
             ty::Never => throw_validation_failure!(self.path, NeverVal),
             ty::Foreign(..) | ty::FnDef(..) => {
                 // Nothing to check.
-                Ok(true)
+                interp_ok(true)
             }
             // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
@@ -771,7 +776,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             | ty::Closure(..)
             | ty::Pat(..)
             | ty::CoroutineClosure(..)
-            | ty::Coroutine(..) => Ok(false),
+            | ty::Coroutine(..) => interp_ok(false),
             // Some types only occur during typechecking, they have no layout.
             // We should not see them here and we could not check them anyway.
             ty::Error(_)
@@ -808,11 +813,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                             max_value
                         })
                     } else {
-                        return Ok(());
+                        return interp_ok(());
                     }
                 } else if scalar_layout.is_always_valid(self.ecx) {
                     // Easy. (This is reachable if `enforce_number_validity` is set.)
-                    return Ok(());
+                    return interp_ok(());
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
@@ -825,7 +830,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         };
         // Now compare.
         if valid_range.contains(bits) {
-            Ok(())
+            interp_ok(())
         } else {
             throw_validation_failure!(self.path, OutOfRange {
                 value: format!("{bits}"),
@@ -884,7 +889,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     }
 
     fn reset_padding(&mut self, place: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
-        let Some(data_bytes) = self.data_bytes.as_mut() else { return Ok(()) };
+        let Some(data_bytes) = self.data_bytes.as_mut() else { return interp_ok(()) };
         // Our value must be in memory, otherwise we would not have set up `data_bytes`.
         let mplace = self.ecx.force_allocation(place)?;
         // Determine starting offset and size.
@@ -896,14 +901,14 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // If there is no padding at all, we can skip the rest: check for
         // a single data range covering the entire value.
         if data_bytes.0 == &[(start_offset, size)] {
-            return Ok(());
+            return interp_ok(());
         }
         // Get a handle for the allocation. Do this only once, to avoid looking up the same
         // allocation over and over again. (Though to be fair, iterating the value already does
         // exactly that.)
         let Some(mut alloc) = self.ecx.get_ptr_alloc_mut(mplace.ptr(), size)? else {
             // A ZST, no padding to clear.
-            return Ok(());
+            return interp_ok(());
         };
         // Add a "finalizer" data range at the end, so that the iteration below finds all gaps
         // between ranges.
@@ -930,7 +935,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             padding_cleared_until = offset + size;
         }
         assert!(padding_cleared_until == start_offset + size);
-        Ok(())
+        interp_ok(())
     }
 
     /// Computes the data range of this union type:
@@ -1070,7 +1075,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         val: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, VariantIdx> {
         self.with_elem(PathElem::EnumTag, move |this| {
-            Ok(try_validation!(
+            interp_ok(try_validation!(
                 this.ecx.read_discriminant(val),
                 this.path,
                 Ub(InvalidTag(val)) => InvalidEnumTag {
@@ -1134,7 +1139,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 data_bytes.add_range(base_offset + offset, size);
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     #[inline]
@@ -1144,7 +1149,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         val: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.check_safe_pointer(val, PointerKind::Box)?;
-        Ok(())
+        interp_ok(())
     }
 
     #[inline]
@@ -1157,7 +1162,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         // We assume that the Scalar validity range does not restrict these values
         // any further than `try_visit_primitive` does!
         if self.try_visit_primitive(val)? {
-            return Ok(());
+            return interp_ok(());
         }
 
         // Special check preventing `UnsafeCell` in the inner part of constants
@@ -1204,7 +1209,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // If the size is 0, there is nothing to check.
                 // (`size` can only be 0 if `len` is 0, and empty arrays are always valid.)
                 if size == Size::ZERO {
-                    return Ok(());
+                    return interp_ok(());
                 }
                 // Now that we definitely have a non-ZST array, we know it lives in memory -- except it may
                 // be an uninitialized local variable, those are also "immediate".
@@ -1224,36 +1229,32 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // No need for an alignment check here, this is not an actual memory access.
                 let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size)?.expect("we already excluded size 0");
 
-                match alloc.get_bytes_strip_provenance() {
-                    // In the happy case, we needn't check anything else.
-                    Ok(_) => {}
+                alloc.get_bytes_strip_provenance().map_err_kind(|kind| {
                     // Some error happened, try to provide a more detailed description.
-                    Err(err) => {
-                        // For some errors we might be able to provide extra information.
-                        // (This custom logic does not fit the `try_validation!` macro.)
-                        match err.kind() {
-                            Ub(InvalidUninitBytes(Some((_alloc_id, access)))) | Unsup(ReadPointerAsInt(Some((_alloc_id, access)))) => {
-                                // Some byte was uninitialized, determine which
-                                // element that byte belongs to so we can
-                                // provide an index.
-                                let i = usize::try_from(
-                                    access.bad.start.bytes() / layout.size.bytes(),
-                                )
-                                .unwrap();
-                                self.path.push(PathElem::ArrayElem(i));
+                    // For some errors we might be able to provide extra information.
+                    // (This custom logic does not fit the `try_validation!` macro.)
+                    match kind {
+                        Ub(InvalidUninitBytes(Some((_alloc_id, access)))) | Unsup(ReadPointerAsInt(Some((_alloc_id, access)))) => {
+                            // Some byte was uninitialized, determine which
+                            // element that byte belongs to so we can
+                            // provide an index.
+                            let i = usize::try_from(
+                                access.bad.start.bytes() / layout.size.bytes(),
+                            )
+                            .unwrap();
+                            self.path.push(PathElem::ArrayElem(i));
 
-                                if matches!(err.kind(), Ub(InvalidUninitBytes(_))) {
-                                    throw_validation_failure!(self.path, Uninit { expected })
-                                } else {
-                                    throw_validation_failure!(self.path, PointerAsInt { expected })
-                                }
+                            if matches!(kind, Ub(InvalidUninitBytes(_))) {
+                                err_validation_failure!(self.path, Uninit { expected })
+                            } else {
+                                err_validation_failure!(self.path, PointerAsInt { expected })
                             }
-
-                            // Propagate upwards (that will also check for unexpected errors).
-                            _ => return Err(err),
                         }
+
+                        // Propagate upwards (that will also check for unexpected errors).
+                        err => err,
                     }
-                }
+                })?;
 
                 // Don't forget that these are all non-pointer types, and thus do not preserve
                 // provenance.
@@ -1282,7 +1283,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     // It's not great to catch errors here, since we can't give a very good path,
                     // but it's better than ICEing.
                     Ub(InvalidVTableTrait { vtable_dyn_type, expected_dyn_type }) => {
-                        InvalidMetaWrongTrait { vtable_dyn_type, expected_dyn_type: *expected_dyn_type }
+                        InvalidMetaWrongTrait { vtable_dyn_type, expected_dyn_type }
                     },
                 );
             }
@@ -1331,7 +1332,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             }
         }
 
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -1347,7 +1348,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("validate_operand_internal: {:?}, {:?}", *val, val.layout.ty);
 
         // Run the visitor.
-        match self.run_for_validation(|ecx| {
+        self.run_for_validation(|ecx| {
             let reset_padding = reset_provenance_and_padding && {
                 // Check if `val` is actually stored in memory. If not, padding is not even
                 // represented and we need not reset it.
@@ -1363,29 +1364,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             };
             v.visit_value(val)?;
             v.reset_padding(val)?;
-            InterpResult::Ok(())
-        }) {
-            Ok(()) => Ok(()),
-            // Pass through validation failures and "invalid program" issues.
-            Err(err)
-                if matches!(
-                    err.kind(),
-                    err_ub!(ValidationError { .. })
-                        | InterpError::InvalidProgram(_)
-                        | InterpError::Unsupported(UnsupportedOpInfo::ExternTypeField)
-                ) =>
-            {
-                Err(err)
-            }
-            // Complain about any other kind of error -- those are bad because we'd like to
-            // report them in a way that shows *where* in the value the issue lies.
-            Err(err) => {
+            interp_ok(())
+        })
+        .map_err_info(|err| {
+            if !matches!(
+                err.kind(),
+                err_ub!(ValidationError { .. })
+                    | InterpErrorKind::InvalidProgram(_)
+                    | InterpErrorKind::Unsupported(UnsupportedOpInfo::ExternTypeField)
+            ) {
                 bug!(
                     "Unexpected error during validation: {}",
                     format_interp_error(self.tcx.dcx(), err)
                 );
             }
-        }
+            err
+        })
     }
 
     /// This function checks the data at `op` to be const-valid.
@@ -1456,6 +1450,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 /*reset_provenance_and_padding*/ false,
             )?;
         }
-        Ok(())
+        interp_ok(())
     }
 }

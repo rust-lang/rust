@@ -64,12 +64,9 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
     acc.add(
         AssistId("toggle_macro_delimiter", AssistKind::Refactor),
         match token {
-            MacroDelims::LPar => "Replace delimiters with braces",
-            MacroDelims::RPar => "Replace delimiters with braces",
-            MacroDelims::LBra => "Replace delimiters with parentheses",
-            MacroDelims::RBra => "Replace delimiters with parentheses",
-            MacroDelims::LCur => "Replace delimiters with brackets",
-            MacroDelims::RCur => "Replace delimiters with brackets",
+            MacroDelims::LPar | MacroDelims::RPar => "Replace delimiters with braces",
+            MacroDelims::LBra | MacroDelims::RBra => "Replace delimiters with parentheses",
+            MacroDelims::LCur | MacroDelims::RCur => "Replace delimiters with brackets",
         },
         token_tree.syntax().text_range(),
         |builder| {

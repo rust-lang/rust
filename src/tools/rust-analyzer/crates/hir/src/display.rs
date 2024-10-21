@@ -99,17 +99,20 @@ impl HirDisplay for Function {
         }
 
         // FIXME: Use resolved `param.ty` once we no longer discard lifetimes
+        let body = db.body(self.id.into());
         for (type_ref, param) in data.params.iter().zip(self.assoc_fn_params(db)).skip(skip_self) {
-            let local = param.as_local(db).map(|it| it.name(db));
             if !first {
                 f.write_str(", ")?;
             } else {
                 first = false;
             }
-            match local {
-                Some(name) => write!(f, "{}: ", name.display(f.db.upcast(), f.edition()))?,
-                None => f.write_str("_: ")?,
-            }
+
+            let pat_id = body.params[param.idx - body.self_param.is_some() as usize];
+            let pat_str =
+                body.pretty_print_pat(db.upcast(), self.id.into(), pat_id, true, f.edition());
+            f.write_str(&pat_str)?;
+
+            f.write_str(": ")?;
             type_ref.hir_fmt(f)?;
         }
 

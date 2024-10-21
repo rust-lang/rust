@@ -910,6 +910,29 @@ fn qux(bar: Bar, baz: Baz) {}
 }
 
 #[test]
+fn doctest_explicit_enum_discriminant() {
+    check_doc_test(
+        "explicit_enum_discriminant",
+        r#####"
+enum TheEnum$0 {
+    Foo,
+    Bar,
+    Baz = 42,
+    Quux,
+}
+"#####,
+        r#####"
+enum TheEnum {
+    Foo = 0,
+    Bar = 1,
+    Baz = 42,
+    Quux = 43,
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_expressions_from_format_string() {
     check_doc_test(
         "extract_expressions_from_format_string",

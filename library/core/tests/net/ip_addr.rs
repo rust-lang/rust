@@ -494,6 +494,7 @@ fn ipv6_properties() {
             let octets = &[$($octet),*];
             assert_eq!(&ip!($s).octets(), octets);
             assert_eq!(Ipv6Addr::from(*octets), ip!($s));
+            assert_eq!(Ipv6Addr::from_octets(*octets), ip!($s));
 
             let unspecified: u32 = 1 << 0;
             let loopback: u32 = 1 << 1;
@@ -846,15 +847,19 @@ fn ipv6_from_constructors() {
 
 #[test]
 fn ipv4_from_octets() {
-    assert_eq!(Ipv4Addr::from([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1))
+    assert_eq!(Ipv4Addr::from([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1));
+    assert_eq!(Ipv4Addr::from_octets([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1));
 }
 
 #[test]
 fn ipv6_from_segments() {
     let from_u16s =
         Ipv6Addr::from([0x0011, 0x2233, 0x4455, 0x6677, 0x8899, 0xaabb, 0xccdd, 0xeeff]);
+    let from_u16s_explicit =
+        Ipv6Addr::from_segments([0x0011, 0x2233, 0x4455, 0x6677, 0x8899, 0xaabb, 0xccdd, 0xeeff]);
     let new = Ipv6Addr::new(0x0011, 0x2233, 0x4455, 0x6677, 0x8899, 0xaabb, 0xccdd, 0xeeff);
     assert_eq!(new, from_u16s);
+    assert_eq!(new, from_u16s_explicit);
 }
 
 #[test]
@@ -865,7 +870,15 @@ fn ipv6_from_octets() {
         0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
         0xff,
     ]);
+    let from_u16s_explicit =
+        Ipv6Addr::from_segments([0x0011, 0x2233, 0x4455, 0x6677, 0x8899, 0xaabb, 0xccdd, 0xeeff]);
+    let from_u8s_explicit = Ipv6Addr::from_octets([
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+        0xff,
+    ]);
     assert_eq!(from_u16s, from_u8s);
+    assert_eq!(from_u16s, from_u16s_explicit);
+    assert_eq!(from_u16s_explicit, from_u8s_explicit);
 }
 
 #[test]
@@ -914,6 +927,9 @@ fn ipv4_const() {
 
     const OCTETS: [u8; 4] = IP_ADDRESS.octets();
     assert_eq!(OCTETS, [127, 0, 0, 1]);
+
+    const FROM_OCTETS: Ipv4Addr = Ipv4Addr::from_octets(OCTETS);
+    assert_eq!(IP_ADDRESS, FROM_OCTETS);
 
     const IS_UNSPECIFIED: bool = IP_ADDRESS.is_unspecified();
     assert!(!IS_UNSPECIFIED);
@@ -971,8 +987,14 @@ fn ipv6_const() {
     const SEGMENTS: [u16; 8] = IP_ADDRESS.segments();
     assert_eq!(SEGMENTS, [0, 0, 0, 0, 0, 0, 0, 1]);
 
+    const FROM_SEGMENTS: Ipv6Addr = Ipv6Addr::from_segments(SEGMENTS);
+    assert_eq!(IP_ADDRESS, FROM_SEGMENTS);
+
     const OCTETS: [u8; 16] = IP_ADDRESS.octets();
     assert_eq!(OCTETS, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+
+    const FROM_OCTETS: Ipv6Addr = Ipv6Addr::from_octets(OCTETS);
+    assert_eq!(IP_ADDRESS, FROM_OCTETS);
 
     const IS_UNSPECIFIED: bool = IP_ADDRESS.is_unspecified();
     assert!(!IS_UNSPECIFIED);

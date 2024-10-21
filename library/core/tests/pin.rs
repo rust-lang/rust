@@ -19,6 +19,10 @@ fn pin_const() {
     const REF: &'static usize = PINNED.get_ref();
     assert_eq!(REF, POINTER);
 
+    const INT: u8 = 42;
+    const STATIC_REF: Pin<&'static u8> = Pin::static_ref(&INT);
+    assert_eq!(*STATIC_REF, INT);
+
     // Note: `pin_mut_const` tests that the methods of `Pin<&mut T>` are usable in a const context.
     // A const fn is used because `&mut` is not (yet) usable in constants.
     const fn pin_mut_const() {

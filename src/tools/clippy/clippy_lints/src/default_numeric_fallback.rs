@@ -119,7 +119,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             ExprKind::Block(

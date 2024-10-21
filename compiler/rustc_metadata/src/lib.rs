@@ -1,9 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(control_flow_enum)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(error_iter)]

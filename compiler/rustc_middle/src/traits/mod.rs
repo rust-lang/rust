@@ -25,6 +25,7 @@ use rustc_span::{DUMMY_SP, Span};
 // FIXME: Remove this import and import via `solve::`
 pub use rustc_type_ir::solve::{BuiltinImplSource, Reveal};
 use smallvec::{SmallVec, smallvec};
+use thin_vec::ThinVec;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 use crate::mir::ConstraintCategory;
@@ -556,8 +557,8 @@ pub enum SelectionError<'tcx> {
     /// (which for closures includes the "input" type params) and they
     /// didn't resolve. See `confirm_poly_trait_refs` for more.
     SignatureMismatch(Box<SignatureMismatchData<'tcx>>),
-    /// The trait pointed by `DefId` is not object safe.
-    TraitNotObjectSafe(DefId),
+    /// The trait pointed by `DefId` is dyn-incompatible.
+    TraitDynIncompatible(DefId),
     /// A given constant couldn't be evaluated.
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
@@ -625,14 +626,14 @@ pub enum ImplSource<'tcx, N> {
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    Param(Vec<N>),
+    Param(ThinVec<N>),
 
     /// Successful resolution for a builtin impl.
-    Builtin(BuiltinImplSource, Vec<N>),
+    Builtin(BuiltinImplSource, ThinVec<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
-    pub fn nested_obligations(self) -> Vec<N> {
+    pub fn nested_obligations(self) -> ThinVec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
             ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
@@ -686,11 +687,11 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
     pub args: GenericArgsRef<'tcx>,
-    pub nested: Vec<N>,
+    pub nested: ThinVec<N>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
-pub enum ObjectSafetyViolation {
+pub enum DynCompatibilityViolation {
     /// `Self: Sized` declared on the trait.
     SizedSelf(SmallVec<[Span; 1]>),
 
@@ -711,11 +712,11 @@ pub enum ObjectSafetyViolation {
     GAT(Symbol, Span),
 }
 
-impl ObjectSafetyViolation {
+impl DynCompatibilityViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match self {
-            ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
-            ObjectSafetyViolation::SupertraitSelf(ref spans) => {
+            DynCompatibilityViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
+            DynCompatibilityViolation::SupertraitSelf(ref spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
                     "it uses `Self` as a type parameter".into()
                 } else {
@@ -723,81 +724,87 @@ impl ObjectSafetyViolation {
                         .into()
                 }
             }
-            ObjectSafetyViolation::SupertraitNonLifetimeBinder(_) => {
+            DynCompatibilityViolation::SupertraitNonLifetimeBinder(_) => {
                 "where clause cannot reference non-lifetime `for<...>` variables".into()
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
+            DynCompatibilityViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
                 format!("associated function `{name}` has no `self` parameter").into()
             }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::ReferencesSelfInput(_),
                 DUMMY_SP,
             ) => format!("method `{name}` references the `Self` type in its parameters").into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfInput(_), _) => {
-                format!("method `{name}` references the `Self` type in this parameter").into()
-            }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfOutput, _) => {
-                format!("method `{name}` references the `Self` type in its return type").into()
-            }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
+                name,
+                MethodViolationCode::ReferencesSelfInput(_),
+                _,
+            ) => format!("method `{name}` references the `Self` type in this parameter").into(),
+            DynCompatibilityViolation::Method(
+                name,
+                MethodViolationCode::ReferencesSelfOutput,
+                _,
+            ) => format!("method `{name}` references the `Self` type in its return type").into(),
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::ReferencesImplTraitInTrait(_),
                 _,
             ) => {
                 format!("method `{name}` references an `impl Trait` type in its return type").into()
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::AsyncFn, _) => {
+            DynCompatibilityViolation::Method(name, MethodViolationCode::AsyncFn, _) => {
                 format!("method `{name}` is `async`").into()
             }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::WhereClauseReferencesSelf,
                 _,
             ) => format!("method `{name}` references the `Self` type in its `where` clause").into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) => {
+            DynCompatibilityViolation::Method(name, MethodViolationCode::Generic, _) => {
                 format!("method `{name}` has generic type parameters").into()
             }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::UndispatchableReceiver(_),
                 _,
             ) => format!("method `{name}`'s `self` parameter cannot be dispatched on").into(),
-            ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
+            DynCompatibilityViolation::AssocConst(name, DUMMY_SP) => {
                 format!("it contains associated `const` `{name}`").into()
             }
-            ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
-            ObjectSafetyViolation::GAT(name, _) => {
+            DynCompatibilityViolation::AssocConst(..) => {
+                "it contains this associated `const`".into()
+            }
+            DynCompatibilityViolation::GAT(name, _) => {
                 format!("it contains the generic associated type `{name}`").into()
             }
         }
     }
 
-    pub fn solution(&self) -> ObjectSafetyViolationSolution {
+    pub fn solution(&self) -> DynCompatibilityViolationSolution {
         match self {
-            ObjectSafetyViolation::SizedSelf(_)
-            | ObjectSafetyViolation::SupertraitSelf(_)
-            | ObjectSafetyViolation::SupertraitNonLifetimeBinder(..) => {
-                ObjectSafetyViolationSolution::None
+            DynCompatibilityViolation::SizedSelf(_)
+            | DynCompatibilityViolation::SupertraitSelf(_)
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..) => {
+                DynCompatibilityViolationSolution::None
             }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::StaticMethod(Some((add_self_sugg, make_sized_sugg))),
                 _,
-            ) => ObjectSafetyViolationSolution::AddSelfOrMakeSized {
+            ) => DynCompatibilityViolationSolution::AddSelfOrMakeSized {
                 name: *name,
                 add_self_sugg: add_self_sugg.clone(),
                 make_sized_sugg: make_sized_sugg.clone(),
             },
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::UndispatchableReceiver(Some(span)),
                 _,
-            ) => ObjectSafetyViolationSolution::ChangeToRefSelf(*name, *span),
-            ObjectSafetyViolation::AssocConst(name, _)
-            | ObjectSafetyViolation::GAT(name, _)
-            | ObjectSafetyViolation::Method(name, ..) => {
-                ObjectSafetyViolationSolution::MoveToAnotherTrait(*name)
+            ) => DynCompatibilityViolationSolution::ChangeToRefSelf(*name, *span),
+            DynCompatibilityViolation::AssocConst(name, _)
+            | DynCompatibilityViolation::GAT(name, _)
+            | DynCompatibilityViolation::Method(name, ..) => {
+                DynCompatibilityViolationSolution::MoveToAnotherTrait(*name)
             }
         }
     }
@@ -806,12 +813,12 @@ impl ObjectSafetyViolation {
         // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
         // diagnostics use a `note` instead of a `span_label`.
         match self {
-            ObjectSafetyViolation::SupertraitSelf(spans)
-            | ObjectSafetyViolation::SizedSelf(spans)
-            | ObjectSafetyViolation::SupertraitNonLifetimeBinder(spans) => spans.clone(),
-            ObjectSafetyViolation::AssocConst(_, span)
-            | ObjectSafetyViolation::GAT(_, span)
-            | ObjectSafetyViolation::Method(_, _, span)
+            DynCompatibilityViolation::SupertraitSelf(spans)
+            | DynCompatibilityViolation::SizedSelf(spans)
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans) => spans.clone(),
+            DynCompatibilityViolation::AssocConst(_, span)
+            | DynCompatibilityViolation::GAT(_, span)
+            | DynCompatibilityViolation::Method(_, _, span)
                 if *span != DUMMY_SP =>
             {
                 smallvec![*span]
@@ -822,7 +829,7 @@ impl ObjectSafetyViolation {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum ObjectSafetyViolationSolution {
+pub enum DynCompatibilityViolationSolution {
     None,
     AddSelfOrMakeSized {
         name: Symbol,
@@ -833,11 +840,11 @@ pub enum ObjectSafetyViolationSolution {
     MoveToAnotherTrait(Symbol),
 }
 
-impl ObjectSafetyViolationSolution {
+impl DynCompatibilityViolationSolution {
     pub fn add_to<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
         match self {
-            ObjectSafetyViolationSolution::None => {}
-            ObjectSafetyViolationSolution::AddSelfOrMakeSized {
+            DynCompatibilityViolationSolution::None => {}
+            DynCompatibilityViolationSolution::AddSelfOrMakeSized {
                 name,
                 add_self_sugg,
                 make_sized_sugg,
@@ -860,7 +867,7 @@ impl ObjectSafetyViolationSolution {
                     Applicability::MaybeIncorrect,
                 );
             }
-            ObjectSafetyViolationSolution::ChangeToRefSelf(name, span) => {
+            DynCompatibilityViolationSolution::ChangeToRefSelf(name, span) => {
                 err.span_suggestion(
                     span,
                     format!("consider changing method `{name}`'s `self` parameter to be `&self`"),
@@ -868,14 +875,14 @@ impl ObjectSafetyViolationSolution {
                     Applicability::MachineApplicable,
                 );
             }
-            ObjectSafetyViolationSolution::MoveToAnotherTrait(name) => {
+            DynCompatibilityViolationSolution::MoveToAnotherTrait(name) => {
                 err.help(format!("consider moving `{name}` to another trait"));
             }
         }
     }
 }
 
-/// Reasons a method might not be object-safe.
+/// Reasons a method might not be dyn-compatible.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
 pub enum MethodViolationCode {
     /// e.g., `fn foo()`

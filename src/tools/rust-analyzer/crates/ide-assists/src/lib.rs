@@ -58,6 +58,8 @@
 //! See also this post:
 //! <https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html>
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
 mod assist_config;
 mod assist_context;
 #[cfg(test)]
@@ -136,6 +138,7 @@ mod handlers {
     mod destructure_tuple_binding;
     mod desugar_doc_comment;
     mod expand_glob_import;
+    mod explicit_enum_discriminant;
     mod extract_expressions_from_format_string;
     mod extract_function;
     mod extract_module;
@@ -266,6 +269,7 @@ mod handlers {
             destructure_tuple_binding::destructure_tuple_binding,
             destructure_struct_binding::destructure_struct_binding,
             expand_glob_import::expand_glob_import,
+            explicit_enum_discriminant::explicit_enum_discriminant,
             extract_expressions_from_format_string::extract_expressions_from_format_string,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             extract_type_alias::extract_type_alias,

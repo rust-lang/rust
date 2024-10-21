@@ -106,7 +106,18 @@ help: you might have meant to use `push_str`
 LL |     String::new().push_str("");
    |                   ~~~~~~~~
 
-error: aborting due to 8 previous errors
+error[E0599]: no method named `get_line` found for struct `Stdin` in the current scope
+  --> $DIR/rustc_confusables_std_cases.rs:28:11
+   |
+LL |     stdin.get_line(&mut buffer).unwrap();
+   |           ^^^^^^^^ method not found in `Stdin`
+   |
+help: you might have meant to use `read_line`
+   |
+LL |     stdin.read_line(&mut buffer).unwrap();
+   |           ~~~~~~~~~
+
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0308, E0599.
 For more information about an error, try `rustc --explain E0308`.

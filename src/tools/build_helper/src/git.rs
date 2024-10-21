@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use crate::ci::CiEnv;
+
 pub struct GitConfig<'a> {
     pub git_repository: &'a str,
     pub nightly_branch: &'a str,
@@ -114,8 +116,8 @@ fn git_upstream_merge_base(
 
 /// Searches for the nearest merge commit in the repository that also exists upstream.
 ///
-/// If it fails to find the upstream remote, it then looks for the most recent commit made
-/// by the merge bot by matching the author's email address with the merge bot's email.
+/// It looks for the most recent commit made by the merge bot by matching the author's email
+/// address with the merge bot's email.
 pub fn get_closest_merge_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
@@ -127,7 +129,15 @@ pub fn get_closest_merge_commit(
         git.current_dir(git_dir);
     }
 
-    let merge_base = git_upstream_merge_base(config, git_dir).unwrap_or_else(|_| "HEAD".into());
+    let merge_base = {
+        if CiEnv::is_ci() {
+            git_upstream_merge_base(config, git_dir).unwrap()
+        } else {
+            // For non-CI environments, ignore rust-lang/rust upstream as it usually gets
+            // outdated very quickly.
+            "HEAD".to_string()
+        }
+    };
 
     git.args([
         "rev-list",
@@ -195,68 +205,4 @@ pub fn get_git_untracked_files(
         .map(|s| s.trim().to_owned())
         .collect();
     Ok(Some(files))
-}
-
-/// Print a warning if the branch returned from `updated_master_branch` is old
-///
-/// For certain configurations of git repository, this remote will not be
-/// updated when running `git pull`.
-///
-/// This can result in formatting thousands of files instead of a dozen,
-/// so we should warn the user something is wrong.
-pub fn warn_old_master_branch(config: &GitConfig<'_>, git_dir: &Path) {
-    if crate::ci::CiEnv::is_ci() {
-        // this warning is useless in CI,
-        // and CI probably won't have the right branches anyway.
-        return;
-    }
-    // this will be overwritten by the actual name, if possible
-    let mut updated_master = "the upstream master branch".to_string();
-    match warn_old_master_branch_(config, git_dir, &mut updated_master) {
-        Ok(branch_is_old) => {
-            if !branch_is_old {
-                return;
-            }
-            // otherwise fall through and print the rest of the warning
-        }
-        Err(err) => {
-            eprintln!("warning: unable to check if {updated_master} is old due to error: {err}")
-        }
-    }
-    eprintln!(
-        "warning: {updated_master} is used to determine if files have been modified\n\
-         warning: if it is not updated, this may cause files to be needlessly reformatted"
-    );
-}
-
-pub fn warn_old_master_branch_(
-    config: &GitConfig<'_>,
-    git_dir: &Path,
-    updated_master: &mut String,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    use std::time::Duration;
-    *updated_master = updated_master_branch(config, Some(git_dir))?;
-    let branch_path = git_dir.join(".git/refs/remotes").join(&updated_master);
-    const WARN_AFTER: Duration = Duration::from_secs(60 * 60 * 24 * 10);
-    let meta = match std::fs::metadata(&branch_path) {
-        Ok(meta) => meta,
-        Err(err) => {
-            let gcd = git_common_dir(&git_dir)?;
-            if branch_path.starts_with(&gcd) {
-                return Err(Box::new(err));
-            }
-            std::fs::metadata(Path::new(&gcd).join("refs/remotes").join(&updated_master))?
-        }
-    };
-    if meta.modified()?.elapsed()? > WARN_AFTER {
-        eprintln!("warning: {updated_master} has not been updated in 10 days");
-        Ok(true)
-    } else {
-        Ok(false)
-    }
-}
-
-fn git_common_dir(dir: &Path) -> Result<String, String> {
-    output_result(Command::new("git").arg("-C").arg(dir).arg("rev-parse").arg("--git-common-dir"))
-        .map(|x| x.trim().to_string())
 }

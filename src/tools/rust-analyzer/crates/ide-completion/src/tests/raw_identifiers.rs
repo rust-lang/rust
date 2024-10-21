@@ -30,7 +30,7 @@ fn foo() {
 "#,
         expect![[r#"
             fn foo() {
-                a::dyn()$0
+                a::dyn();$0
         "#]],
     );
 
@@ -45,7 +45,7 @@ fn foo() {
 "#,
         expect![[r#"
             fn foo() {
-                a::dyn()$0
+                a::dyn();$0
         "#]],
     );
 }
@@ -63,7 +63,7 @@ fn foo() {
 "#,
         expect![[r#"
             fn foo() {
-                a::r#dyn()$0
+                a::r#dyn();$0
         "#]],
     );
 
@@ -78,7 +78,7 @@ fn foo() {
 "#,
         expect![[r#"
             fn foo() {
-                a::r#dyn()$0
+                a::r#dyn();$0
         "#]],
     );
 }

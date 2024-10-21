@@ -29,12 +29,14 @@ impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
+    #[track_caller]
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
     }
 }
 
 impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
+    #[track_caller]
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter

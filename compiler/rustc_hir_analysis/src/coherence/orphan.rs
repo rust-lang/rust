@@ -109,16 +109,16 @@ pub(crate) fn orphan_check_impl(
         //
         //     auto trait AutoTrait {}
         //
-        //     trait ObjectSafeTrait {
+        //     trait DynCompatibleTrait {
         //         fn f(&self) where Self: AutoTrait;
         //     }
         //
-        // We can allow f to be called on `dyn ObjectSafeTrait + AutoTrait`.
+        // We can allow f to be called on `dyn DynCompatibleTrait + AutoTrait`.
         //
         // If we didn't deny `impl AutoTrait for dyn Trait`, it would be unsound
-        // for the ObjectSafeTrait shown above to be object safe because someone
-        // could take some type implementing ObjectSafeTrait but not AutoTrait,
-        // unsize it to `dyn ObjectSafeTrait`, and call .f() which has no
+        // for the `DynCompatibleTrait` shown above to be dyn-compatible because someone
+        // could take some type implementing `DynCompatibleTrait` but not `AutoTrait`,
+        // unsize it to `dyn DynCompatibleTrait`, and call `.f()` which has no
         // concrete implementation (issue #50781).
         enum LocalImpl {
             Allow,

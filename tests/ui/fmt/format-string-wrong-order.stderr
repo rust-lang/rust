@@ -22,21 +22,21 @@ LL |     format!("{?:?}", bar);
    |
    = note: `?` comes after `:`, try `:?` instead
 
-error: invalid format string: expected `'}'`, found `'?'`
+error: invalid format string: expected `}`, found `?`
   --> $DIR/format-string-wrong-order.rs:9:15
    |
 LL |     format!("{??}", bar);
-   |              -^ expected `'}'` in format string
+   |              -^ expected `}` in format string
    |              |
    |              because of this opening brace
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
-error: invalid format string: expected `'}'`, found `'?'`
+error: invalid format string: expected `}`, found `?`
   --> $DIR/format-string-wrong-order.rs:11:15
    |
 LL |     format!("{?;bar}");
-   |              -^ expected `'}'` in format string
+   |              -^ expected `}` in format string
    |              |
    |              because of this opening brace
    |

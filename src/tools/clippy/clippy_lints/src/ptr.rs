@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local};
+use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
 use hir::LifetimeName;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::hir_id::{HirId, HirIdMap};
@@ -271,14 +271,18 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         && let Some(name) = cx.tcx.get_diagnostic_name(fun_def_id)
     {
+        // TODO: `ptr_slice_from_raw_parts` and its mutable variant should probably still be linted
+        // conditionally based on how the return value is used, but not universally like the other
+        // functions since there are valid uses for null slice pointers.
+        //
+        // See: https://github.com/rust-lang/rust-clippy/pull/13452/files#r1773772034
+
         // `arg` positions where null would cause U.B.
         let arg_indices: &[_] = match name {
             sym::ptr_read
             | sym::ptr_read_unaligned
             | sym::ptr_read_volatile
             | sym::ptr_replace
-            | sym::ptr_slice_from_raw_parts
-            | sym::ptr_slice_from_raw_parts_mut
             | sym::ptr_write
             | sym::ptr_write_bytes
             | sym::ptr_write_unaligned
@@ -290,14 +294,16 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         };
 
         for &arg_idx in arg_indices {
-            if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg)) {
+            if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg))
+                && let Some(std_or_core) = std_or_core(cx)
+            {
                 span_lint_and_sugg(
                     cx,
                     INVALID_NULL_PTR_USAGE,
                     arg.span,
                     "pointer must be non-null",
                     "change this to",
-                    "core::ptr::NonNull::dangling().as_ptr()".to_string(),
+                    format!("{std_or_core}::ptr::NonNull::dangling().as_ptr()"),
                     Applicability::MachineApplicable,
                 );
             }

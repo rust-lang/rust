@@ -36,7 +36,7 @@ export async function selectRunnable(
 
     if (runnables.length === 0) {
         // it is the debug case, run always has at least 'cargo check ...'
-        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_runnables
+        // see crates\rust-analyzer\src\handlers\request.rs, handle_runnables
         await vscode.window.showErrorMessage("There's no debug target!");
         quickPick.dispose();
         return;

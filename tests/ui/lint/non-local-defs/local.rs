@@ -51,3 +51,10 @@ fn bitflags() {
         impl Flags {}
     };
 }
+
+fn bitflags_internal() {
+    const _: () = {
+        struct InternalFlags;
+        impl InternalFlags {}
+    };
+}

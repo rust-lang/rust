@@ -3,7 +3,7 @@ use crate::sync::{Arc, Barrier};
 use crate::thread;
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn test_barrier() {
     const N: usize = 10;
 

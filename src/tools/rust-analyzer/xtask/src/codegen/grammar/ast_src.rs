@@ -113,7 +113,31 @@ const RESERVED: &[&str] = &[
 const CONTEXTUAL_KEYWORDS: &[&str] =
     &["macro_rules", "union", "default", "raw", "dyn", "auto", "yeet"];
 // keywords we use for special macro expansions
-const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &["builtin", "offset_of", "format_args", "asm"];
+const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
+    "asm",
+    "att_syntax",
+    "builtin",
+    "clobber_abi",
+    "format_args",
+    // "in",
+    "inlateout",
+    "inout",
+    "label",
+    "lateout",
+    "may_unwind",
+    "nomem",
+    "noreturn",
+    "nostack",
+    "offset_of",
+    "options",
+    "out",
+    "preserves_flags",
+    "pure",
+    // "raw",
+    "readonly",
+    "sym",
+];
+
 // keywords that are keywords depending on the edition
 const EDITION_DEPENDENT_KEYWORDS: &[(&str, Edition)] = &[
     ("try", Edition::Edition2018),

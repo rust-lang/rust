@@ -61,7 +61,7 @@ pub mod crt_objects;
 mod base;
 pub use base::apple::{
     deployment_target_for_target as current_apple_deployment_target,
-    platform as current_apple_platform, sdk_version as current_apple_sdk_version,
+    platform as current_apple_platform,
 };
 pub use base::avr_gnu::ef_avr_arch;
 
@@ -826,6 +826,46 @@ impl RelroLevel {
             RelroLevel::Partial => "partial",
             RelroLevel::Off => "off",
             RelroLevel::None => "none",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum SymbolVisibility {
+    Hidden,
+    Protected,
+    Interposable,
+}
+
+impl SymbolVisibility {
+    pub fn desc(&self) -> &str {
+        match *self {
+            SymbolVisibility::Hidden => "hidden",
+            SymbolVisibility::Protected => "protected",
+            SymbolVisibility::Interposable => "interposable",
+        }
+    }
+}
+
+impl FromStr for SymbolVisibility {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<SymbolVisibility, ()> {
+        match s {
+            "hidden" => Ok(SymbolVisibility::Hidden),
+            "protected" => Ok(SymbolVisibility::Protected),
+            "interposable" => Ok(SymbolVisibility::Interposable),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for SymbolVisibility {
+    fn to_json(&self) -> Json {
+        match *self {
+            SymbolVisibility::Hidden => "hidden".to_json(),
+            SymbolVisibility::Protected => "protected".to_json(),
+            SymbolVisibility::Interposable => "interposable".to_json(),
         }
     }
 }
@@ -1790,6 +1830,7 @@ supported_targets! {
 
     ("armv7-unknown-trusty", armv7_unknown_trusty),
     ("aarch64-unknown-trusty", aarch64_unknown_trusty),
+    ("x86_64-unknown-trusty", x86_64_unknown_trusty),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32im-risc0-zkvm-elf", riscv32im_risc0_zkvm_elf),
@@ -1799,6 +1840,10 @@ supported_targets! {
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
     ("riscv32imafc-esp-espidf", riscv32imafc_esp_espidf),
+
+    ("riscv32e-unknown-none-elf", riscv32e_unknown_none_elf),
+    ("riscv32em-unknown-none-elf", riscv32em_unknown_none_elf),
+    ("riscv32emc-unknown-none-elf", riscv32emc_unknown_none_elf),
 
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32imafc-unknown-none-elf", riscv32imafc_unknown_none_elf),
@@ -2326,13 +2371,12 @@ pub struct TargetOptions {
     /// for this target unconditionally.
     pub no_builtins: bool,
 
-    /// The default visibility for symbols in this target should be "hidden"
-    /// rather than "default".
+    /// The default visibility for symbols in this target.
     ///
-    /// This value typically shouldn't be accessed directly, but through
-    /// the `rustc_session::Session::default_hidden_visibility` method, which
-    /// allows `rustc` users to override this setting using cmdline flags.
-    pub default_hidden_visibility: bool,
+    /// This value typically shouldn't be accessed directly, but through the
+    /// `rustc_session::Session::default_visibility` method, which allows `rustc` users to override
+    /// this setting using cmdline flags.
+    pub default_visibility: Option<SymbolVisibility>,
 
     /// Whether a .debug_gdb_scripts section will be added to the output object file
     pub emit_debug_gdb_scripts: bool,
@@ -2468,6 +2512,13 @@ fn add_link_args_iter(
 
 fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'static str]) {
     add_link_args_iter(link_args, flavor, args.iter().copied().map(Cow::Borrowed))
+}
+
+impl TargetOptions {
+    pub fn supports_comdat(&self) -> bool {
+        // XCOFF and MachO don't support COMDAT.
+        !self.is_like_aix && !self.is_like_osx
+    }
 }
 
 impl TargetOptions {
@@ -2623,7 +2674,7 @@ impl Default for TargetOptions {
             requires_lto: false,
             singlethread: false,
             no_builtins: false,
-            default_hidden_visibility: false,
+            default_visibility: None,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
             default_uwtable: false,
@@ -2958,6 +3009,18 @@ impl Target {
                         Ok(level) => base.$key_name = level,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       relro-level. Use 'full', 'partial, or 'off'.",
+                                                      s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
+            ($key_name:ident, Option<SymbolVisibility>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
+                    match s.parse::<SymbolVisibility>() {
+                        Ok(level) => base.$key_name = Some(level),
+                        _ => return Some(Err(format!("'{}' is not a valid value for \
+                                                      symbol-visibility. Use 'hidden', 'protected, or 'interposable'.",
                                                       s))),
                     }
                     Some(Ok(()))
@@ -3353,7 +3416,7 @@ impl Target {
         key!(requires_lto, bool);
         key!(singlethread, bool);
         key!(no_builtins, bool);
-        key!(default_hidden_visibility, bool);
+        key!(default_visibility, Option<SymbolVisibility>)?;
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
         key!(default_uwtable, bool);
@@ -3633,7 +3696,7 @@ impl ToJson for Target {
         target_option_val!(requires_lto);
         target_option_val!(singlethread);
         target_option_val!(no_builtins);
-        target_option_val!(default_hidden_visibility);
+        target_option_val!(default_visibility);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
         target_option_val!(default_uwtable);

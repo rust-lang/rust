@@ -519,8 +519,8 @@ impl Waker {
     /// [`Wake`]: ../../alloc/task/trait.Wake.html
     #[inline]
     #[must_use]
-    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "waker_getters", since = "1.83.0")]
+    #[rustc_const_stable(feature = "waker_getters", since = "1.83.0")]
     pub const unsafe fn new(data: *const (), vtable: &'static RawWakerVTable) -> Self {
         Waker { waker: RawWaker { data, vtable } }
     }
@@ -584,7 +584,7 @@ impl Waker {
     /// Gets the `data` pointer used to create this `Waker`.
     #[inline]
     #[must_use]
-    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "waker_getters", since = "1.83.0")]
     pub fn data(&self) -> *const () {
         self.waker.data
     }
@@ -592,7 +592,7 @@ impl Waker {
     /// Gets the `vtable` pointer used to create this `Waker`.
     #[inline]
     #[must_use]
-    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "waker_getters", since = "1.83.0")]
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.waker.vtable
     }

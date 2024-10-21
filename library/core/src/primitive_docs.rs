@@ -505,9 +505,11 @@ impl () {}
 ///
 /// *[See also the `std::ptr` module](ptr).*
 ///
-/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
-/// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
-/// dereferenced (using the `*` operator), it must be non-null and aligned.
+/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns. Raw pointers
+/// can be out-of-bounds, unaligned, or [`null`]. However, when loading from or storing to a raw
+/// pointer, it must be [valid] for the given access and aligned. When using a field expression,
+/// tuple index expression, or array/slice index expression on a raw pointer, it follows the rules
+/// of [in-bounds pointer arithmetic][`offset`].
 ///
 /// Storing through a raw pointer using `*ptr = data` calls `drop` on the old value, so
 /// [`write`] must be used if the type has drop glue and memory is not already
@@ -613,6 +615,7 @@ impl () {}
 /// [`offset`]: pointer::offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
 /// [`write`]: ptr::write
+/// [valid]: ptr#safety
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
@@ -860,6 +863,27 @@ mod prim_array {}
 /// let x = &mut x[..]; // Take a full slice of `x`.
 /// x[1] = 7;
 /// assert_eq!(x, &[1, 7, 3]);
+/// ```
+///
+/// It is possible to slice empty subranges of slices by using empty ranges (including `slice.len()..slice.len()`):
+/// ```
+/// let x = [1, 2, 3];
+/// let empty = &x[0..0];   // subslice before the first element
+/// assert_eq!(empty, &[]);
+/// let empty = &x[..0];    // same as &x[0..0]
+/// assert_eq!(empty, &[]);
+/// let empty = &x[1..1];   // empty subslice in the middle
+/// assert_eq!(empty, &[]);
+/// let empty = &x[3..3];   // subslice after the last element
+/// assert_eq!(empty, &[]);
+/// let empty = &x[3..];    // same as &x[3..3]
+/// assert_eq!(empty, &[]);
+/// ```
+///
+/// It is not allowed to use subranges that start with lower bound bigger than `slice.len()`:
+/// ```should_panic
+/// let x = vec![1, 2, 3];
+/// let _ = &x[4..4];
 /// ```
 ///
 /// As slices store the length of the sequence they refer to, they have twice
@@ -1251,7 +1275,7 @@ mod prim_f16 {}
 ///   - **Unchanged NaN propagation**: The quiet bit and payload are copied from any input operand
 ///     that is a NaN. If the inputs and outputs do not have the same size (i.e., for `as` casts), the
 ///     same rules as for "quieting NaN propagation" apply, with one caveat: if the output is smaller
-///     than the input, droppig the low-order bits may result in a payload of 0; a payload of 0 is not
+///     than the input, dropping the low-order bits may result in a payload of 0; a payload of 0 is not
 ///     possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
 ///     propagation cannot occur with some inputs.
 ///   - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific

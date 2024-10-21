@@ -1027,7 +1027,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // Point at this range.
                     first_range: thir_pat.span,
                     // That's the gap that isn't covered.
-                    max: gap_as_pat.to_string(),
+                    max: gap_as_pat,
                     // Suggest `lo..=max` instead.
                     suggestion: suggested_range,
                 },

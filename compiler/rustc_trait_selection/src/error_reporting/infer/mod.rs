@@ -1127,18 +1127,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// the message in `secondary_span` as the primary label, and apply the message that would
     /// otherwise be used for the primary label on the `secondary_span` `Span`. This applies on
     /// E0271, like `tests/ui/issues/issue-39970.stderr`.
-    #[instrument(
-        level = "debug",
-        skip(self, diag, secondary_span, swap_secondary_and_primary, prefer_label)
-    )]
+    #[instrument(level = "debug", skip(self, diag, secondary_span, prefer_label))]
     pub fn note_type_err(
         &self,
         diag: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
-        secondary_span: Option<(Span, Cow<'static, str>)>,
+        secondary_span: Option<(Span, Cow<'static, str>, bool)>,
         mut values: Option<ValuePairs<'tcx>>,
         terr: TypeError<'tcx>,
-        swap_secondary_and_primary: bool,
         prefer_label: bool,
     ) {
         let span = cause.span();
@@ -1285,9 +1281,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ValuePairs::ExistentialProjection(_) => {
                         (false, Mismatch::Fixed("existential projection"))
                     }
-                    ValuePairs::Dummy => {
-                        bug!("do not expect to report a type error from a ValuePairs::Dummy")
-                    }
                 };
                 let Some(vals) = self.values_str(values) else {
                     // Derived error. Cancel the emitter.
@@ -1307,7 +1300,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 diag.span_note(span, msg);
             }
         };
-        if let Some((sp, msg)) = secondary_span {
+        if let Some((secondary_span, secondary_msg, swap_secondary_and_primary)) = secondary_span {
             if swap_secondary_and_primary {
                 let terr = if let Some(infer::ValuePairs::Terms(ExpectedFound {
                     expected, ..
@@ -1317,11 +1310,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else {
                     terr.to_string(self.tcx)
                 };
-                label_or_note(sp, terr);
-                label_or_note(span, msg);
+                label_or_note(secondary_span, terr);
+                label_or_note(span, secondary_msg);
             } else {
                 label_or_note(span, terr.to_string(self.tcx));
-                label_or_note(sp, msg);
+                label_or_note(secondary_span, secondary_msg);
             }
         } else if let Some(values) = values
             && let Some((e, f)) = values.ty()
@@ -1791,7 +1784,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.type_error_additional_suggestions(&trace, terr),
         );
         let mut diag = self.dcx().create_err(failure_code);
-        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false, false);
+        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false);
         diag
     }
 
@@ -1852,9 +1845,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, &exp_found.found);
                 Some((exp, fnd, None))
-            }
-            ValuePairs::Dummy => {
-                bug!("do not expect to report a type error from a ValuePairs::Dummy")
             }
         }
     }

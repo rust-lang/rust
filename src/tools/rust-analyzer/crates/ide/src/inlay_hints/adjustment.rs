@@ -6,9 +6,8 @@
 use either::Either;
 use hir::{
     Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, OverloadedDeref, PointerCast, Safety,
-    Semantics,
 };
-use ide_db::RootDatabase;
+use ide_db::famous_defs::FamousDefs;
 
 use span::EditionedFileId;
 use stdx::never;
@@ -24,7 +23,7 @@ use crate::{
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
     expr: &ast::Expr,
@@ -156,6 +155,7 @@ pub(super) fn hints(
             kind: InlayKind::Adjustment,
             label,
             text_edit: None,
+            resolve_parent: Some(expr.syntax().text_range()),
         });
     }
     if !postfix && needs_inner_parens {
@@ -288,7 +288,7 @@ mod tests {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
-//- minicore: coerce_unsized, fn, eq, index
+//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn
 fn main() {
     let _: u32         = loop {};
                        //^^^^^^^<never-to-any>
@@ -313,6 +313,7 @@ fn main() {
                        //^^^^^^^^^^^^<safe-fn-pointer-to-unsafe-fn-pointer>
                        //^^^^^^^^^^^^(
                        //^^^^^^^^^^^^)
+                       //^^^^<fn-item-to-fn-pointer>
     let _: fn()        = || {};
                        //^^^^^<closure-to-fn-pointer>
     let _: unsafe fn() = || {};
@@ -321,6 +322,8 @@ fn main() {
                        //^^^^^^^^^^^^^^^^^^^^^<mut-ptr-to-const-ptr>
                        //^^^^^^^^^^^^^^^^^^^^^(
                        //^^^^^^^^^^^^^^^^^^^^^)
+                       //^^^^^^^^^&raw mut $
+                       //^^^^^^^^^*
     let _: &mut [_]    = &mut [0; 0];
                        //^^^^^^^^^^^<unsize>
                        //^^^^^^^^^^^&mut $
@@ -428,7 +431,7 @@ impl core::ops::IndexMut for Struct {}
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: coerce_unsized, fn, eq, index
+//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn
 fn main() {
 
     Struct.consume();

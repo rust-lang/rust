@@ -18,9 +18,9 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    AllocId, BadBytesAccess, CtfeProvenance, InterpError, InterpResult, Pointer, PointerArithmetic,
-    Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo,
-    UnsupportedOpInfo, read_target_uint, write_target_uint,
+    AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer,
+    PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
+    UndefinedBehaviorInfo, UnsupportedOpInfo, interp_ok, read_target_uint, write_target_uint,
 };
 use crate::ty;
 
@@ -199,22 +199,22 @@ impl From<ScalarSizeMismatch> for AllocError {
 }
 
 impl AllocError {
-    pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpError<'tcx> {
+    pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpErrorKind<'tcx> {
         use AllocError::*;
         match self {
             ScalarSizeMismatch(s) => {
-                InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
+                InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
             }
-            ReadPointerAsInt(info) => InterpError::Unsupported(
+            ReadPointerAsInt(info) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::ReadPointerAsInt(info.map(|b| (alloc_id, b))),
             ),
-            OverwritePartialPointer(offset) => InterpError::Unsupported(
+            OverwritePartialPointer(offset) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::OverwritePartialPointer(Pointer::new(alloc_id, offset)),
             ),
-            ReadPartialPointer(offset) => InterpError::Unsupported(
+            ReadPartialPointer(offset) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::ReadPartialPointer(Pointer::new(alloc_id, offset)),
             ),
-            InvalidUninitBytes(info) => InterpError::UndefinedBehavior(
+            InvalidUninitBytes(info) => InterpErrorKind::UndefinedBehavior(
                 UndefinedBehaviorInfo::InvalidUninitBytes(info.map(|b| (alloc_id, b))),
             ),
         }
@@ -318,8 +318,9 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     pub fn try_uninit<'tcx>(size: Size, align: Align) -> InterpResult<'tcx, Self> {
         Self::uninit_inner(size, align, || {
             ty::tls::with(|tcx| tcx.dcx().delayed_bug("exhausted memory during interpretation"));
-            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted).into()
+            InterpErrorKind::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })
+        .into()
     }
 
     /// Try to create an Allocation of `size` bytes, panics if there is not enough memory
@@ -355,12 +356,12 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
 impl Allocation {
     /// Adjust allocation from the ones in `tcx` to a custom Machine instance
     /// with a different `Provenance` and `Byte` type.
-    pub fn adjust_from_tcx<Prov: Provenance, Bytes: AllocBytes, Err>(
+    pub fn adjust_from_tcx<'tcx, Prov: Provenance, Bytes: AllocBytes>(
         &self,
         cx: &impl HasDataLayout,
-        mut alloc_bytes: impl FnMut(&[u8], Align) -> Result<Bytes, Err>,
-        mut adjust_ptr: impl FnMut(Pointer<CtfeProvenance>) -> Result<Pointer<Prov>, Err>,
-    ) -> Result<Allocation<Prov, (), Bytes>, Err> {
+        mut alloc_bytes: impl FnMut(&[u8], Align) -> InterpResult<'tcx, Bytes>,
+        mut adjust_ptr: impl FnMut(Pointer<CtfeProvenance>) -> InterpResult<'tcx, Pointer<Prov>>,
+    ) -> InterpResult<'tcx, Allocation<Prov, (), Bytes>> {
         // Copy the data.
         let mut bytes = alloc_bytes(&*self.bytes, self.align)?;
         // Adjust provenance of pointers stored in this allocation.
@@ -377,7 +378,7 @@ impl Allocation {
             new_provenance.push((offset, ptr_prov));
         }
         // Create allocation.
-        Ok(Allocation {
+        interp_ok(Allocation {
             bytes,
             provenance: ProvenanceMap::from_presorted_ptrs(new_provenance),
             init_mask: self.init_mask.clone(),

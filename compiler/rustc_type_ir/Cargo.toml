@@ -17,6 +17,7 @@ rustc_serialize = { path = "../rustc_serialize", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
 rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
 smallvec = { version = "1.8.1", default-features = false }
+thin-vec = "0.2.12"
 tracing = "0.1"
 # tidy-alphabetical-end
 
@@ -30,7 +31,7 @@ nightly = [
     "smallvec/may_dangle",
     "smallvec/union",
     "rustc_index/nightly",
-    "rustc_ast_ir/nightly"
+    "rustc_ast_ir/nightly",
 ]
 
 [lints.rust]

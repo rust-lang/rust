@@ -5,6 +5,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 21, 1) to (start + 0, 29)
+Highest counter ID seen: (none)
 
 Function name: issue_93054::main
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 1d, 01, 00, 0d]
@@ -13,6 +14,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 29, 1) to (start + 0, 13)
+Highest counter ID seen: c0
 
 Function name: issue_93054::make (unused)
 Raw bytes (9): 0x[01, 01, 00, 01, 00, 19, 01, 02, 02]
@@ -21,4 +23,5 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 25, 1) to (start + 2, 2)
+Highest counter ID seen: (none)
 

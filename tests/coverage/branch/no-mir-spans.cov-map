@@ -8,6 +8,7 @@ Number of file 0 mappings: 2
 - Branch { true: Counter(1), false: Counter(2) } at (prev + 4, 11) to (start + 0, 16)
     true  = c1
     false = c2
+Highest counter ID seen: c2
 
 Function name: no_mir_spans::while_cond_not
 Raw bytes (16): 0x[01, 01, 00, 02, 01, 19, 01, 00, 15, 20, 09, 05, 04, 0b, 00, 14]
@@ -19,6 +20,7 @@ Number of file 0 mappings: 2
 - Branch { true: Counter(2), false: Counter(1) } at (prev + 4, 11) to (start + 0, 20)
     true  = c2
     false = c1
+Highest counter ID seen: c2
 
 Function name: no_mir_spans::while_op_and
 Raw bytes (25): 0x[01, 01, 01, 09, 0d, 03, 01, 22, 01, 00, 13, 20, 09, 05, 05, 0b, 00, 10, 20, 02, 0d, 00, 14, 00, 19]
@@ -34,6 +36,7 @@ Number of file 0 mappings: 3
 - Branch { true: Expression(0, Sub), false: Counter(3) } at (prev + 0, 20) to (start + 0, 25)
     true  = (c2 - c3)
     false = c3
+Highest counter ID seen: c3
 
 Function name: no_mir_spans::while_op_or
 Raw bytes (25): 0x[01, 01, 01, 09, 0d, 03, 01, 2d, 01, 00, 12, 20, 05, 09, 05, 0b, 00, 10, 20, 0d, 02, 00, 14, 00, 19]
@@ -49,4 +52,5 @@ Number of file 0 mappings: 3
 - Branch { true: Counter(3), false: Expression(0, Sub) } at (prev + 0, 20) to (start + 0, 25)
     true  = c3
     false = (c2 - c3)
+Highest counter ID seen: c3
 

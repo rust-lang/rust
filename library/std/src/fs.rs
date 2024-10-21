@@ -8,7 +8,15 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(all(test, not(any(target_os = "emscripten", target_env = "sgx", target_os = "xous"))))]
+#[cfg(all(
+    test,
+    not(any(
+        target_os = "emscripten",
+        target_os = "wasi",
+        target_env = "sgx",
+        target_os = "xous"
+    ))
+))]
 mod tests;
 
 use crate::ffi::OsString;
@@ -386,7 +394,8 @@ impl File {
     ///
     /// # Errors
     ///
-    /// This function will return an error if `path` does not already exist.
+    /// This function will return an error if `path` does not already exist,
+    /// or if memory allocation fails for the new buffer.
     /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples
@@ -2609,7 +2618,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `opendir` function on Unix
-/// and the `FindFirstFile` function on Windows. Advancing the iterator
+/// and the `FindFirstFileEx` function on Windows. Advancing the iterator
 /// currently corresponds to `readdir` on Unix and `FindNextFile` on Windows.
 /// Note that, this [may change in the future][changes].
 ///

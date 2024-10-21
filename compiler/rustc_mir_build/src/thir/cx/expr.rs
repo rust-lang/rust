@@ -672,6 +672,7 @@ impl<'tcx> Cx<'tcx> {
             }
 
             hir::ExprKind::InlineAsm(asm) => ExprKind::InlineAsm(Box::new(InlineAsmExpr {
+                asm_macro: asm.asm_macro,
                 template: asm.template,
                 operands: asm
                     .operands
@@ -699,23 +700,17 @@ impl<'tcx> Cx<'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let value = mir::Const::identity_unevaluated(
-                                tcx,
-                                anon_const.def_id.to_def_id(),
-                            )
-                            .instantiate_identity()
-                            .normalize(tcx, self.param_env);
+                            let value =
+                                mir::Const::from_unevaluated(tcx, anon_const.def_id.to_def_id())
+                                    .instantiate_identity();
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let value = mir::Const::identity_unevaluated(
-                                tcx,
-                                anon_const.def_id.to_def_id(),
-                            )
-                            .instantiate_identity()
-                            .normalize(tcx, self.param_env);
+                            let value =
+                                mir::Const::from_unevaluated(tcx, anon_const.def_id.to_def_id())
+                                    .instantiate_identity();
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }
@@ -813,21 +808,11 @@ impl<'tcx> Cx<'tcx> {
                 });
                 ExprKind::Loop { body }
             }
-            hir::ExprKind::Field(source, ..) => {
-                let mut kind = ExprKind::Field {
-                    lhs: self.mirror_expr(source),
-                    variant_index: FIRST_VARIANT,
-                    name: self.typeck_results.field_index(expr.hir_id),
-                };
-                let nested_field_tys_and_indices =
-                    self.typeck_results.nested_field_tys_and_indices(expr.hir_id);
-                for &(ty, idx) in nested_field_tys_and_indices {
-                    let expr = Expr { temp_lifetime, ty, span: source.span, kind };
-                    let lhs = self.thir.exprs.push(expr);
-                    kind = ExprKind::Field { lhs, variant_index: FIRST_VARIANT, name: idx };
-                }
-                kind
-            }
+            hir::ExprKind::Field(source, ..) => ExprKind::Field {
+                lhs: self.mirror_expr(source),
+                variant_index: FIRST_VARIANT,
+                name: self.typeck_results.field_index(expr.hir_id),
+            },
             hir::ExprKind::Cast(source, cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
                 let user_provided_types = self.typeck_results.user_provided_types();

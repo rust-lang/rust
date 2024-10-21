@@ -1,5 +1,5 @@
 error[E0311]: the parameter type `T` may not live long enough
-  --> $DIR/async-generics.rs:6:5
+  --> $DIR/async-generics.rs:5:5
    |
 LL |     async fn foo(&self) -> &(T, U);
    |     ^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |     async fn foo<'a>(&'a self) -> &'a (T, U) where T: 'a;
    |                 ++++  ++           ++        +++++++++++
 
 error[E0311]: the parameter type `U` may not live long enough
-  --> $DIR/async-generics.rs:6:5
+  --> $DIR/async-generics.rs:5:5
    |
 LL |     async fn foo(&self) -> &(T, U);
    |     ^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^

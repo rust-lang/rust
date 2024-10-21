@@ -1286,6 +1286,7 @@ fn main() {
 fn method_on_dyn_impl() {
     check_types(
         r#"
+//- minicore: coerce_unsized
 trait Foo {}
 
 impl Foo for u32 {}

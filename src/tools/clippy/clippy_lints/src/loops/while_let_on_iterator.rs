@@ -283,7 +283,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         found_local: bool,
         used_after: bool,
     }
-    impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedLoopVisitor<'a, 'b, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for NestedLoopVisitor<'_, '_, 'tcx> {
         type NestedFilter = OnlyBodies;
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()

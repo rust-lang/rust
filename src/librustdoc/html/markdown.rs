@@ -35,8 +35,7 @@ use std::str::{self, CharIndices};
 use std::sync::OnceLock;
 
 use pulldown_cmark::{
-    BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter, Options,
-    Parser, Tag, TagEnd, html,
+    BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagMessage};
@@ -58,6 +57,7 @@ use crate::html::length_limit::HtmlWithLimit;
 use crate::html::render::small_url_encode;
 use crate::html::toc::{Toc, TocBuilder};
 
+mod footnotes;
 #[cfg(test)]
 mod tests;
 
@@ -647,81 +647,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
     }
 }
 
-/// Moves all footnote definitions to the end and add back links to the
-/// references.
-struct Footnotes<'a, I> {
-    inner: I,
-    footnotes: FxHashMap<String, (Vec<Event<'a>>, u16)>,
-}
-
-impl<'a, I> Footnotes<'a, I> {
-    fn new(iter: I) -> Self {
-        Footnotes { inner: iter, footnotes: FxHashMap::default() }
-    }
-
-    fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
-        let new_id = self.footnotes.len() + 1;
-        let key = key.to_owned();
-        self.footnotes.entry(key).or_insert((Vec::new(), new_id as u16))
-    }
-}
-
-impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
-    type Item = SpannedEvent<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.inner.next() {
-                Some((Event::FootnoteReference(ref reference), range)) => {
-                    let entry = self.get_entry(reference);
-                    let reference = format!(
-                        "<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{0}</a></sup>",
-                        (*entry).1
-                    );
-                    return Some((Event::Html(reference.into()), range));
-                }
-                Some((Event::Start(Tag::FootnoteDefinition(def)), _)) => {
-                    let mut content = Vec::new();
-                    for (event, _) in &mut self.inner {
-                        if let Event::End(TagEnd::FootnoteDefinition) = event {
-                            break;
-                        }
-                        content.push(event);
-                    }
-                    let entry = self.get_entry(&def);
-                    (*entry).0 = content;
-                }
-                Some(e) => return Some(e),
-                None => {
-                    if !self.footnotes.is_empty() {
-                        let mut v: Vec<_> = self.footnotes.drain().map(|(_, x)| x).collect();
-                        v.sort_by(|a, b| a.1.cmp(&b.1));
-                        let mut ret = String::from("<div class=\"footnotes\"><hr><ol>");
-                        for (mut content, id) in v {
-                            write!(ret, "<li id=\"fn{id}\">").unwrap();
-                            let mut is_paragraph = false;
-                            if let Some(&Event::End(TagEnd::Paragraph)) = content.last() {
-                                content.pop();
-                                is_paragraph = true;
-                            }
-                            html::push_html(&mut ret, content.into_iter());
-                            write!(ret, "&nbsp;<a href=\"#fnref{id}\">↩</a>").unwrap();
-                            if is_paragraph {
-                                ret.push_str("</p>");
-                            }
-                            ret.push_str("</li>");
-                        }
-                        ret.push_str("</ol></div>");
-                        return Some((Event::Html(ret.into()), 0..0));
-                    } else {
-                        return None;
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// A newtype that represents a relative line number in Markdown.
 ///
 /// In other words, this represents an offset from the first line of Markdown
@@ -871,7 +796,7 @@ pub(crate) struct LangString {
     pub(crate) rust: bool,
     pub(crate) test_harness: bool,
     pub(crate) compile_fail: bool,
-    pub(crate) standalone: bool,
+    pub(crate) standalone_crate: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
@@ -1194,7 +1119,7 @@ impl Default for LangString {
             rust: true,
             test_harness: false,
             compile_fail: false,
-            standalone: false,
+            standalone_crate: false,
             error_codes: Vec::new(),
             edition: None,
             added_classes: Vec::new(),
@@ -1264,8 +1189,8 @@ impl LangString {
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                         data.no_run = true;
                     }
-                    LangStringToken::LangToken("standalone") => {
-                        data.standalone = true;
+                    LangStringToken::LangToken("standalone_crate") => {
+                        data.standalone_crate = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     }
                     LangStringToken::LangToken(x) if x.starts_with("edition") => {
@@ -1298,44 +1223,47 @@ impl LangString {
                     }
                     LangStringToken::LangToken(x) if extra.is_some() => {
                         let s = x.to_lowercase();
-                        if let Some((flag, help)) = if s == "compile-fail"
-                            || s == "compile_fail"
-                            || s == "compilefail"
-                        {
-                            Some((
-                                "compile_fail",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or won't fail if it compiles successfully",
-                            ))
-                        } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
-                            Some((
-                                "should_panic",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or won't fail if it doesn't panic when running",
-                            ))
-                        } else if s == "no-run" || s == "no_run" || s == "norun" {
-                            Some((
-                                "no_run",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or will be run (which you might not want)",
-                            ))
-                        } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
-                            Some((
-                                "test_harness",
-                                "the code block will either not be tested if not marked as a rust one \
-                                 or the code will be wrapped inside a main function",
-                            ))
-                        } else {
-                            None
+                        if let Some(help) = match s.as_str() {
+                            "compile-fail" | "compile_fail" | "compilefail" => Some(
+                                "use `compile_fail` to invert the results of this test, so that it \
+                                passes if it cannot be compiled and fails if it can",
+                            ),
+                            "should-panic" | "should_panic" | "shouldpanic" => Some(
+                                "use `should_panic` to invert the results of this test, so that if \
+                                passes if it panics and fails if it does not",
+                            ),
+                            "no-run" | "no_run" | "norun" => Some(
+                                "use `no_run` to compile, but not run, the code sample during \
+                                testing",
+                            ),
+                            "test-harness" | "test_harness" | "testharness" => Some(
+                                "use `test_harness` to run functions marked `#[test]` instead of a \
+                                potentially-implicit `main` function",
+                            ),
+                            "standalone" | "standalone_crate" | "standalone-crate" => {
+                                if let Some(extra) = extra
+                                    && extra.sp.at_least_rust_2024()
+                                {
+                                    Some(
+                                        "use `standalone_crate` to compile this code block \
+                                        separately",
+                                    )
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
                         } {
                             if let Some(extra) = extra {
                                 extra.error_invalid_codeblock_attr_with_help(
                                     format!("unknown attribute `{x}`"),
                                     |lint| {
-                                        lint.help(format!(
-                                            "there is an attribute with a similar name: `{flag}`"
-                                        ))
-                                        .help(help);
+                                        lint.help(help).help(
+                                            "this code block may be skipped during testing, \
+                                            because unknown attributes are treated as markers for \
+                                            code samples written in other programming languages, \
+                                            unless it is also explicitly marked as `rust`",
+                                        );
                                     },
                                 );
                             }
@@ -1406,7 +1334,7 @@ impl Markdown<'_> {
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
         let p = HeadingLinks::new(p, None, ids, heading_offset);
-        let p = Footnotes::new(p);
+        let p = footnotes::Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
         let p = TableWrapper::new(p);
         let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1441,7 +1369,7 @@ impl MarkdownWithToc<'_> {
 
         {
             let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
-            let p = Footnotes::new(p);
+            let p = footnotes::Footnotes::new(p);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
             html::push_html(&mut s, p);
@@ -1474,7 +1402,7 @@ impl MarkdownItemInfo<'_> {
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
         let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
-        let p = Footnotes::new(p);
+        let p = footnotes::Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
         let p = p.filter(|event| {
             !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
@@ -1683,7 +1611,6 @@ pub(crate) fn html_text_from_events<'a>(
 pub(crate) struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,
-    pub display_text: Option<String>,
     pub range: MarkdownLinkRange,
 }
 
@@ -1845,23 +1772,9 @@ pub(crate) fn markdown_links<'md, R>(
                     LinkType::Autolink | LinkType::Email => unreachable!(),
                 };
 
-                let display_text = if matches!(
-                    link_type,
-                    LinkType::Inline
-                        | LinkType::ReferenceUnknown
-                        | LinkType::Reference
-                        | LinkType::Shortcut
-                        | LinkType::ShortcutUnknown
-                ) {
-                    collect_link_data(&mut event_iter)
-                } else {
-                    None
-                };
-
                 if let Some(link) = preprocess_link(MarkdownLink {
                     kind: link_type,
                     link: dest_url.into_string(),
-                    display_text,
                     range,
                 }) {
                     links.push(link);
@@ -1872,37 +1785,6 @@ pub(crate) fn markdown_links<'md, R>(
     }
 
     links
-}
-
-/// Collects additional data of link.
-fn collect_link_data<'input, F: BrokenLinkCallback<'input>>(
-    event_iter: &mut OffsetIter<'input, F>,
-) -> Option<String> {
-    let mut display_text: Option<String> = None;
-    let mut append_text = |text: CowStr<'_>| {
-        if let Some(display_text) = &mut display_text {
-            display_text.push_str(&text);
-        } else {
-            display_text = Some(text.to_string());
-        }
-    };
-
-    while let Some((event, _span)) = event_iter.next() {
-        match event {
-            Event::Text(text) => {
-                append_text(text);
-            }
-            Event::Code(code) => {
-                append_text(code);
-            }
-            Event::End(_) => {
-                break;
-            }
-            _ => {}
-        }
-    }
-
-    display_text
 }
 
 #[derive(Debug)]
@@ -2046,7 +1928,7 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("required-associated-consts".into(), 1);
     map.insert("required-methods".into(), 1);
     map.insert("provided-methods".into(), 1);
-    map.insert("object-safety".into(), 1);
+    map.insert("dyn-compatibility".into(), 1);
     map.insert("implementors".into(), 1);
     map.insert("synthetic-implementors".into(), 1);
     map.insert("implementations-list".into(), 1);

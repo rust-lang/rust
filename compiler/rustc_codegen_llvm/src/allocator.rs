@@ -77,18 +77,20 @@ pub(crate) unsafe fn codegen(
         // __rust_alloc_error_handler_should_panic
         let name = OomStrategy::SYMBOL;
         let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
-        if tcx.sess.default_hidden_visibility() {
-            llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
-        }
+        llvm::LLVMRustSetVisibility(
+            ll_g,
+            llvm::Visibility::from_generic(tcx.sess.default_visibility()),
+        );
         let val = tcx.sess.opts.unstable_opts.oom.should_panic();
         let llval = llvm::LLVMConstInt(i8, val as u64, False);
         llvm::LLVMSetInitializer(ll_g, llval);
 
         let name = NO_ALLOC_SHIM_IS_UNSTABLE;
         let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
-        if tcx.sess.default_hidden_visibility() {
-            llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
-        }
+        llvm::LLVMRustSetVisibility(
+            ll_g,
+            llvm::Visibility::from_generic(tcx.sess.default_visibility()),
+        );
         let llval = llvm::LLVMConstInt(i8, 0, False);
         llvm::LLVMSetInitializer(ll_g, llval);
     }
@@ -132,9 +134,11 @@ fn create_wrapper_function(
             None
         };
 
-        if tcx.sess.default_hidden_visibility() {
-            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
-        }
+        llvm::LLVMRustSetVisibility(
+            llfn,
+            llvm::Visibility::from_generic(tcx.sess.default_visibility()),
+        );
+
         if tcx.sess.must_emit_unwind_tables() {
             let uwtable =
                 attributes::uwtable_attr(llcx, tcx.sess.opts.unstable_opts.use_sync_unwind);

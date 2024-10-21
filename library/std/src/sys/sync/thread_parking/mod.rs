@@ -23,6 +23,7 @@ cfg_if::cfg_if! {
         mod windows7;
         pub use windows7::Parker;
     } else if #[cfg(all(target_vendor = "apple", not(miri)))] {
+        // Doesn't work in Miri, see <https://github.com/rust-lang/miri/issues/2589>.
         mod darwin;
         pub use darwin::Parker;
     } else if #[cfg(target_os = "xous")] {

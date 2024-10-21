@@ -7,8 +7,9 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{Callable, Semantics};
-use ide_db::RootDatabase;
+use ide_db::{famous_defs::FamousDefs, RootDatabase};
 
+use span::EditionedFileId;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasName, UnaryOp},
@@ -19,8 +20,9 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
+    _file_id: EditionedFileId,
     expr: ast::Expr,
 ) -> Option<()> {
     if !config.parameter_hints {
@@ -60,6 +62,7 @@ pub(super) fn hints(
                 position: InlayHintPosition::Before,
                 pad_left: false,
                 pad_right: true,
+                resolve_parent: Some(expr.syntax().text_range()),
             }
         });
 

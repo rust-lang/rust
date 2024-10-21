@@ -129,8 +129,8 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
     for attr in attr::filter_by_name(pre_configured_attrs, sym::register_tool) {
-        for nested_meta in attr.meta_item_list().unwrap_or_default() {
-            match nested_meta.ident() {
+        for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
+            match meta_item_inner.ident() {
                 Some(ident) => {
                     if let Some(old_ident) = registered_tools.replace(ident) {
                         tcx.dcx().emit_err(errors::ToolWasAlreadyRegistered {
@@ -142,7 +142,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                 }
                 None => {
                     tcx.dcx().emit_err(errors::ToolOnlyAcceptsIdentifiers {
-                        span: nested_meta.span(),
+                        span: meta_item_inner.span(),
                         tool: sym::register_tool,
                     });
                 }
@@ -340,7 +340,9 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
     fn record_macro_rule_usage(&mut self, id: NodeId, rule_i: usize) {
         let did = self.local_def_id(id);
-        self.unused_macro_rules.remove(&(did, rule_i));
+        if let Some(rules) = self.unused_macro_rules.get_mut(&did) {
+            rules.remove(&rule_i);
+        }
     }
 
     fn check_unused_macros(&mut self) {
@@ -352,18 +354,24 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                 BuiltinLintDiag::UnusedMacroDefinition(ident.name),
             );
         }
-        for (&(def_id, arm_i), &(ident, rule_span)) in self.unused_macro_rules.iter() {
-            if self.unused_macros.contains_key(&def_id) {
-                // We already lint the entire macro as unused
-                continue;
+
+        for (&def_id, unused_arms) in self.unused_macro_rules.iter() {
+            let mut unused_arms = unused_arms.iter().collect::<Vec<_>>();
+            unused_arms.sort_by_key(|&(&arm_i, _)| arm_i);
+
+            for (&arm_i, &(ident, rule_span)) in unused_arms {
+                if self.unused_macros.contains_key(&def_id) {
+                    // We already lint the entire macro as unused
+                    continue;
+                }
+                let node_id = self.def_id_to_node_id[def_id];
+                self.lint_buffer.buffer_lint(
+                    UNUSED_MACRO_RULES,
+                    node_id,
+                    rule_span,
+                    BuiltinLintDiag::MacroRuleNeverUsed(arm_i, ident.name),
+                );
             }
-            let node_id = self.def_id_to_node_id[def_id];
-            self.lint_buffer.buffer_lint(
-                UNUSED_MACRO_RULES,
-                node_id,
-                rule_span,
-                BuiltinLintDiag::MacroRuleNeverUsed(arm_i, ident.name),
-            );
         }
     }
 

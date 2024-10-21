@@ -213,7 +213,7 @@
 //!  - All other locals need to be declared with `let` somewhere and then can be accessed by name.
 //!
 //! #### Places
-//!  - Locals implicit convert to places.
+//!  - Locals implicitly convert to places.
 //!  - Field accesses, derefs, and indexing work normally.
 //!  - Fields in variants can be accessed via the [`Variant`] and [`Field`] associated functions,
 //!    see their documentation for details.

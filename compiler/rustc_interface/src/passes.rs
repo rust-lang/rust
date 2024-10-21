@@ -32,8 +32,8 @@ use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
-use rustc_span::FileName;
 use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{FileName, SourceFileHash, SourceFileHashAlgorithm};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 use tracing::{info, instrument};
@@ -417,14 +417,22 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
     let result: io::Result<()> = try {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let mut files: Vec<String> = sess
+        let mut files: Vec<(String, u64, Option<SourceFileHash>)> = sess
             .source_map()
             .files()
             .iter()
             .filter(|fmap| fmap.is_real_file())
             .filter(|fmap| !fmap.is_imported())
-            .map(|fmap| escape_dep_filename(&fmap.name.prefer_local().to_string()))
+            .map(|fmap| {
+                (
+                    escape_dep_filename(&fmap.name.prefer_local().to_string()),
+                    fmap.source_len.0 as u64,
+                    fmap.checksum_hash,
+                )
+            })
             .collect();
+
+        let checksum_hash_algo = sess.opts.unstable_opts.checksum_hash_algorithm;
 
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
@@ -437,22 +445,57 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
         // The entries will be used to declare dependencies between files in a
         // Makefile-like output, so the iteration order does not matter.
-        #[allow(rustc::potential_query_instability)]
-        let extra_tracked_files =
-            file_depinfo.iter().map(|path_sym| normalize_path(PathBuf::from(path_sym.as_str())));
+        fn hash_iter_files<P: AsRef<Path>>(
+            it: impl Iterator<Item = P>,
+            checksum_hash_algo: Option<SourceFileHashAlgorithm>,
+        ) -> impl Iterator<Item = (P, u64, Option<SourceFileHash>)> {
+            it.map(move |path| {
+                match checksum_hash_algo.and_then(|algo| {
+                    fs::File::open(path.as_ref())
+                        .and_then(|mut file| {
+                            SourceFileHash::new(algo, &mut file).map(|h| (file, h))
+                        })
+                        .and_then(|(file, h)| file.metadata().map(|m| (m.len(), h)))
+                        .map_err(|e| {
+                            tracing::error!(
+                                "failed to compute checksum, omitting it from dep-info {} {e}",
+                                path.as_ref().display()
+                            )
+                        })
+                        .ok()
+                }) {
+                    Some((file_len, checksum)) => (path, file_len, Some(checksum)),
+                    None => (path, 0, None),
+                }
+            })
+        }
+
+        let extra_tracked_files = hash_iter_files(
+            file_depinfo.iter().map(|path_sym| normalize_path(PathBuf::from(path_sym.as_str()))),
+            checksum_hash_algo,
+        );
         files.extend(extra_tracked_files);
 
         // We also need to track used PGO profile files
         if let Some(ref profile_instr) = sess.opts.cg.profile_use {
-            files.push(normalize_path(profile_instr.as_path().to_path_buf()));
+            files.extend(hash_iter_files(
+                iter::once(normalize_path(profile_instr.as_path().to_path_buf())),
+                checksum_hash_algo,
+            ));
         }
         if let Some(ref profile_sample) = sess.opts.unstable_opts.profile_sample_use {
-            files.push(normalize_path(profile_sample.as_path().to_path_buf()));
+            files.extend(hash_iter_files(
+                iter::once(normalize_path(profile_sample.as_path().to_path_buf())),
+                checksum_hash_algo,
+            ));
         }
 
         // Debugger visualizer files
         for debugger_visualizer in tcx.debugger_visualizers(LOCAL_CRATE) {
-            files.push(normalize_path(debugger_visualizer.path.clone().unwrap()));
+            files.extend(hash_iter_files(
+                iter::once(normalize_path(debugger_visualizer.path.clone().unwrap())),
+                checksum_hash_algo,
+            ));
         }
 
         if sess.binary_dep_depinfo() {
@@ -460,33 +503,54 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                 if backend.contains('.') {
                     // If the backend name contain a `.`, it is the path to an external dynamic
                     // library. If not, it is not a path.
-                    files.push(backend.to_string());
+                    files.extend(hash_iter_files(
+                        iter::once(backend.to_string()),
+                        checksum_hash_algo,
+                    ));
                 }
             }
 
             for &cnum in tcx.crates(()) {
                 let source = tcx.used_crate_source(cnum);
                 if let Some((path, _)) = &source.dylib {
-                    files.push(escape_dep_filename(&path.display().to_string()));
+                    files.extend(hash_iter_files(
+                        iter::once(escape_dep_filename(&path.display().to_string())),
+                        checksum_hash_algo,
+                    ));
                 }
                 if let Some((path, _)) = &source.rlib {
-                    files.push(escape_dep_filename(&path.display().to_string()));
+                    files.extend(hash_iter_files(
+                        iter::once(escape_dep_filename(&path.display().to_string())),
+                        checksum_hash_algo,
+                    ));
                 }
                 if let Some((path, _)) = &source.rmeta {
-                    files.push(escape_dep_filename(&path.display().to_string()));
+                    files.extend(hash_iter_files(
+                        iter::once(escape_dep_filename(&path.display().to_string())),
+                        checksum_hash_algo,
+                    ));
                 }
             }
         }
 
         let write_deps_to_file = |file: &mut dyn Write| -> io::Result<()> {
             for path in out_filenames {
-                writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
+                writeln!(
+                    file,
+                    "{}: {}\n",
+                    path.display(),
+                    files
+                        .iter()
+                        .map(|(path, _file_len, _checksum_hash_algo)| path.as_str())
+                        .intersperse(" ")
+                        .collect::<String>()
+                )?;
             }
 
             // Emit a fake target for each input file to the compilation. This
             // prevents `make` from spitting out an error if a file is later
             // deleted. For more info see #28735
-            for path in files {
+            for (path, _file_len, _checksum_hash_algo) in &files {
                 writeln!(file, "{path}:")?;
             }
 
@@ -508,6 +572,19 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                     }
                     writeln!(file)?;
                 }
+            }
+
+            // If caller requested this information, add special comments about source file checksums.
+            // These are not necessarily the same checksums as was used in the debug files.
+            if sess.opts.unstable_opts.checksum_hash_algorithm().is_some() {
+                files
+                    .iter()
+                    .filter_map(|(path, file_len, hash_algo)| {
+                        hash_algo.map(|hash_algo| (path, file_len, hash_algo))
+                    })
+                    .try_for_each(|(path, file_len, checksum_hash)| {
+                        writeln!(file, "# checksum:{checksum_hash} file_len:{file_len} {path}")
+                    })?;
             }
 
             Ok(())
@@ -912,7 +989,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         let traits = tcx.traits(LOCAL_CRATE);
 
         for &tr in traits {
-            if !tcx.is_object_safe(tr) {
+            if !tcx.is_dyn_compatible(tr) {
                 continue;
             }
 

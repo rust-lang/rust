@@ -247,8 +247,12 @@ impl InferenceContext<'_> {
                     &self.resolver,
                     self.owner.into(),
                 );
-                let trait_ref =
-                    ctx.lower_trait_ref_from_resolved_path(trait_, resolved_segment, None);
+                let trait_ref = ctx.lower_trait_ref_from_resolved_path(
+                    trait_,
+                    resolved_segment,
+                    self.table.new_type_var(),
+                );
+
                 self.resolve_trait_assoc_item(trait_ref, segment, id)
             }
             (def, _) => {

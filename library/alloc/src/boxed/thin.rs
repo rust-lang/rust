@@ -186,7 +186,7 @@ impl<T: ?Sized> ThinBox<T> {
 
     fn with_header(&self) -> &WithHeader<<T as Pointee>::Metadata> {
         // SAFETY: both types are transparent to `NonNull<u8>`
-        unsafe { &*(core::ptr::addr_of!(self.ptr) as *const WithHeader<_>) }
+        unsafe { &*((&raw const self.ptr) as *const WithHeader<_>) }
     }
 }
 

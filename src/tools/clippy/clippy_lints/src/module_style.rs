@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -87,7 +87,7 @@ impl EarlyLintPass for ModStyle {
 
         // `folder_segments` is all unique folder path segments `path/to/foo.rs` gives
         // `[path, to]` but not foo
-        let mut folder_segments = FxHashSet::default();
+        let mut folder_segments = FxIndexSet::default();
         // `mod_folders` is all the unique folder names that contain a mod.rs file
         let mut mod_folders = FxHashSet::default();
         // `file_map` maps file names to the full path including the file name
@@ -144,7 +144,7 @@ impl EarlyLintPass for ModStyle {
 /// is `mod.rs` we add it's parent folder to `mod_folders`.
 fn process_paths_for_mod_files<'a>(
     path: &'a Path,
-    folder_segments: &mut FxHashSet<&'a OsStr>,
+    folder_segments: &mut FxIndexSet<&'a OsStr>,
     mod_folders: &mut FxHashSet<&'a OsStr>,
 ) {
     let mut comp = path.components().rev().peekable();

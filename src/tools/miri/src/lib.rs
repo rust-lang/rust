@@ -1,6 +1,5 @@
 #![feature(rustc_private)]
 #![feature(cell_update)]
-#![feature(const_option)]
 #![feature(float_gamma)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
@@ -15,6 +14,7 @@
 #![feature(strict_provenance)]
 #![feature(exposed_provenance)]
 #![feature(pointer_is_aligned_to)]
+#![feature(unqualified_local_imports)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -32,10 +32,7 @@
     clippy::derived_hash_with_manual_eq,
     clippy::too_many_arguments,
     clippy::type_complexity,
-    clippy::single_element_loop,
-    clippy::needless_return,
     clippy::bool_to_int_with_if,
-    clippy::box_default,
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
@@ -46,13 +43,12 @@
 )]
 #![warn(
     rust_2018_idioms,
+    unqualified_local_imports,
     clippy::cast_possible_wrap, // unsigned -> signed
     clippy::cast_sign_loss, // signed -> unsigned
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
 )]
-#![cfg_attr(not(bootstrap), feature(unqualified_local_imports))]
-#![cfg_attr(not(bootstrap), warn(unqualified_local_imports))]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
@@ -95,15 +91,14 @@ mod range_map;
 mod shims;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
-use rustc_middle::{bug, span_bug};
-use tracing::{info, trace};
-
 // Make all those symbols available in the same place as our own.
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
+use rustc_middle::{bug, span_bug};
+use tracing::{info, trace};
 
 // Type aliases that set the provenance parameter.
 pub type Pointer = interpret::Pointer<Option<machine::Provenance>>;
@@ -114,15 +109,6 @@ pub type OpTy<'tcx> = interpret::OpTy<'tcx, machine::Provenance>;
 pub type PlaceTy<'tcx> = interpret::PlaceTy<'tcx, machine::Provenance>;
 pub type MPlaceTy<'tcx> = interpret::MPlaceTy<'tcx, machine::Provenance>;
 
-pub use crate::intrinsics::EvalContextExt as _;
-pub use crate::shims::EmulateItemResult;
-pub use crate::shims::env::{EnvVars, EvalContextExt as _};
-pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
-pub use crate::shims::os_str::EvalContextExt as _;
-pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
-pub use crate::shims::time::EvalContextExt as _;
-pub use crate::shims::tls::TlsData;
-
 pub use crate::alloc_addresses::{EvalContextExt as _, ProvenanceMode};
 pub use crate::alloc_bytes::MiriAllocBytes;
 pub use crate::borrow_tracker::stacked_borrows::{
@@ -131,15 +117,17 @@ pub use crate::borrow_tracker::stacked_borrows::{
 pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{BorTag, BorrowTrackerMethod, EvalContextExt as _, RetagFields};
 pub use crate::clock::{Clock, Instant};
-pub use crate::concurrency::{
-    cpu_affinity::MAX_CPUS,
-    data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
-    init_once::{EvalContextExt as _, InitOnceId},
-    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects},
-    thread::{
-        BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager,
-        TimeoutAnchor, TimeoutClock, UnblockCallback,
-    },
+pub use crate::concurrency::cpu_affinity::MAX_CPUS;
+pub use crate::concurrency::data_race::{
+    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
+};
+pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceId};
+pub use crate::concurrency::sync::{
+    CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects,
+};
+pub use crate::concurrency::thread::{
+    BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager, TimeoutAnchor,
+    TimeoutClock, UnblockCallback,
 };
 pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
@@ -149,6 +137,7 @@ pub use crate::eval::{
     create_ecx, eval_entry,
 };
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
+pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
     AllocExtra, FrameExtra, MemoryKind, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
     PrimitiveLayouts, Provenance, ProvenanceExtra,
@@ -157,6 +146,14 @@ pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
 pub use crate::provenance_gc::{EvalContextExt as _, LiveAllocs, VisitProvenance, VisitWith};
 pub use crate::range_map::RangeMap;
+pub use crate::shims::EmulateItemResult;
+pub use crate::shims::env::{EnvVars, EvalContextExt as _};
+pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
+pub use crate::shims::io_error::{EvalContextExt as _, LibcError};
+pub use crate::shims::os_str::EvalContextExt as _;
+pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
+pub use crate::shims::time::EvalContextExt as _;
+pub use crate::shims::tls::TlsData;
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.

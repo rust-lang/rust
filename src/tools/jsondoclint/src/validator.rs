@@ -418,7 +418,7 @@ impl<'a> Validator<'a> {
         } else if !self.missing_ids.contains(id) {
             self.missing_ids.insert(id);
 
-            let sels = json_find::find_selector(&self.krate_json, &Value::String(id.0.clone()));
+            let sels = json_find::find_selector(&self.krate_json, &Value::Number(id.0.into()));
             assert_ne!(sels.len(), 0);
 
             self.fail(id, ErrorKind::NotFound(sels))

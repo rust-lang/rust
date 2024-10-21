@@ -2,14 +2,14 @@
 #![feature(naked_functions)]
 #![feature(fn_align)]
 #![crate_type = "lib"]
-use std::arch::asm;
+use std::arch::naked_asm;
 
 #[repr(C)]
 //~^ ERROR attribute should be applied to a struct, enum, or union [E0517]
 #[naked]
 extern "C" fn example1() {
     //~^ NOTE not a struct, enum, or union
-    unsafe { asm!("", options(noreturn)) }
+    unsafe { naked_asm!("") }
 }
 
 #[repr(transparent)]
@@ -17,7 +17,7 @@ extern "C" fn example1() {
 #[naked]
 extern "C" fn example2() {
     //~^ NOTE not a struct, enum, or union
-    unsafe { asm!("", options(noreturn)) }
+    unsafe { naked_asm!("") }
 }
 
 #[repr(align(16), C)]
@@ -25,7 +25,7 @@ extern "C" fn example2() {
 #[naked]
 extern "C" fn example3() {
     //~^ NOTE not a struct, enum, or union
-    unsafe { asm!("", options(noreturn)) }
+    unsafe { naked_asm!("") }
 }
 
 // note: two errors because of packed and C
@@ -36,7 +36,7 @@ extern "C" fn example3() {
 extern "C" fn example4() {
     //~^ NOTE not a struct, enum, or union
     //~| NOTE not a struct or union
-    unsafe { asm!("", options(noreturn)) }
+    unsafe { naked_asm!("") }
 }
 
 #[repr(u8)]
@@ -44,5 +44,5 @@ extern "C" fn example4() {
 #[naked]
 extern "C" fn example5() {
     //~^ NOTE not an enum
-    unsafe { asm!("", options(noreturn)) }
+    unsafe { naked_asm!("") }
 }

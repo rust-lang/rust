@@ -63,6 +63,13 @@ fn main() {
 
         1
     };
+
+    const _: () = {
+        const _: () = {
+            impl Test {}
+            //~^ WARN non-local `impl` definition
+        };
+    };
 }
 
 trait Uto9 {}

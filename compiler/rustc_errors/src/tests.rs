@@ -1,4 +1,4 @@
-use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_error_messages::fluent_bundle::resolver::errors::{ReferenceKind, ResolverError};
 use rustc_error_messages::{DiagMessage, langid};
 
@@ -12,7 +12,7 @@ struct Dummy {
 }
 
 impl Translate for Dummy {
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+    fn fluent_bundle(&self) -> Option<&FluentBundle> {
         None
     }
 

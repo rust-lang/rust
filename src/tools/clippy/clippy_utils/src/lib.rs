@@ -1,9 +1,9 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_private)]
@@ -129,7 +129,6 @@ use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
-
 use rustc_middle::hir::nested_filter;
 
 #[macro_export]
@@ -597,7 +596,7 @@ fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<It
         },
     };
 
-    tcx.incoherent_impls(ty).into_iter().copied()
+    tcx.incoherent_impls(ty).iter().copied()
 }
 
 fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Res> {
@@ -731,7 +730,7 @@ pub fn def_path_res_with_base(tcx: TyCtxt<'_>, mut base: Vec<Res>, mut path: &[&
                 // `impl S { ... }`
                 let inherent_impl_children = tcx
                     .inherent_impls(def_id)
-                    .into_iter()
+                    .iter()
                     .flat_map(|&impl_def_id| item_children_by_name(tcx, impl_def_id, segment));
 
                 let direct_children = item_children_by_name(tcx, def_id, segment);
@@ -1341,7 +1340,7 @@ pub struct ContainsName<'a, 'tcx> {
     pub result: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ContainsName<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ContainsName<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_name(&mut self, name: Symbol) {
@@ -3111,7 +3110,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
         is_never: bool,
     }
 
-    impl<'tcx> V<'_, 'tcx> {
+    impl V<'_, '_> {
         fn push_break_target(&mut self, id: HirId) {
             self.break_targets.push(BreakTarget { id, unused: true });
             self.break_targets_for_result_ty += u32::from(self.in_final_expr);

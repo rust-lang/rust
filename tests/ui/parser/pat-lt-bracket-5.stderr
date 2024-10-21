@@ -2,7 +2,9 @@ error: expected a pattern, found an expression
   --> $DIR/pat-lt-bracket-5.rs:2:9
    |
 LL |     let v[0] = v[1];
-   |         ^^^^ arbitrary expressions are not allowed in patterns
+   |         ^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 
 error[E0425]: cannot find value `v` in this scope
   --> $DIR/pat-lt-bracket-5.rs:2:16

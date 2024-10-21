@@ -1008,34 +1008,28 @@ impl HirDisplay for Ty {
                 if let Safety::Unsafe = sig.safety {
                     write!(f, "unsafe ")?;
                 }
-                if !matches!(sig.abi, FnAbi::Rust) {
+                if !matches!(sig.abi, FnAbi::Rust | FnAbi::RustCall) {
                     f.write_str("extern \"")?;
                     f.write_str(sig.abi.as_str())?;
                     f.write_str("\" ")?;
                 }
 
+                write!(f, "fn ")?;
+                f.start_location_link(def.into());
                 match def {
-                    CallableDefId::FunctionId(ff) => {
-                        write!(f, "fn ")?;
-                        f.start_location_link(def.into());
-                        write!(
-                            f,
-                            "{}",
-                            db.function_data(ff).name.display(f.db.upcast(), f.edition())
-                        )?
-                    }
+                    CallableDefId::FunctionId(ff) => write!(
+                        f,
+                        "{}",
+                        db.function_data(ff).name.display(f.db.upcast(), f.edition())
+                    )?,
                     CallableDefId::StructId(s) => {
-                        f.start_location_link(def.into());
                         write!(f, "{}", db.struct_data(s).name.display(f.db.upcast(), f.edition()))?
                     }
-                    CallableDefId::EnumVariantId(e) => {
-                        f.start_location_link(def.into());
-                        write!(
-                            f,
-                            "{}",
-                            db.enum_variant_data(e).name.display(f.db.upcast(), f.edition())
-                        )?
-                    }
+                    CallableDefId::EnumVariantId(e) => write!(
+                        f,
+                        "{}",
+                        db.enum_variant_data(e).name.display(f.db.upcast(), f.edition())
+                    )?,
                 };
                 f.end_location_link();
 

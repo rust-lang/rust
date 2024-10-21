@@ -6,16 +6,15 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::concurrency::cpu_affinity::CpuAffinityMask;
-use crate::shims::alloc::EvalContextExt as _;
-use crate::shims::unix::*;
-use crate::*;
-
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
 use self::shims::unix::linux::foreign_items as linux;
 use self::shims::unix::macos::foreign_items as macos;
 use self::shims::unix::solarish::foreign_items as solarish;
+use crate::concurrency::cpu_affinity::CpuAffinityMask;
+use crate::shims::alloc::EvalContextExt as _;
+use crate::shims::unix::*;
+use crate::*;
 
 pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {
@@ -293,6 +292,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "pipe2" => {
+                // Currently this function does not exist on all Unixes, e.g. on macOS.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "solaris" | "illumos") {
+                    throw_unsup_format!(
+                        "`pipe2` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
                 let [pipefd, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pipe2(pipefd, Some(flags))?;
@@ -356,8 +362,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=reallocarray
                 match this.compute_size_in_bytes(Size::from_bytes(size), nmemb) {
                     None => {
-                        let einval = this.eval_libc("ENOMEM");
-                        this.set_last_error(einval)?;
+                        let enmem = this.eval_libc("ENOMEM");
+                        this.set_last_error(enmem)?;
                         this.write_null(dest)?;
                     }
                     Some(len) => {
@@ -647,13 +653,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let chunk_size = CpuAffinityMask::chunk_size(this);
 
                 if this.ptr_is_null(mask)? {
-                    let einval = this.eval_libc("EFAULT");
-                    this.set_last_error(einval)?;
+                    let efault = this.eval_libc("EFAULT");
+                    this.set_last_error(efault)?;
                     this.write_int(-1, dest)?;
                 } else if cpusetsize == 0 || cpusetsize.checked_rem(chunk_size).unwrap() != 0 {
                     // we only copy whole chunks of size_of::<c_ulong>()
-                    let einval = this.eval_libc("EINVAL");
-                    this.set_last_error(einval)?;
+                    this.set_last_error(LibcError("EINVAL"))?;
                     this.write_int(-1, dest)?;
                 } else if let Some(cpuset) = this.machine.thread_cpu_affinity.get(&thread_id) {
                     let cpuset = cpuset.clone();
@@ -663,8 +668,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_null(dest)?;
                 } else {
                     // The thread whose ID is pid could not be found
-                    let einval = this.eval_libc("ESRCH");
-                    this.set_last_error(einval)?;
+                    let esrch = this.eval_libc("ESRCH");
+                    this.set_last_error(esrch)?;
                     this.write_int(-1, dest)?;
                 }
             }
@@ -690,8 +695,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 if this.ptr_is_null(mask)? {
-                    let einval = this.eval_libc("EFAULT");
-                    this.set_last_error(einval)?;
+                    let efault = this.eval_libc("EFAULT");
+                    this.set_last_error(efault)?;
                     this.write_int(-1, dest)?;
                 } else {
                     // NOTE: cpusetsize might be smaller than `CpuAffinityMask::CPU_MASK_BYTES`.
@@ -708,8 +713,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                         None => {
                             // The intersection between the mask and the available CPUs was empty.
-                            let einval = this.eval_libc("EINVAL");
-                            this.set_last_error(einval)?;
+                            this.set_last_error(LibcError("EINVAL"))?;
                             this.write_int(-1, dest)?;
                         }
                     }
@@ -792,6 +796,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.gen_random(ptr, len)?;
                 this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
             }
+            "arc4random_buf" => {
+                // This function is non-standard but exists with the same signature and
+                // same behavior (eg never fails) on FreeBSD and Solaris/Illumos.
+                if !matches!(&*this.tcx.sess.target.os, "freebsd" | "illumos" | "solaris") {
+                    throw_unsup_format!(
+                        "`arc4random_buf` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                let [ptr, len] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let len = this.read_target_usize(len)?;
+                this.gen_random(ptr, len)?;
+            }
             "_Unwind_RaiseException" => {
                 // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
                 // It was originally specified as part of the Itanium C++ ABI:
@@ -815,7 +833,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This function looks and behaves excatly like miri_start_unwind.
                 let [payload] = this.check_shim(abi, Abi::C { unwind: true }, link_name, args)?;
                 this.handle_miri_start_unwind(payload)?;
-                return Ok(EmulateItemResult::NeedsUnwind);
+                return interp_ok(EmulateItemResult::NeedsUnwind);
             }
             "getuid" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -931,11 +949,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "linux" => linux::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "macos" => macos::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "solaris" | "illumos" => solarish::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
-                    _ => Ok(EmulateItemResult::NotSupported),
+                    _ => interp_ok(EmulateItemResult::NotSupported),
                 };
             }
         };
 
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

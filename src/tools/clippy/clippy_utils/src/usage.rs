@@ -46,8 +46,8 @@ struct MutVarsDelegate {
     skip: bool,
 }
 
-impl<'tcx> MutVarsDelegate {
-    fn update(&mut self, cat: &PlaceWithHirId<'tcx>) {
+impl MutVarsDelegate {
+    fn update(&mut self, cat: &PlaceWithHirId<'_>) {
         match cat.place.base {
             PlaceBase::Local(id) => {
                 self.used_mutably.insert(id);
@@ -122,7 +122,7 @@ impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
         finder.usage_found
     }
 }
-impl<'a, 'tcx> Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for BindingUsageFinder<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {

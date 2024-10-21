@@ -2,7 +2,6 @@
 //@ compile-flags: -Zmir-enable-passes=+Inline
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(control_flow_enum)]
 #![feature(try_trait_v2)]
 #![feature(custom_mir, core_intrinsics, rustc_attrs)]
 
@@ -531,6 +530,16 @@ fn floats() -> u32 {
     if x == 0.0 { 0 } else { 1 }
 }
 
+pub fn bitwise_not() -> i32 {
+    // CHECK-LABEL: fn bitwise_not(
+    // CHECK: switchInt(
+
+    // Test for #131195, which was optimizing `!a == b` into `a != b`.
+    let mut a: i32 = 0;
+    a = 1;
+    if !a == 0 { 1 } else { 0 }
+}
+
 fn main() {
     // CHECK-LABEL: fn main(
     too_complex(Ok(0));
@@ -562,3 +571,4 @@ fn main() {
 // EMIT_MIR jump_threading.assume.JumpThreading.diff
 // EMIT_MIR jump_threading.aggregate_copy.JumpThreading.diff
 // EMIT_MIR jump_threading.floats.JumpThreading.diff
+// EMIT_MIR jump_threading.bitwise_not.JumpThreading.diff

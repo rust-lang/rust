@@ -5,14 +5,15 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io;
-use std::io::{Error, ErrorKind, Read};
+use std::io::{ErrorKind, Read};
 
 use rustc_target::abi::Size;
 
+use crate::concurrency::VClock;
 use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
-use crate::{concurrency::VClock, *};
+use crate::*;
 
 /// The maximum capacity of the socketpair buffer in bytes.
 /// This number is arbitrary as the value can always
@@ -102,7 +103,7 @@ impl FileDescription for AnonSocket {
                 epoll_ready_events.epollerr = true;
             }
         }
-        Ok(epoll_ready_events)
+        interp_ok(epoll_ready_events)
     }
 
     fn close<'tcx>(
@@ -121,7 +122,7 @@ impl FileDescription for AnonSocket {
             // Notify peer fd that close has happened, since that can unblock reads and writes.
             ecx.check_and_update_readiness(&peer_fd)?;
         }
-        Ok(Ok(()))
+        interp_ok(Ok(()))
     }
 
     fn read<'tcx>(
@@ -137,8 +138,7 @@ impl FileDescription for AnonSocket {
 
         // Always succeed on read size 0.
         if len == 0 {
-            let result = Ok(0);
-            return ecx.return_read_bytes_and_count(ptr, &bytes, result, dest);
+            return ecx.return_read_success(ptr, &bytes, 0, dest);
         }
 
         let Some(readbuf) = &self.readbuf else {
@@ -151,8 +151,7 @@ impl FileDescription for AnonSocket {
             if self.peer_fd().upgrade().is_none() {
                 // Socketpair with no peer and empty buffer.
                 // 0 bytes successfully read indicates end-of-file.
-                let result = Ok(0);
-                return ecx.return_read_bytes_and_count(ptr, &bytes, result, dest);
+                return ecx.return_read_success(ptr, &bytes, 0, dest);
             } else {
                 if self.is_nonblock {
                     // Non-blocking socketpair with writer and empty buffer.
@@ -160,12 +159,11 @@ impl FileDescription for AnonSocket {
                     // EAGAIN or EWOULDBLOCK can be returned for socket,
                     // POSIX.1-2001 allows either error to be returned for this case.
                     // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
-                    let result = Err(Error::from(ErrorKind::WouldBlock));
-                    return ecx.return_read_bytes_and_count(ptr, &bytes, result, dest);
+                    return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
                 } else {
                     // Blocking socketpair with writer and empty buffer.
                     // FIXME: blocking is currently not supported
-                    throw_unsup_format!("socketpair read: blocking isn't supported yet");
+                    throw_unsup_format!("socketpair/pipe/pipe2 read: blocking isn't supported yet");
                 }
             }
         }
@@ -193,8 +191,7 @@ impl FileDescription for AnonSocket {
             ecx.check_and_update_readiness(&peer_fd)?;
         }
 
-        let result = Ok(actual_read_size);
-        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
+        ecx.return_read_success(ptr, &bytes, actual_read_size, dest)
     }
 
     fn write<'tcx>(
@@ -209,16 +206,14 @@ impl FileDescription for AnonSocket {
         // Always succeed on write size 0.
         // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
         if len == 0 {
-            let result = Ok(0);
-            return ecx.return_written_byte_count_or_error(result, dest);
+            return ecx.return_write_success(0, dest);
         }
 
         // We are writing to our peer's readbuf.
         let Some(peer_fd) = self.peer_fd().upgrade() else {
             // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
             // closed.
-            let result = Err(Error::from(ErrorKind::BrokenPipe));
-            return ecx.return_written_byte_count_or_error(result, dest);
+            return ecx.set_last_error_and_return(ErrorKind::BrokenPipe, dest);
         };
 
         let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf else {
@@ -232,17 +227,16 @@ impl FileDescription for AnonSocket {
         if available_space == 0 {
             if self.is_nonblock {
                 // Non-blocking socketpair with a full buffer.
-                let result = Err(Error::from(ErrorKind::WouldBlock));
-                return ecx.return_written_byte_count_or_error(result, dest);
+                return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
             } else {
                 // Blocking socketpair with a full buffer.
-                throw_unsup_format!("socketpair write: blocking isn't supported yet");
+                throw_unsup_format!("socketpair/pipe/pipe2 write: blocking isn't supported yet");
             }
         }
         // Remember this clock so `read` can synchronize with us.
-        if let Some(clock) = &ecx.release_clock() {
+        ecx.release_clock(|clock| {
             writebuf.clock.join(clock);
-        }
+        });
         // Do full write / partial write based on the space available.
         let actual_write_size = len.min(available_space);
         let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
@@ -255,8 +249,7 @@ impl FileDescription for AnonSocket {
         // The kernel does this even if the fd was already readable before, so we follow suit.
         ecx.check_and_update_readiness(&peer_fd)?;
 
-        let result = Ok(actual_write_size);
-        ecx.return_written_byte_count_or_error(result, dest)
+        ecx.return_write_success(actual_write_size, dest)
     }
 }
 
@@ -274,21 +267,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let domain = this.read_scalar(domain)?.to_i32()?;
-        let mut type_ = this.read_scalar(type_)?.to_i32()?;
+        let mut flags = this.read_scalar(type_)?.to_i32()?;
         let protocol = this.read_scalar(protocol)?.to_i32()?;
         let sv = this.deref_pointer(sv)?;
 
         let mut is_sock_nonblock = false;
 
-        // Parse and remove the type flags that we support.
-        // SOCK_NONBLOCK only exists on Linux.
+        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
+        // if there is anything left at the end, that's an unsupported flag.
         if this.tcx.sess.target.os == "linux" {
-            if type_ & this.eval_libc_i32("SOCK_NONBLOCK") == this.eval_libc_i32("SOCK_NONBLOCK") {
+            // SOCK_NONBLOCK only exists on Linux.
+            let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
+            let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
+            if flags & sock_nonblock == sock_nonblock {
                 is_sock_nonblock = true;
-                type_ &= !(this.eval_libc_i32("SOCK_NONBLOCK"));
+                flags &= !sock_nonblock;
             }
-            if type_ & this.eval_libc_i32("SOCK_CLOEXEC") == this.eval_libc_i32("SOCK_CLOEXEC") {
-                type_ &= !(this.eval_libc_i32("SOCK_CLOEXEC"));
+            if flags & sock_cloexec == sock_cloexec {
+                flags &= !sock_cloexec;
             }
         }
 
@@ -301,11 +297,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                  and AF_LOCAL are allowed",
                 domain
             );
-        } else if type_ != this.eval_libc_i32("SOCK_STREAM") {
+        } else if flags != this.eval_libc_i32("SOCK_STREAM") {
             throw_unsup_format!(
                 "socketpair: type {:#x} is unsupported, only SOCK_STREAM, \
                                  SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
-                type_
+                flags
             );
         } else if protocol != 0 {
             throw_unsup_format!(
@@ -343,7 +339,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_scalar(sv0, &sv)?;
         this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
 
-        Ok(Scalar::from_i32(0))
+        interp_ok(Scalar::from_i32(0))
     }
 
     fn pipe2(
@@ -354,14 +350,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let pipefd = this.deref_pointer_as(pipefd, this.machine.layouts.i32)?;
-        let flags = match flags {
+        let mut flags = match flags {
             Some(flags) => this.read_scalar(flags)?.to_i32()?,
             None => 0,
         };
 
-        // As usual we ignore CLOEXEC.
         let cloexec = this.eval_libc_i32("O_CLOEXEC");
-        if flags != 0 && flags != cloexec {
+        let o_nonblock = this.eval_libc_i32("O_NONBLOCK");
+
+        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
+        // if there is anything left at the end, that's an unsupported flag.
+        let mut is_nonblock = false;
+        if flags & o_nonblock == o_nonblock {
+            is_nonblock = true;
+            flags &= !o_nonblock;
+        }
+        // As usual we ignore CLOEXEC.
+        if flags & cloexec == cloexec {
+            flags &= !cloexec;
+        }
+        if flags != 0 {
             throw_unsup_format!("unsupported flags in `pipe2`");
         }
 
@@ -372,13 +380,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
-            is_nonblock: false,
+            is_nonblock,
         });
         let fd1 = fds.new_ref(AnonSocket {
             readbuf: None,
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
-            is_nonblock: false,
+            is_nonblock,
         });
 
         // Make the file descriptions point to each other.
@@ -395,6 +403,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_scalar(pipefd0, &pipefd)?;
         this.write_scalar(pipefd1, &pipefd.offset(pipefd.layout.size, pipefd.layout, this)?)?;
 
-        Ok(Scalar::from_i32(0))
+        interp_ok(Scalar::from_i32(0))
     }
 }

@@ -34,8 +34,8 @@ pub struct AnnotateSnippetEmitter {
 }
 
 impl Translate for AnnotateSnippetEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
+    fn fluent_bundle(&self) -> Option<&FluentBundle> {
+        self.fluent_bundle.as_deref()
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
@@ -69,8 +69,8 @@ impl Emitter for AnnotateSnippetEmitter {
         );
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
-        self.source_map.as_ref()
+    fn source_map(&self) -> Option<&SourceMap> {
+        self.source_map.as_deref()
     }
 
     fn should_show_explain(&self) -> bool {

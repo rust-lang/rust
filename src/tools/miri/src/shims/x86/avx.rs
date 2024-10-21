@@ -1,4 +1,4 @@
-use rustc_apfloat::{ieee::Double, ieee::Single};
+use rustc_apfloat::ieee::{Double, Single};
 use rustc_middle::mir;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf as _;
@@ -348,8 +348,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The only thing that needs to be ensured is the correct calling convention.
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
             }
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

@@ -158,7 +158,7 @@ LL |     let _ = 42usize as *const [u8];
    |             |
    |             consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
 
-error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
+error[E0607]: cannot cast thin pointer `*const u8` to wide pointer `*const [u8]`
   --> $DIR/cast-rfc0401.rs:52:13
    |
 LL |     let _ = v as *const [u8];

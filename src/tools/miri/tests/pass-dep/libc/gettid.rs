@@ -2,8 +2,9 @@
 //@revisions: with_isolation without_isolation
 //@[without_isolation] compile-flags: -Zmiri-disable-isolation
 
-use libc::{getpid, gettid};
 use std::thread;
+
+use libc::{getpid, gettid};
 
 fn main() {
     thread::spawn(|| {

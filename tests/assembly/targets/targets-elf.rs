@@ -375,6 +375,15 @@
 //@ revisions: riscv32_wrs_vxworks
 //@ [riscv32_wrs_vxworks] compile-flags: --target riscv32-wrs-vxworks
 //@ [riscv32_wrs_vxworks] needs-llvm-components: riscv
+//@ revisions: riscv32e_unknown_none_elf
+//@ [riscv32e_unknown_none_elf] compile-flags: --target riscv32e-unknown-none-elf
+//@ [riscv32e_unknown_none_elf] needs-llvm-components: riscv
+//@ revisions: riscv32em_unknown_none_elf
+//@ [riscv32em_unknown_none_elf] compile-flags: --target riscv32em-unknown-none-elf
+//@ [riscv32em_unknown_none_elf] needs-llvm-components: riscv
+//@ revisions: riscv32emc_unknown_none_elf
+//@ [riscv32emc_unknown_none_elf] compile-flags: --target riscv32emc-unknown-none-elf
+//@ [riscv32emc_unknown_none_elf] needs-llvm-components: riscv
 //@ revisions: riscv32gc_unknown_linux_gnu
 //@ [riscv32gc_unknown_linux_gnu] compile-flags: --target riscv32gc-unknown-linux-gnu
 //@ [riscv32gc_unknown_linux_gnu] needs-llvm-components: riscv
@@ -594,6 +603,9 @@
 //@ revisions: x86_64_unknown_redox
 //@ [x86_64_unknown_redox] compile-flags: --target x86_64-unknown-redox
 //@ [x86_64_unknown_redox] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_trusty
+//@ [x86_64_unknown_trusty] compile-flags: --target x86_64-unknown-trusty
+//@ [x86_64_unknown_trusty] needs-llvm-components: x86
 //@ revisions: x86_64_wrs_vxworks
 //@ [x86_64_wrs_vxworks] compile-flags: --target x86_64-wrs-vxworks
 //@ [x86_64_wrs_vxworks] needs-llvm-components: x86

@@ -158,6 +158,11 @@ building from locking the `Cargo.lock` at the expense of duplicating build artif
 Set to `true` to use a subdirectory of the existing target directory or
 set to a path relative to the workspace to use that path.
 --
+[[rust-analyzer.cfg.setTest]]rust-analyzer.cfg.setTest (default: `true`)::
++
+--
+Set `cfg(test)` for local crates. Defaults to true.
+--
 [[rust-analyzer.checkOnSave]]rust-analyzer.checkOnSave (default: `true`)::
 +
 --
@@ -261,6 +266,13 @@ Aliased as `"checkOnSave.targets"`.
 Whether `--workspace` should be passed to `cargo check`.
 If false, `-p <package>` will be passed instead.
 --
+[[rust-analyzer.completion.addSemicolonToUnit]]rust-analyzer.completion.addSemicolonToUnit (default: `true`)::
++
+--
+Whether to automatically add a semicolon when completing unit-returning functions.
+
+In `match` arms it completes a comma instead.
+--
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
 --
@@ -282,6 +294,11 @@ Whether to add parenthesis and argument snippets when completing function.
 +
 --
 Whether to show full function/method signatures in completion docs.
+--
+[[rust-analyzer.completion.hideDeprecated]]rust-analyzer.completion.hideDeprecated (default: `false`)::
++
+--
+Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.
 --
 [[rust-analyzer.completion.limit]]rust-analyzer.completion.limit (default: `null`)::
 +
@@ -835,7 +852,7 @@ Exclude imports from find-all-references.
 [[rust-analyzer.references.excludeTests]]rust-analyzer.references.excludeTests (default: `false`)::
 +
 --
-Exclude tests from find-all-references.
+Exclude tests from find-all-references and call-hierarchy.
 --
 [[rust-analyzer.runnables.command]]rust-analyzer.runnables.command (default: `null`)::
 +

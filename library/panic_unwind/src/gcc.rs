@@ -92,7 +92,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let exception = exception.cast::<Exception>();
     // Just access the canary field, avoid accessing the entire `Exception` as
     // it can be a foreign Rust exception.
-    let canary = ptr::addr_of!((*exception).canary).read();
+    let canary = (&raw const (*exception).canary).read();
     if !ptr::eq(canary, &CANARY) {
         // A foreign Rust exception, treat it slightly differently from other
         // foreign exceptions, because call into `_Unwind_DeleteException` will
@@ -107,4 +107,4 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
 
 // Rust's exception class identifier.  This is used by personality routines to
 // determine whether the exception was thrown by their own runtime.
-const RUST_EXCEPTION_CLASS: uw::_Unwind_Exception_Class = u64::from_be_bytes(*b"MOZ\0RUST");
+const RUST_EXCEPTION_CLASS: uw::_Unwind_Exception_Class = u64::from_ne_bytes(*b"MOZ\0RUST");

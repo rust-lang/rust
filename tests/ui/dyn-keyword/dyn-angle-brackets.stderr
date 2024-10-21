@@ -11,7 +11,7 @@ note: the lint level is defined here
    |
 LL | #![deny(bare_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL |         <dyn fmt::Debug>::fmt(self, f)
    |          +++

@@ -245,7 +245,7 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
 // test builtin_expr
 // fn foo() {
-//     builtin#asm(0);
+//     builtin#asm("");
 //     builtin#format_args("", 0, 1, a = 2 + 3, a + b);
 //     builtin#offset_of(Foo, bar.baz.0);
 // }
@@ -297,16 +297,186 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         p.expect(T![')']);
         Some(m.complete(p, FORMAT_ARGS_EXPR))
     } else if p.at_contextual_kw(T![asm]) {
-        p.bump_remap(T![asm]);
-        p.expect(T!['(']);
-        // FIXME: We just put expression here so highlighting kind of keeps working
-        expr(p);
-        p.expect(T![')']);
-        Some(m.complete(p, ASM_EXPR))
+        parse_asm_expr(p, m)
     } else {
         m.abandon(p);
         None
     }
+}
+
+// test asm_expr
+// fn foo() {
+//     builtin#asm(
+//         "mov {tmp}, {x}",
+//         "shl {tmp}, 1",
+//         "shl {x}, 2",
+//         "add {x}, {tmp}",
+//         x = inout(reg) x,
+//         tmp = out(reg) _,
+//     );
+// }
+fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
+    p.bump_remap(T![asm]);
+    p.expect(T!['(']);
+    if expr(p).is_none() {
+        p.err_and_bump("expected asm template");
+    }
+    let mut allow_templates = true;
+    while !p.at(EOF) && !p.at(T![')']) {
+        p.expect(T![,]);
+        // accept trailing commas
+        if p.at(T![')']) {
+            break;
+        }
+
+        let op_n = p.start();
+        // Parse clobber_abi
+        if p.eat_contextual_kw(T![clobber_abi]) {
+            parse_clobber_abi(p);
+            op_n.complete(p, ASM_CLOBBER_ABI);
+            allow_templates = false;
+            continue;
+        }
+
+        // Parse options
+        if p.eat_contextual_kw(T![options]) {
+            parse_options(p);
+            op_n.complete(p, ASM_OPTIONS);
+            allow_templates = false;
+            continue;
+        }
+
+        // Parse operand names
+        if p.at(T![ident]) && p.nth_at(1, T![=]) {
+            name(p);
+            p.bump(T![=]);
+            allow_templates = false;
+            true
+        } else {
+            false
+        };
+
+        let op = p.start();
+        let dir_spec = p.start();
+        if p.eat(T![in]) || p.eat_contextual_kw(T![out]) || p.eat_contextual_kw(T![lateout]) {
+            dir_spec.complete(p, ASM_DIR_SPEC);
+            parse_reg(p);
+            let op_expr = p.start();
+            expr(p);
+            op_expr.complete(p, ASM_OPERAND_EXPR);
+            op.complete(p, ASM_REG_OPERAND);
+            op_n.complete(p, ASM_OPERAND_NAMED);
+        } else if p.eat_contextual_kw(T![inout]) || p.eat_contextual_kw(T![inlateout]) {
+            dir_spec.complete(p, ASM_DIR_SPEC);
+            parse_reg(p);
+            let op_expr = p.start();
+            expr(p);
+            if p.eat(T![=>]) {
+                expr(p);
+            }
+            op_expr.complete(p, ASM_OPERAND_EXPR);
+            op.complete(p, ASM_REG_OPERAND);
+            op_n.complete(p, ASM_OPERAND_NAMED);
+        } else if p.eat_contextual_kw(T![label]) {
+            dir_spec.abandon(p);
+            block_expr(p);
+            op.complete(p, ASM_OPERAND_NAMED);
+            op_n.complete(p, ASM_LABEL);
+        } else if p.eat(T![const]) {
+            dir_spec.abandon(p);
+            expr(p);
+            op.complete(p, ASM_CONST);
+            op_n.complete(p, ASM_OPERAND_NAMED);
+        } else if p.eat_contextual_kw(T![sym]) {
+            dir_spec.abandon(p);
+            paths::type_path(p);
+            op.complete(p, ASM_SYM);
+            op_n.complete(p, ASM_OPERAND_NAMED);
+        } else if allow_templates {
+            dir_spec.abandon(p);
+            op.abandon(p);
+            op_n.abandon(p);
+            if expr(p).is_none() {
+                p.err_and_bump("expected asm template");
+            }
+            continue;
+        } else {
+            dir_spec.abandon(p);
+            op.abandon(p);
+            op_n.abandon(p);
+            p.err_and_bump("expected asm operand");
+            if p.at(T!['}']) {
+                break;
+            }
+            continue;
+        };
+        allow_templates = false;
+    }
+    p.expect(T![')']);
+    Some(m.complete(p, ASM_EXPR))
+}
+
+fn parse_options(p: &mut Parser<'_>) {
+    p.expect(T!['(']);
+
+    while !p.eat(T![')']) && !p.at(EOF) {
+        const OPTIONS: &[SyntaxKind] = &[
+            T![pure],
+            T![nomem],
+            T![readonly],
+            T![preserves_flags],
+            T![noreturn],
+            T![nostack],
+            T![may_unwind],
+            T![att_syntax],
+            T![raw],
+        ];
+        let m = p.start();
+        if !OPTIONS.iter().any(|&syntax| p.eat_contextual_kw(syntax)) {
+            p.err_and_bump("expected asm option");
+            m.abandon(p);
+            continue;
+        }
+        m.complete(p, ASM_OPTION);
+
+        // Allow trailing commas
+        if p.eat(T![')']) {
+            break;
+        }
+        p.expect(T![,]);
+    }
+}
+
+fn parse_clobber_abi(p: &mut Parser<'_>) {
+    p.expect(T!['(']);
+
+    while !p.eat(T![')']) && !p.at(EOF) {
+        if !p.expect(T![string]) {
+            break;
+        }
+
+        // Allow trailing commas
+        if p.eat(T![')']) {
+            break;
+        }
+        p.expect(T![,]);
+    }
+}
+
+fn parse_reg(p: &mut Parser<'_>) {
+    p.expect(T!['(']);
+    if p.at(T![ident]) {
+        let m = p.start();
+        name_ref(p);
+        m.complete(p, ASM_REG_SPEC);
+    } else if p.at(T![string]) {
+        let m = p.start();
+        p.bump_any();
+        m.complete(p, ASM_REG_SPEC);
+    } else {
+        p.err_and_bump("expected register name");
+    }
+    p.expect(T![')']);
 }
 
 // test array_expr

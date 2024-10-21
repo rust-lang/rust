@@ -5,7 +5,7 @@ use crate::tokenize_with_text;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
 use rustc_hir::MatchSource::TryDesugar;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
     ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
@@ -17,10 +17,32 @@ use rustc_middle::ty::TypeckResults;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext, sym};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
+use std::slice;
 
 /// Callback that is called when two expressions are not equal in the sense of `SpanlessEq`, but
 /// other conditions would make them equal.
 type SpanlessEqCallback<'a> = dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a;
+
+/// Determines how paths are hashed and compared for equality.
+#[derive(Copy, Clone, Debug, Default)]
+pub enum PathCheck {
+    /// Paths must match exactly and are hashed by their exact HIR tree.
+    ///
+    /// Thus, `std::iter::Iterator` and `Iterator` are not considered equal even though they refer
+    /// to the same item.
+    #[default]
+    Exact,
+    /// Paths are compared and hashed based on their resolution.
+    ///
+    /// They can appear different in the HIR tree but are still considered equal
+    /// and have equal hashes as long as they refer to the same item.
+    ///
+    /// Note that this is currently only partially implemented specifically for paths that are
+    /// resolved before type-checking, i.e. the final segment must have a non-error resolution.
+    /// If a path with an error resolution is encountered, it falls back to the default exact
+    /// matching behavior.
+    Resolution,
+}
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator `==` on ast types as this operator would compare true equality with
@@ -33,6 +55,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     maybe_typeck_results: Option<(&'tcx TypeckResults<'tcx>, &'tcx TypeckResults<'tcx>)>,
     allow_side_effects: bool,
     expr_fallback: Option<Box<SpanlessEqCallback<'a>>>,
+    path_check: PathCheck,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
@@ -42,6 +65,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             maybe_typeck_results: cx.maybe_typeck_results().map(|x| (x, x)),
             allow_side_effects: true,
             expr_fallback: None,
+            path_check: PathCheck::default(),
         }
     }
 
@@ -50,6 +74,16 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn deny_side_effects(self) -> Self {
         Self {
             allow_side_effects: false,
+            ..self
+        }
+    }
+
+    /// Check paths by their resolution instead of exact equality. See [`PathCheck`] for more
+    /// details.
+    #[must_use]
+    pub fn paths_by_resolution(self) -> Self {
+        Self {
+            path_check: PathCheck::Resolution,
             ..self
         }
     }
@@ -121,9 +155,9 @@ impl HirEqInterExpr<'_, '_, '_> {
 
                 // eq_pat adds the HirIds to the locals map. We therefore call it last to make sure that
                 // these only get added if the init and type is equal.
-                both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
-                    && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
-                    && both(&l.els, &r.els, |l, r| self.eq_block(l, r))
+                both(l.init.as_ref(), r.init.as_ref(), |l, r| self.eq_expr(l, r))
+                    && both(l.ty.as_ref(), r.ty.as_ref(), |l, r| self.eq_ty(l, r))
+                    && both(l.els.as_ref(), r.els.as_ref(), |l, r| self.eq_block(l, r))
                     && self.eq_pat(l.pat, r.pat)
             },
             (&StmtKind::Expr(l), &StmtKind::Expr(r)) | (&StmtKind::Semi(l), &StmtKind::Semi(r)) => self.eq_expr(l, r),
@@ -142,7 +176,9 @@ impl HirEqInterExpr<'_, '_, '_> {
         if lspan.ctxt != SyntaxContext::root() && rspan.ctxt != SyntaxContext::root() {
             // Don't try to check in between statements inside macros.
             return over(left.stmts, right.stmts, |left, right| self.eq_stmt(left, right))
-                && both(&left.expr, &right.expr, |left, right| self.eq_expr(left, right));
+                && both(left.expr.as_ref(), right.expr.as_ref(), |left, right| {
+                    self.eq_expr(left, right)
+                });
         }
         if lspan.ctxt != rspan.ctxt {
             return false;
@@ -285,8 +321,8 @@ impl HirEqInterExpr<'_, '_, '_> {
                     })
             },
             (&ExprKind::Break(li, ref le), &ExprKind::Break(ri, ref re)) => {
-                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
-                    && both(le, re, |l, r| self.eq_expr(l, r))
+                both(li.label.as_ref(), ri.label.as_ref(), |l, r| l.ident.name == r.ident.name)
+                    && both(le.as_ref(), re.as_ref(), |l, r| self.eq_expr(l, r))
             },
             (&ExprKind::Call(l_fun, l_args), &ExprKind::Call(r_fun, r_args)) => {
                 self.inner.allow_side_effects && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
@@ -297,7 +333,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Closure(_l), &ExprKind::Closure(_r)) => false,
             (&ExprKind::ConstBlock(lb), &ExprKind::ConstBlock(rb)) => self.eq_body(lb.body, rb.body),
             (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
-                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
+                both(li.label.as_ref(), ri.label.as_ref(), |l, r| l.ident.name == r.ident.name)
             },
             (&ExprKind::DropTemps(le), &ExprKind::DropTemps(re)) => self.eq_expr(le, re),
             (&ExprKind::Field(l_f_exp, ref l_f_ident), &ExprKind::Field(r_f_exp, ref r_f_ident)) => {
@@ -305,21 +341,25 @@ impl HirEqInterExpr<'_, '_, '_> {
             },
             (&ExprKind::Index(la, li, _), &ExprKind::Index(ra, ri, _)) => self.eq_expr(la, ra) && self.eq_expr(li, ri),
             (&ExprKind::If(lc, lt, ref le), &ExprKind::If(rc, rt, ref re)) => {
-                self.eq_expr(lc, rc) && self.eq_expr(lt, rt) && both(le, re, |l, r| self.eq_expr(l, r))
+                self.eq_expr(lc, rc) && self.eq_expr(lt, rt)
+                    && both(le.as_ref(), re.as_ref(), |l, r| self.eq_expr(l, r))
             },
             (&ExprKind::Let(l), &ExprKind::Let(r)) => {
-                self.eq_pat(l.pat, r.pat) && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r)) && self.eq_expr(l.init, r.init)
+                self.eq_pat(l.pat, r.pat)
+                    && both(l.ty.as_ref(), r.ty.as_ref(), |l, r| self.eq_ty(l, r))
+                    && self.eq_expr(l.init, r.init)
             },
             (ExprKind::Lit(l), ExprKind::Lit(r)) => l.node == r.node,
             (&ExprKind::Loop(lb, ref ll, ref lls, _), &ExprKind::Loop(rb, ref rl, ref rls, _)) => {
-                lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.name == r.ident.name)
+                lls == rls && self.eq_block(lb, rb)
+                    && both(ll.as_ref(), rl.as_ref(), |l, r| l.ident.name == r.ident.name)
             },
             (&ExprKind::Match(le, la, ref ls), &ExprKind::Match(re, ra, ref rs)) => {
                 (ls == rs || (matches!((ls, rs), (TryDesugar(_), TryDesugar(_)))))
                     && self.eq_expr(le, re)
                     && over(la, ra, |l, r| {
                         self.eq_pat(l.pat, r.pat)
-                            && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r))
+                            && both(l.guard.as_ref(), r.guard.as_ref(), |l, r| self.eq_expr(l, r))
                             && self.eq_expr(l.body, r.body)
                     })
             },
@@ -339,10 +379,10 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Repeat(le, ll), &ExprKind::Repeat(re, rl)) => {
                 self.eq_expr(le, re) && self.eq_array_length(ll, rl)
             },
-            (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l, r, |l, r| self.eq_expr(l, r)),
+            (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l.as_ref(), r.as_ref(), |l, r| self.eq_expr(l, r)),
             (&ExprKind::Struct(l_path, lf, ref lo), &ExprKind::Struct(r_path, rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path)
-                    && both(lo, ro, |l, r| self.eq_expr(l, r))
+                    && both(lo.as_ref(), ro.as_ref(), |l, r| self.eq_expr(l, r))
                     && over(lf, rf, |l, r| self.eq_expr_field(l, r))
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
@@ -450,7 +490,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
             },
             (&PatKind::Binding(lb, li, _, ref lp), &PatKind::Binding(rb, ri, _, ref rp)) => {
-                let eq = lb == rb && both(lp, rp, |l, r| self.eq_pat(l, r));
+                let eq = lb == rb && both(lp.as_ref(), rp.as_ref(), |l, r| self.eq_pat(l, r));
                 if eq {
                     self.locals.insert(li, ri);
                 }
@@ -460,13 +500,15 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&PatKind::Lit(l), &PatKind::Lit(r)) => self.eq_expr(l, r),
             (&PatKind::Tuple(l, ls), &PatKind::Tuple(r, rs)) => ls == rs && over(l, r, |l, r| self.eq_pat(l, r)),
             (&PatKind::Range(ref ls, ref le, li), &PatKind::Range(ref rs, ref re, ri)) => {
-                both(ls, rs, |a, b| self.eq_expr(a, b)) && both(le, re, |a, b| self.eq_expr(a, b)) && (li == ri)
+                both(ls.as_ref(), rs.as_ref(), |a, b| self.eq_expr(a, b))
+                    && both(le.as_ref(), re.as_ref(), |a, b| self.eq_expr(a, b))
+                    && (li == ri)
             },
             (&PatKind::Ref(le, ref lm), &PatKind::Ref(re, ref rm)) => lm == rm && self.eq_pat(le, re),
             (&PatKind::Slice(ls, ref li, le), &PatKind::Slice(rs, ref ri, re)) => {
                 over(ls, rs, |l, r| self.eq_pat(l, r))
                     && over(le, re, |l, r| self.eq_pat(l, r))
-                    && both(li, ri, |l, r| self.eq_pat(l, r))
+                    && both(li.as_ref(), ri.as_ref(), |l, r| self.eq_pat(l, r))
             },
             (&PatKind::Wild, &PatKind::Wild) => true,
             _ => false,
@@ -476,7 +518,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     fn eq_qpath(&mut self, left: &QPath<'_>, right: &QPath<'_>) -> bool {
         match (left, right) {
             (&QPath::Resolved(ref lty, lpath), &QPath::Resolved(ref rty, rpath)) => {
-                both(lty, rty, |l, r| self.eq_ty(l, r)) && self.eq_path(lpath, rpath)
+                both(lty.as_ref(), rty.as_ref(), |l, r| self.eq_ty(l, r)) && self.eq_path(lpath, rpath)
             },
             (&QPath::TypeRelative(lty, lseg), &QPath::TypeRelative(rty, rseg)) => {
                 self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
@@ -490,7 +532,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         match (left.res, right.res) {
             (Res::Local(l), Res::Local(r)) => l == r || self.locals.get(&l) == Some(&r),
             (Res::Local(_), _) | (_, Res::Local(_)) => false,
-            _ => over(left.segments, right.segments, |l, r| self.eq_path_segment(l, r)),
+            _ => self.eq_path_segments(left.segments, right.segments),
         }
     }
 
@@ -503,14 +545,39 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
-    pub fn eq_path_segments(&mut self, left: &[PathSegment<'_>], right: &[PathSegment<'_>]) -> bool {
-        left.len() == right.len() && left.iter().zip(right).all(|(l, r)| self.eq_path_segment(l, r))
+    pub fn eq_path_segments<'tcx>(
+        &mut self,
+        mut left: &'tcx [PathSegment<'tcx>],
+        mut right: &'tcx [PathSegment<'tcx>],
+    ) -> bool {
+        if let PathCheck::Resolution = self.inner.path_check
+            && let Some(left_seg) = generic_path_segments(left)
+            && let Some(right_seg) = generic_path_segments(right)
+        {
+            // If we compare by resolution, then only check the last segments that could possibly have generic
+            // arguments
+            left = left_seg;
+            right = right_seg;
+        }
+
+        over(left, right, |l, r| self.eq_path_segment(l, r))
     }
 
     pub fn eq_path_segment(&mut self, left: &PathSegment<'_>, right: &PathSegment<'_>) -> bool {
-        // The == of idents doesn't work with different contexts,
-        // we have to be explicit about hygiene
-        left.ident.name == right.ident.name && both(&left.args, &right.args, |l, r| self.eq_path_parameters(l, r))
+        if !self.eq_path_parameters(left.args(), right.args()) {
+            return false;
+        }
+
+        if let PathCheck::Resolution = self.inner.path_check
+            && left.res != Res::Err
+            && right.res != Res::Err
+        {
+            left.res == right.res
+        } else {
+            // The == of idents doesn't work with different contexts,
+            // we have to be explicit about hygiene
+            left.ident.name == right.ident.name
+        }
     }
 
     pub fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
@@ -649,7 +716,7 @@ fn swap_binop<'a>(
 
 /// Checks if the two `Option`s are both `None` or some equal values as per
 /// `eq_fn`.
-pub fn both<X>(l: &Option<X>, r: &Option<X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
+pub fn both<X>(l: Option<&X>, r: Option<&X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     l.as_ref()
         .map_or_else(|| r.is_none(), |x| r.as_ref().map_or(false, |y| eq_fn(x, y)))
 }
@@ -673,6 +740,21 @@ pub fn eq_expr_value(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>) ->
     SpanlessEq::new(cx).deny_side_effects().eq_expr(left, right)
 }
 
+/// Returns the segments of a path that might have generic parameters.
+/// Usually just the last segment for free items, except for when the path resolves to an associated
+/// item, in which case it is the last two
+fn generic_path_segments<'tcx>(segments: &'tcx [PathSegment<'tcx>]) -> Option<&'tcx [PathSegment<'tcx>]> {
+    match segments.last()?.res {
+        Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _) => {
+            // <Ty as module::Trait<T>>::assoc::<U>
+            //        ^^^^^^^^^^^^^^^^   ^^^^^^^^^^ segments: [module, Trait<T>, assoc<U>]
+            Some(&segments[segments.len().checked_sub(2)?..])
+        },
+        Res::Err => None,
+        _ => Some(slice::from_ref(segments.last()?)),
+    }
+}
+
 /// Type used to hash an ast element. This is different from the `Hash` trait
 /// on ast types as this
 /// trait would consider IDs and spans.
@@ -683,6 +765,7 @@ pub struct SpanlessHash<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
     s: FxHasher,
+    path_check: PathCheck,
 }
 
 impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
@@ -690,7 +773,18 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         Self {
             cx,
             maybe_typeck_results: cx.maybe_typeck_results(),
+            path_check: PathCheck::default(),
             s: FxHasher::default(),
+        }
+    }
+
+    /// Check paths by their resolution instead of exact equality. See [`PathCheck`] for more
+    /// details.
+    #[must_use]
+    pub fn paths_by_resolution(self) -> Self {
+        Self {
+            path_check: PathCheck::Resolution,
+            ..self
         }
     }
 
@@ -1031,9 +1125,19 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             // even though the binding names are different and they have different `HirId`s.
             Res::Local(_) => 1_usize.hash(&mut self.s),
             _ => {
-                for seg in path.segments {
-                    self.hash_name(seg.ident.name);
-                    self.hash_generic_args(seg.args().args);
+                if let PathCheck::Resolution = self.path_check
+                    && let [.., last] = path.segments
+                    && let Some(segments) = generic_path_segments(path.segments)
+                {
+                    for seg in segments {
+                        self.hash_generic_args(seg.args().args);
+                    }
+                    last.res.hash(&mut self.s);
+                } else {
+                    for seg in path.segments {
+                        self.hash_name(seg.ident.name);
+                        self.hash_generic_args(seg.args().args);
+                    }
                 }
             },
         }
@@ -1115,9 +1219,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             TyKind::Path(ref qpath) => self.hash_qpath(qpath),
-            TyKind::OpaqueDef(_, arg_list, in_trait) => {
+            TyKind::OpaqueDef(_, arg_list) => {
                 self.hash_generic_args(arg_list);
-                in_trait.hash(&mut self.s);
             },
             TyKind::TraitObject(_, lifetime, _) => {
                 self.hash_lifetime(lifetime);

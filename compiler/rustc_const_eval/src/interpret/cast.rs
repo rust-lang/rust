@@ -14,7 +14,8 @@ use tracing::trace;
 
 use super::util::ensure_monomorphic_enough;
 use super::{
-    FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy, err_inval, throw_ub, throw_ub_custom,
+    FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy, err_inval, interp_ok, throw_ub,
+    throw_ub_custom,
 };
 use crate::fluent_generated as fluent;
 
@@ -157,7 +158,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op_allow_transmute(src, dest)?;
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Handles 'IntToInt' and 'IntToFloat' casts.
@@ -169,7 +170,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         assert!(src.layout.ty.is_integral() || src.layout.ty.is_char() || src.layout.ty.is_bool());
         assert!(cast_to.ty.is_floating_point() || cast_to.ty.is_integral() || cast_to.ty.is_char());
 
-        Ok(ImmTy::from_scalar(
+        interp_ok(ImmTy::from_scalar(
             self.cast_from_int_like(src.to_scalar(), src.layout, cast_to.ty)?,
             cast_to,
         ))
@@ -192,7 +193,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             FloatTy::F64 => self.cast_from_float(src.to_scalar().to_f64()?, cast_to.ty),
             FloatTy::F128 => self.cast_from_float(src.to_scalar().to_f128()?, cast_to.ty),
         };
-        Ok(ImmTy::from_scalar(val, cast_to))
+        interp_ok(ImmTy::from_scalar(val, cast_to))
     }
 
     /// Handles 'FnPtrToPtr' and 'PtrToPtr' casts.
@@ -203,17 +204,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         assert!(src.layout.ty.is_any_ptr());
         assert!(cast_to.ty.is_unsafe_ptr());
-        // Handle casting any ptr to raw ptr (might be a fat ptr).
+        // Handle casting any ptr to raw ptr (might be a wide ptr).
         if cast_to.size == src.layout.size {
-            // Thin or fat pointer that just has the ptr kind of target type changed.
-            return Ok(ImmTy::from_immediate(**src, cast_to));
+            // Thin or wide pointer that just has the ptr kind of target type changed.
+            return interp_ok(ImmTy::from_immediate(**src, cast_to));
         } else {
-            // Casting the metadata away from a fat ptr.
+            // Casting the metadata away from a wide ptr.
             assert_eq!(src.layout.size, 2 * self.pointer_size());
             assert_eq!(cast_to.size, self.pointer_size());
             assert!(src.layout.ty.is_unsafe_ptr());
             return match **src {
-                Immediate::ScalarPair(data, _) => Ok(ImmTy::from_scalar(data, cast_to)),
+                Immediate::ScalarPair(data, _) => interp_ok(ImmTy::from_scalar(data, cast_to)),
                 Immediate::Scalar(..) => span_bug!(
                     self.cur_span(),
                     "{:?} input to a fat-to-thin cast ({} -> {})",
@@ -240,7 +241,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ok(ptr) => M::expose_ptr(self, ptr)?,
             Err(_) => {} // Do nothing, exposing an invalid pointer (`None` provenance) is a NOP.
         };
-        Ok(ImmTy::from_scalar(self.cast_from_int_like(scalar, src.layout, cast_to.ty)?, cast_to))
+        interp_ok(ImmTy::from_scalar(
+            self.cast_from_int_like(scalar, src.layout, cast_to.ty)?,
+            cast_to,
+        ))
     }
 
     pub fn pointer_with_exposed_provenance_cast(
@@ -258,7 +262,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Then turn address into pointer.
         let ptr = M::ptr_from_addr_cast(self, addr)?;
-        Ok(ImmTy::from_scalar(Scalar::from_maybe_pointer(ptr, self), cast_to))
+        interp_ok(ImmTy::from_scalar(Scalar::from_maybe_pointer(ptr, self), cast_to))
     }
 
     /// Low-level cast helper function. This works directly on scalars and can take 'int-like' input
@@ -280,7 +284,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => span_bug!(self.cur_span(), "invalid int-like cast from {}", src_layout.ty),
         };
 
-        Ok(match *cast_ty.kind() {
+        interp_ok(match *cast_ty.kind() {
             // int -> int
             Int(_) | Uint(_) => {
                 let size = match *cast_ty.kind() {
@@ -330,19 +334,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         use rustc_type_ir::TyKind::*;
 
-        fn adjust_nan<
-            'tcx,
-            M: Machine<'tcx>,
-            F1: rustc_apfloat::Float + FloatConvert<F2>,
-            F2: rustc_apfloat::Float,
-        >(
-            ecx: &InterpCx<'tcx, M>,
-            f1: F1,
-            f2: F2,
-        ) -> F2 {
-            if f2.is_nan() { M::generate_nan(ecx, &[f1]) } else { f2 }
-        }
-
         match *dest_ty.kind() {
             // float -> uint
             Uint(t) => {
@@ -363,11 +354,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             // float -> float
             Float(fty) => match fty {
-                FloatTy::F16 => Scalar::from_f16(adjust_nan(self, f, f.convert(&mut false).value)),
-                FloatTy::F32 => Scalar::from_f32(adjust_nan(self, f, f.convert(&mut false).value)),
-                FloatTy::F64 => Scalar::from_f64(adjust_nan(self, f, f.convert(&mut false).value)),
+                FloatTy::F16 => {
+                    Scalar::from_f16(self.adjust_nan(f.convert(&mut false).value, &[f]))
+                }
+                FloatTy::F32 => {
+                    Scalar::from_f32(self.adjust_nan(f.convert(&mut false).value, &[f]))
+                }
+                FloatTy::F64 => {
+                    Scalar::from_f64(self.adjust_nan(f.convert(&mut false).value, &[f]))
+                }
                 FloatTy::F128 => {
-                    Scalar::from_f128(adjust_nan(self, f, f.convert(&mut false).value))
+                    Scalar::from_f128(self.adjust_nan(f.convert(&mut false).value, &[f]))
                 }
             },
             // That's it.
@@ -394,7 +391,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr = self.read_pointer(src)?;
                 let val = Immediate::new_slice(
                     ptr,
-                    length.eval_target_usize(*self.tcx, self.param_env),
+                    length
+                        .try_to_target_usize(*self.tcx)
+                        .expect("expected monomorphic const in const eval"),
                     self,
                 );
                 self.write_immediate(val, dest)
@@ -505,7 +504,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         self.unsize_into(&src_field, cast_ty_field, &dst_field)?;
                     }
                 }
-                Ok(())
+                interp_ok(())
             }
             _ => {
                 // Do not ICE if we are not monomorphic enough.

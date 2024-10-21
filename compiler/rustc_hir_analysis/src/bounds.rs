@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 
-use crate::hir_ty_lowering::OnlySelfBounds;
+use crate::hir_ty_lowering::PredicateFilter;
 
 /// Collects together a list of type bounds. These lists of bounds occur in many places
 /// in Rust's syntax:
@@ -51,8 +51,8 @@ impl<'tcx> Bounds<'tcx> {
         bound_trait_ref: ty::PolyTraitRef<'tcx>,
         span: Span,
         polarity: ty::PredicatePolarity,
-        constness: ty::BoundConstness,
-        only_self_bounds: OnlySelfBounds,
+        constness: Option<ty::BoundConstness>,
+        predicate_filter: PredicateFilter,
     ) {
         let clause = (
             bound_trait_ref
@@ -72,31 +72,75 @@ impl<'tcx> Bounds<'tcx> {
         // FIXME(effects): Lift this out of `push_trait_bound`, and move it somewhere else.
         // Perhaps moving this into `lower_poly_trait_ref`, just like we lower associated
         // type bounds.
-        if !tcx.features().effects || only_self_bounds.0 {
+        if !tcx.features().effects {
             return;
         }
+        match predicate_filter {
+            PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {
+                return;
+            }
+            PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                // Ok.
+            }
+        }
+
         // For `T: ~const Tr` or `T: const Tr`, we need to add an additional bound on the
         // associated type of `<T as Tr>` and make sure that the effect is compatible.
         let compat_val = match (tcx.def_kind(defining_def_id), constness) {
             // FIXME(effects): revisit the correctness of this
-            (_, ty::BoundConstness::Const) => tcx.consts.false_,
+            (_, Some(ty::BoundConstness::Const)) => tcx.consts.false_,
             // body owners that can have trait bounds
-            (DefKind::Const | DefKind::Fn | DefKind::AssocFn, ty::BoundConstness::ConstIfConst) => {
-                tcx.expected_host_effect_param_for_body(defining_def_id)
-            }
+            (
+                DefKind::Const | DefKind::Fn | DefKind::AssocFn,
+                Some(ty::BoundConstness::ConstIfConst),
+            ) => tcx.expected_host_effect_param_for_body(defining_def_id),
 
-            (_, ty::BoundConstness::NotConst) => {
+            (_, None) => {
                 if !tcx.is_const_trait(bound_trait_ref.def_id()) {
                     return;
                 }
                 tcx.consts.true_
             }
+            (DefKind::Trait, Some(ty::BoundConstness::ConstIfConst)) => {
+                // we are in a trait, where `bound_trait_ref` could be:
+                // (1) a super trait `trait Foo: ~const Bar`.
+                //     - This generates `<Self as Foo>::Effects: TyCompat<<Self as Bar>::Effects>`
+                //
+                // (2) a where clause `where for<..> Something: ~const Bar`.
+                //     - This generates `for<..> <Self as Foo>::Effects: TyCompat<<Something as Bar>::Effects>`
+                let Some(own_fx) = tcx.associated_type_for_effects(defining_def_id) else {
+                    tcx.dcx().span_delayed_bug(span, "should not have allowed `~const` on a trait that doesn't have `#[const_trait]`");
+                    return;
+                };
+                let own_fx_ty = Ty::new_projection(
+                    tcx,
+                    own_fx,
+                    ty::GenericArgs::identity_for_item(tcx, own_fx),
+                );
+                let Some(their_fx) = tcx.associated_type_for_effects(bound_trait_ref.def_id())
+                else {
+                    tcx.dcx().span_delayed_bug(span, "`~const` on trait without Effects assoc");
+                    return;
+                };
+                let their_fx_ty =
+                    Ty::new_projection(tcx, their_fx, bound_trait_ref.skip_binder().args);
+                let compat = tcx.require_lang_item(LangItem::EffectsTyCompat, Some(span));
+                let clause = bound_trait_ref
+                    .map_bound(|_| {
+                        let trait_ref = ty::TraitRef::new(tcx, compat, [own_fx_ty, their_fx_ty]);
+                        ty::ClauseKind::Trait(ty::TraitPredicate {
+                            trait_ref,
+                            polarity: ty::PredicatePolarity::Positive,
+                        })
+                    })
+                    .upcast(tcx);
 
-            (
-                DefKind::Trait | DefKind::Impl { of_trait: true },
-                ty::BoundConstness::ConstIfConst,
-            ) => {
-                // this is either a where clause on an impl/trait header or on a trait.
+                self.clauses.push((clause, span));
+                return;
+            }
+
+            (DefKind::Impl { of_trait: true }, Some(ty::BoundConstness::ConstIfConst)) => {
+                // this is a where clause on an impl header.
                 // push `<T as Tr>::Effects` into the set for the `Min` bound.
                 let Some(assoc) = tcx.associated_type_for_effects(bound_trait_ref.def_id()) else {
                     tcx.dcx().span_delayed_bug(span, "`~const` on trait without Effects assoc");
@@ -129,12 +173,12 @@ impl<'tcx> Bounds<'tcx> {
             //
             // FIXME(effects) this is equality for now, which wouldn't be helpful for a non-const implementor
             // that uses a `Bar` that implements `Trait` with `Maybe` effects.
-            (DefKind::AssocTy, ty::BoundConstness::ConstIfConst) => {
+            (DefKind::AssocTy, Some(ty::BoundConstness::ConstIfConst)) => {
                 // FIXME(effects): implement this
                 return;
             }
             // probably illegal in this position.
-            (_, ty::BoundConstness::ConstIfConst) => {
+            (_, Some(ty::BoundConstness::ConstIfConst)) => {
                 tcx.dcx().span_delayed_bug(span, "invalid `~const` encountered");
                 return;
             }

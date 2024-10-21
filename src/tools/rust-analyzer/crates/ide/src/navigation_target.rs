@@ -237,11 +237,13 @@ impl TryToNav for Definition {
             Definition::Trait(it) => it.try_to_nav(db),
             Definition::TraitAlias(it) => it.try_to_nav(db),
             Definition::TypeAlias(it) => it.try_to_nav(db),
-            Definition::ExternCrateDecl(it) => Some(it.try_to_nav(db)?),
+            Definition::ExternCrateDecl(it) => it.try_to_nav(db),
+            Definition::InlineAsmOperand(it) => it.try_to_nav(db),
             Definition::BuiltinLifetime(_)
             | Definition::BuiltinType(_)
             | Definition::TupleField(_)
             | Definition::ToolModule(_)
+            | Definition::InlineAsmRegOrRegClass(_)
             | Definition::BuiltinAttr(_) => None,
             // FIXME: The focus range should be set to the helper declaration
             Definition::DeriveHelper(it) => it.derive().try_to_nav(db),
@@ -693,6 +695,31 @@ impl TryToNav for hir::ConstParam {
     }
 }
 
+impl TryToNav for hir::InlineAsmOperand {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+        let InFile { file_id, value } = &self.source(db)?;
+        let file_id = *file_id;
+        Some(orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
+            |(FileRange { file_id, range: full_range }, focus_range)| {
+                let edition = self.parent(db).module(db).krate().edition(db);
+                NavigationTarget {
+                    file_id,
+                    name: self
+                        .name(db)
+                        .map_or_else(|| "_".into(), |it| it.display(db, edition).to_smolstr()),
+                    alias: None,
+                    kind: Some(SymbolKind::Local),
+                    full_range,
+                    focus_range,
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                }
+            },
+        ))
+    }
+}
+
 #[derive(Debug)]
 pub struct UpmappingResult<T> {
     /// The macro call site.
@@ -765,6 +792,7 @@ pub(crate) fn orig_range_with_focus_r(
             .definition_range(db)
     };
 
+    // FIXME: Also make use of the syntax context to determine which site we are at?
     let value_range = InFile::new(hir_file, value).original_node_file_range_opt(db);
     let ((call_site_range, call_site_focus), def_site) =
         match InFile::new(hir_file, name).original_node_file_range_opt(db) {

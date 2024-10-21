@@ -1,0 +1,65 @@
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/missing-assoc-type.rs:5:16
+   |
+LL | fn bar(x: &dyn Foo) {}
+   |                ^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/missing-assoc-type.rs:2:10
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     type Bar<T>;
+   |          ^^^ ...because it contains the generic associated type `Bar`
+   = help: consider moving `Bar` to another trait
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/missing-assoc-type.rs:5:16
+   |
+LL | fn bar(x: &dyn Foo) {}
+   |                ^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/missing-assoc-type.rs:2:10
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     type Bar<T>;
+   |          ^^^ ...because it contains the generic associated type `Bar`
+   = help: consider moving `Bar` to another trait
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/missing-assoc-type.rs:5:16
+   |
+LL | fn bar(x: &dyn Foo) {}
+   |                ^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/missing-assoc-type.rs:2:10
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     type Bar<T>;
+   |          ^^^ ...because it contains the generic associated type `Bar`
+   = help: consider moving `Bar` to another trait
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/missing-assoc-type.rs:5:12
+   |
+LL | fn bar(x: &dyn Foo) {}
+   |            ^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/missing-assoc-type.rs:2:10
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     type Bar<T>;
+   |          ^^^ ...because it contains the generic associated type `Bar`
+   = help: consider moving `Bar` to another trait
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

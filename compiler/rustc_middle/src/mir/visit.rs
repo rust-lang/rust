@@ -576,6 +576,7 @@ macro_rules! make_mir_visitor {
                     }
 
                     TerminatorKind::InlineAsm {
+                        asm_macro: _,
                         template: _,
                         operands,
                         options: _,

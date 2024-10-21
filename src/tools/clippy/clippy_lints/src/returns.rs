@@ -7,7 +7,7 @@ use clippy_utils::{
     path_to_local_id, span_contains_cfg, span_find_starting_semi,
 };
 use core::ops::ControlFlow;
-use rustc_ast::NestedMetaItem;
+use rustc_ast::MetaItemInner;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
 use rustc_hir::intravisit::FnKind;
@@ -140,7 +140,7 @@ enum RetReplacement<'tcx> {
     Expr(Cow<'tcx, str>, Applicability),
 }
 
-impl<'tcx> RetReplacement<'tcx> {
+impl RetReplacement<'_> {
     fn sugg_help(&self) -> &'static str {
         match self {
             Self::Empty | Self::Expr(..) => "remove `return`",
@@ -158,7 +158,7 @@ impl<'tcx> RetReplacement<'tcx> {
     }
 }
 
-impl<'tcx> Display for RetReplacement<'tcx> {
+impl Display for RetReplacement<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Empty => write!(f, ""),
@@ -357,7 +357,7 @@ fn check_final_expr<'tcx>(
 
             let replacement = if let Some(inner_expr) = inner {
                 // if desugar of `do yeet`, don't lint
-                if let ExprKind::Call(path_expr, _) = inner_expr.kind
+                if let ExprKind::Call(path_expr, [_]) = inner_expr.kind
                     && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, ..)) = path_expr.kind
                 {
                     return;
@@ -407,7 +407,7 @@ fn check_final_expr<'tcx>(
                 }
             }
 
-            if ret_span.from_expansion() {
+            if ret_span.from_expansion() || is_from_proc_macro(cx, expr) {
                 return;
             }
 
@@ -421,7 +421,7 @@ fn check_final_expr<'tcx>(
                     if matches!(Level::from_attr(attr), Some(Level::Expect(_)))
                         && let metas = attr.meta_item_list()
                         && let Some(lst) = metas
-                        && let [NestedMetaItem::MetaItem(meta_item)] = lst.as_slice()
+                        && let [MetaItemInner::MetaItem(meta_item), ..] = lst.as_slice()
                         && let [tool, lint_name] = meta_item.path.segments.as_slice()
                         && tool.ident.name == sym::clippy
                         && matches!(

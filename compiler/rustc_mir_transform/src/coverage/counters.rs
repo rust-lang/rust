@@ -4,6 +4,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
 use tracing::{debug, debug_span, instrument};
@@ -13,13 +14,13 @@ use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverage
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) enum BcbCounter {
+enum BcbCounter {
     Counter { id: CounterId },
     Expression { id: ExpressionId },
 }
 
 impl BcbCounter {
-    pub(super) fn as_term(&self) -> CovTerm {
+    fn as_term(&self) -> CovTerm {
         match *self {
             BcbCounter::Counter { id, .. } => CovTerm::Counter(id),
             BcbCounter::Expression { id, .. } => CovTerm::Expression(id),
@@ -78,21 +79,22 @@ impl CoverageCounters {
     /// counters or counter expressions for nodes and edges as required.
     pub(super) fn make_bcb_counters(
         basic_coverage_blocks: &CoverageGraph,
-        bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool,
+        bcb_needs_counter: &BitSet<BasicCoverageBlock>,
     ) -> Self {
-        let num_bcbs = basic_coverage_blocks.num_nodes();
+        let mut counters = MakeBcbCounters::new(basic_coverage_blocks, bcb_needs_counter);
+        counters.make_bcb_counters();
 
-        let mut this = Self {
+        counters.coverage_counters
+    }
+
+    fn with_num_bcbs(num_bcbs: usize) -> Self {
+        Self {
             counter_increment_sites: IndexVec::new(),
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
             bcb_edge_counters: FxHashMap::default(),
             expressions: IndexVec::new(),
             expressions_memo: FxHashMap::default(),
-        };
-
-        MakeBcbCounters::new(&mut this, basic_coverage_blocks).make_bcb_counters(bcb_needs_counter);
-
-        this
+        }
     }
 
     /// Shared helper used by [`Self::make_phys_node_counter`] and
@@ -218,8 +220,8 @@ impl CoverageCounters {
         }
     }
 
-    pub(super) fn bcb_counter(&self, bcb: BasicCoverageBlock) -> Option<BcbCounter> {
-        self.bcb_counters[bcb]
+    pub(super) fn term_for_bcb(&self, bcb: BasicCoverageBlock) -> Option<CovTerm> {
+        self.bcb_counters[bcb].map(|counter| counter.as_term())
     }
 
     /// Returns an iterator over all the nodes/edges in the coverage graph that
@@ -265,19 +267,25 @@ impl CoverageCounters {
 
 /// Helper struct that allows counter creation to inspect the BCB graph.
 struct MakeBcbCounters<'a> {
-    coverage_counters: &'a mut CoverageCounters,
+    coverage_counters: CoverageCounters,
     basic_coverage_blocks: &'a CoverageGraph,
+    bcb_needs_counter: &'a BitSet<BasicCoverageBlock>,
 }
 
 impl<'a> MakeBcbCounters<'a> {
     fn new(
-        coverage_counters: &'a mut CoverageCounters,
         basic_coverage_blocks: &'a CoverageGraph,
+        bcb_needs_counter: &'a BitSet<BasicCoverageBlock>,
     ) -> Self {
-        Self { coverage_counters, basic_coverage_blocks }
+        assert_eq!(basic_coverage_blocks.num_nodes(), bcb_needs_counter.domain_size());
+        Self {
+            coverage_counters: CoverageCounters::with_num_bcbs(basic_coverage_blocks.num_nodes()),
+            basic_coverage_blocks,
+            bcb_needs_counter,
+        }
     }
 
-    fn make_bcb_counters(&mut self, bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool) {
+    fn make_bcb_counters(&mut self) {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
 
         // Traverse the coverage graph, ensuring that every node that needs a
@@ -290,7 +298,7 @@ impl<'a> MakeBcbCounters<'a> {
         let mut traversal = TraverseCoverageGraphWithLoops::new(self.basic_coverage_blocks);
         while let Some(bcb) = traversal.next() {
             let _span = debug_span!("traversal", ?bcb).entered();
-            if bcb_needs_counter(bcb) {
+            if self.bcb_needs_counter.contains(bcb) {
                 self.make_node_counter_and_out_edge_counters(&traversal, bcb);
             }
         }

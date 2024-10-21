@@ -25,6 +25,7 @@ Number of file 0 mappings: 9
 - Code(Expression(6, Add)) at (prev + 1, 9) to (start + 0, 23)
     = (c1 + (c2 + c3))
 - Code(Counter(4)) at (prev + 2, 5) to (start + 1, 2)
+Highest counter ID seen: c4
 
 Function name: assert::might_fail_assert
 Raw bytes (21): 0x[01, 01, 01, 01, 05, 03, 01, 04, 01, 02, 0f, 02, 02, 25, 00, 3d, 05, 01, 01, 00, 02]
@@ -37,4 +38,5 @@ Number of file 0 mappings: 3
 - Code(Expression(0, Sub)) at (prev + 2, 37) to (start + 0, 61)
     = (c0 - c1)
 - Code(Counter(1)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
 

@@ -1,15 +1,12 @@
-use rustc_middle::{
-    mir::{Mutability, RetagKind},
-    ty::{self, Ty, layout::HasParamEnv},
-};
+use rustc_middle::mir::{Mutability, RetagKind};
+use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};
 
+use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
+use crate::concurrency::data_race::NaReadType;
 use crate::*;
-use crate::{
-    borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind},
-    concurrency::data_race::NaReadType,
-};
 
 pub mod diagnostics;
 mod perms;
@@ -59,7 +56,7 @@ impl<'tcx> Tree {
         // handle them as much as we can.
         let tag = match prov {
             ProvenanceExtra::Concrete(tag) => tag,
-            ProvenanceExtra::Wildcard => return Ok(()),
+            ProvenanceExtra::Wildcard => return interp_ok(()),
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_span();
@@ -84,7 +81,7 @@ impl<'tcx> Tree {
         // handle them as much as we can.
         let tag = match prov {
             ProvenanceExtra::Concrete(tag) => tag,
-            ProvenanceExtra::Wildcard => return Ok(()),
+            ProvenanceExtra::Wildcard => return interp_ok(()),
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_span();
@@ -216,7 +213,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ));
             }
             drop(global); // don't hold that reference any longer than we have to
-            Ok(())
+            interp_ok(())
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
@@ -238,13 +235,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 );
                 log_creation(this, None)?;
                 // Keep original provenance.
-                return Ok(place.ptr().provenance);
+                return interp_ok(place.ptr().provenance);
             }
         };
         log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
 
         let orig_tag = match parent_prov {
-            ProvenanceExtra::Wildcard => return Ok(place.ptr().provenance), // TODO: handle wildcard pointers
+            ProvenanceExtra::Wildcard => return interp_ok(place.ptr().provenance), // TODO: handle wildcard pointers
             ProvenanceExtra::Concrete(tag) => tag,
         };
 
@@ -282,7 +279,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
             // There's not actually any bytes here where accesses could even be tracked.
             // Just produce the new provenance, nothing else to do.
-            return Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
+            return interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
         }
 
         let span = this.machine.current_span();
@@ -315,7 +312,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
 
-        Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
+        interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
     }
 
     fn tb_retag_place(
@@ -353,7 +350,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Adjust place.
         // (If the closure gets called, that means the old provenance was `Some`, and hence the new
         // one must also be `Some`.)
-        Ok(place.clone().map_provenance(|_| new_prov.unwrap()))
+        interp_ok(place.clone().map_provenance(|_| new_prov.unwrap()))
     }
 
     /// Retags an individual pointer, returning the retagged version.
@@ -365,7 +362,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let place = this.ref_to_mplace(val)?;
         let new_place = this.tb_retag_place(&place, new_perm)?;
-        Ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
+        interp_ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
     }
 }
 
@@ -387,7 +384,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let Some(new_perm) = new_perm {
             this.tb_retag_reference(val, new_perm)
         } else {
-            Ok(val.clone())
+            interp_ok(val.clone())
         }
     }
 
@@ -424,7 +421,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let val = self.ecx.tb_retag_reference(&val, new_perm)?;
                     self.ecx.write_immediate(*val, place)?;
                 }
-                Ok(())
+                interp_ok(())
             }
         }
         impl<'ecx, 'tcx> ValueVisitor<'tcx, MiriMachine<'tcx>> for RetagVisitor<'ecx, 'tcx> {
@@ -449,7 +446,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     );
                     self.retag_ptr_inplace(place, new_perm)?;
                 }
-                Ok(())
+                interp_ok(())
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx>) -> InterpResult<'tcx> {
@@ -458,7 +455,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This optimization is crucial for ZSTs, because they can contain way more fields
                 // than we can ever visit.
                 if place.layout.is_sized() && place.layout.size < self.ecx.pointer_size() {
-                    return Ok(());
+                    return interp_ok(());
                 }
 
                 // Check the type of this value to see what to do with it (retag, or recurse).
@@ -506,7 +503,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                     }
                 }
-                Ok(())
+                interp_ok(())
             }
         }
     }
@@ -552,7 +549,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // No tree borrows on these allocations.
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Display the tree.
@@ -578,7 +575,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(Provenance::Concrete { tag, alloc_id }) => (tag, alloc_id),
             _ => {
                 eprintln!("Can't give the name {name} to Wildcard pointer");
-                return Ok(());
+                return interp_ok(());
             }
         };
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
@@ -608,5 +605,5 @@ fn inner_ptr_of_unique<'tcx>(
     assert_eq!(nonnull.layout.fields.count(), 1, "NonNull must have exactly 1 field");
     let ptr = ecx.project_field(&nonnull, 0)?;
     // Finally a plain `*mut`
-    Ok(ptr)
+    interp_ok(ptr)
 }

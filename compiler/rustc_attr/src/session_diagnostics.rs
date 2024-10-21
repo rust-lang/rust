@@ -206,6 +206,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnsupportedLiteral {
         let mut diag = Diag::new(dcx, level, match self.reason {
             UnsupportedLiteralReason::Generic => fluent::attr_unsupported_literal_generic,
             UnsupportedLiteralReason::CfgString => fluent::attr_unsupported_literal_cfg_string,
+            UnsupportedLiteralReason::CfgBoolean => fluent::attr_unsupported_literal_cfg_boolean,
             UnsupportedLiteralReason::DeprecatedString => {
                 fluent::attr_unsupported_literal_deprecated_string
             }

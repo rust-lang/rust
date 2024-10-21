@@ -5,17 +5,17 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
 
-use regex::Regex;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
+use crate::debuggers::{extract_cdb_version, extract_gdb_version};
+use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::header::cfg::{MatchOutcome, parse_cfg_name_directive};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
-use crate::{extract_cdb_version, extract_gdb_version};
 
+pub(crate) mod auxiliary;
 mod cfg;
 mod needs;
 #[cfg(test)]
@@ -35,9 +35,10 @@ impl HeadersCache {
 /// the test.
 #[derive(Default)]
 pub struct EarlyProps {
-    pub aux: Vec<String>,
-    pub aux_bin: Vec<String>,
-    pub aux_crate: Vec<(String, String)>,
+    /// Auxiliary crates that should be built and made available to this test.
+    /// Included in [`EarlyProps`] so that the indicated files can participate
+    /// in up-to-date checking. Building happens via [`TestProps::aux`] instead.
+    pub(crate) aux: AuxProps,
     pub revisions: Vec<String>,
 }
 
@@ -56,23 +57,9 @@ impl EarlyProps {
             &mut poisoned,
             testfile,
             rdr,
-            &mut |HeaderLine { directive: ln, .. }| {
-                config.push_name_value_directive(ln, directives::AUX_BUILD, &mut props.aux, |r| {
-                    r.trim().to_string()
-                });
-                config.push_name_value_directive(
-                    ln,
-                    directives::AUX_BIN,
-                    &mut props.aux_bin,
-                    |r| r.trim().to_string(),
-                );
-                config.push_name_value_directive(
-                    ln,
-                    directives::AUX_CRATE,
-                    &mut props.aux_crate,
-                    Config::parse_aux_crate,
-                );
-                config.parse_and_update_revisions(ln, &mut props.revisions);
+            &mut |DirectiveLine { directive: ln, .. }| {
+                parse_and_update_aux(config, ln, &mut props.aux);
+                config.parse_and_update_revisions(testfile, ln, &mut props.revisions);
             },
         );
 
@@ -100,18 +87,8 @@ pub struct TestProps {
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<PathBuf>,
-    // Other crates that should be compiled (typically from the same
-    // directory as the test, but for backwards compatibility reasons
-    // we also check the auxiliary directory)
-    pub aux_builds: Vec<String>,
-    // Auxiliary crates that should be compiled as `#![crate_type = "bin"]`.
-    pub aux_bins: Vec<String>,
-    // Similar to `aux_builds`, but a list of NAME=somelib.rs of dependencies
-    // to build and pass with the `--extern` flag.
-    pub aux_crates: Vec<(String, String)>,
-    /// Similar to `aux_builds`, but also passes the resulting dylib path to
-    /// `-Zcodegen-backend`.
-    pub aux_codegen_backend: Option<String>,
+    /// Auxiliary crates that should be built and made available to this test.
+    pub(crate) aux: AuxProps,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
     // Environment variables to unset prior to compiling.
@@ -218,6 +195,8 @@ pub struct TestProps {
     pub filecheck_flags: Vec<String>,
     /// Don't automatically insert any `--check-cfg` args
     pub no_auto_check_cfg: bool,
+    /// Run tests which require enzyme being build
+    pub has_enzyme: bool,
 }
 
 mod directives {
@@ -276,10 +255,7 @@ impl TestProps {
             run_flags: vec![],
             doc_flags: vec![],
             pp_exact: None,
-            aux_builds: vec![],
-            aux_bins: vec![],
-            aux_crates: vec![],
-            aux_codegen_backend: None,
+            aux: Default::default(),
             revisions: vec![],
             rustc_env: vec![
                 ("RUSTC_ICE".to_string(), "0".to_string()),
@@ -322,6 +298,7 @@ impl TestProps {
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
+            has_enzyme: false,
         }
     }
 
@@ -367,7 +344,7 @@ impl TestProps {
                 &mut poisoned,
                 testfile,
                 file,
-                &mut |HeaderLine { header_revision, directive: ln, .. }| {
+                &mut |DirectiveLine { header_revision, directive: ln, .. }| {
                     if header_revision.is_some() && header_revision != test_revision {
                         return;
                     }
@@ -414,7 +391,7 @@ impl TestProps {
                         has_edition = true;
                     }
 
-                    config.parse_and_update_revisions(ln, &mut self.revisions);
+                    config.parse_and_update_revisions(testfile, ln, &mut self.revisions);
 
                     if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {
                         self.run_flags.extend(split_flags(&flags));
@@ -453,21 +430,10 @@ impl TestProps {
                         PRETTY_COMPARE_ONLY,
                         &mut self.pretty_compare_only,
                     );
-                    config.push_name_value_directive(ln, AUX_BUILD, &mut self.aux_builds, |r| {
-                        r.trim().to_string()
-                    });
-                    config.push_name_value_directive(ln, AUX_BIN, &mut self.aux_bins, |r| {
-                        r.trim().to_string()
-                    });
-                    config.push_name_value_directive(
-                        ln,
-                        AUX_CRATE,
-                        &mut self.aux_crates,
-                        Config::parse_aux_crate,
-                    );
-                    if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
-                        self.aux_codegen_backend = Some(r.trim().to_owned());
-                    }
+
+                    // Call a helper method to deal with aux-related directives.
+                    parse_and_update_aux(config, ln, &mut self.aux);
+
                     config.push_name_value_directive(
                         ln,
                         EXEC_ENV,
@@ -714,7 +680,7 @@ impl TestProps {
 
 /// Extract an `(Option<line_revision>, directive)` directive from a line if comment is present.
 ///
-/// See [`HeaderLine`] for a diagram.
+/// See [`DirectiveLine`] for a diagram.
 pub fn line_directive<'line>(
     comment: &str,
     original_line: &'line str,
@@ -772,17 +738,13 @@ const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
 /// ```text
 /// //@ compile-flags: -O
 ///     ^^^^^^^^^^^^^^^^^ directive
-/// ^^^^^^^^^^^^^^^^^^^^^ original_line
 ///
 /// //@ [foo] compile-flags: -O
 ///      ^^^                    header_revision
 ///           ^^^^^^^^^^^^^^^^^ directive
-/// ^^^^^^^^^^^^^^^^^^^^^^^^^^^ original_line
 /// ```
-struct HeaderLine<'ln> {
+struct DirectiveLine<'ln> {
     line_number: usize,
-    /// Raw line from the test file, including comment prefix and any revision.
-    original_line: &'ln str,
     /// Some header directives start with a revision name in square brackets
     /// (e.g. `[foo]`), and only apply to that revision of the test.
     /// If present, this field contains the revision name (e.g. `foo`).
@@ -794,7 +756,6 @@ struct HeaderLine<'ln> {
 
 pub(crate) struct CheckDirectiveResult<'ln> {
     is_known_directive: bool,
-    directive_name: &'ln str,
     trailing_directive: Option<&'ln str>,
 }
 
@@ -829,11 +790,7 @@ pub(crate) fn check_directive<'a>(
     }
     .then_some(trailing);
 
-    CheckDirectiveResult {
-        is_known_directive: is_known(&directive_name),
-        directive_name: directive_ln,
-        trailing_directive,
-    }
+    CheckDirectiveResult { is_known_directive: is_known(&directive_name), trailing_directive }
 }
 
 fn iter_header(
@@ -842,40 +799,37 @@ fn iter_header(
     poisoned: &mut bool,
     testfile: &Path,
     rdr: impl Read,
-    it: &mut dyn FnMut(HeaderLine<'_>),
+    it: &mut dyn FnMut(DirectiveLine<'_>),
 ) {
     if testfile.is_dir() {
         return;
     }
 
-    // Coverage tests in coverage-run mode always have these extra directives,
-    // without needing to specify them manually in every test file.
-    // (Some of the comments below have been copied over from the old
-    // `tests/run-make/coverage-reports/Makefile`, which no longer exists.)
+    // Coverage tests in coverage-run mode always have these extra directives, without needing to
+    // specify them manually in every test file. (Some of the comments below have been copied over
+    // from the old `tests/run-make/coverage-reports/Makefile`, which no longer exists.)
+    //
+    // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
     if mode == Mode::CoverageRun {
         let extra_directives: &[&str] = &[
-            "needs-profiler-support",
-            // FIXME(pietroalbini): this test currently does not work on cross-compiled
-            // targets because remote-test is not capable of sending back the *.profraw
-            // files generated by the LLVM instrumentation.
+            "needs-profiler-runtime",
+            // FIXME(pietroalbini): this test currently does not work on cross-compiled targets
+            // because remote-test is not capable of sending back the *.profraw files generated by
+            // the LLVM instrumentation.
             "ignore-cross-compile",
         ];
         // Process the extra implied directives, with a dummy line number of 0.
         for directive in extra_directives {
-            it(HeaderLine { line_number: 0, original_line: "", header_revision: None, directive });
+            it(DirectiveLine { line_number: 0, header_revision: None, directive });
         }
     }
 
+    // NOTE(jieyouxu): once we get rid of `Makefile`s we can unconditionally check for `//@`.
     let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//@" } else { "#" };
 
     let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
     let mut line_number = 0;
-
-    // Match on error annotations like `//~ERROR`.
-    static REVISION_MAGIC_COMMENT_RE: OnceLock<Regex> = OnceLock::new();
-    let revision_magic_comment_re =
-        REVISION_MAGIC_COMMENT_RE.get_or_init(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
 
     loop {
         line_number += 1;
@@ -883,109 +837,81 @@ fn iter_header(
         if rdr.read_line(&mut ln).unwrap() == 0 {
             break;
         }
-
-        // Assume that any directives will be found before the first
-        // module or function. This doesn't seem to be an optimization
-        // with a warm page cache. Maybe with a cold one.
-        let original_line = &ln;
         let ln = ln.trim();
+
+        // Assume that any directives will be found before the first module or function. This
+        // doesn't seem to be an optimization with a warm page cache. Maybe with a cold one.
+        // FIXME(jieyouxu): this will cause `//@` directives in the rest of the test file to
+        // not be checked.
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
+        }
 
-        // First try to accept `ui_test` style comments (`//@`)
-        } else if let Some((header_revision, non_revisioned_directive_line)) =
-            line_directive(comment, ln)
-        {
-            // Perform unknown directive check on Rust files.
-            if testfile.extension().map(|e| e == "rs").unwrap_or(false) {
-                let directive_ln = non_revisioned_directive_line.trim();
+        let Some((header_revision, non_revisioned_directive_line)) = line_directive(comment, ln)
+        else {
+            continue;
+        };
 
-                let CheckDirectiveResult { is_known_directive, trailing_directive, .. } =
-                    check_directive(directive_ln, mode, ln);
+        // Perform unknown directive check on Rust files.
+        if testfile.extension().map(|e| e == "rs").unwrap_or(false) {
+            let directive_ln = non_revisioned_directive_line.trim();
 
-                if !is_known_directive {
-                    *poisoned = true;
+            let CheckDirectiveResult { is_known_directive, trailing_directive } =
+                check_directive(directive_ln, mode, ln);
 
-                    eprintln!(
-                        "error: detected unknown compiletest test directive `{}` in {}:{}",
-                        directive_ln,
-                        testfile.display(),
-                        line_number,
-                    );
-
-                    return;
-                }
-
-                if let Some(trailing_directive) = &trailing_directive {
-                    *poisoned = true;
-
-                    eprintln!(
-                        "error: detected trailing compiletest test directive `{}` in {}:{}\n \
-                          help: put the trailing directive in it's own line: `//@ {}`",
-                        trailing_directive,
-                        testfile.display(),
-                        line_number,
-                        trailing_directive,
-                    );
-
-                    return;
-                }
-            }
-
-            it(HeaderLine {
-                line_number,
-                original_line,
-                header_revision,
-                directive: non_revisioned_directive_line,
-            });
-        // Then we try to check for legacy-style candidates, which are not the magic ~ERROR family
-        // error annotations.
-        } else if !revision_magic_comment_re.is_match(ln) {
-            let Some((_, rest)) = line_directive("//", ln) else {
-                continue;
-            };
-
-            if rest.trim_start().starts_with(':') {
-                // This is likely a markdown link:
-                // `[link_name]: https://example.org`
-                continue;
-            }
-
-            let rest = rest.trim_start();
-
-            let CheckDirectiveResult { is_known_directive, directive_name, .. } =
-                check_directive(rest, mode, ln);
-
-            if is_known_directive {
+            if !is_known_directive {
                 *poisoned = true;
+
                 eprintln!(
-                    "error: detected legacy-style directive {} in compiletest test: {}:{}, please use `ui_test`-style directives `//@` instead: {:#?}",
-                    directive_name,
+                    "error: detected unknown compiletest test directive `{}` in {}:{}",
+                    directive_ln,
                     testfile.display(),
                     line_number,
-                    line_directive("//", ln),
                 );
+
+                return;
+            }
+
+            if let Some(trailing_directive) = &trailing_directive {
+                *poisoned = true;
+
+                eprintln!(
+                    "error: detected trailing compiletest test directive `{}` in {}:{}\n \
+                      help: put the trailing directive in it's own line: `//@ {}`",
+                    trailing_directive,
+                    testfile.display(),
+                    line_number,
+                    trailing_directive,
+                );
+
                 return;
             }
         }
+
+        it(DirectiveLine {
+            line_number,
+            header_revision,
+            directive: non_revisioned_directive_line,
+        });
     }
 }
 
 impl Config {
-    fn parse_aux_crate(r: String) -> (String, String) {
-        let mut parts = r.trim().splitn(2, '=');
-        (
-            parts.next().expect("missing aux-crate name (e.g. log=log.rs)").to_string(),
-            parts.next().expect("missing aux-crate value (e.g. log=log.rs)").to_string(),
-        )
-    }
-
-    fn parse_and_update_revisions(&self, line: &str, existing: &mut Vec<String>) {
+    fn parse_and_update_revisions(&self, testfile: &Path, line: &str, existing: &mut Vec<String>) {
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
+            if self.mode == Mode::RunMake {
+                panic!("`run-make` tests do not support revisions: {}", testfile.display());
+            }
+
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
             for revision in raw.split_whitespace().map(|r| r.to_string()) {
                 if !duplicates.insert(revision.clone()) {
-                    panic!("Duplicate revision: `{}` in line `{}`", revision, raw);
+                    panic!(
+                        "duplicate revision: `{}` in line `{}`: {}",
+                        revision,
+                        raw,
+                        testfile.display()
+                    );
                 }
                 existing.push(revision);
             }
@@ -1115,6 +1041,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
     const BUILD_BASE: &str = "{{build-base}}";
+    const RUST_SRC_BASE: &str = "{{rust-src-base}}";
     const SYSROOT_BASE: &str = "{{sysroot-base}}";
     const TARGET_LINKER: &str = "{{target-linker}}";
     const TARGET: &str = "{{target}}";
@@ -1142,6 +1069,13 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(TARGET) {
         value = value.replace(TARGET, &config.target);
+    }
+
+    if value.contains(RUST_SRC_BASE) {
+        let src_base = config.sysroot_base.join("lib/rustlib/src/rust");
+        src_base.try_exists().expect(&*format!("{} should exists", src_base.display()));
+        let src_base = src_base.read_link().unwrap_or(src_base);
+        value = value.replace(RUST_SRC_BASE, &src_base.to_string_lossy());
     }
 
     value
@@ -1351,13 +1285,14 @@ pub fn make_test_description<R: Read>(
 
     let mut local_poisoned = false;
 
+    // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
     iter_header(
         config.mode,
         &config.suite,
         &mut local_poisoned,
         path,
         src,
-        &mut |HeaderLine { header_revision, original_line, directive: ln, line_number }| {
+        &mut |DirectiveLine { header_revision, directive: ln, line_number }| {
             if header_revision.is_some() && header_revision != test_revision {
                 return;
             }
@@ -1382,17 +1317,7 @@ pub fn make_test_description<R: Read>(
                 };
             }
 
-            if let Some((_, post)) = original_line.trim_start().split_once("//") {
-                let post = post.trim_start();
-                if post.starts_with("ignore-tidy") {
-                    // Not handled by compiletest.
-                } else {
-                    decision!(cfg::handle_ignore(config, ln));
-                }
-            } else {
-                decision!(cfg::handle_ignore(config, ln));
-            }
-
+            decision!(cfg::handle_ignore(config, ln));
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
             decision!(ignore_llvm(config, ln));

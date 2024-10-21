@@ -119,8 +119,8 @@
 //!
 //! #### Unsizing Casts
 //! A subtle way of introducing use edges is by casting to a trait object.
-//! Since the resulting fat-pointer contains a reference to a vtable, we need to
-//! instantiate all object-safe methods of the trait, as we need to store
+//! Since the resulting wide-pointer contains a reference to a vtable, we need to
+//! instantiate all dyn-compatible methods of the trait, as we need to store
 //! pointers to these functions even if they never get called anywhere. This can
 //! be seen as a special case of taking a function reference.
 //!
@@ -661,7 +661,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         let span = self.body.source_info(location).span;
 
         match *rvalue {
-            // When doing an cast from a regular pointer to a fat pointer, we
+            // When doing an cast from a regular pointer to a wide pointer, we
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(
@@ -985,7 +985,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
 /// ```
 ///
 /// Then the output of this function would be (SomeStruct, SomeTrait) since for
-/// constructing the `target` fat-pointer we need the vtable for that pair.
+/// constructing the `target` wide-pointer we need the vtable for that pair.
 ///
 /// Things can get more complicated though because there's also the case where
 /// the unsized type occurs as a field:
@@ -999,7 +999,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
 /// ```
 ///
 /// In this case, if `T` is sized, `&ComplexStruct<T>` is a thin pointer. If `T`
-/// is unsized, `&SomeStruct` is a fat pointer, and the vtable it points to is
+/// is unsized, `&SomeStruct` is a wide pointer, and the vtable it points to is
 /// for the pair of `T` (which is a trait) and the concrete type that `T` was
 /// originally coerced from:
 ///

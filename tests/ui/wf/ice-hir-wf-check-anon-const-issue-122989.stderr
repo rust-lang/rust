@@ -7,7 +7,7 @@ LL | trait Foo<const N: Bar<2>> {
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
    = note: `#[warn(bare_trait_objects)]` on by default
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | trait Foo<const N: dyn Bar<2>> {
    |                    +++
@@ -20,7 +20,7 @@ LL | trait Bar<const M: Foo<2>> {}
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | trait Bar<const M: dyn Foo<2>> {}
    |                    +++
@@ -50,7 +50,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL | trait Foo<const N: Bar<2>> {
    |                        ^ `Foo` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:8
    |
 LL | trait Foo<const N: Bar<2>> {
@@ -73,7 +73,7 @@ error: `(dyn Bar<2> + 'static)` is forbidden as the type of a const generic para
 LL | trait Foo<const N: Bar<2>> {
    |                    ^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:11
@@ -81,7 +81,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL | trait Bar<const M: Foo<2>> {}
    |           ^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:8
    |
 LL | trait Foo<const N: Bar<2>> {
@@ -104,7 +104,7 @@ error: `(dyn Foo<2> + 'static)` is forbidden as the type of a const generic para
 LL | trait Bar<const M: Foo<2>> {}
    |                    ^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: aborting due to 5 previous errors; 2 warnings emitted
 

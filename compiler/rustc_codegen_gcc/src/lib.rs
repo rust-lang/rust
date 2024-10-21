@@ -32,6 +32,7 @@ extern crate tempfile;
 extern crate tracing;
 
 // The rustc crates we need
+extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
 extern crate rustc_attr;
@@ -363,7 +364,7 @@ impl Deref for SyncContext {
 
 unsafe impl Send for SyncContext {}
 // FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm".
-// TODO: disable it here by returing false in CodegenBackend::supports_parallel().
+// TODO: disable it here by returning false in CodegenBackend::supports_parallel().
 unsafe impl Sync for SyncContext {}
 
 impl WriteBackendMethods for GccCodegenBackend {

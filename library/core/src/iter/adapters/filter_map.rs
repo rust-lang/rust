@@ -3,7 +3,6 @@ use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused};
 use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
-use crate::ptr::addr_of;
 use crate::{array, fmt};
 
 /// An iterator that uses `f` to both filter and map elements from `iter`.
@@ -101,7 +100,7 @@ where
 
             unsafe {
                 let opt_payload_at: *const MaybeUninit<B> =
-                    addr_of!(val).byte_add(core::mem::offset_of!(Option<B>, Some.0)).cast();
+                    (&raw const val).byte_add(core::mem::offset_of!(Option<B>, Some.0)).cast();
                 let dst = guard.array.as_mut_ptr().add(idx);
                 crate::ptr::copy_nonoverlapping(opt_payload_at, dst, 1);
                 crate::mem::forget(val);

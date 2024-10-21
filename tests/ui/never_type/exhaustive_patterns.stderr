@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in local binding
-  --> $DIR/exhaustive_patterns.rs:20:9
+  --> $DIR/exhaustive_patterns.rs:21:9
    |
 LL |     let Either::A(()) = foo();
    |         ^^^^^^^^^^^^^ pattern `Either::B(_)` not covered
@@ -7,7 +7,7 @@ LL |     let Either::A(()) = foo();
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
 note: `Either<(), !>` defined here
-  --> $DIR/exhaustive_patterns.rs:10:6
+  --> $DIR/exhaustive_patterns.rs:9:6
    |
 LL | enum Either<A, B> {
    |      ^^^^^^

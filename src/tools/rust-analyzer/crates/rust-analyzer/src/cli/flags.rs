@@ -76,6 +76,8 @@ xflags::xflags! {
             optional --disable-build-scripts
             /// Don't use expand proc macros.
             optional --disable-proc-macros
+            /// Run the proc-macro-srv binary at the specified path.
+            optional --proc-macro-srv path: PathBuf
             /// Skip body lowering.
             optional --skip-lowering
             /// Skip type inference.
@@ -120,7 +122,20 @@ xflags::xflags! {
             optional --disable-build-scripts
             /// Don't use expand proc macros.
             optional --disable-proc-macros
-            /// Run a custom proc-macro-srv binary.
+            /// Run the proc-macro-srv binary at the specified path.
+            optional --proc-macro-srv path: PathBuf
+        }
+
+        /// Report unresolved references
+        cmd unresolved-references {
+            /// Directory with Cargo.toml.
+            required path: PathBuf
+
+            /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
+            optional --disable-build-scripts
+            /// Don't use expand proc macros.
+            optional --disable-proc-macros
+            /// Run the proc-macro-srv binary at the specified path.
             optional --proc-macro-srv path: PathBuf
         }
 
@@ -181,6 +196,7 @@ pub enum RustAnalyzerCmd {
     RunTests(RunTests),
     RustcTests(RustcTests),
     Diagnostics(Diagnostics),
+    UnresolvedReferences(UnresolvedReferences),
     Ssr(Ssr),
     Search(Search),
     Lsif(Lsif),
@@ -219,6 +235,7 @@ pub struct AnalysisStats {
     pub no_sysroot: bool,
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
     pub skip_lowering: bool,
     pub skip_inference: bool,
     pub skip_mir_stats: bool,
@@ -243,6 +260,15 @@ pub struct RustcTests {
 
 #[derive(Debug)]
 pub struct Diagnostics {
+    pub path: PathBuf,
+
+    pub disable_build_scripts: bool,
+    pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedReferences {
     pub path: PathBuf,
 
     pub disable_build_scripts: bool,

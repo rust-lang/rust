@@ -421,9 +421,25 @@ impl MirEvalError {
             }
             MirEvalError::MirLowerError(func, err) => {
                 let function_name = db.function_data(*func);
+                let self_ = match func.lookup(db.upcast()).container {
+                    ItemContainerId::ImplId(impl_id) => Some({
+                        let generics = crate::generics::generics(db.upcast(), impl_id.into());
+                        let substs = generics.placeholder_subst(db);
+                        db.impl_self_ty(impl_id)
+                            .substitute(Interner, &substs)
+                            .display(db, edition)
+                            .to_string()
+                    }),
+                    ItemContainerId::TraitId(it) => {
+                        Some(db.trait_data(it).name.display(db.upcast(), edition).to_string())
+                    }
+                    _ => None,
+                };
                 writeln!(
                     f,
-                    "MIR lowering for function `{}` ({:?}) failed due:",
+                    "MIR lowering for function `{}{}{}` ({:?}) failed due:",
+                    self_.as_deref().unwrap_or_default(),
+                    if self_.is_some() { "::" } else { "" },
                     function_name.name.display(db.upcast(), edition),
                     func
                 )?;
@@ -1475,7 +1491,7 @@ impl Evaluator<'_> {
                 }
             }
             Rvalue::Cast(kind, operand, target_ty) => match kind {
-                CastKind::Pointer(cast) => match cast {
+                CastKind::PointerCoercion(cast) => match cast {
                     PointerCast::ReifyFnPointer | PointerCast::ClosureFnPointer(_) => {
                         let current_ty = self.operand_ty(operand, locals)?;
                         if let TyKind::FnDef(_, _) | TyKind::Closure(_, _) =
@@ -1506,6 +1522,7 @@ impl Evaluator<'_> {
                 },
                 CastKind::DynStar => not_supported!("dyn star cast"),
                 CastKind::IntToInt
+                | CastKind::PtrToPtr
                 | CastKind::PointerExposeAddress
                 | CastKind::PointerFromExposedAddress => {
                     let current_ty = self.operand_ty(operand, locals)?;

@@ -141,7 +141,7 @@
 //! [`Result`]: crate::result::Result
 //! [`Ok`]: crate::result::Result::Ok
 //! [`Err`]: crate::result::Result::Err
-//! [`thread::current`]: current
+//! [`thread::current`]: current::current
 //! [`thread::Result`]: Result
 //! [`unpark`]: Thread::unpark
 //! [`thread::park_timeout`]: park_timeout
@@ -155,17 +155,16 @@
 // Under `test`, `__FastLocalKeyInner` seems unused.
 #![cfg_attr(test, allow(dead_code))]
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
 use crate::any::Any;
-use crate::cell::{Cell, OnceCell, UnsafeCell};
+use crate::cell::UnsafeCell;
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
 use crate::mem::{self, ManuallyDrop, forget};
 use crate::num::NonZero;
 use crate::pin::Pin;
-use crate::ptr::addr_of_mut;
 use crate::sync::Arc;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::sync::Parker;
@@ -179,6 +178,12 @@ mod scoped;
 
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 pub use scoped::{Scope, ScopedJoinHandle, scope};
+
+mod current;
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use current::current;
+pub(crate) use current::{current_id, drop_current, set_current, try_current};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
@@ -472,7 +477,11 @@ impl Builder {
             amt
         });
 
-        let my_thread = name.map_or_else(Thread::new_unnamed, Thread::new);
+        let id = ThreadId::new();
+        let my_thread = match name {
+            Some(name) => Thread::new(id, name.into()),
+            None => Thread::new_unnamed(id),
+        };
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
@@ -510,6 +519,14 @@ impl Builder {
 
         let f = MaybeDangling::new(f);
         let main = move || {
+            if let Err(_thread) = set_current(their_thread.clone()) {
+                // Both the current thread handle and the ID should not be
+                // initialized yet. Since only the C runtime and some of our
+                // platform code run before this, this point shouldn't be
+                // reachable. Use an abort to save binary size (see #123356).
+                rtabort!("something here is badly broken!");
+            }
+
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
             }
@@ -517,7 +534,6 @@ impl Builder {
             crate::io::set_output_capture(output_capture);
 
             let f = f.into_inner();
-            set_current(their_thread);
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys::backtrace::__rust_begin_short_backtrace(f)
             }));
@@ -665,6 +681,19 @@ impl Builder {
 /// println!("{result}");
 /// ```
 ///
+/// # Notes
+///
+/// This function has the same minimal guarantee regarding "foreign" unwinding operations (e.g.
+/// an exception thrown from C++ code, or a `panic!` in Rust code compiled or linked with a
+/// different runtime) as [`catch_unwind`]; namely, if the thread created with `thread::spawn`
+/// unwinds all the way to the root with such an exception, one of two behaviors are possible,
+/// and it is unspecified which will occur:
+///
+/// * The process aborts.
+/// * The process does not abort, and [`join`] will return a `Result::Err`
+///   containing an opaque type.
+///
+/// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
 /// [`channels`]: crate::sync::mpsc
 /// [`join`]: JoinHandle::join
 /// [`Err`]: crate::result::Result::Err
@@ -676,84 +705,6 @@ where
     T: Send + 'static,
 {
     Builder::new().spawn(f).expect("failed to spawn thread")
-}
-
-thread_local! {
-    // Invariant: `CURRENT` and `CURRENT_ID` will always be initialized together.
-    // If `CURRENT` is initialized, then `CURRENT_ID` will hold the same value
-    // as `CURRENT.id()`.
-    static CURRENT: OnceCell<Thread> = const { OnceCell::new() };
-    static CURRENT_ID: Cell<Option<ThreadId>> = const { Cell::new(None) };
-}
-
-/// Sets the thread handle for the current thread.
-///
-/// Aborts if the handle has been set already to reduce code size.
-pub(crate) fn set_current(thread: Thread) {
-    let tid = thread.id();
-    // Using `unwrap` here can add ~3kB to the binary size. We have complete
-    // control over where this is called, so just abort if there is a bug.
-    CURRENT.with(|current| match current.set(thread) {
-        Ok(()) => CURRENT_ID.set(Some(tid)),
-        Err(_) => rtabort!("thread::set_current should only be called once per thread"),
-    });
-}
-
-/// Gets a handle to the thread that invokes it.
-///
-/// In contrast to the public `current` function, this will not panic if called
-/// from inside a TLS destructor.
-pub(crate) fn try_current() -> Option<Thread> {
-    CURRENT
-        .try_with(|current| {
-            current
-                .get_or_init(|| {
-                    let thread = Thread::new_unnamed();
-                    CURRENT_ID.set(Some(thread.id()));
-                    thread
-                })
-                .clone()
-        })
-        .ok()
-}
-
-/// Gets the id of the thread that invokes it.
-#[inline]
-pub(crate) fn current_id() -> ThreadId {
-    CURRENT_ID.get().unwrap_or_else(|| {
-        // If `CURRENT_ID` isn't initialized yet, then `CURRENT` must also not be initialized.
-        // `current()` will initialize both `CURRENT` and `CURRENT_ID` so subsequent calls to
-        // `current_id()` will succeed immediately.
-        current().id()
-    })
-}
-
-/// Gets a handle to the thread that invokes it.
-///
-/// # Examples
-///
-/// Getting a handle to the current thread with `thread::current()`:
-///
-/// ```
-/// use std::thread;
-///
-/// let handler = thread::Builder::new()
-///     .name("named thread".into())
-///     .spawn(|| {
-///         let handle = thread::current();
-///         assert_eq!(handle.name(), Some("named thread"));
-///     })
-///     .unwrap();
-///
-/// handler.join().unwrap();
-/// ```
-#[must_use]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub fn current() -> Thread {
-    try_current().expect(
-        "use of std::thread::current() is not possible \
-         after the thread's local data has been destroyed",
-    )
 }
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
@@ -1214,7 +1165,7 @@ pub struct ThreadId(NonZero<u64>);
 
 impl ThreadId {
     // Generate a new unique thread ID.
-    fn new() -> ThreadId {
+    pub(crate) fn new() -> ThreadId {
         #[cold]
         fn exhausted() -> ! {
             panic!("failed to generate unique thread ID: bitspace exhausted")
@@ -1255,6 +1206,11 @@ impl ThreadId {
                 ThreadId(NonZero::new(id).unwrap())
             }
         }
+    }
+
+    #[cfg(not(target_thread_local))]
+    fn from_u64(v: u64) -> Option<ThreadId> {
+        NonZero::new(v).map(ThreadId)
     }
 
     /// This returns a numeric identifier for the thread identified by this
@@ -1357,27 +1313,27 @@ impl Inner {
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
-/// [`thread::current`]: current
+/// [`thread::current`]: current::current
 pub struct Thread {
     inner: Pin<Arc<Inner>>,
 }
 
 impl Thread {
     /// Used only internally to construct a thread object without spawning.
-    pub(crate) fn new(name: String) -> Thread {
-        Self::new_inner(ThreadName::Other(name.into()))
+    pub(crate) fn new(id: ThreadId, name: String) -> Thread {
+        Self::new_inner(id, ThreadName::Other(name.into()))
     }
 
-    pub(crate) fn new_unnamed() -> Thread {
-        Self::new_inner(ThreadName::Unnamed)
+    pub(crate) fn new_unnamed(id: ThreadId) -> Thread {
+        Self::new_inner(id, ThreadName::Unnamed)
     }
 
-    // Used in runtime to construct main thread
-    pub(crate) fn new_main() -> Thread {
-        Self::new_inner(ThreadName::Main)
+    /// Constructs the thread handle for the main thread.
+    pub(crate) fn new_main(id: ThreadId) -> Thread {
+        Self::new_inner(id, ThreadName::Main)
     }
 
-    fn new_inner(name: ThreadName) -> Thread {
+    fn new_inner(id: ThreadId, name: ThreadName) -> Thread {
         // We have to use `unsafe` here to construct the `Parker` in-place,
         // which is required for the UNIX implementation.
         //
@@ -1386,9 +1342,9 @@ impl Thread {
         let inner = unsafe {
             let mut arc = Arc::<Inner>::new_uninit();
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
-            addr_of_mut!((*ptr).name).write(name);
-            addr_of_mut!((*ptr).id).write(ThreadId::new());
-            Parker::new_in_place(addr_of_mut!((*ptr).parker));
+            (&raw mut (*ptr).name).write(name);
+            (&raw mut (*ptr).id).write(id);
+            Parker::new_in_place(&raw mut (*ptr).parker);
             Pin::new_unchecked(arc.assume_init())
         };
 
@@ -1785,7 +1741,7 @@ impl<T> JoinHandle<T> {
     /// operations that happen after `join` returns.
     ///
     /// If the associated thread panics, [`Err`] is returned with the parameter given
-    /// to [`panic!`].
+    /// to [`panic!`] (though see the Notes below).
     ///
     /// [`Err`]: crate::result::Result::Err
     /// [atomic memory orderings]: crate::sync::atomic
@@ -1807,6 +1763,18 @@ impl<T> JoinHandle<T> {
     /// }).unwrap();
     /// join_handle.join().expect("Couldn't join on the associated thread");
     /// ```
+    ///
+    /// # Notes
+    ///
+    /// If a "foreign" unwinding operation (e.g. an exception thrown from C++
+    /// code, or a `panic!` in Rust code compiled or linked with a different
+    /// runtime) unwinds all the way to the thread root, the process may be
+    /// aborted; see the Notes on [`thread::spawn`]. If the process is not
+    /// aborted, this function will return a `Result::Err` containing an opaque
+    /// type.
+    ///
+    /// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
+    /// [`thread::spawn`]: spawn
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join(self) -> Result<T> {
         self.0.join()

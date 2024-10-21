@@ -9,12 +9,14 @@ use rustc_infer::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError, TypeTrace};
+use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast, Variance};
+use rustc_type_ir::relate::Relate;
 
 use super::{FromSolverError, FulfillmentContext, ScrubbedTraitError, TraitEngine};
 use crate::error_reporting::InferCtxtErrorExt;
@@ -35,10 +37,8 @@ where
         if infcx.next_trait_solver() {
             Box::new(NextFulfillmentCtxt::new(infcx))
         } else {
-            let new_solver_globally =
-                infcx.tcx.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.globally);
             assert!(
-                !new_solver_globally,
+                !infcx.tcx.next_trait_solver_globally(),
                 "using old solver even though new solver is enabled globally"
             );
             Box::new(FulfillmentContext::new(infcx))
@@ -133,6 +133,20 @@ where
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
+    pub fn eq_trace<T: Relate<TyCtxt<'tcx>>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        trace: TypeTrace<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> Result<(), TypeError<'tcx>> {
+        self.infcx
+            .at(cause, param_env)
+            .eq_trace(DefineOpaqueTypes::Yes, trace, expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+    }
+
     /// Checks whether `expected` is a subtype of `actual`: `expected <: actual`.
     pub fn sub<T: ToTrace<'tcx>>(
         &self,
@@ -193,7 +207,7 @@ where
     /// getting ignored. You can make a new `ObligationCtxt` if this
     /// needs to be done in a loop, for example.
     #[must_use]
-    pub fn into_pending_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+    pub fn into_pending_obligations(self) -> PredicateObligations<'tcx> {
         self.engine.borrow().pending_obligations()
     }
 
@@ -314,5 +328,16 @@ where
         self.infcx
             .at(cause, param_env)
             .structurally_normalize(value, &mut **self.engine.borrow_mut())
+    }
+
+    pub fn structurally_normalize_const(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: ty::Const<'tcx>,
+    ) -> Result<ty::Const<'tcx>, Vec<E>> {
+        self.infcx
+            .at(cause, param_env)
+            .structurally_normalize_const(value, &mut **self.engine.borrow_mut())
     }
 }

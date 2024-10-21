@@ -47,7 +47,7 @@ use std::{fs, str};
 use rinja::Template;
 use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::print::PrintTraitRefExt;
@@ -328,24 +328,24 @@ impl Ord for ItemEntry {
 
 #[derive(Debug)]
 struct AllTypes {
-    structs: FxHashSet<ItemEntry>,
-    enums: FxHashSet<ItemEntry>,
-    unions: FxHashSet<ItemEntry>,
-    primitives: FxHashSet<ItemEntry>,
-    traits: FxHashSet<ItemEntry>,
-    macros: FxHashSet<ItemEntry>,
-    functions: FxHashSet<ItemEntry>,
-    type_aliases: FxHashSet<ItemEntry>,
-    statics: FxHashSet<ItemEntry>,
-    constants: FxHashSet<ItemEntry>,
-    attribute_macros: FxHashSet<ItemEntry>,
-    derive_macros: FxHashSet<ItemEntry>,
-    trait_aliases: FxHashSet<ItemEntry>,
+    structs: FxIndexSet<ItemEntry>,
+    enums: FxIndexSet<ItemEntry>,
+    unions: FxIndexSet<ItemEntry>,
+    primitives: FxIndexSet<ItemEntry>,
+    traits: FxIndexSet<ItemEntry>,
+    macros: FxIndexSet<ItemEntry>,
+    functions: FxIndexSet<ItemEntry>,
+    type_aliases: FxIndexSet<ItemEntry>,
+    statics: FxIndexSet<ItemEntry>,
+    constants: FxIndexSet<ItemEntry>,
+    attribute_macros: FxIndexSet<ItemEntry>,
+    derive_macros: FxIndexSet<ItemEntry>,
+    trait_aliases: FxIndexSet<ItemEntry>,
 }
 
 impl AllTypes {
     fn new() -> AllTypes {
-        let new_set = |cap| FxHashSet::with_capacity_and_hasher(cap, Default::default());
+        let new_set = |cap| FxIndexSet::with_capacity_and_hasher(cap, Default::default());
         AllTypes {
             structs: new_set(100),
             enums: new_set(100),
@@ -437,7 +437,7 @@ impl AllTypes {
     }
 
     fn print(self, f: &mut Buffer) {
-        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, kind: ItemSection) {
+        fn print_entries(f: &mut Buffer, e: &FxIndexSet<ItemEntry>, kind: ItemSection) {
             if !e.is_empty() {
                 let mut e: Vec<&ItemEntry> = e.iter().collect();
                 e.sort();
@@ -1151,7 +1151,7 @@ fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Con
 #[derive(Copy, Clone)]
 enum AssocItemLink<'a> {
     Anchor(Option<&'a str>),
-    GotoSource(ItemId, &'a FxHashSet<Symbol>),
+    GotoSource(ItemId, &'a FxIndexSet<Symbol>),
 }
 
 impl<'a> AssocItemLink<'a> {
@@ -1494,7 +1494,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                 for it in &impl_.items {
                     if let clean::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
                         out.push_str("<div class=\"where\">    ");
-                        let empty_set = FxHashSet::default();
+                        let empty_set = FxIndexSet::default();
                         let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
                         assoc_type(
                             &mut out,
@@ -2526,7 +2526,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         })()
         .unwrap_or(DUMMY_SP);
 
-        let mut decoration_info = FxHashMap::default();
+        let mut decoration_info = FxIndexMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
         decoration_info.insert("highlight", byte_ranges);
 

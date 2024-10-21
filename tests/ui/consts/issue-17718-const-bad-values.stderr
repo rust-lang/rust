@@ -1,22 +1,21 @@
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/issue-17718-const-bad-values.rs:3:34
+  --> $DIR/issue-17718-const-bad-values.rs:7:34
    |
 LL | const C1: &'static mut [usize] = &mut [];
    |                                  ^^^^^^^
 
-error[E0658]: referencing statics in constants is unstable
-  --> $DIR/issue-17718-const-bad-values.rs:7:46
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/issue-17718-const-bad-values.rs:11:1
    |
-LL | const C2: &'static mut usize = unsafe { &mut S };
-   |                                              ^
+LL | const C2: &'static mut i32 = unsafe { &mut S };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
    |
-   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
-   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
-   = help: to fix this, the value can be extracted to a `const` and then used.
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $PTR, align: $PTR) {
+               HEX_DUMP
+           }
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0658, E0764.
-For more information about an error, try `rustc --explain E0658`.
+Some errors have detailed explanations: E0080, E0764.
+For more information about an error, try `rustc --explain E0080`.

@@ -164,7 +164,7 @@ fn test_indirect_hasher() {
 }
 
 #[test]
-fn test_build_hasher_object_safe() {
+fn test_build_hasher_dyn_compatible() {
     use std::hash::{DefaultHasher, RandomState};
 
     let _: &dyn BuildHasher<Hasher = DefaultHasher> = &RandomState::new();

@@ -78,7 +78,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
         super::__rust_foreign_exception();
     }
 
-    let canary = ptr::addr_of!((*adjusted_ptr).canary).read();
+    let canary = (&raw const (*adjusted_ptr).canary).read();
     if !ptr::eq(canary, &EXCEPTION_TYPE_INFO) {
         super::__rust_foreign_exception();
     }

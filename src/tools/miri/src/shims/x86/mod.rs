@@ -1,6 +1,6 @@
 use rand::Rng as _;
-
-use rustc_apfloat::{Float, ieee::Single};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::Single;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::{mir, ty};
@@ -8,13 +8,14 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::*;
 use self::helpers::bool_to_simd_element;
+use crate::*;
 
 mod aesni;
 mod avx;
 mod avx2;
 mod bmi;
+mod gfni;
 mod sha;
 mod sse;
 mod sse2;
@@ -43,7 +44,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
             "addcarry.32" | "addcarry.64" | "subborrow.32" | "subborrow.64" => {
                 if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != "x86_64" {
-                    return Ok(EmulateItemResult::NotSupported);
+                    return interp_ok(EmulateItemResult::NotSupported);
                 }
 
                 let [cb_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
@@ -67,7 +68,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let is_u64 = unprefixed_name.ends_with("64");
                 if is_u64 && this.tcx.sess.target.arch != "x86_64" {
-                    return Ok(EmulateItemResult::NotSupported);
+                    return interp_ok(EmulateItemResult::NotSupported);
                 }
 
                 let [c_in, a, b, out] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
@@ -103,6 +104,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             name if name.starts_with("bmi.") => {
                 return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            // The GFNI extension does not get its own namespace.
+            // Check for instruction names instead.
+            name if name.starts_with("vgf2p8affine") || name.starts_with("vgf2p8mulb") => {
+                return gfni::EvalContextExt::emulate_x86_gfni_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
@@ -157,9 +165,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 );
             }
 
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }
 
@@ -244,7 +252,7 @@ impl FloatBinOp {
             this.expect_target_feature_for_intrinsic(intrinsic, "avx")?;
             unord = !unord;
         }
-        Ok(Self::Cmp { gt, lt, eq, unord })
+        interp_ok(Self::Cmp { gt, lt, eq, unord })
     }
 }
 
@@ -266,7 +274,7 @@ fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
                 Some(std::cmp::Ordering::Equal) => eq,
                 Some(std::cmp::Ordering::Greater) => gt,
             };
-            Ok(bool_to_simd_element(res, Size::from_bits(F::BITS)))
+            interp_ok(bool_to_simd_element(res, Size::from_bits(F::BITS)))
         }
         FloatBinOp::Min => {
             let left_scalar = left.to_scalar();
@@ -280,9 +288,9 @@ fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
                 || right.is_nan()
                 || left >= right
             {
-                Ok(right_scalar)
+                interp_ok(right_scalar)
             } else {
-                Ok(left_scalar)
+                interp_ok(left_scalar)
             }
         }
         FloatBinOp::Max => {
@@ -297,9 +305,9 @@ fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
                 || right.is_nan()
                 || left <= right
             {
-                Ok(right_scalar)
+                interp_ok(right_scalar)
             } else {
-                Ok(left_scalar)
+                interp_ok(left_scalar)
             }
         }
     }
@@ -332,7 +340,7 @@ fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
         this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Performs `which` operation on each component of `left` and
@@ -360,7 +368,7 @@ fn bin_op_simd_float_all<'tcx, F: rustc_apfloat::Float>(
         this.write_scalar(res, &dest)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 #[derive(Copy, Clone)]
@@ -391,7 +399,7 @@ fn unary_op_f32<'tcx>(
             // Apply a relative error with a magnitude on the order of 2^-12 to simulate the
             // inaccuracy of RCP.
             let res = apply_random_float_error(this, div, -12);
-            Ok(Scalar::from_f32(res))
+            interp_ok(Scalar::from_f32(res))
         }
         FloatUnaryOp::Rsqrt => {
             let op = op.to_scalar().to_u32()?;
@@ -401,7 +409,7 @@ fn unary_op_f32<'tcx>(
             // Apply a relative error with a magnitude on the order of 2^-12 to simulate the
             // inaccuracy of RSQRT.
             let res = apply_random_float_error(this, rsqrt, -12);
-            Ok(Scalar::from_f32(res))
+            interp_ok(Scalar::from_f32(res))
         }
     }
 }
@@ -442,7 +450,7 @@ fn unary_op_ss<'tcx>(
         this.copy_op(&this.project_index(&op, i)?, &this.project_index(&dest, i)?)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Performs `which` operation on each component of `op`, storing the
@@ -466,7 +474,7 @@ fn unary_op_ps<'tcx>(
         this.write_scalar(res, &dest)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 enum ShiftOp {
@@ -532,7 +540,7 @@ fn shift_simd_by_scalar<'tcx>(
         this.write_scalar(res, &dest)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Shifts each element of `left` by the corresponding element of `right`.
@@ -587,7 +595,7 @@ fn shift_simd_by_simd<'tcx>(
         this.write_scalar(res, &dest)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Takes a 128-bit vector, transmutes it to `[u64; 2]` and extracts
@@ -633,7 +641,7 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
         this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 // Rounds all elements of `op` according to `rounding`.
@@ -659,7 +667,7 @@ fn round_all<'tcx, F: rustc_apfloat::Float>(
         )?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Gets equivalent `rustc_apfloat::Round` from rounding mode immediate of
@@ -671,14 +679,14 @@ fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, rustc_apfloat::R
     match rounding & !0b1000 {
         // When the third bit is 0, the rounding mode is determined by the
         // first two bits.
-        0b000 => Ok(rustc_apfloat::Round::NearestTiesToEven),
-        0b001 => Ok(rustc_apfloat::Round::TowardNegative),
-        0b010 => Ok(rustc_apfloat::Round::TowardPositive),
-        0b011 => Ok(rustc_apfloat::Round::TowardZero),
+        0b000 => interp_ok(rustc_apfloat::Round::NearestTiesToEven),
+        0b001 => interp_ok(rustc_apfloat::Round::TowardNegative),
+        0b010 => interp_ok(rustc_apfloat::Round::TowardPositive),
+        0b011 => interp_ok(rustc_apfloat::Round::TowardZero),
         // When the third bit is 1, the rounding mode is determined by the
         // SSE status register. Since we do not support modifying it from
         // Miri (or Rust), we assume it to be at its default mode (round-to-nearest).
-        0b100..=0b111 => Ok(rustc_apfloat::Round::NearestTiesToEven),
+        0b100..=0b111 => interp_ok(rustc_apfloat::Round::NearestTiesToEven),
         rounding => panic!("invalid rounding mode 0x{rounding:02x}"),
     }
 }
@@ -717,7 +725,7 @@ fn convert_float_to_int<'tcx>(
         this.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Calculates absolute value of integers in `op` and stores the result in `dest`.
@@ -747,7 +755,7 @@ fn int_abs<'tcx>(
         this.write_immediate(*res, &dest)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Splits `op` (which must be a SIMD vector) into 128-bit chunks.
@@ -778,7 +786,7 @@ fn split_simd_to_128bit_chunks<'tcx, P: Projectable<'tcx, Provenance>>(
         .unwrap();
     let chunked_op = op.transmute(chunked_layout, this)?;
 
-    Ok((num_chunks, items_per_chunk, chunked_op))
+    interp_ok((num_chunks, items_per_chunk, chunked_op))
 }
 
 /// Horizontally performs `which` operation on adjacent values of
@@ -830,7 +838,7 @@ fn horizontal_bin_op<'tcx>(
         }
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Conditionally multiplies the packed floating-point elements in
@@ -892,7 +900,7 @@ fn conditional_dot_product<'tcx>(
         }
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Calculates two booleans.
@@ -923,7 +931,7 @@ fn test_bits_masked<'tcx>(
         masked_set &= (op & mask) == mask;
     }
 
-    Ok((all_zero, masked_set))
+    interp_ok((all_zero, masked_set))
 }
 
 /// Calculates two booleans.
@@ -956,7 +964,7 @@ fn test_high_bits_masked<'tcx>(
         negated &= (!op & mask) >> high_bit_offset == 0;
     }
 
-    Ok((direct, negated))
+    interp_ok((direct, negated))
 }
 
 /// Conditionally loads from `ptr` according the high bit of each
@@ -989,7 +997,7 @@ fn mask_load<'tcx>(
         }
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Conditionally stores into `ptr` according the high bit of each
@@ -1023,7 +1031,7 @@ fn mask_store<'tcx>(
         }
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Compute the sum of absolute differences of quadruplets of unsigned
@@ -1082,7 +1090,7 @@ fn mpsadbw<'tcx>(
         }
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Multiplies packed 16-bit signed integer values, truncates the 32-bit
@@ -1120,7 +1128,7 @@ fn pmulhrsw<'tcx>(
         this.write_scalar(Scalar::from_i16(res), &dest)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Perform a carry-less multiplication of two 64-bit integers, selected from `left` and `right` according to `imm8`,
@@ -1182,7 +1190,7 @@ fn pclmulqdq<'tcx>(
     let dest_high = this.project_index(&dest, 1)?;
     this.write_scalar(Scalar::from_u64(result_high), &dest_high)?;
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Packs two N-bit integer vectors to a single N/2-bit integers.
@@ -1227,7 +1235,7 @@ fn pack_generic<'tcx>(
         }
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Converts two 16-bit integer vectors to a single 8-bit integer
@@ -1245,7 +1253,7 @@ fn packsswb<'tcx>(
     pack_generic(this, left, right, dest, |op| {
         let op = op.to_i16()?;
         let res = i8::try_from(op).unwrap_or(if op < 0 { i8::MIN } else { i8::MAX });
-        Ok(Scalar::from_i8(res))
+        interp_ok(Scalar::from_i8(res))
     })
 }
 
@@ -1264,7 +1272,7 @@ fn packuswb<'tcx>(
     pack_generic(this, left, right, dest, |op| {
         let op = op.to_i16()?;
         let res = u8::try_from(op).unwrap_or(if op < 0 { 0 } else { u8::MAX });
-        Ok(Scalar::from_u8(res))
+        interp_ok(Scalar::from_u8(res))
     })
 }
 
@@ -1283,7 +1291,7 @@ fn packssdw<'tcx>(
     pack_generic(this, left, right, dest, |op| {
         let op = op.to_i32()?;
         let res = i16::try_from(op).unwrap_or(if op < 0 { i16::MIN } else { i16::MAX });
-        Ok(Scalar::from_i16(res))
+        interp_ok(Scalar::from_i16(res))
     })
 }
 
@@ -1302,7 +1310,7 @@ fn packusdw<'tcx>(
     pack_generic(this, left, right, dest, |op| {
         let op = op.to_i32()?;
         let res = u16::try_from(op).unwrap_or(if op < 0 { 0 } else { u16::MAX });
-        Ok(Scalar::from_u16(res))
+        interp_ok(Scalar::from_u16(res))
     })
 }
 
@@ -1334,7 +1342,7 @@ fn psign<'tcx>(
         this.write_immediate(*res, &dest)?;
     }
 
-    Ok(())
+    interp_ok(())
 }
 
 /// Calcultates either `a + b + cb_in` or `a - b - cb_in` depending on the value
@@ -1358,5 +1366,5 @@ fn carrying_add<'tcx>(
         this.binary_op(op, &sum, &ImmTy::from_uint(cb_in, a.layout))?.to_pair(this);
     let cb_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
 
-    Ok((sum, Scalar::from_u8(cb_out.into())))
+    interp_ok((sum, Scalar::from_u8(cb_out.into())))
 }

@@ -14,7 +14,7 @@
 //@ has - '//*[@class="sidebar-elems"]//section//a' 'Output'
 //@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#provided-associated-types"]' 'Provided Associated Types'
 //@ has - '//*[@class="sidebar-elems"]//section//a' 'Extra'
-//@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#object-safety"]' 'Object Safety'
+//@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#dyn-compatibility"]' 'Dyn Compatibility'
 pub trait Foo {
     const FOO: usize;
     const BAR: u32 = 0;
@@ -25,9 +25,9 @@ pub trait Foo {
     fn bar() -> Self::Output;
 }
 
-//@ has foo/trait.Safe.html
+//@ has foo/trait.DynCompatible.html
 //@ !has - '//div[@class="sidebar-elems"]//h3/a[@href="#object-safety"]' ''
-pub trait Safe {
+pub trait DynCompatible {
     fn access(&self);
 }
 

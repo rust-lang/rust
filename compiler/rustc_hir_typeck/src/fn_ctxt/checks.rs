@@ -658,7 +658,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && fn_sig.inputs()[1..]
                     .iter()
                     .zip(input_types.iter())
-                    .all(|(expected, found)| self.can_coerce(*expected, *found))
+                    .all(|(expected, found)| self.may_coerce(*expected, *found))
                 && fn_sig.inputs()[1..].len() == input_types.len()
             {
                 err.span_suggestion_verbose(
@@ -722,7 +722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let expectation = Expectation::rvalue_hint(self, expected_input_ty);
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
-            let can_coerce = self.can_coerce(arg_ty, coerced_ty);
+            let can_coerce = self.may_coerce(arg_ty, coerced_ty);
             if !can_coerce {
                 return Compatibility::Incompatible(Some(ty::error::TypeError::Sorts(
                     ty::error::ExpectedFound::new(true, coerced_ty, arg_ty),
@@ -802,7 +802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx + tys.len()),
                     ),
                 ) {
-                    if !self.can_coerce(provided_ty, *expected_ty) {
+                    if !self.may_coerce(provided_ty, *expected_ty) {
                         satisfied = false;
                         break;
                     }
@@ -984,7 +984,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             self.suggest_deref_unwrap_or(
                 &mut err,
-                error_span,
                 callee_ty,
                 call_ident,
                 expected_ty,
@@ -1024,7 +1023,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 std::iter::zip(formal_and_expected_inputs.iter(), removed_arg_tys.iter()).all(
                     |((expected_ty, _), (provided_ty, _))| {
                         !provided_ty.references_error()
-                            && self.can_coerce(*provided_ty, *expected_ty)
+                            && self.may_coerce(*provided_ty, *expected_ty)
                     },
                 )
             };
@@ -1098,6 +1097,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut only_extras_so_far = errors
             .peek()
             .is_some_and(|first| matches!(first, Error::Extra(arg_idx) if arg_idx.index() == 0));
+        let mut prev_extra_idx = None;
         let mut suggestions = vec![];
         while let Some(error) = errors.next() {
             only_extras_so_far &= matches!(error, Error::Extra(_));
@@ -1115,7 +1115,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 None,
                                 Some(trace.values),
                                 e,
-                                false,
                                 true,
                             );
                         }
@@ -1167,11 +1166,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         //     fn f() {}
                         //   - f(0, 1,)
                         //   + f()
-                        if only_extras_so_far
-                            && !errors
-                                .peek()
-                                .is_some_and(|next_error| matches!(next_error, Error::Extra(_)))
-                        {
+                        let trim_next_comma = match errors.peek() {
+                            Some(Error::Extra(provided_idx))
+                                if only_extras_so_far
+                                    && provided_idx.index() > arg_idx.index() + 1 =>
+                            // If the next Error::Extra ("next") doesn't next to current ("current"),
+                            // fn foo(_: (), _: u32) {}
+                            // - foo("current", (), 1u32, "next")
+                            // + foo((), 1u32)
+                            // If the previous error is not a `Error::Extra`, then do not trim the next comma
+                            // - foo((), "current", 42u32, "next")
+                            // + foo((), 42u32)
+                            {
+                                prev_extra_idx.map_or(true, |prev_extra_idx| {
+                                    prev_extra_idx + 1 == arg_idx.index()
+                                })
+                            }
+                            // If no error left, we need to delete the next comma
+                            None if only_extras_so_far => true,
+                            // Not sure if other error type need to be handled as well
+                            _ => false,
+                        };
+
+                        if trim_next_comma {
                             let next = provided_arg_tys
                                 .get(arg_idx + 1)
                                 .map(|&(_, sp)| sp)
@@ -1194,6 +1211,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             SuggestionText::Remove(_) => SuggestionText::Remove(true),
                             _ => SuggestionText::DidYouMean,
                         };
+                        prev_extra_idx = Some(arg_idx.index())
                     }
                 }
                 Error::Missing(expected_idx) => {
@@ -2125,7 +2143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let expr_ty = self.typeck_results.borrow().expr_ty(expr);
                                     let return_ty = fn_sig.output();
                                     if !matches!(expr.kind, hir::ExprKind::Ret(..))
-                                        && self.can_coerce(expr_ty, return_ty)
+                                        && self.may_coerce(expr_ty, return_ty)
                                     {
                                         found_semi = true;
                                     }

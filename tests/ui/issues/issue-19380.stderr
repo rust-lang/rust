@@ -4,7 +4,7 @@ error[E0038]: the trait `Qiz` cannot be made into an object
 LL |   foos: &'static [&'static (dyn Qiz + 'static)]
    |                             ^^^^^^^^^^^^^^^^^ `Qiz` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-19380.rs:2:6
    |
 LL | trait Qiz {
@@ -27,7 +27,7 @@ error[E0038]: the trait `Qiz` cannot be made into an object
 LL | const BAR : Bar = Bar { foos: &[&FOO]};
    |                                 ^^^^ `Qiz` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-19380.rs:2:6
    |
 LL | trait Qiz {
@@ -51,7 +51,7 @@ error[E0038]: the trait `Qiz` cannot be made into an object
 LL | const BAR : Bar = Bar { foos: &[&FOO]};
    |                               ^^^^^^^ `Qiz` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-19380.rs:2:6
    |
 LL | trait Qiz {

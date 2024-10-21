@@ -1,3 +1,5 @@
+#![allow(unused_must_use)]
+
 #[allow(dead_code)]
 trait Trait {
     fn blah(&self);
@@ -171,5 +173,23 @@ fn cfg_match_two_functions() {
     {
         foo2();
         bar2();
+    }
+}
+
+fn _accepts_expressions() -> i32 {
+    cfg_match! {
+        cfg(unix) => { 1 }
+        _ => { 2 }
+    }
+}
+
+// The current implementation expands to a macro call, which allows the use of expression
+// statements.
+fn _allows_stmt_expr_attributes() {
+    let one = 1;
+    let two = 2;
+    cfg_match! {
+        cfg(unix) => { one * two; }
+        _ => { one + two; }
     }
 }

@@ -3,10 +3,8 @@
 //@compile-flags: -Zmiri-permissive-provenance -Zmiri-provenance-gc=0
 
 #![feature(strict_provenance)]
-use std::{
-    alloc::{self, Layout},
-    mem::ManuallyDrop,
-};
+use std::alloc::{self, Layout};
+use std::mem::ManuallyDrop;
 
 extern "Rust" {
     fn miri_get_alloc_id(ptr: *const u8) -> u64;

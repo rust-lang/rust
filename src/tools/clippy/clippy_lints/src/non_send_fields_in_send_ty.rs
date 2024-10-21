@@ -159,7 +159,7 @@ struct NonSendField<'tcx> {
     generic_params: Vec<Ty<'tcx>>,
 }
 
-impl<'tcx> NonSendField<'tcx> {
+impl NonSendField<'_> {
     fn generic_params_string(&self) -> String {
         self.generic_params
             .iter()

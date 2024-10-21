@@ -909,8 +909,11 @@ where
     /// Attempts to get mutable references to `N` values in the map at once.
     ///
     /// Returns an array of length `N` with the results of each query. For soundness, at most one
-    /// mutable reference will be returned to any value. `None` will be returned if any of the
-    /// keys are duplicates or missing.
+    /// mutable reference will be returned to any value. `None` will be used if the key is missing.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any keys are overlapping.
     ///
     /// # Examples
     ///
@@ -924,16 +927,23 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
+    /// // Get Athenæum and Bodleian Library
+    /// let [Some(a), Some(b)] = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "Bodleian Library",
+    /// ]) else { panic!() };
+    ///
+    /// // Assert values of Athenæum and Library of Congress
     /// let got = libraries.get_many_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
     /// ]);
     /// assert_eq!(
     ///     got,
-    ///     Some([
-    ///         &mut 1807,
-    ///         &mut 1800,
-    ///     ]),
+    ///     [
+    ///         Some(&mut 1807),
+    ///         Some(&mut 1800),
+    ///     ],
     /// );
     ///
     /// // Missing keys result in None
@@ -941,18 +951,31 @@ where
     ///     "Athenæum",
     ///     "New York Public Library",
     /// ]);
-    /// assert_eq!(got, None);
+    /// assert_eq!(
+    ///     got,
+    ///     [
+    ///         Some(&mut 1807),
+    ///         None
+    ///     ]
+    /// );
+    /// ```
     ///
-    /// // Duplicate keys result in None
+    /// ```should_panic
+    /// #![feature(map_many_mut)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Athenæum".to_string(), 1807);
+    ///
+    /// // Duplicate keys panic!
     /// let got = libraries.get_many_mut([
     ///     "Athenæum",
     ///     "Athenæum",
     /// ]);
-    /// assert_eq!(got, None);
     /// ```
     #[inline]
     #[unstable(feature = "map_many_mut", issue = "97601")]
-    pub fn get_many_mut<Q: ?Sized, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut V; N]>
+    pub fn get_many_mut<Q: ?Sized, const N: usize>(&mut self, ks: [&Q; N]) -> [Option<&'_ mut V>; N]
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
@@ -963,10 +986,10 @@ where
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
     /// the values are unique.
     ///
-    /// Returns an array of length `N` with the results of each query. `None` will be returned if
-    /// any of the keys are missing.
+    /// Returns an array of length `N` with the results of each query. `None` will be used if
+    /// the key is missing.
     ///
-    /// For a safe alternative see [`get_many_mut`](Self::get_many_mut).
+    /// For a safe alternative see [`get_many_mut`](`HashMap::get_many_mut`).
     ///
     /// # Safety
     ///
@@ -987,31 +1010,39 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
-    /// let got = libraries.get_many_mut([
+    /// // SAFETY: The keys do not overlap.
+    /// let [Some(a), Some(b)] = (unsafe { libraries.get_many_unchecked_mut([
+    ///     "Athenæum",
+    ///     "Bodleian Library",
+    /// ]) }) else { panic!() };
+    ///
+    /// // SAFETY: The keys do not overlap.
+    /// let got = unsafe { libraries.get_many_unchecked_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
-    /// ]);
+    /// ]) };
     /// assert_eq!(
     ///     got,
-    ///     Some([
-    ///         &mut 1807,
-    ///         &mut 1800,
-    ///     ]),
+    ///     [
+    ///         Some(&mut 1807),
+    ///         Some(&mut 1800),
+    ///     ],
     /// );
     ///
-    /// // Missing keys result in None
-    /// let got = libraries.get_many_mut([
+    /// // SAFETY: The keys do not overlap.
+    /// let got = unsafe { libraries.get_many_unchecked_mut([
     ///     "Athenæum",
     ///     "New York Public Library",
-    /// ]);
-    /// assert_eq!(got, None);
+    /// ]) };
+    /// // Missing keys result in None
+    /// assert_eq!(got, [Some(&mut 1807), None]);
     /// ```
     #[inline]
     #[unstable(feature = "map_many_mut", issue = "97601")]
     pub unsafe fn get_many_unchecked_mut<Q: ?Sized, const N: usize>(
         &mut self,
         ks: [&Q; N],
-    ) -> Option<[&'_ mut V; N]>
+    ) -> [Option<&'_ mut V>; N]
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
@@ -1407,6 +1438,14 @@ impl<K, V> Clone for Iter<'_, K, V> {
     }
 }
 
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
+impl<K, V> Default for Iter<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        Iter { base: Default::default() }
+    }
+}
+
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1445,6 +1484,14 @@ impl<'a, K, V> IterMut<'a, K, V> {
     }
 }
 
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
+impl<K, V> Default for IterMut<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        IterMut { base: Default::default() }
+    }
+}
+
 /// An owning iterator over the entries of a `HashMap`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashMap`]
@@ -1472,6 +1519,14 @@ impl<K, V> IntoIter<K, V> {
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter { base: self.base.rustc_iter() }
+    }
+}
+
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
+impl<K, V> Default for IntoIter<K, V> {
+    #[inline]
+    fn default() -> Self {
+        IntoIter { base: Default::default() }
     }
 }
 
@@ -1504,6 +1559,14 @@ impl<K, V> Clone for Keys<'_, K, V> {
     #[inline]
     fn clone(&self) -> Self {
         Keys { inner: self.inner.clone() }
+    }
+}
+
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
+impl<K, V> Default for Keys<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        Keys { inner: Default::default() }
     }
 }
 
@@ -1543,6 +1606,14 @@ impl<K, V> Clone for Values<'_, K, V> {
     #[inline]
     fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
+    }
+}
+
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
+impl<K, V> Default for Values<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        Values { inner: Default::default() }
     }
 }
 
@@ -1634,6 +1705,14 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
 
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
+impl<K, V> Default for ValuesMut<'_, K, V> {
+    #[inline]
+    fn default() -> Self {
+        ValuesMut { inner: Default::default() }
+    }
+}
+
 /// An owning iterator over the keys of a `HashMap`.
 ///
 /// This `struct` is created by the [`into_keys`] method on [`HashMap`].
@@ -1656,6 +1735,14 @@ pub struct IntoKeys<K, V> {
     inner: IntoIter<K, V>,
 }
 
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
+impl<K, V> Default for IntoKeys<K, V> {
+    #[inline]
+    fn default() -> Self {
+        IntoKeys { inner: Default::default() }
+    }
+}
+
 /// An owning iterator over the values of a `HashMap`.
 ///
 /// This `struct` is created by the [`into_values`] method on [`HashMap`].
@@ -1676,6 +1763,14 @@ pub struct IntoKeys<K, V> {
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 pub struct IntoValues<K, V> {
     inner: IntoIter<K, V>,
+}
+
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
+impl<K, V> Default for IntoValues<K, V> {
+    #[inline]
+    fn default() -> Self {
+        IntoValues { inner: Default::default() }
+    }
 }
 
 /// A builder for computing where in a HashMap a key-value pair would be stored.
@@ -2770,7 +2865,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(entry.key(), &"poneyland");
     /// ```
     #[inline]
-    #[stable(feature = "entry_insert", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "entry_insert", since = "1.83.0")]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         match self {
             Occupied(mut entry) => {
@@ -2978,64 +3073,6 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     pub fn remove(self) -> V {
         self.base.remove()
     }
-
-    /// Replaces the entry, returning the old key and value. The new key in the hash map will be
-    /// the key used to create this entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(map_entry_replace)]
-    /// use std::collections::hash_map::{Entry, HashMap};
-    /// use std::rc::Rc;
-    ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// map.insert(Rc::new("Stringthing".to_string()), 15);
-    ///
-    /// let my_key = Rc::new("Stringthing".to_string());
-    ///
-    /// if let Entry::Occupied(entry) = map.entry(my_key) {
-    ///     // Also replace the key with a handle to our other key.
-    ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
-    /// }
-    ///
-    /// ```
-    #[inline]
-    #[unstable(feature = "map_entry_replace", issue = "44286")]
-    pub fn replace_entry(self, value: V) -> (K, V) {
-        self.base.replace_entry(value)
-    }
-
-    /// Replaces the key in the hash map with the key used to create this entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(map_entry_replace)]
-    /// use std::collections::hash_map::{Entry, HashMap};
-    /// use std::rc::Rc;
-    ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// let known_strings: Vec<Rc<String>> = Vec::new();
-    ///
-    /// // Initialise known strings, run program, etc.
-    ///
-    /// reclaim_memory(&mut map, &known_strings);
-    ///
-    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
-    ///     for s in known_strings {
-    ///         if let Entry::Occupied(entry) = map.entry(Rc::clone(s)) {
-    ///             // Replaces the entry's key with our version of it in `known_strings`.
-    ///             entry.replace_key();
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    #[inline]
-    #[unstable(feature = "map_entry_replace", issue = "44286")]
-    pub fn replace_key(self) -> K {
-        self.base.replace_key()
-    }
 }
 
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
@@ -3115,7 +3152,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[inline]
-    #[stable(feature = "entry_insert", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "entry_insert", since = "1.83.0")]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         let base = self.base.insert_entry(value);
         OccupiedEntry { base }

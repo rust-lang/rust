@@ -218,7 +218,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
@@ -385,7 +385,7 @@ impl<'a> CrateLocator<'a> {
         let dylib_suffix = &self.target.dll_suffix;
         let staticlib_suffix = &self.target.staticlib_suffix;
 
-        let mut candidates: FxHashMap<_, (FxHashMap<_, _>, FxHashMap<_, _>, FxHashMap<_, _>)> =
+        let mut candidates: FxIndexMap<_, (FxIndexMap<_, _>, FxIndexMap<_, _>, FxIndexMap<_, _>)> =
             Default::default();
 
         // First, find all possible candidate rlibs and dylibs purely based on
@@ -460,7 +460,7 @@ impl<'a> CrateLocator<'a> {
         // A Library candidate is created if the metadata for the set of
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
-        let mut libraries = FxHashMap::default();
+        let mut libraries = FxIndexMap::default();
         for (_hash, (rlibs, rmetas, dylibs)) in candidates {
             if let Some((svh, lib)) = self.extract_lib(rlibs, rmetas, dylibs)? {
                 libraries.insert(svh, lib);
@@ -494,13 +494,16 @@ impl<'a> CrateLocator<'a> {
 
     fn extract_lib(
         &mut self,
-        rlibs: FxHashMap<PathBuf, PathKind>,
-        rmetas: FxHashMap<PathBuf, PathKind>,
-        dylibs: FxHashMap<PathBuf, PathKind>,
+        rlibs: FxIndexMap<PathBuf, PathKind>,
+        rmetas: FxIndexMap<PathBuf, PathKind>,
+        dylibs: FxIndexMap<PathBuf, PathKind>,
     ) -> Result<Option<(Svh, Library)>, CrateError> {
         let mut slot = None;
-        // Order here matters, rmeta should come first. See comment in
-        // `extract_one` below.
+        // Order here matters, rmeta should come first.
+        //
+        // Make sure there's at most one rlib and at most one dylib.
+        //
+        // See comment in `extract_one` below.
         let source = CrateSource {
             rmeta: self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot)?,
             rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)?,
@@ -534,7 +537,7 @@ impl<'a> CrateLocator<'a> {
     // The `PathBuf` in `slot` will only be used for diagnostic purposes.
     fn extract_one(
         &mut self,
-        m: FxHashMap<PathBuf, PathKind>,
+        m: FxIndexMap<PathBuf, PathKind>,
         flavor: CrateFlavor,
         slot: &mut Option<(Svh, MetadataBlob, PathBuf)>,
     ) -> Result<Option<(PathBuf, PathKind)>, CrateError> {
@@ -702,58 +705,62 @@ impl<'a> CrateLocator<'a> {
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
-        let mut rlibs = FxHashMap::default();
-        let mut rmetas = FxHashMap::default();
-        let mut dylibs = FxHashMap::default();
+        let mut rlibs = FxIndexMap::default();
+        let mut rmetas = FxIndexMap::default();
+        let mut dylibs = FxIndexMap::default();
         for loc in &self.exact_paths {
-            if !loc.canonicalized().exists() {
-                return Err(CrateError::ExternLocationNotExist(
-                    self.crate_name,
-                    loc.original().clone(),
-                ));
+            let loc_canon = loc.canonicalized();
+            let loc_orig = loc.original();
+            if !loc_canon.exists() {
+                return Err(CrateError::ExternLocationNotExist(self.crate_name, loc_orig.clone()));
             }
-            if !loc.original().is_file() {
-                return Err(CrateError::ExternLocationNotFile(
-                    self.crate_name,
-                    loc.original().clone(),
-                ));
+            if !loc_orig.is_file() {
+                return Err(CrateError::ExternLocationNotFile(self.crate_name, loc_orig.clone()));
             }
-            let Some(file) = loc.original().file_name().and_then(|s| s.to_str()) else {
-                return Err(CrateError::ExternLocationNotFile(
-                    self.crate_name,
-                    loc.original().clone(),
-                ));
+            // Note to take care and match against the non-canonicalized name:
+            // some systems save build artifacts into content-addressed stores
+            // that do not preserve extensions, and then link to them using
+            // e.g. symbolic links. If we canonicalize too early, we resolve
+            // the symlink, the file type is lost and we might treat rlibs and
+            // rmetas as dylibs.
+            let Some(file) = loc_orig.file_name().and_then(|s| s.to_str()) else {
+                return Err(CrateError::ExternLocationNotFile(self.crate_name, loc_orig.clone()));
             };
-
-            if file.starts_with("lib") && (file.ends_with(".rlib") || file.ends_with(".rmeta"))
-                || file.starts_with(self.target.dll_prefix.as_ref())
-                    && file.ends_with(self.target.dll_suffix.as_ref())
-            {
-                // Make sure there's at most one rlib and at most one dylib.
-                // Note to take care and match against the non-canonicalized name:
-                // some systems save build artifacts into content-addressed stores
-                // that do not preserve extensions, and then link to them using
-                // e.g. symbolic links. If we canonicalize too early, we resolve
-                // the symlink, the file type is lost and we might treat rlibs and
-                // rmetas as dylibs.
-                let loc_canon = loc.canonicalized().clone();
-                let loc = loc.original();
-                if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
-                    rlibs.insert(loc_canon, PathKind::ExternFlag);
-                } else if loc.file_name().unwrap().to_str().unwrap().ends_with(".rmeta") {
-                    rmetas.insert(loc_canon, PathKind::ExternFlag);
-                } else {
-                    dylibs.insert(loc_canon, PathKind::ExternFlag);
+            // FnMut cannot return reference to captured value, so references
+            // must be taken outside the closure.
+            let rlibs = &mut rlibs;
+            let rmetas = &mut rmetas;
+            let dylibs = &mut dylibs;
+            let type_via_filename = (|| {
+                if file.starts_with("lib") {
+                    if file.ends_with(".rlib") {
+                        return Some(rlibs);
+                    }
+                    if file.ends_with(".rmeta") {
+                        return Some(rmetas);
+                    }
                 }
-            } else {
-                self.crate_rejections
-                    .via_filename
-                    .push(CrateMismatch { path: loc.original().clone(), got: String::new() });
+                let dll_prefix = self.target.dll_prefix.as_ref();
+                let dll_suffix = self.target.dll_suffix.as_ref();
+                if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
+                    return Some(dylibs);
+                }
+                None
+            })();
+            match type_via_filename {
+                Some(type_via_filename) => {
+                    type_via_filename.insert(loc_canon.clone(), PathKind::ExternFlag);
+                }
+                None => {
+                    self.crate_rejections
+                        .via_filename
+                        .push(CrateMismatch { path: loc_orig.clone(), got: String::new() });
+                }
             }
         }
 
         // Extract the dylib/rlib/rmeta triple.
-        Ok(self.extract_lib(rlibs, rmetas, dylibs)?.map(|(_, lib)| lib))
+        self.extract_lib(rlibs, rmetas, dylibs).map(|opt| opt.map(|(_, lib)| lib))
     }
 
     pub(crate) fn into_error(self, root: Option<CratePaths>) -> CrateError {

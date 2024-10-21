@@ -5,7 +5,9 @@ use rustc_target::abi::{Align, Size};
 use tracing::trace;
 
 use super::util::ensure_monomorphic_enough;
-use super::{InterpCx, MPlaceTy, Machine, MemPlaceMeta, OffsetMode, Projectable, throw_ub};
+use super::{
+    InterpCx, MPlaceTy, Machine, MemPlaceMeta, OffsetMode, Projectable, interp_ok, throw_ub,
+};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -31,7 +33,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let salt = M::get_global_alloc_salt(self, None);
         let vtable_symbolic_allocation = self.tcx.reserve_and_set_vtable_alloc(ty, dyn_ty, salt);
         let vtable_ptr = self.global_root_pointer(Pointer::from(vtable_symbolic_allocation))?;
-        Ok(vtable_ptr.into())
+        interp_ok(vtable_ptr.into())
     }
 
     pub fn get_vtable_size_and_align(
@@ -42,7 +44,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let ty = self.get_ptr_vtable_ty(vtable, expected_trait)?;
         let layout = self.layout_of(ty)?;
         assert!(layout.is_sized(), "there are no vtables for unsized types");
-        Ok((layout.size, layout.align.abi))
+        interp_ok((layout.size, layout.align.abi))
     }
 
     pub(super) fn vtable_entries(
@@ -102,7 +104,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.
@@ -127,7 +129,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             layout,
             self,
         )?;
-        Ok(mplace)
+        interp_ok(mplace)
     }
 
     /// Turn a `dyn* Trait` type into an value with the actual dynamic type.
@@ -147,6 +149,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `data` is already the right thing but has the wrong type. So we transmute it.
         let layout = self.layout_of(ty)?;
         let data = data.transmute(layout, self)?;
-        Ok(data)
+        interp_ok(data)
     }
 }

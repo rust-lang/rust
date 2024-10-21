@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refs_to_static_fail_invalid.rs:9:5
+  --> $DIR/const_refs_to_static_fail_invalid.rs:8:5
    |
 LL |     const C: &bool = unsafe { std::mem::transmute(&S) };
    |     ^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered 0x0a, but expected a boolean
@@ -10,7 +10,7 @@ LL |     const C: &bool = unsafe { std::mem::transmute(&S) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refs_to_static_fail_invalid.rs:25:5
+  --> $DIR/const_refs_to_static_fail_invalid.rs:24:5
    |
 LL |     const C: &i8 = unsafe { &S };
    |     ^^^^^^^^^^^^ constructing invalid value: encountered reference to `extern` static in `const`
@@ -21,7 +21,7 @@ LL |     const C: &i8 = unsafe { &S };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refs_to_static_fail_invalid.rs:39:5
+  --> $DIR/const_refs_to_static_fail_invalid.rs:38:5
    |
 LL |     const C: &i32 = unsafe { &S_MUT };
    |     ^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -32,19 +32,19 @@ LL |     const C: &i32 = unsafe { &S_MUT };
            }
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:15:9
+  --> $DIR/const_refs_to_static_fail_invalid.rs:14:9
    |
 LL |         C => {}
    |         ^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:31:9
+  --> $DIR/const_refs_to_static_fail_invalid.rs:30:9
    |
 LL |         C => {}
    |         ^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:46:9
+  --> $DIR/const_refs_to_static_fail_invalid.rs:45:9
    |
 LL |         C => {}
    |         ^

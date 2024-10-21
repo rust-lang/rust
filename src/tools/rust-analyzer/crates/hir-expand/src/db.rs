@@ -1,6 +1,6 @@
 //! Defines database & queries for macro expansion.
 
-use base_db::{salsa, CrateId, SourceDatabase};
+use base_db::{ra_salsa, CrateId, SourceDatabase};
 use either::Either;
 use limit::Limit;
 use mbe::MatchedArmIndex;
@@ -16,7 +16,10 @@ use crate::{
     cfg_process,
     declarative::DeclarativeMacroExpander,
     fixup::{self, SyntaxFixupUndoInfo},
-    hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
+    hygiene::{
+        span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt,
+        SyntaxContextExt as _,
+    },
     proc_macro::ProcMacros,
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
@@ -50,32 +53,32 @@ pub enum TokenExpander {
     ProcMacro(CustomProcMacroExpander),
 }
 
-#[salsa::query_group(ExpandDatabaseStorage)]
+#[ra_salsa::query_group(ExpandDatabaseStorage)]
 pub trait ExpandDatabase: SourceDatabase {
     /// The proc macros.
-    #[salsa::input]
+    #[ra_salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;
 
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     /// Main public API -- parses a hir file, not caring whether it's a real
     /// file or a macro expansion.
-    #[salsa::transparent]
+    #[ra_salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode;
     /// Implementation for the macro case.
-    #[salsa::lru]
+    #[ra_salsa::lru]
     fn parse_macro_expansion(
         &self,
         macro_file: MacroFileId,
     ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)>;
-    #[salsa::transparent]
-    #[salsa::invoke(SpanMap::new)]
+    #[ra_salsa::transparent]
+    #[ra_salsa::invoke(SpanMap::new)]
     fn span_map(&self, file_id: HirFileId) -> SpanMap;
 
-    #[salsa::transparent]
-    #[salsa::invoke(crate::span_map::expansion_span_map)]
+    #[ra_salsa::transparent]
+    #[ra_salsa::invoke(crate::span_map::expansion_span_map)]
     fn expansion_span_map(&self, file_id: MacroFileId) -> Arc<ExpansionSpanMap>;
-    #[salsa::invoke(crate::span_map::real_span_map)]
+    #[ra_salsa::invoke(crate::span_map::real_span_map)]
     fn real_span_map(&self, file_id: EditionedFileId) -> Arc<RealSpanMap>;
 
     /// Macro ids. That's probably the tricksiest bit in rust-analyzer, and the
@@ -83,15 +86,15 @@ pub trait ExpandDatabase: SourceDatabase {
     ///
     /// We encode macro definitions into ids of macro calls, this what allows us
     /// to be incremental.
-    #[salsa::interned]
+    #[ra_salsa::interned]
     fn intern_macro_call(&self, macro_call: MacroCallLoc) -> MacroCallId;
-    #[salsa::interned]
+    #[ra_salsa::interned]
     fn intern_syntax_context(&self, ctx: SyntaxContextData) -> SyntaxContextId;
 
-    #[salsa::transparent]
+    #[ra_salsa::transparent]
     fn setup_syntax_context_root(&self) -> ();
-    #[salsa::transparent]
-    #[salsa::invoke(crate::hygiene::dump_syntax_contexts)]
+    #[ra_salsa::transparent]
+    #[ra_salsa::invoke(crate::hygiene::dump_syntax_contexts)]
     fn dump_syntax_contexts(&self) -> String;
 
     /// Lowers syntactic macro call to a token tree representation. That's a firewall
@@ -99,18 +102,18 @@ pub trait ExpandDatabase: SourceDatabase {
     /// subtree.
     #[deprecated = "calling this is incorrect, call `macro_arg_considering_derives` instead"]
     fn macro_arg(&self, id: MacroCallId) -> MacroArgResult;
-    #[salsa::transparent]
+    #[ra_salsa::transparent]
     fn macro_arg_considering_derives(
         &self,
         id: MacroCallId,
         kind: &MacroCallKind,
     ) -> MacroArgResult;
     /// Fetches the expander for this macro.
-    #[salsa::transparent]
-    #[salsa::invoke(TokenExpander::macro_expander)]
+    #[ra_salsa::transparent]
+    #[ra_salsa::invoke(TokenExpander::macro_expander)]
     fn macro_expander(&self, id: MacroDefId) -> TokenExpander;
     /// Fetches (and compiles) the expander of this decl macro.
-    #[salsa::invoke(DeclarativeMacroExpander::expander)]
+    #[ra_salsa::invoke(DeclarativeMacroExpander::expander)]
     fn decl_macro_expander(
         &self,
         def_crate: CrateId,
@@ -132,7 +135,7 @@ pub trait ExpandDatabase: SourceDatabase {
         &self,
         macro_call: MacroCallId,
     ) -> Option<Arc<ExpandResult<Arc<[SyntaxError]>>>>;
-    #[salsa::transparent]
+    #[ra_salsa::transparent]
     fn syntax_context(&self, file: HirFileId) -> SyntaxContextId;
 }
 
@@ -300,14 +303,16 @@ pub fn expand_speculative(
         token_tree_to_syntax_node(&speculative_expansion.value, expand_to, loc.def.edition);
 
     let syntax_node = node.syntax_node();
-    let token = rev_tmap
+    let (token, _) = rev_tmap
         .ranges_with_span(span_map.span_for_range(token_to_map.text_range()))
-        .filter_map(|range| syntax_node.covering_element(range).into_token())
-        .min_by_key(|t| {
-            // prefer tokens of the same kind and text
+        .filter_map(|(range, ctx)| syntax_node.covering_element(range).into_token().zip(Some(ctx)))
+        .min_by_key(|(t, ctx)| {
+            // prefer tokens of the same kind and text, as well as non opaque marked ones
             // Note the inversion of the score here, as we want to prefer the first token in case
             // of all tokens having the same score
-            (t.kind() != token_to_map.kind()) as u8 + 2 * ((t.text() != token_to_map.text()) as u8)
+            ctx.is_opaque(db) as u8
+                + 2 * (t.kind() != token_to_map.kind()) as u8
+                + 4 * ((t.text() != token_to_map.text()) as u8)
         })?;
     Some((node.syntax_node(), token))
 }

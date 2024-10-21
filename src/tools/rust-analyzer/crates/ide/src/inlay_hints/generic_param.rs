@@ -92,6 +92,7 @@ pub(crate) fn hints(
             kind: InlayKind::GenericParameter,
             label,
             text_edit: None,
+            resolve_parent: Some(node.syntax().text_range()),
         })
     });
 

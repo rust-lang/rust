@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::rc::Rc;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
@@ -11,7 +10,7 @@ use crate::region_infer::{Cause, RegionInferenceContext};
 
 pub(crate) fn find<'tcx>(
     body: &Body<'tcx>,
-    regioncx: &Rc<RegionInferenceContext<'tcx>>,
+    regioncx: &RegionInferenceContext<'tcx>,
     tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,
@@ -23,7 +22,7 @@ pub(crate) fn find<'tcx>(
 
 struct UseFinder<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    regioncx: &'a Rc<RegionInferenceContext<'tcx>>,
+    regioncx: &'a RegionInferenceContext<'tcx>,
     tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,

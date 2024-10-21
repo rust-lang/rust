@@ -1,7 +1,7 @@
 //! File and span related types.
 use std::fmt::{self, Write};
 
-use salsa::InternId;
+use ra_salsa::InternId;
 
 mod ast_id;
 mod hygiene;
@@ -261,13 +261,13 @@ pub struct MacroFileId {
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct MacroCallId(salsa::InternId);
+pub struct MacroCallId(ra_salsa::InternId);
 
-impl salsa::InternKey for MacroCallId {
-    fn from_intern_id(v: salsa::InternId) -> Self {
+impl ra_salsa::InternKey for MacroCallId {
+    fn from_intern_id(v: ra_salsa::InternId) -> Self {
         MacroCallId(v)
     }
-    fn as_intern_id(&self) -> salsa::InternId {
+    fn as_intern_id(&self) -> ra_salsa::InternId {
         self.0
     }
 }

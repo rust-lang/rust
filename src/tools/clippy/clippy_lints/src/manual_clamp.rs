@@ -741,7 +741,7 @@ enum MaybeBorrowedStmtKind<'a> {
     Owned(StmtKind<'a>),
 }
 
-impl<'a> Clone for MaybeBorrowedStmtKind<'a> {
+impl Clone for MaybeBorrowedStmtKind<'_> {
     fn clone(&self) -> Self {
         match self {
             Self::Borrowed(t) => Self::Borrowed(t),

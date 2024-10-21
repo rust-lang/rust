@@ -146,7 +146,7 @@ fn invocation_fixtures(
                 Some(MetaVarKind::Pat) => token_trees.push(make_ident("foo")),
                 Some(MetaVarKind::Path) => token_trees.push(make_ident("foo")),
                 Some(MetaVarKind::Literal) => token_trees.push(make_literal("1")),
-                Some(MetaVarKind::Expr) => token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Expr(_)) => token_trees.push(make_ident("foo")),
                 Some(MetaVarKind::Lifetime) => {
                     token_trees.push(make_punct('\''));
                     token_trees.push(make_ident("a"));
@@ -216,7 +216,11 @@ fn invocation_fixtures(
 
                 token_trees.push(subtree.into());
             }
-            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Len { .. } => {}
+            Op::Ignore { .. }
+            | Op::Index { .. }
+            | Op::Count { .. }
+            | Op::Len { .. }
+            | Op::Concat { .. } => {}
         };
 
         // Simple linear congruential generator for deterministic result

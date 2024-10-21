@@ -84,7 +84,7 @@ struct VarCollectorVisitor<'a, 'tcx> {
     skip: bool,
 }
 
-impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
+impl<'tcx> VarCollectorVisitor<'_, 'tcx> {
     fn insert_def_id(&mut self, ex: &'tcx Expr<'_>) {
         if let ExprKind::Path(ref qpath) = ex.kind
             && let QPath::Resolved(None, _) = *qpath
@@ -103,7 +103,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for VarCollectorVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         match ex.kind {
             ExprKind::Path(_) => self.insert_def_id(ex),

@@ -67,6 +67,7 @@ pub(super) fn hints(
                 position: InlayHintPosition::After,
                 pad_left: true,
                 pad_right: false,
+                resolve_parent: Some(expr.syntax().text_range()),
             });
         }
     }
@@ -139,7 +140,6 @@ fn main() {
                     (
                         147..172,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
@@ -152,13 +152,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         147..154,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "A",
                                 linked_location: Some(
@@ -171,7 +169,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                 ]
@@ -222,7 +219,6 @@ fn main() {
                     (
                         143..190,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "C",
                                 linked_location: Some(
@@ -235,13 +231,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         143..179,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
@@ -254,7 +248,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                 ]
@@ -289,7 +282,6 @@ fn main() {
                     (
                         143..190,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "C",
                                 linked_location: Some(
@@ -302,13 +294,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         143..179,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
@@ -321,7 +311,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                 ]
@@ -357,7 +346,6 @@ fn main() {
                     (
                         246..283,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
@@ -389,7 +377,6 @@ fn main() {
                     (
                         246..265,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "A",
                                 linked_location: Some(
@@ -562,7 +549,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                 ]
@@ -597,7 +583,6 @@ fn main() {
                     (
                         124..130,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
@@ -610,13 +595,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         145..185,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
@@ -629,13 +612,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         145..168,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
@@ -648,7 +629,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (

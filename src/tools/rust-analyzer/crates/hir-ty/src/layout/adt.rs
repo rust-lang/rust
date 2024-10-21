@@ -2,7 +2,7 @@
 
 use std::{cmp, ops::Bound};
 
-use base_db::salsa::Cycle;
+use base_db::ra_salsa::Cycle;
 use hir_def::{
     data::adt::VariantData,
     layout::{Integer, ReprOptions, TargetDataLayout},

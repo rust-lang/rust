@@ -18,6 +18,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
 };
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -40,7 +41,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
-use rustc_trait_selection::traits::PredicateObligation;
 use rustc_trait_selection::traits::query::type_op::custom::{
     CustomTypeOp, scrape_region_constraints,
 };
@@ -121,13 +121,13 @@ pub(crate) fn type_check<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
-    universal_regions: &Rc<UniversalRegions<'tcx>>,
+    universal_regions: Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    elements: &Rc<DenseLocationMap>,
+    elements: Rc<DenseLocationMap>,
     upvars: &[&ty::CapturedPlace<'tcx>],
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
@@ -150,14 +150,14 @@ pub(crate) fn type_check<'a, 'tcx>(
         infcx,
         param_env,
         implicit_region_bound,
-        universal_regions,
+        universal_regions.clone(),
         &mut constraints,
     );
 
     debug!(?normalized_inputs_and_output);
 
     let mut borrowck_context = BorrowCheckContext {
-        universal_regions,
+        universal_regions: &universal_regions,
         location_table,
         borrow_set,
         all_facts,
@@ -181,10 +181,10 @@ pub(crate) fn type_check<'a, 'tcx>(
     verifier.visit_body(body);
 
     checker.typeck_mir(body);
-    checker.equate_inputs_and_outputs(body, universal_regions, &normalized_inputs_and_output);
+    checker.equate_inputs_and_outputs(body, &universal_regions, &normalized_inputs_and_output);
     checker.check_signature_annotation(body);
 
-    liveness::generate(&mut checker, body, elements, flow_inits, move_data);
+    liveness::generate(&mut checker, body, &elements, flow_inits, move_data);
 
     translate_outlives_facts(&mut checker);
     let opaque_type_values = infcx.take_opaque_types();
@@ -1128,7 +1128,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
-                self.param_env,
                 proj,
                 |this, field, ()| {
                     let ty = this.field_ty(tcx, field);
@@ -1919,7 +1918,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // than 1.
                 // If the length is larger than 1, the repeat expression will need to copy the
                 // element, so we require the `Copy` trait.
-                if len.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
+                if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
                         Operand::Copy(..) | Operand::Constant(..) => {
                             // These are always okay: direct use of a const, or a value that can evidently be copied.
@@ -2437,7 +2436,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                                     debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
 
-                                    self.eq_types(
+                                    self.sub_types(
                                         src_obj,
                                         dst_obj,
                                         location.to_locations(),
@@ -2940,7 +2939,7 @@ impl NormalizeLocation for Location {
 pub(super) struct InstantiateOpaqueType<'tcx> {
     pub base_universe: Option<ty::UniverseIndex>,
     pub region_constraints: Option<RegionConstraintData<'tcx>>,
-    pub obligations: Vec<PredicateObligation<'tcx>>,
+    pub obligations: PredicateObligations<'tcx>,
 }
 
 impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {

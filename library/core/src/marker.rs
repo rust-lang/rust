@@ -158,7 +158,7 @@ pub trait Sized {
 /// - Arrays `[T; N]` implement `Unsize<[T]>`.
 /// - A type implements `Unsize<dyn Trait + 'a>` if all of these conditions are met:
 ///   - The type implements `Trait`.
-///   - `Trait` is object safe.
+///   - `Trait` is dyn-compatible[^1].
 ///   - The type is sized.
 ///   - The type outlives `'a`.
 /// - Structs `Foo<..., T1, ..., Tn, ...>` implement `Unsize<Foo<..., U1, ..., Un, ...>>`
@@ -178,6 +178,7 @@ pub trait Sized {
 /// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 /// [nomicon-coerce]: ../../nomicon/coercions.html
+/// [^1]: Formerly known as *object safe*.
 #[unstable(feature = "unsize", issue = "18598")]
 #[lang = "unsize"]
 #[rustc_deny_explicit_impl(implement_via_object = false)]

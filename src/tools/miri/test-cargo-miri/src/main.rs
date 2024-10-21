@@ -1,8 +1,9 @@
-use byteorder::{BigEndian, ByteOrder};
 use std::env;
 #[cfg(unix)]
 use std::io::{self, BufRead};
 use std::path::PathBuf;
+
+use byteorder::{BigEndian, ByteOrder};
 
 fn main() {
     // Check env var set by `build.rs`.

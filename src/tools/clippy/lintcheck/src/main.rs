@@ -68,7 +68,7 @@ impl Crate {
         total_crates_to_lint: usize,
         config: &LintcheckConfig,
         lint_levels_args: &[String],
-        server: &Option<LintcheckServer>,
+        server: Option<&LintcheckServer>,
     ) -> Vec<ClippyCheckOutput> {
         // advance the atomic index by one
         let index = target_dir_index.fetch_add(1, Ordering::SeqCst);
@@ -359,7 +359,7 @@ fn lintcheck(config: LintcheckConfig) {
                 crates.len(),
                 &config,
                 &lint_level_args,
-                &server,
+                server.as_ref(),
             )
         })
         .collect();

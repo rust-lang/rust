@@ -27,9 +27,12 @@ const BLUNT: &mut i32 = &mut 42;
 //~^ ERROR: it is undefined behavior to use this value
 //~| pointing to read-only memory
 
-const SUBTLE: &mut i32 = unsafe { static mut STATIC: i32 = 0; &mut STATIC };
-//~^ ERROR: it is undefined behavior to use this value
-//~| static
+const SUBTLE: &mut i32 = unsafe {
+    //~^ ERROR: it is undefined behavior to use this value
+    //~| constructing invalid value: encountered reference to mutable memory in `const`
+    static mut STATIC: i32 = 0;
+    &mut STATIC
+};
 
 // # Interior mutability
 
@@ -104,7 +107,6 @@ const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
 
 const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 //~^ ERROR mutable pointer in final value
-
 
 fn main() {
     unsafe {

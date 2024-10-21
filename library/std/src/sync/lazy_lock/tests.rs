@@ -34,6 +34,7 @@ fn lazy_default() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn lazy_poisoning() {
     let x: LazyCell<String> = LazyCell::new(|| panic!("kaboom"));
     for _ in 0..2 {
@@ -43,7 +44,7 @@ fn lazy_poisoning() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn sync_lazy_new() {
     static CALLED: AtomicUsize = AtomicUsize::new(0);
     static SYNC_LAZY: LazyLock<i32> = LazyLock::new(|| {
@@ -90,7 +91,7 @@ fn sync_lazy_default() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn static_sync_lazy() {
     static XS: LazyLock<Vec<i32>> = LazyLock::new(|| {
         let mut xs = Vec::new();
@@ -123,6 +124,7 @@ fn static_sync_lazy_via_fn() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn sync_lazy_poisoning() {
     let x: LazyLock<String> = LazyLock::new(|| panic!("kaboom"));
     for _ in 0..2 {

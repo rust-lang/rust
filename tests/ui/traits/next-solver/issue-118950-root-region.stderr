@@ -26,21 +26,19 @@ LL | trait ToUnit<'a> {
    | ^^^^^^^^^^^^^^^^
 
  WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
-error[E0119]: conflicting implementations of trait `Overlap<fn(_)>` for type `fn(_)`
-  --> $DIR/issue-118950-root-region.rs:19:1
+error[E0277]: the trait bound `for<'a> *const T: ToUnit<'a>` is not satisfied
+  --> $DIR/issue-118950-root-region.rs:19:17
    |
-LL | impl<T> Overlap<T> for T {}
-   | ------------------------ first implementation here
-LL |
 LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `fn(_)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> ToUnit<'a>` is not implemented for `*const T`
    |
-   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-118950-root-region.rs:8:1
+   |
+LL | trait ToUnit<'a> {
+   | ^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0119, E0277, E0412.
-For more information about an error, try `rustc --explain E0119`.
+Some errors have detailed explanations: E0277, E0412.
+For more information about an error, try `rustc --explain E0277`.

@@ -6,7 +6,8 @@ use rustc_middle::{bug, span_bug, ty};
 use rustc_span::def_id::DefId;
 
 use crate::interpret::{
-    self, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic, throw_machine_stop,
+    self, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic, interp_ok,
+    throw_machine_stop,
 };
 
 /// Macro for machine-specific `InterpError` without allocation.
@@ -79,7 +80,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
             throw_machine_stop_str!("can't access mutable globals in ConstProp");
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn find_mir_or_eval_fn(
@@ -127,7 +128,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         right: &interpret::ImmTy<'tcx, Self::Provenance>,
     ) -> interpret::InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
         use rustc_middle::mir::BinOp::*;
-        Ok(match bin_op {
+        interp_ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
                 // Types can differ, e.g. fn ptrs with different `for`.
                 assert_eq!(left.layout.abi, right.layout.abi);

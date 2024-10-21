@@ -14,6 +14,7 @@ Number of file 0 mappings: 6
     false = c1
 - Code(Counter(2)) at (prev + 0, 17) to (start + 2, 6)
 - Code(Counter(1)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
 
 Function name: while::while_cond_not
 Raw bytes (38): 0x[01, 01, 01, 05, 09, 06, 01, 15, 01, 01, 10, 05, 03, 09, 00, 12, 03, 01, 0b, 00, 14, 20, 09, 05, 00, 0b, 00, 14, 09, 00, 15, 02, 06, 05, 03, 01, 00, 02]
@@ -31,6 +32,7 @@ Number of file 0 mappings: 6
     false = c1
 - Code(Counter(2)) at (prev + 0, 21) to (start + 2, 6)
 - Code(Counter(1)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
 
 Function name: while::while_op_and
 Raw bytes (56): 0x[01, 01, 04, 05, 09, 03, 0d, 03, 0d, 11, 0d, 08, 01, 1e, 01, 01, 10, 05, 03, 09, 01, 12, 03, 02, 0b, 00, 10, 20, 0a, 0d, 00, 0b, 00, 10, 0a, 00, 14, 00, 19, 20, 09, 11, 00, 14, 00, 19, 09, 00, 1a, 03, 06, 0f, 04, 01, 00, 02]
@@ -57,6 +59,7 @@ Number of file 0 mappings: 8
 - Code(Counter(2)) at (prev + 0, 26) to (start + 3, 6)
 - Code(Expression(3, Add)) at (prev + 4, 1) to (start + 0, 2)
     = (c4 + c3)
+Highest counter ID seen: c4
 
 Function name: while::while_op_or
 Raw bytes (66): 0x[01, 01, 09, 05, 1b, 09, 0d, 03, 09, 03, 09, 22, 0d, 03, 09, 09, 0d, 22, 0d, 03, 09, 08, 01, 29, 01, 01, 10, 05, 03, 09, 01, 12, 03, 02, 0b, 00, 10, 20, 09, 22, 00, 0b, 00, 10, 22, 00, 14, 00, 19, 20, 0d, 1e, 00, 14, 00, 19, 1b, 00, 1a, 03, 06, 1e, 04, 01, 00, 02]
@@ -89,4 +92,5 @@ Number of file 0 mappings: 8
     = (c2 + c3)
 - Code(Expression(7, Sub)) at (prev + 4, 1) to (start + 0, 2)
     = (((c1 + (c2 + c3)) - c2) - c3)
+Highest counter ID seen: c3
 

@@ -187,6 +187,13 @@ impl<'a> Converter<'a> {
                 }
 
                 rustc_lexer::TokenKind::RawIdent => IDENT,
+
+                rustc_lexer::TokenKind::GuardedStrPrefix if self.edition.at_least_2024() => {
+                    err = "Invalid string literal (reserved syntax)";
+                    ERROR
+                }
+                rustc_lexer::TokenKind::GuardedStrPrefix => POUND,
+
                 rustc_lexer::TokenKind::Literal { kind, .. } => {
                     self.extend_literal(token_text.len(), kind);
                     return;
@@ -202,9 +209,7 @@ impl<'a> Converter<'a> {
                     err = "Unknown lifetime prefix";
                     LIFETIME_IDENT
                 }
-                rustc_lexer::TokenKind::RawLifetime => {
-                    LIFETIME_IDENT
-                }
+                rustc_lexer::TokenKind::RawLifetime => LIFETIME_IDENT,
 
                 rustc_lexer::TokenKind::Semi => T![;],
                 rustc_lexer::TokenKind::Comma => T![,],

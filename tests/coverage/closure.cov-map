@@ -30,6 +30,7 @@ Number of file 0 mappings: 24
 - Code(Expression(0, Sub)) at (prev + 4, 6) to (start + 0, 7)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 3, 2)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#0}
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 28, 05, 02, 14, 05, 02, 15, 02, 0a, 02, 02, 0a, 00, 0b, 01, 01, 09, 01, 06]
@@ -43,6 +44,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 10) to (start + 0, 11)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 9) to (start + 1, 6)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#10} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, 9b, 01, 07, 00, 21]
@@ -51,6 +53,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 155, 7) to (start + 0, 33)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#11} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, 9f, 01, 07, 00, 21]
@@ -59,6 +62,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 159, 7) to (start + 0, 33)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#12} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, a7, 01, 01, 00, 17]
@@ -67,6 +71,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 167, 1) to (start + 0, 23)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#13} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, ac, 01, 0d, 02, 0e]
@@ -75,6 +80,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 172, 13) to (start + 2, 14)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#14}
 Raw bytes (27): 0x[01, 01, 01, 01, 05, 04, 01, b3, 01, 0d, 02, 1b, 05, 02, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 01, 0d, 00, 0e]
@@ -88,6 +94,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 13) to (start + 0, 14)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#15}
 Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, bb, 01, 09, 00, 0a, 01, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
@@ -103,6 +110,7 @@ Number of file 0 mappings: 6
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#16}
 Raw bytes (27): 0x[01, 01, 01, 01, 05, 04, 01, c5, 01, 0d, 02, 1b, 05, 02, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 01, 0d, 00, 0e]
@@ -116,6 +124,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 13) to (start + 0, 14)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#17}
 Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, cd, 01, 09, 00, 0a, 01, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
@@ -131,6 +140,7 @@ Number of file 0 mappings: 6
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#18} (unused)
 Raw bytes (24): 0x[01, 01, 00, 04, 00, 19, 0d, 02, 1c, 00, 02, 1d, 02, 12, 00, 02, 12, 00, 13, 00, 01, 11, 01, 0e]
@@ -142,6 +152,7 @@ Number of file 0 mappings: 4
 - Code(Zero) at (prev + 2, 29) to (start + 2, 18)
 - Code(Zero) at (prev + 2, 18) to (start + 0, 19)
 - Code(Zero) at (prev + 1, 17) to (start + 1, 14)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#19}
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 43, 0d, 02, 1c, 05, 02, 1d, 02, 12, 02, 02, 12, 00, 13, 01, 01, 11, 01, 0e]
@@ -155,6 +166,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 18) to (start + 0, 19)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 17) to (start + 1, 14)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#1}
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 52, 05, 02, 14, 05, 02, 15, 02, 0a, 02, 02, 0a, 00, 0b, 01, 01, 09, 01, 06]
@@ -168,6 +180,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 10) to (start + 0, 11)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 9) to (start + 1, 6)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#2}
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 68, 05, 02, 14, 05, 02, 15, 02, 0a, 02, 02, 0a, 00, 0b, 01, 01, 09, 01, 06]
@@ -181,6 +194,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 10) to (start + 0, 11)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 9) to (start + 1, 6)
+Highest counter ID seen: c1
 
 Function name: closure::main::{closure#3} (unused)
 Raw bytes (25): 0x[01, 01, 00, 04, 00, 81, 01, 05, 01, 14, 00, 01, 15, 02, 0a, 00, 02, 0a, 00, 0b, 00, 01, 09, 01, 06]
@@ -192,6 +206,7 @@ Number of file 0 mappings: 4
 - Code(Zero) at (prev + 1, 21) to (start + 2, 10)
 - Code(Zero) at (prev + 2, 10) to (start + 0, 11)
 - Code(Zero) at (prev + 1, 9) to (start + 1, 6)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#4} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, 89, 01, 35, 00, 43]
@@ -200,6 +215,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 137, 53) to (start + 0, 67)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#5}
 Raw bytes (10): 0x[01, 01, 00, 01, 01, 8c, 01, 3d, 00, 4f]
@@ -208,6 +224,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 140, 61) to (start + 0, 79)
+Highest counter ID seen: c0
 
 Function name: closure::main::{closure#6}
 Raw bytes (10): 0x[01, 01, 00, 01, 01, 8d, 01, 41, 00, 57]
@@ -216,6 +233,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 141, 65) to (start + 0, 87)
+Highest counter ID seen: c0
 
 Function name: closure::main::{closure#7} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, 8e, 01, 3b, 00, 51]
@@ -224,6 +242,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 142, 59) to (start + 0, 81)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#8} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, 93, 01, 3b, 00, 55]
@@ -232,6 +251,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 147, 59) to (start + 0, 85)
+Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#9} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, 95, 01, 38, 02, 06]
@@ -240,4 +260,5 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 149, 56) to (start + 2, 6)
+Highest counter ID seen: (none)
 

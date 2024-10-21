@@ -68,18 +68,21 @@ hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are fo
 hir_analysis_cmse_call_generic =
     function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
 
-hir_analysis_cmse_call_inputs_stack_spill =
-    arguments for `"C-cmse-nonsecure-call"` function too large to pass via registers
+hir_analysis_cmse_entry_generic =
+    functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+
+hir_analysis_cmse_inputs_stack_spill =
+    arguments for `"{$abi_name}"` function too large to pass via registers
     .label = {$plural ->
         [false] this argument doesn't
         *[true] these arguments don't
     } fit in the available registers
-    .note = functions with the `"C-cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+    .note = functions with the `"{$abi_name}"` ABI must pass all their arguments via the 4 32-bit available argument registers
 
-hir_analysis_cmse_call_output_stack_spill =
-    return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+hir_analysis_cmse_output_stack_spill =
+    return value of `"{$abi_name}"` function too large to pass via registers
     .label = this type doesn't fit in the available registers
-    .note1 = functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
+    .note1 = functions with the `"{$abi_name}"` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
@@ -248,8 +251,6 @@ hir_analysis_invalid_union_field =
 hir_analysis_invalid_union_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
-hir_analysis_invalid_unnamed_field_ty = unnamed fields can only have struct or union types
-
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
     .label = const parameter declared here
 
@@ -258,6 +259,9 @@ hir_analysis_late_bound_lifetime_in_apit = `impl Trait` can only mention lifetim
 
 hir_analysis_late_bound_type_in_apit = `impl Trait` can only mention type parameters from an fn or impl
     .label = type parameter declared here
+
+hir_analysis_lifetime_implicitly_captured = `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
+    .param_label = all lifetime parameters originating from a trait are captured implicitly
 
 hir_analysis_lifetime_must_be_first = lifetime parameter `{$name}` must be listed before non-lifetime parameters
     .label = move the lifetime before this parameter
@@ -352,11 +356,13 @@ hir_analysis_only_current_traits_arbitrary = only traits defined in the current 
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
 
-hir_analysis_only_current_traits_label = impl doesn't use only types from inside the current crate
-
 hir_analysis_only_current_traits_name = this is not defined in the current crate because {$name} are always foreign
 
 hir_analysis_only_current_traits_note = define and implement a trait or new type instead
+
+hir_analysis_only_current_traits_note_more_info = for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+
+hir_analysis_only_current_traits_note_uncovered = impl doesn't have any local type before any uncovered type parameters
 
 hir_analysis_only_current_traits_opaque = type alias impl trait is treated as if it were foreign, because its hidden type could be from a foreign crate
 
@@ -535,19 +541,6 @@ hir_analysis_unconstrained_generic_parameter = the {$param_def_kind} `{$param_na
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
 
-hir_analysis_unnamed_fields_repr_field_defined = unnamed field defined here
-
-hir_analysis_unnamed_fields_repr_field_missing_repr_c =
-    named type of unnamed field must have `#[repr(C)]` representation
-    .label = unnamed field defined here
-    .field_ty_label = `{$field_ty}` defined here
-    .suggestion = add `#[repr(C)]` to this {$field_adt_kind}
-
-hir_analysis_unnamed_fields_repr_missing_repr_c =
-    {$adt_kind} with unnamed fields must have `#[repr(C)]` representation
-    .label = {$adt_kind} `{$adt_name}` defined here
-    .suggestion = add `#[repr(C)]` to this {$adt_kind}
-
 hir_analysis_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`
     .label = unrecognized atomic operation
@@ -558,7 +551,7 @@ hir_analysis_unrecognized_intrinsic_function =
     .help = if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 hir_analysis_unused_associated_type_bounds =
-    unnecessary associated type bound for not object safe associated type
+    unnecessary associated type bound for dyn-incompatible associated type
     .note = this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`
     .suggestion = remove this bound
 

@@ -22,6 +22,23 @@ LL | #[unsafe(test)]
    |
    = note: extraneous unsafe is not allowed in attributes
 
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/extraneous-unsafe-attributes.rs:31:19
+   |
+LL |     let _a = cfg!(unsafe(foo));
+   |                   ^^^^^^ expected identifier, found keyword
+   |
+help: escape `unsafe` to use it as an identifier
+   |
+LL |     let _a = cfg!(r#unsafe(foo));
+   |                   ++
+
+error[E0537]: invalid predicate `r#unsafe`
+  --> $DIR/extraneous-unsafe-attributes.rs:31:19
+   |
+LL |     let _a = cfg!(unsafe(foo));
+   |                   ^^^^^^^^^^^
+
 error: `ignore` is not an unsafe attribute
   --> $DIR/extraneous-unsafe-attributes.rs:13:3
    |
@@ -62,5 +79,6 @@ LL | #[unsafe(used)]
    |
    = note: extraneous unsafe is not allowed in attributes
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
+For more information about this error, try `rustc --explain E0537`.

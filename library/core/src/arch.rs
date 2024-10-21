@@ -26,7 +26,6 @@ pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
 #[unstable(feature = "naked_functions", issue = "90957")]
 #[rustc_builtin_macro]
-#[cfg(not(bootstrap))]
 pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }

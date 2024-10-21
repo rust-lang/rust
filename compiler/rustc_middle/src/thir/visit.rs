@@ -148,7 +148,13 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         NamedConst { def_id: _, args: _, user_ty: _ } => {}
         ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
-        InlineAsm(box InlineAsmExpr { ref operands, template: _, options: _, line_spans: _ }) => {
+        InlineAsm(box InlineAsmExpr {
+            asm_macro: _,
+            ref operands,
+            template: _,
+            options: _,
+            line_spans: _,
+        }) => {
             for op in &**operands {
                 use InlineAsmOperand::*;
                 match op {

@@ -19,7 +19,6 @@ function showHelp() {
     console.log("  --debug                    : show extra information about script run");
     console.log("  --show-text                : render font in pages");
     console.log("  --no-headless              : disable headless mode");
-    console.log("  --no-sandbox               : disable sandbox mode");
     console.log("  --help                     : show this message then quit");
     console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
     console.log("  --jobs [NUMBER]            : number of threads to run tests on");
@@ -40,7 +39,6 @@ function parseOptions(args) {
         "no_headless": false,
         "jobs": -1,
         "executable_path": null,
-        "no_sandbox": false,
     };
     const correspondences = {
         "--doc-folder": "doc_folder",
@@ -49,7 +47,6 @@ function parseOptions(args) {
         "--show-text": "show_text",
         "--no-headless": "no_headless",
         "--executable-path": "executable_path",
-        "--no-sandbox": "no_sandbox",
     };
 
     for (let i = 0; i < args.length; ++i) {
@@ -80,9 +77,6 @@ function parseOptions(args) {
         } else if (arg === "--help") {
             showHelp();
             process.exit(0);
-        } else if (arg === "--no-sandbox") {
-            console.log("`--no-sandbox` is being used. Be very careful!");
-            opts[correspondences[arg]] = true;
         } else if (correspondences[arg]) {
             opts[correspondences[arg]] = true;
         } else {
@@ -203,6 +197,7 @@ async function main(argv) {
         const args = [
             "--variable", "DOC_PATH", opts["doc_folder"].split("\\").join("/"),
             "--enable-fail-on-js-error", "--allow-file-access-from-files",
+            "--no-sandbox",
         ];
         if (opts["debug"]) {
             debug = true;
@@ -210,9 +205,6 @@ async function main(argv) {
         }
         if (opts["show_text"]) {
             args.push("--show-text");
-        }
-        if (opts["no_sandbox"]) {
-            args.push("--no-sandbox");
         }
         if (opts["no_headless"]) {
             args.push("--no-headless");
@@ -262,19 +254,6 @@ async function main(argv) {
         console.log(`Running ${files.length} rustdoc-gui ...`);
     }
 
-    // We catch this "event" to display a nicer message in case of unexpected exit (because of a
-    // missing `--no-sandbox`).
-    const exitHandling = () => {
-        if (!opts["no_sandbox"]) {
-            console.log("");
-            console.log(
-                "`browser-ui-test` crashed unexpectedly. Please try again with adding `--test-args \
---no-sandbox` at the end. For example: `x.py test tests/rustdoc-gui --test-args --no-sandbox`");
-            console.log("");
-        }
-    };
-    process.on("exit", exitHandling);
-
     const originalFilesLen = files.length;
     const results = createEmptyResults();
     const status_bar = char_printer(files.length);
@@ -298,9 +277,6 @@ async function main(argv) {
 
     Array.prototype.push.apply(results.failed, new_results.failed);
     Array.prototype.push.apply(results.errored, new_results.errored);
-
-    // We don't need this listener anymore.
-    process.removeListener("exit", exitHandling);
 
     if (debug) {
         results.successful.sort(by_filename);

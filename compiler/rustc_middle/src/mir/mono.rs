@@ -15,6 +15,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
+use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
@@ -303,6 +304,16 @@ pub enum Visibility {
     Default,
     Hidden,
     Protected,
+}
+
+impl From<SymbolVisibility> for Visibility {
+    fn from(value: SymbolVisibility) -> Self {
+        match value {
+            SymbolVisibility::Hidden => Visibility::Hidden,
+            SymbolVisibility::Protected => Visibility::Protected,
+            SymbolVisibility::Interposable => Visibility::Default,
+        }
+    }
 }
 
 impl<'tcx> CodegenUnit<'tcx> {

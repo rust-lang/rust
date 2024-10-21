@@ -162,7 +162,7 @@ pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 pub use self::bit::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
-#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+#[stable(feature = "control_flow_enum_type", since = "1.55.0")]
 pub use self::control_flow::ControlFlow;
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 pub use self::coroutine::{Coroutine, CoroutineState};

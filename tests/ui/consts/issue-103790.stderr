@@ -42,25 +42,13 @@ error: `()` is forbidden as the type of a const generic parameter
 LL | struct S<const S: (), const S: S = { S }>;
    |                   ^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
    |
 
-error: `S<{const error}, {const error}>` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-103790.rs:4:32
-   |
-LL | struct S<const S: (), const S: S = { S }>;
-   |                                ^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0107, E0391, E0403.
 For more information about an error, try `rustc --explain E0107`.

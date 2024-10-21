@@ -24,8 +24,11 @@ impl flags::Diagnostics {
         handle.join()
     }
     fn run_(self) -> anyhow::Result<()> {
-        let cargo_config =
-            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
+        let cargo_config = CargoConfig {
+            sysroot: Some(RustLibSource::Discover),
+            all_targets: true,
+            ..Default::default()
+        };
         let with_proc_macro_server = if let Some(p) = &self.proc_macro_srv {
             let path = vfs::AbsPathBuf::assert_utf8(std::env::current_dir()?.join(p));
             ProcMacroServerChoice::Explicit(path)

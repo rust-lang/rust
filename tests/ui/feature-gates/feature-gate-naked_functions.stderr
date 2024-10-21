@@ -1,5 +1,25 @@
+error[E0658]: use of unstable library feature 'naked_functions'
+  --> $DIR/feature-gate-naked_functions.rs:9:5
+   |
+LL |     naked_asm!("")
+   |     ^^^^^^^^^
+   |
+   = note: see issue #90957 <https://github.com/rust-lang/rust/issues/90957> for more information
+   = help: add `#![feature(naked_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'naked_functions'
+  --> $DIR/feature-gate-naked_functions.rs:17:5
+   |
+LL |     naked_asm!("")
+   |     ^^^^^^^^^
+   |
+   = note: see issue #90957 <https://github.com/rust-lang/rust/issues/90957> for more information
+   = help: add `#![feature(naked_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0658]: the `#[naked]` attribute is an experimental feature
-  --> $DIR/feature-gate-naked_functions.rs:5:1
+  --> $DIR/feature-gate-naked_functions.rs:6:1
    |
 LL | #[naked]
    | ^^^^^^^^
@@ -9,7 +29,7 @@ LL | #[naked]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[naked]` attribute is an experimental feature
-  --> $DIR/feature-gate-naked_functions.rs:12:1
+  --> $DIR/feature-gate-naked_functions.rs:14:1
    |
 LL | #[naked]
    | ^^^^^^^^
@@ -18,23 +38,33 @@ LL | #[naked]
    = help: add `#![feature(naked_functions)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0133]: use of inline assembly is unsafe and requires unsafe function or block
-  --> $DIR/feature-gate-naked_functions.rs:8:5
+error[E0658]: use of unstable library feature 'naked_functions'
+  --> $DIR/feature-gate-naked_functions.rs:3:5
    |
-LL |     asm!("", options(noreturn))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of inline assembly
+LL | use std::arch::naked_asm;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #90957 <https://github.com/rust-lang/rust/issues/90957> for more information
+   = help: add `#![feature(naked_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0133]: use of inline assembly is unsafe and requires unsafe function or block
+  --> $DIR/feature-gate-naked_functions.rs:9:5
+   |
+LL |     naked_asm!("")
+   |     ^^^^^^^^^^^^^^ use of inline assembly
    |
    = note: inline assembly is entirely unchecked and can cause undefined behavior
 
 error[E0133]: use of inline assembly is unsafe and requires unsafe function or block
-  --> $DIR/feature-gate-naked_functions.rs:15:5
+  --> $DIR/feature-gate-naked_functions.rs:17:5
    |
-LL |     asm!("", options(noreturn))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of inline assembly
+LL |     naked_asm!("")
+   |     ^^^^^^^^^^^^^^ use of inline assembly
    |
    = note: inline assembly is entirely unchecked and can cause undefined behavior
 
-error: aborting due to 4 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0133, E0658.
 For more information about an error, try `rustc --explain E0133`.

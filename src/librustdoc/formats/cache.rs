@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
@@ -42,7 +42,7 @@ pub(crate) struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub(crate) paths: FxHashMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
@@ -64,18 +64,18 @@ pub(crate) struct Cache {
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
     /// should show up in documentation about trait implementations.
-    pub(crate) traits: FxHashMap<DefId, clean::Trait>,
+    pub(crate) traits: FxIndexMap<DefId, clean::Trait>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
     /// of trait ids to the list of known implementors of the trait
-    pub(crate) implementors: FxHashMap<DefId, Vec<Impl>>,
+    pub(crate) implementors: FxIndexMap<DefId, Vec<Impl>>,
 
     /// Cache of where external crate documentation can be found.
-    pub(crate) extern_locations: FxHashMap<CrateNum, ExternalLocation>,
+    pub(crate) extern_locations: FxIndexMap<CrateNum, ExternalLocation>,
 
     /// Cache of where documentation for primitives can be found.
-    pub(crate) primitive_locations: FxHashMap<clean::PrimitiveType, DefId>,
+    pub(crate) primitive_locations: FxIndexMap<clean::PrimitiveType, DefId>,
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -118,7 +118,7 @@ pub(crate) struct Cache {
     // crawl. In order to prevent crashes when looking for notable traits or
     // when gathering trait documentation on a type, hold impls here while
     // folding and add them to the cache later on if we find the trait.
-    orphan_trait_impls: Vec<(DefId, FxHashSet<DefId>, Impl)>,
+    orphan_trait_impls: Vec<(DefId, FxIndexSet<DefId>, Impl)>,
 
     /// All intra-doc links resolved so far.
     ///
@@ -153,7 +153,8 @@ impl Cache {
 
         // Crawl the crate to build various caches used for the output
         debug!(?cx.cache.crate_version);
-        cx.cache.traits = krate.external_traits.take();
+        assert!(cx.external_traits.is_empty());
+        cx.cache.traits = mem::take(&mut krate.external_traits);
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
@@ -375,7 +376,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             // Figure out the id of this impl. This may map to a
             // primitive rather than always to a struct/enum.
             // Note: matching twice to restrict the lifetime of the `i` borrow.
-            let mut dids = FxHashSet::default();
+            let mut dids = FxIndexSet::default();
             match i.for_ {
                 clean::Type::Path { ref path }
                 | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. } => {

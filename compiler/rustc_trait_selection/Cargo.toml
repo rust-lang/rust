@@ -26,5 +26,6 @@ rustc_target = { path = "../rustc_target" }
 rustc_transmute = { path = "../rustc_transmute", features = ["rustc"] }
 rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2"
 tracing = "0.1"
 # tidy-alphabetical-end

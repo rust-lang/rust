@@ -1,7 +1,3 @@
-ast_passes_anon_struct_or_union_not_allowed =
-    anonymous {$struct_or_union}s are not allowed outside of unnamed struct or union fields
-    .label = anonymous {$struct_or_union} declared here
-
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
     .suggestion = provide a definition for the constant
@@ -66,12 +62,12 @@ ast_passes_equality_in_where = equality constraints are not yet supported in `wh
 
 ast_passes_extern_block_suggestion = if you meant to declare an externally defined function, use an `extern` block
 
-ast_passes_extern_fn_qualifiers = functions in `extern` blocks cannot have qualifiers
+ast_passes_extern_fn_qualifiers = functions in `extern` blocks cannot have `{$kw}` qualifier
     .label = in this `extern` block
-    .suggestion = remove this qualifier
+    .suggestion = remove the `{$kw}` qualifier
 
-ast_passes_extern_invalid_safety = items in unadorned `extern` blocks cannot have safety qualifiers
-    .suggestion = add unsafe to this `extern` block
+ast_passes_extern_invalid_safety = items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
+    .suggestion = add `unsafe` to this `extern` block
 
 ast_passes_extern_item_ascii = items in `extern` blocks cannot use non-ascii identifiers
     .label = in this `extern` block
@@ -159,14 +155,6 @@ ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
     .because = {$annotation} because of this
     .type = inherent impl for this type
     .only_trait = only trait implementations may be annotated with {$annotation}
-
-ast_passes_invalid_unnamed_field =
-    unnamed fields are not allowed outside of structs or unions
-    .label = unnamed field declared here
-
-ast_passes_invalid_unnamed_field_ty =
-    unnamed fields can only have struct or union types
-    .label = not a struct or union
 
 ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item

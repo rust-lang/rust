@@ -180,7 +180,7 @@ impl Spanned for ast::GenericArg {
 impl Spanned for ast::GenericBound {
     fn span(&self) -> Span {
         match *self {
-            ast::GenericBound::Trait(ref ptr, _) => ptr.span,
+            ast::GenericBound::Trait(ref ptr) => ptr.span,
             ast::GenericBound::Outlives(ref l) => l.ident.span,
             ast::GenericBound::Use(_, span) => span,
         }
@@ -199,7 +199,7 @@ impl Spanned for MacroArg {
     }
 }
 
-impl Spanned for ast::NestedMetaItem {
+impl Spanned for ast::MetaItemInner {
     fn span(&self) -> Span {
         self.span()
     }

@@ -1,5 +1,8 @@
-use super::header::extract_llvm_version;
-use super::*;
+use std::ffi::OsString;
+
+use crate::debuggers::{extract_gdb_version, extract_lldb_version};
+use crate::header::extract_llvm_version;
+use crate::is_test;
 
 #[test]
 fn test_extract_gdb_version() {

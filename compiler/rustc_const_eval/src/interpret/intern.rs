@@ -26,7 +26,9 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
 use tracing::{instrument, trace};
 
-use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, err_ub};
+use super::{
+    AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, err_ub, interp_ok,
+};
 use crate::const_eval;
 use crate::errors::NestedStaticInThreadLocal;
 
@@ -307,7 +309,7 @@ pub fn intern_const_alloc_for_constprop<'tcx, T, M: CompileTimeMachine<'tcx, T>>
 ) -> InterpResult<'tcx, ()> {
     if ecx.tcx.try_get_global_alloc(alloc_id).is_some() {
         // The constant is already in global memory. Do nothing.
-        return Ok(());
+        return interp_ok(());
     }
     // Move allocation to `tcx`.
     if let Some(_) =
@@ -318,7 +320,7 @@ pub fn intern_const_alloc_for_constprop<'tcx, T, M: CompileTimeMachine<'tcx, T>>
         // proper recursive interning loop -- or just call `intern_const_alloc_recursive`.
         panic!("`intern_const_alloc_for_constprop` called on allocation with nested provenance")
     }
-    Ok(())
+    interp_ok(())
 }
 
 impl<'tcx, M: super::intern::CompileTimeMachine<'tcx, !>> InterpCx<'tcx, M> {
@@ -342,6 +344,6 @@ impl<'tcx, M: super::intern::CompileTimeMachine<'tcx, !>> InterpCx<'tcx, M> {
                 panic!("`intern_with_temp_alloc` with nested allocations");
             }
         }
-        Ok(alloc_id)
+        interp_ok(alloc_id)
     }
 }

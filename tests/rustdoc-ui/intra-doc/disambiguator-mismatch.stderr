@@ -1,5 +1,5 @@
 error: incompatible link kind for `S`
-  --> $DIR/disambiguator-mismatch.rs:16:14
+  --> $DIR/disambiguator-mismatch.rs:22:14
    |
 LL | /// Link to [struct@S]
    |              ^^^^^^^^ this link resolved to an enum, which is not a struct
@@ -15,7 +15,7 @@ LL | /// Link to [enum@S]
    |              ~~~~~
 
 error: incompatible link kind for `S`
-  --> $DIR/disambiguator-mismatch.rs:21:14
+  --> $DIR/disambiguator-mismatch.rs:27:14
    |
 LL | /// Link to [mod@S]
    |              ^^^^^ this link resolved to an enum, which is not a module
@@ -26,7 +26,7 @@ LL | /// Link to [enum@S]
    |              ~~~~~
 
 error: incompatible link kind for `S`
-  --> $DIR/disambiguator-mismatch.rs:26:14
+  --> $DIR/disambiguator-mismatch.rs:32:14
    |
 LL | /// Link to [union@S]
    |              ^^^^^^^ this link resolved to an enum, which is not a union
@@ -37,7 +37,7 @@ LL | /// Link to [enum@S]
    |              ~~~~~
 
 error: incompatible link kind for `S`
-  --> $DIR/disambiguator-mismatch.rs:31:14
+  --> $DIR/disambiguator-mismatch.rs:37:14
    |
 LL | /// Link to [trait@S]
    |              ^^^^^^^ this link resolved to an enum, which is not a trait
@@ -48,7 +48,7 @@ LL | /// Link to [enum@S]
    |              ~~~~~
 
 error: incompatible link kind for `T`
-  --> $DIR/disambiguator-mismatch.rs:36:14
+  --> $DIR/disambiguator-mismatch.rs:42:14
    |
 LL | /// Link to [struct@T]
    |              ^^^^^^^^ this link resolved to a trait, which is not a struct
@@ -59,7 +59,7 @@ LL | /// Link to [trait@T]
    |              ~~~~~~
 
 error: incompatible link kind for `m`
-  --> $DIR/disambiguator-mismatch.rs:41:14
+  --> $DIR/disambiguator-mismatch.rs:47:14
    |
 LL | /// Link to [derive@m]
    |              ^^^^^^^^ this link resolved to a macro, which is not a derive macro
@@ -71,10 +71,10 @@ LL + /// Link to [m!]
    |
 
 error: unresolved link to `m`
-  --> $DIR/disambiguator-mismatch.rs:46:14
+  --> $DIR/disambiguator-mismatch.rs:52:14
    |
 LL | /// Link to [m()]
-   |              ^^^ this link resolves to the macro `m`, which is not in the value namespace
+   |              ^^^ this link resolves to the macro `m`, which is not a function
    |
 help: to link to the macro, add an exclamation mark
    |
@@ -82,7 +82,7 @@ LL | /// Link to [m!()]
    |               +
 
 error: incompatible link kind for `s`
-  --> $DIR/disambiguator-mismatch.rs:52:14
+  --> $DIR/disambiguator-mismatch.rs:58:14
    |
 LL | /// Link to [const@s]
    |              ^^^^^^^ this link resolved to a static, which is not a constant
@@ -93,7 +93,7 @@ LL | /// Link to [static@s]
    |              ~~~~~~~
 
 error: incompatible link kind for `c`
-  --> $DIR/disambiguator-mismatch.rs:57:14
+  --> $DIR/disambiguator-mismatch.rs:63:14
    |
 LL | /// Link to [static@c]
    |              ^^^^^^^^ this link resolved to a constant, which is not a static
@@ -104,7 +104,7 @@ LL | /// Link to [const@c]
    |              ~~~~~~
 
 error: incompatible link kind for `c`
-  --> $DIR/disambiguator-mismatch.rs:62:14
+  --> $DIR/disambiguator-mismatch.rs:68:14
    |
 LL | /// Link to [fn@c]
    |              ^^^^ this link resolved to a constant, which is not a function
@@ -115,7 +115,7 @@ LL | /// Link to [const@c]
    |              ~~~~~~
 
 error: incompatible link kind for `c`
-  --> $DIR/disambiguator-mismatch.rs:67:14
+  --> $DIR/disambiguator-mismatch.rs:73:14
    |
 LL | /// Link to [c()]
    |              ^^^ this link resolved to a constant, which is not a function
@@ -127,7 +127,7 @@ LL + /// Link to [const@c]
    |
 
 error: incompatible link kind for `f`
-  --> $DIR/disambiguator-mismatch.rs:72:14
+  --> $DIR/disambiguator-mismatch.rs:78:14
    |
 LL | /// Link to [const@f]
    |              ^^^^^^^ this link resolved to a function, which is not a constant
@@ -139,15 +139,37 @@ LL + /// Link to [f()]
    |
 
 error: unresolved link to `std`
-  --> $DIR/disambiguator-mismatch.rs:77:14
+  --> $DIR/disambiguator-mismatch.rs:83:14
    |
 LL | /// Link to [fn@std]
-   |              ^^^^^^ this link resolves to the crate `std`, which is not in the value namespace
+   |              ^^^^^^ this link resolves to the crate `std`, which is not a function
    |
 help: to link to the crate, prefix with `mod@`
    |
 LL | /// Link to [mod@std]
    |              ~~~~
 
-error: aborting due to 13 previous errors
+error: incompatible link kind for `X::y`
+  --> $DIR/disambiguator-mismatch.rs:88:14
+   |
+LL | /// Link to [method@X::y]
+   |              ^^^^^^^^^^^ this link resolved to a field, which is not a function
+   |
+help: to link to the field, prefix with `field@`
+   |
+LL | /// Link to [field@X::y]
+   |              ~~~~~~
+
+error: unresolved link to `S::A`
+  --> $DIR/disambiguator-mismatch.rs:93:14
+   |
+LL | /// Link to [field@S::A]
+   |              ^^^^^^^^^^ this link resolves to the variant `A`, which is not a field
+   |
+help: to link to the variant, prefix with `variant@`
+   |
+LL | /// Link to [variant@S::A]
+   |              ~~~~~~~~
+
+error: aborting due to 15 previous errors
 

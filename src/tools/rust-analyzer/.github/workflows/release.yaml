@@ -16,7 +16,7 @@ env:
   RUSTFLAGS: "-D warnings -W unreachable-pub"
   RUSTUP_MAX_RETRIES: 10
   FETCH_DEPTH: 0 # pull in the tags for the version string
-  MACOSX_DEPLOYMENT_TARGET: 10.15
+  MACOSX_DEPLOYMENT_TARGET: 13.0
   CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
   CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
 
@@ -43,10 +43,10 @@ jobs:
           - os: ubuntu-20.04
             target: arm-unknown-linux-gnueabihf
             code-target: linux-armhf
-          - os: macos-12
+          - os: macos-13
             target: x86_64-apple-darwin
             code-target: darwin-x64
-          - os: macos-12
+          - os: macos-13
             target: aarch64-apple-darwin
             code-target: darwin-arm64
 

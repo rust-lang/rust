@@ -67,7 +67,7 @@ pub struct FileId(u32);
 // pub struct FileId(NonMaxU32);
 
 impl FileId {
-    pub const MAX: u32 = 0x7fff_ffff;
+    const MAX: u32 = 0x7fff_ffff;
 
     #[inline]
     pub const fn from_raw(raw: u32) -> FileId {

@@ -1,7 +1,7 @@
-// The purpose of this test is to demonstrate that duplicating object safe traits
+// The purpose of this test is to demonstrate that duplicating dyn-compatible traits
 // that are not auto-traits is rejected even though one could reasonably accept this.
 
-// Some arbitrary object-safe trait:
+// Some arbitrary dyn-compatible trait:
 trait Obj {}
 
 // Demonstrate that recursive expansion of trait aliases doesn't affect stable behavior:

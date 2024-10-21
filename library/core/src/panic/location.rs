@@ -44,7 +44,7 @@ impl<'a> Location<'a> {
     ///
     /// # Examples
     ///
-    /// ```standalone
+    /// ```standalone_crate
     /// use std::panic::Location;
     ///
     /// /// Returns the [`Location`] at which it is called.

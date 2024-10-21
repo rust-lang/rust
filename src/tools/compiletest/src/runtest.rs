@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -20,16 +18,16 @@ use tracing::*;
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
     DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode, Pretty, RunMake,
-    RunPassValgrind, Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR,
-    UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path,
-    incremental_dir, output_base_dir, output_base_name, output_testname_unique,
+    Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
+    UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
+    output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{PathBufExt, add_dylib_path, logv, static_regex};
-use crate::{ColorConfig, json};
+use crate::{ColorConfig, json, stamp_file_path};
 
 mod debugger;
 
@@ -39,7 +37,7 @@ mod assembly;
 mod codegen;
 mod codegen_units;
 mod coverage;
-mod crash;
+mod crashes;
 mod debuginfo;
 mod incremental;
 mod js_doc;
@@ -49,7 +47,6 @@ mod run_make;
 mod rustdoc;
 mod rustdoc_json;
 mod ui;
-mod valgrind;
 // tidy-alphabet-end
 
 #[cfg(test)]
@@ -253,7 +250,6 @@ impl<'test> TestCx<'test> {
             self.fatal("cannot use should-ice in a test that is not cfail");
         }
         match self.config.mode {
-            RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
             DebugInfo => self.run_debuginfo_test(),
             Codegen => self.run_codegen_test(),
@@ -320,10 +316,29 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn check_if_test_should_compile(&self, proc_res: &ProcRes, pm: Option<PassMode>) {
-        if self.should_compile_successfully(pm) {
+    fn check_if_test_should_compile(
+        &self,
+        fail_mode: Option<FailMode>,
+        pass_mode: Option<PassMode>,
+        proc_res: &ProcRes,
+    ) {
+        if self.should_compile_successfully(pass_mode) {
             if !proc_res.status.success() {
-                self.fatal_proc_rec("test compilation failed although it shouldn't!", proc_res);
+                match (fail_mode, pass_mode) {
+                    (Some(FailMode::Build), Some(PassMode::Check)) => {
+                        // A `build-fail` test needs to `check-pass`.
+                        self.fatal_proc_rec(
+                            "`build-fail` test is required to pass check build, but check build failed",
+                            proc_res,
+                        );
+                    }
+                    _ => {
+                        self.fatal_proc_rec(
+                            "test compilation failed although it shouldn't!",
+                            proc_res,
+                        );
+                    }
+                }
             }
         } else {
             if proc_res.status.success() {
@@ -451,7 +466,19 @@ impl<'test> TestCx<'test> {
 
         if let Some(revision) = self.revision {
             let normalized_revision = normalize_revision(revision);
-            cmd.args(&["--cfg", &normalized_revision]);
+            let cfg_arg = ["--cfg", &normalized_revision];
+            let arg = format!("--cfg={normalized_revision}");
+            if self
+                .props
+                .compile_flags
+                .windows(2)
+                .any(|args| args == cfg_arg || args[0] == arg || args[1] == arg)
+            {
+                panic!(
+                    "error: redundant cfg argument `{normalized_revision}` is already created by the revision"
+                );
+            }
+            cmd.args(cfg_arg);
         }
 
         if !self.props.no_auto_check_cfg {
@@ -843,13 +870,13 @@ impl<'test> TestCx<'test> {
     /// Auxiliaries, no matter how deep, have the same root_out_dir and root_testpaths.
     fn document(&self, root_out_dir: &Path, root_testpaths: &TestPaths) -> ProcRes {
         if self.props.build_aux_docs {
-            for rel_ab in &self.props.aux_builds {
+            for rel_ab in &self.props.aux.builds {
                 let aux_testpaths = self.compute_aux_test_paths(root_testpaths, rel_ab);
-                let aux_props =
+                let props_for_aux =
                     self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
                 let aux_cx = TestCx {
                     config: self.config,
-                    props: &aux_props,
+                    props: &props_for_aux,
                     testpaths: &aux_testpaths,
                     revision: self.revision,
                 };
@@ -1061,11 +1088,11 @@ impl<'test> TestCx<'test> {
     fn aux_output_dir(&self) -> PathBuf {
         let aux_dir = self.aux_output_dir_name();
 
-        if !self.props.aux_builds.is_empty() {
+        if !self.props.aux.builds.is_empty() {
             remove_and_create_dir_all(&aux_dir);
         }
 
-        if !self.props.aux_bins.is_empty() {
+        if !self.props.aux.bins.is_empty() {
             let aux_bin_dir = self.aux_bin_output_dir_name();
             remove_and_create_dir_all(&aux_dir);
             remove_and_create_dir_all(&aux_bin_dir);
@@ -1075,15 +1102,15 @@ impl<'test> TestCx<'test> {
     }
 
     fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Path, rustc: &mut Command) {
-        for rel_ab in &self.props.aux_builds {
+        for rel_ab in &self.props.aux.builds {
             self.build_auxiliary(of, rel_ab, &aux_dir, false /* is_bin */);
         }
 
-        for rel_ab in &self.props.aux_bins {
+        for rel_ab in &self.props.aux.bins {
             self.build_auxiliary(of, rel_ab, &aux_dir, true /* is_bin */);
         }
 
-        for (aux_name, aux_path) in &self.props.aux_crates {
+        for (aux_name, aux_path) in &self.props.aux.crates {
             let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, false /* is_bin */);
             let lib_name =
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), aux_type);
@@ -1099,7 +1126,7 @@ impl<'test> TestCx<'test> {
 
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
         // to `-Zcodegen-backend` when compiling the test file.
-        if let Some(aux_file) = &self.props.aux_codegen_backend {
+        if let Some(aux_file) = &self.props.aux.codegen_backend {
             let aux_type = self.build_auxiliary(of, aux_file, aux_dir, false);
             if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
                 let lib_path = aux_dir.join(&lib_name);
@@ -1500,8 +1527,7 @@ impl<'test> TestCx<'test> {
             Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            RunPassValgrind | Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake
-            | CodegenUnits | JsDocTest => {
+            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | JsDocTest => {
                 // do not use JSON output
             }
         }
@@ -1627,7 +1653,9 @@ impl<'test> TestCx<'test> {
         // double the length.
         let mut f = self.output_base_dir().join("a");
         // FIXME: This is using the host architecture exe suffix, not target!
-        if self.config.target.starts_with("wasm") {
+        if self.config.target.contains("emscripten") {
+            f = f.with_extra_extension("js");
+        } else if self.config.target.starts_with("wasm") {
             f = f.with_extra_extension("wasm");
         } else if self.config.target.contains("spirv") {
             f = f.with_extra_extension("spv");
@@ -1783,58 +1811,14 @@ impl<'test> TestCx<'test> {
         proc_res.fatal(None, || on_failure(*self));
     }
 
-    fn get_output_file(&self, extension: &str) -> TargetLocation {
-        let thin_lto = self.props.compile_flags.iter().any(|s| s.ends_with("lto=thin"));
-        if thin_lto {
-            TargetLocation::ThisDirectory(self.output_base_dir())
-        } else {
-            // This works with both `--emit asm` (as default output name for the assembly)
-            // and `ptx-linker` because the latter can write output at requested location.
-            let output_path = self.output_base_name().with_extension(extension);
-
-            TargetLocation::ThisFile(output_path.clone())
-        }
-    }
-
-    fn get_filecheck_file(&self, extension: &str) -> PathBuf {
-        let thin_lto = self.props.compile_flags.iter().any(|s| s.ends_with("lto=thin"));
-        if thin_lto {
-            let name = self.testpaths.file.file_stem().unwrap().to_str().unwrap();
-            let canonical_name = name.replace('-', "_");
-            let mut output_file = None;
-            for entry in self.output_base_dir().read_dir().unwrap() {
-                if let Ok(entry) = entry {
-                    let entry_path = entry.path();
-                    let entry_file = entry_path.file_name().unwrap().to_str().unwrap();
-                    if entry_file.starts_with(&format!("{}.{}", name, canonical_name))
-                        && entry_file.ends_with(extension)
-                    {
-                        assert!(
-                            output_file.is_none(),
-                            "thinlto doesn't support multiple cgu tests"
-                        );
-                        output_file = Some(entry_file.to_string());
-                    }
-                }
-            }
-            if let Some(output_file) = output_file {
-                self.output_base_dir().join(output_file)
-            } else {
-                self.output_base_name().with_extension(extension)
-            }
-        } else {
-            self.output_base_name().with_extension(extension)
-        }
-    }
-
     // codegen tests (using FileCheck)
 
     fn compile_test_and_save_ir(&self) -> (ProcRes, PathBuf) {
-        let output_file = self.get_output_file("ll");
+        let output_path = self.output_base_name().with_extension("ll");
         let input_file = &self.testpaths.file;
         let rustc = self.make_compile_args(
             input_file,
-            output_file,
+            TargetLocation::ThisFile(output_path.clone()),
             Emit::LlvmIr,
             AllowUnused::No,
             LinkToAux::Yes,
@@ -1842,35 +1826,27 @@ impl<'test> TestCx<'test> {
         );
 
         let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
-        let output_path = self.get_filecheck_file("ll");
         (proc_res, output_path)
     }
 
     fn compile_test_and_save_assembly(&self) -> (ProcRes, PathBuf) {
-        let output_file = self.get_output_file("s");
+        // This works with both `--emit asm` (as default output name for the assembly)
+        // and `ptx-linker` because the latter can write output at requested location.
+        let output_path = self.output_base_name().with_extension("s");
         let input_file = &self.testpaths.file;
 
-        let mut emit = Emit::None;
-        match self.props.assembly_output.as_ref().map(AsRef::as_ref) {
-            Some("emit-asm") => {
-                emit = Emit::Asm;
-            }
-
-            Some("bpf-linker") => {
-                emit = Emit::LinkArgsAsm;
-            }
-
-            Some("ptx-linker") => {
-                // No extra flags needed.
-            }
-
-            Some(header) => self.fatal(&format!("unknown 'assembly-output' header: {header}")),
-            None => self.fatal("missing 'assembly-output' header"),
-        }
+        // Use the `//@ assembly-output:` directive to determine how to emit assembly.
+        let emit = match self.props.assembly_output.as_deref() {
+            Some("emit-asm") => Emit::Asm,
+            Some("bpf-linker") => Emit::LinkArgsAsm,
+            Some("ptx-linker") => Emit::None, // No extra flags needed.
+            Some(other) => self.fatal(&format!("unknown 'assembly-output' directive: {other}")),
+            None => self.fatal("missing 'assembly-output' directive"),
+        };
 
         let rustc = self.make_compile_args(
             input_file,
-            output_file,
+            TargetLocation::ThisFile(output_path.clone()),
             emit,
             AllowUnused::No,
             LinkToAux::Yes,
@@ -1878,7 +1854,6 @@ impl<'test> TestCx<'test> {
         );
 
         let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
-        let output_path = self.get_filecheck_file("s");
         (proc_res, output_path)
     }
 
@@ -1920,7 +1895,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn compare_to_default_rustdoc(&mut self, out_dir: &Path) {
-        if !self.config.has_tidy {
+        if !self.config.has_html_tidy {
             return;
         }
         println!("info: generating a diff against nightly rustdoc");
@@ -2109,6 +2084,10 @@ impl<'test> TestCx<'test> {
             .collect()
     }
 
+    /// This method is used for `//@ check-test-line-numbers-match`.
+    ///
+    /// It checks that doctests line in the displayed doctest "name" matches where they are
+    /// defined in source code.
     fn check_rustdoc_test_option(&self, res: ProcRes) {
         let mut other_files = Vec::new();
         let mut files: HashMap<String, Vec<usize>> = HashMap::new();
@@ -2294,12 +2273,18 @@ impl<'test> TestCx<'test> {
         }
 
         let base_dir = Path::new("/rustc/FAKE_PREFIX");
-        // Paths into the libstd/libcore
+        // Fake paths into the libstd/libcore
         normalize_path(&base_dir.join("library"), "$SRC_DIR");
         // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
         // `rustc_macros`
         // eg. /home/user/rust/compiler
         normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
+
+        // Real paths into the libstd/libcore
+        let rust_src_dir = &self.config.sysroot_base.join("lib/rustlib/src/rust");
+        rust_src_dir.try_exists().expect(&*format!("{} should exists", rust_src_dir.display()));
+        let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
+        normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
@@ -2309,9 +2294,6 @@ impl<'test> TestCx<'test> {
         normalize_path(test_build_dir, "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
         normalize_path(parent_build_dir, "$BUILD_DIR");
-
-        // Paths into lib directory.
-        normalize_path(&parent_build_dir.parent().unwrap().join("lib"), "$LIB_DIR");
 
         if json {
             // escaped newlines in json strings should be readable
@@ -2623,8 +2605,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let stamp = crate::stamp(&self.config, self.testpaths, self.revision);
-        fs::write(&stamp, compute_stamp_hash(&self.config)).unwrap();
+        let stamp_file_path = stamp_file_path(&self.config, self.testpaths, self.revision);
+        fs::write(&stamp_file_path, compute_stamp_hash(&self.config)).unwrap();
     }
 
     fn init_incremental_test(&self) {
@@ -2645,33 +2627,6 @@ impl<'test> TestCx<'test> {
 
         if self.config.verbose {
             println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
-        }
-    }
-
-    // FIXME(jieyouxu): `run_rpass_test` is hoisted out here and not in incremental because
-    // apparently valgrind test falls back to `run_rpass_test` if valgrind isn't available, which
-    // seems highly questionable to me.
-    fn run_rpass_test(&self) {
-        let emit_metadata = self.should_emit_metadata(self.pass_mode());
-        let should_run = self.run_if_enabled();
-        let proc_res = self.compile_test(should_run, emit_metadata);
-
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("compilation failed!", &proc_res);
-        }
-
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("run-pass tests with expected warnings should be moved to ui/");
-        }
-
-        if let WillExecute::Disabled = should_run {
-            return;
-        }
-
-        let proc_res = self.exec_compiled_test();
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("test run failed!", &proc_res);
         }
     }
 

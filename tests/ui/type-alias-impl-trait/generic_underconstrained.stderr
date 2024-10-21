@@ -1,13 +1,8 @@
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/generic_underconstrained.rs:9:51
+  --> $DIR/generic_underconstrained.rs:9:31
    |
-LL |   fn underconstrain<T>(_: T) -> Underconstrained<T> {
-   |  ___________________________________________________^
-LL | |
-LL | |
-LL | |     unimplemented!()
-LL | | }
-   | |_^ the trait `Trait` is not implemented for `T`
+LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
+   |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
    |
 note: required by a bound on the type alias `Underconstrained`
   --> $DIR/generic_underconstrained.rs:6:26
@@ -20,10 +15,15 @@ LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {
    |                    +++++++
 
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/generic_underconstrained.rs:9:31
+  --> $DIR/generic_underconstrained.rs:9:51
    |
-LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
-   |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+LL |   fn underconstrain<T>(_: T) -> Underconstrained<T> {
+   |  ___________________________________________________^
+LL | |
+LL | |
+LL | |     unimplemented!()
+LL | | }
+   | |_^ the trait `Trait` is not implemented for `T`
    |
 note: required by a bound on the type alias `Underconstrained`
   --> $DIR/generic_underconstrained.rs:6:26

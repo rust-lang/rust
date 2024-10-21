@@ -10,7 +10,8 @@ use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, Cursor, DocStyle, LiteralKind, RawStrError};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+    RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+    TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
@@ -251,6 +252,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let prefix_span = self.mk_sp(start, lit_start);
                     return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
                 }
+                rustc_lexer::TokenKind::GuardedStrPrefix => self.maybe_report_guarded_str(start, str_before),
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                     let suffix_start = start + BytePos(suffix_start);
                     let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
@@ -778,6 +780,86 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 ast::CRATE_NODE_ID,
                 BuiltinLintDiag::ReservedPrefix(prefix_span, prefix.to_string()),
             );
+        }
+    }
+
+    /// Detect guarded string literal syntax
+    ///
+    /// RFC 3598 reserved this syntax for future use. As of Rust 2024,
+    /// using this syntax produces an error. In earlier editions, however, it
+    /// only results in an (allowed by default) lint, and is treated as
+    /// separate tokens.
+    fn maybe_report_guarded_str(&mut self, start: BytePos, str_before: &'src str) -> TokenKind {
+        let span = self.mk_sp(start, self.pos);
+        let edition2024 = span.edition().at_least_rust_2024();
+
+        let space_pos = start + BytePos(1);
+        let space_span = self.mk_sp(space_pos, space_pos);
+
+        let mut cursor = Cursor::new(str_before);
+
+        let (span, unterminated) = match cursor.guarded_double_quoted_string() {
+            Some(rustc_lexer::GuardedStr { n_hashes, terminated, token_len }) => {
+                let end = start + BytePos(token_len);
+                let span = self.mk_sp(start, end);
+                let str_start = start + BytePos(n_hashes);
+
+                if edition2024 {
+                    self.cursor = cursor;
+                    self.pos = end;
+                }
+
+                let unterminated = if terminated { None } else { Some(str_start) };
+
+                (span, unterminated)
+            }
+            _ => {
+                // We should only get here in the `##+` case.
+                debug_assert_eq!(self.str_from_to(start, start + BytePos(2)), "##");
+
+                (span, None)
+            }
+        };
+        if edition2024 {
+            if let Some(str_start) = unterminated {
+                // Only a fatal error if string is unterminated.
+                self.dcx()
+                    .struct_span_fatal(
+                        self.mk_sp(str_start, self.pos),
+                        "unterminated double quote string",
+                    )
+                    .with_code(E0765)
+                    .emit()
+            }
+
+            let sugg = if span.from_expansion() {
+                None
+            } else {
+                Some(errors::GuardedStringSugg(space_span))
+            };
+
+            // In Edition 2024 and later, emit a hard error.
+            let err = self.dcx().emit_err(errors::ReservedString { span, sugg });
+
+            token::Literal(token::Lit {
+                kind: token::Err(err),
+                symbol: self.symbol_from_to(start, self.pos),
+                suffix: None,
+            })
+        } else {
+            // Before Rust 2024, only emit a lint for migration.
+            self.psess.buffer_lint(
+                RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+                span,
+                ast::CRATE_NODE_ID,
+                BuiltinLintDiag::ReservedString(space_span),
+            );
+
+            // For backwards compatibility, roll back to after just the first `#`
+            // and return the `Pound` token.
+            self.pos = start + BytePos(1);
+            self.cursor = Cursor::new(&str_before[1..]);
+            token::Pound
         }
     }
 

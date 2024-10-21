@@ -32,7 +32,7 @@ error[E0038]: the trait `bar` cannot be made into an object
 LL |     (Box::new(10) as Box<dyn bar>).dup();
    |                      ^^^^^^^^^^^^ `bar` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/test-2.rs:4:30
    |
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
@@ -52,7 +52,7 @@ error[E0038]: the trait `bar` cannot be made into an object
 LL |     (Box::new(10) as Box<dyn bar>).dup();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `bar` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/test-2.rs:4:30
    |
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
@@ -72,7 +72,7 @@ error[E0038]: the trait `bar` cannot be made into an object
 LL |     (Box::new(10) as Box<dyn bar>).dup();
    |      ^^^^^^^^^^^^ `bar` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/test-2.rs:4:30
    |
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }

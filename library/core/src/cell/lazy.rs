@@ -79,7 +79,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(LazyCell::into_inner(lazy).ok(), Some("HELLO, WORLD!".to_string()));
     /// ```
     #[unstable(feature = "lazy_cell_into_inner", issue = "125623")]
-    pub fn into_inner(this: Self) -> Result<T, F> {
+    pub const fn into_inner(this: Self) -> Result<T, F> {
         match this.state.into_inner() {
             State::Init(data) => Ok(data),
             State::Uninit(f) => Err(f),
@@ -306,6 +306,6 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyCell<T, F> {
 
 #[cold]
 #[inline(never)]
-fn panic_poisoned() -> ! {
+const fn panic_poisoned() -> ! {
     panic!("LazyCell instance has previously been poisoned")
 }

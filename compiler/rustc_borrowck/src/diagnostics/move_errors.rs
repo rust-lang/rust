@@ -706,7 +706,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 suggestions.push((
                     pat_span,
                     format!("consider removing the {to_remove}"),
-                    suggestion.to_string(),
+                    suggestion,
                 ));
             }
         }

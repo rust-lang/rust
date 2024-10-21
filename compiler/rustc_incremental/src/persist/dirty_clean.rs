@@ -19,7 +19,7 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc_ast::{self as ast, Attribute, NestedMetaItem};
+use rustc_ast::{self as ast, Attribute, MetaItemInner};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
@@ -307,7 +307,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         (name, labels)
     }
 
-    fn resolve_labels(&self, item: &NestedMetaItem, value: Symbol) -> Labels {
+    fn resolve_labels(&self, item: &MetaItemInner, value: Symbol) -> Labels {
         let mut out = Labels::default();
         for label in value.as_str().split(',') {
             let label = label.trim();
@@ -415,7 +415,7 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     }
 }
 
-fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
+fn expect_associated_value(tcx: TyCtxt<'_>, item: &MetaItemInner) -> Symbol {
     if let Some(value) = item.value_str() {
         value
     } else if let Some(ident) = item.ident() {

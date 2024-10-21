@@ -1,5 +1,4 @@
 use std::env;
-
 use std::path::PathBuf;
 
 use byteorder::{ByteOrder, LittleEndian};

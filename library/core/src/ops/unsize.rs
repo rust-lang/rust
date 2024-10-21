@@ -68,8 +68,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 
-/// `DispatchFromDyn` is used in the implementation of object safety checks (specifically allowing
-/// arbitrary self types), to guarantee that a method's receiver type can be dispatched on.
+/// `DispatchFromDyn` is used in the implementation of dyn-compatibility[^1] checks (specifically
+/// allowing arbitrary self types), to guarantee that a method's receiver type can be dispatched on.
 ///
 /// Note: `DispatchFromDyn` was briefly named `CoerceSized` (and had a slightly different
 /// interpretation).
@@ -80,7 +80,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 /// type). The compiler must generate an implicit conversion from the trait object/wide pointer to
 /// the concrete reference/narrow pointer. Implementing `DispatchFromDyn` indicates that that
 /// conversion is allowed and thus that the type implementing `DispatchFromDyn` is safe to use as
-/// the self type in an object-safe method. (in the above example, the compiler will require
+/// the self type in an dyn-compatible method. (in the above example, the compiler will require
 /// `DispatchFromDyn` is implemented for `&'a U`).
 ///
 /// `DispatchFromDyn` does not specify the conversion from wide pointer to narrow pointer; the
@@ -112,6 +112,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 ///     T: Unsize<U>,
 /// {}
 /// ```
+///
+/// [^1]: Formerly known as *object safety*.
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 #[lang = "dispatch_from_dyn"]
 pub trait DispatchFromDyn<T> {

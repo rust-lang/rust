@@ -114,45 +114,28 @@
 #![feature(const_align_offset)]
 #![feature(const_alloc_layout)]
 #![feature(const_arguments_as_str)]
-#![feature(const_array_from_ref)]
 #![feature(const_array_into_iter_constructors)]
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
-#![feature(const_cell_into_inner)]
 #![feature(const_char_encode_utf16)]
-#![feature(const_char_encode_utf8)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
-#![feature(const_float_classify)]
+#![feature(const_float_methods)]
 #![feature(const_fmt_arguments_new)]
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_index_range_slice_index)]
-#![feature(const_intrinsic_forget)]
-#![feature(const_ipv4)]
-#![feature(const_ipv6)]
 #![feature(const_likely)]
-#![feature(const_make_ascii)]
-#![feature(const_maybe_uninit_assume_init)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
-#![feature(const_option)]
 #![feature(const_option_ext)]
-#![feature(const_pin)]
+#![feature(const_pin_2)]
 #![feature(const_pointer_is_aligned)]
-#![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
 #![feature(const_ptr_sub_ptr)]
-#![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
-#![feature(const_replace)]
 #![feature(const_size_of_val)]
 #![feature(const_size_of_val_raw)]
-#![feature(const_slice_from_raw_parts_mut)]
-#![feature(const_slice_from_ref)]
-#![feature(const_slice_split_at_mut)]
-#![feature(const_str_as_mut)]
-#![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_strict_overflow_ops)]
 #![feature(const_swap)]
 #![feature(const_try)]
@@ -161,12 +144,8 @@
 #![feature(const_typed_swap)]
 #![feature(const_ub_checks)]
 #![feature(const_unicode_case_lookup)]
-#![feature(const_unsafecell_get_mut)]
 #![feature(coverage_attribute)]
 #![feature(do_not_recommend)]
-#![feature(duration_consts_float)]
-#![feature(f128_const)]
-#![feature(f16_const)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
@@ -174,6 +153,7 @@
 #![feature(isqrt)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
+#![feature(non_null_from_ref)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
@@ -194,8 +174,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(const_mut_refs))]
-#![cfg_attr(bootstrap, feature(const_refs_to_cell))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -288,6 +266,15 @@ mod macros;
 pub mod assert_matches {
     #[unstable(feature = "assert_matches", issue = "82775")]
     pub use crate::macros::{assert_matches, debug_assert_matches};
+}
+
+// We don't export this through #[macro_export] for now, to avoid breakage.
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "124509")]
+/// Unstable module containing the unstable `autodiff` macro.
+pub mod autodiff {
+    #[unstable(feature = "autodiff", issue = "124509")]
+    pub use crate::macros::builtin::autodiff;
 }
 
 #[unstable(feature = "cfg_match", issue = "115585")]

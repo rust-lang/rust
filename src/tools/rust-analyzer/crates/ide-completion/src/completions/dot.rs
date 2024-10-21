@@ -600,7 +600,7 @@ fn foo(a: A) { a.$0 }
 struct A {}
 trait Trait { fn the_method(&self); }
 impl Trait for A {}
-fn foo(a: A) { a.the_method()$0 }
+fn foo(a: A) { a.the_method();$0 }
 "#,
         );
     }

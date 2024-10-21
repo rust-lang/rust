@@ -5,17 +5,15 @@ mod simd;
 
 use rand::Rng;
 use rustc_apfloat::{Float, Round};
-use rustc_middle::{
-    mir,
-    ty::{self, FloatTy},
-};
+use rustc_middle::mir;
+use rustc_middle::ty::{self, FloatTy};
 use rustc_span::{Symbol, sym};
 use rustc_target::abi::Size;
 
-use crate::*;
 use self::atomic::EvalContextExt as _;
 use self::helpers::{ToHost, ToSoft, check_arg_count};
 use self::simd::EvalContextExt as _;
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -31,7 +29,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // See if the core engine can handle this intrinsic.
         if this.eval_intrinsic(instance, args, dest, ret)? {
-            return Ok(None);
+            return interp_ok(None);
         }
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
@@ -53,7 +51,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that"
                     );
                 }
-                Ok(Some(ty::Instance {
+                interp_ok(Some(ty::Instance {
                     def: ty::InstanceKind::Item(instance.def_id()),
                     args: instance.args,
                 }))
@@ -61,14 +59,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             EmulateItemResult::NeedsReturn => {
                 trace!("{:?}", this.dump_place(&dest.clone().into()));
                 this.return_to_block(ret)?;
-                Ok(None)
+                interp_ok(None)
             }
             EmulateItemResult::NeedsUnwind => {
                 // Jump to the unwind block to begin unwinding.
                 this.unwind_to_block(unwind)?;
-                Ok(None)
+                interp_ok(None)
             }
-            EmulateItemResult::AlreadyJumped => Ok(None),
+            EmulateItemResult::AlreadyJumped => interp_ok(None),
         }
     }
 
@@ -101,7 +99,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "catch_unwind" => {
                 this.handle_catch_unwind(args, dest, ret)?;
                 // This pushed a stack frame, don't jump to `ret`.
-                return Ok(EmulateItemResult::AlreadyJumped);
+                return interp_ok(EmulateItemResult::AlreadyJumped);
             }
 
             // Raw memory accesses
@@ -145,20 +143,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // calls, so we don't *have* to do anything.
                 let branch: bool = this.machine.rng.get_mut().gen();
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
-            }
-
-            // Floating-point operations
-            "fabsf32" => {
-                let [f] = check_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-                // This is a "bitwise" operation, so there's no NaN non-determinism.
-                this.write_scalar(Scalar::from_f32(f.abs()), dest)?;
-            }
-            "fabsf64" => {
-                let [f] = check_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                // This is a "bitwise" operation, so there's no NaN non-determinism.
-                this.write_scalar(Scalar::from_f64(f.abs()), dest)?;
             }
 
             "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "rintf32" => {
@@ -251,31 +235,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
-            "minnumf32" | "maxnumf32" | "copysignf32" => {
-                let [a, b] = check_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f32()?;
-                let b = this.read_scalar(b)?.to_f32()?;
-                let res = match intrinsic_name {
-                    "minnumf32" => this.adjust_nan(a.min(b), &[a, b]),
-                    "maxnumf32" => this.adjust_nan(a.max(b), &[a, b]),
-                    "copysignf32" => a.copy_sign(b), // bitwise, no NaN adjustments
-                    _ => bug!(),
-                };
-                this.write_scalar(Scalar::from_f32(res), dest)?;
-            }
-            "minnumf64" | "maxnumf64" | "copysignf64" => {
-                let [a, b] = check_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f64()?;
-                let b = this.read_scalar(b)?.to_f64()?;
-                let res = match intrinsic_name {
-                    "minnumf64" => this.adjust_nan(a.min(b), &[a, b]),
-                    "maxnumf64" => this.adjust_nan(a.max(b), &[a, b]),
-                    "copysignf64" => a.copy_sign(b), // bitwise, no NaN adjustments
-                    _ => bug!(),
-                };
-                this.write_scalar(Scalar::from_f64(res), dest)?;
-            }
-
             "fmaf32" => {
                 let [a, b, c] = check_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f32()?;
@@ -293,6 +252,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let c = this.read_scalar(c)?.to_f64()?;
                 // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                let res = this.adjust_nan(res, &[a, b, c]);
+                this.write_scalar(res, dest)?;
+            }
+
+            "fmuladdf32" => {
+                let [a, b, c] = check_arg_count(args)?;
+                let a = this.read_scalar(a)?.to_f32()?;
+                let b = this.read_scalar(b)?.to_f32()?;
+                let c = this.read_scalar(c)?.to_f32()?;
+                let fuse: bool = this.machine.rng.get_mut().gen();
+                #[allow(clippy::arithmetic_side_effects)] // float ops don't overflow
+                let res = if fuse {
+                    // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
+                    a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                } else {
+                    ((a * b).value + c).value
+                };
+                let res = this.adjust_nan(res, &[a, b, c]);
+                this.write_scalar(res, dest)?;
+            }
+            "fmuladdf64" => {
+                let [a, b, c] = check_arg_count(args)?;
+                let a = this.read_scalar(a)?.to_f64()?;
+                let b = this.read_scalar(b)?.to_f64()?;
+                let c = this.read_scalar(c)?.to_f64()?;
+                let fuse: bool = this.machine.rng.get_mut().gen();
+                #[allow(clippy::arithmetic_side_effects)] // float ops don't overflow
+                let res = if fuse {
+                    // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
+                    a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                } else {
+                    ((a * b).value + c).value
+                };
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -380,7 +372,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let ty::Float(fty) = x.layout.ty.kind() else {
                         bug!("float_finite: non-float input type {}", x.layout.ty)
                     };
-                    Ok(match fty {
+                    interp_ok(match fty {
                         FloatTy::F16 => x.to_scalar().to_f16()?.is_finite(),
                         FloatTy::F32 => x.to_scalar().to_f32()?.is_finite(),
                         FloatTy::F64 => x.to_scalar().to_f64()?.is_finite(),
@@ -431,9 +423,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 throw_machine_stop!(TerminationInfo::Abort(format!("trace/breakpoint trap")))
             }
 
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
 
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

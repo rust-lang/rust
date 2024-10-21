@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::env;
 use std::fs::{File, remove_file};
 use std::io::Write;
@@ -9,9 +10,10 @@ use serde::Deserialize;
 use super::flags::Flags;
 use super::{ChangeIdWrapper, Config};
 use crate::core::build_steps::clippy::get_clippy_rules_in_order;
+use crate::core::build_steps::llvm;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 
-fn parse(config: &str) -> Config {
+pub(crate) fn parse(config: &str) -> Config {
     Config::parse_inner(
         Flags::parse(&["check".to_string(), "--config=/does/not/exist".to_string()]),
         |&_| toml::from_str(&config),
@@ -20,29 +22,32 @@ fn parse(config: &str) -> Config {
 
 #[test]
 fn download_ci_llvm() {
-    if crate::core::build_steps::llvm::is_ci_llvm_modified(&parse("")) {
-        eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
-        return;
+    let config = parse("");
+    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
+    if is_available {
+        assert!(config.llvm_from_ci);
     }
 
-    let parse_llvm = |s| parse(s).llvm_from_ci;
-    let if_unchanged = parse_llvm("llvm.download-ci-llvm = \"if-unchanged\"");
+    let config = parse("llvm.download-ci-llvm = true");
+    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
+    if is_available {
+        assert!(config.llvm_from_ci);
+    }
 
-    assert!(parse_llvm("llvm.download-ci-llvm = true"));
-    assert!(!parse_llvm("llvm.download-ci-llvm = false"));
-    assert_eq!(parse_llvm(""), if_unchanged);
-    assert_eq!(parse_llvm("rust.channel = \"dev\""), if_unchanged);
-    assert!(parse_llvm("rust.channel = \"stable\""));
-    assert_eq!(parse_llvm("build.build = \"x86_64-unknown-linux-gnu\""), if_unchanged);
-    assert_eq!(
-        parse_llvm(
-            "llvm.assertions = true \r\n build.build = \"x86_64-unknown-linux-gnu\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
-        ),
-        if_unchanged
-    );
-    assert!(!parse_llvm(
-        "llvm.assertions = true \r\n build.build = \"aarch64-apple-darwin\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
-    ));
+    let config = parse("llvm.download-ci-llvm = false");
+    assert!(!config.llvm_from_ci);
+
+    let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
+    if if_unchanged_config.llvm_from_ci {
+        let has_changes = if_unchanged_config
+            .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+            .is_none();
+
+        assert!(
+            !has_changes,
+            "CI LLVM can't be enabled with 'if-unchanged' while there are changes in LLVM submodule."
+        );
+    }
 }
 
 // FIXME(onur-ozkan): extend scope of the test
@@ -325,4 +330,83 @@ fn verbose_tests_default_value() {
 
     let config = Config::parse(Flags::parse(&["build".into(), "compiler".into(), "-v".into()]));
     assert_eq!(config.verbose_tests, true);
+}
+
+#[test]
+fn parse_rust_std_features() {
+    let config = parse("rust.std-features = [\"panic-unwind\", \"backtrace\"]");
+    let expected_features: BTreeSet<String> =
+        ["panic-unwind", "backtrace"].into_iter().map(|s| s.to_string()).collect();
+    assert_eq!(config.rust_std_features, expected_features);
+}
+
+#[test]
+fn parse_rust_std_features_empty() {
+    let config = parse("rust.std-features = []");
+    let expected_features: BTreeSet<String> = BTreeSet::new();
+    assert_eq!(config.rust_std_features, expected_features);
+}
+
+#[test]
+#[should_panic]
+fn parse_rust_std_features_invalid() {
+    parse("rust.std-features = \"backtrace\"");
+}
+
+#[test]
+fn parse_jobs() {
+    assert_eq!(parse("build.jobs = 1").jobs, Some(1));
+}
+
+#[test]
+fn jobs_precedence() {
+    // `--jobs` should take precedence over using `--set build.jobs`.
+
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "check".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+            "--jobs=67890".to_owned(),
+            "--set=build.jobs=12345".to_owned(),
+        ]),
+        |&_| toml::from_str(""),
+    );
+    assert_eq!(config.jobs, Some(67890));
+
+    // `--set build.jobs` should take precedence over `config.toml`.
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "check".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+            "--set=build.jobs=12345".to_owned(),
+        ]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [build]
+            jobs = 67890
+        "#,
+            )
+        },
+    );
+    assert_eq!(config.jobs, Some(12345));
+
+    // `--jobs` > `--set build.jobs` > `config.toml`
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "check".to_owned(),
+            "--jobs=123".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+            "--set=build.jobs=456".to_owned(),
+        ]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [build]
+            jobs = 789
+        "#,
+            )
+        },
+    );
+    assert_eq!(config.jobs, Some(123));
 }

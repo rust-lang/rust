@@ -1,4 +1,4 @@
-//@no-rustfix
+//@no-rustfix: suggests external crate
 
 #![allow(clippy::needless_borrow, clippy::useless_vec)]
 

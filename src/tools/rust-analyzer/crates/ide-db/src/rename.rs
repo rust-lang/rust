@@ -200,12 +200,14 @@ impl Definition {
                         .and_then(syn_ctx_is_root)
                 }
             }
+            Definition::InlineAsmOperand(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::BuiltinType(_)
             | Definition::BuiltinLifetime(_)
             | Definition::BuiltinAttr(_)
             | Definition::SelfType(_)
             | Definition::ToolModule(_)
-            | Definition::TupleField(_) => return None,
+            | Definition::TupleField(_)
+            | Definition::InlineAsmRegOrRegClass(_) => return None,
             // FIXME: This should be doable in theory
             Definition::DeriveHelper(_) => return None,
         };

@@ -40,6 +40,7 @@ pub mod ast;
 #[doc(hidden)]
 pub mod fuzz;
 pub mod hacks;
+pub mod syntax_editor;
 pub mod ted;
 pub mod utils;
 
@@ -65,7 +66,7 @@ pub use rowan::{
     TokenAtOffset, WalkEvent,
 };
 pub use rustc_lexer::unescape;
-pub use smol_str::{format_smolstr, SmolStr, ToSmolStr};
+pub use smol_str::{format_smolstr, SmolStr, SmolStrBuilder, ToSmolStr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.

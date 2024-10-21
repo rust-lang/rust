@@ -16,8 +16,8 @@ fn main() {
 
     // `os_unfair_lock`s can be moved and leaked.
     // In the real implementation, even moving it while locked is possible
-    // (and "forks" the lock, i.e. old and new location have independent wait queues);
-    // Miri behavior differs here and anyway none of this is documented.
+    // (and "forks" the lock, i.e. old and new location have independent wait queues).
+    // We only test the somewhat sane case of moving while unlocked that `std` plans to rely on.
     let lock = lock;
     let locked = unsafe { libc::os_unfair_lock_trylock(lock.get()) };
     assert!(locked);

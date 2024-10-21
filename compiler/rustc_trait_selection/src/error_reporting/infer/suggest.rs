@@ -731,18 +731,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let exp_local_id = exp_def_id.as_local()?;
 
                 match (
-                    &self.tcx.hir().expect_item(last_local_id).kind,
-                    &self.tcx.hir().expect_item(exp_local_id).kind,
+                    &self.tcx.hir().expect_opaque_ty(last_local_id),
+                    &self.tcx.hir().expect_opaque_ty(exp_local_id),
                 ) {
                     (
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
+                        hir::OpaqueTy { bounds: last_bounds, .. },
+                        hir::OpaqueTy { bounds: exp_bounds, .. },
                     ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| match (
                         left, right,
                     ) {
-                        (hir::GenericBound::Trait(tl, ml), hir::GenericBound::Trait(tr, mr))
+                        // FIXME: Suspicious
+                        (hir::GenericBound::Trait(tl), hir::GenericBound::Trait(tr))
                             if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
-                                && ml == mr =>
+                                && tl.modifiers == tr.modifiers =>
                         {
                             true
                         }

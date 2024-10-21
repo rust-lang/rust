@@ -2,7 +2,7 @@ use super::utils::{extract_clippy_lint, is_lint_level, is_word};
 use super::{Attribute, USELESS_ATTRIBUTE};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, first_line_of_span};
-use rustc_ast::NestedMetaItem;
+use rustc_ast::MetaItemInner;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LintContext};
@@ -21,7 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, item: &Item<'_>, attrs: &[Attribute]) 
                 for lint in lint_list {
                     match item.kind {
                         ItemKind::Use(..) => {
-                            if let NestedMetaItem::MetaItem(meta_item) = lint
+                            if let MetaItemInner::MetaItem(meta_item) = lint
                                 && meta_item.is_word()
                                 && let Some(ident) = meta_item.ident()
                                 && matches!(

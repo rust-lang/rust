@@ -5,6 +5,7 @@
 //@ revisions: foo bar
 //@ should-fail
 //@ needs-run-enabled
+//@ compile-flags: --remap-path-prefix={{src-base}}=remapped
 //@[foo] error-pattern:bar
 //@[bar] error-pattern:foo
 

@@ -10,9 +10,6 @@
 //!
 //! For a high-level overview of how this solver works, check out the relevant
 //! section of the rustc-dev-guide.
-//!
-//! FIXME(@lcnr): Write that section. If you read this before then ask me
-//! about it on zulip.
 
 mod alias_relate;
 mod assembly;
@@ -46,6 +43,14 @@ const FIXPOINT_STEP_LIMIT: usize = 8;
 enum GoalEvaluationKind {
     Root,
     Nested,
+}
+
+/// Whether evaluating this goal ended up changing the
+/// inference state.
+#[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
+pub enum HasChanged {
+    Yes,
+    No,
 }
 
 // FIXME(trait-system-refactor-initiative#117): we don't detect whether a response
@@ -111,8 +116,8 @@ where
         }
     }
 
-    fn compute_object_safe_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
-        if self.cx().trait_is_object_safe(trait_def_id) {
+    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
+        if self.cx().trait_is_dyn_compatible(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
@@ -290,6 +295,37 @@ where
             Ok(ty)
         }
     }
+
+    /// Normalize a const for when it is structurally matched on, or more likely
+    /// when it needs `.try_to_*` called on it (e.g. to turn it into a usize).
+    ///
+    /// This function is necessary in nearly all cases before matching on a const.
+    /// Not doing so is likely to be incomplete and therefore unsound during
+    /// coherence.
+    #[instrument(level = "trace", skip(self, param_env), ret)]
+    fn structurally_normalize_const(
+        &mut self,
+        param_env: I::ParamEnv,
+        ct: I::Const,
+    ) -> Result<I::Const, NoSolution> {
+        if let ty::ConstKind::Unevaluated(..) = ct.kind() {
+            let normalized_ct = self.next_const_infer();
+            let alias_relate_goal = Goal::new(
+                self.cx(),
+                param_env,
+                ty::PredicateKind::AliasRelate(
+                    ct.into(),
+                    normalized_ct.into(),
+                    ty::AliasRelationDirection::Equate,
+                ),
+            );
+            self.add_goal(GoalSource::Misc, alias_relate_goal);
+            self.try_evaluate_added_goals()?;
+            Ok(self.resolve_vars_if_possible(normalized_ct))
+        } else {
+            Ok(ct)
+        }
+    }
 }
 
 fn response_no_constraints_raw<I: Interner>(
@@ -308,6 +344,5 @@ fn response_no_constraints_raw<I: Interner>(
             external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
-        defining_opaque_types: Default::default(),
     }
 }

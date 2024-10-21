@@ -724,29 +724,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         // Record field names for error reporting.
         self.insert_field_idents(def_id, fields);
         self.insert_field_visibilities_local(def_id.to_def_id(), fields);
-
-        for field in fields {
-            match &field.ty.kind {
-                ast::TyKind::AnonStruct(id, nested_fields)
-                | ast::TyKind::AnonUnion(id, nested_fields) => {
-                    let feed = self.r.feed(*id);
-                    let local_def_id = feed.key();
-                    let def_id = local_def_id.to_def_id();
-                    let def_kind = self.r.tcx.def_kind(local_def_id);
-                    let res = Res::Def(def_kind, def_id);
-                    self.build_reduced_graph_for_struct_variant(
-                        &nested_fields,
-                        Ident::empty(),
-                        feed,
-                        res,
-                        // Anonymous adts inherit visibility from their parent adts.
-                        adt_vis,
-                        field.ty.span,
-                    );
-                }
-                _ => {}
-            }
-        }
     }
 
     /// Constructs the reduced graph for one item.
@@ -1072,13 +1049,13 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                             import_all = Some(meta.span);
                             break;
                         }
-                        MetaItemKind::List(nested_metas) => {
-                            for nested_meta in nested_metas {
-                                match nested_meta.ident() {
-                                    Some(ident) if nested_meta.is_word() => {
+                        MetaItemKind::List(meta_item_inners) => {
+                            for meta_item_inner in meta_item_inners {
+                                match meta_item_inner.ident() {
+                                    Some(ident) if meta_item_inner.is_word() => {
                                         single_imports.push(ident)
                                     }
-                                    _ => ill_formed(nested_meta.span()),
+                                    _ => ill_formed(meta_item_inner.span()),
                                 }
                             }
                         }
@@ -1198,8 +1175,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         } else if attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
             return Some((MacroKind::Attr, item.ident, item.span));
         } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
-            if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
-                if let Some(ident) = nested_meta.ident() {
+            if let Some(meta_item_inner) =
+                attr.meta_item_list().and_then(|list| list.get(0).cloned())
+            {
+                if let Some(ident) = meta_item_inner.ident() {
                     return Some((MacroKind::Derive, ident, ident.span));
                 }
             }
@@ -1214,7 +1193,11 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
             for (rule_i, rule_span) in &self.r.macro_map[&def_id.to_def_id()].rule_spans {
-                self.r.unused_macro_rules.insert((def_id, *rule_i), (ident, *rule_span));
+                self.r
+                    .unused_macro_rules
+                    .entry(def_id)
+                    .or_default()
+                    .insert(*rule_i, (ident, *rule_span));
             }
         }
     }

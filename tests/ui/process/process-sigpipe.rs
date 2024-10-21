@@ -15,11 +15,12 @@
 
 //@ ignore-vxworks no 'sh'
 //@ ignore-fuchsia no 'sh'
+//@ ignore-emscripten No threads
+//@ only-unix SIGPIPE is a unix feature
 
 use std::process;
 use std::thread;
 
-#[cfg(unix)]
 fn main() {
     // Just in case `yes` doesn't check for EPIPE...
     thread::spawn(|| {
@@ -33,9 +34,4 @@ fn main() {
         .unwrap();
     assert!(output.status.success());
     assert!(output.stderr.len() == 0);
-}
-
-#[cfg(not(unix))]
-fn main() {
-    // Not worried about signal masks on other platforms
 }

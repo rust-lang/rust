@@ -5,7 +5,8 @@
 #![feature(sync_unsafe_cell)]
 
 use std::cell::SyncUnsafeCell;
-use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 use std::thread;
 
 static ADDR: AtomicUsize = AtomicUsize::new(0);

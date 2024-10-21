@@ -1,3 +1,5 @@
+use std::mem;
+
 use crate::clean::*;
 
 pub(crate) fn strip_item(mut item: Item) -> Item {
@@ -116,10 +118,11 @@ pub(crate) trait DocFolder: Sized {
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
         c.module = self.fold_item(c.module).unwrap();
 
-        let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };
-        for (k, mut v) in external_traits {
-            v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
-            c.external_traits.borrow_mut().insert(k, v);
+        for trait_ in c.external_traits.values_mut() {
+            trait_.items = mem::take(&mut trait_.items)
+                .into_iter()
+                .filter_map(|i| self.fold_item(i))
+                .collect();
         }
 
         c

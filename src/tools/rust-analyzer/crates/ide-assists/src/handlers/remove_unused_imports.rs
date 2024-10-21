@@ -6,7 +6,10 @@ use ide_db::{
     search::{FileReference, ReferenceCategory, SearchScope},
     FxHashMap, RootDatabase,
 };
-use syntax::{ast, AstNode};
+use syntax::{
+    ast::{self, Rename},
+    AstNode,
+};
 use text_edit::TextRange;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -100,19 +103,19 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
                         hir::ScopeDef::ModuleDef(d) => Some(Definition::from(*d)),
                         _ => None,
                     })
-                    .any(|d| used_once_in_scope(ctx, d, scope))
+                    .any(|d| used_once_in_scope(ctx, d, u.rename(), scope))
                 {
                     return Some(u);
                 }
             } else if let Definition::Trait(ref t) = def {
                 // If the trait or any item is used.
-                if !std::iter::once(def)
-                    .chain(t.items(ctx.db()).into_iter().map(Definition::from))
-                    .any(|d| used_once_in_scope(ctx, d, scope))
+                if !std::iter::once((def, u.rename()))
+                    .chain(t.items(ctx.db()).into_iter().map(|item| (item.into(), None)))
+                    .any(|(d, rename)| used_once_in_scope(ctx, d, rename, scope))
                 {
                     return Some(u);
                 }
-            } else if !used_once_in_scope(ctx, def, scope) {
+            } else if !used_once_in_scope(ctx, def, u.rename(), scope) {
                 return Some(u);
             }
 
@@ -138,7 +141,12 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
     }
 }
 
-fn used_once_in_scope(ctx: &AssistContext<'_>, def: Definition, scopes: &Vec<SearchScope>) -> bool {
+fn used_once_in_scope(
+    ctx: &AssistContext<'_>,
+    def: Definition,
+    rename: Option<Rename>,
+    scopes: &Vec<SearchScope>,
+) -> bool {
     let mut found = false;
 
     for scope in scopes {
@@ -151,7 +159,10 @@ fn used_once_in_scope(ctx: &AssistContext<'_>, def: Definition, scopes: &Vec<Sea
                 false
             }
         };
-        def.usages(&ctx.sema).in_scope(scope).search(&mut search_non_import);
+        def.usages(&ctx.sema)
+            .in_scope(scope)
+            .with_rename(rename.as_ref())
+            .search(&mut search_non_import);
         if found {
             break;
         }
@@ -330,7 +341,7 @@ fn w() {
     }
 
     #[test]
-    fn ranamed_trait_item_use_is_use() {
+    fn renamed_trait_item_use_is_use() {
         check_assist_not_applicable(
             remove_unused_imports,
             r#"
@@ -356,7 +367,7 @@ fn w() {
     }
 
     #[test]
-    fn ranamed_underscore_trait_item_use_is_use() {
+    fn renamed_underscore_trait_item_use_is_use() {
         check_assist_not_applicable(
             remove_unused_imports,
             r#"
@@ -941,6 +952,62 @@ pub struct X();
 
 mod z {
     mod foo;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn use_as_alias() {
+        check_assist_not_applicable(
+            remove_unused_imports,
+            r#"
+mod foo {
+    pub struct Foo {}
+}
+
+use foo::Foo as Bar$0;
+
+fn test(_: Bar) {}
+"#,
+        );
+
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod foo {
+    pub struct Foo {}
+    pub struct Bar {}
+    pub struct Qux {}
+    pub trait Quux {
+        fn quxx(&self) {}
+    }
+    impl<T> Quxx for T {}
+}
+
+use foo::{Foo as Bar, Bar as Baz, Qux as _, Quxx as _}$0;
+
+fn test(_: Bar) {
+    let a = ();
+    a.quxx();
+}
+"#,
+            r#"
+mod foo {
+    pub struct Foo {}
+    pub struct Bar {}
+    pub struct Qux {}
+    pub trait Quux {
+        fn quxx(&self) {}
+    }
+    impl<T> Quxx for T {}
+}
+
+use foo::{Foo as Bar, Quxx as _};
+
+fn test(_: Bar) {
+    let a = ();
+    a.quxx();
 }
 "#,
         );

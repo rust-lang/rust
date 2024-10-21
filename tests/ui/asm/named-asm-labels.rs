@@ -12,7 +12,7 @@
 
 #![feature(naked_functions)]
 
-use std::arch::{asm, global_asm};
+use std::arch::{asm, global_asm, naked_asm};
 
 #[no_mangle]
 pub static FOO: usize = 42;
@@ -177,7 +177,7 @@ fn main() {
 // label or LTO can cause labels to break
 #[naked]
 pub extern "C" fn foo() -> i32 {
-    unsafe { asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1, options(noreturn)) }
+    unsafe { naked_asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1) }
     //~^ ERROR avoid using named labels
 }
 
@@ -192,7 +192,7 @@ pub extern "C" fn bar() {
 pub extern "C" fn aaa() {
     fn _local() {}
 
-    unsafe { asm!(".Laaa: nop; ret;", options(noreturn)) } //~ ERROR avoid using named labels
+    unsafe { naked_asm!(".Laaa: nop; ret;") } //~ ERROR avoid using named labels
 }
 
 pub fn normal() {
@@ -202,7 +202,7 @@ pub fn normal() {
     pub extern "C" fn bbb() {
         fn _very_local() {}
 
-        unsafe { asm!(".Lbbb: nop; ret;", options(noreturn)) } //~ ERROR avoid using named labels
+        unsafe { naked_asm!(".Lbbb: nop; ret;") } //~ ERROR avoid using named labels
     }
 
     fn _local2() {}
@@ -221,7 +221,7 @@ fn closures() {
     || {
         #[naked]
         unsafe extern "C" fn _nested() {
-            asm!("ret;", options(noreturn));
+            naked_asm!("ret;");
         }
 
         unsafe {

@@ -212,15 +212,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::GenericArg<'tcx> {
             (ty::GenericArgKind::Const(a_ct), ty::GenericArgKind::Const(b_ct)) => {
                 Ok(relation.relate(a_ct, b_ct)?.into())
             }
-            (ty::GenericArgKind::Lifetime(unpacked), x) => {
-                bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
-            }
-            (ty::GenericArgKind::Type(unpacked), x) => {
-                bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
-            }
-            (ty::GenericArgKind::Const(unpacked), x) => {
-                bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
-            }
+            _ => bug!("impossible case reached: can't relate: {a:?} with {b:?}"),
         }
     }
 }

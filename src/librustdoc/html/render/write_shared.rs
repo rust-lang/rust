@@ -28,7 +28,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use regex::Regex;
 use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_span::Symbol;
@@ -505,8 +505,8 @@ createSrcSidebar();",
 struct Hierarchy {
     parent: Weak<Self>,
     elem: OsString,
-    children: RefCell<FxHashMap<OsString, Rc<Self>>>,
-    elems: RefCell<FxHashSet<OsString>>,
+    children: RefCell<FxIndexMap<OsString, Rc<Self>>>,
+    elems: RefCell<FxIndexSet<OsString>>,
 }
 
 impl Hierarchy {
@@ -824,9 +824,9 @@ impl Serialize for Implementor {
 /// this visitor works to reverse that: `aliased_types` is a map
 /// from target to the aliases that reference it, and each one
 /// will generate one file.
-struct TypeImplCollector<'cx, 'cache> {
+struct TypeImplCollector<'cx, 'cache, 'item> {
     /// Map from DefId-of-aliased-type to its data.
-    aliased_types: IndexMap<DefId, AliasedType<'cache>>,
+    aliased_types: IndexMap<DefId, AliasedType<'cache, 'item>>,
     visited_aliases: FxHashSet<DefId>,
     cache: &'cache Cache,
     cx: &'cache mut Context<'cx>,
@@ -847,26 +847,26 @@ struct TypeImplCollector<'cx, 'cache> {
 /// ]
 /// )
 /// ```
-struct AliasedType<'cache> {
+struct AliasedType<'cache, 'item> {
     /// This is used to generate the actual filename of this aliased type.
     target_fqp: &'cache [Symbol],
     target_type: ItemType,
     /// This is the data stored inside the file.
     /// ItemId is used to deduplicate impls.
-    impl_: IndexMap<ItemId, AliasedTypeImpl<'cache>>,
+    impl_: IndexMap<ItemId, AliasedTypeImpl<'cache, 'item>>,
 }
 
 /// The `impl_` contains data that's used to figure out if an alias will work,
 /// and to generate the HTML at the end.
 ///
 /// The `type_aliases` list is built up with each type alias that matches.
-struct AliasedTypeImpl<'cache> {
+struct AliasedTypeImpl<'cache, 'item> {
     impl_: &'cache Impl,
-    type_aliases: Vec<(&'cache [Symbol], Item)>,
+    type_aliases: Vec<(&'cache [Symbol], &'item Item)>,
 }
 
-impl<'cx, 'cache> DocVisitor for TypeImplCollector<'cx, 'cache> {
-    fn visit_item(&mut self, it: &Item) {
+impl<'cx, 'cache, 'item> DocVisitor<'item> for TypeImplCollector<'cx, 'cache, 'item> {
+    fn visit_item(&mut self, it: &'item Item) {
         self.visit_item_recur(it);
         let cache = self.cache;
         let ItemKind::TypeAliasItem(ref t) = it.kind else { return };
@@ -927,7 +927,7 @@ impl<'cx, 'cache> DocVisitor for TypeImplCollector<'cx, 'cache> {
                 continue;
             }
             // This impl was not found in the set of rejected impls
-            aliased_type_impl.type_aliases.push((&self_fqp[..], it.clone()));
+            aliased_type_impl.type_aliases.push((&self_fqp[..], it));
         }
     }
 }
@@ -961,8 +961,8 @@ impl Serialize for AliasSerializableImpl {
 fn get_path_parts<T: CciPart>(
     dst: &Path,
     crates_info: &[CrateInfo],
-) -> FxHashMap<PathBuf, Vec<String>> {
-    let mut templates: FxHashMap<PathBuf, Vec<String>> = FxHashMap::default();
+) -> FxIndexMap<PathBuf, Vec<String>> {
+    let mut templates: FxIndexMap<PathBuf, Vec<String>> = FxIndexMap::default();
     crates_info
         .iter()
         .map(|crate_info| T::from_crate_info(crate_info).parts.iter())

@@ -3,8 +3,9 @@ use std::{mem, ops::Not};
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AsExternAssocItem, CaptureKind, HasCrate, HasSource, HirDisplay, Layout,
-    LayoutError, Name, Semantics, Trait, Type, TypeInfo,
+    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, AssocItemContainer, CaptureKind,
+    DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
+    MethodViolationCode, Name, Semantics, Trait, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -12,7 +13,7 @@ use ide_db::{
     documentation::HasDocs,
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
-    syntax_helpers::insert_whitespace_into_node,
+    syntax_helpers::prettify_macro_expansion,
     RootDatabase,
 };
 use itertools::Itertools;
@@ -328,7 +329,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
     }
     let (is_clippy, lints) = match &*path {
         "feature" => (false, FEATURES),
-        "allow" | "deny" | "forbid" | "warn" => {
+        "allow" | "deny" | "expect" | "forbid" | "warn" => {
             let is_clippy = algo::non_trivia_sibling(token.clone().into(), Direction::Prev)
                 .filter(|t| t.kind() == T![:])
                 .and_then(|t| algo::non_trivia_sibling(t, Direction::Prev))
@@ -475,8 +476,9 @@ pub(super) fn definition(
                 Err(_) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
-                    if source.file_id.is_macro() {
-                        body = insert_whitespace_into_node::insert_ws_into(body);
+                    if let Some(macro_file) = source.file_id.macro_file() {
+                        let span_map = db.expansion_span_map(macro_file);
+                        body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
                     }
                     Some(body.to_string())
                 }
@@ -485,8 +487,9 @@ pub(super) fn definition(
         Definition::Static(it) => {
             let source = it.source(db)?;
             let mut body = source.value.body()?.syntax().clone();
-            if source.file_id.is_macro() {
-                body = insert_whitespace_into_node::insert_ws_into(body);
+            if let Some(macro_file) = source.file_id.macro_file() {
+                let span_map = db.expansion_span_map(macro_file);
+                body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
             }
             Some(body.to_string())
         }
@@ -526,6 +529,14 @@ pub(super) fn definition(
         _ => None,
     };
 
+    let dyn_compatibility_info = if let Definition::Trait(it) = def {
+        let mut dyn_compatibility_info = String::new();
+        render_dyn_compatibility(db, &mut dyn_compatibility_info, it.dyn_compatibility(db));
+        Some(dyn_compatibility_info)
+    } else {
+        None
+    };
+
     let mut desc = String::new();
     if let Some(notable_traits) = render_notable_trait_comment(db, notable_traits, edition) {
         desc.push_str(&notable_traits);
@@ -533,6 +544,10 @@ pub(super) fn definition(
     }
     if let Some(layout_info) = layout_info {
         desc.push_str(&layout_info);
+        desc.push('\n');
+    }
+    if let Some(dyn_compatibility_info) = dyn_compatibility_info {
+        desc.push_str(&dyn_compatibility_info);
         desc.push('\n');
     }
     desc.push_str(&label);
@@ -798,7 +813,15 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition, edition: Edition) ->
     if matches!(def, Definition::GenericParam(_) | Definition::Local(_) | Definition::Label(_)) {
         return None;
     }
-    def.module(db).map(|module| path(db, module, definition_owner_name(db, def, edition), edition))
+    let container: Option<Definition> =
+        def.as_assoc_item(db).and_then(|assoc| match assoc.container(db) {
+            AssocItemContainer::Trait(trait_) => Some(trait_.into()),
+            AssocItemContainer::Impl(impl_) => impl_.self_ty(db).as_adt().map(|adt| adt.into()),
+        });
+    container
+        .unwrap_or(*def)
+        .module(db)
+        .map(|module| path(db, module, definition_owner_name(db, def, edition), edition))
 }
 
 fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Markup {
@@ -962,5 +985,64 @@ fn keyword_hints(
         }
         T![Self] => KeywordHint::new(token.text().to_owned(), "self_upper_keyword".into()),
         _ => KeywordHint::new(token.text().to_owned(), format!("{}_keyword", token.text())),
+    }
+}
+
+fn render_dyn_compatibility(
+    db: &RootDatabase,
+    buf: &mut String,
+    safety: Option<DynCompatibilityViolation>,
+) {
+    let Some(osv) = safety else {
+        buf.push_str("// Dyn Compatible: Yes");
+        return;
+    };
+    buf.push_str("// Dyn Compatible: No\n// - Reason: ");
+    match osv {
+        DynCompatibilityViolation::SizedSelf => {
+            buf.push_str("has a `Self: Sized` bound");
+        }
+        DynCompatibilityViolation::SelfReferential => {
+            buf.push_str("has a bound that references `Self`");
+        }
+        DynCompatibilityViolation::Method(func, mvc) => {
+            let name = hir::Function::from(func).name(db);
+            format_to!(
+                buf,
+                "has a method `{}` that is non dispatchable because of:\n//   - ",
+                name.as_str()
+            );
+            let desc = match mvc {
+                MethodViolationCode::StaticMethod => "missing a receiver",
+                MethodViolationCode::ReferencesSelfInput => "a parameter references `Self`",
+                MethodViolationCode::ReferencesSelfOutput => "the return type references `Self`",
+                MethodViolationCode::ReferencesImplTraitInTrait => {
+                    "the return type contains `impl Trait`"
+                }
+                MethodViolationCode::AsyncFn => "being async",
+                MethodViolationCode::WhereClauseReferencesSelf => {
+                    "a where clause references `Self`"
+                }
+                MethodViolationCode::Generic => "a non-lifetime generic parameter",
+                MethodViolationCode::UndispatchableReceiver => "a non-dispatchable receiver type",
+            };
+            buf.push_str(desc);
+        }
+        DynCompatibilityViolation::AssocConst(const_) => {
+            let name = hir::Const::from(const_).name(db);
+            if let Some(name) = name {
+                format_to!(buf, "has an associated constant `{}`", name.as_str());
+            } else {
+                buf.push_str("has an associated constant");
+            }
+        }
+        DynCompatibilityViolation::GAT(alias) => {
+            let name = hir::TypeAlias::from(alias).name(db);
+            format_to!(buf, "has a generic associated type `{}`", name.as_str());
+        }
+        DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait) => {
+            let name = hir::Trait::from(super_trait).name(db);
+            format_to!(buf, "has a object unsafe supertrait `{}`", name.as_str());
+        }
     }
 }

@@ -1,5 +1,5 @@
 use clippy_utils::macros::{is_panic, macro_backtrace};
-use rustc_ast::{AttrId, NestedMetaItem};
+use rustc_ast::{AttrId, MetaItemInner};
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
 };
@@ -8,8 +8,8 @@ use rustc_middle::ty;
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 
-pub(super) fn is_word(nmi: &NestedMetaItem, expected: Symbol) -> bool {
-    if let NestedMetaItem::MetaItem(mi) = &nmi {
+pub(super) fn is_word(nmi: &MetaItemInner, expected: Symbol) -> bool {
+    if let MetaItemInner::MetaItem(mi) = &nmi {
         mi.is_word() && mi.has_name(expected)
     } else {
         false
@@ -74,7 +74,7 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
 }
 
 /// Returns the lint name if it is clippy lint.
-pub(super) fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<Symbol> {
+pub(super) fn extract_clippy_lint(lint: &MetaItemInner) -> Option<Symbol> {
     if let Some(meta_item) = lint.meta_item()
         && meta_item.path.segments.len() > 1
         && let tool_name = meta_item.path.segments[0].ident

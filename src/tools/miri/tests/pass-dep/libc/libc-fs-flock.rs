@@ -1,7 +1,9 @@
 //@ignore-target: windows # File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 
-use std::{fs::File, io::Error, os::fd::AsRawFd};
+use std::fs::File;
+use std::io::Error;
+use std::os::fd::AsRawFd;
 
 #[path = "../../utils/mod.rs"]
 mod utils;

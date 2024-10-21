@@ -5,6 +5,11 @@ LL | const TEST: bool = 5f32 == f32::NAN;
    |                    ^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(invalid_nan_comparisons)]` on by default
+help: use `f32::is_nan()` or `f64::is_nan()` instead
+   |
+LL - const TEST: bool = 5f32 == f32::NAN;
+LL + const TEST: bool = 5f32.is_nan();
+   |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
   --> $DIR/invalid-nan-comparison.rs:14:5

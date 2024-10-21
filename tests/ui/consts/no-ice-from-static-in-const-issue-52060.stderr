@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/no-ice-from-static-in-const-issue-52060.rs:5:35
+   |
+LL | static B: [u32; 1] = [0; unsafe { A.len() }];
+   |                                   ^ constant accesses mutable global memory
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

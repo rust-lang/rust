@@ -90,8 +90,8 @@ assert-css: (".scraped-example .example-wrap::after", {"bottom": "0px"})
 // Then with mobile
 set-window-size: (600, 600)
 store-size: (".scraped-example .scraped-example-title", {"height": title_height})
-assert-position: (".scraped-example", {"y": 281})
-assert-position: (".scraped-example .prev", {"y": 281 + |offset_y| + |title_height|})
+assert-position: (".scraped-example", {"y": 287})
+assert-position: (".scraped-example .prev", {"y": 287 + |offset_y| + |title_height|})
 
 define-function: (
     "check_title_and_code_position",

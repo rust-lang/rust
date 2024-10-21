@@ -10,6 +10,7 @@ use std::thread;
 fn main() {
     test_read_write();
     test_race();
+    test_syscall();
 }
 
 fn read_bytes<const N: usize>(fd: i32, buf: &mut [u8; N]) -> i32 {
@@ -108,4 +109,12 @@ fn test_race() {
     assert_eq!(res, 8);
     thread::yield_now();
     thread1.join().unwrap();
+}
+
+// This is a test for calling eventfd2 through a syscall.
+fn test_syscall() {
+    let initval = 0 as libc::c_uint;
+    let flags = (libc::EFD_CLOEXEC | libc::EFD_NONBLOCK) as libc::c_int;
+    let fd = unsafe { libc::syscall(libc::SYS_eventfd2, initval, flags) };
+    assert_ne!(fd, -1);
 }

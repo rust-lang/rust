@@ -720,7 +720,7 @@ fn foo(&self) -> Self::T { String::new() }
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
-                tcx.hir().expect_item(opaque_local_def_id).expect_opaque_ty()
+                tcx.hir().expect_opaque_ty(opaque_local_def_id)
             } else {
                 return false;
             };
@@ -894,7 +894,9 @@ fn foo(&self) -> Self::T { String::new() }
         // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
 
         let trait_bounds = bounds.iter().filter_map(|bound| match bound {
-            hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) => Some(ptr),
+            hir::GenericBound::Trait(ptr) if ptr.modifiers == hir::TraitBoundModifier::None => {
+                Some(ptr)
+            }
             _ => None,
         });
 

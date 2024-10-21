@@ -47,7 +47,7 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
                     dtor,
                 ),
                 t.cast(),
-                core::ptr::addr_of!(__dso_handle) as *mut _,
+                (&raw const __dso_handle) as *mut _,
             );
         }
     } else {

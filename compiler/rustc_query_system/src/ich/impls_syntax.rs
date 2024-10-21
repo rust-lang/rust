@@ -68,6 +68,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             // Do not hash the source as it is not encoded
             src: _,
             ref src_hash,
+            // Already includes src_hash, this is redundant
+            checksum_hash: _,
             external_src: _,
             start_pos: _,
             source_len: _,

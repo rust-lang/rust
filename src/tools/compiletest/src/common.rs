@@ -53,7 +53,6 @@ macro_rules! string_enum {
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum Mode {
-        RunPassValgrind => "run-pass-valgrind",
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
@@ -207,13 +206,6 @@ pub struct Config {
     /// Path to LLVM's bin directory.
     pub llvm_bin_dir: Option<PathBuf>,
 
-    /// The valgrind path.
-    pub valgrind_path: Option<String>,
-
-    /// Whether to fail if we can't run run-pass-valgrind tests under valgrind
-    /// (or, alternatively, to silently run them like regular run-pass tests).
-    pub force_valgrind: bool,
-
     /// The path to the Clang executable to run Clang-based tests with. If
     /// `None` then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
@@ -346,8 +338,11 @@ pub struct Config {
     /// created in `/<build_base>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
-    /// whether to run `tidy` when a rustdoc test fails
-    pub has_tidy: bool,
+    /// whether to run `tidy` (html-tidy) when a rustdoc test fails
+    pub has_html_tidy: bool,
+
+    /// whether to run `enzyme` autodiff tests
+    pub has_enzyme: bool,
 
     /// The current Rust channel
     pub channel: String,
@@ -390,8 +385,8 @@ pub struct Config {
     pub git_merge_commit_email: String,
 
     /// True if the profiler runtime is enabled for this target.
-    /// Used by the "needs-profiler-support" header in test files.
-    pub profiler_support: bool,
+    /// Used by the "needs-profiler-runtime" directive in test files.
+    pub profiler_runtime: bool,
 }
 
 impl Config {
@@ -764,14 +759,8 @@ pub fn output_testname_unique(
 /// test/revision should reside. Example:
 ///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
 pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
-    // In run-make tests, constructing a relative path + unique testname causes a double layering
-    // since revisions are not supported, causing unnecessary nesting.
-    if config.mode == Mode::RunMake {
-        output_relative_path(config, &testpaths.relative_dir)
-    } else {
-        output_relative_path(config, &testpaths.relative_dir)
-            .join(output_testname_unique(config, testpaths, revision))
-    }
+    output_relative_path(config, &testpaths.relative_dir)
+        .join(output_testname_unique(config, testpaths, revision))
 }
 
 /// Absolute path to the base filename used as output for the given

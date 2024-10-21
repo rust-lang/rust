@@ -4,7 +4,6 @@ trait Trait<const N: Trait = bar> {
     //~| ERROR the trait `Trait` cannot be made into an object
     //~| ERROR the trait `Trait` cannot be made into an object
     //~| ERROR the trait `Trait` cannot be made into an object
-    //~| ERROR `(dyn Trait<{const error}> + 'static)` is forbidden as the type of a const generic parameter
     //~| WARN trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
     //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
     //~| WARN trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
@@ -15,7 +14,6 @@ trait Trait<const N: Trait = bar> {
         //~| ERROR defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
         //~| ERROR associated item referring to unboxed trait object for its own trait
         //~| ERROR the trait `Trait` cannot be made into an object
-        //~| ERROR `(dyn Trait<{const error}> + 'static)` is forbidden as the type of a const generic parameter
         //~| WARN trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
         //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
         //~| WARN trait objects without an explicit `dyn` are deprecated [bare_trait_objects]

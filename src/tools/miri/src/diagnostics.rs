@@ -214,7 +214,7 @@ pub fn report_error<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     e: InterpErrorInfo<'tcx>,
 ) -> Option<(i64, bool)> {
-    use InterpError::*;
+    use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
     let mut msg = vec![];
@@ -223,7 +223,7 @@ pub fn report_error<'tcx>(
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
-            Exit { code, leak_check } => return Some((*code, *leak_check)),
+            &Exit { code, leak_check } => return Some((code, leak_check)),
             Abort(_) => Some("abnormal termination"),
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
                 Some("unsupported operation"),
@@ -473,14 +473,14 @@ pub fn report_leaks<'tcx>(
     leaks: Vec<(AllocId, MemoryKind, Allocation<Provenance, AllocExtra<'tcx>, MiriAllocBytes>)>,
 ) {
     let mut any_pruned = false;
-    for (id, kind, mut alloc) in leaks {
+    for (id, kind, alloc) in leaks {
         let mut title = format!(
             "memory leaked: {id:?} ({}, size: {:?}, align: {:?})",
             kind,
             alloc.size().bytes(),
             alloc.align.bytes()
         );
-        let Some(backtrace) = alloc.extra.backtrace.take() else {
+        let Some(backtrace) = alloc.extra.backtrace else {
             ecx.tcx.dcx().err(title);
             continue;
         };

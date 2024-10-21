@@ -46,6 +46,7 @@ use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{
     IfExpressionCause, MatchExpressionArmCause, Obligation, PredicateObligation,
+    PredicateObligations,
 };
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::span_bug;
@@ -82,6 +83,11 @@ struct Coerce<'a, 'tcx> {
     /// See #47489 and #48598
     /// See docs on the "AllowTwoPhase" type for a more detailed discussion
     allow_two_phase: AllowTwoPhase,
+    /// Whether we allow `NeverToAny` coercions. This is unsound if we're
+    /// coercing a place expression without it counting as a read in the MIR.
+    /// This is a side-effect of HIR not really having a great distinction
+    /// between places and values.
+    coerce_never: bool,
 }
 
 impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
@@ -115,7 +121,7 @@ fn simple<'tcx>(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'
 fn success<'tcx>(
     adj: Vec<Adjustment<'tcx>>,
     target: Ty<'tcx>,
-    obligations: Vec<traits::PredicateObligation<'tcx>>,
+    obligations: PredicateObligations<'tcx>,
 ) -> CoerceResult<'tcx> {
     Ok(InferOk { value: (adj, target), obligations })
 }
@@ -125,8 +131,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         fcx: &'f FnCtxt<'f, 'tcx>,
         cause: ObligationCause<'tcx>,
         allow_two_phase: AllowTwoPhase,
+        coerce_never: bool,
     ) -> Self {
-        Coerce { fcx, cause, allow_two_phase, use_lub: false }
+        Coerce { fcx, cause, allow_two_phase, use_lub: false, coerce_never }
     }
 
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
@@ -135,7 +142,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let at = self.at(&self.cause, self.fcx.param_env);
 
             let res = if self.use_lub {
-                at.lub(DefineOpaqueTypes::Yes, b, a)
+                at.lub(b, a)
             } else {
                 at.sup(DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
@@ -177,7 +184,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Coercing from `!` to any type is allowed:
         if a.is_never() {
-            return success(simple(Adjust::NeverToAny)(b), b, vec![]);
+            if self.coerce_never {
+                return success(simple(Adjust::NeverToAny)(b), b, PredicateObligations::new());
+            } else {
+                // Otherwise the only coercion we can do is unification.
+                return self.unify_and(a, b, identity);
+            }
         }
 
         // Coercing *from* an unresolved inference variable means that
@@ -267,7 +279,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // Two unresolved type variables: create a `Coerce` predicate.
             let target_ty = if self.use_lub { self.next_ty_var(self.cause.span) } else { b };
 
-            let mut obligations = Vec::with_capacity(2);
+            let mut obligations = PredicateObligations::with_capacity(2);
             for &source_ty in &[a, b] {
                 if source_ty != target_ty {
                     obligations.push(Obligation::new(
@@ -655,7 +667,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     return Err(TypeError::Mismatch);
                 }
 
-                // Object safety violations or miscellaneous.
+                // Dyn-compatibility violations or miscellaneous.
                 Err(err) => {
                     self.err_ctxt().report_selection_error(obligation.clone(), &obligation, &err);
                     // Treat this like an obligation and follow through
@@ -733,7 +745,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Check the obligations of the cast -- for example, when casting
         // `usize` to `dyn* Clone + 'static`:
-        let mut obligations: Vec<_> = predicates
+        let obligations = predicates
             .iter()
             .map(|predicate| {
                 // For each existential predicate (e.g., `?Self: Clone`) instantiate
@@ -753,20 +765,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         ty::OutlivesPredicate(a, b_region),
                     ))),
                 ),
+                // Enforce that the type is `usize`/pointer-sized.
+                Obligation::new(
+                    self.tcx,
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::TraitRef::new(
+                        self.tcx,
+                        self.tcx
+                            .require_lang_item(hir::LangItem::PointerLike, Some(self.cause.span)),
+                        [a],
+                    ),
+                ),
             ])
             .collect();
-
-        // Enforce that the type is `usize`/pointer-sized.
-        obligations.push(Obligation::new(
-            self.tcx,
-            self.cause.clone(),
-            self.param_env,
-            ty::TraitRef::new(
-                self.tcx,
-                self.tcx.require_lang_item(hir::LangItem::PointerLike, Some(self.cause.span)),
-                [a],
-            ),
-        ));
 
         Ok(InferOk {
             value: (
@@ -1038,7 +1050,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The expressions *must not* have any preexisting adjustments.
     pub(crate) fn coerce(
         &self,
-        expr: &hir::Expr<'_>,
+        expr: &'tcx hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
         mut target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
@@ -1055,7 +1067,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let cause =
             cause.unwrap_or_else(|| self.cause(expr.span, ObligationCauseCode::ExprAssignable));
-        let coerce = Coerce::new(self, cause, allow_two_phase);
+        let coerce = Coerce::new(
+            self,
+            cause,
+            allow_two_phase,
+            self.expr_guaranteed_to_constitute_read_for_never(expr),
+        );
         let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
@@ -1067,35 +1084,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    /// Same as `coerce()`, but without side-effects.
+    /// Probe whether `expr_ty` can be coerced to `target_ty`. This has no side-effects,
+    /// and may return false positives if types are not yet fully constrained by inference.
     ///
-    /// Returns false if the coercion creates any obligations that result in
-    /// errors.
-    pub(crate) fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
-        // FIXME(-Znext-solver): We need to structurally resolve both types here.
-        let source = self.resolve_vars_with_obligations(expr_ty);
-        debug!("coercion::can_with_predicates({:?} -> {:?})", source, target);
-
+    /// Returns false if the coercion is not possible, or if the coercion creates any
+    /// sub-obligations that result in errors.
+    ///
+    /// This should only be used for diagnostics.
+    pub(crate) fn may_coerce(&self, expr_ty: Ty<'tcx>, target_ty: Ty<'tcx>) -> bool {
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
-        // We don't ever need two-phase here since we throw out the result of the coercion
-        let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
+        // We don't ever need two-phase here since we throw out the result of the coercion.
+        // We also just always set `coerce_never` to true, since this is a heuristic.
+        let coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         self.probe(|_| {
-            let Ok(ok) = coerce.coerce(source, target) else {
+            // Make sure to structurally resolve the types, since we use
+            // the `TyKind`s heavily in coercion.
+            let ocx = ObligationCtxt::new(self);
+            let structurally_resolve = |ty| {
+                let ty = self.shallow_resolve(ty);
+                if self.next_trait_solver()
+                    && let ty::Alias(..) = ty.kind()
+                {
+                    ocx.structurally_normalize(&cause, self.param_env, ty)
+                } else {
+                    Ok(ty)
+                }
+            };
+            let Ok(expr_ty) = structurally_resolve(expr_ty) else {
                 return false;
             };
-            let ocx = ObligationCtxt::new(self);
+            let Ok(target_ty) = structurally_resolve(target_ty) else {
+                return false;
+            };
+
+            let Ok(ok) = coerce.coerce(expr_ty, target_ty) else {
+                return false;
+            };
             ocx.register_obligations(ok.obligations);
             ocx.select_where_possible().is_empty()
         })
     }
 
     /// Given a type and a target type, this function will calculate and return
-    /// how many dereference steps needed to achieve `expr_ty <: target`. If
+    /// how many dereference steps needed to coerce `expr_ty` to `target`. If
     /// it's not possible, return `None`.
-    pub(crate) fn deref_steps(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> Option<usize> {
+    pub(crate) fn deref_steps_for_suggestion(
+        &self,
+        expr_ty: Ty<'tcx>,
+        target: Ty<'tcx>,
+    ) -> Option<usize> {
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
-        // We don't ever need two-phase here since we throw out the result of the coercion
-        let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
+        // We don't ever need two-phase here since we throw out the result of the coercion.
+        let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
         coerce
             .autoderef(DUMMY_SP, expr_ty)
             .find_map(|(ty, steps)| self.probe(|_| coerce.unify(ty, target)).ok().map(|_| steps))
@@ -1169,13 +1209,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
-                        match self.commit_if_ok(|_| {
-                            self.at(cause, self.param_env).lub(
-                                DefineOpaqueTypes::Yes,
-                                prev_ty,
-                                new_ty,
-                            )
-                        }) {
+                        match self
+                            .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
+                        {
                             // We have a LUB of prev_ty and new_ty, just return it.
                             Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
                             Err(_) => {
@@ -1218,7 +1254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
                 .at(cause, self.param_env)
-                .lub(DefineOpaqueTypes::Yes, a_sig, b_sig)
+                .lub(a_sig, b_sig)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
 
             // Reify both sides and return the reified fn pointer type.
@@ -1252,7 +1288,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // probably aren't processing function arguments here and even if we were,
         // they're going to get autorefed again anyway and we can apply 2-phase borrows
         // at that time.
-        let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No);
+        //
+        // NOTE: we set `coerce_never` to `true` here because coercion LUBs only
+        // operate on values and not places, so a never coercion is valid.
+        let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         coerce.use_lub = true;
 
         // First try to coerce the new expression to the type of the previous ones,
@@ -1306,9 +1345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 return Err(self
-                    .commit_if_ok(|_| {
-                        self.at(cause, self.param_env).lub(DefineOpaqueTypes::Yes, prev_ty, new_ty)
-                    })
+                    .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
                     .unwrap_err());
             }
         }
@@ -1320,13 +1357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Err(e)
                 } else {
                     Err(self
-                        .commit_if_ok(|_| {
-                            self.at(cause, self.param_env).lub(
-                                DefineOpaqueTypes::Yes,
-                                prev_ty,
-                                new_ty,
-                            )
-                        })
+                        .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
                         .unwrap_err())
                 }
             }
@@ -1357,7 +1388,7 @@ pub fn can_coerce<'tcx>(
 ) -> bool {
     let root_ctxt = crate::typeck_root_ctxt::TypeckRootCtxt::new(tcx, body_id);
     let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, body_id);
-    fn_ctxt.can_coerce(ty, output_ty)
+    fn_ctxt.may_coerce(ty, output_ty)
 }
 
 /// CoerceMany encapsulates the pattern you should use when you have

@@ -20,7 +20,7 @@ rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"
 tracing = "0.1"
 unicode-normalization = "0.1.11"
-unicode-width = "0.1.4"
+unicode-width = "0.2.0"
 # tidy-alphabetical-end
 
 [dev-dependencies]

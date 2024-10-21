@@ -13,8 +13,8 @@ use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
-    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
-    WasmCAbi,
+    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
+    TargetTriple, TlsModel, WasmCAbi,
 };
 
 use crate::config::*;
@@ -403,7 +403,7 @@ mod desc {
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
-        "a comma separated list of solver configurations: `globally` (default), and `coherence`";
+        "either `globally` (when used without an argument), `coherence` (default) or `no`";
     pub(crate) const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub(crate) const parse_linker_plugin_lto: &str =
@@ -416,7 +416,11 @@ mod desc {
         "one of: `disabled`, `trampolines`, or `aliases`";
     pub(crate) const parse_symbol_mangling_version: &str =
         "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
-    pub(crate) const parse_src_file_hash: &str = "either `md5` or `sha1`";
+    pub(crate) const parse_opt_symbol_visibility: &str =
+        "one of: `hidden`, `protected`, or `interposable`";
+    pub(crate) const parse_cargo_src_file_hash: &str =
+        "one of `blake3`, `md5`, `sha1`, or `sha256`";
+    pub(crate) const parse_src_file_hash: &str = "one of `md5`, `sha1`, or `sha256`";
     pub(crate) const parse_relocation_model: &str =
         "one of supported relocation models (`rustc --print relocation-models`)";
     pub(crate) const parse_code_model: &str =
@@ -922,6 +926,20 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_opt_symbol_visibility(
+        slot: &mut Option<SymbolVisibility>,
+        v: Option<&str>,
+    ) -> bool {
+        if let Some(v) = v {
+            if let Ok(vis) = SymbolVisibility::from_str(v) {
+                *slot = Some(vis);
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+
     pub(crate) fn parse_optimization_fuel(
         slot: &mut Option<(String, u64)>,
         v: Option<&str>,
@@ -1105,27 +1123,16 @@ mod parse {
         }
     }
 
-    pub(crate) fn parse_next_solver_config(
-        slot: &mut Option<NextSolverConfig>,
-        v: Option<&str>,
-    ) -> bool {
+    pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
         if let Some(config) = v {
-            let mut coherence = false;
-            let mut globally = true;
-            for c in config.split(',') {
-                match c {
-                    "globally" => globally = true,
-                    "coherence" => {
-                        globally = false;
-                        coherence = true;
-                    }
-                    _ => return false,
-                }
-            }
-
-            *slot = Some(NextSolverConfig { coherence: coherence || globally, globally });
+            *slot = match config {
+                "no" => NextSolverConfig { coherence: false, globally: false },
+                "coherence" => NextSolverConfig { coherence: true, globally: false },
+                "globally" => NextSolverConfig { coherence: true, globally: true },
+                _ => return false,
+            };
         } else {
-            *slot = Some(NextSolverConfig { coherence: true, globally: true });
+            *slot = NextSolverConfig { coherence: true, globally: true };
         }
 
         true
@@ -1267,6 +1274,19 @@ mod parse {
     ) -> bool {
         match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
             Some(hash_kind) => *slot = Some(hash_kind),
+            _ => return false,
+        }
+        true
+    }
+
+    pub(crate) fn parse_cargo_src_file_hash(
+        slot: &mut Option<SourceFileHashAlgorithm>,
+        v: Option<&str>,
+    ) -> bool {
+        match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
+            Some(hash_kind) => {
+                *slot = Some(hash_kind);
+            }
             _ => return false,
         }
         true
@@ -1672,6 +1692,8 @@ options! {
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
         "show all expected values in check-cfg diagnostics (default: no)"),
+    checksum_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_cargo_src_file_hash, [TRACKED],
+        "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
@@ -1688,8 +1710,8 @@ options! {
         "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),
-    default_hidden_visibility: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "overrides the `default_hidden_visibility` setting of the target"),
+    default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
+        "overrides the `default_visibility` setting of the target"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
@@ -1881,7 +1903,7 @@ options! {
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
-    next_solver: Option<NextSolverConfig> = (None, parse_next_solver_config, [TRACKED],
+    next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),

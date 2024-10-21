@@ -398,7 +398,14 @@ impl Step for RustAnalyzer {
 }
 
 macro_rules! tool_check_step {
-    ($name:ident, $path:literal, $($alias:literal, )* $source_type:path $(, $default:literal )?) => {
+    (
+        $name:ident,
+        $display_name:literal,
+        $path:literal,
+        $($alias:literal, )*
+        $source_type:path
+        $(, $default:literal )?
+    ) => {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub target: TargetSelection,
@@ -441,7 +448,7 @@ macro_rules! tool_check_step {
                     cargo.arg("--all-targets");
                 }
 
-                let _guard = builder.msg_check(&concat!(stringify!($name), " artifacts").to_lowercase(), target);
+                let _guard = builder.msg_check(&format!("{} artifacts", $display_name), target);
                 run_cargo(
                     builder,
                     cargo,
@@ -468,20 +475,30 @@ macro_rules! tool_check_step {
     };
 }
 
-tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
+tool_check_step!(Rustdoc, "rustdoc", "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
-tool_check_step!(Miri, "src/tools/miri", SourceType::InTree);
-tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri", SourceType::InTree);
-tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
-tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
-tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools", SourceType::InTree);
-tool_check_step!(TestFloatParse, "src/etc/test-float-parse", SourceType::InTree);
+tool_check_step!(Clippy, "clippy", "src/tools/clippy", SourceType::InTree);
+tool_check_step!(Miri, "miri", "src/tools/miri", SourceType::InTree);
+tool_check_step!(CargoMiri, "cargo-miri", "src/tools/miri/cargo-miri", SourceType::InTree);
+tool_check_step!(Rls, "rls", "src/tools/rls", SourceType::InTree);
+tool_check_step!(Rustfmt, "rustfmt", "src/tools/rustfmt", SourceType::InTree);
+tool_check_step!(
+    MiroptTestTools,
+    "miropt-test-tools",
+    "src/tools/miropt-test-tools",
+    SourceType::InTree
+);
+tool_check_step!(
+    TestFloatParse,
+    "test-float-parse",
+    "src/etc/test-float-parse",
+    SourceType::InTree
+);
 
-tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
+tool_check_step!(Bootstrap, "bootstrap", "src/bootstrap", SourceType::InTree, false);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.

@@ -183,8 +183,8 @@ fn check_object_overlap<'tcx>(
 
     // check for overlap with the automatic `impl Trait for dyn Trait`
     if let ty::Dynamic(data, ..) = trait_ref.self_ty().kind() {
-        // This is something like impl Trait1 for Trait2. Illegal
-        // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
+        // This is something like `impl Trait1 for Trait2`. Illegal if
+        // Trait1 is a supertrait of Trait2 or Trait2 is not dyn-compatible.
 
         let component_def_ids = data.iter().flat_map(|predicate| {
             match predicate.skip_binder() {
@@ -197,8 +197,9 @@ fn check_object_overlap<'tcx>(
         });
 
         for component_def_id in component_def_ids {
-            if !tcx.is_object_safe(component_def_id) {
-                // Without the 'object_safe_for_dispatch' feature this is an error
+            if !tcx.is_dyn_compatible(component_def_id) {
+                // FIXME(dyn_compat_renaming): Rename test and update comment.
+                // Without the 'dyn_compatible_for_dispatch' feature this is an error
                 // which will be reported by wfcheck. Ignore it here.
                 // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
                 // With the feature enabled, the trait is not implemented automatically,

@@ -4,7 +4,7 @@ use std::num::NonZero;
 
 use rustc_abi::Align;
 use rustc_ast::{
-    self as ast, Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId,
+    self as ast, Attribute, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NodeId,
     attr,
 };
 use rustc_ast_pretty::pprust;
@@ -18,7 +18,7 @@ use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::Span;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::{Symbol, kw, sym};
 
 use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -36,6 +36,7 @@ pub fn is_builtin_attr(attr: &Attribute) -> bool {
 pub(crate) enum UnsupportedLiteralReason {
     Generic,
     CfgString,
+    CfgBoolean,
     DeprecatedString,
     DeprecatedKvPair,
 }
@@ -79,6 +80,10 @@ impl Stability {
 
     pub fn is_stable(&self) -> bool {
         self.level.is_stable()
+    }
+
+    pub fn stable_since(&self) -> Option<StableSince> {
+        self.level.stable_since()
     }
 }
 
@@ -169,6 +174,12 @@ impl StabilityLevel {
     }
     pub fn is_stable(&self) -> bool {
         matches!(self, StabilityLevel::Stable { .. })
+    }
+    pub fn stable_since(&self) -> Option<StableSince> {
+        match *self {
+            StabilityLevel::Stable { since, .. } => Some(since),
+            StabilityLevel::Unstable { .. } => None,
+        }
     }
 }
 
@@ -523,7 +534,7 @@ pub struct Condition {
 
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(
-    cfg: &ast::MetaItem,
+    cfg: &ast::MetaItemInner,
     sess: &Session,
     lint_node_id: NodeId,
     features: Option<&Features>,
@@ -594,22 +605,53 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
 pub fn eval_condition(
-    cfg: &ast::MetaItem,
+    cfg: &ast::MetaItemInner,
     sess: &Session,
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
     let dcx = sess.dcx();
+
+    let cfg = match cfg {
+        ast::MetaItemInner::MetaItem(meta_item) => meta_item,
+        ast::MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => {
+            if let Some(features) = features {
+                // we can't use `try_gate_cfg` as symbols don't differentiate between `r#true`
+                // and `true`, and we want to keep the former working without feature gate
+                gate_cfg(
+                    &((
+                        if *b { kw::True } else { kw::False },
+                        sym::cfg_boolean_literals,
+                        |features: &Features| features.cfg_boolean_literals,
+                    )),
+                    cfg.span(),
+                    sess,
+                    features,
+                );
+            }
+            return *b;
+        }
+        _ => {
+            dcx.emit_err(session_diagnostics::UnsupportedLiteral {
+                span: cfg.span(),
+                reason: UnsupportedLiteralReason::CfgBoolean,
+                is_bytestr: false,
+                start_point_span: sess.source_map().start_point(cfg.span()),
+            });
+            return false;
+        }
+    };
+
     match &cfg.kind {
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
-                [NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Str(sym, ..), span, .. })] => {
+                [MetaItemInner::Lit(MetaItemLit { kind: LitKind::Str(sym, ..), span, .. })] => {
                     (sym, span)
                 }
                 [
-                    NestedMetaItem::Lit(MetaItemLit { span, .. })
-                    | NestedMetaItem::MetaItem(MetaItem { span, .. }),
+                    MetaItemInner::Lit(MetaItemLit { span, .. })
+                    | MetaItemInner::MetaItem(MetaItem { span, .. }),
                 ] => {
                     dcx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
                     return false;
@@ -635,7 +677,7 @@ pub fn eval_condition(
         }
         ast::MetaItemKind::List(mis) => {
             for mi in mis.iter() {
-                if !mi.is_meta_item() {
+                if mi.meta_item_or_bool().is_none() {
                     dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                         span: mi.span(),
                         reason: UnsupportedLiteralReason::Generic,
@@ -653,23 +695,19 @@ pub fn eval_condition(
                     .iter()
                     // We don't use any() here, because we want to evaluate all cfg condition
                     // as eval_condition can (and does) extra checks
-                    .fold(false, |res, mi| {
-                        res | eval_condition(mi.meta_item().unwrap(), sess, features, eval)
-                    }),
+                    .fold(false, |res, mi| res | eval_condition(mi, sess, features, eval)),
                 sym::all => mis
                     .iter()
                     // We don't use all() here, because we want to evaluate all cfg condition
                     // as eval_condition can (and does) extra checks
-                    .fold(true, |res, mi| {
-                        res & eval_condition(mi.meta_item().unwrap(), sess, features, eval)
-                    }),
+                    .fold(true, |res, mi| res & eval_condition(mi, sess, features, eval)),
                 sym::not => {
                     let [mi] = mis.as_slice() else {
                         dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
                         return false;
                     };
 
-                    !eval_condition(mi.meta_item().unwrap(), sess, features, eval)
+                    !eval_condition(mi, sess, features, eval)
                 }
                 sym::target => {
                     if let Some(features) = features
@@ -685,12 +723,23 @@ pub fn eval_condition(
                     }
 
                     mis.iter().fold(true, |res, mi| {
-                        let mut mi = mi.meta_item().unwrap().clone();
+                        let Some(mut mi) = mi.meta_item().cloned() else {
+                            dcx.emit_err(session_diagnostics::CfgPredicateIdentifier {
+                                span: mi.span(),
+                            });
+                            return false;
+                        };
+
                         if let [seg, ..] = &mut mi.path.segments[..] {
                             seg.ident.name = Symbol::intern(&format!("target_{}", seg.ident.name));
                         }
 
-                        res & eval_condition(&mi, sess, features, eval)
+                        res & eval_condition(
+                            &ast::MetaItemInner::MetaItem(mi),
+                            sess,
+                            features,
+                            eval,
+                        )
                     })
                 }
                 _ => {
@@ -830,7 +879,7 @@ pub fn find_deprecation(
 
                 for meta in list {
                     match meta {
-                        NestedMetaItem::MetaItem(mi) => match mi.name_or_empty() {
+                        MetaItemInner::MetaItem(mi) => match mi.name_or_empty() {
                             sym::since => {
                                 if !get(mi, &mut since) {
                                     continue 'outer;
@@ -869,7 +918,7 @@ pub fn find_deprecation(
                                 continue 'outer;
                             }
                         },
-                        NestedMetaItem::Lit(lit) => {
+                        MetaItemInner::Lit(lit) => {
                             sess.dcx().emit_err(session_diagnostics::UnsupportedLiteral {
                                 span: lit.span,
                                 reason: UnsupportedLiteralReason::DeprecatedKvPair,
@@ -1234,7 +1283,7 @@ pub fn parse_confusables(attr: &Attribute) -> Option<Vec<Symbol>> {
     let mut candidates = Vec::new();
 
     for meta in metas {
-        let NestedMetaItem::Lit(meta_lit) = meta else {
+        let MetaItemInner::Lit(meta_lit) = meta else {
             return None;
         };
         candidates.push(meta_lit.symbol);

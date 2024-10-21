@@ -384,7 +384,7 @@ mod nested_elision_sites {
         f()
     }
     // lint
-    fn where_clause_elidadable<'a, T>(i: &'a i32, f: T) -> &'a i32
+    fn where_clause_elidable<'a, T>(i: &'a i32, f: T) -> &'a i32
     where
         T: Fn(&i32) -> &i32,
     {
@@ -540,6 +540,25 @@ mod issue5787 {
 
     async fn foo<'a>(_x: &i32, y: &'a str) -> &'a str {
         y
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/pull/13286#issuecomment-2374245772
+mod rayon {
+    trait ParallelIterator {
+        type Item;
+    }
+
+    struct Copied<I: ParallelIterator> {
+        base: I,
+    }
+
+    impl<'a, T, I> ParallelIterator for Copied<I>
+    where
+        I: ParallelIterator<Item = &'a T>,
+        T: 'a + Copy + Send + Sync,
+    {
+        type Item = T;
     }
 }
 

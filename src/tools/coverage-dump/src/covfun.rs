@@ -56,6 +56,7 @@ pub(crate) fn dump_covfun_mappings(
             expression_resolver.push_operands(lhs, rhs);
         }
 
+        let mut max_counter = None;
         for i in 0..num_files {
             let num_mappings = parser.read_uleb128_u32()?;
             println!("Number of file {i} mappings: {num_mappings}");
@@ -63,6 +64,11 @@ pub(crate) fn dump_covfun_mappings(
             for _ in 0..num_mappings {
                 let (kind, region) = parser.read_mapping_kind_and_region()?;
                 println!("- {kind:?} at {region:?}");
+                kind.for_each_term(|term| {
+                    if let CovTerm::Counter(n) = term {
+                        max_counter = max_counter.max(Some(n));
+                    }
+                });
 
                 match kind {
                     // Also print expression mappings in resolved form.
@@ -83,6 +89,16 @@ pub(crate) fn dump_covfun_mappings(
         }
 
         parser.ensure_empty()?;
+
+        // Printing the highest counter ID seen in the functions mappings makes
+        // it easier to determine whether a change to coverage instrumentation
+        // has increased or decreased the number of physical counters needed.
+        // (It's possible for the generated code to have more counters that
+        // aren't used by any mappings, but that should hopefully be rare.)
+        println!("Highest counter ID seen: {}", match max_counter {
+            Some(id) => format!("c{id}"),
+            None => "(none)".to_owned(),
+        });
         println!();
     }
     Ok(())
@@ -269,6 +285,32 @@ enum MappingKind {
         #[allow(dead_code)]
         conditions_num: u32,
     },
+}
+
+impl MappingKind {
+    fn for_each_term(&self, mut callback: impl FnMut(CovTerm)) {
+        match *self {
+            Self::Code(term) => callback(term),
+            Self::Gap(term) => callback(term),
+            Self::Expansion(_id) => {}
+            Self::Skip => {}
+            Self::Branch { r#true, r#false } => {
+                callback(r#true);
+                callback(r#false);
+            }
+            Self::MCDCBranch {
+                r#true,
+                r#false,
+                condition_id: _,
+                true_next_id: _,
+                false_next_id: _,
+            } => {
+                callback(r#true);
+                callback(r#false);
+            }
+            Self::MCDCDecision { bitmap_idx: _, conditions_num: _ } => {}
+        }
+    }
 }
 
 struct MappingRegion {

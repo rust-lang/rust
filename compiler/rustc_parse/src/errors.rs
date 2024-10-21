@@ -1756,6 +1756,14 @@ pub(crate) struct MissingFnParams {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_invalid_path_sep_in_fn_definition)]
+pub(crate) struct InvalidPathSepInFnDefinition {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_missing_trait_in_trait_impl)]
 pub(crate) struct MissingTraitInTraitImpl {
     #[primary_span]
@@ -2109,6 +2117,24 @@ pub(crate) enum UnknownPrefixSugg {
         end: Span,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_reserved_string)]
+#[note]
+pub(crate) struct ReservedString {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<GuardedStringSugg>,
+}
+#[derive(Subdiagnostic)]
+#[suggestion(
+    parse_suggestion_whitespace,
+    code = " ",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct GuardedStringSugg(#[primary_span] pub Span);
 
 #[derive(Diagnostic)]
 #[diag(parse_too_many_hashes)]
@@ -2572,6 +2598,25 @@ pub(crate) struct EnumPatternInsteadOfIdentifier {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_at_dot_dot_in_struct_pattern)]
+pub(crate) struct AtDotDotInStructPattern {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "", style = "verbose", applicability = "machine-applicable")]
+    pub remove: Span,
+    pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_at_in_struct_pattern)]
+#[note]
+#[help]
+pub(crate) struct AtInStructPattern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_dot_dot_dot_for_remaining_fields)]
 pub(crate) struct DotDotDotForRemainingFields {
     #[primary_span]
@@ -2589,6 +2634,7 @@ pub(crate) struct ExpectedCommaAfterPatternField {
 
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_expr_in_pat)]
+#[note]
 pub(crate) struct UnexpectedExpressionInPattern {
     /// The unexpected expr's span.
     #[primary_span]

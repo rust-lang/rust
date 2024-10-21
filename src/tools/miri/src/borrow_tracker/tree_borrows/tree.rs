@@ -12,18 +12,17 @@
 
 use std::{fmt, mem};
 
-use smallvec::SmallVec;
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::Span;
 use rustc_target::abi::Size;
+use smallvec::SmallVec;
 
-use crate::borrow_tracker::tree_borrows::{
-    Permission,
-    diagnostics::{self, NodeDebugInfo, TbError, TransitionError},
-    perms::PermTransition,
-    unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap},
+use crate::borrow_tracker::tree_borrows::Permission;
+use crate::borrow_tracker::tree_borrows::diagnostics::{
+    self, NodeDebugInfo, TbError, TransitionError,
 };
+use crate::borrow_tracker::tree_borrows::perms::PermTransition;
+use crate::borrow_tracker::tree_borrows::unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap};
 use crate::borrow_tracker::{GlobalState, ProtectorKind};
 use crate::*;
 
@@ -638,7 +637,7 @@ impl<'tcx> Tree {
         {
             perms.insert(idx, perm);
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Deallocation requires
@@ -675,7 +674,7 @@ impl<'tcx> Tree {
                             Ok(())
                         }
                     },
-                    |args: ErrHandlerArgs<'_, TransitionError>| -> InterpError<'tcx> {
+                    |args: ErrHandlerArgs<'_, TransitionError>| -> InterpErrorKind<'tcx> {
                         let ErrHandlerArgs { error_kind, conflicting_info, accessed_info } = args;
                         TbError {
                             conflicting_info,
@@ -689,7 +688,7 @@ impl<'tcx> Tree {
                     },
                 )?;
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// Map the per-node and per-location `LocationState::perform_access`
@@ -773,7 +772,7 @@ impl<'tcx> Tree {
         let err_handler = |perms_range: Range<u64>,
                            access_cause: diagnostics::AccessCause,
                            args: ErrHandlerArgs<'_, TransitionError>|
-         -> InterpError<'tcx> {
+         -> InterpErrorKind<'tcx> {
             let ErrHandlerArgs { error_kind, conflicting_info, accessed_info } = args;
             TbError {
                 conflicting_info,
@@ -828,7 +827,7 @@ impl<'tcx> Tree {
                 }
             }
         }
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -860,14 +859,15 @@ impl Tree {
     ) -> Option<UniIndex> {
         let node = self.nodes.get(idx).unwrap();
 
+        let [child_idx] = node.children[..] else { return None };
+
         // We never want to replace the root node, as it is also kept in `root_ptr_tags`.
-        if node.children.len() != 1 || live.contains(&node.tag) || node.parent.is_none() {
+        if live.contains(&node.tag) || node.parent.is_none() {
             return None;
         }
         // Since protected nodes are never GC'd (see `borrow_tracker::FrameExtra::visit_provenance`),
         // we know that `node` is not protected because otherwise `live` would
         // have contained `node.tag`.
-        let child_idx = node.children[0];
         let child = self.nodes.get(child_idx).unwrap();
         // Check that for that one child, `can_be_replaced_by_child` holds for the permission
         // on all locations.

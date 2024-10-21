@@ -40,7 +40,7 @@ use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,
     LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SplitDebuginfo,
+    SplitDebuginfo, current_apple_deployment_target,
 };
 use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, info, warn};
@@ -1087,16 +1087,19 @@ fn link_natively(
     let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
+        // Use system `strip` when running on host macOS.
+        // <https://github.com/rust-lang/rust/pull/130781>
+        let stripcmd = if cfg!(target_os = "macos") { "/usr/bin/strip" } else { "strip" };
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-S"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-S"))
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, "strip", out_filename, None)
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, None)
             }
             (Strip::None, _) => {}
         }
@@ -2404,6 +2407,8 @@ fn add_order_independent_options(
     // Take care of the flavors and CLI options requesting the `lld` linker.
     add_lld_args(cmd, sess, flavor, self_contained_components);
 
+    add_apple_link_args(cmd, sess, flavor);
+
     let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
 
     add_link_script(cmd, sess, tmpdir, crate_type);
@@ -2487,7 +2492,7 @@ fn add_order_independent_options(
         }
     }
 
-    cmd.set_output_kind(link_output_kind, out_filename);
+    cmd.set_output_kind(link_output_kind, crate_type, out_filename);
 
     add_relro_args(cmd, sess);
 
@@ -2953,6 +2958,169 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
             !sess.opts.cg.linker_plugin_lto.enabled()
         }
         config::Lto::No | config::Lto::ThinLocal => false,
+    }
+}
+
+/// We need to communicate five things to the linker on Apple/Darwin targets:
+/// - The architecture.
+/// - The operating system (and that it's an Apple platform).
+/// - The environment / ABI.
+/// - The deployment target.
+/// - The SDK version.
+fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    if !sess.target.is_like_osx {
+        return;
+    }
+    let LinkerFlavor::Darwin(cc, _) = flavor else {
+        return;
+    };
+
+    // `sess.target.arch` (`target_arch`) is not detailed enough.
+    let llvm_arch = sess.target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
+    let target_os = &*sess.target.os;
+    let target_abi = &*sess.target.abi;
+
+    // The architecture name to forward to the linker.
+    //
+    // Supported architecture names can be found in the source:
+    // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
+    //
+    // Intentially verbose to ensure that the list always matches correctly
+    // with the list in the source above.
+    let ld64_arch = match llvm_arch {
+        "armv7k" => "armv7k",
+        "armv7s" => "armv7s",
+        "arm64" => "arm64",
+        "arm64e" => "arm64e",
+        "arm64_32" => "arm64_32",
+        // ld64 doesn't understand i686, so fall back to i386 instead.
+        //
+        // Same story when linking with cc, since that ends up invoking ld64.
+        "i386" | "i686" => "i386",
+        "x86_64" => "x86_64",
+        "x86_64h" => "x86_64h",
+        _ => bug!("unsupported architecture in Apple target: {}", sess.target.llvm_target),
+    };
+
+    if cc == Cc::No {
+        // From the man page for ld64 (`man ld`):
+        // > The linker accepts universal (multiple-architecture) input files,
+        // > but always creates a "thin" (single-architecture), standard
+        // > Mach-O output file. The architecture for the output file is
+        // > specified using the -arch option.
+        //
+        // The linker has heuristics to determine the desired architecture,
+        // but to be safe, and to avoid a warning, we set the architecture
+        // explicitly.
+        cmd.link_args(&["-arch", ld64_arch]);
+
+        // Man page says that ld64 supports the following platform names:
+        // > - macos
+        // > - ios
+        // > - tvos
+        // > - watchos
+        // > - bridgeos
+        // > - visionos
+        // > - xros
+        // > - mac-catalyst
+        // > - ios-simulator
+        // > - tvos-simulator
+        // > - watchos-simulator
+        // > - visionos-simulator
+        // > - xros-simulator
+        // > - driverkit
+        let platform_name = match (target_os, target_abi) {
+            (os, "") => os,
+            ("ios", "macabi") => "mac-catalyst",
+            ("ios", "sim") => "ios-simulator",
+            ("tvos", "sim") => "tvos-simulator",
+            ("watchos", "sim") => "watchos-simulator",
+            ("visionos", "sim") => "visionos-simulator",
+            _ => bug!("invalid OS/ABI combination for Apple target: {target_os}, {target_abi}"),
+        };
+
+        let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+        let min_version = format!("{major}.{minor}.{patch}");
+
+        // The SDK version is used at runtime when compiling with a newer SDK / version of Xcode:
+        // - By dyld to give extra warnings and errors, see e.g.:
+        //   <https://github.com/apple-oss-distributions/dyld/blob/dyld-1165.3/common/MachOFile.cpp#L3029>
+        //   <https://github.com/apple-oss-distributions/dyld/blob/dyld-1165.3/common/MachOFile.cpp#L3738-L3857>
+        // - By system frameworks to change certain behaviour. For example, the default value of
+        //   `-[NSView wantsBestResolutionOpenGLSurface]` is `YES` when the SDK version is >= 10.15.
+        //   <https://developer.apple.com/documentation/appkit/nsview/1414938-wantsbestresolutionopenglsurface?language=objc>
+        //
+        // We do not currently know the actual SDK version though, so we have a few options:
+        // 1. Use the minimum version supported by rustc.
+        // 2. Use the same as the deployment target.
+        // 3. Use an arbitary recent version.
+        // 4. Omit the version.
+        //
+        // The first option is too low / too conservative, and means that users will not get the
+        // same behaviour from a binary compiled with rustc as with one compiled by clang.
+        //
+        // The second option is similarly conservative, and also wrong since if the user specified a
+        // higher deployment target than the SDK they're compiling/linking with, the runtime might
+        // make invalid assumptions about the capabilities of the binary.
+        //
+        // The third option requires that `rustc` is periodically kept up to date with Apple's SDK
+        // version, and is also wrong for similar reasons as above.
+        //
+        // The fourth option is bad because while `ld`, `otool`, `vtool` and such understand it to
+        // mean "absent" or `n/a`, dyld doesn't actually understand it, and will end up interpreting
+        // it as 0.0, which is again too low/conservative.
+        //
+        // Currently, we lie about the SDK version, and choose the second option.
+        //
+        // FIXME(madsmtm): Parse the SDK version from the SDK root instead.
+        // <https://github.com/rust-lang/rust/issues/129432>
+        let sdk_version = &*min_version;
+
+        // From the man page for ld64 (`man ld`):
+        // > This is set to indicate the platform, oldest supported version of
+        // > that platform that output is to be used on, and the SDK that the
+        // > output was built against.
+        //
+        // Like with `-arch`, the linker can figure out the platform versions
+        // itself from the binaries being linked, but to be safe, we specify
+        // the desired versions here explicitly.
+        cmd.link_args(&["-platform_version", platform_name, &*min_version, sdk_version]);
+    } else {
+        // cc == Cc::Yes
+        //
+        // We'd _like_ to use `-target` everywhere, since that can uniquely
+        // communicate all the required details except for the SDK version
+        // (which is read by Clang itself from the SDKROOT), but that doesn't
+        // work on GCC, and since we don't know whether the `cc` compiler is
+        // Clang, GCC, or something else, we fall back to other options that
+        // also work on GCC when compiling for macOS.
+        //
+        // Targets other than macOS are ill-supported by GCC (it doesn't even
+        // support e.g. `-miphoneos-version-min`), so in those cases we can
+        // fairly safely use `-target`. See also the following, where it is
+        // made explicit that the recommendation by LLVM developers is to use
+        // `-target`: <https://github.com/llvm/llvm-project/issues/88271>
+        if target_os == "macos" {
+            // `-arch` communicates the architecture.
+            //
+            // CC forwards the `-arch` to the linker, so we use the same value
+            // here intentionally.
+            cmd.cc_args(&["-arch", ld64_arch]);
+
+            // The presence of `-mmacosx-version-min` makes CC default to
+            // macOS, and it sets the deployment target.
+            let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+            // Intentionally pass this as a single argument, Clang doesn't
+            // seem to like it otherwise.
+            cmd.cc_arg(&format!("-mmacosx-version-min={major}.{minor}.{patch}"));
+
+            // macOS has no environment, so with these two, we've told CC the
+            // four desired parameters.
+            //
+            // We avoid `-m32`/`-m64`, as this is already encoded by `-arch`.
+        } else {
+            cmd.cc_args(&["-target", &sess.target.llvm_target]);
+        }
     }
 }
 

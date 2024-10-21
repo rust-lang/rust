@@ -14,7 +14,7 @@ mod utils;
 
 use clippy_config::Conf;
 use clippy_config::msrvs::{self, Msrv};
-use rustc_ast::{Attribute, MetaItemKind, NestedMetaItem};
+use rustc_ast::{Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -456,7 +456,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     return;
                 }
                 for item in items {
-                    if let NestedMetaItem::MetaItem(mi) = &item
+                    if let MetaItemInner::MetaItem(mi) = &item
                         && let MetaItemKind::NameValue(lit) = &mi.kind
                         && mi.has_name(sym::since)
                     {

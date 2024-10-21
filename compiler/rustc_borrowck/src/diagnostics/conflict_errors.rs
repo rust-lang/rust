@@ -708,9 +708,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // for the branching codepaths that aren't covered, to point at them.
         let map = self.infcx.tcx.hir();
         let body = map.body_owned_by(self.mir_def_id());
-        let mut visitor =
-            ConditionVisitor { tcx: self.infcx.tcx, spans: &spans, name: &name, errors: vec![] };
+        let mut visitor = ConditionVisitor { tcx: self.infcx.tcx, spans, name, errors: vec![] };
         visitor.visit_body(&body);
+        let spans = visitor.spans;
 
         let mut show_assign_sugg = false;
         let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
@@ -4465,20 +4465,20 @@ impl<'hir> Visitor<'hir> for BreakFinder {
 
 /// Given a set of spans representing statements initializing the relevant binding, visit all the
 /// function expressions looking for branching code paths that *do not* initialize the binding.
-struct ConditionVisitor<'b, 'tcx> {
+struct ConditionVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    spans: &'b [Span],
-    name: &'b str,
+    spans: Vec<Span>,
+    name: String,
     errors: Vec<(Span, String)>,
 }
 
-impl<'b, 'v, 'tcx> Visitor<'v> for ConditionVisitor<'b, 'tcx> {
+impl<'v, 'tcx> Visitor<'v> for ConditionVisitor<'tcx> {
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
         match ex.kind {
             hir::ExprKind::If(cond, body, None) => {
                 // `if` expressions with no `else` that initialize the binding might be missing an
                 // `else` arm.
-                if ReferencedStatementsVisitor(self.spans).visit_expr(body).is_break() {
+                if ReferencedStatementsVisitor(&self.spans).visit_expr(body).is_break() {
                     self.errors.push((
                         cond.span,
                         format!(
@@ -4495,8 +4495,8 @@ impl<'b, 'v, 'tcx> Visitor<'v> for ConditionVisitor<'b, 'tcx> {
             hir::ExprKind::If(cond, body, Some(other)) => {
                 // `if` expressions where the binding is only initialized in one of the two arms
                 // might be missing a binding initialization.
-                let a = ReferencedStatementsVisitor(self.spans).visit_expr(body).is_break();
-                let b = ReferencedStatementsVisitor(self.spans).visit_expr(other).is_break();
+                let a = ReferencedStatementsVisitor(&self.spans).visit_expr(body).is_break();
+                let b = ReferencedStatementsVisitor(&self.spans).visit_expr(other).is_break();
                 match (a, b) {
                     (true, true) | (false, false) => {}
                     (true, false) => {
@@ -4536,7 +4536,7 @@ impl<'b, 'v, 'tcx> Visitor<'v> for ConditionVisitor<'b, 'tcx> {
                 // arms might be missing an initialization.
                 let results: Vec<bool> = arms
                     .iter()
-                    .map(|arm| ReferencedStatementsVisitor(self.spans).visit_arm(arm).is_break())
+                    .map(|arm| ReferencedStatementsVisitor(&self.spans).visit_arm(arm).is_break())
                     .collect();
                 if results.iter().any(|x| *x) && !results.iter().all(|x| *x) {
                     for (arm, seen) in arms.iter().zip(results) {

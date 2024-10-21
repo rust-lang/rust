@@ -34,6 +34,7 @@ Number of file 0 mappings: 12
     = ((((Zero + c2) + c3) + c4) + c5)
 - Code(Expression(4, Add)) at (prev + 3, 5) to (start + 1, 2)
     = ((((((((Zero + c2) + c3) + c4) + c5) + c6) + c7) + c8) + c9)
+Highest counter ID seen: c10
 
 Function name: match_arms::match_arms
 Raw bytes (51): 0x[01, 01, 06, 05, 07, 0b, 11, 09, 0d, 13, 02, 17, 09, 11, 0d, 07, 01, 18, 01, 01, 10, 05, 03, 0b, 00, 10, 11, 01, 11, 00, 21, 0d, 01, 11, 00, 21, 09, 01, 11, 00, 21, 02, 01, 11, 00, 21, 0f, 03, 05, 01, 02]
@@ -56,6 +57,7 @@ Number of file 0 mappings: 7
     = (c1 - ((c2 + c3) + c4))
 - Code(Expression(3, Add)) at (prev + 3, 5) to (start + 1, 2)
     = (((c4 + c3) + c2) + (c1 - ((c2 + c3) + c4)))
+Highest counter ID seen: c4
 
 Function name: match_arms::or_patterns
 Raw bytes (75): 0x[01, 01, 0d, 11, 0d, 05, 2f, 33, 11, 09, 0d, 09, 2a, 05, 2f, 33, 11, 09, 0d, 03, 27, 09, 2a, 05, 2f, 33, 11, 09, 0d, 09, 01, 25, 01, 01, 10, 05, 03, 0b, 00, 10, 11, 01, 11, 00, 12, 0d, 00, 1e, 00, 1f, 03, 00, 24, 00, 2e, 09, 01, 11, 00, 12, 2a, 00, 1e, 00, 1f, 27, 00, 24, 00, 2e, 23, 03, 05, 01, 02]
@@ -89,4 +91,5 @@ Number of file 0 mappings: 9
     = (c2 + (c1 - ((c2 + c3) + c4)))
 - Code(Expression(8, Add)) at (prev + 3, 5) to (start + 1, 2)
     = ((c4 + c3) + (c2 + (c1 - ((c2 + c3) + c4))))
+Highest counter ID seen: c4
 

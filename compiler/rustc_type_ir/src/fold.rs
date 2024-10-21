@@ -48,6 +48,7 @@
 use std::mem;
 
 use rustc_index::{Idx, IndexVec};
+use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::data_structures::Lrc;
@@ -317,6 +318,12 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<T> {
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Vec<T> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        self.into_iter().map(|t| t.try_fold_with(folder)).collect()
+    }
+}
+
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for ThinVec<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.into_iter().map(|t| t.try_fold_with(folder)).collect()
     }

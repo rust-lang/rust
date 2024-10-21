@@ -1,0 +1,74 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/missing-for-type-in-impl.rs:8:6
+   |
+LL | impl Foo<i64> {
+   |      ^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | impl dyn Foo<i64> {
+   |      +++
+help: you might have intended to implement this trait for a given type
+   |
+LL | impl Foo<i64> for /* Type */ {
+   |               ++++++++++++++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/missing-for-type-in-impl.rs:8:6
+   |
+LL | impl Foo<i64> {
+   |      ^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | impl dyn Foo<i64> {
+   |      +++
+help: you might have intended to implement this trait for a given type
+   |
+LL | impl Foo<i64> for /* Type */ {
+   |               ++++++++++++++
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/missing-for-type-in-impl.rs:8:6
+   |
+LL | impl Foo<i64> {
+   |      ^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/missing-for-type-in-impl.rs:4:8
+   |
+LL | trait Foo<T> {
+   |       --- this trait cannot be made into an object...
+LL |     fn id(me: T) -> T;
+   |        ^^ ...because associated function `id` has no `self` parameter
+help: consider turning `id` into a method by giving it a `&self` argument
+   |
+LL |     fn id(&self, me: T) -> T;
+   |           ++++++
+help: alternatively, consider constraining `id` so it does not apply to trait objects
+   |
+LL |     fn id(me: T) -> T where Self: Sized;
+   |                       +++++++++++++++++
+
+error[E0277]: the trait bound `i64: Foo<i64>` is not satisfied
+  --> $DIR/missing-for-type-in-impl.rs:19:19
+   |
+LL |     let x: i64 = <i64 as Foo<i64>>::id(10);
+   |                   ^^^ the trait `Foo<i64>` is not implemented for `i64`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/missing-for-type-in-impl.rs:3:1
+   |
+LL | trait Foo<T> {
+   | ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.

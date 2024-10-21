@@ -10,7 +10,7 @@ use hir_expand::proc_macro::{
     ProcMacros,
 };
 use ide_db::{
-    base_db::{CrateGraph, Env, SourceRoot, SourceRootId},
+    base_db::{CrateGraph, CrateWorkspaceData, Env, SourceRoot, SourceRootId},
     prime_caches, ChangeWithProcMacros, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
@@ -265,6 +265,11 @@ impl ProjectFolders {
                 entries.push(manifest.to_owned());
             }
 
+            for buildfile in ws.buildfiles() {
+                file_set_roots.push(VfsPath::from(buildfile.to_owned()));
+                entries.push(buildfile.to_owned());
+            }
+
             // In case of detached files we do **not** look for a rust-analyzer.toml.
             if !matches!(ws.kind, ProjectWorkspaceKind::DetachedFile { .. }) {
                 let ws_root = ws.workspace_root();
@@ -447,12 +452,16 @@ fn load_crate_graph(
     let source_roots = source_root_config.partition(vfs);
     analysis_change.set_roots(source_roots);
 
-    let num_crates = crate_graph.len();
-    analysis_change.set_crate_graph(crate_graph);
+    let ws_data = crate_graph
+        .iter()
+        .zip(iter::repeat(From::from(CrateWorkspaceData {
+            proc_macro_cwd: None,
+            data_layout: target_layout.clone(),
+            toolchain: toolchain.clone(),
+        })))
+        .collect();
+    analysis_change.set_crate_graph(crate_graph, ws_data);
     analysis_change.set_proc_macros(proc_macros);
-    analysis_change
-        .set_target_data_layouts(iter::repeat(target_layout.clone()).take(num_crates).collect());
-    analysis_change.set_toolchains(iter::repeat(toolchain.clone()).take(num_crates).collect());
 
     db.apply_change(analysis_change);
     db
@@ -489,8 +498,17 @@ impl ProcMacroExpander for Expander {
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
+        current_dir: Option<String>,
     ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        match self.0.expand(subtree, attrs, env.clone(), def_site, call_site, mixed_site) {
+        match self.0.expand(
+            subtree,
+            attrs,
+            env.clone(),
+            def_site,
+            call_site,
+            mixed_site,
+            current_dir,
+        ) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
@@ -508,7 +526,7 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let cargo_config = CargoConfig::default();
+        let cargo_config = CargoConfig { set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,

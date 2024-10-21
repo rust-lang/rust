@@ -100,7 +100,14 @@ pub struct BodySourceMap {
     field_map_back: FxHashMap<ExprId, FieldSource>,
     pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
-    format_args_template_map: FxHashMap<ExprId, Vec<(syntax::TextRange, Name)>>,
+    template_map: Option<
+        Box<(
+            // format_args!
+            FxHashMap<ExprId, Vec<(syntax::TextRange, Name)>>,
+            // asm!
+            FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
+        )>,
+    >,
 
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, MacroFileId>,
 
@@ -218,6 +225,17 @@ impl Body {
         edition: Edition,
     ) -> String {
         pretty::print_expr_hir(db, self, owner, expr, edition)
+    }
+
+    pub fn pretty_print_pat(
+        &self,
+        db: &dyn DefDatabase,
+        owner: DefWithBodyId,
+        pat: PatId,
+        oneline: bool,
+        edition: Edition,
+    ) -> String {
+        pretty::print_pat_hir(db, self, owner, pat, oneline, edition)
     }
 
     fn new(
@@ -426,7 +444,16 @@ impl BodySourceMap {
         node: InFile<&ast::FormatArgsExpr>,
     ) -> Option<&[(syntax::TextRange, Name)]> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
-        self.format_args_template_map.get(self.expr_map.get(&src)?).map(std::ops::Deref::deref)
+        self.template_map.as_ref()?.0.get(self.expr_map.get(&src)?).map(std::ops::Deref::deref)
+    }
+
+    pub fn asm_template_args(
+        &self,
+        node: InFile<&ast::AsmExpr>,
+    ) -> Option<(ExprId, &[Vec<(syntax::TextRange, usize)>])> {
+        let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
+        let expr = self.expr_map.get(&src)?;
+        Some(*expr).zip(self.template_map.as_ref()?.1.get(expr).map(std::ops::Deref::deref))
     }
 
     /// Get a reference to the body source map's diagnostics.
@@ -446,11 +473,14 @@ impl BodySourceMap {
             field_map_back,
             pat_field_map_back,
             expansions,
-            format_args_template_map,
+            template_map,
             diagnostics,
             binding_definitions,
         } = self;
-        format_args_template_map.shrink_to_fit();
+        if let Some(template_map) = template_map {
+            template_map.0.shrink_to_fit();
+            template_map.1.shrink_to_fit();
+        }
         expr_map.shrink_to_fit();
         expr_map_back.shrink_to_fit();
         pat_map.shrink_to_fit();
@@ -462,5 +492,14 @@ impl BodySourceMap {
         expansions.shrink_to_fit();
         diagnostics.shrink_to_fit();
         binding_definitions.shrink_to_fit();
+    }
+
+    pub fn template_map(
+        &self,
+    ) -> Option<&(
+        FxHashMap<Idx<Expr>, Vec<(tt::TextRange, Name)>>,
+        FxHashMap<Idx<Expr>, Vec<Vec<(tt::TextRange, usize)>>>,
+    )> {
+        self.template_map.as_deref()
     }
 }

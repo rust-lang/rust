@@ -4,7 +4,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL | fn f(_arg : Box<dyn for<'a> Foo<A<'a> = &'a ()>>) {}
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/gat-in-trait-path.rs:10:10
    |
 LL | trait Foo {
@@ -22,7 +22,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL |   f(Box::new(foo));
    |     ^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/gat-in-trait-path.rs:10:10
    |
 LL | trait Foo {
@@ -40,7 +40,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL |   f(Box::new(foo));
    |     ^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/gat-in-trait-path.rs:10:10
    |
 LL | trait Foo {

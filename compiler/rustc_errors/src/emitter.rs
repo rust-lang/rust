@@ -211,7 +211,7 @@ pub trait Emitter: Translate {
         false
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMap>>;
+    fn source_map(&self) -> Option<&SourceMap>;
 
     /// Formats the substitutions of the primary_span
     ///
@@ -487,8 +487,8 @@ pub trait Emitter: Translate {
 }
 
 impl Translate for HumanEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
+    fn fluent_bundle(&self) -> Option<&FluentBundle> {
+        self.fluent_bundle.as_deref()
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
@@ -497,8 +497,8 @@ impl Translate for HumanEmitter {
 }
 
 impl Emitter for HumanEmitter {
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
-        self.sm.as_ref()
+    fn source_map(&self) -> Option<&SourceMap> {
+        self.sm.as_deref()
     }
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
@@ -546,7 +546,7 @@ pub struct SilentEmitter {
 }
 
 impl Translate for SilentEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+    fn fluent_bundle(&self) -> Option<&FluentBundle> {
         None
     }
 
@@ -558,7 +558,7 @@ impl Translate for SilentEmitter {
 }
 
 impl Emitter for SilentEmitter {
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+    fn source_map(&self) -> Option<&SourceMap> {
         None
     }
 

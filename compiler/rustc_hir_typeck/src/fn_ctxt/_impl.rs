@@ -165,16 +165,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn write_field_index(
-        &self,
-        hir_id: HirId,
-        index: FieldIdx,
-        nested_fields: Vec<(Ty<'tcx>, FieldIdx)>,
-    ) {
+    pub(crate) fn write_field_index(&self, hir_id: HirId, index: FieldIdx) {
         self.typeck_results.borrow_mut().field_indices_mut().insert(hir_id, index);
-        if !nested_fields.is_empty() {
-            self.typeck_results.borrow_mut().nested_fields_mut().insert(hir_id, nested_fields);
-        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -187,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn write_method_call_and_enforce_effects(
+    pub(crate) fn write_method_call_and_enforce_effects(
         &self,
         hir_id: HirId,
         span: Span,
@@ -214,7 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// occurred**, so that annotations like `Vec<_>` are preserved
     /// properly.
     #[instrument(skip(self), level = "debug")]
-    pub fn write_user_type_annotation_from_args(
+    pub(crate) fn write_user_type_annotation_from_args(
         &self,
         hir_id: HirId,
         def_id: DefId,
@@ -235,7 +227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub fn write_user_type_annotation(
+    pub(crate) fn write_user_type_annotation(
         &self,
         hir_id: HirId,
         canonical_user_type_annotation: CanonicalUserType<'tcx>,
@@ -254,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self, expr), level = "debug")]
-    pub fn apply_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
+    pub(crate) fn apply_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
         debug!("expr = {:#?}", expr);
 
         if adj.is_empty() {
@@ -448,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn lower_ty_saving_user_provided_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn lower_ty_saving_user_provided_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.lower_ty(hir_ty);
         debug!(?ty);
 
@@ -736,7 +728,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
     #[instrument(level = "trace", skip(self), ret)]
-    pub fn resolve_ty_and_res_fully_qualified_call(
+    pub(crate) fn resolve_ty_and_res_fully_qualified_call(
         &self,
         qpath: &'tcx QPath<'tcx>,
         hir_id: HirId,
@@ -757,7 +749,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // give us a `QPath::TypeRelative` with a trait object as
                 // `qself`. In that case, we want to avoid registering a WF obligation
                 // for `dyn MyTrait`, since we don't actually need the trait
-                // to be object-safe.
+                // to be dyn-compatible.
                 // We manually call `register_wf_obligation` in the success path
                 // below.
                 let ty = self.lowerer().lower_ty(qself);
@@ -995,7 +987,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     #[instrument(skip(self, span), level = "debug")]
-    pub fn instantiate_value_path(
+    pub(crate) fn instantiate_value_path(
         &self,
         segments: &'tcx [hir::PathSegment<'tcx>],
         self_ty: Option<LoweredTy<'tcx>>,
@@ -1446,7 +1438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// variable. This is different from `structurally_resolve_type` which errors
     /// in this case.
     #[instrument(level = "debug", skip(self, sp), ret)]
-    pub fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.resolve_vars_with_obligations(ty);
 
         if self.next_trait_solver()
@@ -1471,7 +1463,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, sp), ret)]
-    pub fn try_structurally_resolve_const(&self, sp: Span, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+    pub(crate) fn try_structurally_resolve_const(
+        &self,
+        sp: Span,
+        ct: ty::Const<'tcx>,
+    ) -> ty::Const<'tcx> {
         // FIXME(min_const_generic_exprs): We could process obligations here if `ct` is a var.
 
         if self.next_trait_solver()
@@ -1491,7 +1487,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         } else if self.tcx.features().generic_const_exprs {
-            ct.normalize(self.tcx, self.param_env)
+            ct.normalize_internal(self.tcx, self.param_env)
         } else {
             ct
         }

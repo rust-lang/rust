@@ -20,7 +20,7 @@ use crate::visit::DocVisitor;
 
 pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
     name: "check_doc_test_visibility",
-    run: check_doc_test_visibility,
+    run: Some(check_doc_test_visibility),
     description: "run various visibility-related lints on doctests",
 };
 
@@ -34,7 +34,7 @@ pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -
     krate
 }
 
-impl<'a, 'tcx> DocVisitor for DocTestVisibilityLinter<'a, 'tcx> {
+impl<'a, 'tcx> DocVisitor<'_> for DocTestVisibilityLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         look_for_tests(self.cx, &item.doc_value(), item);
 

@@ -1,43 +1,33 @@
 //! Global machine state as well as implementation of the interpreter engine
 //! `Machine` trait.
 
+use std::any::Any;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
-use std::fmt;
 use std::path::Path;
-use std::process;
+use std::{fmt, process};
 
-use rand::Rng;
-use rand::SeedableRng;
 use rand::rngs::StdRng;
-
+use rand::{Rng, SeedableRng};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
-use rustc_middle::{
-    mir,
-    query::TyCtxtAt,
-    ty::{
-        self, Instance, Ty, TyCtxt,
-        layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout},
-    },
-};
+use rustc_middle::mir;
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
-use crate::{
-    concurrency::{
-        cpu_affinity::{self, CpuAffinityMask},
-        data_race::{self, NaReadType, NaWriteType},
-        weak_memory,
-    },
-    *,
-};
+use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
+use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
+use crate::concurrency::weak_memory;
+use crate::*;
 
 /// First real-time signal.
 /// `signal(7)` says this must be between 32 and 64 and specifies 34 or 35
@@ -332,7 +322,7 @@ impl ProvenanceExtra {
 }
 
 /// Extra per-allocation data
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AllocExtra<'tcx> {
     /// Global state of the borrow tracker, if enabled.
     pub borrow_tracker: Option<borrow_tracker::AllocState>,
@@ -347,11 +337,24 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
+    /// Synchronization primitives like to attach extra data to particular addresses. We store that
+    /// inside the relevant allocation, to ensure that everything is removed when the allocation is
+    /// freed.
+    /// This maps offsets to synchronization-primitive-specific data.
+    pub sync: FxHashMap<Size, Box<dyn Any>>,
+}
+
+// We need a `Clone` impl because the machine passes `Allocation` through `Cow`...
+// but that should never end up actually cloning our `AllocExtra`.
+impl<'tcx> Clone for AllocExtra<'tcx> {
+    fn clone(&self) -> Self {
+        panic!("our allocations should never be cloned");
+    }
 }
 
 impl VisitProvenance for AllocExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _ } = self;
+        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _, sync: _ } = self;
 
         borrow_tracker.visit_provenance(visit);
         data_race.visit_provenance(visit);
@@ -506,11 +509,6 @@ pub struct MiriMachine<'tcx> {
     /// Cache of `Instance` exported under the given `Symbol` name.
     /// `None` means no `Instance` exported under the given name is found.
     pub(crate) exported_symbols_cache: FxHashMap<Symbol, Option<Instance<'tcx>>>,
-
-    /// Whether to raise a panic in the context of the evaluated process when unsupported
-    /// functionality is encountered. If `false`, an error is propagated in the Miri application context
-    /// instead (default behavior)
-    pub(crate) panic_on_unsupported: bool,
 
     /// Equivalent setting as RUST_BACKTRACE on encountering an error.
     pub(crate) backtrace_style: BacktraceStyle,
@@ -678,7 +676,6 @@ impl<'tcx> MiriMachine<'tcx> {
             profiler,
             string_cache: Default::default(),
             exported_symbols_cache: FxHashMap::default(),
-            panic_on_unsupported: config.panic_on_unsupported,
             backtrace_style: config.backtrace_style,
             local_crates,
             extern_statics: FxHashMap::default(),
@@ -741,7 +738,7 @@ impl<'tcx> MiriMachine<'tcx> {
         EnvVars::init(this, config)?;
         MiriMachine::init_extern_statics(this)?;
         ThreadManager::init(this, on_main_stack_empty);
-        Ok(())
+        interp_ok(())
     }
 
     pub(crate) fn add_extern_static(this: &mut MiriInterpCx<'tcx>, name: &str, ptr: Pointer) {
@@ -818,7 +815,6 @@ impl VisitProvenance for MiriMachine<'_> {
             profiler: _,
             string_cache: _,
             exported_symbols_cache: _,
-            panic_on_unsupported: _,
             backtrace_style: _,
             local_crates: _,
             rng: _,
@@ -1003,7 +999,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 throw_ub_format!("{msg}");
             }
         }
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -1030,7 +1026,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
 
         // Otherwise, load the MIR.
-        Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
+        interp_ok(Some((ecx.load_mir(instance.def, None)?, instance)))
     }
 
     #[inline(always)]
@@ -1083,7 +1079,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             ret: None,
             unwind: mir::UnwindAction::Unreachable,
         })?;
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -1108,7 +1104,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
-        Ok(ecx.tcx.sess.ub_checks())
+        interp_ok(ecx.tcx.sess.ub_checks())
     }
 
     fn thread_local_static_pointer(
@@ -1147,7 +1143,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                     shim_align = shim_align.bytes(),
                 )
             }
-            Ok(ptr)
+            interp_ok(ptr)
         } else {
             throw_unsup_format!("extern static `{link_name}` is not supported by Miri",)
         }
@@ -1197,7 +1193,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 .insert(id, (ecx.machine.current_span(), None));
         }
 
-        Ok(AllocExtra { borrow_tracker, data_race, weak_memory, backtrace })
+        interp_ok(AllocExtra {
+            borrow_tracker,
+            data_race,
+            weak_memory,
+            backtrace,
+            sync: FxHashMap::default(),
+        })
     }
 
     fn adjust_alloc_root_pointer(
@@ -1244,7 +1246,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
                 // their provenances have already been previously exposed.
-                Ok(())
+                interp_ok(())
             }
         }
     }
@@ -1297,7 +1299,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             |ptr| ecx.global_root_pointer(ptr),
         )?;
         let extra = Self::init_alloc_extra(ecx, id, kind, alloc.size(), alloc.align)?;
-        Ok(Cow::Owned(alloc.with_extra(extra)))
+        interp_ok(Cow::Owned(alloc.with_extra(extra)))
     }
 
     #[inline(always)]
@@ -1321,7 +1323,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if let Some(weak_memory) = &alloc_extra.weak_memory {
             weak_memory.memory_accessed(range, machine.data_race.as_ref().unwrap());
         }
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -1345,7 +1347,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if let Some(weak_memory) = &alloc_extra.weak_memory {
             weak_memory.memory_accessed(range, machine.data_race.as_ref().unwrap());
         }
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -1378,7 +1380,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             *deallocated_at = Some(machine.current_span());
         }
         machine.free_alloc_id(alloc_id, size, align, kind);
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -1390,7 +1392,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.retag_ptr_value(kind, val)
         } else {
-            Ok(val.clone())
+            interp_ok(val.clone())
         }
     }
 
@@ -1403,7 +1405,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.retag_place_contents(kind, place)?;
         }
-        Ok(())
+        interp_ok(())
     }
 
     fn protect_in_place_function_argument(
@@ -1424,7 +1426,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Conveniently this also ensures that the place actually points to suitable memory.
         ecx.write_uninit(&protected_place)?;
         // Now we throw away the protected place, ensuring its tag is never used again.
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -1458,7 +1460,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             data_race: ecx.machine.data_race.as_ref().map(|_| data_race::FrameState::default()),
         };
 
-        Ok(frame.with_extra(extra))
+        interp_ok(frame.with_extra(extra))
     }
 
     fn stack<'a>(
@@ -1500,7 +1502,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Make sure some time passes.
         ecx.machine.clock.tick();
 
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -1511,7 +1513,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             let stack_len = ecx.active_thread_stack().len();
             ecx.active_thread_mut().set_top_user_relevant_frame(stack_len - 1);
         }
-        Ok(())
+        interp_ok(())
     }
 
     fn before_stack_pop(
@@ -1527,7 +1529,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // concurrency and what it prints is just plain wrong. So we print our own information
         // instead. (Cc https://github.com/rust-lang/miri/issues/2266)
         info!("Leaving {}", ecx.frame().instance());
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
@@ -1565,7 +1567,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if let Some(data_race) = &ecx.frame().extra.data_race {
             data_race.local_read(local, &ecx.machine);
         }
-        Ok(())
+        interp_ok(())
     }
 
     fn after_local_write(
@@ -1576,7 +1578,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if let Some(data_race) = &ecx.frame().extra.data_race {
             data_race.local_write(local, storage_live, &ecx.machine);
         }
-        Ok(())
+        interp_ok(())
     }
 
     fn after_local_moved_to_memory(
@@ -1598,7 +1600,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         {
             data_race.local_moved_to_memory(local, alloc_info.data_race.as_mut().unwrap(), machine);
         }
-        Ok(())
+        interp_ok(())
     }
 
     fn eval_mir_constant<F>(
@@ -1622,9 +1624,9 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             Entry::Vacant(ve) => {
                 let op = eval(ecx, val, span, layout)?;
                 ve.insert(op.clone());
-                Ok(op)
+                interp_ok(op)
             }
-            Entry::Occupied(oe) => Ok(oe.get().clone()),
+            Entry::Occupied(oe) => interp_ok(oe.get().clone()),
         }
     }
 

@@ -9,6 +9,7 @@ impl<T, I> SpecFromIter<T, I> for VecDeque<T>
 where
     I: Iterator<Item = T>,
 {
+    #[track_caller]
     default fn spec_from_iter(iterator: I) -> Self {
         // Since converting is O(1) now, just re-use the `Vec` logic for
         // anything where we can't do something extra-special for `VecDeque`,

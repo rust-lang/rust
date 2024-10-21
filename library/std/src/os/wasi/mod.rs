@@ -36,6 +36,8 @@
 pub mod ffi;
 pub mod fs;
 pub mod io;
+
+#[cfg(all(target_os = "wasi", target_env = "p1"))]
 pub mod net;
 
 /// A prelude for conveniently writing platform-specific code.

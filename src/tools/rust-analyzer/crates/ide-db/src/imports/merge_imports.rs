@@ -614,7 +614,7 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
                 (Some(_), None) => Ordering::Greater,
                 (None, Some(_)) => Ordering::Less,
                 (Some(a_name), Some(b_name)) => {
-                    // snake_case < CamelCase < UPPER_SNAKE_CASE
+                    // snake_case < UpperCamelCase < UPPER_SNAKE_CASE
                     let a_text = a_name.as_str().trim_start_matches("r#");
                     let b_text = b_name.as_str().trim_start_matches("r#");
                     if a_text.starts_with(char::is_lowercase)

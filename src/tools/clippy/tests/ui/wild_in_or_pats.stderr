@@ -32,5 +32,21 @@ LL |         _ | "bar" => {
    |
    = help: consider handling `_` separately
 
-error: aborting due to 4 previous errors
+error: wildcard pattern covers any other pattern as it will match anyway
+  --> tests/ui/wild_in_or_pats.rs:69:9
+   |
+LL |         ExhaustiveEnum::Quit | _ => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+
+error: wildcard pattern covers any other pattern as it will match anyway
+  --> tests/ui/wild_in_or_pats.rs:104:9
+   |
+LL |         ExhaustiveStruct { x: 1, y: 1 } | _ => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+
+error: aborting due to 6 previous errors
 

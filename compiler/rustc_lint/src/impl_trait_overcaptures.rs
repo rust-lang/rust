@@ -258,9 +258,9 @@ where
             && self.seen.insert(opaque_def_id)
             // If it's owned by this function
             && let opaque =
-                self.tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty()
-            && let hir::OpaqueTyOrigin::FnReturn(parent_def_id) = opaque.origin
-            && parent_def_id == self.parent_def_id
+                self.tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty()
+            && let hir::OpaqueTyOrigin::FnReturn { parent, .. } = opaque.origin
+            && parent == self.parent_def_id
         {
             let opaque_span = self.tcx.def_span(opaque_def_id);
             let new_capture_rules =

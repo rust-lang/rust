@@ -146,6 +146,7 @@ impl HlTag {
                 SymbolKind::Field => "field",
                 SymbolKind::Function => "function",
                 SymbolKind::Impl => "self_type",
+                SymbolKind::InlineAsmRegOrRegClass => "reg",
                 SymbolKind::Label => "label",
                 SymbolKind::LifetimeParam => "lifetime",
                 SymbolKind::Local => "variable",

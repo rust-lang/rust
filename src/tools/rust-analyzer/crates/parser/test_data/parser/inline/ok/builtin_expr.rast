@@ -19,7 +19,7 @@ SOURCE_FILE
             ASM_KW "asm"
             L_PAREN "("
             LITERAL
-              INT_NUMBER "0"
+              STRING "\"\""
             R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n    "

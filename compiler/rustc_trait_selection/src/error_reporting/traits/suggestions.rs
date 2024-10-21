@@ -355,12 +355,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Fn(_, generics, _)
                         | hir::ItemKind::TyAlias(_, generics)
                         | hir::ItemKind::Const(_, generics, _)
-                        | hir::ItemKind::TraitAlias(generics, _)
-                        | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
+                        | hir::ItemKind::TraitAlias(generics, _),
                     ..
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
                 | hir::Node::ImplItem(hir::ImplItem { generics, .. })
+                | hir::Node::OpaqueTy(hir::OpaqueTy { generics, .. })
                     if param_ty =>
                 {
                     // We skip the 0'th arg (self) because we do not want
@@ -421,10 +421,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Fn(_, generics, _)
                         | hir::ItemKind::TyAlias(_, generics)
                         | hir::ItemKind::Const(_, generics, _)
-                        | hir::ItemKind::TraitAlias(generics, _)
-                        | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
+                        | hir::ItemKind::TraitAlias(generics, _),
                     ..
-                }) if !param_ty => {
+                })
+                | hir::Node::OpaqueTy(hir::OpaqueTy { generics, .. })
+                    if !param_ty =>
+                {
                     // Missing generic type parameter bound.
                     if suggest_arbitrary_trait_bound(
                         self.tcx,
@@ -3072,11 +3074,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     match ty.kind {
                         hir::TyKind::TraitObject(traits, _, _) => {
                             let (span, kw) = match traits {
-                                [(first, _), ..] if first.span.lo() == ty.span.lo() => {
+                                [first, ..] if first.span.lo() == ty.span.lo() => {
                                     // Missing `dyn` in front of trait object.
                                     (ty.span.shrink_to_lo(), "dyn ")
                                 }
-                                [(first, _), ..] => (ty.span.until(first.span), ""),
+                                [first, ..] => (ty.span.until(first.span), ""),
                                 [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
                             };
                             let needs_parens = traits.len() != 1;
@@ -3699,12 +3701,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                         _ => None,
                     };
-                    // Also add host param, if present
-                    let host = self.tcx.generics_of(trait_pred.def_id()).host_effect_index.map(|idx| trait_pred.skip_binder().trait_ref.args[idx]);
                     let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
                         trait_ref: ty::TraitRef::new(self.tcx,
                             trait_pred.def_id(),
-                            [field_ty].into_iter().chain(trait_args).chain(host),
+                            [field_ty].into_iter().chain(trait_args),
                         ),
                         ..*tr
                     });
@@ -4542,7 +4542,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // ... whose signature is `async` (i.e. this is an AFIT)
         let (sig, body) = item.expect_fn();
-        let hir::FnRetTy::Return(hir::Ty { kind: hir::TyKind::OpaqueDef(def, ..), .. }) =
+        let hir::FnRetTy::Return(hir::Ty { kind: hir::TyKind::OpaqueDef(opaq_def, ..), .. }) =
             sig.decl.output
         else {
             // This should never happen, but let's not ICE.
@@ -4551,7 +4551,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Check that this is *not* a nested `impl Future` RPIT in an async fn
         // (i.e. `async fn foo() -> impl Future`)
-        if def.owner_id.to_def_id() != opaque_def_id {
+        if opaq_def.def_id.to_def_id() != opaque_def_id {
             return;
         }
 
@@ -5159,8 +5159,8 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
     };
     let async_span = tcx.sess.source_map().span_extend_while_whitespace(async_span);
 
-    let future = tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
-    let [hir::GenericBound::Trait(trait_ref, _)] = future.bounds else {
+    let future = tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty();
+    let [hir::GenericBound::Trait(trait_ref)] = future.bounds else {
         // `async fn` should always lower to a single bound... but don't ICE.
         return None;
     };

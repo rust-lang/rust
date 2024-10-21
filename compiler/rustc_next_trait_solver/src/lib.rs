@@ -5,13 +5,12 @@
 //! So if you got to this crate from the old solver, it's totally normal.
 
 // tidy-alphabetical-start
-#![cfg_attr(not(bootstrap), allow(rustc::usage_of_type_ir_inherent))]
+#![allow(rustc::usage_of_type_ir_inherent)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod canonicalizer;
 pub mod coherence;
 pub mod delegate;
-pub mod relate;
 pub mod resolve;
 pub mod solve;

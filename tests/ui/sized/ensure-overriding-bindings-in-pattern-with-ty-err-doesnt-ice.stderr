@@ -2,7 +2,9 @@ error: expected a pattern, found an expression
   --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:31
    |
 LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
-   |                               ^^^^^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+   |                               ^^^^^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 
 error[E0412]: cannot find type `T` in this scope
   --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:55

@@ -121,16 +121,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             mutbl.ref_prefix_str()
                         }
                         Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
+                        Some(probe::AutorefOrPtrAdjustment::ReborrowPin(mutbl)) => match mutbl {
+                            hir::Mutability::Mut => "Pin<&mut ",
+                            hir::Mutability::Not => "Pin<&",
+                        },
                     };
                     if let Ok(self_expr) = self.sess().source_map().span_to_snippet(self_expr.span)
                     {
-                        let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+                        let mut self_adjusted =
+                            if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+                                pick.autoref_or_ptr_adjustment
+                            {
+                                format!("{derefs}{self_expr} as *const _")
+                            } else {
+                                format!("{autoref}{derefs}{self_expr}")
+                            };
+
+                        if let Some(probe::AutorefOrPtrAdjustment::ReborrowPin(_)) =
                             pick.autoref_or_ptr_adjustment
                         {
-                            format!("{derefs}{self_expr} as *const _")
-                        } else {
-                            format!("{autoref}{derefs}{self_expr}")
-                        };
+                            self_adjusted.push('>');
+                        }
 
                         lint.span_suggestion(
                             sp,
@@ -400,6 +411,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let autoref = match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, .. }) => mutbl.ref_prefix_str(),
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
+            Some(probe::AutorefOrPtrAdjustment::ReborrowPin(mutbl)) => match mutbl {
+                hir::Mutability::Mut => "Pin<&mut ",
+                hir::Mutability::Not => "Pin<&",
+            },
         };
 
         let (expr_text, precise) = if let Some(expr_text) = expr
@@ -412,13 +427,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ("(..)".to_string(), false)
         };
 
-        let adjusted_text = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+        let mut adjusted_text = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
             pick.autoref_or_ptr_adjustment
         {
             format!("{derefs}{expr_text} as *const _")
         } else {
             format!("{autoref}{derefs}{expr_text}")
         };
+
+        if let Some(probe::AutorefOrPtrAdjustment::ReborrowPin(_)) = pick.autoref_or_ptr_adjustment
+        {
+            adjusted_text.push('>');
+        }
 
         (adjusted_text, precise)
     }

@@ -30,7 +30,7 @@ LL | #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
    |
    = help: no format specifier are supported in this position
 
-warning: expected `'}'`, found `'!'`
+warning: expected `}`, found `!`
   --> $DIR/broken_format.rs:21:32
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
@@ -153,7 +153,7 @@ note: required by a bound in `check_4`
 LL | fn check_4(_: impl ImportantTrait4) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_4`
 
-warning: expected `'}'`, found `'!'`
+warning: expected `}`, found `!`
   --> $DIR/broken_format.rs:21:32
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]

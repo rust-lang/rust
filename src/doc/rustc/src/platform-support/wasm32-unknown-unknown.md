@@ -46,8 +46,8 @@ This target currently has no equivalent in C/C++. There is no C/C++ toolchain
 for this target. While interop is theoretically possible it's recommended to
 instead use one of:
 
-* `wasm32-unknown-emscripten` - for web-based use cases the Emscripten
-  toolchain is typically chosen for running C/C++.
+* [`wasm32-unknown-emscripten`](./wasm32-unknown-emscripten.md) - for web-based
+  use cases the Emscripten toolchain is typically chosen for running C/C++.
 * [`wasm32-wasip1`](./wasm32-wasip1.md) - the wasi-sdk toolchain is used to
   compile C/C++ on this target and can interop with Rust code. WASI works on
   the web so far as there's no blocker, but an implementation of WASI APIs

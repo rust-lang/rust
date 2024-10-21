@@ -14,8 +14,9 @@ error: expected a pattern range bound, found an expression
   --> $DIR/range_pat_interactions2.rs:10:18
    |
 LL |             0..=(5+1) => errors_only.push(x),
-   |                  ^^^ arbitrary expressions are not allowed in patterns
+   |                  ^^^ not a pattern
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +         const VAL: /* Type */ = 5+1;

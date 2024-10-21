@@ -329,7 +329,7 @@ arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
 ## `array-size-threshold`
 The maximum allowed size for arrays on the stack
 
-**Default Value:** `512000`
+**Default Value:** `16384`
 
 ---
 **Affected lints:**
@@ -353,6 +353,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 * [`rc_buffer`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_buffer)
 * [`rc_mutex`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_mutex)
 * [`redundant_allocation`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation)
+* [`ref_option`](https://rust-lang.github.io/rust-clippy/master/index.html#ref_option)
 * [`single_call_fn`](https://rust-lang.github.io/rust-clippy/master/index.html#single_call_fn)
 * [`trivially_copy_pass_by_ref`](https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref)
 * [`unnecessary_box_returns`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_box_returns)

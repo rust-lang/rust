@@ -73,32 +73,6 @@ help: consider further restricting this bound
 LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
    |                                        +++++++++++
 
-error[E0277]: the trait bound `F: Callback<i32>` is not satisfied
-  --> $DIR/false-positive-predicate-entailment-error.rs:43:12
-   |
-LL |         F: Callback<Self::CallbackArg>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
-   |
-note: required for `F` to implement `Callback<i32>`
-  --> $DIR/false-positive-predicate-entailment-error.rs:14:21
-   |
-LL | impl<A, F: MyFn<A>> Callback<A> for F {
-   |            -------  ^^^^^^^^^^^     ^
-   |            |
-   |            unsatisfied trait bound introduced here
-note: the requirement `F: Callback<i32>` appears on the `impl`'s method `autobatch` but not on the corresponding trait's method
-  --> $DIR/false-positive-predicate-entailment-error.rs:25:8
-   |
-LL | trait ChannelSender {
-   |       ------------- in this trait
-...
-LL |     fn autobatch<F>(self) -> impl Trait
-   |        ^^^^^^^^^ this trait's method doesn't have the requirement `F: Callback<i32>`
-help: consider further restricting this bound
-   |
-LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
-   |                                        +++++++++++
-
 error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:30
    |
@@ -168,6 +142,6 @@ help: consider further restricting this bound
 LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
    |                                        +++++++++++
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

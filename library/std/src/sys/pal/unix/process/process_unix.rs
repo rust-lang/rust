@@ -335,7 +335,7 @@ impl Command {
                 cvt(libc::setuid(u as uid_t))?;
             }
         }
-        if let Some(ref cwd) = *self.get_cwd() {
+        if let Some(cwd) = self.get_cwd() {
             cvt(libc::chdir(cwd.as_ptr()))?;
         }
 
@@ -788,15 +788,15 @@ impl Command {
             let mut iov = [IoSlice::new(b"")];
             let mut msg: libc::msghdr = mem::zeroed();
 
-            msg.msg_iov = core::ptr::addr_of_mut!(iov) as *mut _;
+            msg.msg_iov = (&raw mut iov) as *mut _;
             msg.msg_iovlen = 1;
 
             // only attach cmsg if we successfully acquired the pidfd
             if pidfd >= 0 {
                 msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
-                msg.msg_control = core::ptr::addr_of_mut!(cmsg.buf) as *mut _;
+                msg.msg_control = (&raw mut cmsg.buf) as *mut _;
 
-                let hdr = CMSG_FIRSTHDR(core::ptr::addr_of_mut!(msg) as *mut _);
+                let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
                 (*hdr).cmsg_level = SOL_SOCKET;
                 (*hdr).cmsg_type = SCM_RIGHTS;
                 (*hdr).cmsg_len = CMSG_LEN(SCM_MSG_LEN as _) as _;
@@ -838,17 +838,17 @@ impl Command {
 
             let mut msg: libc::msghdr = mem::zeroed();
 
-            msg.msg_iov = core::ptr::addr_of_mut!(iov) as *mut _;
+            msg.msg_iov = (&raw mut iov) as *mut _;
             msg.msg_iovlen = 1;
             msg.msg_controllen = mem::size_of::<Cmsg>() as _;
-            msg.msg_control = core::ptr::addr_of_mut!(cmsg) as *mut _;
+            msg.msg_control = (&raw mut cmsg) as *mut _;
 
             match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
                 Err(_) => return -1,
                 Ok(_) => {}
             }
 
-            let hdr = CMSG_FIRSTHDR(core::ptr::addr_of_mut!(msg) as *mut _);
+            let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
             if hdr.is_null()
                 || (*hdr).cmsg_level != SOL_SOCKET
                 || (*hdr).cmsg_type != SCM_RIGHTS

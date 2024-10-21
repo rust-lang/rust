@@ -71,7 +71,8 @@ pub enum SolverMode {
     Coherence,
 }
 
-pub type CanonicalInput<I, T = <I as Interner>::Predicate> = Canonical<I, QueryInput<I, T>>;
+pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
+    ty::CanonicalQueryInput<I, QueryInput<I, T>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///
@@ -130,6 +131,10 @@ pub enum GoalSource {
     ImplWhereBound,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,
+    /// Predicate required for an alias projection to be well-formed.
+    /// This is used in two places: projecting to an opaque whose hidden type
+    /// is already registered in the opaque type storage, and for rigid projections.
+    AliasWellFormed,
 }
 
 #[derive_where(Clone; I: Interner, Goal<I, P>: Clone)]

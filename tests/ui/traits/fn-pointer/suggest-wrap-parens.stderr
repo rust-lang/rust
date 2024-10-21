@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `fn() {main}: Foo` is not satisfied
+  --> $DIR/suggest-wrap-parens.rs:8:24
+   |
+LL |     let _x: &dyn Foo = &main;
+   |                        ^^^^^ the trait `Foo` is not implemented for fn item `fn() {main}`
+   |
+   = note: required for the cast from `&fn() {main}` to `&dyn Foo`
+help: the trait `Foo` is implemented for fn pointer `fn()`, try casting using `as`
+   |
+LL |     let _x: &dyn Foo = &(main as fn());
+   |                         +     ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

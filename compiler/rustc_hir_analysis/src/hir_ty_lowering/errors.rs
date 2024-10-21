@@ -19,9 +19,9 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
-use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
+use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{
-    FulfillmentError, TraitAliasExpansionInfo, object_safety_violations_for_assoc_item,
+    FulfillmentError, TraitAliasExpansionInfo, dyn_compatibility_violations_for_assoc_item,
 };
 
 use crate::errors::{
@@ -718,7 +718,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
         potential_assoc_types: Vec<usize>,
-        trait_bounds: &[(hir::PolyTraitRef<'_>, hir::TraitBoundModifier)],
+        trait_bounds: &[hir::PolyTraitRef<'_>],
     ) {
         if associated_types.values().all(|v| v.is_empty()) {
             return;
@@ -739,7 +739,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Account for things like `dyn Foo + 'a`, like in tests `issue-22434.rs` and
         // `issue-22560.rs`.
         let mut trait_bound_spans: Vec<Span> = vec![];
-        let mut object_safety_violations = false;
+        let mut dyn_compatibility_violations = false;
         for (span, items) in &associated_types {
             if !items.is_empty() {
                 trait_bound_spans.push(*span);
@@ -750,26 +750,26 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 names_len += 1;
 
                 let violations =
-                    object_safety_violations_for_assoc_item(tcx, trait_def_id, *assoc_item);
+                    dyn_compatibility_violations_for_assoc_item(tcx, trait_def_id, *assoc_item);
                 if !violations.is_empty() {
-                    report_object_safety_error(tcx, *span, None, trait_def_id, &violations).emit();
-                    object_safety_violations = true;
+                    report_dyn_incompatibility(tcx, *span, None, trait_def_id, &violations).emit();
+                    dyn_compatibility_violations = true;
                 }
             }
         }
-        if object_safety_violations {
+        if dyn_compatibility_violations {
             return;
         }
 
         // related to issue #91997, turbofishes added only when in an expr or pat
         let mut in_expr_or_pat = false;
         if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
-            let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.0.trait_ref.hir_ref_id));
+            let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.trait_ref.hir_ref_id));
             in_expr_or_pat = match grandparent {
                 hir::Node::Expr(_) | hir::Node::Pat(_) => true,
                 _ => false,
             };
-            match bound.0.trait_ref.path.segments {
+            match bound.trait_ref.path.segments {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
@@ -810,7 +810,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // and we can then use their span to indicate this to the user.
         let bound_names = trait_bounds
             .iter()
-            .filter_map(|(poly_trait_ref, _)| {
+            .filter_map(|poly_trait_ref| {
                 let path = poly_trait_ref.trait_ref.path.segments.last()?;
                 let args = path.args?;
 

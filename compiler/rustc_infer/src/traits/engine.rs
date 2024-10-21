@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Ty, Upcast};
 
-use super::{ObligationCause, PredicateObligation};
+use super::{ObligationCause, PredicateObligation, PredicateObligations};
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
 
@@ -20,7 +20,7 @@ pub enum ScrubbedTraitError<'tcx> {
     /// An ambiguity. This goal may hold if further inference is done.
     Ambiguity,
     /// An old-solver-style cycle error, which will fatal.
-    Cycle(Vec<PredicateObligation<'tcx>>),
+    Cycle(PredicateObligations<'tcx>),
 }
 
 impl<'tcx> ScrubbedTraitError<'tcx> {
@@ -62,7 +62,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     fn register_predicate_obligations(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        obligations: Vec<PredicateObligation<'tcx>>,
+        obligations: PredicateObligations<'tcx>,
     ) {
         for obligation in obligations {
             self.register_predicate_obligation(infcx, obligation);
@@ -84,7 +84,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
         self.collect_remaining_errors(infcx)
     }
 
-    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
+    fn pending_obligations(&self) -> PredicateObligations<'tcx>;
 
     /// Among all pending obligations, collect those are stalled on a inference variable which has
     /// changed since the last call to `select_where_possible`. Those obligations are marked as
@@ -92,7 +92,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     fn drain_unstalled_obligations(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-    ) -> Vec<PredicateObligation<'tcx>>;
+    ) -> PredicateObligations<'tcx>;
 }
 
 pub trait FromSolverError<'tcx, E>: Debug + 'tcx {

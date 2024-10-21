@@ -429,6 +429,7 @@ fn test_extract_if() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_extract_if_drop_panic_leak() {
     static PREDS: AtomicU32 = AtomicU32::new(0);
     static DROPS: AtomicU32 = AtomicU32::new(0);
@@ -459,6 +460,7 @@ fn test_extract_if_drop_panic_leak() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_extract_if_pred_panic_leak() {
     static PREDS: AtomicU32 = AtomicU32::new(0);
     static DROPS: AtomicU32 = AtomicU32::new(0);

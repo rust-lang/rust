@@ -24,6 +24,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) =
         tcx.opt_rpitit_info(def_id.to_def_id())
     {
+        debug!("RPITIT fn_def_id={fn_def_id:?} opaque_def_id={opaque_def_id:?}");
         let trait_def_id = tcx.parent(fn_def_id);
         let opaque_ty_generics = tcx.generics_of(opaque_def_id);
         let opaque_ty_parent_count = opaque_ty_generics.parent_count;
@@ -207,36 +208,33 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             Some(tcx.typeck_root_def_id(def_id.to_def_id()))
         }
-        Node::Item(item) => match item.kind {
-            ItemKind::OpaqueTy(&hir::OpaqueTy {
-                origin:
-                    hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
-                in_trait,
-                ..
-            }) => {
-                if in_trait {
-                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn);
-                } else {
-                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);
-                }
-                Some(fn_def_id.to_def_id())
+        Node::OpaqueTy(&hir::OpaqueTy {
+            origin:
+                hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, in_trait_or_impl }
+                | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, in_trait_or_impl },
+            ..
+        }) => {
+            if in_trait_or_impl.is_some() {
+                assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn);
+            } else {
+                assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);
             }
-            ItemKind::OpaqueTy(&hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::TyAlias { parent, in_assoc_ty },
-                ..
-            }) => {
-                if in_assoc_ty {
-                    assert_matches!(tcx.def_kind(parent), DefKind::AssocTy);
-                } else {
-                    assert_matches!(tcx.def_kind(parent), DefKind::TyAlias);
-                }
-                debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
-                // Opaque types are always nested within another item, and
-                // inherit the generics of the item.
-                Some(parent.to_def_id())
+            Some(fn_def_id.to_def_id())
+        }
+        Node::OpaqueTy(&hir::OpaqueTy {
+            origin: hir::OpaqueTyOrigin::TyAlias { parent, in_assoc_ty },
+            ..
+        }) => {
+            if in_assoc_ty {
+                assert_matches!(tcx.def_kind(parent), DefKind::AssocTy);
+            } else {
+                assert_matches!(tcx.def_kind(parent), DefKind::TyAlias);
             }
-            _ => None,
-        },
+            debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
+            // Opaque types are always nested within another item, and
+            // inherit the generics of the item.
+            Some(parent.to_def_id())
+        }
         _ => None,
     };
 
@@ -272,12 +270,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ItemKind::TyAlias(..)
                 | ItemKind::Enum(..)
                 | ItemKind::Struct(..)
-                | ItemKind::OpaqueTy(..)
                 | ItemKind::Union(..) => (None, Defaults::Allowed),
                 ItemKind::Const(..) => (None, Defaults::Deny),
                 _ => (None, Defaults::FutureCompatDisallowed),
             }
         }
+
+        Node::OpaqueTy(..) => (None, Defaults::Allowed),
 
         // GATs
         Node::TraitItem(item) if matches!(item.kind, TraitItemKind::Type(..)) => {

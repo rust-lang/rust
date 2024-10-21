@@ -135,4 +135,6 @@ pub enum ProbeKind<I: Interner> {
     ShadowedEnvProbing,
     /// Try to unify an opaque type with an existing key in the storage.
     OpaqueTypeStorageLookup { result: QueryResult<I> },
+    /// Checking that a rigid alias is well-formed.
+    RigidAlias { result: QueryResult<I> },
 }

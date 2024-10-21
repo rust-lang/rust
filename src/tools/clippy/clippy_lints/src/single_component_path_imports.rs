@@ -102,7 +102,7 @@ struct ImportUsageVisitor {
     imports_referenced_with_self: Vec<Symbol>,
 }
 
-impl<'tcx> Visitor<'tcx> for ImportUsageVisitor {
+impl Visitor<'_> for ImportUsageVisitor {
     fn visit_expr(&mut self, expr: &Expr) {
         if let ExprKind::Path(_, path) = &expr.kind
             && path.segments.len() > 1

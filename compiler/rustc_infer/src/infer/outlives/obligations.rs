@@ -396,11 +396,12 @@ where
         // 'a` in the environment but `trait Foo<'b> { type Item: 'b
         // }` in the trait definition.
         approx_env_bounds.retain(|bound_outlives| {
-            // OK to skip binder because we only manipulate and compare against other
-            // values from the same binder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item: 'a`
-            // in `bound`, the `'a` will be a `^1` (bound, debruijn index == innermost) region.
-            // If the declaration is `trait Trait<'b> { type Item: 'b; }`, then `projection_declared_bounds_from_trait`
-            // will be invoked with `['b => ^1]` and so we will get `^1` returned.
+            // OK to skip binder because we only manipulate and compare against other values from
+            // the same binder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item: 'a` in
+            // `bound`, the `'a` will be a `^1` (bound, debruijn index == innermost) region. If the
+            // declaration is `trait Trait<'b> { type Item: 'b; }`, then
+            // `projection_declared_bounds_from_trait` will be invoked with `['b => ^1]` and so we
+            // will get `^1` returned.
             let bound = bound_outlives.skip_binder();
             let ty::Alias(_, alias_ty) = bound.0.kind() else { bug!("expected AliasTy") };
             self.verify_bound.declared_bounds_from_definition(*alias_ty).all(|r| r != bound.1)

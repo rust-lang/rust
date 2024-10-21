@@ -3,7 +3,6 @@
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomPinned;
 use crate::pin::Pin;
-use crate::ptr::addr_of_mut;
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 #[cfg(not(target_os = "nto"))]
@@ -101,8 +100,8 @@ impl Parker {
         // This could lead to undefined behaviour when deadlocking. This is avoided
         // by not deadlocking. Note in particular the unlocking operation before any
         // panic, as code after the panic could try to park again.
-        addr_of_mut!((*parker).state).write(AtomicUsize::new(EMPTY));
-        addr_of_mut!((*parker).lock).write(UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER));
+        (&raw mut (*parker).state).write(AtomicUsize::new(EMPTY));
+        (&raw mut (*parker).lock).write(UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER));
 
         cfg_if::cfg_if! {
             if #[cfg(any(
@@ -112,9 +111,9 @@ impl Parker {
                 target_os = "vita",
                 target_vendor = "apple",
             ))] {
-                addr_of_mut!((*parker).cvar).write(UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER));
+                (&raw mut (*parker).cvar).write(UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER));
             } else if #[cfg(any(target_os = "espidf", target_os = "horizon"))] {
-                let r = libc::pthread_cond_init(addr_of_mut!((*parker).cvar).cast(), crate::ptr::null());
+                let r = libc::pthread_cond_init((&raw mut (*parker).cvar).cast(), crate::ptr::null());
                 assert_eq!(r, 0);
             } else {
                 use crate::mem::MaybeUninit;
@@ -123,7 +122,7 @@ impl Parker {
                 assert_eq!(r, 0);
                 let r = libc::pthread_condattr_setclock(attr.as_mut_ptr(), libc::CLOCK_MONOTONIC);
                 assert_eq!(r, 0);
-                let r = libc::pthread_cond_init(addr_of_mut!((*parker).cvar).cast(), attr.as_ptr());
+                let r = libc::pthread_cond_init((&raw mut (*parker).cvar).cast(), attr.as_ptr());
                 assert_eq!(r, 0);
                 let r = libc::pthread_condattr_destroy(attr.as_mut_ptr());
                 assert_eq!(r, 0);

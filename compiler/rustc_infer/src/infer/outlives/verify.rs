@@ -15,7 +15,7 @@ use crate::infer::{GenericKind, VerifyBound};
 /// via a "delegate" of type `D` -- this is usually the `infcx`, which
 /// accrues them into the `region_obligations` code, but for NLL we
 /// use something else.
-pub struct VerifyBoundCx<'cx, 'tcx> {
+pub(crate) struct VerifyBoundCx<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
     /// During borrowck, if there are no outlives bounds on a generic
@@ -28,7 +28,7 @@ pub struct VerifyBoundCx<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -38,7 +38,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn param_or_placeholder_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
+    pub(crate) fn param_or_placeholder_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
         // Start with anything like `T: 'a` we can scrape from the
         // environment. If the environment contains something like
         // `for<'a> T: 'a`, then we know that `T` outlives everything.
@@ -92,7 +92,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// the clause from the environment only applies if `'0 = 'a`,
     /// which we don't know yet. But we would still include `'b` in
     /// this list.
-    pub fn approx_declared_bounds_from_env(
+    pub(crate) fn approx_declared_bounds_from_env(
         &self,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
@@ -101,7 +101,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn alias_bound(&self, alias_ty: ty::AliasTy<'tcx>) -> VerifyBound<'tcx> {
+    pub(crate) fn alias_bound(&self, alias_ty: ty::AliasTy<'tcx>) -> VerifyBound<'tcx> {
         let alias_ty_as_ty = alias_ty.to_ty(self.tcx);
 
         // Search the env for where clauses like `P: 'a`.
@@ -285,7 +285,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// This is for simplicity, and because we are not really smart
     /// enough to cope with such bounds anywhere.
-    pub fn declared_bounds_from_definition(
+    pub(crate) fn declared_bounds_from_definition(
         &self,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> impl Iterator<Item = ty::Region<'tcx>> {

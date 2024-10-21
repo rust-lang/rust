@@ -1,4 +1,4 @@
-//! Compiled declarative macro expanders (`macro_rules!`` and `macro`)
+//! Compiled declarative macro expanders (`macro_rules!` and `macro`)
 
 use base_db::CrateId;
 use intern::sym;

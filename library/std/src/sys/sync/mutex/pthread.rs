@@ -2,24 +2,19 @@ use crate::cell::UnsafeCell;
 use crate::io::Error;
 use crate::mem::{MaybeUninit, forget};
 use crate::sys::cvt_nz;
-use crate::sys_common::lazy_box::{LazyBox, LazyInit};
+use crate::sys::sync::OnceBox;
 
 struct AllocatedMutex(UnsafeCell<libc::pthread_mutex_t>);
 
 pub struct Mutex {
-    inner: LazyBox<AllocatedMutex>,
-}
-
-#[inline]
-pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
-    m.inner.0.get()
+    inner: OnceBox<AllocatedMutex>,
 }
 
 unsafe impl Send for AllocatedMutex {}
 unsafe impl Sync for AllocatedMutex {}
 
-impl LazyInit for AllocatedMutex {
-    fn init() -> Box<Self> {
+impl AllocatedMutex {
+    fn new() -> Box<Self> {
         let mutex = Box::new(AllocatedMutex(UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER)));
 
         // Issue #33770
@@ -60,24 +55,6 @@ impl LazyInit for AllocatedMutex {
 
         mutex
     }
-
-    fn destroy(mutex: Box<Self>) {
-        // We're not allowed to pthread_mutex_destroy a locked mutex,
-        // so check first if it's unlocked.
-        if unsafe { libc::pthread_mutex_trylock(mutex.0.get()) == 0 } {
-            unsafe { libc::pthread_mutex_unlock(mutex.0.get()) };
-            drop(mutex);
-        } else {
-            // The mutex is locked. This happens if a MutexGuard is leaked.
-            // In this case, we just leak the Mutex too.
-            forget(mutex);
-        }
-    }
-
-    fn cancel_init(_: Box<Self>) {
-        // In this case, we can just drop it without any checks,
-        // since it cannot have been locked yet.
-    }
 }
 
 impl Drop for AllocatedMutex {
@@ -99,11 +76,33 @@ impl Drop for AllocatedMutex {
 impl Mutex {
     #[inline]
     pub const fn new() -> Mutex {
-        Mutex { inner: LazyBox::new() }
+        Mutex { inner: OnceBox::new() }
+    }
+
+    /// Gets access to the pthread mutex under the assumption that the mutex is
+    /// locked.
+    ///
+    /// This allows skipping the initialization check, as the mutex can only be
+    /// locked if it is already initialized, and allows relaxing the ordering
+    /// on the pointer load, since the allocation cannot have been modified
+    /// since the `lock` and the lock must have occurred on the current thread.
+    ///
+    /// # Safety
+    /// Causes undefined behaviour if the mutex is not locked.
+    #[inline]
+    pub(crate) unsafe fn get_assert_locked(&self) -> *mut libc::pthread_mutex_t {
+        unsafe { self.inner.get_unchecked().0.get() }
     }
 
     #[inline]
-    pub unsafe fn lock(&self) {
+    fn get(&self) -> *mut libc::pthread_mutex_t {
+        // If initialization fails, the mutex is destroyed. This is always sound,
+        // however, as the mutex cannot have been locked yet.
+        self.inner.get_or_init(AllocatedMutex::new).0.get()
+    }
+
+    #[inline]
+    pub fn lock(&self) {
         #[cold]
         #[inline(never)]
         fn fail(r: i32) -> ! {
@@ -111,7 +110,7 @@ impl Mutex {
             panic!("failed to lock mutex: {error}");
         }
 
-        let r = libc::pthread_mutex_lock(raw(self));
+        let r = unsafe { libc::pthread_mutex_lock(self.get()) };
         // As we set the mutex type to `PTHREAD_MUTEX_NORMAL` above, we expect
         // the lock call to never fail. Unfortunately however, some platforms
         // (Solaris) do not conform to the standard, and instead always provide
@@ -126,13 +125,29 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn unlock(&self) {
-        let r = libc::pthread_mutex_unlock(raw(self));
+        let r = libc::pthread_mutex_unlock(self.get_assert_locked());
         debug_assert_eq!(r, 0);
     }
 
     #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
-        libc::pthread_mutex_trylock(raw(self)) == 0
+    pub fn try_lock(&self) -> bool {
+        unsafe { libc::pthread_mutex_trylock(self.get()) == 0 }
+    }
+}
+
+impl Drop for Mutex {
+    fn drop(&mut self) {
+        let Some(mutex) = self.inner.take() else { return };
+        // We're not allowed to pthread_mutex_destroy a locked mutex,
+        // so check first if it's unlocked.
+        if unsafe { libc::pthread_mutex_trylock(mutex.0.get()) == 0 } {
+            unsafe { libc::pthread_mutex_unlock(mutex.0.get()) };
+            drop(mutex);
+        } else {
+            // The mutex is locked. This happens if a MutexGuard is leaked.
+            // In this case, we just leak the Mutex too.
+            forget(mutex);
+        }
     }
 }
 

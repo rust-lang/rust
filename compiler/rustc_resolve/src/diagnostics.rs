@@ -2,8 +2,7 @@ use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
-    self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemKind, ModKind, NestedMetaItem, NodeId,
-    Path,
+    self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemInner, MetaItemKind, ModKind, NodeId, Path,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -1469,11 +1468,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident))| {
-            if unused_ident.name == ident.name {
-                Some((def_id.clone(), unused_ident.clone()))
-            } else {
-                None
-            }
+            if unused_ident.name == ident.name { Some((def_id, unused_ident)) } else { None }
         });
 
         if let Some((def_id, unused_ident)) = unused_macro {
@@ -2545,7 +2540,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             err.subdiagnostic(note);
 
             if let MetaItemKind::List(nested) = &cfg.kind
-                && let NestedMetaItem::MetaItem(meta_item) = &nested[0]
+                && let MetaItemInner::MetaItem(meta_item) = &nested[0]
                 && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
             {
                 let note = errors::ItemWasBehindFeature {

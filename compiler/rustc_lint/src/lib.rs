@@ -32,7 +32,6 @@
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
@@ -569,6 +568,11 @@ fn register_builtins(store: &mut LintStore) {
         "indirect_structural_match",
         "converted into hard error, see RFC #3535 \
          <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
+    store.register_removed(
+        "deprecated_cfg_attr_crate_type_name",
+        "converted into hard error, see issue #91632 \
+         <https://github.com/rust-lang/rust/issues/91632> for more information",
     );
     store.register_removed(
         "pointer_structural_match",

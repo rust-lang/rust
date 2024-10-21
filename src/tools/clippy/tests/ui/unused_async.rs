@@ -55,6 +55,22 @@ mod issue9695 {
     }
 }
 
+mod issue13466 {
+    use std::future::Future;
+
+    struct Wrap<F>(F);
+    impl<F> From<F> for Wrap<F> {
+        fn from(f: F) -> Self {
+            Self(f)
+        }
+    }
+    fn takes_fut<F: Fn() -> Fut, Fut: Future>(_: Wrap<F>) {}
+    async fn unused_async() {}
+    fn fp() {
+        takes_fut(unused_async.into());
+    }
+}
+
 async fn foo() -> i32 {
     //~^ ERROR: unused `async` for function with no await statements
     4

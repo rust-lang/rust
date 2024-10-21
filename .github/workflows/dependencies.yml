@@ -61,9 +61,11 @@ jobs:
           rustup toolchain install --no-self-update --profile minimal $TOOLCHAIN
           rustup default $TOOLCHAIN
 
-      - name: cargo update
+      - name: cargo update compiler & tools
         # Remove first line that always just says "Updating crates.io index"
-        run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+        run: |
+          echo -e "\ncompiler & tools dependencies:" >> cargo_update.log
+          cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
       - name: cargo update library
         run: |
           echo -e "\nlibrary dependencies:" >> cargo_update.log

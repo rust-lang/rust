@@ -5,7 +5,7 @@
 #![crate_type = "lib"]
 #![feature(naked_functions)]
 
-use std::arch::asm;
+use std::arch::naked_asm;
 
 #[naked]
 #[no_mangle]
@@ -15,7 +15,7 @@ pub unsafe extern "C" fn f() {
     // CHECK:       define {{(dso_local )?}}void @f() unnamed_addr [[ATTR:#[0-9]+]]
     // CHECK-NEXT:  start:
     // CHECK-NEXT:    call void asm
-    asm!("", options(noreturn));
+    naked_asm!("");
 }
 
 #[no_mangle]

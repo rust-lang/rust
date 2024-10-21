@@ -104,10 +104,17 @@ fn create_wrapper_function(
         false,
     );
 
-    if tcx.sess.default_hidden_visibility() {
-        #[cfg(feature = "master")]
-        func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
+    #[cfg(feature = "master")]
+    match tcx.sess.default_visibility() {
+        rustc_target::spec::SymbolVisibility::Hidden => {
+            func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden))
+        }
+        rustc_target::spec::SymbolVisibility::Protected => {
+            func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Protected))
+        }
+        rustc_target::spec::SymbolVisibility::Interposable => {}
     }
+
     if tcx.sess.must_emit_unwind_tables() {
         // TODO(antoyo): emit unwind tables.
     }

@@ -5,6 +5,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 44, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: used_inline_crate::used_inline_function
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 14, 01, 06, 0f, 05, 06, 10, 02, 06, 02, 02, 06, 00, 07, 01, 01, 05, 01, 02]
@@ -18,6 +19,7 @@ Number of file 0 mappings: 4
 - Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 1, 2)
+Highest counter ID seen: c1
 
 Function name: used_inline_crate::used_only_from_bin_crate_generic_function::<&alloc::vec::Vec<i32>>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 21, 01, 02, 02]
@@ -26,6 +28,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 33, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: used_inline_crate::used_only_from_bin_crate_generic_function::<&str>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 21, 01, 02, 02]
@@ -34,6 +37,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 33, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: used_inline_crate::used_with_same_type_from_bin_crate_and_lib_crate_generic_function::<&str>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 31, 01, 02, 02]
@@ -42,6 +46,7 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 49, 1) to (start + 2, 2)
+Highest counter ID seen: c0
 
 Function name: uses_inline_crate::main
 Raw bytes (9): 0x[01, 02, 00, 01, 01, 0c, 01, 0a, 02]
@@ -50,4 +55,5 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 12, 1) to (start + 10, 2)
+Highest counter ID seen: c0
 

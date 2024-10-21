@@ -11,8 +11,8 @@ pub fn target_data_layout_query(
     db: &dyn HirDatabase,
     krate: CrateId,
 ) -> Result<Arc<TargetDataLayout>, Arc<str>> {
-    match db.data_layout(krate) {
-        Ok(it) => match TargetDataLayout::parse_from_llvm_datalayout_string(&it) {
+    match &db.crate_workspace_data()[&krate].data_layout {
+        Ok(it) => match TargetDataLayout::parse_from_llvm_datalayout_string(it) {
             Ok(it) => Ok(Arc::new(it)),
             Err(e) => {
                 Err(match e {
@@ -42,6 +42,6 @@ pub fn target_data_layout_query(
                 }.into())
             }
         },
-        Err(e) => Err(e),
+        Err(e) => Err(e.clone()),
     }
 }

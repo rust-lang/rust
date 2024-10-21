@@ -1100,9 +1100,12 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::Fn
         | DefKind::Ctor(..)
         | DefKind::AssocFn => true,
+        DefKind::AssocTy => {
+            // Only encode variances for RPITITs (for traits)
+            matches!(tcx.opt_rpitit_info(def_id), Some(ty::ImplTraitInTraitData::Trait { .. }))
+        }
         DefKind::Mod
         | DefKind::Field
-        | DefKind::AssocTy
         | DefKind::AssocConst
         | DefKind::TyParam
         | DefKind::ConstParam
@@ -1186,9 +1189,9 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
 
         DefKind::OpaqueTy => {
             let origin = tcx.opaque_type_origin(def_id);
-            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
-            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
-                && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
+            if let hir::OpaqueTyOrigin::FnReturn { parent, .. }
+            | hir::OpaqueTyOrigin::AsyncFn { parent, .. } = origin
+                && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(parent)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {
                 false

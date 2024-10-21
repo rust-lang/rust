@@ -55,7 +55,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
 }
 
 /// Generate the `debug_context` in an MIR Body.
-/// # Souce of Origin
+/// # Source of Origin
 /// Copied from `create_scope_map.rs` of rustc_codegen_llvm
 fn compute_mir_scopes<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
@@ -90,7 +90,7 @@ fn compute_mir_scopes<'gcc, 'tcx>(
 /// Update the `debug_context`, adding new scope to it,
 /// if it's not added as is denoted in `instantiated`.
 ///
-/// # Souce of Origin
+/// # Source of Origin
 /// Copied from `create_scope_map.rs` of rustc_codegen_llvm
 /// FIXME(tempdragon/?): Add Scope Support Here.
 fn make_mir_scope<'gcc, 'tcx>(

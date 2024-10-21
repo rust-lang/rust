@@ -1,8 +1,8 @@
-use super::abort_on_dtor_unwind;
+use super::key::{Key, LazyKey, get, set};
+use super::{abort_on_dtor_unwind, guard};
 use crate::cell::Cell;
 use crate::marker::PhantomData;
 use crate::ptr;
-use crate::sys::thread_local::key::{Key, LazyKey, get, set};
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
@@ -15,19 +15,24 @@ pub macro thread_local_inner {
         $crate::thread::local_impl::thread_local_inner!(@key $t, { const INIT_EXPR: $t = $init; INIT_EXPR })
     },
 
-    // used to generate the `LocalKey` value for `thread_local!`
+    // NOTE: we cannot import `Storage` or `LocalKey` with a `use` because that can shadow user
+    // provided type or type alias with a matching name. Please update the shadowing test in
+    // `tests/thread.rs` if these types are renamed.
+
+    // used to generate the `LocalKey` value for `thread_local!`.
     (@key $t:ty, $init:expr) => {{
         #[inline]
         fn __init() -> $t { $init }
 
+        // NOTE: this cannot import `LocalKey` or `Storage` with a `use` because that can shadow
+        // user provided type or type alias with a matching name. Please update the shadowing test
+        // in `tests/thread.rs` if these types are renamed.
         unsafe {
-            use $crate::thread::LocalKey;
-            use $crate::thread::local_impl::Storage;
-
             // Inlining does not work on windows-gnu due to linking errors around
             // dllimports. See https://github.com/rust-lang/rust/issues/109797.
-            LocalKey::new(#[cfg_attr(windows, inline(never))] |init| {
-                static VAL: Storage<$t> = Storage::new();
+            $crate::thread::LocalKey::new(#[cfg_attr(windows, inline(never))] |init| {
+                static VAL: $crate::thread::local_impl::Storage<$t>
+                    = $crate::thread::local_impl::Storage::new();
                 VAL.get(init, __init)
             })
         }
@@ -138,5 +143,35 @@ unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
         drop(ptr);
         // SAFETY: `key` is the TLS key `ptr` was stored under.
         unsafe { set(key, ptr::null_mut()) };
+        // Make sure that the runtime cleanup will be performed
+        // after the next round of TLS destruction.
+        guard::enable();
     });
+}
+
+#[rustc_macro_transparency = "semitransparent"]
+pub(crate) macro local_pointer {
+    () => {},
+    ($vis:vis static $name:ident; $($rest:tt)*) => {
+        $vis static $name: $crate::sys::thread_local::LocalPointer = $crate::sys::thread_local::LocalPointer::__new();
+        $crate::sys::thread_local::local_pointer! { $($rest)* }
+    },
+}
+
+pub(crate) struct LocalPointer {
+    key: LazyKey,
+}
+
+impl LocalPointer {
+    pub const fn __new() -> LocalPointer {
+        LocalPointer { key: LazyKey::new(None) }
+    }
+
+    pub fn get(&'static self) -> *mut () {
+        unsafe { get(self.key.force()) as *mut () }
+    }
+
+    pub fn set(&'static self, p: *mut ()) {
+        unsafe { set(self.key.force(), p as *mut u8) }
+    }
 }

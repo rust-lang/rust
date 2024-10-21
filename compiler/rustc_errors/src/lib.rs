@@ -59,7 +59,7 @@ use registry::Registry;
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lock;
 pub use rustc_error_messages::{
     DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
@@ -685,13 +685,13 @@ impl DiagCtxt {
                 unimplemented!("false emitter must only used during `wrap_emitter`")
             }
 
-            fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+            fn source_map(&self) -> Option<&SourceMap> {
                 unimplemented!("false emitter must only used during `wrap_emitter`")
             }
         }
 
         impl translation::Translate for FalseEmitter {
-            fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+            fn fluent_bundle(&self) -> Option<&FluentBundle> {
                 unimplemented!("false emitter must only used during `wrap_emitter`")
             }
 
@@ -923,18 +923,6 @@ impl<'a> DiagCtxtHandle<'a> {
     /// Emit all stashed diagnostics.
     pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_stashed_diagnostics()
-    }
-
-    /// This excludes lint errors, and delayed bugs.
-    #[inline]
-    pub fn err_count_excluding_lint_errs(&self) -> usize {
-        let inner = self.inner.borrow();
-        inner.err_guars.len()
-            + inner
-                .stashed_diagnostics
-                .values()
-                .filter(|(diag, guar)| guar.is_some() && diag.is_lint.is_none())
-                .count()
     }
 
     /// This excludes delayed bugs.

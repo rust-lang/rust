@@ -19,6 +19,8 @@ pub(crate) fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
         llvm_target: "avr-unknown-unknown".into(),
         pointer_width: 16,
         options: TargetOptions {
+            env: "gnu".into(),
+
             c_int_width: "16".into(),
             cpu: target_cpu.into(),
             exe_suffix: ".elf".into(),

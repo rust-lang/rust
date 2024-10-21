@@ -31,7 +31,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let projected = &this.project_index(reg, i.try_into().unwrap())?;
                 *dst = this.read_scalar(projected)?.to_u32()?
             }
-            Ok(res)
+            interp_ok(res)
         }
 
         fn write<'c>(
@@ -45,7 +45,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let projected = &this.project_index(dest, i.try_into().unwrap())?;
                 this.write_scalar(Scalar::from_u32(part), projected)?;
             }
-            Ok(())
+            interp_ok(())
         }
 
         match unprefixed_name {
@@ -106,9 +106,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = sha256msg2(a, b);
                 write(this, &dest, result)?;
             }
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }
 

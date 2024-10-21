@@ -1,3 +1,4 @@
+use rustc_type_ir::data_structures::DelayedMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
@@ -15,11 +16,14 @@ where
     I: Interner,
 {
     delegate: &'a D,
+    /// We're able to use a cache here as the folder does not have any
+    /// mutable state.
+    cache: DelayedMap<I::Ty, I::Ty>,
 }
 
 impl<'a, D: SolverDelegate> EagerResolver<'a, D> {
     pub fn new(delegate: &'a D) -> Self {
-        EagerResolver { delegate }
+        EagerResolver { delegate, cache: Default::default() }
     }
 }
 
@@ -42,7 +46,12 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for EagerResolv
             ty::Infer(ty::FloatVar(vid)) => self.delegate.opportunistic_resolve_float_var(vid),
             _ => {
                 if t.has_infer() {
-                    t.super_fold_with(self)
+                    if let Some(&ty) = self.cache.get(&t) {
+                        return ty;
+                    }
+                    let res = t.super_fold_with(self);
+                    assert!(self.cache.insert(t, res));
+                    res
                 } else {
                     t
                 }

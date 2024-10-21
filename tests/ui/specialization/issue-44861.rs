@@ -12,9 +12,9 @@ pub trait Smartass {
     type Data2: CoerceUnsized<*const [u8]>;
 }
 
-pub trait MaybeObjectSafe {}
+pub trait MaybeDynCompatible {}
 
-impl MaybeObjectSafe for () {}
+impl MaybeDynCompatible for () {}
 
 impl<T> Smartass for T {
     type Data = <Self as Smartass>::Data2;
@@ -26,7 +26,7 @@ impl Smartass for () {
     type Data2 = *const [u8; 1];
 }
 
-impl Smartass for dyn MaybeObjectSafe {
+impl Smartass for dyn MaybeDynCompatible {
     type Data = *const [u8];
     type Data2 = *const [u8; 0];
 }
@@ -35,6 +35,6 @@ impl<U: Smartass+?Sized, T: Smartass+?Sized> CoerceUnsized<SmartassPtr<T>> for S
     where <U as Smartass>::Data: std::ops::CoerceUnsized<<T as Smartass>::Data>
 {}
 
-pub fn conv(s: SmartassPtr<()>) -> SmartassPtr<dyn MaybeObjectSafe> {
+pub fn conv(s: SmartassPtr<()>) -> SmartassPtr<dyn MaybeDynCompatible> {
     s
 }

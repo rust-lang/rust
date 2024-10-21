@@ -1,4 +1,6 @@
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 pub trait Tr {
@@ -6,7 +8,7 @@ pub trait Tr {
 
     fn b(&self) {
         ().a()
-        //~^ ERROR the trait bound
+        //~^ ERROR the trait bound `(): ~const Tr` is not satisfied
     }
 }
 

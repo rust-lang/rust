@@ -1107,8 +1107,6 @@ impl<'a> CrateMetadataRef<'a> {
                 parent_did,
                 None,
                 data.is_non_exhaustive,
-                // FIXME: unnamed fields in crate metadata is unimplemented yet.
-                false,
             ),
         )
     }
@@ -1151,7 +1149,6 @@ impl<'a> CrateMetadataRef<'a> {
             adt_kind,
             variants.into_iter().map(|(_, variant)| variant).collect(),
             repr,
-            false,
         )
     }
 
@@ -1622,56 +1619,63 @@ impl<'a> CrateMetadataRef<'a> {
             );
 
             for virtual_dir in virtual_rust_source_base_dir.iter().flatten() {
-                if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
-                    if let rustc_span::FileName::Real(old_name) = name {
-                        if let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
-                            old_name
-                        {
-                            if let Ok(rest) = virtual_name.strip_prefix(virtual_dir) {
-                                let virtual_name = virtual_name.clone();
+                if let Some(real_dir) = &sess.opts.real_rust_source_base_dir
+                    && let rustc_span::FileName::Real(old_name) = name
+                    && let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
+                        old_name
+                    && let Ok(rest) = virtual_name.strip_prefix(virtual_dir)
+                {
+                    // The std library crates are in
+                    // `$sysroot/lib/rustlib/src/rust/library`, whereas other crates
+                    // may be in `$sysroot/lib/rustlib/src/rust/` directly. So we
+                    // detect crates from the std libs and handle them specially.
+                    const STD_LIBS: &[&str] = &[
+                        "core",
+                        "alloc",
+                        "std",
+                        "test",
+                        "term",
+                        "unwind",
+                        "proc_macro",
+                        "panic_abort",
+                        "panic_unwind",
+                        "profiler_builtins",
+                        "rtstartup",
+                        "rustc-std-workspace-core",
+                        "rustc-std-workspace-alloc",
+                        "rustc-std-workspace-std",
+                        "backtrace",
+                    ];
+                    let is_std_lib = STD_LIBS.iter().any(|l| rest.starts_with(l));
 
-                                // The std library crates are in
-                                // `$sysroot/lib/rustlib/src/rust/library`, whereas other crates
-                                // may be in `$sysroot/lib/rustlib/src/rust/` directly. So we
-                                // detect crates from the std libs and handle them specially.
-                                const STD_LIBS: &[&str] = &[
-                                    "core",
-                                    "alloc",
-                                    "std",
-                                    "test",
-                                    "term",
-                                    "unwind",
-                                    "proc_macro",
-                                    "panic_abort",
-                                    "panic_unwind",
-                                    "profiler_builtins",
-                                    "rtstartup",
-                                    "rustc-std-workspace-core",
-                                    "rustc-std-workspace-alloc",
-                                    "rustc-std-workspace-std",
-                                    "backtrace",
-                                ];
-                                let is_std_lib = STD_LIBS.iter().any(|l| rest.starts_with(l));
+                    let new_path = if is_std_lib {
+                        real_dir.join("library").join(rest)
+                    } else {
+                        real_dir.join(rest)
+                    };
 
-                                let new_path = if is_std_lib {
-                                    real_dir.join("library").join(rest)
-                                } else {
-                                    real_dir.join(rest)
-                                };
+                    debug!(
+                        "try_to_translate_virtual_to_real: `{}` -> `{}`",
+                        virtual_name.display(),
+                        new_path.display(),
+                    );
 
-                                debug!(
-                                    "try_to_translate_virtual_to_real: `{}` -> `{}`",
-                                    virtual_name.display(),
-                                    new_path.display(),
-                                );
-                                let new_name = rustc_span::RealFileName::Remapped {
-                                    local_path: Some(new_path),
-                                    virtual_name,
-                                };
-                                *old_name = new_name;
-                            }
+                    // Check if the translated real path is affected by any user-requested
+                    // remaps via --remap-path-prefix. Apply them if so.
+                    // Note that this is a special case for imported rust-src paths specified by
+                    // https://rust-lang.github.io/rfcs/3127-trim-paths.html#handling-sysroot-paths.
+                    // Other imported paths are not currently remapped (see #66251).
+                    let (user_remapped, applied) =
+                        sess.source_map().path_mapping().map_prefix(&new_path);
+                    let new_name = if applied {
+                        rustc_span::RealFileName::Remapped {
+                            local_path: Some(new_path.clone()),
+                            virtual_name: user_remapped.to_path_buf(),
                         }
-                    }
+                    } else {
+                        rustc_span::RealFileName::LocalPath(new_path)
+                    };
+                    *old_name = new_name;
                 }
             }
         };
@@ -1695,6 +1699,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let rustc_span::SourceFile {
                     mut name,
                     src_hash,
+                    checksum_hash,
                     start_pos: original_start_pos,
                     source_len,
                     lines,
@@ -1745,6 +1750,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let local_version = sess.source_map().new_imported_source_file(
                     name,
                     src_hash,
+                    checksum_hash,
                     stable_id,
                     source_len.to_u32(),
                     self.cnum,

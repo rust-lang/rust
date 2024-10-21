@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{is_expn_of, is_lint_allowed, path_to_local};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -133,7 +133,7 @@ fn lint_slice(cx: &LateContext<'_>, slice: &SliceLintInformation) {
         .index_use
         .iter()
         .map(|(index, _)| *index)
-        .collect::<FxHashSet<_>>();
+        .collect::<FxIndexSet<_>>();
 
     let value_name = |index| format!("{}_{index}", slice.ident.name);
 
@@ -226,7 +226,7 @@ struct SliceIndexLintingVisitor<'a, 'tcx> {
     max_suggested_slice: u64,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {

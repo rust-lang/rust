@@ -1,9 +1,12 @@
-use crate::*;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{BytePos, Loc, Symbol, hygiene};
-use rustc_target::{abi::Size, spec::abi::Abi};
+use rustc_target::abi::Size;
+use rustc_target::spec::abi::Abi;
+
+use crate::helpers::check_min_arg_count;
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -37,11 +40,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
 
-        let flags = if let Some(flags_op) = args.first() {
-            this.read_scalar(flags_op)?.to_u64()?
-        } else {
-            throw_ub_format!("expected at least 1 argument")
-        };
+        let [flags] = check_min_arg_count("miri_get_backtrace", args)?;
+        let flags = this.read_scalar(flags)?.to_u64()?;
 
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
@@ -105,7 +105,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),
         };
 
-        Ok(())
+        interp_ok(())
     }
 
     fn resolve_frame_pointer(
@@ -133,7 +133,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let name = fn_instance.to_string();
         let filename = lo.file.name.prefer_remapped_unconditionaly().to_string();
 
-        Ok((fn_instance, lo, name, filename))
+        interp_ok((fn_instance, lo, name, filename))
     }
 
     fn handle_miri_resolve_frame(
@@ -211,7 +211,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.write_pointer(fn_ptr, &this.project_field(dest, 4)?)?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn handle_miri_resolve_frame_names(
@@ -235,6 +235,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_bytes_ptr(this.read_pointer(name_ptr)?, name.bytes())?;
         this.write_bytes_ptr(this.read_pointer(filename_ptr)?, filename.bytes())?;
 
-        Ok(())
+        interp_ok(())
     }
 }

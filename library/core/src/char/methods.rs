@@ -36,7 +36,7 @@ impl char {
     /// let value_at_min = u32::from(char::MIN);
     /// assert_eq!(char::from_u32(value_at_min), Some('\0'));
     /// ```
-    #[stable(feature = "char_min", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "char_min", since = "1.83.0")]
     pub const MIN: char = '\0';
 
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
@@ -69,7 +69,7 @@ impl char {
     /// assert_eq!(char::from_u32(value_at_max + 1), None);
     /// ```
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
-    pub const MAX: char = '\u{10ffff}';
+    pub const MAX: char = '\u{10FFFF}';
 
     /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
     /// decoding error.
@@ -606,6 +606,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
+    #[must_use]
     pub const fn len_utf8(self) -> usize {
         len_utf8(self as u32)
     }
@@ -637,6 +638,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
+    #[must_use]
     pub const fn len_utf16(self) -> usize {
         len_utf16(self as u32)
     }
@@ -672,7 +674,7 @@ impl char {
     /// 'ß'.encode_utf8(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
-    #[rustc_const_unstable(feature = "const_char_encode_utf8", issue = "130512")]
+    #[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
     #[inline]
     pub const fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
@@ -1279,7 +1281,7 @@ impl char {
     ///
     /// [`to_ascii_uppercase()`]: #method.to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_unstable(feature = "const_make_ascii", issue = "130698")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn make_ascii_uppercase(&mut self) {
         *self = self.to_ascii_uppercase();
@@ -1305,7 +1307,7 @@ impl char {
     ///
     /// [`to_ascii_lowercase()`]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_unstable(feature = "const_make_ascii", issue = "130698")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn make_ascii_lowercase(&mut self) {
         *self = self.to_ascii_lowercase();
@@ -1738,6 +1740,7 @@ impl EscapeDebugExtArgs {
 }
 
 #[inline]
+#[must_use]
 const fn len_utf8(code: u32) -> usize {
     match code {
         ..MAX_ONE_B => 1,
@@ -1748,6 +1751,7 @@ const fn len_utf8(code: u32) -> usize {
 }
 
 #[inline]
+#[must_use]
 const fn len_utf16(code: u32) -> usize {
     if (code & 0xFFFF) == code { 1 } else { 2 }
 }
@@ -1766,9 +1770,10 @@ const fn len_utf16(code: u32) -> usize {
 /// Panics if the buffer is not large enough.
 /// A buffer of length four is large enough to encode any `char`.
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-#[rustc_const_unstable(feature = "const_char_encode_utf8", issue = "130512")]
+#[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
 #[doc(hidden)]
 #[inline]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
 pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
     const fn panic_at_const(_code: u32, _len: usize, _dst_len: usize) {
         // Note that we cannot format in constant expressions.
@@ -1837,7 +1842,6 @@ pub const fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
         }
         (2, [a, b, ..]) => {
             code -= 0x1_0000;
-
             *a = (code >> 10) as u16 | 0xD800;
             *b = (code & 0x3FF) as u16 | 0xDC00;
         }

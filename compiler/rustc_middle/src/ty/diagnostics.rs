@@ -192,7 +192,8 @@ fn suggest_changing_unsized_bound(
             .iter()
             .enumerate()
             .filter(|(_, bound)| {
-                if let hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound
+                if let hir::GenericBound::Trait(poly) = bound
+                    && poly.modifiers == hir::TraitBoundModifier::Maybe
                     && poly.trait_ref.trait_def_id() == def_id
                 {
                     true
@@ -325,7 +326,7 @@ pub fn suggest_constraining_type_params<'a>(
             let suggestion = if span_to_replace.is_some() {
                 constraint.clone()
             } else if constraint.starts_with('<') {
-                constraint.to_string()
+                constraint.clone()
             } else if bound_list_non_empty {
                 format!(" + {constraint}")
             } else {
@@ -507,14 +508,8 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
                     ..
                 },
                 _,
-            ) => {
-                self.0.push(ty);
-            }
-            hir::TyKind::OpaqueDef(item_id, _, _) => {
-                self.0.push(ty);
-                let item = self.1.item(item_id);
-                hir::intravisit::walk_item(self, item);
-            }
+            )
+            | hir::TyKind::OpaqueDef(..) => self.0.push(ty),
             _ => {}
         }
         hir::intravisit::walk_ty(self, ty);

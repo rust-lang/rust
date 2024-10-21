@@ -141,7 +141,7 @@ fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
     matches!(tcx.parent_hir_node(id), Node::Param(_))
 }
 
-impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
+impl<'tcx> Delegate<'tcx> for EscapeDelegate<'_, 'tcx> {
     fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
@@ -188,7 +188,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
-impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
+impl<'tcx> EscapeDelegate<'_, 'tcx> {
     fn is_large_box(&self, ty: Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack overflows.
         if let Some(boxed_ty) = ty.boxed_ty() {

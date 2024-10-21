@@ -448,7 +448,7 @@
 
 use crate::cmp::Ordering;
 use crate::marker::FnPtr;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::{fmt, hash, intrinsics, ub_checks};
 
 mod alignment;
@@ -599,7 +599,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T: ?Sized + Thin>() -> *const T {
     from_raw_parts(without_provenance::<()>(0), ())
@@ -625,7 +624,6 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
     from_raw_parts_mut(without_provenance_mut::<()>(0), ())
@@ -949,7 +947,6 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
-#[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data, len)
@@ -995,7 +992,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     from_raw_parts_mut(data, len)
@@ -1027,7 +1024,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
-/// Note that even if `T` has size `0`, the pointers must be non-null and properly aligned.
+/// Note that even if `T` has size `0`, the pointers must be properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -1113,7 +1110,7 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///   beginning at `y` with the same size.
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is `0`,
-/// the pointers must be non-null and properly aligned.
+/// the pointers must be properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -1168,10 +1165,12 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             size: usize = size_of::<T>(),
             align: usize = align_of::<T>(),
             count: usize = count,
-        ) =>
-        ub_checks::is_aligned_and_not_null(x, align)
-            && ub_checks::is_aligned_and_not_null(y, align)
-            && ub_checks::is_nonoverlapping(x, y, size, count)
+        ) => {
+            let zero_size = size == 0 || count == 0;
+            ub_checks::is_aligned_and_not_null(x, align, zero_size)
+                && ub_checks::is_aligned_and_not_null(y, align, zero_size)
+                && ub_checks::is_nonoverlapping(x, y, size, count)
+        }
     );
 
     // Split up the slice into small power-of-two-sized chunks that LLVM is able
@@ -1244,7 +1243,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
 ///
 /// * `dst` must point to a properly initialized value of type `T`.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -1266,7 +1265,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+#[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_replace"]
 pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
@@ -1280,7 +1279,8 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
             (
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         mem::replace(&mut *dst, src)
     }
@@ -1300,7 +1300,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
 ///
 /// * `src` must point to a properly initialized value of type `T`.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
 /// # Examples
 ///
@@ -1432,7 +1432,8 @@ pub const unsafe fn read<T>(src: *const T) -> T {
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         crate::intrinsics::read_via_copy(src)
     }
@@ -1516,7 +1517,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_read_unaligned"]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
@@ -1555,7 +1555,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
 ///   case.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -1614,7 +1614,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_write"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write<T>(dst: *mut T, src: T) {
@@ -1637,7 +1637,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::write_via_move(dst, src)
     }
@@ -1722,7 +1723,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
@@ -1730,7 +1731,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        copy_nonoverlapping(addr_of!(src) as *const u8, dst as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, mem::size_of::<T>());
         // We are calling the intrinsic directly to avoid function calls in the generated code.
         intrinsics::forget(src);
     }
@@ -1773,7 +1774,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// However, storing non-[`Copy`] types in volatile memory is almost certainly
 /// incorrect.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
 /// [valid]: self#safety
 /// [read-ownership]: read#ownership-of-the-returned-value
@@ -1809,7 +1810,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::volatile_load(src)
     }
@@ -1851,7 +1853,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// * `dst` must be properly aligned.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -1888,7 +1890,8 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                is_zst: bool = T::IS_ZST,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::volatile_store(dst, src);
     }
@@ -1912,6 +1915,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// than trying to adapt this to accommodate that change.
 ///
 /// Any questions go to @nagisa.
+#[allow(ptr_to_integer_transmute_in_consts)]
 #[lang = "align_offset"]
 pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
@@ -2348,7 +2352,6 @@ impl<F: FnPtr> fmt::Debug for F {
 /// no difference whether the pointer is null or dangling.)
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
-#[allow_internal_unstable(raw_ref_op)]
 pub macro addr_of($place:expr) {
     &raw const $place
 }
@@ -2439,7 +2442,6 @@ pub macro addr_of($place:expr) {
 /// makes no difference whether the pointer is null or dangling.)
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
-#[allow_internal_unstable(raw_ref_op)]
 pub macro addr_of_mut($place:expr) {
     &raw mut $place
 }

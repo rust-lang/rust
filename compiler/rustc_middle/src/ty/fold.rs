@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
+use rustc_type_ir::data_structures::DelayedMap;
 pub use rustc_type_ir::fold::{
     FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, shift_region, shift_vars,
 };
@@ -131,12 +132,20 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Bound vars replacer
 
+/// A delegate used when instantiating bound vars.
+///
+/// Any implementation must make sure that each bound variable always
+/// gets mapped to the same result. `BoundVarReplacer` caches by using
+/// a `DelayedMap` which does not cache the first few types it encounters.
 pub trait BoundVarReplacerDelegate<'tcx> {
     fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx>;
     fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx>;
     fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx>;
 }
 
+/// A simple delegate taking 3 mutable functions. The used functions must
+/// always return the same result for each bound variable, no matter how
+/// frequently they are called.
 pub struct FnMutDelegate<'a, 'tcx> {
     pub regions: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
     pub types: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
@@ -164,11 +173,15 @@ struct BoundVarReplacer<'tcx, D> {
     current_index: ty::DebruijnIndex,
 
     delegate: D,
+
+    /// This cache only tracks the `DebruijnIndex` and assumes that it does not matter
+    /// for the delegate how often its methods get used.
+    cache: DelayedMap<(ty::DebruijnIndex, Ty<'tcx>), Ty<'tcx>>,
 }
 
 impl<'tcx, D: BoundVarReplacerDelegate<'tcx>> BoundVarReplacer<'tcx, D> {
     fn new(tcx: TyCtxt<'tcx>, delegate: D) -> Self {
-        BoundVarReplacer { tcx, current_index: ty::INNERMOST, delegate }
+        BoundVarReplacer { tcx, current_index: ty::INNERMOST, delegate, cache: Default::default() }
     }
 }
 
@@ -197,8 +210,17 @@ where
                 debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
                 ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32())
             }
-            _ if t.has_vars_bound_at_or_above(self.current_index) => t.super_fold_with(self),
-            _ => t,
+            _ => {
+                if !t.has_vars_bound_at_or_above(self.current_index) {
+                    t
+                } else if let Some(&t) = self.cache.get(&(self.current_index, t)) {
+                    t
+                } else {
+                    let res = t.super_fold_with(self);
+                    assert!(self.cache.insert((self.current_index, t), res));
+                    res
+                }
+            }
         }
     }
 

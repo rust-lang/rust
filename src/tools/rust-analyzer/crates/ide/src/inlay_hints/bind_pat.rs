@@ -110,6 +110,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: !render_colons,
         pad_right: false,
+        resolve_parent: Some(pat.syntax().text_range()),
     });
 
     Some(())

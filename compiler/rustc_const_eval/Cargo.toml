@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 either = "1"
+rustc_abi = { path = "../rustc_abi" }
 rustc_apfloat = "0.2.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }

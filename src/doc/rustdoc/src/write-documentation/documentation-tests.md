@@ -414,11 +414,11 @@ In some cases, doctests cannot be merged. For example, if you have:
 The problem with this code is that, if you change any other doctests, it'll likely break when
 runing `rustdoc --test`, making it tricky to maintain.
 
-This is where the `standalone` attribute comes in: it tells `rustdoc` that a doctest
+This is where the `standalone_crate` attribute comes in: it tells `rustdoc` that a doctest
 should not be merged with the others. So the previous code should use it:
 
 ```rust
-//! ```standalone
+//! ```standalone_crate
 //! let location = std::panic::Location::caller();
 //! assert_eq!(location.line(), 4);
 //! ```

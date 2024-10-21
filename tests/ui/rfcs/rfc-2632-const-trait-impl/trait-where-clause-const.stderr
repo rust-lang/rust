@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `Foo::{synthetic#0}: Compat` is not satisfied
+error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/trait-where-clause-const.rs:22:5
    |
 LL |     T::b();
-   |     ^ the trait `Compat` is not implemented for `Foo::{synthetic#0}`
+   |     ^ the trait `Foo` is not implemented for `T`
    |
 note: required by a bound in `Foo::b`
   --> $DIR/trait-where-clause-const.rs:13:1
@@ -12,10 +12,6 @@ LL | #[const_trait]
 ...
 LL |     fn b() where Self: ~const Bar;
    |        - required by a bound in this associated function
-help: consider further restricting the associated type
-   |
-LL | const fn test1<T: ~const Foo + Bar>() where Foo::{synthetic#0}: Compat {
-   |                                       ++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/trait-where-clause-const.rs:22:5
@@ -26,11 +22,11 @@ LL |     T::b();
    = note: expected constant `host`
               found constant `true`
 
-error[E0277]: the trait bound `Foo::{synthetic#0}: Compat` is not satisfied
+error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/trait-where-clause-const.rs:25:5
    |
 LL |     T::c::<T>();
-   |     ^ the trait `Compat` is not implemented for `Foo::{synthetic#0}`
+   |     ^ the trait `Foo` is not implemented for `T`
    |
 note: required by a bound in `Foo::c`
   --> $DIR/trait-where-clause-const.rs:13:1
@@ -40,10 +36,6 @@ LL | #[const_trait]
 ...
 LL |     fn c<T: ~const Bar>();
    |        - required by a bound in this associated function
-help: consider further restricting the associated type
-   |
-LL | const fn test1<T: ~const Foo + Bar>() where Foo::{synthetic#0}: Compat {
-   |                                       ++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/trait-where-clause-const.rs:25:5

@@ -2,31 +2,25 @@ use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::AtomicPtr;
 use crate::sync::atomic::Ordering::Relaxed;
-use crate::sys::sync::{Mutex, mutex};
+use crate::sys::sync::{Mutex, OnceBox};
 #[cfg(not(target_os = "nto"))]
 use crate::sys::time::TIMESPEC_MAX;
 #[cfg(target_os = "nto")]
 use crate::sys::time::TIMESPEC_MAX_CAPPED;
-use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::time::Duration;
 
 struct AllocatedCondvar(UnsafeCell<libc::pthread_cond_t>);
 
 pub struct Condvar {
-    inner: LazyBox<AllocatedCondvar>,
+    inner: OnceBox<AllocatedCondvar>,
     mutex: AtomicPtr<libc::pthread_mutex_t>,
-}
-
-#[inline]
-fn raw(c: &Condvar) -> *mut libc::pthread_cond_t {
-    c.inner.0.get()
 }
 
 unsafe impl Send for AllocatedCondvar {}
 unsafe impl Sync for AllocatedCondvar {}
 
-impl LazyInit for AllocatedCondvar {
-    fn init() -> Box<Self> {
+impl AllocatedCondvar {
+    fn new() -> Box<Self> {
         let condvar = Box::new(AllocatedCondvar(UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER)));
 
         cfg_if::cfg_if! {
@@ -37,7 +31,7 @@ impl LazyInit for AllocatedCondvar {
                 target_vendor = "apple",
             ))] {
                 // `pthread_condattr_setclock` is unfortunately not supported on these platforms.
-            } else if #[cfg(any(target_os = "espidf", target_os = "horizon"))] {
+            } else if #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "teeos"))] {
                 // NOTE: ESP-IDF's PTHREAD_COND_INITIALIZER support is not released yet
                 // So on that platform, init() should always be called
                 // Moreover, that platform does not have pthread_condattr_setclock support,
@@ -82,7 +76,11 @@ impl Drop for AllocatedCondvar {
 
 impl Condvar {
     pub const fn new() -> Condvar {
-        Condvar { inner: LazyBox::new(), mutex: AtomicPtr::new(ptr::null_mut()) }
+        Condvar { inner: OnceBox::new(), mutex: AtomicPtr::new(ptr::null_mut()) }
+    }
+
+    fn get(&self) -> *mut libc::pthread_cond_t {
+        self.inner.get_or_init(AllocatedCondvar::new).0.get()
     }
 
     #[inline]
@@ -98,21 +96,21 @@ impl Condvar {
 
     #[inline]
     pub fn notify_one(&self) {
-        let r = unsafe { libc::pthread_cond_signal(raw(self)) };
+        let r = unsafe { libc::pthread_cond_signal(self.get()) };
         debug_assert_eq!(r, 0);
     }
 
     #[inline]
     pub fn notify_all(&self) {
-        let r = unsafe { libc::pthread_cond_broadcast(raw(self)) };
+        let r = unsafe { libc::pthread_cond_broadcast(self.get()) };
         debug_assert_eq!(r, 0);
     }
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        let mutex = mutex::raw(mutex);
+        let mutex = mutex.get_assert_locked();
         self.verify(mutex);
-        let r = libc::pthread_cond_wait(raw(self), mutex);
+        let r = libc::pthread_cond_wait(self.get(), mutex);
         debug_assert_eq!(r, 0);
     }
 
@@ -129,7 +127,7 @@ impl Condvar {
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::sys::time::Timespec;
 
-        let mutex = mutex::raw(mutex);
+        let mutex = mutex.get_assert_locked();
         self.verify(mutex);
 
         #[cfg(not(target_os = "nto"))]
@@ -144,7 +142,7 @@ impl Condvar {
             .and_then(|t| t.to_timespec_capped())
             .unwrap_or(TIMESPEC_MAX_CAPPED);
 
-        let r = libc::pthread_cond_timedwait(raw(self), mutex, &timeout);
+        let r = libc::pthread_cond_timedwait(self.get(), mutex, &timeout);
         assert!(r == libc::ETIMEDOUT || r == 0);
         r == 0
     }
@@ -162,7 +160,7 @@ impl Condvar {
         use crate::sys::time::SystemTime;
         use crate::time::Instant;
 
-        let mutex = mutex::raw(mutex);
+        let mutex = mutex.get_assert_locked();
         self.verify(mutex);
 
         // OSX implementation of `pthread_cond_timedwait` is buggy
@@ -188,7 +186,7 @@ impl Condvar {
             .and_then(|t| t.to_timespec())
             .unwrap_or(TIMESPEC_MAX);
 
-        let r = libc::pthread_cond_timedwait(raw(self), mutex, &timeout);
+        let r = libc::pthread_cond_timedwait(self.get(), mutex, &timeout);
         debug_assert!(r == libc::ETIMEDOUT || r == 0);
 
         // ETIMEDOUT is not a totally reliable method of determining timeout due

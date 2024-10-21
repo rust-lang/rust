@@ -7,7 +7,6 @@ pub(crate) fn target() -> Target {
         linker: Some("sparc-elf-gcc".into()),
         endian: Endian::Big,
         cpu: "v7".into(),
-        abi: "elf".into(),
         max_atomic_width: Some(32),
         atomic_cas: true,
         panic_strategy: PanicStrategy::Abort,

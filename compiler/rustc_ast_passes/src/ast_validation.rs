@@ -63,7 +63,7 @@ impl TraitOrTraitImpl {
 }
 
 struct AstValidator<'a> {
-    session: &'a Session,
+    sess: &'a Session,
     features: &'a Features,
 
     /// The span of the `extern` in an `extern { ... }` block, if any.
@@ -244,9 +244,6 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::AnonStruct(_, ref fields) | TyKind::AnonUnion(_, ref fields) => {
-                walk_list!(self, visit_struct_field_def, fields)
-            }
             _ => visit::walk_ty(self, t),
         }
     }
@@ -255,7 +252,6 @@ impl<'a> AstValidator<'a> {
         if let Some(ident) = field.ident
             && ident.name == kw::Underscore
         {
-            self.check_unnamed_field_ty(&field.ty, ident.span);
             self.visit_vis(&field.vis);
             self.visit_ident(ident);
             self.visit_ty_common(&field.ty);
@@ -267,7 +263,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn dcx(&self) -> DiagCtxtHandle<'a> {
-        self.session.dcx()
+        self.sess.dcx()
     }
 
     fn visibility_not_permitted(&self, vis: &Visibility, note: errors::VisibilityNotPermittedNote) {
@@ -291,39 +287,6 @@ impl<'a> AstValidator<'a> {
                 }
                 _ => report_err(pat.span, None, false),
             }
-        }
-    }
-
-    fn check_unnamed_field_ty(&self, ty: &Ty, span: Span) {
-        if matches!(
-            &ty.kind,
-            // We already checked for `kw::Underscore` before calling this function,
-            // so skip the check
-            TyKind::AnonStruct(..) | TyKind::AnonUnion(..)
-            // If the anonymous field contains a Path as type, we can't determine
-            // if the path is a valid struct or union, so skip the check
-            | TyKind::Path(..)
-        ) {
-            return;
-        }
-        self.dcx().emit_err(errors::InvalidUnnamedFieldTy { span, ty_span: ty.span });
-    }
-
-    fn deny_anon_struct_or_union(&self, ty: &Ty) {
-        let struct_or_union = match &ty.kind {
-            TyKind::AnonStruct(..) => "struct",
-            TyKind::AnonUnion(..) => "union",
-            _ => return,
-        };
-        self.dcx().emit_err(errors::AnonStructOrUnionNotAllowed { struct_or_union, span: ty.span });
-    }
-
-    fn deny_unnamed_field(&self, field: &FieldDef) {
-        if let Some(ident) = field.ident
-            && ident.name == kw::Underscore
-        {
-            self.dcx()
-                .emit_err(errors::InvalidUnnamedField { span: field.span, ident_span: ident.span });
         }
     }
 
@@ -359,7 +322,7 @@ impl<'a> AstValidator<'a> {
             in_impl: matches!(parent, TraitOrTraitImpl::TraitImpl { .. }),
             const_context_label: parent_constness,
             remove_const_sugg: (
-                self.session.source_map().span_extend_while_whitespace(span),
+                self.sess.source_map().span_extend_while_whitespace(span),
                 match parent_constness {
                     Some(_) => rustc_errors::Applicability::MachineApplicable,
                     None => rustc_errors::Applicability::MaybeIncorrect,
@@ -472,7 +435,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
         if let Defaultness::Default(def_span) = defaultness {
-            let span = self.session.source_map().guess_head_span(span);
+            let span = self.sess.source_map().guess_head_span(span);
             self.dcx().emit_err(errors::ForbiddenDefault { span, def_span });
         }
     }
@@ -480,7 +443,7 @@ impl<'a> AstValidator<'a> {
     /// If `sp` ends with a semicolon, returns it as a `Span`
     /// Otherwise, returns `sp.shrink_to_hi()`
     fn ending_semi_or_hi(&self, sp: Span) -> Span {
-        let source_map = self.session.source_map();
+        let source_map = self.sess.source_map();
         let end = source_map.end_point(sp);
 
         if source_map.span_to_snippet(end).is_ok_and(|s| s == ";") {
@@ -552,7 +515,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn current_extern_span(&self) -> Span {
-        self.session.source_map().guess_head_span(self.extern_mod.unwrap())
+        self.sess.source_map().guess_head_span(self.extern_mod.unwrap())
     }
 
     /// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
@@ -561,21 +524,24 @@ impl<'a> AstValidator<'a> {
         // Deconstruct to ensure exhaustiveness
         FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
-        let report_err = |span| {
-            self.dcx()
-                .emit_err(errors::FnQualifierInExtern { span, block: self.current_extern_span() });
+        let report_err = |span, kw| {
+            self.dcx().emit_err(errors::FnQualifierInExtern {
+                span,
+                kw,
+                block: self.current_extern_span(),
+            });
         };
         match coroutine_kind {
-            Some(knd) => report_err(knd.span()),
+            Some(kind) => report_err(kind.span(), kind.as_str()),
             None => (),
         }
         match constness {
-            Const::Yes(span) => report_err(span),
+            Const::Yes(span) => report_err(span, "const"),
             Const::No => (),
         }
         match ext {
             Extern::None => (),
-            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span),
+            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span, "extern"),
         }
     }
 
@@ -648,7 +614,7 @@ impl<'a> AstValidator<'a> {
         if ident.name.as_str().is_ascii() {
             return;
         }
-        let span = self.session.source_map().guess_head_span(item_span);
+        let span = self.sess.source_map().guess_head_span(item_span);
         self.dcx().emit_err(errors::NoMangleAscii { span });
     }
 
@@ -753,7 +719,7 @@ impl<'a> AstValidator<'a> {
                     self.dcx().emit_err(errors::PatternFnPointer { span });
                 });
                 if let Extern::Implicit(_) = bfty.ext {
-                    let sig_span = self.session.source_map().next_point(ty.span.shrink_to_lo());
+                    let sig_span = self.sess.source_map().next_point(ty.span.shrink_to_lo());
                     self.maybe_lint_missing_abi(sig_span, ty.id);
                 }
             }
@@ -795,7 +761,7 @@ impl<'a> AstValidator<'a> {
         // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
         // call site which do not have a macro backtrace. See #61963.
         if self
-            .session
+            .sess
             .source_map()
             .span_to_snippet(span)
             .is_ok_and(|snippet| !snippet.starts_with("#["))
@@ -885,18 +851,12 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.session.psess, attr);
+        validate_attr::check_attr(&self.sess.psess, attr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
-        self.deny_anon_struct_or_union(ty);
         self.walk_ty(ty)
-    }
-
-    fn visit_field_def(&mut self, field: &'a FieldDef) {
-        self.deny_unnamed_field(field);
-        visit::walk_field_def(self, field)
     }
 
     fn visit_item(&mut self, item: &'a Item) {
@@ -1192,7 +1152,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 } else if where_clauses.after.has_where_token {
                     self.dcx().emit_err(errors::WhereClauseAfterTypeAlias {
                         span: where_clauses.after.span,
-                        help: self.session.is_nightly_build(),
+                        help: self.sess.is_nightly_build(),
                     });
                 }
             }
@@ -1303,7 +1263,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if !bound_pred.bound_generic_params.is_empty() {
                         for bound in &bound_pred.bounds {
                             match bound {
-                                GenericBound::Trait(t, _) => {
+                                GenericBound::Trait(t) => {
                                     if !t.bound_generic_params.is_empty() {
                                         self.dcx()
                                             .emit_err(errors::NestedLifetimes { span: t.span });
@@ -1323,12 +1283,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
         match bound {
-            GenericBound::Trait(trait_ref, modifiers) => {
-                match (ctxt, modifiers.constness, modifiers.polarity) {
+            GenericBound::Trait(trait_ref) => {
+                match (ctxt, trait_ref.modifiers.constness, trait_ref.modifiers.polarity) {
                     (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
                         if !self.features.more_maybe_bounds =>
                     {
-                        self.session
+                        self.sess
                             .create_feature_err(
                                 errors::OptionalTraitSupertrait {
                                     span: trait_ref.span,
@@ -1341,7 +1301,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_))
                         if !self.features.more_maybe_bounds =>
                     {
-                        self.session
+                        self.sess
                             .create_feature_err(
                                 errors::OptionalTraitObject { span: trait_ref.span },
                                 sym::more_maybe_bounds,
@@ -1364,7 +1324,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
 
                 // Negative trait bounds are not allowed to have associated constraints
-                if let BoundPolarity::Negative(_) = modifiers.polarity
+                if let BoundPolarity::Negative(_) = trait_ref.modifiers.polarity
                     && let Some(segment) = trait_ref.trait_ref.path.segments.last()
                 {
                     match segment.args.as_deref() {
@@ -1712,7 +1672,9 @@ fn deny_equality_constraints(
             }),
         ) {
             for bound in bounds {
-                if let GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                if let GenericBound::Trait(poly) = bound
+                    && poly.modifiers == TraitBoundModifiers::NONE
+                {
                     if full_path.segments[..full_path.segments.len() - 1]
                         .iter()
                         .map(|segment| segment.ident.name)
@@ -1740,7 +1702,9 @@ fn deny_equality_constraints(
             ) {
                 if ident == potential_param.ident {
                     for bound in bounds {
-                        if let ast::GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                        if let ast::GenericBound::Trait(poly) = bound
+                            && poly.modifiers == TraitBoundModifiers::NONE
+                        {
                             suggest(poly, potential_assoc, predicate);
                         }
                     }
@@ -1752,13 +1716,13 @@ fn deny_equality_constraints(
 }
 
 pub fn check_crate(
-    session: &Session,
+    sess: &Session,
     features: &Features,
     krate: &Crate,
     lints: &mut LintBuffer,
 ) -> bool {
     let mut validator = AstValidator {
-        session,
+        sess,
         features,
         extern_mod: None,
         outer_trait_or_trait_impl: None,

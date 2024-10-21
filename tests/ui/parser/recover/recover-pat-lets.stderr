@@ -2,26 +2,33 @@ error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:4:9
    |
 LL |     let x.expect("foo");
-   |         ^^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+   |         ^^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:7:9
    |
 LL |     let x.unwrap(): u32;
-   |         ^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+   |         ^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:10:9
    |
 LL |     let x[0] = 1;
-   |         ^^^^ arbitrary expressions are not allowed in patterns
+   |         ^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:13:14
    |
 LL |     let Some(1 + 1) = x else {
-   |              ^^^^^ arbitrary expressions are not allowed in patterns
+   |              ^^^^^ not a pattern
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 1;
@@ -36,8 +43,9 @@ error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:17:17
    |
 LL |     if let Some(1 + 1) = x {
-   |                 ^^^^^ arbitrary expressions are not allowed in patterns
+   |                 ^^^^^ not a pattern
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 1;

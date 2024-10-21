@@ -8,7 +8,9 @@ use rustc_hir::Node;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
-use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
+use rustc_lint_defs::builtin::{
+    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
+};
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
@@ -52,16 +54,18 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
             });
         }
     }
+}
 
-    // This ABI is only allowed on function pointers
-    if abi == Abi::CCmseNonSecureCall {
-        struct_span_code_err!(
-            tcx.dcx(),
-            span,
-            E0781,
-            "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
-        )
-        .emit();
+pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
+    match tcx.sess.target.is_abi_supported(abi) {
+        Some(true) => (),
+        Some(false) | None => {
+            tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
+                lint.primary_message(format!(
+                    "the calling convention {abi} is not supported on this target"
+                ));
+            });
+        }
     }
 }
 
@@ -76,7 +80,6 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     check_transparent(tcx, def);
     check_packed(tcx, span, def);
-    check_unnamed_fields(tcx, def);
 }
 
 fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
@@ -86,61 +89,6 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_transparent(tcx, def);
     check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def);
-    check_unnamed_fields(tcx, def);
-}
-
-/// Check the representation of adts with unnamed fields.
-fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
-    if def.is_enum() {
-        return;
-    }
-    let variant = def.non_enum_variant();
-    if !variant.has_unnamed_fields() {
-        return;
-    }
-    if !def.is_anonymous() {
-        let adt_kind = def.descr();
-        let span = tcx.def_span(def.did());
-        let unnamed_fields = variant
-            .fields
-            .iter()
-            .filter(|f| f.is_unnamed())
-            .map(|f| {
-                let span = tcx.def_span(f.did);
-                errors::UnnamedFieldsReprFieldDefined { span }
-            })
-            .collect::<Vec<_>>();
-        debug_assert_ne!(unnamed_fields.len(), 0, "expect unnamed fields in this adt");
-        let adt_name = tcx.item_name(def.did());
-        if !def.repr().c() {
-            tcx.dcx().emit_err(errors::UnnamedFieldsRepr::MissingReprC {
-                span,
-                adt_kind,
-                adt_name,
-                unnamed_fields,
-                sugg_span: span.shrink_to_lo(),
-            });
-        }
-    }
-    for field in variant.fields.iter().filter(|f| f.is_unnamed()) {
-        let field_ty = tcx.type_of(field.did).instantiate_identity();
-        if let Some(adt) = field_ty.ty_adt_def()
-            && !adt.is_enum()
-        {
-            if !adt.is_anonymous() && !adt.repr().c() {
-                let field_ty_span = tcx.def_span(adt.did());
-                tcx.dcx().emit_err(errors::UnnamedFieldsRepr::FieldMissingReprC {
-                    span: tcx.def_span(field.did),
-                    field_ty_span,
-                    field_ty,
-                    field_adt_kind: adt.descr(),
-                    sugg_span: field_ty_span.shrink_to_lo(),
-                });
-            }
-        } else {
-            tcx.dcx().emit_err(errors::InvalidUnnamedFieldTy { span: tcx.def_span(field.did) });
-        }
-    }
 }
 
 /// Check that the fields of the `union` do not need dropping.
@@ -252,10 +200,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
 /// projections that would result in "inheriting lifetimes".
 fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let item = tcx.hir().expect_item(def_id);
-    let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
-        tcx.dcx().span_bug(item.span, "expected opaque item");
-    };
+    let hir::OpaqueTy { origin, .. } = tcx.hir().expect_opaque_ty(def_id);
 
     // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
     // `async-std` (and `pub async fn` in general).
@@ -265,16 +210,16 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         return;
     }
 
-    let span = tcx.def_span(item.owner_id.def_id);
+    let span = tcx.def_span(def_id);
 
-    if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
+    if tcx.type_of(def_id).instantiate_identity().references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.owner_id.def_id, span).is_err() {
+    if check_opaque_for_cycles(tcx, def_id, span).is_err() {
         return;
     }
 
-    let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, origin);
+    let _ = check_opaque_meets_bounds(tcx, def_id, span, origin);
 }
 
 /// Checks that an opaque type does not contain cycles.
@@ -336,9 +281,9 @@ fn check_opaque_meets_bounds<'tcx>(
     origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
     let defining_use_anchor = match *origin {
-        hir::OpaqueTyOrigin::FnReturn(did)
-        | hir::OpaqueTyOrigin::AsyncFn(did)
-        | hir::OpaqueTyOrigin::TyAlias { parent: did, .. } => did,
+        hir::OpaqueTyOrigin::FnReturn { parent, .. }
+        | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
+        | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
@@ -346,8 +291,8 @@ fn check_opaque_meets_bounds<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let args = match *origin {
-        hir::OpaqueTyOrigin::FnReturn(parent)
-        | hir::OpaqueTyOrigin::AsyncFn(parent)
+        hir::OpaqueTyOrigin::FnReturn { parent, .. }
+        | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
         | hir::OpaqueTyOrigin::TyAlias { parent, .. } => GenericArgs::identity_for_item(
             tcx, parent,
         )
@@ -409,7 +354,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
 
-    if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
+    if let hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } = origin {
         // HACK: this should also fall through to the hidden type check below, but the original
         // implementation had a bug where equivalent lifetimes are not identical. This caused us
         // to reject existing stable code that is otherwise completely fine. The real fix is to
@@ -481,8 +426,7 @@ fn sanity_check_found_hidden_type<'tcx>(
 /// 2. Checking that all lifetimes that are implicitly captured are mentioned.
 /// 3. Asserting that all parameters mentioned in the captures list are invariant.
 fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDefId) {
-    let hir::OpaqueTy { bounds, .. } =
-        *tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
+    let hir::OpaqueTy { bounds, .. } = *tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty();
     let Some(precise_capturing_args) = bounds.iter().find_map(|bound| match *bound {
         hir::GenericBound::Use(bounds, ..) => Some(bounds),
         _ => None,
@@ -593,15 +537,22 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                                 param_span: tcx.def_span(def_id),
                             });
                         } else {
-                            // If the `use_span` is actually just the param itself, then we must
-                            // have not duplicated the lifetime but captured the original.
-                            // The "effective" `use_span` will be the span of the opaque itself,
-                            // and the param span will be the def span of the param.
-                            tcx.dcx().emit_err(errors::LifetimeNotCaptured {
-                                opaque_span,
-                                use_span: opaque_span,
-                                param_span: use_span,
-                            });
+                            if tcx.def_kind(tcx.parent(param.def_id)) == DefKind::Trait {
+                                tcx.dcx().emit_err(errors::LifetimeImplicitlyCaptured {
+                                    opaque_span,
+                                    param_span: tcx.def_span(param.def_id),
+                                });
+                            } else {
+                                // If the `use_span` is actually just the param itself, then we must
+                                // have not duplicated the lifetime but captured the original.
+                                // The "effective" `use_span` will be the span of the opaque itself,
+                                // and the param span will be the def span of the param.
+                                tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                                    opaque_span,
+                                    use_span: opaque_span,
+                                    param_span: use_span,
+                                });
+                            }
                         }
                         continue;
                     }
@@ -736,8 +687,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_opaque_precise_captures(tcx, def_id);
 
             let origin = tcx.opaque_type_origin(def_id);
-            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
-            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
+            if let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
+            | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. } = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {
@@ -1086,7 +1037,11 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             return;
         }
 
-        if let Some(len) = len_const.try_eval_target_usize(tcx, tcx.param_env(def.did())) {
+        // FIXME(repr_simd): This check is nice, but perhaps unnecessary due to the fact
+        // we do not expect users to implement their own `repr(simd)` types. If they could,
+        // this check is easily side-steppable by hiding the const behind normalization.
+        // The consequence is that the error is, in general, only observable post-mono.
+        if let Some(len) = len_const.try_to_target_usize(tcx) {
             if len == 0 {
                 struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
                 return;
@@ -1105,7 +1060,7 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         // Check that we use types valid for use in the lanes of a SIMD "vector register"
         // These are scalar types which directly match a "machine" type
         // Yes: Integers, floats, "thin" pointers
-        // No: char, "fat" pointers, compound types
+        // No: char, "wide" pointers, compound types
         match element_ty.kind() {
             ty::Param(_) => (), // pass struct<T>([T; 4]) through, let monomorphization catch errors
             ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) => (), // struct([u8; 4]) is ok

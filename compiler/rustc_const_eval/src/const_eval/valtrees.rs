@@ -92,7 +92,7 @@ fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::zst())
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
-            let val = ecx.read_immediate(place)?;
+            let val = ecx.read_immediate(place).unwrap();
             let val = val.to_scalar_int().unwrap();
             *num_nodes += 1;
 
@@ -114,7 +114,7 @@ fn const_to_valtree_inner<'tcx>(
             // equality at compile-time (see `ptr_guaranteed_cmp`).
             // However we allow those that are just integers in disguise.
             // First, get the pointer. Remember it might be wide!
-            let val = ecx.read_immediate(place)?;
+            let val = ecx.read_immediate(place).unwrap();
             // We could allow wide raw pointers where both sides are integers in the future,
             // but for now we reject them.
             if matches!(val.layout.abi, Abi::ScalarPair(..)) {
@@ -135,7 +135,7 @@ fn const_to_valtree_inner<'tcx>(
         ty::FnPtr(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
         ty::Ref(_, _, _)  => {
-            let derefd_place = ecx.deref_pointer(place)?;
+            let derefd_place = ecx.deref_pointer(place).unwrap();
             const_to_valtree_inner(ecx, &derefd_place, num_nodes)
         }
 
@@ -159,7 +159,7 @@ fn const_to_valtree_inner<'tcx>(
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
-            let variant = ecx.read_discriminant(place)?;
+            let variant = ecx.read_discriminant(place).unwrap();
             branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)
         }
 

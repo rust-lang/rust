@@ -27,4 +27,8 @@ mod inner {
 #[unsafe(used)] //~ ERROR: is not an unsafe attribute
 static FOO: usize = 0;
 
-fn main() {}
+fn main() {
+    let _a = cfg!(unsafe(foo));
+    //~^ ERROR: expected identifier, found keyword `unsafe`
+    //~^^ ERROR: invalid predicate `r#unsafe`
+}

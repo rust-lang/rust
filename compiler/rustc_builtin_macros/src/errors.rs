@@ -145,6 +145,78 @@ pub(crate) struct AllocMustStatics {
     pub(crate) span: Span,
 }
 
+#[cfg(llvm_enzyme)]
+pub(crate) use autodiff::*;
+
+#[cfg(llvm_enzyme)]
+mod autodiff {
+    use super::*;
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_missing_config)]
+    pub(crate) struct AutoDiffMissingConfig {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_unknown_activity)]
+    pub(crate) struct AutoDiffUnknownActivity {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) act: String,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_ty_activity)]
+    pub(crate) struct AutoDiffInvalidTypeForActivity {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) act: String,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_number_activities)]
+    pub(crate) struct AutoDiffInvalidNumberActivities {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) expected: usize,
+        pub(crate) found: usize,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_mode_activity)]
+    pub(crate) struct AutoDiffInvalidApplicationModeAct {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) mode: String,
+        pub(crate) act: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_mode)]
+    pub(crate) struct AutoDiffInvalidMode {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) mode: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff)]
+    pub(crate) struct AutoDiffInvalidApplication {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+}
+
+#[cfg(not(llvm_enzyme))]
+pub(crate) use ad_fallback::*;
+#[cfg(not(llvm_enzyme))]
+mod ad_fallback {
+    use super::*;
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_not_build)]
+    pub(crate) struct AutoDiffSupportNotBuild {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+}
+
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_invalid)]
 pub(crate) struct ConcatBytesInvalid {
@@ -751,7 +823,7 @@ pub(crate) struct AsmExpectedOther {
     #[primary_span]
     #[label(builtin_macros_asm_expected_other)]
     pub(crate) span: Span,
-    pub(crate) is_global_asm: bool,
+    pub(crate) is_inline_asm: bool,
 }
 
 #[derive(Diagnostic)]
@@ -799,13 +871,6 @@ pub(crate) struct AsmMayUnwind {
     pub(crate) labels_sp: Vec<Span>,
 }
 
-#[derive(Diagnostic)]
-#[diag(builtin_macros_global_asm_clobber_abi)]
-pub(crate) struct GlobalAsmClobberAbi {
-    #[primary_span]
-    pub(crate) spans: Vec<Span>,
-}
-
 pub(crate) struct AsmClobberNoReg {
     pub(crate) spans: Vec<Span>,
     pub(crate) clobbers: Vec<Span>,
@@ -841,23 +906,33 @@ pub(crate) struct AsmOptAlreadyprovided {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_global_asm_unsupported_option)]
-pub(crate) struct GlobalAsmUnsupportedOption {
+#[diag(builtin_macros_asm_unsupported_option)]
+pub(crate) struct AsmUnsupportedOption {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
     pub(crate) symbol: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub(crate) full_span: Span,
+    pub(crate) macro_name: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_global_asm_unsupported_operand)]
-pub(crate) struct GlobalAsmUnsupportedOperand<'a> {
+#[diag(builtin_macros_asm_unsupported_operand)]
+pub(crate) struct AsmUnsupportedOperand<'a> {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
     pub(crate) symbol: &'a str,
+    pub(crate) macro_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_unsupported_clobber_abi)]
+pub(crate) struct AsmUnsupportedClobberAbi {
+    #[primary_span]
+    pub(crate) spans: Vec<Span>,
+    pub(crate) macro_name: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -936,4 +1011,11 @@ pub(crate) struct NakedFunctionTestingAttribute {
     pub naked_span: Span,
     #[label]
     pub testing_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_non_generic_pointee)]
+pub(crate) struct NonGenericPointee {
+    #[primary_span]
+    pub span: Span,
 }

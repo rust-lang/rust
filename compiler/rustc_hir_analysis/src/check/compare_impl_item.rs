@@ -592,13 +592,12 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 &cause,
                 hir.get_if_local(impl_m.def_id)
                     .and_then(|node| node.fn_decl())
-                    .map(|decl| (decl.output.span(), Cow::from("return type in trait"))),
+                    .map(|decl| (decl.output.span(), Cow::from("return type in trait"), false)),
                 Some(infer::ValuePairs::Terms(ExpectedFound {
                     expected: trait_return_ty.into(),
                     found: impl_return_ty.into(),
                 })),
                 terr,
-                false,
                 false,
             );
             return Err(diag.emit());
@@ -1018,13 +1017,12 @@ fn report_trait_method_mismatch<'tcx>(
     infcx.err_ctxt().note_type_err(
         &mut diag,
         &cause,
-        trait_err_span.map(|sp| (sp, Cow::from("type in trait"))),
+        trait_err_span.map(|sp| (sp, Cow::from("type in trait"), false)),
         Some(infer::ValuePairs::PolySigs(ExpectedFound {
             expected: ty::Binder::dummy(trait_sig),
             found: ty::Binder::dummy(impl_sig),
         })),
         terr,
-        false,
         false,
     );
 
@@ -1825,13 +1823,12 @@ fn compare_const_predicate_entailment<'tcx>(
         infcx.err_ctxt().note_type_err(
             &mut diag,
             &cause,
-            trait_c_span.map(|span| (span, Cow::from("type in trait"))),
+            trait_c_span.map(|span| (span, Cow::from("type in trait"), false)),
             Some(infer::ValuePairs::Terms(ExpectedFound {
                 expected: trait_ty.into(),
                 found: impl_ty.into(),
             })),
             terr,
-            false,
             false,
         );
         return Err(diag.emit());

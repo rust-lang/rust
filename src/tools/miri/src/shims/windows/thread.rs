@@ -1,8 +1,8 @@
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::spec::abi::Abi;
 
-use crate::*;
 use self::shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
+use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 
@@ -79,6 +79,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.join_thread(thread)?;
 
-        Ok(0)
+        interp_ok(0)
     }
 }

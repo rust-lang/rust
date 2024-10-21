@@ -764,7 +764,6 @@ ui/consts/issue-46553.rs
 ui/consts/issue-47789.rs
 ui/consts/issue-50439.rs
 ui/consts/issue-52023-array-size-pointer-cast.rs
-ui/consts/issue-52060.rs
 ui/consts/issue-54224.rs
 ui/consts/issue-54348.rs
 ui/consts/issue-54387.rs
@@ -796,7 +795,6 @@ ui/consts/issue-68684.rs
 ui/consts/issue-69191-ice-on-uninhabited-enum-field.rs
 ui/consts/issue-69310-array-size-lit-wrong-ty.rs
 ui/consts/issue-69312.rs
-ui/consts/issue-69488.rs
 ui/consts/issue-69532.rs
 ui/consts/issue-6991.rs
 ui/consts/issue-70773-mir-typeck-lt-norm.rs
@@ -804,7 +802,6 @@ ui/consts/issue-70942-trait-vs-impl-mismatch.rs
 ui/consts/issue-73976-monomorphic.rs
 ui/consts/issue-73976-polymorphic.rs
 ui/consts/issue-76064.rs
-ui/consts/issue-77062-large-zst-array.rs
 ui/consts/issue-78655.rs
 ui/consts/issue-79137-monomorphic.rs
 ui/consts/issue-79137-toogeneric.rs
@@ -1523,7 +1520,6 @@ ui/issues/issue-12567.rs
 ui/issues/issue-12612.rs
 ui/issues/issue-12660.rs
 ui/issues/issue-12677.rs
-ui/issues/issue-12699.rs
 ui/issues/issue-12729.rs
 ui/issues/issue-12744.rs
 ui/issues/issue-12860.rs
@@ -2746,14 +2742,12 @@ ui/lint/issue-111359.rs
 ui/lint/issue-112489.rs
 ui/lint/issue-117949.rs
 ui/lint/issue-121070-let-range.rs
-ui/lint/issue-14309.rs
 ui/lint/issue-14837.rs
 ui/lint/issue-17718-const-naming.rs
 ui/lint/issue-1866.rs
 ui/lint/issue-19102.rs
 ui/lint/issue-20343.rs
 ui/lint/issue-30302.rs
-ui/lint/issue-34798.rs
 ui/lint/issue-35075.rs
 ui/lint/issue-47775-nested-macro-unnecessary-parens-arg.rs
 ui/lint/issue-49588-non-shorthand-field-patterns-in-pattern-macro.rs
@@ -2764,7 +2758,6 @@ ui/lint/issue-63364.rs
 ui/lint/issue-70819-dont-override-forbid-in-same-scope.rs
 ui/lint/issue-79546-fuel-ice.rs
 ui/lint/issue-79744.rs
-ui/lint/issue-80988.rs
 ui/lint/issue-81218.rs
 ui/lint/issue-83477.rs
 ui/lint/issue-87274-paren-parent.rs
@@ -3177,10 +3170,6 @@ ui/nll/user-annotations/issue-55241.rs
 ui/nll/user-annotations/issue-55748-pat-types-constrain-bindings.rs
 ui/nll/user-annotations/issue-57731-ascibed-coupled-types.rs
 ui/numbers-arithmetic/issue-8460.rs
-ui/object-safety/issue-102762.rs
-ui/object-safety/issue-102933.rs
-ui/object-safety/issue-106247.rs
-ui/object-safety/issue-19538.rs
 ui/on-unimplemented/issue-104140.rs
 ui/or-patterns/issue-64879-trailing-before-guard.rs
 ui/or-patterns/issue-67514-irrefutable-param.rs
@@ -3830,7 +3819,6 @@ ui/stability-attribute/issue-28388-3.rs
 ui/stability-attribute/issue-99286-stable-intrinsics.rs
 ui/static/auxiliary/issue_24843.rs
 ui/static/issue-1660.rs
-ui/static/issue-18118-2.rs
 ui/static/issue-18118.rs
 ui/static/issue-24446.rs
 ui/static/issue-24843.rs
@@ -4078,7 +4066,6 @@ ui/traits/issue-96664.rs
 ui/traits/issue-96665.rs
 ui/traits/issue-97576.rs
 ui/traits/issue-97695-double-trivial-bound.rs
-ui/traits/issue-99875.rs
 ui/traits/next-solver/coherence/issue-102048.rs
 ui/traits/next-solver/issue-118950-root-region.rs
 ui/traits/object/issue-33140-traitobject-crate.rs

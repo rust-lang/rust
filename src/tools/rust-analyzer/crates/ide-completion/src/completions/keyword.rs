@@ -151,6 +151,68 @@ fn foo(a: A) { a.$0 }
     }
 
     #[test]
+    fn for_in_impl() {
+        check_edit(
+            "for",
+            r#"
+struct X;
+impl X $0 {}
+"#,
+            r#"
+struct X;
+impl X for $0 {}
+"#,
+        );
+        check_edit(
+            "for",
+            r#"
+fn foo() {
+    struct X;
+    impl X $0 {}
+}
+"#,
+            r#"
+fn foo() {
+    struct X;
+    impl X for $0 {}
+}
+"#,
+        );
+        check_edit(
+            "for",
+            r#"
+fn foo() {
+    struct X;
+    impl X $0
+}
+"#,
+            r#"
+fn foo() {
+    struct X;
+    impl X for $0
+}
+"#,
+        );
+        check_edit(
+            "for",
+            r#"
+fn foo() {
+    struct X;
+    impl X { fn bar() { $0 } }
+}
+"#,
+            r#"
+fn foo() {
+    struct X;
+    impl X { fn bar() { for $1 in $2 {
+    $0
+} } }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn let_semi() {
         cov_mark::check!(let_semi);
         check_edit(

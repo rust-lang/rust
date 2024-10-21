@@ -16,27 +16,11 @@ LL | const I<const S: &str>: &str = "";
    |                  ^ explicit lifetime name needed here
 
 error[E0637]: `'_` cannot be used here
-  --> $DIR/elided-lifetimes.rs:14:18
+  --> $DIR/elided-lifetimes.rs:13:18
    |
 LL | const B<T: Trait<'_>>: () = ();
    |                  ^^ `'_` is a reserved lifetime name
 
-error: `&str` is forbidden as the type of a const generic parameter
-  --> $DIR/elided-lifetimes.rs:10:18
-   |
-LL | const I<const S: &str>: &str = "";
-   |                  ^^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0637`.

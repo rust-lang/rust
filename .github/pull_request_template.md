@@ -7,6 +7,6 @@ tracking issue or there are none, feel free to ignore this.
 This PR will get automatically assigned to a reviewer. In case you would like
 a specific user to review your work, you can assign it to them by using
 
-    r​? <reviewer name>
+    r\? <reviewer name> (with the `\` removed)
 -->
 <!-- homu-ignore:end -->

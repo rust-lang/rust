@@ -1394,12 +1394,6 @@ default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
 
 default_test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes" });
 
-default_test!(RunPassValgrind {
-    path: "tests/run-pass-valgrind",
-    mode: "run-pass-valgrind",
-    suite: "run-pass-valgrind"
-});
-
 default_test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen" });
 
 default_test!(CodegenUnits {
@@ -1703,7 +1697,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         builder.ensure(TestHelpers { target: compiler.host });
 
         // ensure that `libproc_macro` is available on the host.
-        builder.ensure(compile::Std::new(compiler, compiler.host));
+        if suite == "mir-opt" {
+            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, compiler.host));
+        } else {
+            builder.ensure(compile::Std::new(compiler, compiler.host));
+        }
 
         // As well as the target
         if suite != "mir-opt" {
@@ -1791,6 +1789,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--target").arg(target.rustc_target_arg());
         cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
+
+        if builder.build.config.llvm_enzyme {
+            cmd.arg("--has-enzyme");
+        }
 
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
@@ -2084,7 +2086,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if builder.config.profiler_enabled(target) {
-            cmd.arg("--profiler-support");
+            cmd.arg("--profiler-runtime");
         }
 
         cmd.env("RUST_TEST_TMPDIR", builder.tempdir());

@@ -1,19 +1,22 @@
 //@ needs-asm-support
 
-use std::arch::asm;
+use std::arch::naked_asm;
+//~^ ERROR use of unstable library feature 'naked_functions'
 
 #[naked]
 //~^ the `#[naked]` attribute is an experimental feature
 extern "C" fn naked() {
-    asm!("", options(noreturn))
-    //~^ ERROR: requires unsafe
+    naked_asm!("")
+    //~^ ERROR use of unstable library feature 'naked_functions'
+    //~| ERROR: requires unsafe
 }
 
 #[naked]
 //~^ the `#[naked]` attribute is an experimental feature
 extern "C" fn naked_2() -> isize {
-    asm!("", options(noreturn))
-    //~^ ERROR: requires unsafe
+    naked_asm!("")
+    //~^ ERROR use of unstable library feature 'naked_functions'
+    //~| ERROR: requires unsafe
 }
 
 fn main() {}

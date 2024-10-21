@@ -16,10 +16,10 @@ LL |     let x = |_: /* Type */| {};
    |               ++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/unknown_type_for_closure.rs:10:14
+  --> $DIR/unknown_type_for_closure.rs:10:17
    |
 LL |     let x = |k: _| {};
-   |              ^ cannot infer type
+   |                 ^ cannot infer type
 
 error[E0282]: type annotations needed
   --> $DIR/unknown_type_for_closure.rs:14:28

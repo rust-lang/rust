@@ -7,7 +7,7 @@
 // If the test passes, the expected function call count was added to the use-phase LLVM-IR.
 // See https://github.com/rust-lang/rust/pull/66631
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 //@ ignore-cross-compile
 
 use std::path::Path;

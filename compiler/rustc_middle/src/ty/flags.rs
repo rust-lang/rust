@@ -301,7 +301,7 @@ impl FlagComputation {
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                 self.add_args(slice::from_ref(&arg));
             }
-            ty::PredicateKind::ObjectSafe(_def_id) => {}
+            ty::PredicateKind::DynCompatible(_def_id) => {}
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
                 self.add_const(uv);
             }

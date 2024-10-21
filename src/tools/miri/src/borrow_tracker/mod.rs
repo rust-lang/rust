@@ -2,11 +2,10 @@ use std::cell::RefCell;
 use std::fmt;
 use std::num::NonZero;
 
-use smallvec::SmallVec;
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::RetagKind;
 use rustc_target::abi::Size;
+use smallvec::SmallVec;
 
 use crate::*;
 pub mod stacked_borrows;
@@ -323,7 +322,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match method {
             BorrowTrackerMethod::StackedBorrows => {
                 this.tcx.tcx.dcx().warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
-                Ok(())
+                interp_ok(())
             }
             BorrowTrackerMethod::TreeBorrows =>
                 this.tb_give_pointer_debug_name(ptr, nth_parent, name),
@@ -334,7 +333,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let Some(borrow_tracker) = &this.machine.borrow_tracker else {
             eprintln!("attempted to print borrow state, but no borrow state is being tracked");
-            return Ok(());
+            return interp_ok(());
         };
         let method = borrow_tracker.borrow().borrow_tracker_method;
         match method {
@@ -377,7 +376,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
         borrow_tracker.borrow_mut().end_call(&frame.extra);
-        Ok(())
+        interp_ok(())
     }
 }
 
@@ -490,7 +489,7 @@ impl AllocState {
         alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
         match self {
-            AllocState::StackedBorrows(_sb) => Ok(()),
+            AllocState::StackedBorrows(_sb) => interp_ok(()),
             AllocState::TreeBorrows(tb) =>
                 tb.borrow_mut().release_protector(machine, global, tag, alloc_id),
         }

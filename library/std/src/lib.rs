@@ -153,7 +153,7 @@
 //! the [`io`], [`fs`], and [`net`] modules.
 //!
 //! The [`thread`] module contains Rust's threading abstractions. [`sync`]
-//! contains further primitive shared memory types, including [`atomic`] and
+//! contains further primitive shared memory types, including [`atomic`], [`mpmc`] and
 //! [`mpsc`], which contains the channel types for message passing.
 //!
 //! # Use before and after `main()`
@@ -177,6 +177,7 @@
 //! - after-main use of thread-locals, which also affects additional features:
 //!   - [`thread::current()`]
 //!   - [`thread::scope()`]
+//!   - [`sync::mpmc`]
 //!   - [`sync::mpsc`]
 //! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
 //!
@@ -202,6 +203,7 @@
 //! [`atomic`]: sync::atomic
 //! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
 //! [`str`]: prim@str
+//! [`mpmc`]: sync::mpmc
 //! [`mpsc`]: sync::mpsc
 //! [`std::cmp`]: cmp
 //! [`std::slice`]: mod@slice
@@ -265,6 +267,7 @@
 #![allow(unused_features)]
 //
 // Features:
+#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
@@ -276,7 +279,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(const_mut_refs))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -286,6 +288,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(concat_idents)]
+#![feature(const_float_methods)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -412,9 +415,6 @@
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
 #![feature(const_hash)]
-#![feature(const_ip)]
-#![feature(const_ipv4)]
-#![feature(const_ipv6)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
@@ -625,7 +625,13 @@ pub mod simd {
     #[doc(inline)]
     pub use crate::std_float::StdFloat;
 }
-
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "124509")]
+/// This module provides support for automatic differentiation.
+pub mod autodiff {
+    /// This macro handles automatic differentiation.
+    pub use core::autodiff::autodiff;
+}
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.

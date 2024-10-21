@@ -53,6 +53,39 @@ struct NoMaybeSized<'a, #[pointee] T> {
     ptr: &'a T,
 }
 
+#[derive(SmartPointer)]
+#[repr(transparent)]
+struct PointeeOnField<'a, #[pointee] T: ?Sized> {
+    #[pointee]
+    //~^ ERROR: the `#[pointee]` attribute may only be used on generic parameters
+    ptr: &'a T
+}
+
+#[derive(SmartPointer)]
+#[repr(transparent)]
+struct PointeeInTypeConstBlock<'a, T: ?Sized = [u32; const { struct UhOh<#[pointee] T>(T); 10 }]> {
+    //~^ ERROR: the `#[pointee]` attribute may only be used on generic parameters
+    ptr: &'a T,
+}
+
+#[derive(SmartPointer)]
+#[repr(transparent)]
+struct PointeeInConstConstBlock<
+    'a,
+    T: ?Sized,
+    const V: u32 = { struct UhOh<#[pointee] T>(T); 10 }>
+    //~^ ERROR: the `#[pointee]` attribute may only be used on generic parameters
+{
+    ptr: &'a T,
+}
+
+#[derive(SmartPointer)]
+#[repr(transparent)]
+struct PointeeInAnotherTypeConstBlock<'a, #[pointee] T: ?Sized> {
+    ptr: PointeeInConstConstBlock<'a, T, { struct UhOh<#[pointee] T>(T); 0 }>
+    //~^ ERROR: the `#[pointee]` attribute may only be used on generic parameters
+}
+
 // However, reordering attributes should work nevertheless.
 #[repr(transparent)]
 #[derive(SmartPointer)]

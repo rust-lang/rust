@@ -1,5 +1,6 @@
 //@ edition: 2021
-//@ revisions: good bad
+//@ min-llvm-version: 19
+//@ revisions: good
 //@ check-pass
 //@ compile-flags: -Cinstrument-coverage -Zcoverage-options=mcdc -Zno-profiler-runtime
 
@@ -14,18 +15,9 @@
 
 #[cfg(good)]
 fn main() {
-    // 6 conditions is OK, so no diagnostic.
-    let [a, b, c, d, e, f] = <[bool; 6]>::default();
-    if a && b && c && d && e && f {
-        core::hint::black_box("hello");
-    }
-}
-
-#[cfg(bad)]
-fn main() {
-    // 7 conditions is too many, so issue a diagnostic.
+    // 7 conditions is allowed, so no diagnostic.
     let [a, b, c, d, e, f, g] = <[bool; 7]>::default();
-    if a && b && c && d && e && f && g { //[bad]~ WARNING number of conditions in decision
+    if a && b && c && d && e && f && g {
         core::hint::black_box("hello");
     }
 }

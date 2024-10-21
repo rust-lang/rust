@@ -260,8 +260,7 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
         | hir::ItemKind::Trait(_, _, generics, ..)
         | hir::ItemKind::Impl(hir::Impl { generics, .. })
         | hir::ItemKind::Struct(_, generics) => (generics, true),
-        hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. })
-        | hir::ItemKind::TyAlias(_, generics) => (generics, false),
+        hir::ItemKind::TyAlias(_, generics) => (generics, false),
         // `static`, `fn` and `const` are handled elsewhere to suggest appropriate type.
         _ => return,
     };
@@ -326,6 +325,19 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
             // any further errors in case one typeck fails.
         }
         intravisit::walk_expr(self, expr);
+    }
+
+    /// Don't call `type_of` on opaque types, since that depends on type checking function bodies.
+    /// `check_item_type` ensures that it's called instead.
+    fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) {
+        let def_id = opaque.def_id;
+        self.tcx.ensure().generics_of(def_id);
+        self.tcx.ensure().predicates_of(def_id);
+        self.tcx.ensure().explicit_item_bounds(def_id);
+        self.tcx.ensure().explicit_item_super_predicates(def_id);
+        self.tcx.ensure().item_bounds(def_id);
+        self.tcx.ensure().item_super_predicates(def_id);
+        intravisit::walk_opaque_ty(self, opaque);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
@@ -731,18 +743,6 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             }
         }
 
-        // Don't call `type_of` on opaque types, since that depends on type
-        // checking function bodies. `check_item_type` ensures that it's called
-        // instead.
-        hir::ItemKind::OpaqueTy(..) => {
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().predicates_of(def_id);
-            tcx.ensure().explicit_item_bounds(def_id);
-            tcx.ensure().explicit_item_super_predicates(def_id);
-            tcx.ensure().item_bounds(def_id);
-            tcx.ensure().item_super_predicates(def_id);
-        }
-
         hir::ItemKind::TyAlias(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
@@ -1007,79 +1007,6 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
             }
         }
     }
-
-    /// Check the uniqueness of fields across adt where there are
-    /// nested fields imported from an unnamed field.
-    fn check_field_in_nested_adt(&mut self, adt_def: ty::AdtDef<'_>, unnamed_field_span: Span) {
-        for field in adt_def.all_fields() {
-            if field.is_unnamed() {
-                // Here we don't care about the generic parameters, so `instantiate_identity` is enough.
-                match self.tcx.type_of(field.did).instantiate_identity().kind() {
-                    ty::Adt(adt_def, _) => {
-                        self.check_field_in_nested_adt(*adt_def, unnamed_field_span);
-                    }
-                    ty_kind => span_bug!(
-                        self.tcx.def_span(field.did),
-                        "Unexpected TyKind in FieldUniquenessCheckContext::check_field_in_nested_adt(): {ty_kind:?}"
-                    ),
-                }
-            } else {
-                self.check_field_decl(
-                    field.ident(self.tcx),
-                    NestedSpan {
-                        span: unnamed_field_span,
-                        nested_field_span: self.tcx.def_span(field.did),
-                    }
-                    .into(),
-                );
-            }
-        }
-    }
-
-    /// Check the uniqueness of fields in a struct variant, and recursively
-    /// check the nested fields if it is an unnamed field with type of an
-    /// anonymous adt.
-    fn check_field(&mut self, field: &hir::FieldDef<'_>) {
-        if field.ident.name != kw::Underscore {
-            self.check_field_decl(field.ident, field.span.into());
-            return;
-        }
-        match &field.ty.kind {
-            hir::TyKind::AnonAdt(item_id) => {
-                match &self.tcx.hir_node(item_id.hir_id()).expect_item().kind {
-                    hir::ItemKind::Struct(variant_data, ..)
-                    | hir::ItemKind::Union(variant_data, ..) => {
-                        variant_data.fields().iter().for_each(|f| self.check_field(f));
-                    }
-                    item_kind => span_bug!(
-                        field.ty.span,
-                        "Unexpected ItemKind in FieldUniquenessCheckContext::check_field(): {item_kind:?}"
-                    ),
-                }
-            }
-            hir::TyKind::Path(hir::QPath::Resolved(_, hir::Path { res, .. })) => {
-                // If this is a direct path to an ADT, we can check it
-                // If this is a type alias or non-ADT, `check_unnamed_fields` should verify it
-                if let Some(def_id) = res.opt_def_id()
-                    && let Some(local) = def_id.as_local()
-                    && let Node::Item(item) = self.tcx.hir_node_by_def_id(local)
-                    && item.is_adt()
-                {
-                    self.check_field_in_nested_adt(self.tcx.adt_def(def_id), field.span);
-                }
-            }
-            // Abort due to errors (there must be an error if an unnamed field
-            //  has any type kind other than an anonymous adt or a named adt)
-            ty_kind => {
-                self.tcx.dcx().span_delayed_bug(
-                    field.ty.span,
-                    format!("Unexpected TyKind in FieldUniquenessCheckContext::check_field(): {ty_kind:?}"),
-                );
-                // FIXME: errors during AST validation should abort the compilation before reaching here.
-                self.tcx.dcx().abort_if_errors();
-            }
-        }
-    }
 }
 
 fn lower_variant(
@@ -1090,20 +1017,13 @@ fn lower_variant(
     def: &hir::VariantData<'_>,
     adt_kind: ty::AdtKind,
     parent_did: LocalDefId,
-    is_anonymous: bool,
 ) -> ty::VariantDef {
-    let mut has_unnamed_fields = false;
     let mut field_uniqueness_check_ctx = FieldUniquenessCheckContext::new(tcx);
     let fields = def
         .fields()
         .iter()
-        .inspect(|f| {
-            has_unnamed_fields |= f.ident.name == kw::Underscore;
-            // We only check named ADT here because anonymous ADTs are checked inside
-            // the named ADT in which they are defined.
-            if !is_anonymous {
-                field_uniqueness_check_ctx.check_field(f);
-            }
+        .inspect(|field| {
+            field_uniqueness_check_ctx.check_field_decl(field.ident, field.span.into());
         })
         .map(|f| ty::FieldDef {
             did: f.def_id.to_def_id(),
@@ -1127,7 +1047,6 @@ fn lower_variant(
         adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)
             || variant_did
                 .is_some_and(|variant_did| tcx.has_attr(variant_did, sym::non_exhaustive)),
-        has_unnamed_fields,
     )
 }
 
@@ -1138,20 +1057,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
         bug!("expected ADT to be an item");
     };
 
-    let is_anonymous = item.ident.name == kw::Empty;
-    let repr = if is_anonymous {
-        let parent = tcx.local_parent(def_id);
-        if let Node::Item(item) = tcx.hir_node_by_def_id(parent)
-            && item.is_struct_or_union()
-        {
-            tcx.adt_def(parent).repr()
-        } else {
-            tcx.dcx().span_delayed_bug(item.span, "anonymous field inside non struct/union");
-            ty::ReprOptions::default()
-        }
-    } else {
-        tcx.repr_options_of_def(def_id)
-    };
+    let repr = tcx.repr_options_of_def(def_id);
     let (kind, variants) = match &item.kind {
         ItemKind::Enum(def, _) => {
             let mut distance_from_explicit = 0;
@@ -1175,7 +1081,6 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
                         &v.data,
                         AdtKind::Enum,
                         def_id,
-                        is_anonymous,
                     )
                 })
                 .collect();
@@ -1195,7 +1100,6 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
                 def,
                 adt_kind,
                 def_id,
-                is_anonymous,
             ))
             .collect();
 
@@ -1203,7 +1107,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
         }
         _ => bug!("{:?} is not an ADT", item.owner_id.def_id),
     };
-    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr, is_anonymous)
+    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
@@ -1852,12 +1756,8 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
 }
 
 fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
-    match tcx.hir_node_by_def_id(def_id) {
-        Node::Item(hir::Item { kind: hir::ItemKind::OpaqueTy(opaque), .. }) => {
-            matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias { .. })
-        }
-        _ => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
-    }
+    let opaque = tcx.hir().expect_opaque_ty(def_id);
+    matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias { .. })
 }
 
 fn rendered_precise_capturing_args<'tcx>(
@@ -1870,12 +1770,10 @@ fn rendered_precise_capturing_args<'tcx>(
         return tcx.rendered_precise_capturing_args(opaque_def_id);
     }
 
-    tcx.hir_node_by_def_id(def_id).expect_item().expect_opaque_ty().bounds.iter().find_map(
-        |bound| match bound {
-            hir::GenericBound::Use(args, ..) => {
-                Some(&*tcx.arena.alloc_from_iter(args.iter().map(|arg| arg.name())))
-            }
-            _ => None,
-        },
-    )
+    tcx.hir_node_by_def_id(def_id).expect_opaque_ty().bounds.iter().find_map(|bound| match bound {
+        hir::GenericBound::Use(args, ..) => {
+            Some(&*tcx.arena.alloc_from_iter(args.iter().map(|arg| arg.name())))
+        }
+        _ => None,
+    })
 }

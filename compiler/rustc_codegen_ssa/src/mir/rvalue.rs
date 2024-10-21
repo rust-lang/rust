@@ -38,10 +38,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ref source,
                 _,
             ) => {
-                // The destination necessarily contains a fat pointer, so if
-                // it's a scalar pair, it's a fat pointer or newtype thereof.
+                // The destination necessarily contains a wide pointer, so if
+                // it's a scalar pair, it's a wide pointer or newtype thereof.
                 if bx.cx().is_backend_scalar_pair(dest.layout) {
-                    // Into-coerce of a thin pointer to a fat pointer -- just
+                    // Into-coerce of a thin pointer to a wide pointer -- just
                     // use the operand path.
                     let temp = self.codegen_rvalue_operand(bx, rvalue);
                     temp.val.store(bx, dest);
@@ -519,7 +519,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             if bx.cx().is_backend_scalar_pair(cast) {
                                 OperandValue::Pair(data_ptr, meta)
                             } else {
-                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr.
+                                // Cast of wide-ptr to thin-ptr is an extraction of data-ptr.
                                 OperandValue::Immediate(data_ptr)
                             }
                         } else {
@@ -622,7 +622,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     (
                         OperandValue::Pair(lhs_addr, lhs_extra),
                         OperandValue::Pair(rhs_addr, rhs_extra),
-                    ) => self.codegen_fat_ptr_binop(
+                    ) => self.codegen_wide_ptr_binop(
                         bx,
                         op,
                         lhs_addr,
@@ -984,7 +984,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_fat_ptr_binop(
+    fn codegen_wide_ptr_binop(
         &mut self,
         bx: &mut Bx,
         op: mir::BinOp,
@@ -1021,7 +1021,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.or(lhs, rhs)
             }
             _ => {
-                bug!("unexpected fat ptr binop");
+                bug!("unexpected wide ptr binop");
             }
         }
     }

@@ -842,6 +842,11 @@ pub struct NextSolverConfig {
     /// This is only `true` if `coherence` is also enabled.
     pub globally: bool,
 }
+impl Default for NextSolverConfig {
+    fn default() -> Self {
+        NextSolverConfig { coherence: true, globally: false }
+    }
+}
 
 #[derive(Clone)]
 pub enum Input {
@@ -1241,6 +1246,10 @@ impl UnstableOptions {
                 SourceFileHashAlgorithm::Md5
             }
         })
+    }
+
+    pub fn checksum_hash_algorithm(&self) -> Option<SourceFileHashAlgorithm> {
+        self.checksum_hash_algorithm
     }
 }
 
@@ -3008,7 +3017,8 @@ pub(crate) mod dep_tracking {
     use rustc_span::edition::Edition;
     use rustc_target::spec::{
         CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
-        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,
+        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTriple,
+        TlsModel, WasmCAbi,
     };
 
     use super::{
@@ -3101,6 +3111,7 @@ pub(crate) mod dep_tracking {
         StackProtector,
         SwitchWithOptPath,
         SymbolManglingVersion,
+        SymbolVisibility,
         RemapPathScopeComponents,
         SourceFileHashAlgorithm,
         OutFileName,

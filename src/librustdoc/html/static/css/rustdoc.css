@@ -44,7 +44,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 400;
 	src: local('Fira Sans'),
-		url("FiraSans-Regular-018c141bf0843ffd.woff2") format("woff2");
+		url("FiraSans-Regular-0fe48ade.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -52,7 +52,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 500;
 	src: local('Fira Sans Medium'),
-		url("FiraSans-Medium-8f9a781e4970d388.woff2") format("woff2");
+		url("FiraSans-Medium-e1aa3f0a.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -62,7 +62,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif 4'),
-		url("SourceSerif4-Regular-46f98efaafac5295.ttf.woff2") format("woff2");
+		url("SourceSerif4-Regular-6b053e98.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -70,7 +70,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
-		url("SourceSerif4-It-acdfaf1a8af734b1.ttf.woff2") format("woff2");
+		url("SourceSerif4-It-ca3b17ed.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -78,7 +78,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif 4 Bold'),
-		url("SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2") format("woff2");
+		url("SourceSerif4-Bold-6d4fd4c0.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -89,28 +89,28 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-Regular-8badfe75.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("SourceCodePro-It-1cc31594bf4f1f79.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-It-fc8b9304.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-Semibold-aa29a496.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
 /* Avoid using legacy CJK serif fonts in Windows like Batang. */
 @font-face {
 	font-family: 'NanumBarunGothic';
-	src: url("NanumBarunGothic-0f09457c7a19b7c6.ttf.woff2") format("woff2");
+	src: url("NanumBarunGothic-13b3dcba.ttf.woff2") format("woff2");
 	font-display: swap;
 	unicode-range: U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
 }
@@ -182,17 +182,18 @@ h1, h2, h3, h4 {
 		"main-heading-breadcrumbs main-heading-breadcrumbs"
 		"main-heading-h1 main-heading-toolbar"
 		"main-heading-sub-heading main-heading-toolbar";
-	grid-template-columns: 1fr max-content;
-	grid-template-rows: 25px min-content min-content;
+	grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
+	grid-template-rows: minmax(25px, min-content) min-content min-content;
 	padding-bottom: 6px;
 	margin-bottom: 11px;
 }
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
-	height: 25px;
 	line-height: 1.25;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: end;
+	padding-top: 5px;
 }
 .rustdoc-breadcrumbs a {
 	padding: 4px 0;
@@ -228,6 +229,9 @@ h4.code-header {
 	margin: 0;
 	padding: 0;
 	white-space: pre-wrap;
+}
+.structfield {
+	margin: 0.6em 0;
 }
 
 #crate-search,
@@ -928,6 +932,7 @@ rustdoc-toolbar {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
+	min-height: 60px;
 }
 
 .docblock code, .docblock-short code,
@@ -956,6 +961,16 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 
 .docblock .stab, .docblock-short .stab {
 	display: inline-block;
+}
+
+.docblock li {
+	margin-bottom: .4em;
+}
+.docblock li p:not(:last-child) {
+	/* This margin is voluntarily smaller than `.docblock li` to keep the visual
+	   list element items separated while also having a visual separation (although
+	   smaller) for paragraphs. */
+	margin-bottom: .3em;
 }
 
 /* "where ..." clauses with block display are also smaller */
@@ -1104,17 +1119,17 @@ table,
 .search-results-title + .sub-heading {
 	color: var(--main-color);
 	display: flex;
-	align-items: center;
+	align-items: baseline;
+	white-space: nowrap;
 }
 #crate-search-div {
 	/* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
 	position: relative;
 	/* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
-	min-width: 5em;
+	min-width: 0;
 }
 #crate-search {
-	min-width: 115px;
 	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
@@ -1687,7 +1702,6 @@ instead, we check that it's not a "finger" cursor.
 	padding-right: 3px;
 	background-color: var(--target-background-color);
 	border-right: 3px solid var(--target-border-color);
-	animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
 }
 
 .code-header a.tooltip {
@@ -1712,12 +1726,18 @@ a.tooltip:hover::after {
 	content: "\00a0";
 }
 
-/* This animation is layered onto the mistake-proofing delay for dismissing
-	a hovered tooltip, to ensure it feels responsive even with the delay.
-	*/
-.fade-out {
-	opacity: 0;
-	transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+@media not (prefers-reduced-motion) {
+	:target {
+		animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
+	}
+
+	/* This animation is layered onto the mistake-proofing delay for dismissing
+		a hovered tooltip, to ensure it feels responsive even with the delay.
+		*/
+	.fade-out {
+		opacity: 0;
+		transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+	}
 }
 
 .popover.tooltip .content {
@@ -1820,6 +1840,7 @@ a.tooltip:hover::after {
 	margin-left: var(--button-left-margin);
 	display: flex;
 	line-height: 1.25;
+	min-width: 14px;
 }
 #sidebar-button {
 	display: none;
@@ -1855,6 +1876,9 @@ a.tooltip:hover::after {
 #settings-menu > a, #help-button > a, button#toggle-all-docs {
 	width: 80px;
 	border-radius: var(--toolbar-button-border-radius);
+}
+#settings-menu > a, #help-button > a {
+	min-width: 0;
 }
 #sidebar-button > a {
 	background-color: var(--button-background-color);
@@ -2414,7 +2438,7 @@ in src-script.js and main.js
 	}
 
 	/* Position of the "[-]" element. */
-	details.toggle:not(.top-doc) > summary {
+	details.toggle:not(.top-doc) > summary, .impl-items > section  {
 		margin-left: 10px;
 	}
 	.impl-items > details.toggle > summary:not(.hideme)::before,

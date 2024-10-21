@@ -164,6 +164,7 @@ fn test_buffered_reader_stream_position() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_buffered_reader_stream_position_panic() {
     let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
     let mut reader = BufReader::with_capacity(4, io::Cursor::new(inner));
@@ -487,7 +488,7 @@ fn dont_panic_in_drop_on_panicked_flush() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn panic_in_write_doesnt_flush_in_drop() {
     static WRITES: AtomicUsize = AtomicUsize::new(0);
 

@@ -58,6 +58,9 @@ RUN mkdir -p $RUST_INSTALL_DIR/etc
 # Fuchsia only supports LLVM.
 ENV CODEGEN_BACKENDS llvm
 
+# download-rustc is not allowed for `x install`
+ENV NO_DOWNLOAD_CI_RUSTC 1
+
 ENV RUST_CONFIGURE_ARGS \
   --prefix=$RUST_INSTALL_DIR \
   --sysconfdir=etc \
@@ -70,6 +73,7 @@ ENV RUST_CONFIGURE_ARGS \
   --set target.x86_64-unknown-fuchsia.ar=/usr/local/bin/llvm-ar \
   --set target.x86_64-unknown-fuchsia.ranlib=/usr/local/bin/llvm-ranlib \
   --set target.x86_64-unknown-fuchsia.linker=/usr/local/bin/ld.lld
+
 ENV SCRIPT \
     python3 ../x.py install --target $TARGETS compiler/rustc library/std clippy && \
     bash ../src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh

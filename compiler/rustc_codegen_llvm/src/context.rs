@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{
-    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, PAuthKey, PacRet,
+    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
@@ -135,6 +135,16 @@ pub(crate) unsafe fn create_module<'ll>(
             // LLVM 19 updates the LoongArch64 data layout.
             // See https://github.com/llvm/llvm-project/pull/93814
             target_data_layout = target_data_layout.replace("-n32:64", "-n64");
+        }
+    }
+
+    if llvm_version < (20, 0, 0) {
+        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
+            // LLVM 20 defines three additional address spaces for alternate
+            // pointer kinds used in Windows.
+            // See https://github.com/llvm/llvm-project/pull/111879
+            target_data_layout =
+                target_data_layout.replace("-p270:32:32-p271:32:32-p272:64:64", "");
         }
     }
 
@@ -376,6 +386,18 @@ pub(crate) unsafe fn create_module<'ll>(
                 1,
             )
         }
+    }
+
+    match sess.opts.unstable_opts.function_return {
+        FunctionReturn::Keep => {}
+        FunctionReturn::ThunkExtern => unsafe {
+            llvm::LLVMRustAddModuleFlagU32(
+                llmod,
+                llvm::LLVMModFlagBehavior::Override,
+                c"function_return_thunk_extern".as_ptr(),
+                1,
+            )
+        },
     }
 
     match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
@@ -872,6 +894,11 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.fma.f64", fn(t_f64, t_f64, t_f64) -> t_f64);
         ifn!("llvm.fma.f128", fn(t_f128, t_f128, t_f128) -> t_f128);
 
+        ifn!("llvm.fmuladd.f16", fn(t_f16, t_f16, t_f16) -> t_f16);
+        ifn!("llvm.fmuladd.f32", fn(t_f32, t_f32, t_f32) -> t_f32);
+        ifn!("llvm.fmuladd.f64", fn(t_f64, t_f64, t_f64) -> t_f64);
+        ifn!("llvm.fmuladd.f128", fn(t_f128, t_f128, t_f128) -> t_f128);
+
         ifn!("llvm.fabs.f16", fn(t_f16) -> t_f16);
         ifn!("llvm.fabs.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.fabs.f64", fn(t_f64) -> t_f64);
@@ -1175,10 +1202,11 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.tcx.dcx().emit_fatal(Spanned { span, node: err })
-        } else {
-            match fn_abi_request {
+        match err {
+            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::Cycle(_)) => {
+                self.tcx.dcx().emit_fatal(Spanned { span, node: err });
+            }
+            _ => match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
                     span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
                 }
@@ -1188,7 +1216,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
                         "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
                     );
                 }
-            }
+            },
         }
     }
 }

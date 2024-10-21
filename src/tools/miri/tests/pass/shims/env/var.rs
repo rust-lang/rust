@@ -1,6 +1,5 @@
 //@compile-flags: -Zmiri-preemption-rate=0
-use std::env;
-use std::thread;
+use std::{env, thread};
 
 fn main() {
     // Test that miri environment is isolated when communication is disabled.

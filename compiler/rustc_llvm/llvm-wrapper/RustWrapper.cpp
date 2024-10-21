@@ -1533,29 +1533,40 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty,
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(20, 0)
+  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_increment));
+#else
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_increment));
+#endif
 }
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_LT(19, 0)
+  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
+#endif
+#if LLVM_VERSION_GE(20, 0)
+  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
+#else
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
+#endif
 }
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_LT(19, 0)
+  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
+#endif
+#if LLVM_VERSION_GE(20, 0)
+  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
+#else
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
-}
-
-extern "C" LLVMValueRef
-LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_LT(19, 0)
-  return wrap(llvm::Intrinsic::getDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_condbitmap_update));
-#else
-  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
 #endif
 }
 
@@ -1645,16 +1656,6 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
                                                LLVMBasicBlockRef BB) {
   auto Point = unwrap(BB)->getFirstInsertionPt();
   unwrap(B)->SetInsertPoint(unwrap(BB), Point);
-}
-
-extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V,
-                                  const char *Name, size_t NameLen) {
-  Triple TargetTriple = Triple(unwrap(M)->getTargetTriple());
-  GlobalObject *GV = unwrap<GlobalObject>(V);
-  if (TargetTriple.supportsCOMDAT()) {
-    StringRef NameRef(Name, NameLen);
-    GV->setComdat(unwrap(M)->getOrInsertComdat(NameRef));
-  }
 }
 
 enum class LLVMRustLinkage {

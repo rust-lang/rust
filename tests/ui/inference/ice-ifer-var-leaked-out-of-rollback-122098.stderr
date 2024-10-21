@@ -36,10 +36,10 @@ LL | struct Query<'q> {}
    = help: consider removing `'q`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:7:17
+  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:7:21
    |
 LL |     fn for_each(mut self, mut f: Box<dyn FnMut(Self::Item<'_>) + 'static>) {}
-   |                 ^^^^^^^^ doesn't have a size known at compile-time
+   |                     ^^^^ doesn't have a size known at compile-time
    |
    = help: unsized fn params are gated as an unstable feature
 help: consider further restricting `Self`

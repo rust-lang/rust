@@ -15,15 +15,12 @@ mod libc {
     pub type socklen_t = u32;
     pub struct sockaddr;
     #[derive(Clone)]
-    pub struct sockaddr_un;
+    pub struct sockaddr_un {
+        pub sun_path: [u8; 1],
+    }
 }
 
-fn sun_path_offset(addr: &libc::sockaddr_un) -> usize {
-    // Work with an actual instance of the type since using a null pointer is UB
-    let base = (addr as *const libc::sockaddr_un).addr();
-    let path = core::ptr::addr_of!(addr.sun_path).addr();
-    path - base
-}
+const SUN_PATH_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_path);
 
 pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
     // SAFETY: All zeros is a valid representation for `sockaddr_un`.
@@ -53,7 +50,7 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
         ptr::copy_nonoverlapping(bytes.as_ptr(), addr.sun_path.as_mut_ptr().cast(), bytes.len())
     };
 
-    let mut len = sun_path_offset(&addr) + bytes.len();
+    let mut len = SUN_PATH_OFFSET + bytes.len();
     match bytes.get(0) {
         Some(&0) | None => {}
         Some(_) => len += 1,
@@ -98,7 +95,7 @@ impl SocketAddr {
         unsafe {
             let mut addr: libc::sockaddr_un = mem::zeroed();
             let mut len = mem::size_of::<libc::sockaddr_un>() as libc::socklen_t;
-            cvt(f(core::ptr::addr_of_mut!(addr) as *mut _, &mut len))?;
+            cvt(f((&raw mut addr) as *mut _, &mut len))?;
             SocketAddr::from_parts(addr, len)
         }
     }
@@ -114,13 +111,13 @@ impl SocketAddr {
             let sun_path: &[u8] =
                 unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&addr.sun_path) };
             len = core::slice::memchr::memchr(0, sun_path)
-                .map_or(len, |new_len| (new_len + sun_path_offset(&addr)) as libc::socklen_t);
+                .map_or(len, |new_len| (new_len + SUN_PATH_OFFSET) as libc::socklen_t);
         }
 
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
-            len = sun_path_offset(&addr) as libc::socklen_t; // i.e., zero-length address
+            len = SUN_PATH_OFFSET as libc::socklen_t; // i.e., zero-length address
         } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
@@ -238,7 +235,7 @@ impl SocketAddr {
     }
 
     fn address(&self) -> AddressKind<'_> {
-        let len = self.len as usize - sun_path_offset(&self.addr);
+        let len = self.len as usize - SUN_PATH_OFFSET;
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
 
         // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
@@ -287,7 +284,7 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
                 addr.sun_path.as_mut_ptr().add(1) as *mut u8,
                 name.len(),
             );
-            let len = (sun_path_offset(&addr) + 1 + name.len()) as libc::socklen_t;
+            let len = (SUN_PATH_OFFSET + 1 + name.len()) as libc::socklen_t;
             SocketAddr::from_parts(addr, len)
         }
     }

@@ -1,9 +1,11 @@
+use ide_db::syntax_helpers::suggest_name;
+use itertools::Itertools;
 use syntax::{
-    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode, HasGenericParams},
+    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode, HasGenericParams, HasName},
     ted,
 };
 
-use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: introduce_named_generic
 //
@@ -32,8 +34,18 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
             let impl_trait_type = edit.make_mut(impl_trait_type);
             let fn_ = edit.make_mut(fn_);
             let fn_generic_param_list = fn_.get_or_create_generic_param_list();
-            let type_param_name =
-                suggest_name::for_impl_trait_as_generic(&impl_trait_type, &fn_generic_param_list);
+
+            let existing_names = fn_generic_param_list
+                .generic_params()
+                .flat_map(|param| match param {
+                    ast::GenericParam::TypeParam(t) => t.name().map(|name| name.to_string()),
+                    p => Some(p.to_string()),
+                })
+                .collect_vec();
+            let type_param_name = suggest_name::NameGenerator::new_with_names(
+                existing_names.iter().map(|s| s.as_str()),
+            )
+            .for_impl_trait_as_generic(&impl_trait_type);
 
             let type_param = make::type_param(make::name(&type_param_name), Some(type_bound_list))
                 .clone_for_update();
@@ -115,7 +127,7 @@ fn foo<$0B: Bar
         check_assist(
             introduce_named_generic,
             r#"fn foo<B>(bar: $0impl Bar) {}"#,
-            r#"fn foo<B, $0B0: Bar>(bar: B0) {}"#,
+            r#"fn foo<B, $0B1: Bar>(bar: B1) {}"#,
         );
     }
 
@@ -124,7 +136,7 @@ fn foo<$0B: Bar
         check_assist(
             introduce_named_generic,
             r#"fn foo<B, B0, B1, B3>(bar: $0impl Bar) {}"#,
-            r#"fn foo<B, B0, B1, B3, $0B2: Bar>(bar: B2) {}"#,
+            r#"fn foo<B, B0, B1, B3, $0B4: Bar>(bar: B4) {}"#,
         );
     }
 

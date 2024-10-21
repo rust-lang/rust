@@ -4,6 +4,7 @@
 use std::marker::PhantomData;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
@@ -131,6 +132,16 @@ pub enum Visibility {
     Default = 0,
     Hidden = 1,
     Protected = 2,
+}
+
+impl Visibility {
+    pub fn from_generic(visibility: SymbolVisibility) -> Self {
+        match visibility {
+            SymbolVisibility::Hidden => Visibility::Hidden,
+            SymbolVisibility::Protected => Visibility::Protected,
+            SymbolVisibility::Interposable => Visibility::Default,
+        }
+    }
 }
 
 /// LLVMUnnamedAddr
@@ -635,6 +646,7 @@ unsafe extern "C" {
     pub type Attribute;
     pub type Metadata;
     pub type BasicBlock;
+    pub type Comdat;
 }
 #[repr(C)]
 pub struct Builder<'a>(InvariantOpaque<'a>);
@@ -1479,6 +1491,9 @@ unsafe extern "C" {
     pub fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
 
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
+
+    pub fn LLVMGetOrInsertComdat(M: &Module, Name: *const c_char) -> &Comdat;
+    pub fn LLVMSetComdat(V: &Value, C: &Comdat);
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -1603,7 +1618,6 @@ unsafe extern "C" {
     pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;
     pub fn LLVMRustGetInstrProfMCDCParametersIntrinsic(M: &Module) -> &Value;
     pub fn LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(M: &Module) -> &Value;
-    pub fn LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(M: &Module) -> &Value;
 
     pub fn LLVMRustBuildCall<'a>(
         B: &Builder<'a>,
@@ -2310,7 +2324,6 @@ unsafe extern "C" {
 
     pub fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
-    pub fn LLVMRustSetComdat<'a>(M: &'a Module, V: &'a Value, Name: *const c_char, NameLen: size_t);
     pub fn LLVMRustSetModulePICLevel(M: &Module);
     pub fn LLVMRustSetModulePIELevel(M: &Module);
     pub fn LLVMRustSetModuleCodeModel(M: &Module, Model: CodeModel);

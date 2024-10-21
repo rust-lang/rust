@@ -13,16 +13,15 @@ use rustc_middle::ty::{
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
+use super::DefineOpaqueTypes;
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{self, Obligation};
+use crate::traits::{self, Obligation, PredicateObligations};
 
 mod table;
 
-pub type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
-pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
-
-use super::DefineOpaqueTypes;
+pub(crate) type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
+pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
@@ -47,14 +46,14 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> InferOk<'tcx, T> {
         // We handle opaque types differently in the new solver.
         if self.next_trait_solver() {
-            return InferOk { value, obligations: vec![] };
+            return InferOk { value, obligations: PredicateObligations::new() };
         }
 
         if !value.has_opaque_types() {
-            return InferOk { value, obligations: vec![] };
+            return InferOk { value, obligations: PredicateObligations::new() };
         }
 
-        let mut obligations = vec![];
+        let mut obligations = PredicateObligations::new();
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,
@@ -149,11 +148,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
-                    // We could accept this, but there are various ways to handle this situation, and we don't
-                    // want to make a decision on it right now. Likely this case is so super rare anyway, that
-                    // no one encounters it in practice.
-                    // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
-                    // where it is of no concern, so we only check for TAITs.
+                    // We could accept this, but there are various ways to handle this situation,
+                    // and we don't want to make a decision on it right now. Likely this case is so
+                    // super rare anyway, that no one encounters it in practice. It does occur
+                    // however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`, where
+                    // it is of no concern, so we only check for TAITs.
                     if self.can_define_opaque_ty(b_def_id)
                         && self.tcx.is_type_alias_impl_trait(b_def_id)
                     {
@@ -359,7 +358,15 @@ impl<'tcx> InferCtxt<'tcx> {
         // not currently sound until we have existential regions.
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
-            op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
+            op: |r| {
+                self.member_constraint(
+                    opaque_type_key,
+                    span,
+                    concrete_ty,
+                    r,
+                    choice_regions.clone(),
+                )
+            },
         });
     }
 }
@@ -377,9 +384,9 @@ impl<'tcx> InferCtxt<'tcx> {
 ///
 /// We ignore any type parameters because impl trait values are assumed to
 /// capture all the in-scope type parameters.
-pub struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
-    pub tcx: TyCtxt<'tcx>,
-    pub op: OP,
+struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
+    tcx: TyCtxt<'tcx>,
+    op: OP,
 }
 
 impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
@@ -451,20 +458,6 @@ where
             _ => {
                 ty.super_visit_with(self);
             }
-        }
-    }
-}
-
-pub enum UseKind {
-    DefiningUse,
-    OpaqueUse,
-}
-
-impl UseKind {
-    pub fn is_defining(self) -> bool {
-        match self {
-            UseKind::DefiningUse => true,
-            UseKind::OpaqueUse => false,
         }
     }
 }

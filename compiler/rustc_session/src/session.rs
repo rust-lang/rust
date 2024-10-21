@@ -31,7 +31,8 @@ use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SmallDataThresholdSupport, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
+    SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
+    TargetTriple, TlsModel,
 };
 
 use crate::code_stats::CodeStats;
@@ -453,6 +454,8 @@ impl Session {
         let bin_path = filesearch::make_target_bin_path(&self.sysroot, config::host_triple());
         let fallback_sysroot_paths = filesearch::sysroot_candidates()
             .into_iter()
+            // Ignore sysroot candidate if it was the same as the sysroot path we just used.
+            .filter(|sysroot| *sysroot != self.sysroot)
             .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_triple()));
         let search_paths = std::iter::once(bin_path).chain(fallback_sysroot_paths);
 
@@ -617,12 +620,13 @@ impl Session {
         }
     }
 
-    /// Whether the default visibility of symbols should be "hidden" rather than "default".
-    pub fn default_hidden_visibility(&self) -> bool {
+    /// Returns the default symbol visibility.
+    pub fn default_visibility(&self) -> SymbolVisibility {
         self.opts
             .unstable_opts
-            .default_hidden_visibility
-            .unwrap_or(self.target.options.default_hidden_visibility)
+            .default_visibility
+            .or(self.target.options.default_visibility)
+            .unwrap_or(SymbolVisibility::Interposable)
     }
 }
 

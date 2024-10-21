@@ -15,8 +15,8 @@ use tracing::{info, instrument, trace};
 
 use super::{
     CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    Projectable, Provenance, ReturnAction, Scalar, StackPopCleanup, StackPopInfo, throw_ub,
-    throw_ub_custom, throw_unsup_format,
+    Projectable, Provenance, ReturnAction, Scalar, StackPopCleanup, StackPopInfo, interp_ok,
+    throw_ub, throw_ub_custom, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -64,7 +64,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         arg: &FnArg<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
-        Ok(match arg {
+        interp_ok(match arg {
             FnArg::Copy(op) => FnArg::Copy(self.project_field(op, field)?),
             FnArg::InPlace(mplace) => FnArg::InPlace(self.project_field(mplace, field)?),
         })
@@ -97,7 +97,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // another type.
         let ty::Adt(def, args) = layout.ty.kind() else {
             // Not an ADT, so definitely no NPO.
-            return Ok(layout);
+            return interp_ok(layout);
         };
         let inner = if self.tcx.is_diagnostic_item(sym::Option, def.did()) {
             // The wrapped type is the only arg.
@@ -111,10 +111,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             } else if rhs.is_1zst() {
                 lhs
             } else {
-                return Ok(layout); // no NPO
+                return interp_ok(layout); // no NPO
             }
         } else {
-            return Ok(layout); // no NPO
+            return interp_ok(layout); // no NPO
         };
 
         // Check if the inner type is one of the NPO-guaranteed ones.
@@ -126,7 +126,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Stop at NPO types so that we don't miss that attribute in the check below!
             def.is_struct() && !is_npo(def)
         });
-        Ok(match inner.ty.kind() {
+        interp_ok(match inner.ty.kind() {
             ty::Ref(..) | ty::FnPtr(..) => {
                 // Option<&T> behaves like &T, and same for fn()
                 inner
@@ -153,11 +153,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         // Fast path: equal types are definitely compatible.
         if caller.ty == callee.ty {
-            return Ok(true);
+            return interp_ok(true);
         }
         // 1-ZST are compatible with all 1-ZST (and with nothing else).
         if caller.is_1zst() || callee.is_1zst() {
-            return Ok(caller.is_1zst() && callee.is_1zst());
+            return interp_ok(caller.is_1zst() && callee.is_1zst());
         }
         // Unfold newtypes and NPO optimizations.
         let unfold = |layout: TyAndLayout<'tcx>| {
@@ -180,17 +180,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => None,
         };
         if let (Some(caller), Some(callee)) = (thin_pointer(caller), thin_pointer(callee)) {
-            return Ok(caller == callee);
+            return interp_ok(caller == callee);
         }
         // For wide pointers we have to get the pointee type.
         let pointee_ty = |ty: Ty<'tcx>| -> InterpResult<'tcx, Option<Ty<'tcx>>> {
             // We cannot use `builtin_deref` here since we need to reject `Box<T, MyAlloc>`.
-            Ok(Some(match ty.kind() {
+            interp_ok(Some(match ty.kind() {
                 ty::Ref(_, ty, _) => *ty,
                 ty::RawPtr(ty, _) => *ty,
                 // We only accept `Box` with the default allocator.
                 _ if ty.is_box_global(*self.tcx) => ty.expect_boxed_ty(),
-                _ => return Ok(None),
+                _ => return interp_ok(None),
             }))
         };
         if let (Some(caller), Some(callee)) = (pointee_ty(caller.ty)?, pointee_ty(callee.ty)?) {
@@ -202,7 +202,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let normalize = |ty| self.tcx.normalize_erasing_regions(self.param_env, ty);
                 ty.ptr_metadata_ty(*self.tcx, normalize)
             };
-            return Ok(meta_ty(caller) == meta_ty(callee));
+            return interp_ok(meta_ty(caller) == meta_ty(callee));
         }
 
         // Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
@@ -217,11 +217,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         if let (Some(caller), Some(callee)) = (int_ty(caller.ty), int_ty(callee.ty)) {
             // This is okay if they are the same integer type.
-            return Ok(caller == callee);
+            return interp_ok(caller == callee);
         }
 
         // Fall back to exact equality.
-        Ok(caller == callee)
+        interp_ok(caller == callee)
     }
 
     fn check_argument_compat(
@@ -235,13 +235,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Ensure that our checks imply actual ABI compatibility for this concrete call.
             // (This can fail e.g. if `#[rustc_nonnull_optimization_guaranteed]` is used incorrectly.)
             assert!(caller_abi.eq_abi(callee_abi));
-            Ok(true)
+            interp_ok(true)
         } else {
             trace!(
                 "check_argument_compat: incompatible ABIs:\ncaller: {:?}\ncallee: {:?}",
                 caller_abi, callee_abi
             );
-            Ok(false)
+            interp_ok(false)
         }
     }
 
@@ -266,7 +266,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             if !already_live {
                 self.storage_live(callee_arg.as_local().unwrap())?;
             }
-            return Ok(());
+            return interp_ok(());
         }
         // Find next caller arg.
         let Some((caller_arg, caller_abi)) = caller_args.next() else {
@@ -308,7 +308,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let FnArg::InPlace(mplace) = caller_arg {
             M::protect_in_place_function_argument(self, mplace)?;
         }
-        Ok(())
+        interp_ok(())
     }
 
     /// The main entry point for creating a new stack frame: performs ABI checks and initializes
@@ -471,7 +471,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Don't forget to mark "initially live" locals as live.
             self.storage_live_for_always_live_locals()?;
         };
-        res.inspect_err(|_| {
+        res.inspect_err_kind(|_| {
             // Don't show the incomplete stack frame in the error stacktrace.
             self.stack_mut().pop();
         })
@@ -536,7 +536,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         unwind,
                     );
                 } else {
-                    Ok(())
+                    interp_ok(())
                 }
             }
             ty::InstanceKind::VTableShim(..)
@@ -561,7 +561,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     unwind,
                 )?
                 else {
-                    return Ok(());
+                    return interp_ok(());
                 };
 
                 // Special handling for the closure ABI: untuple the last argument.
@@ -572,7 +572,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         trace!("init_fn_call: Will pass last argument by untupling");
                         Cow::from(
                             args.iter()
-                                .map(|a| Ok(a.clone()))
+                                .map(|a| interp_ok(a.clone()))
                                 .chain(
                                     (0..untuple_arg.layout().fields.count())
                                         .map(|i| self.fn_arg_field(untuple_arg, i)),
@@ -598,7 +598,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // codegen'd / interpreted as virtual calls through the vtable.
             ty::InstanceKind::Virtual(def_id, idx) => {
                 let mut args = args.to_vec();
-                // We have to implement all "object safe receivers". So we have to go search for a
+                // We have to implement all "dyn-compatible receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
                 // unwrap those newtypes until we are there.
                 // An `InPlace` does nothing here, we keep the original receiver intact. We can't
@@ -886,27 +886,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // this transmute.
             res
         } else {
-            Ok(())
+            interp_ok(())
         };
 
         // All right, now it is time to actually pop the frame.
-        let stack_pop_info = self.pop_stack_frame_raw(unwinding)?;
-
-        // Report error from return value copy, if any.
-        copy_ret_result?;
+        // An error here takes precedence over the copy error.
+        let (stack_pop_info, ()) = self.pop_stack_frame_raw(unwinding).and(copy_ret_result)?;
 
         match stack_pop_info.return_action {
             ReturnAction::Normal => {}
             ReturnAction::NoJump => {
                 // The hook already did everything.
-                return Ok(());
+                return interp_ok(());
             }
             ReturnAction::NoCleanup => {
                 // If we are not doing cleanup, also skip everything else.
                 assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
                 assert!(!unwinding, "tried to skip cleanup during unwinding");
                 // Skip machine hook.
-                return Ok(());
+                return interp_ok(());
             }
         }
 
@@ -931,7 +929,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         self.stack().is_empty(),
                         "only the bottommost frame can have StackPopCleanup::Root"
                     );
-                    Ok(())
+                    interp_ok(())
                 }
             }
         }

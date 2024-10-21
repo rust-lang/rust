@@ -5,11 +5,11 @@
 pub mod auto_trait;
 pub(crate) mod coherence;
 pub mod const_evaluatable;
+mod dyn_compatibility;
 mod engine;
 mod fulfill;
 pub mod misc;
 pub mod normalize;
-mod object_safety;
 pub mod outlives_bounds;
 pub mod project;
 pub mod query;
@@ -43,13 +43,13 @@ pub use self::coherence::{
     InCrate, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTyParams,
     add_placeholder_note, orphan_check_trait_ref, overlapping_impls,
 };
+pub use self::dyn_compatibility::{
+    DynCompatibilityViolation, dyn_compatibility_violations_for_assoc_item,
+    hir_ty_lowering_dyn_compatibility_violations, is_vtable_safe_method,
+};
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, OldSolverError, PendingPredicateObligation};
 pub use self::normalize::NormalizeExt;
-pub use self::object_safety::{
-    ObjectSafetyViolation, hir_ty_lowering_object_safety_violations, is_vtable_safe_method,
-    object_safety_violations_for_assoc_item,
-};
 pub use self::project::{normalize_inherent_projection, normalize_projection_ty};
 pub use self::select::{
     EvaluationCache, EvaluationResult, IntercrateAmbiguityCause, OverflowError, SelectionCache,
@@ -114,7 +114,7 @@ impl<'tcx> Debug for FulfillmentError<'tcx> {
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
     /// if it is already implemented.
-    Cycle(Vec<PredicateObligation<'tcx>>),
+    Cycle(PredicateObligations<'tcx>),
     Select(SelectionError<'tcx>),
     Project(MismatchedProjectionTypes<'tcx>),
     Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
@@ -368,7 +368,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
-                    c.normalize(self.0, ty::ParamEnv::empty())
+                    c.normalize_internal(self.0, ty::ParamEnv::empty())
                 }
             }
 
@@ -593,7 +593,7 @@ fn is_impossible_associated_item(
 }
 
 pub fn provide(providers: &mut Providers) {
-    object_safety::provide(providers);
+    dyn_compatibility::provide(providers);
     vtable::provide(providers);
     *providers = Providers {
         specialization_graph_of: specialize::specialization_graph_provider,

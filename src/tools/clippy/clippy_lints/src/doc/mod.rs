@@ -452,7 +452,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.82.0"]
     pub TOO_LONG_FIRST_DOC_PARAGRAPH,
-    style,
+    nursery,
     "ensure that the first line of a documentation paragraph isn't too long"
 }
 
@@ -970,7 +970,7 @@ impl<'a, 'tcx> FindPanicUnwrap<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

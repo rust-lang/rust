@@ -116,7 +116,7 @@ struct DivergenceVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
 
-impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
+impl<'tcx> DivergenceVisitor<'_, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Closure(..) | ExprKind::If(..) | ExprKind::Loop(..) => {},
@@ -148,7 +148,7 @@ fn stmt_might_diverge(stmt: &Stmt<'_>) -> bool {
     !matches!(stmt.kind, StmtKind::Item(..))
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for DivergenceVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             // fix #10776
@@ -321,7 +321,7 @@ struct ReadVisitor<'a, 'tcx> {
     last_expr: &'tcx Expr<'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if expr.hir_id == self.last_expr.hir_id {
             return;

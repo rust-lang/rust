@@ -9,7 +9,6 @@
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
-#![feature(control_flow_enum)]
 
 extern crate rustc_hir;
 #[macro_use]

@@ -14,6 +14,7 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
 use tracing::{instrument, trace};
 
@@ -59,7 +60,7 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical_goal = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize(
             self.delegate,
             CanonicalizeMode::Input,
             &mut orig_values,
@@ -70,7 +71,11 @@ where
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
-        (orig_values, canonical_goal)
+        let query_input = ty::CanonicalQueryInput {
+            canonical,
+            defining_opaque_types: self.delegate.defining_opaque_types(),
+        };
+        (orig_values, query_input)
     }
 
     /// To return the constraints of a canonical query to the caller, we canonicalize:
@@ -443,7 +448,6 @@ where
     for &arg in &state.value.var_values.var_values.as_slice()
         [orig_values.len()..state.value.var_values.len()]
     {
-        // FIXME: This is so ugly.
         let unconstrained = delegate.fresh_var_for_kind_with_span(arg, span);
         orig_values.push(unconstrained);
     }

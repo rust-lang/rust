@@ -57,15 +57,16 @@ mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
 
-use std::panic::UnwindSafe;
+use std::{iter, panic::UnwindSafe};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::{sym, ChangeWithProcMacros};
 use ide_db::{
     base_db::{
-        salsa::{self, ParallelDatabase},
-        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, SourceRootDatabase, VfsPath,
+        ra_salsa::{self, ParallelDatabase},
+        CrateOrigin, CrateWorkspaceData, Env, FileLoader, FileSet, SourceDatabase,
+        SourceRootDatabase, VfsPath,
     },
     prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
@@ -78,7 +79,7 @@ use crate::navigation_target::ToNav;
 
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
-    call_hierarchy::CallItem,
+    call_hierarchy::{CallHierarchyConfig, CallItem},
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
@@ -118,8 +119,8 @@ pub use ide_assists::{
     Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy, SingleResolve,
 };
 pub use ide_completion::{
-    CallableSnippets, CompletionConfig, CompletionItem, CompletionItemKind, CompletionRelevance,
-    Snippet, SnippetScope,
+    CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
+    CompletionItemKind, CompletionRelevance, Snippet, SnippetScope,
 };
 pub use ide_db::{
     base_db::{Cancelled, CrateGraph, CrateId, FileChange, SourceRoot, SourceRootId},
@@ -217,7 +218,7 @@ impl Default for AnalysisHost {
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    db: salsa::Snapshot<RootDatabase>,
+    db: ra_salsa::Snapshot<RootDatabase>,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent
@@ -256,9 +257,16 @@ impl Analysis {
             CrateOrigin::Local { repo: None, name: None },
         );
         change.change_file(file_id, Some(text));
-        change.set_crate_graph(crate_graph);
-        change.set_target_data_layouts(vec![Err("fixture has no layout".into())]);
-        change.set_toolchains(vec![None]);
+        let ws_data = crate_graph
+            .iter()
+            .zip(iter::repeat(Arc::new(CrateWorkspaceData {
+                proc_macro_cwd: None,
+                data_layout: Err("fixture has no layout".into()),
+                toolchain: None,
+            })))
+            .collect();
+        change.set_crate_graph(crate_graph, ws_data);
+
         host.apply_change(change);
         (host.analysis(), file_id)
     }
@@ -439,12 +447,12 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
-        position: TextSize,
+        resolve_range: TextRange,
         hash: u64,
         hasher: impl Fn(&InlayHint) -> u64 + Send + UnwindSafe,
     ) -> Cancellable<Option<InlayHint>> {
         self.with_db(|db| {
-            inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config, hasher)
+            inlay_hints::inlay_hints_resolve(db, file_id, resolve_range, hash, config, hasher)
         })
     }
 
@@ -556,13 +564,21 @@ impl Analysis {
     }
 
     /// Computes incoming calls for the given file position.
-    pub fn incoming_calls(&self, position: FilePosition) -> Cancellable<Option<Vec<CallItem>>> {
-        self.with_db(|db| call_hierarchy::incoming_calls(db, position))
+    pub fn incoming_calls(
+        &self,
+        config: CallHierarchyConfig,
+        position: FilePosition,
+    ) -> Cancellable<Option<Vec<CallItem>>> {
+        self.with_db(|db| call_hierarchy::incoming_calls(db, config, position))
     }
 
     /// Computes outgoing calls for the given file position.
-    pub fn outgoing_calls(&self, position: FilePosition) -> Cancellable<Option<Vec<CallItem>>> {
-        self.with_db(|db| call_hierarchy::outgoing_calls(db, position))
+    pub fn outgoing_calls(
+        &self,
+        config: CallHierarchyConfig,
+        position: FilePosition,
+    ) -> Cancellable<Option<Vec<CallItem>>> {
+        self.with_db(|db| call_hierarchy::outgoing_calls(db, config, position))
     }
 
     /// Returns a `mod name;` declaration which created the current module.

@@ -1,5 +1,8 @@
 use std::iter;
 
+use rustc_abi::Float::*;
+use rustc_abi::Primitive::{Float, Pointer};
+use rustc_abi::{Abi, AddressSpace, PointerKind, Scalar, Size};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -14,7 +17,6 @@ use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
     RiscvInterruptKind,
 };
-use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
 
@@ -357,7 +359,7 @@ fn fn_abi_of_instance<'tcx>(
     )
 }
 
-// Handle safe Rust thin and fat pointers.
+// Handle safe Rust thin and wide pointers.
 fn adjust_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
     attrs: &mut ArgAttributes,
@@ -726,6 +728,49 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 };
             }
 
+            if arg_idx.is_none() && arg.layout.size > Pointer(AddressSpace::DATA).size(cx) * 2 {
+                // Return values larger than 2 registers using a return area
+                // pointer. LLVM and Cranelift disagree about how to return
+                // values that don't fit in the registers designated for return
+                // values. LLVM will force the entire return value to be passed
+                // by return area pointer, while Cranelift will look at each IR level
+                // return value independently and decide to pass it in a
+                // register or not, which would result in the return value
+                // being passed partially in registers and partially through a
+                // return area pointer.
+                //
+                // While Cranelift may need to be fixed as the LLVM behavior is
+                // generally more correct with respect to the surface language,
+                // forcing this behavior in rustc itself makes it easier for
+                // other backends to conform to the Rust ABI and for the C ABI
+                // rustc already handles this behavior anyway.
+                //
+                // In addition LLVM's decision to pass the return value in
+                // registers or using a return area pointer depends on how
+                // exactly the return type is lowered to an LLVM IR type. For
+                // example `Option<u128>` can be lowered as `{ i128, i128 }`
+                // in which case the x86_64 backend would use a return area
+                // pointer, or it could be passed as `{ i32, i128 }` in which
+                // case the x86_64 backend would pass it in registers by taking
+                // advantage of an LLVM ABI extension that allows using 3
+                // registers for the x86_64 sysv call conv rather than the
+                // officially specified 2 registers.
+                //
+                // FIXME: Technically we should look at the amount of available
+                // return registers rather than guessing that there are 2
+                // registers for return values. In practice only a couple of
+                // architectures have less than 2 return registers. None of
+                // which supported by Cranelift.
+                //
+                // NOTE: This adjustment is only necessary for the Rust ABI as
+                // for other ABI's the calling convention implementations in
+                // rustc_target already ensure any return value which doesn't
+                // fit in the available amount of return registers is passed in
+                // the right way for the current target.
+                arg.make_indirect();
+                return;
+            }
+
             match arg.layout.abi {
                 Abi::Aggregate { .. } => {}
 
@@ -810,7 +855,7 @@ fn make_thin_self_ptr<'tcx>(
     layout: TyAndLayout<'tcx>,
 ) -> TyAndLayout<'tcx> {
     let tcx = cx.tcx();
-    let fat_pointer_ty = if layout.is_unsized() {
+    let wide_pointer_ty = if layout.is_unsized() {
         // unsized `self` is passed as a pointer to `self`
         // FIXME (mikeyhew) change this to use &own if it is ever added to the language
         Ty::new_mut_ptr(tcx, layout.ty)
@@ -820,29 +865,29 @@ fn make_thin_self_ptr<'tcx>(
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 
-        // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
+        // In the case of Rc<Self>, we need to explicitly pass a *mut RcInner<Self>
         // with a Scalar (not ScalarPair) ABI. This is a hack that is understood
         // elsewhere in the compiler as a method on a `dyn Trait`.
-        // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
+        // To get the type `*mut RcInner<Self>`, we just keep unwrapping newtypes until we
         // get a built-in pointer type
-        let mut fat_pointer_layout = layout;
-        while !fat_pointer_layout.ty.is_unsafe_ptr() && !fat_pointer_layout.ty.is_ref() {
-            fat_pointer_layout = fat_pointer_layout
+        let mut wide_pointer_layout = layout;
+        while !wide_pointer_layout.ty.is_unsafe_ptr() && !wide_pointer_layout.ty.is_ref() {
+            wide_pointer_layout = wide_pointer_layout
                 .non_1zst_field(cx)
                 .expect("not exactly one non-1-ZST field in a `DispatchFromDyn` type")
                 .1
         }
 
-        fat_pointer_layout.ty
+        wide_pointer_layout.ty
     };
 
-    // we now have a type like `*mut RcBox<dyn Trait>`
+    // we now have a type like `*mut RcInner<dyn Trait>`
     // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
     // this is understood as a special case elsewhere in the compiler
     let unit_ptr_ty = Ty::new_mut_ptr(tcx, tcx.types.unit);
 
     TyAndLayout {
-        ty: fat_pointer_ty,
+        ty: wide_pointer_ty,
 
         // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing the `Result`
         // should always work because the type is always `*mut ()`.

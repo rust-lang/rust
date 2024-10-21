@@ -2,7 +2,7 @@ use either::Either;
 use ide_db::syntax_helpers::node_ext::walk_ty;
 use syntax::{
     ast::{self, edit::IndentLevel, make, AstNode, HasGenericArgs, HasGenericParams, HasName},
-    ted,
+    syntax_editor,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -43,9 +43,8 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         AssistId("extract_type_alias", AssistKind::RefactorExtract),
         "Extract type as type alias",
         target,
-        |edit| {
-            let node = edit.make_syntax_mut(node.clone());
-            let target_ty = edit.make_mut(ty.clone());
+        |builder| {
+            let mut edit = builder.make_editor(node);
 
             let mut known_generics = match item.generic_param_list() {
                 Some(it) => it.generic_params().collect(),
@@ -67,25 +66,28 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 .map_or(String::new(), |it| it.to_generic_args().to_string());
             // FIXME: replace with a `ast::make` constructor
             let new_ty = make::ty(&format!("Type{ty_args}")).clone_for_update();
-            ted::replace(target_ty.syntax(), new_ty.syntax());
+            edit.replace(ty.syntax(), new_ty.syntax());
 
             // Insert new alias
-            let indent = IndentLevel::from_node(&node);
             let ty_alias = make::ty_alias("Type", generic_params, None, None, Some((ty, None)))
                 .clone_for_update();
-            ted::insert_all(
-                ted::Position::before(node),
+
+            if let Some(cap) = ctx.config.snippet_cap {
+                if let Some(name) = ty_alias.name() {
+                    edit.add_annotation(name.syntax(), builder.make_tabstop_before(cap));
+                }
+            }
+
+            let indent = IndentLevel::from_node(node);
+            edit.insert_all(
+                syntax_editor::Position::before(node),
                 vec![
                     ty_alias.syntax().clone().into(),
                     make::tokens::whitespace(&format!("\n\n{indent}")).into(),
                 ],
             );
 
-            if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(name) = ty_alias.name() {
-                    edit.add_tabstop_before(cap, name);
-                }
-            }
+            builder.add_file_edits(ctx.file_id(), edit);
         },
     )
 }

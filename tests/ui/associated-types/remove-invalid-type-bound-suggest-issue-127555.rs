@@ -14,7 +14,6 @@ impl Foo for Baz {
     //~^ ERROR `F` cannot be sent between threads safely
     where
         F: FnMut() + Send,
-        //~^ ERROR impl has stricter requirements than trait
     {
         ()
     }

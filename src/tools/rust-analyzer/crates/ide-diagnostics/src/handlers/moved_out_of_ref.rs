@@ -190,4 +190,16 @@ fn foo(mut slice: &[u32]) -> usize {
 "#,
         );
     }
+
+    #[test]
+    fn regression_16564() {
+        check_diagnostics(
+            r#"
+//- minicore: copy
+fn test() {
+    let _x = (&(&mut (),)).0 as *const ();
+}
+            "#,
+        )
+    }
 }

@@ -1,42 +1,17 @@
-error: `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
-  --> $DIR/rpitit-captures-more-method-lifetimes.rs:6:53
-   |
-LL |     fn bar<'tr: 'tr>(&'tr mut self) -> impl Sized + use<Self>;
-   |                                                     ^^^^^^^^^
-   |
-   = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
-
 error: return type captures more lifetimes than trait definition
-  --> $DIR/rpitit-captures-more-method-lifetimes.rs:11:40
+  --> $DIR/rpitit-captures-more-method-lifetimes.rs:12:40
    |
-LL |     fn bar<'im: 'im>(&'im mut self) -> impl Sized + 'im {}
-   |            ---                         ^^^^^^^^^^^^^^^^
+LL |     fn bar<'im: 'im>(&'im mut self) -> impl Sized + use<'im> {}
+   |            ---                         ^^^^^^^^^^^^^^^^^^^^^
    |            |
    |            this lifetime was captured
    |
 note: hidden type must only reference lifetimes captured by this impl trait
-  --> $DIR/rpitit-captures-more-method-lifetimes.rs:6:40
+  --> $DIR/rpitit-captures-more-method-lifetimes.rs:8:40
    |
 LL |     fn bar<'tr: 'tr>(&'tr mut self) -> impl Sized + use<Self>;
    |                                        ^^^^^^^^^^^^^^^^^^^^^^
-   = note: hidden type inferred to be `impl Sized + 'im`
+   = note: hidden type inferred to be `impl Sized`
 
-warning: impl trait in impl method signature does not match trait method signature
-  --> $DIR/rpitit-captures-more-method-lifetimes.rs:11:40
-   |
-LL |     fn bar<'tr: 'tr>(&'tr mut self) -> impl Sized + use<Self>;
-   |                                        ---------------------- return type from trait method defined here
-...
-LL |     fn bar<'im: 'im>(&'im mut self) -> impl Sized + 'im {}
-   |                                        ^^^^^^^^^^^^^^^^
-   |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
-   = note: `#[warn(refining_impl_trait_reachable)]` on by default
-help: replace the return type so that it matches the trait
-   |
-LL |     fn bar<'im: 'im>(&'im mut self) -> impl Sized {}
-   |                                        ~~~~~~~~~~
-
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 1 previous error
 

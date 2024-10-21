@@ -274,7 +274,7 @@ LL |     let _ = &boxed_slice[1];
    |             ~~~~~~~~~~~~~~~
 
 error: called `.get().unwrap()` on a slice
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:93:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:94:17
    |
 LL |         let _ = Box::new([0]).get(1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

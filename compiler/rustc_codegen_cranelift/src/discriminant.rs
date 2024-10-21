@@ -3,7 +3,8 @@
 //! Adapted from <https://github.com/rust-lang/rust/blob/31c0645b9d2539f47eecb096142474b29dc542f7/compiler/rustc_codegen_ssa/src/mir/place.rs>
 //! (<https://github.com/rust-lang/rust/pull/104535>)
 
-use rustc_target::abi::{Int, TagEncoding, Variants};
+use rustc_abi::Primitive::Int;
+use rustc_abi::{TagEncoding, Variants};
 
 use crate::prelude::*;
 

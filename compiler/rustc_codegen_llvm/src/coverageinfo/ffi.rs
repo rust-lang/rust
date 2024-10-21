@@ -111,7 +111,7 @@ enum RegionKind {
 }
 
 mod mcdc {
-    use rustc_middle::mir::coverage::{ConditionInfo, DecisionInfo};
+    use rustc_middle::mir::coverage::{ConditionId, ConditionInfo, DecisionInfo};
 
     /// Must match the layout of `LLVMRustMCDCDecisionParameters`.
     #[repr(C)]
@@ -167,12 +167,13 @@ mod mcdc {
 
     impl From<ConditionInfo> for BranchParameters {
         fn from(value: ConditionInfo) -> Self {
+            let to_llvm_cond_id = |cond_id: Option<ConditionId>| {
+                cond_id.and_then(|id| LLVMConditionId::try_from(id.as_usize()).ok()).unwrap_or(-1)
+            };
+            let ConditionInfo { condition_id, true_next_id, false_next_id } = value;
             Self {
-                condition_id: value.condition_id.as_u32() as LLVMConditionId,
-                condition_ids: [
-                    value.false_next_id.as_u32() as LLVMConditionId,
-                    value.true_next_id.as_u32() as LLVMConditionId,
-                ],
+                condition_id: to_llvm_cond_id(Some(condition_id)),
+                condition_ids: [to_llvm_cond_id(false_next_id), to_llvm_cond_id(true_next_id)],
             }
         }
     }

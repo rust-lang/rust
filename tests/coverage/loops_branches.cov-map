@@ -75,6 +75,7 @@ Number of file 0 mappings: 20
 - Code(Counter(6)) at (prev + 3, 9) to (start + 0, 15)
 - Code(Expression(34, Add)) at (prev + 1, 5) to (start + 0, 6)
     = ((c9 + (((((c3 + Zero) + (c4 + Zero)) - c6) - Zero) - c4)) + c6)
+Highest counter ID seen: c9
 
 Function name: <loops_branches::DisplayTest as core::fmt::Display>::fmt
 Raw bytes (230): 0x[01, 01, 2b, 01, 00, 02, 00, a3, 01, 19, a7, 01, ab, 01, 00, 0d, 00, 15, a7, 01, ab, 01, 00, 0d, 00, 15, a3, 01, 19, a7, 01, ab, 01, 00, 0d, 00, 15, 9e, 01, 00, a3, 01, 19, a7, 01, ab, 01, 00, 0d, 00, 15, 9a, 01, 00, 9e, 01, 00, a3, 01, 19, a7, 01, ab, 01, 00, 0d, 00, 15, 9e, 01, 00, a3, 01, 19, a7, 01, ab, 01, 00, 0d, 00, 15, 9a, 01, 15, 9e, 01, 00, a3, 01, 19, a7, 01, ab, 01, 00, 0d, 00, 15, 93, 01, 25, 96, 01, 19, 9a, 01, 15, 9e, 01, 00, a3, 01, 19, a7, 01, ab, 01, 00, 0d, 00, 15, 14, 01, 22, 05, 01, 11, 00, 01, 12, 01, 0a, 02, 02, 10, 00, 15, 00, 01, 17, 00, 1b, 00, 00, 1c, 00, 1e, 06, 01, 0e, 00, 0f, 02, 01, 0d, 00, 1e, 25, 00, 1e, 00, 1f, 9e, 01, 02, 0d, 00, 0e, a3, 01, 00, 12, 00, 17, 9e, 01, 01, 10, 00, 15, 00, 00, 16, 01, 0e, 9a, 01, 02, 14, 00, 19, 00, 01, 1b, 00, 1f, 00, 00, 20, 00, 22, 4a, 01, 12, 00, 13, 9a, 01, 01, 11, 00, 22, 96, 01, 00, 22, 00, 23, 19, 03, 09, 00, 0f, 8f, 01, 01, 05, 00, 06]
@@ -156,6 +157,7 @@ Number of file 0 mappings: 20
 - Code(Counter(6)) at (prev + 3, 9) to (start + 0, 15)
 - Code(Expression(35, Add)) at (prev + 1, 5) to (start + 0, 6)
     = (((((((Zero + c3) + (Zero + c5)) - c6) - Zero) - c5) + c6) + c9)
+Highest counter ID seen: c9
 
 Function name: loops_branches::main
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 37, 01, 05, 02]
@@ -164,4 +166,5 @@ Number of files: 1
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 55, 1) to (start + 5, 2)
+Highest counter ID seen: c0
 

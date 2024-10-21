@@ -133,6 +133,11 @@
 //!   inter-thread synchronisation mechanism, at the cost of some
 //!   extra memory.
 //!
+//! - [`mpmc`]: Multi-producer, multi-consumer queues, used for
+//!   message-based communication. Can provide a lightweight
+//!   inter-thread synchronisation mechanism, at the cost of some
+//!   extra memory.
+//!
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
@@ -153,6 +158,7 @@
 //! [`Arc`]: crate::sync::Arc
 //! [`Barrier`]: crate::sync::Barrier
 //! [`Condvar`]: crate::sync::Condvar
+//! [`mpmc`]: crate::sync::mpmc
 //! [`mpsc`]: crate::sync::mpsc
 //! [`Mutex`]: crate::sync::Mutex
 //! [`Once`]: crate::sync::Once
@@ -193,12 +199,13 @@ pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+#[unstable(feature = "mpmc_channel", issue = "126840")]
+pub mod mpmc;
 pub mod mpsc;
 
 mod barrier;
 mod condvar;
 mod lazy_lock;
-mod mpmc;
 mod mutex;
 pub(crate) mod once;
 mod once_lock;

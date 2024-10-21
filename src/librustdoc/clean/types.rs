@@ -1,16 +1,15 @@
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::hash::Hash;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
+use rustc_ast::MetaItemInner;
 use rustc_ast_pretty::pprust;
-use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableSince};
+use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -115,7 +114,7 @@ impl From<DefId> for ItemId {
 pub(crate) struct Crate {
     pub(crate) module: Item,
     /// Only here so that they can be filtered through the rustdoc passes.
-    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
+    pub(crate) external_traits: Box<FxIndexMap<DefId, Trait>>,
 }
 
 impl Crate {
@@ -335,6 +334,8 @@ pub(crate) struct ItemInner {
     /// E.g., struct vs enum vs function.
     pub(crate) kind: ItemKind,
     pub(crate) attrs: Attributes,
+    /// The effective stability, filled out by the `propagate-stability` pass.
+    pub(crate) stability: Option<Stability>,
 }
 
 impl std::ops::Deref for Item {
@@ -383,46 +384,17 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 impl Item {
+    /// Returns the effective stability of the item.
+    ///
+    /// This method should only be called after the `propagate-stability` pass has been run.
     pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<Stability> {
-        let (mut def_id, mut stability) = if let Some(inlined) = self.inline_stmt_id {
-            let inlined_def_id = inlined.to_def_id();
-            if let Some(stability) = tcx.lookup_stability(inlined_def_id) {
-                (inlined_def_id, stability)
-            } else {
-                // For re-exports into crates without `staged_api`, reuse the original stability.
-                // This is necessary, because we always want to mark unstable items.
-                let def_id = self.def_id()?;
-                return tcx.lookup_stability(def_id);
-            }
-        } else {
-            let def_id = self.def_id()?;
-            let stability = tcx.lookup_stability(def_id)?;
-            (def_id, stability)
-        };
-
-        let StabilityLevel::Stable { mut since, allowed_through_unstable_modules: false } =
-            stability.level
-        else {
-            return Some(stability);
-        };
-
-        // If any of the item's ancestors was stabilized later or is still unstable,
-        // then report the ancestor's stability instead.
-        while let Some(parent_def_id) = tcx.opt_parent(def_id) {
-            if let Some(parent_stability) = tcx.lookup_stability(parent_def_id) {
-                match parent_stability.level {
-                    StabilityLevel::Unstable { .. } => return Some(parent_stability),
-                    StabilityLevel::Stable { since: parent_since, .. } => {
-                        if parent_since > since {
-                            stability = parent_stability;
-                            since = parent_since;
-                        }
-                    }
-                }
-            }
-            def_id = parent_def_id;
-        }
-        Some(stability)
+        let stability = self.inner.stability;
+        debug_assert!(
+            stability.is_some()
+                || self.def_id().is_none_or(|did| tcx.lookup_stability(did).is_none()),
+            "missing stability for cleaned item: {self:?}",
+        );
+        stability
     }
 
     pub(crate) fn const_stability(&self, tcx: TyCtxt<'_>) -> Option<ConstStability> {
@@ -504,7 +476,7 @@ impl Item {
 
         Item {
             item_id: def_id.into(),
-            inner: Box::new(ItemInner { kind, attrs }),
+            inner: Box::new(ItemInner { kind, attrs, stability: None }),
             name,
             cfg,
             inline_stmt_id: None,
@@ -640,10 +612,7 @@ impl Item {
     }
 
     pub(crate) fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<StableSince> {
-        match self.stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since),
-            StabilityLevel::Unstable { .. } => None,
-        }
+        self.stability(tcx).and_then(|stability| stability.stable_since())
     }
 
     pub(crate) fn is_non_exhaustive(&self) -> bool {
@@ -984,7 +953,7 @@ pub(crate) struct Module {
 }
 
 pub(crate) trait AttributesExt {
-    type AttributeIterator<'a>: Iterator<Item = ast::NestedMetaItem>
+    type AttributeIterator<'a>: Iterator<Item = ast::MetaItemInner>
     where
         Self: 'a;
     type Attributes<'a>: Iterator<Item = &'a ast::Attribute>
@@ -1018,7 +987,7 @@ pub(crate) trait AttributesExt {
                 .peekable();
             if doc_cfg.peek().is_some() && doc_cfg_active {
                 doc_cfg
-                    .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
+                    .filter_map(|attr| Cfg::parse(&attr).ok())
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             } else if doc_auto_cfg_active {
                 // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
@@ -1074,7 +1043,7 @@ pub(crate) trait AttributesExt {
                     let mut meta = attr.meta_item().unwrap().clone();
                     meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                    if let Ok(feat_cfg) = Cfg::parse(&meta) {
+                    if let Ok(feat_cfg) = Cfg::parse(&MetaItemInner::MetaItem(meta)) {
                         cfg &= feat_cfg;
                     }
                 }
@@ -1086,7 +1055,7 @@ pub(crate) trait AttributesExt {
 }
 
 impl AttributesExt for [ast::Attribute] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
+    type AttributeIterator<'a> = impl Iterator<Item = ast::MetaItemInner> + 'a;
     type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
@@ -1103,7 +1072,7 @@ impl AttributesExt for [ast::Attribute] {
 
 impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
     type AttributeIterator<'a>
-        = impl Iterator<Item = ast::NestedMetaItem> + 'a
+        = impl Iterator<Item = ast::MetaItemInner> + 'a
     where
         Self: 'a;
     type Attributes<'a>
@@ -1137,11 +1106,11 @@ pub(crate) trait NestedAttributesExt {
 
     /// Returns `Some(attr)` if the attribute list contains 'attr'
     /// corresponding to a specific `word`
-    fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem>;
+    fn get_word_attr(self, word: Symbol) -> Option<ast::MetaItemInner>;
 }
 
-impl<I: Iterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
-    fn get_word_attr(mut self, word: Symbol) -> Option<ast::NestedMetaItem> {
+impl<I: Iterator<Item = ast::MetaItemInner>> NestedAttributesExt for I {
+    fn get_word_attr(mut self, word: Symbol) -> Option<ast::MetaItemInner> {
         self.find(|attr| attr.is_word() && attr.has_name(word))
     }
 }
@@ -1188,7 +1157,7 @@ pub(crate) struct Attributes {
 }
 
 impl Attributes {
-    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::NestedMetaItem> + '_ {
+    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> + '_ {
         self.other_attrs.lists(name)
     }
 
@@ -1254,20 +1223,19 @@ impl Attributes {
     }
 
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
-        let mut aliases = FxHashSet::default();
+        let mut aliases = FxIndexSet::default();
 
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
             if let Some(values) = attr.meta_item_list() {
                 for l in values {
-                    match l.lit().unwrap().kind {
-                        ast::LitKind::Str(s, _) => {
-                            aliases.insert(s);
-                        }
-                        _ => unreachable!(),
+                    if let Some(lit) = l.lit()
+                        && let ast::LitKind::Str(s, _) = lit.kind
+                    {
+                        aliases.insert(s);
                     }
                 }
-            } else {
-                aliases.insert(attr.value_str().unwrap());
+            } else if let Some(value) = attr.value_str() {
+                aliases.insert(value);
             }
         }
         aliases.into_iter().collect::<Vec<_>>().into()
@@ -1481,8 +1449,8 @@ impl Trait {
     pub(crate) fn safety(&self, tcx: TyCtxt<'_>) -> hir::Safety {
         tcx.trait_def(self.def_id).safety
     }
-    pub(crate) fn is_object_safe(&self, tcx: TyCtxt<'_>) -> bool {
-        tcx.is_object_safe(self.def_id)
+    pub(crate) fn is_dyn_compatible(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.is_dyn_compatible(self.def_id)
     }
 }
 
@@ -1790,7 +1758,7 @@ pub(crate) enum PrimitiveType {
     Never,
 }
 
-type SimplifiedTypes = FxHashMap<PrimitiveType, ArrayVec<SimplifiedType, 3>>;
+type SimplifiedTypes = FxIndexMap<PrimitiveType, ArrayVec<SimplifiedType, 3>>;
 impl PrimitiveType {
     pub(crate) fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
         use ast::{FloatTy, IntTy, UintTy};
@@ -1958,10 +1926,10 @@ impl PrimitiveType {
     /// In particular, if a crate depends on both `std` and another crate that also defines
     /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
     /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
-    pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxHashMap<PrimitiveType, DefId> {
-        static PRIMITIVE_LOCATIONS: OnceCell<FxHashMap<PrimitiveType, DefId>> = OnceCell::new();
+    pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxIndexMap<PrimitiveType, DefId> {
+        static PRIMITIVE_LOCATIONS: OnceCell<FxIndexMap<PrimitiveType, DefId>> = OnceCell::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {
-            let mut primitive_locations = FxHashMap::default();
+            let mut primitive_locations = FxIndexMap::default();
             // NOTE: technically this misses crates that are only passed with `--extern` and not loaded when checking the crate.
             // This is a degenerate case that I don't plan to support.
             for &crate_num in tcx.crates(()) {
@@ -2491,7 +2459,7 @@ pub(crate) struct Impl {
 }
 
 impl Impl {
-    pub(crate) fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxHashSet<Symbol> {
+    pub(crate) fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxIndexSet<Symbol> {
         self.trait_
             .as_ref()
             .map(|t| t.def_id())

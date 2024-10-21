@@ -1,5 +1,4 @@
 use either::Either;
-
 use rustc_data_structures::fx::FxHashSet;
 
 use crate::*;

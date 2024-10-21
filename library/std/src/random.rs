@@ -40,6 +40,7 @@ use crate::sys::random as sys;
 /// Horizon                | `getrandom` shim
 /// Hurd, L4Re, QNX        | `/dev/urandom`
 /// Redox                  | `/scheme/rand`
+/// RTEMS                  | [`arc4random_buf`](https://docs.rtems.org/branches/master/bsp-howto/getentropy.html)
 /// SGX                    | [`rdrand`](https://en.wikipedia.org/wiki/RDRAND)
 /// SOLID                  | `SOLID_RNG_SampleRandomBytes`
 /// TEEOS                  | `TEE_GenerateRandom`
@@ -71,7 +72,8 @@ impl RandomSource for DefaultRandomSource {
 ///
 /// This is a convenience function for `T::random(&mut DefaultRandomSource)` and
 /// will sample according to the same distribution as the underlying [`Random`]
-/// trait implementation.
+/// trait implementation. See [`DefaultRandomSource`] for more information about
+/// how randomness is sourced.
 ///
 /// **Warning:** Be careful when manipulating random values! The
 /// [`random`](Random::random) method on integers samples them with a uniform

@@ -668,8 +668,8 @@ impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
     }
 }
 
-/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
-/// proven by actually normalizing `alias`.
+/// Used by the new solver to normalize an alias. This always expects the `term` to
+/// be an unconstrained inference variable which is used as the output.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
@@ -726,9 +726,9 @@ pub struct CoercePredicate<I: Interner> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
 pub enum BoundConstness {
-    /// `Type: Trait`
-    NotConst,
     /// `Type: const Trait`
+    ///
+    /// A bound is required to be unconditionally const, even in a runtime function.
     Const,
     /// `Type: ~const Trait`
     ///
@@ -739,7 +739,6 @@ pub enum BoundConstness {
 impl BoundConstness {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::NotConst => "",
             Self::Const => "const",
             Self::ConstIfConst => "~const",
         }
@@ -749,9 +748,15 @@ impl BoundConstness {
 impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NotConst => f.write_str("normal"),
             Self::Const => f.write_str("const"),
             Self::ConstIfConst => f.write_str("~const"),
         }
+    }
+}
+
+impl<I> Lift<I> for BoundConstness {
+    type Lifted = BoundConstness;
+    fn lift_to_interner(self, _: I) -> Option<Self::Lifted> {
+        Some(self)
     }
 }

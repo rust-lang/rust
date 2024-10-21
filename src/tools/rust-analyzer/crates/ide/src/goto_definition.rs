@@ -83,7 +83,7 @@ pub(crate) fn goto_definition(
     }
 
     let navs = sema
-        .descend_into_macros(original_token.clone())
+        .descend_into_macros_no_opaque(original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
@@ -2661,6 +2661,24 @@ fn foo() {
     }
 
     #[test]
+    fn label_inside_macro() {
+        check(
+            r#"
+macro_rules! m {
+    ($s:stmt) => { $s };
+}
+
+fn foo() {
+    'label: loop {
+ // ^^^^^^
+        m!(continue 'label$0);
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_def_on_return_in_try() {
         check(
             r#"
@@ -2748,6 +2766,38 @@ fn foo() {
     $0column!();
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn issue_18138() {
+        check(
+            r#"
+mod foo {
+    macro_rules! x {
+        () => {
+            pub struct Foo;
+                    // ^^^
+        };
+    }
+    pub(crate) use x as m;
+}
+
+mod bar {
+    use crate::m;
+
+    m!();
+ // ^^^^^
+
+    fn qux() {
+        Foo$0;
+    }
+}
+
+mod m {}
+
+use foo::m;
+"#,
         );
     }
 }

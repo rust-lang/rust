@@ -38,6 +38,7 @@ pub mod consteval;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
+pub mod dyn_compatibility;
 pub mod lang_items;
 pub mod layout;
 pub mod method_resolution;
@@ -55,7 +56,7 @@ use std::{
     hash::{BuildHasherDefault, Hash},
 };
 
-use base_db::salsa::InternValueTrivial;
+use base_db::ra_salsa::InternValueTrivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
@@ -82,6 +83,7 @@ pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
+    cast::CastError,
     closure::{CaptureKind, CapturedItem},
     could_coerce, could_unify, could_unify_deeply, Adjust, Adjustment, AutoBorrow, BindingMode,
     InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast,

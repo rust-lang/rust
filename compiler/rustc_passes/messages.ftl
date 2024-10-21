@@ -49,6 +49,10 @@ passes_attr_crate_level =
 passes_attr_only_in_functions =
     `{$attr}` attribute can only be used on functions
 
+passes_autodiff_attr =
+    `#[autodiff]` should be applied to a function
+    .label = not a function
+
 passes_both_ffi_const_and_pure =
     `#[ffi_const]` function cannot be `#[ffi_pure]`
 
@@ -391,7 +395,7 @@ passes_lang_item_fn_with_target_feature =
 
 passes_lang_item_fn_with_track_caller =
     {passes_lang_item_fn} is not allowed to have `#[track_caller]`
-    .label = {passes_lang_item_fn} is not allowed to have `#[target_feature]`
+    .label = {passes_lang_item_fn} is not allowed to have `#[track_caller]`
 
 passes_lang_item_on_incorrect_target =
     `{$name}` lang item must be applied to a {$expected_target}
@@ -488,24 +492,18 @@ passes_naked_asm_outside_naked_fn =
     the `naked_asm!` macro can only be used in functions marked with `#[naked]`
 
 passes_naked_functions_asm_block =
-    naked functions must contain a single asm block
-    .label_multiple_asm = multiple asm blocks are unsupported in naked functions
-    .label_non_asm = non-asm is unsupported in naked functions
-
-passes_naked_functions_asm_options =
-    asm options unsupported in naked functions: {$unsupported_options}
+    naked functions must contain a single `naked_asm!` invocation
+    .label_multiple_asm = multiple `naked_asm!` invocations are not allowed in naked functions
+    .label_non_asm = not allowed in naked functions
 
 passes_naked_functions_incompatible_attribute =
     attribute incompatible with `#[naked]`
     .label = the `{$attr}` attribute is incompatible with `#[naked]`
     .naked_attribute = function marked with `#[naked]` here
 
-passes_naked_functions_must_use_noreturn =
-    asm in naked functions must use `noreturn` option
-    .suggestion = consider specifying that the asm block is responsible for returning from the function
-
-passes_naked_functions_operands =
-    only `const` and `sym` operands are supported in naked functions
+passes_naked_functions_must_naked_asm =
+    the `asm!` macro is not allowed in naked functions
+    .label = consider using the `naked_asm!` macro instead
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
@@ -555,9 +553,9 @@ passes_only_has_effect_on =
         *[unspecified] (unspecified--this is a compiler bug)
     }
 
-passes_optimize_not_fn_or_closure =
-    attribute should be applied to function or closure
-    .label = not a function or closure
+passes_optimize_invalid_target =
+    attribute applied to an invalid target
+    .label = invalid target
 
 passes_outer_crate_level_attr =
     crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
@@ -744,6 +742,12 @@ passes_unrecognized_field =
 passes_unrecognized_repr_hint =
     unrecognized representation hint
     .help = valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+
+passes_unstable_attr_for_already_stable_feature =
+    can't mark as unstable using an already stable feature
+    .label = this feature is already stable
+    .item = the stability attribute annotates this item
+    .help = consider removing the attribute
 
 passes_unused =
     unused attribute

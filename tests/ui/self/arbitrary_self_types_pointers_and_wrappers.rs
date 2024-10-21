@@ -50,9 +50,9 @@ impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T> {}
 
 
 trait Trait {
-    // This method isn't object-safe yet. Unsized by-value `self` is object-safe (but not callable
-    // without unsized_locals), but wrappers arond `Self` currently are not.
-    // FIXME (mikeyhew) uncomment this when unsized rvalues object-safety is implemented
+    // This method isn't dyn-compatible yet. Unsized by-value `self` is dyn-compatible (but not
+    // callable without unsized_locals), but wrappers arond `Self` currently are not.
+    // FIXME (mikeyhew) uncomment this when unsized rvalues dyn-compatibility is implemented
     // fn wrapper(self: Wrapper<Self>) -> i32;
     fn ptr_wrapper(self: Ptr<Wrapper<Self>>) -> i32;
     fn wrapper_ptr(self: Wrapper<Ptr<Self>>) -> i32;

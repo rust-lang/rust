@@ -390,7 +390,7 @@ global_asm! {
 #[naked]
 extern "C" fn naked_test() {
     unsafe {
-        asm!("ret", options(noreturn));
+        naked_asm!("ret");
     }
 }
 

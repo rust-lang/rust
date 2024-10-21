@@ -10,9 +10,9 @@ use std::{
 use anyhow::Context;
 
 use ide::{
-    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
-    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
+    FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
+    RangeInfo, ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -40,7 +40,10 @@ use crate::{
     hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
-        ext::InternalTestingFetchConfigParams,
+        ext::{
+            InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
+            InternalTestingFetchConfigResponse,
+        },
         from_proto, to_proto,
         utils::{all_edits_are_disjoint, invalid_params_error},
         LspError,
@@ -256,7 +259,7 @@ pub(crate) fn handle_run_test(
 
             let handle = CargoTestHandle::new(
                 test_path,
-                state.config.cargo_test_options(),
+                state.config.cargo_test_options(None),
                 cargo.workspace_root(),
                 test_target,
                 state.test_run_sender.clone(),
@@ -565,7 +568,7 @@ pub(crate) fn handle_workspace_symbol(
 ) -> anyhow::Result<Option<lsp_types::WorkspaceSymbolResponse>> {
     let _p = tracing::info_span!("handle_workspace_symbol").entered();
 
-    let config = snap.config.workspace_symbol();
+    let config = snap.config.workspace_symbol(None);
     let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
 
     let query = {
@@ -852,6 +855,7 @@ pub(crate) fn handle_runnables(
 ) -> anyhow::Result<Vec<lsp_ext::Runnable>> {
     let _p = tracing::info_span!("handle_runnables").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let source_root = snap.analysis.source_root_id(file_id).ok();
     let line_index = snap.file_line_index(file_id)?;
     let offset = params.position.and_then(|it| from_proto::offset(&line_index, it).ok());
     let target_spec = TargetSpec::for_file(&snap, file_id)?;
@@ -894,7 +898,7 @@ pub(crate) fn handle_runnables(
     }
 
     // Add `cargo check` and `cargo test` for all targets of the whole package
-    let config = snap.config.runnables();
+    let config = snap.config.runnables(source_root);
     match target_spec {
         Some(TargetSpec::Cargo(spec)) => {
             let is_crate_no_std = snap.analysis.is_crate_no_std(spec.crate_id)?;
@@ -1015,9 +1019,11 @@ pub(crate) fn handle_completion(
 
     let items = to_proto::completion_items(
         &snap.config,
+        &completion_config.fields_to_resolve,
         &line_index,
         snap.file_version(position.file_id),
         text_document_position,
+        completion_trigger_character,
         items,
     );
 
@@ -1050,36 +1056,70 @@ pub(crate) fn handle_completion_resolve(
     };
     let source_root = snap.analysis.source_root_id(file_id)?;
 
-    let additional_edits = snap
-        .analysis
-        .resolve_completion_edits(
-            &snap.config.completion(Some(source_root)),
-            FilePosition { file_id, offset },
-            resolve_data
-                .imports
-                .into_iter()
-                .map(|import| (import.full_import_path, import.imported_name)),
-        )?
-        .into_iter()
-        .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
-        .collect::<Vec<_>>();
+    let mut forced_resolve_completions_config = snap.config.completion(Some(source_root));
+    forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
 
-    if !all_edits_are_disjoint(&original_completion, &additional_edits) {
-        return Err(LspError::new(
-            ErrorCode::InternalError as i32,
-            "Import edit overlaps with the original completion edits, this is not LSP-compliant"
-                .into(),
-        )
-        .into());
+    let position = FilePosition { file_id, offset };
+    let Some(resolved_completions) = snap.analysis.completions(
+        &forced_resolve_completions_config,
+        position,
+        resolve_data.trigger_character,
+    )?
+    else {
+        return Ok(original_completion);
+    };
+    let resolved_completions = to_proto::completion_items(
+        &snap.config,
+        &forced_resolve_completions_config.fields_to_resolve,
+        &line_index,
+        snap.file_version(position.file_id),
+        resolve_data.position,
+        resolve_data.trigger_character,
+        resolved_completions,
+    );
+    let Some(mut resolved_completion) = resolved_completions.into_iter().find(|completion| {
+        completion.label == original_completion.label
+            && completion.kind == original_completion.kind
+            && completion.deprecated == original_completion.deprecated
+            && completion.preselect == original_completion.preselect
+            && completion.sort_text == original_completion.sort_text
+    }) else {
+        return Ok(original_completion);
+    };
+
+    if !resolve_data.imports.is_empty() {
+        let additional_edits = snap
+            .analysis
+            .resolve_completion_edits(
+                &forced_resolve_completions_config,
+                position,
+                resolve_data
+                    .imports
+                    .into_iter()
+                    .map(|import| (import.full_import_path, import.imported_name)),
+            )?
+            .into_iter()
+            .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
+            .collect::<Vec<_>>();
+
+        if !all_edits_are_disjoint(&resolved_completion, &additional_edits) {
+            return Err(LspError::new(
+                ErrorCode::InternalError as i32,
+                "Import edit overlaps with the original completion edits, this is not LSP-compliant"
+                    .into(),
+            )
+            .into());
+        }
+
+        if let Some(original_additional_edits) = resolved_completion.additional_text_edits.as_mut()
+        {
+            original_additional_edits.extend(additional_edits)
+        } else {
+            resolved_completion.additional_text_edits = Some(additional_edits);
+        }
     }
 
-    if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
-        original_additional_edits.extend(additional_edits)
-    } else {
-        original_completion.additional_text_edits = Some(additional_edits);
-    }
-
-    Ok(original_completion)
+    Ok(resolved_completion)
 }
 
 pub(crate) fn handle_folding_range(
@@ -1602,14 +1642,14 @@ pub(crate) fn handle_inlay_hints_resolve(
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
-    let hint_position = from_proto::offset(&line_index, original_hint.position)?;
+    let range = from_proto::text_range(&line_index, resolve_data.resolve_range)?;
 
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
         file_id,
-        hint_position,
+        range,
         hash,
         |hint| {
             std::hash::BuildHasher::hash_one(
@@ -1668,7 +1708,8 @@ pub(crate) fn handle_call_hierarchy_incoming(
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let call_items = match snap.analysis.incoming_calls(fpos)? {
+    let config = snap.config.call_hierarchy();
+    let call_items = match snap.analysis.incoming_calls(config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -1705,7 +1746,8 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let call_items = match snap.analysis.outgoing_calls(fpos)? {
+    let config = snap.config.call_hierarchy();
+    let call_items = match snap.analysis.outgoing_calls(config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -2119,7 +2161,7 @@ fn run_rustfmt(
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
             let mut cmd = process::Command::new(toolchain::Tool::Rustfmt.path());
-            cmd.envs(snap.config.extra_env());
+            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(extra_args);
 
             if let Some(edition) = edition {
@@ -2161,14 +2203,14 @@ fn run_rustfmt(
             let cmd = Utf8PathBuf::from(&command);
             let target_spec = TargetSpec::for_file(snap, file_id)?;
             let mut cmd = match target_spec {
-                Some(TargetSpec::Cargo(spec)) => {
-                    // approach: if the command name contains a path separator, join it with the workspace root.
+                Some(TargetSpec::Cargo(_)) => {
+                    // approach: if the command name contains a path separator, join it with the project root.
                     // however, if the path is absolute, joining will result in the absolute path being preserved.
                     // as a fallback, rely on $PATH-based discovery.
                     let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
                         || (cfg!(windows) && command.contains('/'))
                     {
-                        spec.workspace_root.join(cmd).into()
+                        snap.config.root_path().join(cmd).into()
                     } else {
                         cmd
                     };
@@ -2177,7 +2219,7 @@ fn run_rustfmt(
                 _ => process::Command::new(cmd),
             };
 
-            cmd.envs(snap.config.extra_env());
+            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(args);
             cmd
         }
@@ -2291,7 +2333,7 @@ pub(crate) fn fetch_dependency_list(
 pub(crate) fn internal_testing_fetch_config(
     state: GlobalStateSnapshot,
     params: InternalTestingFetchConfigParams,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Option<InternalTestingFetchConfigResponse>> {
     let source_root = params
         .text_document
         .map(|it| {
@@ -2301,15 +2343,18 @@ pub(crate) fn internal_testing_fetch_config(
                 .map_err(anyhow::Error::from)
         })
         .transpose()?;
-    serde_json::to_value(match &*params.config {
-        "local" => state.config.assist(source_root).assist_emit_must_use,
-        "workspace" => matches!(
-            state.config.rustfmt(source_root),
-            RustfmtConfig::Rustfmt { enable_range_formatting: true, .. }
-        ),
-        _ => return Err(anyhow::anyhow!("Unknown test config key: {}", params.config)),
-    })
-    .map_err(Into::into)
+    Ok(Some(match params.config {
+        InternalTestingFetchConfigOption::AssistEmitMustUse => {
+            InternalTestingFetchConfigResponse::AssistEmitMustUse(
+                state.config.assist(source_root).assist_emit_must_use,
+            )
+        }
+        InternalTestingFetchConfigOption::CheckWorkspace => {
+            InternalTestingFetchConfigResponse::CheckWorkspace(
+                state.config.flycheck_workspace(source_root),
+            )
+        }
+    }))
 }
 
 /// Searches for the directory of a Rust crate given this crate's root file path.

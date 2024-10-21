@@ -35,4 +35,4 @@ Rust test-suite on this target.
 ## Cross-compilation toolchains and C code
 
 This target supports C code. If interlinking with C or C++, you may need to use
-`riscv64-unknown-elf-gcc` as a linker instead of `rust-lld`.
+`riscv32-unknown-elf-gcc` as a linker instead of `rust-lld`.

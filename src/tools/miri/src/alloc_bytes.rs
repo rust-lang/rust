@@ -1,7 +1,6 @@
-use std::alloc;
 use std::alloc::Layout;
 use std::borrow::Cow;
-use std::slice;
+use std::{alloc, slice};
 
 use rustc_middle::mir::interpret::AllocBytes;
 use rustc_target::abi::{Align, Size};

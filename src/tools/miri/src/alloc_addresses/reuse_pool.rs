@@ -1,10 +1,10 @@
 //! Manages a pool of addresses that can be reused.
 
 use rand::Rng;
-
 use rustc_target::abi::{Align, Size};
 
-use crate::{MemoryKind, MiriConfig, ThreadId, concurrency::VClock};
+use crate::concurrency::VClock;
+use crate::{MemoryKind, MiriConfig, ThreadId};
 
 const MAX_POOL_SIZE: usize = 64;
 

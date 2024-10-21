@@ -29,6 +29,7 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
+        current_dir: Option<String>,
     ) -> Result<tt::Subtree, ProcMacroExpansionError>;
 }
 
@@ -234,8 +235,18 @@ impl CustomProcMacroExpander {
                 let krate_graph = db.crate_graph();
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
-                match proc_macro.expander.expand(tt, attr_arg, env, def_site, call_site, mixed_site)
-                {
+                match proc_macro.expander.expand(
+                    tt,
+                    attr_arg,
+                    env,
+                    def_site,
+                    call_site,
+                    mixed_site,
+                    db.crate_workspace_data()[&calling_crate]
+                        .proc_macro_cwd
+                        .as_ref()
+                        .map(ToString::to_string),
+                ) {
                     Ok(t) => ExpandResult::ok(t),
                     Err(err) => match err {
                         // Don't discard the item in case something unexpected happened while expanding attributes

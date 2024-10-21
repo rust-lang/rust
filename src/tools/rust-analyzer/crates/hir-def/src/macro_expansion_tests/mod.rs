@@ -1,6 +1,6 @@
-//! This module contains tests for macro expansion. Effectively, it covers `tt`,
-//! `mbe`, `proc_macro_api` and `hir_expand` crates. This might seem like a
-//! wrong architecture at the first glance, but is intentional.
+//! This module contains integration tests for macro expansion with name resolution. Effectively, it
+//! covers `tt`, `mbe`, `proc_macro_api` and `hir_expand` crates. This might seem like a  wrong
+//! architecture at the first glance, but is intentional.
 //!
 //! Physically, macro expansion process is intertwined with name resolution. You
 //! can not expand *just* the syntax. So, to be able to write integration tests
@@ -320,6 +320,7 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree, ProcMacroExpansionError> {
         let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             subtree,

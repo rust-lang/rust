@@ -57,6 +57,13 @@ impl<'a, S: Copy> TtIter<'a, S> {
         }
     }
 
+    pub fn expect_comma(&mut self) -> Result<(), ()> {
+        match self.expect_leaf()? {
+            Leaf::Punct(Punct { char: ',', .. }) => Ok(()),
+            _ => Err(()),
+        }
+    }
+
     pub fn expect_ident(&mut self) -> Result<&'a Ident<S>, ()> {
         match self.expect_leaf()? {
             Leaf::Ident(it) if it.sym != sym::underscore => Ok(it),

@@ -108,7 +108,6 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         _guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolution> {
-        // FIXME: don't need to enter a probe here.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -463,7 +462,6 @@ where
         // Async coroutine unconditionally implement `Future`
         // Technically, we need to check that the future output type is Sized,
         // but that's already proven by the coroutine being WF.
-        // FIXME: use `consider_implied`
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -489,7 +487,6 @@ where
         // Gen coroutines unconditionally implement `Iterator`
         // Technically, we need to check that the iterator output type is Sized,
         // but that's already proven by the coroutines being WF.
-        // FIXME: use `consider_implied`
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -512,8 +509,7 @@ where
             return Err(NoSolution);
         }
 
-        // Gen coroutines unconditionally implement `FusedIterator`
-        // FIXME: use `consider_implied`
+        // Gen coroutines unconditionally implement `FusedIterator`.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -539,7 +535,6 @@ where
         // Gen coroutines unconditionally implement `Iterator`
         // Technically, we need to check that the iterator output type is Sized,
         // but that's already proven by the coroutines being WF.
-        // FIXME: use `consider_implied`
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -610,7 +605,7 @@ where
             return Err(NoSolution);
         }
 
-        // FIXME(-Znext-solver): Implement this when we get const working in the new solver
+        // FIXME(effects): Implement this when we get const working in the new solver
 
         // `Destruct` is automatically implemented for every type in
         // non-const environments.
@@ -631,14 +626,17 @@ where
             return Err(NoSolution);
         }
 
-        // FIXME: This actually should destructure the `Result` we get from transmutability and
-        // register candidates. We probably need to register >1 since we may have an OR of ANDs.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let assume = ecx.structurally_normalize_const(
+                goal.param_env,
+                goal.predicate.trait_ref.args.const_at(2),
+            )?;
+
             let certainty = ecx.is_transmutable(
                 goal.param_env,
                 goal.predicate.trait_ref.args.type_at(0),
                 goal.predicate.trait_ref.args.type_at(1),
-                goal.predicate.trait_ref.args.const_at(2),
+                assume,
             )?;
             ecx.evaluate_added_goals_and_make_canonical_response(certainty)
         })
@@ -792,7 +790,8 @@ where
         let mut responses = vec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
-        if a_data.principal_def_id() == b_data.principal_def_id() {
+        let b_principal_def_id = b_data.principal_def_id();
+        if a_data.principal_def_id() == b_principal_def_id || b_principal_def_id.is_none() {
             responses.extend(self.consider_builtin_upcast_to_principal(
                 goal,
                 CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -832,8 +831,8 @@ where
         let cx = self.cx();
         let Goal { predicate: (a_ty, _), .. } = goal;
 
-        // Can only unsize to an object-safe trait.
-        if b_data.principal_def_id().is_some_and(|def_id| !cx.trait_is_object_safe(def_id)) {
+        // Can only unsize to an dyn-compatible trait.
+        if b_data.principal_def_id().is_some_and(|def_id| !cx.trait_is_dyn_compatible(def_id)) {
             return Err(NoSolution);
         }
 
@@ -895,10 +894,13 @@ where
                 source_projection.item_def_id() == target_projection.item_def_id()
                     && ecx
                         .probe(|_| ProbeKind::UpcastProjectionCompatibility)
-                        .enter(|ecx| -> Result<(), NoSolution> {
-                            ecx.eq(param_env, source_projection, target_projection)?;
-                            let _ = ecx.try_evaluate_added_goals()?;
-                            Ok(())
+                        .enter(|ecx| -> Result<_, NoSolution> {
+                            ecx.enter_forall(target_projection, |ecx, target_projection| {
+                                let source_projection =
+                                    ecx.instantiate_binder_with_infer(source_projection);
+                                ecx.eq(param_env, source_projection, target_projection)?;
+                                ecx.try_evaluate_added_goals()
+                            })
                         })
                         .is_ok()
             };
@@ -909,11 +911,14 @@ where
                     // Check that a's supertrait (upcast_principal) is compatible
                     // with the target (b_ty).
                     ty::ExistentialPredicate::Trait(target_principal) => {
-                        ecx.eq(
-                            param_env,
-                            upcast_principal.unwrap(),
-                            bound.rebind(target_principal),
-                        )?;
+                        let source_principal = upcast_principal.unwrap();
+                        let target_principal = bound.rebind(target_principal);
+                        ecx.enter_forall(target_principal, |ecx, target_principal| {
+                            let source_principal =
+                                ecx.instantiate_binder_with_infer(source_principal);
+                            ecx.eq(param_env, source_principal, target_principal)?;
+                            ecx.try_evaluate_added_goals()
+                        })?;
                     }
                     // Check that b_ty's projection is satisfied by exactly one of
                     // a_ty's projections. First, we look through the list to see if
@@ -934,7 +939,12 @@ where
                                 Certainty::AMBIGUOUS,
                             );
                         }
-                        ecx.eq(param_env, source_projection, target_projection)?;
+                        ecx.enter_forall(target_projection, |ecx, target_projection| {
+                            let source_projection =
+                                ecx.instantiate_binder_with_infer(source_projection);
+                            ecx.eq(param_env, source_projection, target_projection)?;
+                            ecx.try_evaluate_added_goals()
+                        })?;
                     }
                     // Check that b_ty's auto traits are present in a_ty's bounds.
                     ty::ExistentialPredicate::AutoTrait(def_id) => {
@@ -1187,17 +1197,15 @@ where
         ) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>,
     ) -> Result<Candidate<I>, NoSolution> {
         self.probe_trait_candidate(source).enter(|ecx| {
-            ecx.add_goals(
-                GoalSource::ImplWhereBound,
-                constituent_tys(ecx, goal.predicate.self_ty())?
-                    .into_iter()
-                    .map(|ty| {
-                        ecx.enter_forall(ty, |ty| {
-                            goal.with(ecx.cx(), goal.predicate.with_self_ty(ecx.cx(), ty))
-                        })
+            let goals = constituent_tys(ecx, goal.predicate.self_ty())?
+                .into_iter()
+                .map(|ty| {
+                    ecx.enter_forall(ty, |ecx, ty| {
+                        goal.with(ecx.cx(), goal.predicate.with_self_ty(ecx.cx(), ty))
                     })
-                    .collect::<Vec<_>>(),
-            );
+                })
+                .collect::<Vec<_>>();
+            ecx.add_goals(GoalSource::ImplWhereBound, goals);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }

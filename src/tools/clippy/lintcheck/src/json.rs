@@ -133,7 +133,7 @@ fn print_lint_warnings(lint: &LintWarnings, truncate_after: usize) {
     println!();
 
     print!(
-        r##"{}, {}, {}"##,
+        r"{}, {}, {}",
         count_string(name, "added", lint.added.len()),
         count_string(name, "removed", lint.removed.len()),
         count_string(name, "changed", lint.changed.len()),

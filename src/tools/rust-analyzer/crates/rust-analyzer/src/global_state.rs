@@ -46,6 +46,16 @@ pub(crate) struct FetchWorkspaceRequest {
     pub(crate) force_crate_graph_reload: bool,
 }
 
+pub(crate) struct FetchWorkspaceResponse {
+    pub(crate) workspaces: Vec<anyhow::Result<ProjectWorkspace>>,
+    pub(crate) force_crate_graph_reload: bool,
+}
+
+pub(crate) struct FetchBuildDataResponse {
+    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) build_scripts: Vec<anyhow::Result<WorkspaceBuildScripts>>,
+}
+
 // Enforces drop order
 pub(crate) struct Handle<H, C> {
     pub(crate) handle: H,
@@ -111,6 +121,9 @@ pub(crate) struct GlobalState {
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
     pub(crate) vfs_done: bool,
+    // used to track how long VFS loading takes. this can't be on `vfs::loader::Handle`,
+    // as that handle's lifetime is the same as `GlobalState` itself.
+    pub(crate) vfs_span: Option<tracing::span::EnteredSpan>,
     pub(crate) wants_to_switch: Option<Cause>,
 
     /// `workspaces` field stores the data we actually use, while the `OpQueue`
@@ -143,10 +156,8 @@ pub(crate) struct GlobalState {
     pub(crate) detached_files: FxHashSet<ManifestPath>,
 
     // op queues
-    pub(crate) fetch_workspaces_queue:
-        OpQueue<FetchWorkspaceRequest, Option<(Vec<anyhow::Result<ProjectWorkspace>>, bool)>>,
-    pub(crate) fetch_build_data_queue:
-        OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
+    pub(crate) fetch_workspaces_queue: OpQueue<FetchWorkspaceRequest, FetchWorkspaceResponse>,
+    pub(crate) fetch_build_data_queue: OpQueue<(), FetchBuildDataResponse>,
     pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
     pub(crate) prime_caches_queue: OpQueue,
     pub(crate) discover_workspace_queue: OpQueue,
@@ -253,6 +264,7 @@ impl GlobalState {
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
+            vfs_span: None,
             vfs_done: true,
             wants_to_switch: None,
 
@@ -498,7 +510,7 @@ impl GlobalState {
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
             proc_macros_loaded: !self.config.expand_proc_macros()
-                || *self.fetch_proc_macros_queue.last_op_result(),
+                || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false),
             flycheck: self.flycheck.clone(),
         }
     }
@@ -540,7 +552,7 @@ impl GlobalState {
     }
 
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
-        if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
+        if let Some((method, start)) = self.req_queue.incoming.complete(&response.id) {
             if let Some(err) = &response.error {
                 if err.message.starts_with("server panicked") {
                     self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
@@ -629,6 +641,10 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
         file_id_to_url(&self.vfs_read(), id)
+    }
+
+    pub(crate) fn vfs_path_to_file_id(&self, vfs_path: &VfsPath) -> anyhow::Result<FileId> {
+        vfs_path_to_file_id(&self.vfs_read(), vfs_path)
     }
 
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancellable<LineIndex> {
@@ -723,5 +739,11 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
 pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<FileId> {
     let path = from_proto::vfs_path(url)?;
     let res = vfs.file_id(&path).ok_or_else(|| anyhow::format_err!("file not found: {path}"))?;
+    Ok(res)
+}
+
+pub(crate) fn vfs_path_to_file_id(vfs: &vfs::Vfs, vfs_path: &VfsPath) -> anyhow::Result<FileId> {
+    let res =
+        vfs.file_id(vfs_path).ok_or_else(|| anyhow::format_err!("file not found: {vfs_path}"))?;
     Ok(res)
 }

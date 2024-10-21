@@ -53,6 +53,7 @@ impl Thread {
 
                 // run all destructors
                 crate::sys::thread_local::destructors::run();
+                crate::rt::thread_cleanup();
             }
         }
     }

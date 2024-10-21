@@ -1,13 +1,12 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use rustc_middle::mir::interpret::InterpErrorInfo;
 use rustc_middle::query::{Key, TyCtxtAt};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_target::abi::VariantIdx;
 use tracing::instrument;
 
-use crate::interpret::{InterpCx, format_interp_error};
+use crate::interpret::InterpCx;
 
 mod dummy_machine;
 mod error;
@@ -33,17 +32,6 @@ pub(crate) enum ValTreeCreationError<'tcx> {
 }
 pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError<'tcx>>;
 
-impl<'tcx> From<InterpErrorInfo<'tcx>> for ValTreeCreationError<'tcx> {
-    fn from(err: InterpErrorInfo<'tcx>) -> Self {
-        ty::tls::with(|tcx| {
-            bug!(
-                "Unexpected Undefined Behavior error during valtree construction: {}",
-                format_interp_error(tcx.dcx(), err),
-            )
-        })
-    }
-}
-
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     tcx: TyCtxtAt<'tcx>,
@@ -55,13 +43,13 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match ty.kind() {
-        ty::Array(_, len) => (len.eval_target_usize(tcx.tcx, param_env) as usize, None, op),
+        ty::Array(_, len) => (len.try_to_target_usize(tcx.tcx)? as usize, None, op),
         ty::Adt(def, _) if def.variants().is_empty() => {
             return None;
         }
         ty::Adt(def, _) => {
-            let variant = ecx.read_discriminant(&op).ok()?;
-            let down = ecx.project_downcast(&op, variant).ok()?;
+            let variant = ecx.read_discriminant(&op).discard_err()?;
+            let down = ecx.project_downcast(&op, variant).discard_err()?;
             (def.variants()[variant].fields.len(), Some(variant), down)
         }
         ty::Tuple(args) => (args.len(), None, op),
@@ -70,7 +58,7 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
 
     let fields_iter = (0..field_count)
         .map(|i| {
-            let field_op = ecx.project_field(&down, i).ok()?;
+            let field_op = ecx.project_field(&down, i).discard_err()?;
             let val = op_to_const(&ecx, &field_op, /* for diagnostics */ true);
             Some((val, field_op.layout.ty))
         })

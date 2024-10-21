@@ -16,7 +16,6 @@ use rustc_middle::ty::{
     suggest_constraining_type_param,
 };
 use rustc_middle::util::{CallDesugaringKind, CallKind, call_kind};
-use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::traits::SelectionContext;
@@ -403,7 +402,7 @@ impl<'tcx> NonConstOp<'tcx> for EscapingCellBorrow {
         DiagImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::InteriorMutableDataRefer {
+        ccx.dcx().create_err(errors::InteriorMutableRefEscaping {
             span,
             opt_help: matches!(ccx.const_kind(), hir::ConstContext::Static(_)),
             kind: ccx.const_kind(),
@@ -431,12 +430,12 @@ impl<'tcx> NonConstOp<'tcx> for EscapingMutBorrow {
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         match self.0 {
-            hir::BorrowKind::Raw => ccx.tcx.dcx().create_err(errors::UnallowedMutableRaw {
+            hir::BorrowKind::Raw => ccx.tcx.dcx().create_err(errors::MutableRawEscaping {
                 span,
                 kind: ccx.const_kind(),
                 teach: ccx.tcx.sess.teach(E0764),
             }),
-            hir::BorrowKind::Ref => ccx.dcx().create_err(errors::UnallowedMutableRefs {
+            hir::BorrowKind::Ref => ccx.dcx().create_err(errors::MutableRefEscaping {
                 span,
                 kind: ccx.const_kind(),
                 teach: ccx.tcx.sess.teach(E0764),
@@ -474,33 +473,6 @@ pub(crate) struct RawPtrToIntCast;
 impl<'tcx> NonConstOp<'tcx> for RawPtrToIntCast {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::RawPtrToIntErr { span })
-    }
-}
-
-/// An access to a (non-thread-local) `static`.
-#[derive(Debug)]
-pub(crate) struct StaticAccess;
-impl<'tcx> NonConstOp<'tcx> for StaticAccess {
-    fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-        if let hir::ConstContext::Static(_) = ccx.const_kind() {
-            Status::Allowed
-        } else {
-            Status::Unstable(sym::const_refs_to_static)
-        }
-    }
-
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let mut err = feature_err(
-            &ccx.tcx.sess,
-            sym::const_refs_to_static,
-            span,
-            format!("referencing statics in {}s is unstable", ccx.const_kind(),),
-        );
-        err
-            .note("`static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.")
-            .help("to fix this, the value can be extracted to a `const` and then used.");
-        err
     }
 }
 

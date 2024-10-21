@@ -64,7 +64,7 @@ set-text: (
 )
 
 // Then we compare again to confirm the height didn't change.
-assert-size: ("#crate-search", {"width": 509})
+assert-size: ("#crate-search", {"width": 370})
 assert-size: (".search-results-title", {
     "height": |search_results_title_height|,
 })

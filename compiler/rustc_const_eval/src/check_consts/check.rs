@@ -317,7 +317,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         {
             self.error_emitted = Some(guar);
         }
-        self.check_op_spanned(ops::StaticAccess, span)
     }
 
     /// Returns whether this place can possibly escape the evaluation of the current const/static
@@ -667,6 +666,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 }
 
+                // This can be called on stable via the `vec!` macro.
                 if tcx.is_lang_item(callee, LangItem::ExchangeMalloc) {
                     self.check_op(ops::HeapAllocation);
                     return;

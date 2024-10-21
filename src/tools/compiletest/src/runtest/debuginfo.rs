@@ -9,8 +9,8 @@ use tracing::debug;
 use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
 use crate::common::Config;
+use crate::debuggers::{extract_gdb_version, is_android_gdb_target};
 use crate::util::logv;
-use crate::{extract_gdb_version, is_android_gdb_target};
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {

@@ -8,7 +8,7 @@ use rustc_target::abi::{HasDataLayout, Size};
 
 use super::{
     AllocId, CtfeProvenance, InterpResult, Pointer, PointerArithmetic, Provenance,
-    ScalarSizeMismatch,
+    ScalarSizeMismatch, interp_ok,
 };
 use crate::ty::ScalarInt;
 
@@ -273,10 +273,10 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
             .to_bits_or_ptr_internal(cx.pointer_size())
             .map_err(|s| err_ub!(ScalarSizeMismatch(s)))?
         {
-            Right(ptr) => Ok(ptr.into()),
+            Right(ptr) => interp_ok(ptr.into()),
             Left(bits) => {
                 let addr = u64::try_from(bits).unwrap();
-                Ok(Pointer::from_addr_invalid(addr))
+                interp_ok(Pointer::from_addr_invalid(addr))
             }
         }
     }
@@ -311,12 +311,12 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
         if matches!(self, Scalar::Ptr(..)) {
             *self = self.to_scalar_int()?.into();
         }
-        Ok(())
+        interp_ok(())
     }
 
     #[inline(always)]
     pub fn to_scalar_int(self) -> InterpResult<'tcx, ScalarInt> {
-        self.try_to_scalar_int().map_err(|_| err_unsup!(ReadPointerAsInt(None)).into())
+        self.try_to_scalar_int().map_err(|_| err_unsup!(ReadPointerAsInt(None))).into()
     }
 
     #[inline(always)]
@@ -330,20 +330,22 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        self.to_scalar_int()?.try_to_bits(target_size).map_err(|size| {
-            err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
-                target_size: target_size.bytes(),
-                data_size: size.bytes(),
-            }))
+        self.to_scalar_int()?
+            .try_to_bits(target_size)
+            .map_err(|size| {
+                err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
+                    target_size: target_size.bytes(),
+                    data_size: size.bytes(),
+                }))
+            })
             .into()
-        })
     }
 
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {
         let val = self.to_u8()?;
         match val {
-            0 => Ok(false),
-            1 => Ok(true),
+            0 => interp_ok(false),
+            1 => interp_ok(true),
             _ => throw_ub!(InvalidBool(val)),
         }
     }
@@ -351,7 +353,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     pub fn to_char(self) -> InterpResult<'tcx, char> {
         let val = self.to_u32()?;
         match std::char::from_u32(val) {
-            Some(c) => Ok(c),
+            Some(c) => interp_ok(c),
             None => throw_ub!(InvalidChar(val)),
         }
     }
@@ -392,7 +394,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     /// Fails if the scalar is a pointer.
     pub fn to_target_usize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
         let b = self.to_uint(cx.data_layout().pointer_size)?;
-        Ok(u64::try_from(b).unwrap())
+        interp_ok(u64::try_from(b).unwrap())
     }
 
     /// Converts the scalar to produce a signed integer of the given size.
@@ -400,7 +402,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_int(self, size: Size) -> InterpResult<'tcx, i128> {
         let b = self.to_bits(size)?;
-        Ok(size.sign_extend(b))
+        interp_ok(size.sign_extend(b))
     }
 
     /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.
@@ -432,13 +434,13 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     /// Fails if the scalar is a pointer.
     pub fn to_target_isize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, i64> {
         let b = self.to_int(cx.data_layout().pointer_size)?;
-        Ok(i64::try_from(b).unwrap())
+        interp_ok(i64::try_from(b).unwrap())
     }
 
     #[inline]
     pub fn to_float<F: Float>(self) -> InterpResult<'tcx, F> {
         // Going through `to_bits` to check size and truncation.
-        Ok(F::from_bits(self.to_bits(Size::from_bits(F::BITS))?))
+        interp_ok(F::from_bits(self.to_bits(Size::from_bits(F::BITS))?))
     }
 
     #[inline]

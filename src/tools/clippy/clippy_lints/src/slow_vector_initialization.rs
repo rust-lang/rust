@@ -152,7 +152,7 @@ impl SlowVectorInit {
             && is_path_diagnostic_item(cx, func, sym::vec_with_capacity)
         {
             Some(InitializedSize::Initialized(len_expr))
-        } else if matches!(expr.kind, ExprKind::Call(func, _) if is_path_diagnostic_item(cx, func, sym::vec_new)) {
+        } else if matches!(expr.kind, ExprKind::Call(func, []) if is_path_diagnostic_item(cx, func, sym::vec_new)) {
             Some(InitializedSize::Uninitialized)
         } else {
             None
@@ -229,7 +229,7 @@ struct VectorInitializationVisitor<'a, 'tcx> {
     initialization_found: bool,
 }
 
-impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
+impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
     /// Checks if the given expression is extending a vector with `repeat(0).take(..)`
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if self.initialization_found
@@ -268,7 +268,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&mut self, expr: &'tcx Expr<'tcx>) -> bool {
-        if let ExprKind::MethodCall(take_path, recv, [len_arg, ..], _) = expr.kind
+        if let ExprKind::MethodCall(take_path, recv, [len_arg], _) = expr.kind
             && take_path.ident.name == sym!(take)
             // Check that take is applied to `repeat(0)`
             && self.is_repeat_zero(recv)
@@ -299,7 +299,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for VectorInitializationVisitor<'_, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         if self.initialization_found {
             match stmt.kind {

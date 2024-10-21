@@ -7,6 +7,7 @@ use paths::{AbsPathBuf, Utf8Path, Utf8PathBuf};
 use project_model::ProjectJsonData;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::{info_span, span::EnteredSpan};
 
 use crate::command::{CommandHandle, ParseFromLine};
 
@@ -60,7 +61,10 @@ impl DiscoverCommand {
         let mut cmd = Command::new(command);
         cmd.args(args);
 
-        Ok(DiscoverHandle { _handle: CommandHandle::spawn(cmd, self.sender.clone())? })
+        Ok(DiscoverHandle {
+            _handle: CommandHandle::spawn(cmd, self.sender.clone())?,
+            span: info_span!("discover_command").entered(),
+        })
     }
 }
 
@@ -68,6 +72,8 @@ impl DiscoverCommand {
 #[derive(Debug)]
 pub(crate) struct DiscoverHandle {
     _handle: CommandHandle<DiscoverProjectMessage>,
+    #[allow(dead_code)] // not accessed, but used to log on drop.
+    span: EnteredSpan,
 }
 
 /// An enum containing either progress messages, an error,

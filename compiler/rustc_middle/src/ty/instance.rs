@@ -50,7 +50,7 @@ pub enum ReifyReason {
     /// * A vtable entry is directly converted to a function call (e.g. creating a fn ptr from a
     ///   method on a `dyn` object).
     /// * A function with `#[track_caller]` is converted to a function pointer
-    /// * If KCFI is enabled, creating a function pointer from a method on an object-safe trait.
+    /// * If KCFI is enabled, creating a function pointer from a method on a dyn-compatible trait.
     /// This includes the case of converting `::call`-like methods on closure-likes to function
     /// pointers.
     FnPtr,

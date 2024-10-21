@@ -424,7 +424,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
             // Here `U = [i32; 3]` and `V = [i32]`. At runtime,
             // when this coercion occurs, we would be changing the
             // field `ptr` from a thin pointer of type `*mut [i32;
-            // 3]` to a fat pointer of type `*mut [i32]` (with
+            // 3]` to a wide pointer of type `*mut [i32]` (with
             // extra data `3`). **The purpose of this check is to
             // make sure that we know how to do this conversion.**
             //

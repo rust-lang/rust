@@ -99,7 +99,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         if !params_can_be_unsized {
             fcx.require_type_is_sized(
                 param_ty,
-                param.pat.span,
+                param.ty_span,
                 // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
                 ObligationCauseCode::SizedArgumentType(

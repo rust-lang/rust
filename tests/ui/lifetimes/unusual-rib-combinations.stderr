@@ -5,7 +5,7 @@ LL | fn d<const C: S>() {}
    |               ^ expected named lifetime parameter
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/unusual-rib-combinations.rs:26:22
+  --> $DIR/unusual-rib-combinations.rs:25:22
    |
 LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
    |                      ^^ the type must not depend on the parameter `'a`
@@ -40,35 +40,7 @@ error[E0308]: mismatched types
 LL | fn a() -> [u8; foo()] {
    |                ^^^^^ expected `usize`, found `()`
 
-error: `S<'_>` is forbidden as the type of a const generic parameter
-  --> $DIR/unusual-rib-combinations.rs:21:15
-   |
-LL | fn d<const C: S>() {}
-   |               ^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-
-error: `&dyn for<'a> Foo<'a>` is forbidden as the type of a const generic parameter
-  --> $DIR/unusual-rib-combinations.rs:26:21
-   |
-LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
-
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0106, E0214, E0308, E0770.
 For more information about an error, try `rustc --explain E0106`.

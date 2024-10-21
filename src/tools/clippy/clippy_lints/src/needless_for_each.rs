@@ -133,7 +133,7 @@ struct RetCollector {
     loop_depth: u16,
 }
 
-impl<'tcx> Visitor<'tcx> for RetCollector {
+impl Visitor<'_> for RetCollector {
     fn visit_expr(&mut self, expr: &Expr<'_>) {
         match expr.kind {
             ExprKind::Ret(..) => {

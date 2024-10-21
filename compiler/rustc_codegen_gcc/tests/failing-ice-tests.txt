@@ -34,3 +34,7 @@ tests/ui/sepcomp/sepcomp-unwind.rs
 tests/ui/extern/issue-64655-extern-rust-must-allow-unwind.rs
 tests/ui/extern/issue-64655-allow-unwind-when-calling-panic-directly.rs
 tests/ui/unwind-no-uwtable.rs
+tests/ui/delegation/fn-header.rs
+tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
+tests/ui/simd/masked-load-store.rs
+tests/ui/rfcs/rfc-2632-const-trait-impl/effects/minicore.rs

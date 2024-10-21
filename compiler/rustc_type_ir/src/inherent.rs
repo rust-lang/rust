@@ -460,6 +460,8 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
     + Elaboratable<I>
 {
+    fn as_predicate(self) -> I::Predicate;
+
     fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
         self.kind()
             .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
@@ -561,6 +563,10 @@ pub trait BoundExistentialPredicates<I: Interner>:
     fn projection_bounds(
         self,
     ) -> impl IntoIterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>>;
+}
+
+pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+    fn dummy() -> Self;
 }
 
 pub trait SliceLike: Sized + Copy {

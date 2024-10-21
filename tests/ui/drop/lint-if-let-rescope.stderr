@@ -131,5 +131,65 @@ help: a `match` with a single arm can preserve the drop order up to Edition 2021
 LL |     if let () = { match Droppy.get() { Some(_value) => {} _ => {}} } {
    |                   ~~~~~              +++++++++++++++++    ++++++++
 
-error: aborting due to 5 previous errors
+error: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/lint-if-let-rescope.rs:73:12
+   |
+LL |     if (if let Some(_value) = droppy().get() { true } else { false }) {
+   |            ^^^^^^^^^^^^^^^^^^^--------^^^^^^
+   |                               |
+   |                               this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+help: the value is now dropped here in Edition 2024
+  --> $DIR/lint-if-let-rescope.rs:73:53
+   |
+LL |     if (if let Some(_value) = droppy().get() { true } else { false }) {
+   |                                                     ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL |     if (match droppy().get() { Some(_value) => { true } _ => { false }}) {
+   |         ~~~~~                +++++++++++++++++          ~~~~          +
+
+error: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/lint-if-let-rescope.rs:79:21
+   |
+LL |     } else if (((if let Some(_value) = droppy().get() { true } else { false }))) {
+   |                     ^^^^^^^^^^^^^^^^^^^--------^^^^^^
+   |                                        |
+   |                                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+help: the value is now dropped here in Edition 2024
+  --> $DIR/lint-if-let-rescope.rs:79:62
+   |
+LL |     } else if (((if let Some(_value) = droppy().get() { true } else { false }))) {
+   |                                                              ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL |     } else if (((match droppy().get() { Some(_value) => { true } _ => { false }}))) {
+   |                  ~~~~~                +++++++++++++++++          ~~~~          +
+
+error: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/lint-if-let-rescope.rs:91:15
+   |
+LL |     while (if let Some(_value) = droppy().get() { false } else { true }) {
+   |               ^^^^^^^^^^^^^^^^^^^--------^^^^^^
+   |                                  |
+   |                                  this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+help: the value is now dropped here in Edition 2024
+  --> $DIR/lint-if-let-rescope.rs:91:57
+   |
+LL |     while (if let Some(_value) = droppy().get() { false } else { true }) {
+   |                                                         ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL |     while (match droppy().get() { Some(_value) => { false } _ => { true }}) {
+   |            ~~~~~                +++++++++++++++++           ~~~~         +
+
+error: aborting due to 8 previous errors
 

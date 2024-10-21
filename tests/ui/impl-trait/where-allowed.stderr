@@ -342,44 +342,6 @@ LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error[E0283]: type annotations needed
-  --> $DIR/where-allowed.rs:46:57
-   |
-LL | fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
-   |                                                         ^^^^^^^^^^ cannot infer type
-   |
-   = note: cannot satisfy `_: Debug`
-
-error[E0283]: type annotations needed
-  --> $DIR/where-allowed.rs:64:46
-   |
-LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
-   |                                              ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
-   |
-   = note: multiple `impl`s satisfying `_: Fn()` found in the following crates: `alloc`, `core`:
-           - impl<A, F> Fn<A> for &F
-             where A: Tuple, F: Fn<A>, F: ?Sized;
-           - impl<Args, F, A> Fn<Args> for Box<F, A>
-             where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
-
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:238:7
-   |
-LL | impl <T = impl Debug> T {}
-   |       ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
-
-error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/where-allowed.rs:238:1
-   |
-LL | impl <T = impl Debug> T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
-   |
-   = note: either implement a trait on it or create a newtype to wrap it instead
-
 error[E0053]: method `in_trait_impl_return` has an incompatible type for trait
   --> $DIR/where-allowed.rs:128:34
    |
@@ -402,14 +364,6 @@ help: change the output type to match the trait
 LL |     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
    |                                  ~~~~~~~~~~~~~~~~~~~~~~~
 
-error: unconstrained opaque type
-  --> $DIR/where-allowed.rs:121:16
-   |
-LL |     type Out = impl Debug;
-   |                ^^^^^^^^^^
-   |
-   = note: `Out` must be used in combination with a concrete type within the same impl
-
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
   --> $DIR/where-allowed.rs:245:36
    |
@@ -418,12 +372,8 @@ LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+   = note: `#[deny(invalid_type_param_default)]` on by default
 
-error: aborting due to 49 previous errors
-
-Some errors have detailed explanations: E0053, E0118, E0283, E0562, E0658, E0666.
-For more information about an error, try `rustc --explain E0053`.
-Future incompatibility report: Future breakage diagnostic:
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
   --> $DIR/where-allowed.rs:238:7
    |
@@ -432,14 +382,64 @@ LL | impl <T = impl Debug> T {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
 
-Future breakage diagnostic:
+error[E0283]: type annotations needed
+  --> $DIR/where-allowed.rs:46:57
+   |
+LL | fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
+   |                                                         ^^^^^^^^^^ cannot infer type
+   |
+   = note: cannot satisfy `_: Debug`
+
+error[E0283]: type annotations needed
+  --> $DIR/where-allowed.rs:64:46
+   |
+LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: multiple `impl`s satisfying `_: Fn()` found in the following crates: `alloc`, `core`:
+           - impl<A, F> Fn<A> for &F
+             where A: Tuple, F: Fn<A>, F: ?Sized;
+           - impl<Args, F, A> Fn<Args> for Box<F, A>
+             where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+
+error[E0118]: no nominal type found for inherent implementation
+  --> $DIR/where-allowed.rs:238:1
+   |
+LL | impl <T = impl Debug> T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
+
+error: unconstrained opaque type
+  --> $DIR/where-allowed.rs:121:16
+   |
+LL |     type Out = impl Debug;
+   |                ^^^^^^^^^^
+   |
+   = note: `Out` must be used in combination with a concrete type within the same impl
+
+error: aborting due to 49 previous errors
+
+Some errors have detailed explanations: E0053, E0118, E0283, E0562, E0658, E0666.
+For more information about an error, try `rustc --explain E0053`.
+Future incompatibility report: Future breakage diagnostic:
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
   --> $DIR/where-allowed.rs:245:36
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                    ^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+   = note: `#[deny(invalid_type_param_default)]` on by default
+
+Future breakage diagnostic:
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/where-allowed.rs:238:7
+   |
+LL | impl <T = impl Debug> T {}
+   |       ^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>

@@ -409,7 +409,8 @@ fn traverse(
                     let mut r = 0;
                     sema.descend_into_macros_breakable(
                         InRealFile::new(file_id, token.clone()),
-                        |tok| {
+                        |tok, _ctx| {
+                            // FIXME: Consider checking ctx transparency for being opaque?
                             let tok = tok.value;
                             let tok_kind = tok.kind();
 

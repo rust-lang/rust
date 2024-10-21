@@ -186,9 +186,9 @@ pub struct ResolverGlobalCtxt {
     pub proc_macros: Vec<LocalDefId>,
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
-    pub confused_type_with_std_module: FxHashMap<Span, Span>,
-    pub doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
-    pub doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
+    pub confused_type_with_std_module: FxIndexMap<Span, Span>,
+    pub doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
+    pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
     pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
     pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
 }
@@ -1155,8 +1155,6 @@ bitflags::bitflags! {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
         const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
-        /// Indicates whether this variant has unnamed fields.
-        const HAS_UNNAMED_FIELDS = 1 << 1;
     }
 }
 rustc_data_structures::external_bitflags_debug! { VariantFlags }
@@ -1209,21 +1207,16 @@ impl VariantDef {
         parent_did: DefId,
         recover_tainted: Option<ErrorGuaranteed>,
         is_field_list_non_exhaustive: bool,
-        has_unnamed_fields: bool,
     ) -> Self {
         debug!(
             "VariantDef::new(name = {:?}, variant_did = {:?}, ctor = {:?}, discr = {:?},
-             fields = {:?}, adt_kind = {:?}, parent_did = {:?}, has_unnamed_fields = {:?})",
-            name, variant_did, ctor, discr, fields, adt_kind, parent_did, has_unnamed_fields,
+             fields = {:?}, adt_kind = {:?}, parent_did = {:?})",
+            name, variant_did, ctor, discr, fields, adt_kind, parent_did,
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
         if is_field_list_non_exhaustive {
             flags |= VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
-        }
-
-        if has_unnamed_fields {
-            flags |= VariantFlags::HAS_UNNAMED_FIELDS;
         }
 
         VariantDef {
@@ -1241,12 +1234,6 @@ impl VariantDef {
     #[inline]
     pub fn is_field_list_non_exhaustive(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
-    }
-
-    /// Does this variant contains unnamed fields
-    #[inline]
-    pub fn has_unnamed_fields(&self) -> bool {
-        self.flags.intersects(VariantFlags::HAS_UNNAMED_FIELDS)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1433,11 +1420,6 @@ impl<'tcx> FieldDef {
     /// Computes the `Ident` of this variant by looking up the `Span`
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
         Ident::new(self.name, tcx.def_ident_span(self.did).unwrap())
-    }
-
-    /// Returns whether the field is unnamed
-    pub fn is_unnamed(&self) -> bool {
-        self.name == rustc_span::symbol::kw::Underscore
     }
 }
 

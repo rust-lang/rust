@@ -203,12 +203,6 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
-lint_crate_name_in_cfg_attr_deprecated =
-    `crate_name` within an `#![cfg_attr]` attribute is deprecated
-
-lint_crate_type_in_cfg_attr_deprecated =
-    `crate_type` within an `#![cfg_attr]` attribute is deprecated
-
 lint_cstring_ptr = getting the inner pointer of a temporary `CString`
     .as_ptr_label = this pointer will be invalid
     .unwrap_label = this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
@@ -514,7 +508,7 @@ lint_mixed_script_confusables =
     .includes_note = the usage includes {$includes}
     .note = please recheck to make sure their usages are indeed what you want
 
-lint_multiple_supertrait_upcastable = `{$ident}` is object-safe and has multiple supertraits
+lint_multiple_supertrait_upcastable = `{$ident}` is dyn-compatible and has multiple supertraits
 
 lint_named_argument_used_positionally = named argument `{$named_arg_name}` is not used by name
     .label_named_arg = this named argument is referred to by position in formatting string
@@ -531,7 +525,7 @@ lint_non_binding_let_multi_suggestion =
     consider immediately dropping the value
 
 lint_non_binding_let_on_drop_type =
-    non-binding let on a type that implements `Drop`
+    non-binding let on a type that has a destructor
 
 lint_non_binding_let_on_sync_lock = non-binding let on a synchronization lock
     .label = this lock is not assigned to a binding and is immediately dropped
@@ -586,8 +580,6 @@ lint_non_glob_import_type_ir_inherent = non-glob import of `rustc_type_ir::inher
     .suggestion = try using a glob import instead
 
 lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
-
-lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
     .non_local = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -745,6 +737,9 @@ lint_requested_level = requested on the command line with `{$level} {$lint_name}
 lint_reserved_prefix = prefix `{$prefix}` is unknown
     .label = unknown prefix
     .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+
+lint_reserved_string = will be parsed as a guarded string in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
 
 lint_shadowed_into_iter =
     this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<{$target} as IntoIterator>::into_iter` in Rust {$edition}

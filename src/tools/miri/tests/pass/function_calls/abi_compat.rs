@@ -1,7 +1,5 @@
-use std::mem;
-use std::num;
-use std::ptr;
 use std::rc::Rc;
+use std::{mem, num, ptr};
 
 #[derive(Copy, Clone, Default)]
 struct Zst;

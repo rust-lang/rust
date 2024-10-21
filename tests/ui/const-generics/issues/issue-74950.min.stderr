@@ -4,7 +4,7 @@ error: `Inner` is forbidden as the type of a const generic parameter
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -16,7 +16,7 @@ error: `Inner` is forbidden as the type of a const generic parameter
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
@@ -29,7 +29,7 @@ error: `Inner` is forbidden as the type of a const generic parameter
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
@@ -42,7 +42,7 @@ error: `Inner` is forbidden as the type of a const generic parameter
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |

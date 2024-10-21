@@ -5,6 +5,7 @@ use hir_def::{
     body::Body,
     hir::{Expr, ExprId, UnaryOp},
     resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
+    type_ref::Rawness,
     DefWithBodyId,
 };
 
@@ -12,7 +13,10 @@ use crate::{
     db::HirDatabase, utils::is_fn_unsafe_to_call, InferenceResult, Interner, TyExt, TyKind,
 };
 
-pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
+/// Returns `(unsafe_exprs, fn_is_unsafe)`.
+///
+/// If `fn_is_unsafe` is false, `unsafe_exprs` are hard errors. If true, they're `unsafe_op_in_unsafe_fn`.
+pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> (Vec<ExprId>, bool) {
     let _p = tracing::info_span!("missing_unsafe").entered();
 
     let mut res = Vec::new();
@@ -23,9 +27,6 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
         | DefWithBodyId::VariantId(_)
         | DefWithBodyId::InTypeConstId(_) => false,
     };
-    if is_unsafe {
-        return res;
-    }
 
     let body = db.body(def);
     let infer = db.infer(def);
@@ -35,7 +36,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
         }
     });
 
-    res
+    (res, is_unsafe)
 }
 
 pub struct UnsafeExpr {
@@ -87,11 +88,19 @@ fn walk_unsafe(
             let g = resolver.update_to_inner_scope(db.upcast(), def, current);
             let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path);
             if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
-                if db.static_data(id).mutable {
+                let static_data = db.static_data(id);
+                if static_data.mutable || static_data.is_extern {
                     unsafe_expr_cb(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
             }
             resolver.reset_to_guard(g);
+        }
+        Expr::Ref { expr, rawness: Rawness::RawPtr, mutability: _ } => {
+            if let Expr::Path(_) = body.exprs[*expr] {
+                // Do not report unsafe for `addr_of[_mut]!(EXTERN_OR_MUT_STATIC)`,
+                // see https://github.com/rust-lang/rust/pull/125834.
+                return;
+            }
         }
         Expr::MethodCall { .. } => {
             if infer

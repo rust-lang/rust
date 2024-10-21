@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -215,7 +215,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
             struct ConnectedRegion {
                 idents: SmallVec<[Symbol; 8]>,
-                impl_blocks: FxHashSet<usize>,
+                impl_blocks: FxIndexSet<usize>,
             }
             let mut connected_regions: IndexVec<RegionId, _> = Default::default();
             // Reverse map from the Symbol to the connected region id.
@@ -319,9 +319,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             // List of connected regions is built. Now, run the overlap check
             // for each pair of impl blocks in the same connected region.
             for region in connected_regions.into_iter().flatten() {
-                let mut impl_blocks =
-                    region.impl_blocks.into_iter().collect::<SmallVec<[usize; 8]>>();
-                impl_blocks.sort_unstable();
+                let impl_blocks = region.impl_blocks.into_iter().collect::<SmallVec<[usize; 8]>>();
                 for (i, &impl1_items_idx) in impl_blocks.iter().enumerate() {
                     let &(&impl1_def_id, impl_items1) = &impls_items[impl1_items_idx];
                     res = res.and(self.check_for_duplicate_items_in_impl(impl1_def_id));

@@ -64,6 +64,7 @@
 #![allow(missing_docs)]
 
 use crate::marker::{DiscriminantKind, Tuple};
+use crate::mem::SizedTypeProperties;
 use crate::{ptr, ub_checks};
 
 pub mod mir;
@@ -1084,7 +1085,7 @@ extern "rust-intrinsic" {
     /// it does not require an `unsafe` block.
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
-    #[rustc_const_unstable(feature = "const_intrinsic_forget", issue = "none")]
+    #[rustc_const_stable(feature = "const_intrinsic_forget", since = "1.83.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn forget<T: ?Sized>(_: T);
@@ -1425,8 +1426,7 @@ extern "rust-intrinsic" {
     ///
     /// If the computed offset is non-zero, then both the starting and resulting pointer must be
     /// either in bounds or at the end of an allocated object. If either pointer is out
-    /// of bounds or arithmetic overflow occurs then any further use of the returned value will
-    /// result in undefined behavior.
+    /// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -1796,153 +1796,54 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 
-    /// Returns the absolute value of an `f16`.
+    /// Returns `a * b + c` for `f16` values, non-deterministically executing
+    /// either a fused multiply-add or two operations with rounding of the
+    /// intermediate result.
     ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::abs`](../../std/primitive.f16.html#method.abs)
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions. It is unspecified whether or not a fused operation
+    /// is selected, and that may depend on optimization level and context, for
+    /// example.
     #[rustc_nounwind]
-    pub fn fabsf16(x: f16) -> f16;
-    /// Returns the absolute value of an `f32`.
+    pub fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
+    /// Returns `a * b + c` for `f32` values, non-deterministically executing
+    /// either a fused multiply-add or two operations with rounding of the
+    /// intermediate result.
     ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::abs`](../../std/primitive.f32.html#method.abs)
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions. It is unspecified whether or not a fused operation
+    /// is selected, and that may depend on optimization level and context, for
+    /// example.
     #[rustc_nounwind]
-    pub fn fabsf32(x: f32) -> f32;
-    /// Returns the absolute value of an `f64`.
+    pub fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
+    /// Returns `a * b + c` for `f64` values, non-deterministically executing
+    /// either a fused multiply-add or two operations with rounding of the
+    /// intermediate result.
     ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::abs`](../../std/primitive.f64.html#method.abs)
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions. It is unspecified whether or not a fused operation
+    /// is selected, and that may depend on optimization level and context, for
+    /// example.
     #[rustc_nounwind]
-    pub fn fabsf64(x: f64) -> f64;
-    /// Returns the absolute value of an `f128`.
+    pub fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
+    /// Returns `a * b + c` for `f128` values, non-deterministically executing
+    /// either a fused multiply-add or two operations with rounding of the
+    /// intermediate result.
     ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::abs`](../../std/primitive.f128.html#method.abs)
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions. It is unspecified whether or not a fused operation
+    /// is selected, and that may depend on optimization level and context, for
+    /// example.
     #[rustc_nounwind]
-    pub fn fabsf128(x: f128) -> f128;
-
-    /// Returns the minimum of two `f16` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::min`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn minnumf16(x: f16, y: f16) -> f16;
-    /// Returns the minimum of two `f32` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::min`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn minnumf32(x: f32, y: f32) -> f32;
-    /// Returns the minimum of two `f64` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::min`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn minnumf64(x: f64, y: f64) -> f64;
-    /// Returns the minimum of two `f128` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::min`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn minnumf128(x: f128, y: f128) -> f128;
-
-    /// Returns the maximum of two `f16` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::max`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn maxnumf16(x: f16, y: f16) -> f16;
-    /// Returns the maximum of two `f32` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::max`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn maxnumf32(x: f32, y: f32) -> f32;
-    /// Returns the maximum of two `f64` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::max`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn maxnumf64(x: f64, y: f64) -> f64;
-    /// Returns the maximum of two `f128` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::max`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn maxnumf128(x: f128, y: f128) -> f128;
-
-    /// Copies the sign from `y` to `x` for `f16` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
-    #[rustc_nounwind]
-    pub fn copysignf16(x: f16, y: f16) -> f16;
-    /// Copies the sign from `y` to `x` for `f32` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
-    #[rustc_nounwind]
-    pub fn copysignf32(x: f32, y: f32) -> f32;
-    /// Copies the sign from `y` to `x` for `f64` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
-    #[rustc_nounwind]
-    pub fn copysignf64(x: f64, y: f64) -> f64;
-    /// Copies the sign from `y` to `x` for `f128` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
-    #[rustc_nounwind]
-    pub fn copysignf128(x: f128, y: f128) -> f128;
+    pub fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
 
     /// Returns the largest integer less than or equal to an `f16`.
     ///
@@ -2636,7 +2537,7 @@ extern "rust-intrinsic" {
     /// This intrinsic can *only* be called where the pointer is a local without
     /// projections (`write_via_move(ptr, x)`, not `write_via_move(*ptr, x)`) so
     /// that it trivially obeys runtime-MIR rules about derefs in operands.
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     #[rustc_nounwind]
     pub fn write_via_move<T>(ptr: *mut T, value: T);
 
@@ -2659,12 +2560,17 @@ extern "rust-intrinsic" {
     ///
     /// `catch_fn` must not unwind.
     ///
-    /// The third argument is a function called if an unwind occurs (both Rust unwinds and foreign
-    /// unwinds). This function takes the data pointer and a pointer to the target-specific
-    /// exception object that was caught. For more information, see the compiler's source as well as
-    /// std's `catch_unwind` implementation.
+    /// The third argument is a function called if an unwind occurs (both Rust `panic` and foreign
+    /// unwinds). This function takes the data pointer and a pointer to the target- and
+    /// runtime-specific exception object that was caught.
     ///
-    /// The stable version of this intrinsic is `std::panic::catch_unwind`.
+    /// Note that in the case of a foreign unwinding operation, the exception object data may not be
+    /// safely usable from Rust, and should not be directly exposed via the standard library. To
+    /// prevent unsafe access, the library implementation may either abort the process or present an
+    /// opaque error type to the user.
+    ///
+    /// For more information, see the compiler's source, as well as the documentation for the stable
+    /// version of this intrinsic, `std::panic::catch_unwind`.
     #[rustc_nounwind]
     pub fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
 
@@ -3160,7 +3066,7 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128 {
 /// change the possible layouts of pointers.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_const_stable(feature = "ptr_metadata_const", since = "1.83.0")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(_data: D, _meta: M) -> P {
@@ -3185,7 +3091,7 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 /// This is used to implement functions like `ptr::metadata`.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_const_stable(feature = "ptr_metadata_const", since = "1.83.0")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *const P) -> M {
@@ -3232,7 +3138,7 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 /// [violate memory safety][read-ownership].
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointers must be non-null and properly aligned.
+/// `0`, the pointers must be properly aligned.
 ///
 /// [`read`]: crate::ptr::read
 /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
@@ -3286,13 +3192,13 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
         #[rustc_nounwind]
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
@@ -3307,10 +3213,12 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
             size: usize = size_of::<T>(),
             align: usize = align_of::<T>(),
             count: usize = count,
-        ) =>
-        ub_checks::is_aligned_and_not_null(src, align)
-            && ub_checks::is_aligned_and_not_null(dst, align)
-            && ub_checks::is_nonoverlapping(src, dst, size, count)
+        ) => {
+            let zero_size = count == 0 || size == 0;
+            ub_checks::is_aligned_and_not_null(src, align, zero_size)
+                && ub_checks::is_aligned_and_not_null(dst, align, zero_size)
+                && ub_checks::is_nonoverlapping(src, dst, size, count)
+        }
     );
 
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
@@ -3353,7 +3261,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// [violate memory safety][read-ownership].
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointers must be non-null and properly aligned.
+/// `0`, the pointers must be properly aligned.
 ///
 /// [`read`]: crate::ptr::read
 /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
@@ -3388,13 +3296,13 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
         #[rustc_nounwind]
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
@@ -3408,9 +3316,10 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
                 src: *const () = src as *const (),
                 dst: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
+                zero_size: bool = T::IS_ZST || count == 0,
             ) =>
-            ub_checks::is_aligned_and_not_null(src, align)
-                && ub_checks::is_aligned_and_not_null(dst, align)
+            ub_checks::is_aligned_and_not_null(src, align, zero_size)
+                && ub_checks::is_aligned_and_not_null(dst, align, zero_size)
         );
         copy(src, dst, count)
     }
@@ -3433,7 +3342,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// * `dst` must be properly aligned.
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointer must be non-null and properly aligned.
+/// `0`, the pointer must be properly aligned.
 ///
 /// Additionally, note that changing `*dst` in this way can easily lead to undefined behavior (UB)
 /// later if the written bytes are not a valid representation of some `T`. For instance, the
@@ -3468,13 +3377,13 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_write_bytes"]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+        #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
         #[rustc_nounwind]
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
@@ -3487,10 +3396,250 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
             (
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
-            ) => ub_checks::is_aligned_and_not_null(addr, align)
+                zero_size: bool = T::IS_ZST || count == 0,
+            ) => ub_checks::is_aligned_and_not_null(addr, align, zero_size)
         );
         write_bytes(dst, val, count)
     }
+}
+
+/// Returns the minimum of two `f16` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::min`]
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn minnumf16(_x: f16, _y: f16) -> f16 {
+    unimplemented!();
+}
+
+/// Returns the minimum of two `f32` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::min`]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn minnumf32(_x: f32, _y: f32) -> f32 {
+    unimplemented!();
+}
+
+/// Returns the minimum of two `f64` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::min`]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn minnumf64(_x: f64, _y: f64) -> f64 {
+    unimplemented!();
+}
+
+/// Returns the minimum of two `f128` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::min`]
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn minnumf128(_x: f128, _y: f128) -> f128 {
+    unimplemented!();
+}
+
+/// Returns the maximum of two `f16` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::max`]
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn maxnumf16(_x: f16, _y: f16) -> f16 {
+    unimplemented!();
+}
+
+/// Returns the maximum of two `f32` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::max`]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn maxnumf32(_x: f32, _y: f32) -> f32 {
+    unimplemented!();
+}
+
+/// Returns the maximum of two `f64` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::max`]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn maxnumf64(_x: f64, _y: f64) -> f64 {
+    unimplemented!();
+}
+
+/// Returns the maximum of two `f128` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::max`]
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn maxnumf128(_x: f128, _y: f128) -> f128 {
+    unimplemented!();
+}
+
+/// Returns the absolute value of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::abs`](../../std/primitive.f16.html#method.abs)
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn fabsf16(_x: f16) -> f16 {
+    unimplemented!();
+}
+
+/// Returns the absolute value of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::abs`](../../std/primitive.f32.html#method.abs)
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn fabsf32(_x: f32) -> f32 {
+    unimplemented!();
+}
+
+/// Returns the absolute value of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::abs`](../../std/primitive.f64.html#method.abs)
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn fabsf64(_x: f64) -> f64 {
+    unimplemented!();
+}
+
+/// Returns the absolute value of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::abs`](../../std/primitive.f128.html#method.abs)
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn fabsf128(_x: f128) -> f128 {
+    unimplemented!();
+}
+
+/// Copies the sign from `y` to `x` for `f16` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn copysignf16(_x: f16, _y: f16) -> f16 {
+    unimplemented!();
+}
+
+/// Copies the sign from `y` to `x` for `f32` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn copysignf32(_x: f32, _y: f32) -> f32 {
+    unimplemented!();
+}
+/// Copies the sign from `y` to `x` for `f64` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn copysignf64(_x: f64, _y: f64) -> f64 {
+    unimplemented!();
+}
+
+/// Copies the sign from `y` to `x` for `f128` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn copysignf128(_x: f128, _y: f128) -> f128 {
+    unimplemented!();
 }
 
 /// Inform Miri that a given pointer definitely has a certain alignment.

@@ -67,8 +67,12 @@ impl Tester {
         path.push("ra-rustc-test.rs");
         let tmp_file = AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).unwrap()).unwrap();
         std::fs::write(&tmp_file, "")?;
-        let cargo_config =
-            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
+        let cargo_config = CargoConfig {
+            sysroot: Some(RustLibSource::Discover),
+            all_targets: true,
+            set_test: true,
+            ..Default::default()
+        };
 
         let sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
         let data_layout = target_data_layout::get(
@@ -82,6 +86,7 @@ impl Tester {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
                 cargo: None,
                 cargo_config_extra_env: Default::default(),
+                set_test: true,
             },
             sysroot,
             rustc_cfg: vec![],

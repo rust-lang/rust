@@ -1,36 +1,83 @@
 use rustc_middle::traits::solve::Goal;
+use rustc_middle::ty::relate::combine::{super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::{
     Relate, RelateResult, TypeRelation, relate_args_invariantly, relate_args_with_variances,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVar};
 use rustc_span::Span;
+use rustc_type_ir::data_structures::DelayedSet;
 use tracing::{debug, instrument};
 
-use super::combine::CombineFields;
 use crate::infer::BoundRegionConversionTime::HigherRankedType;
 use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
-use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace};
+use crate::traits::{Obligation, PredicateObligations};
 
 /// Enforce that `a` is equal to or a subtype of `b`.
-pub struct TypeRelating<'combine, 'a, 'tcx> {
-    fields: &'combine mut CombineFields<'a, 'tcx>,
-    structurally_relate_aliases: StructurallyRelateAliases,
+pub(crate) struct TypeRelating<'infcx, 'tcx> {
+    infcx: &'infcx InferCtxt<'tcx>,
+
+    // Immutable fields
+    trace: TypeTrace<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    define_opaque_types: DefineOpaqueTypes,
+
+    // Mutable fields.
     ambient_variance: ty::Variance,
+    obligations: PredicateObligations<'tcx>,
+    /// The cache only tracks the `ambient_variance` as it's the
+    /// only field which is mutable and which meaningfully changes
+    /// the result when relating types.
+    ///
+    /// The cache does not track whether the state of the
+    /// `InferCtxt` has been changed or whether we've added any
+    /// obligations to `self.goals`. Whether a goal is added
+    /// once or multiple times is not really meaningful.
+    ///
+    /// Changes in the inference state may delay some type inference to
+    /// the next fulfillment loop. Given that this loop is already
+    /// necessary, this is also not a meaningful change. Consider
+    /// the following three relations:
+    /// ```text
+    /// Vec<?0> sub Vec<?1>
+    /// ?0 eq u32
+    /// Vec<?0> sub Vec<?1>
+    /// ```
+    /// Without a cache, the second `Vec<?0> sub Vec<?1>` would eagerly
+    /// constrain `?1` to `u32`. When using the cache entry from the
+    /// first time we've related these types, this only happens when
+    /// later proving the `Subtype(?0, ?1)` goal from the first relation.
+    cache: DelayedSet<(ty::Variance, Ty<'tcx>, Ty<'tcx>)>,
 }
 
-impl<'combine, 'infcx, 'tcx> TypeRelating<'combine, 'infcx, 'tcx> {
-    pub fn new(
-        f: &'combine mut CombineFields<'infcx, 'tcx>,
-        structurally_relate_aliases: StructurallyRelateAliases,
+impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
+    pub(crate) fn new(
+        infcx: &'infcx InferCtxt<'tcx>,
+        trace: TypeTrace<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
         ambient_variance: ty::Variance,
-    ) -> TypeRelating<'combine, 'infcx, 'tcx> {
-        TypeRelating { fields: f, structurally_relate_aliases, ambient_variance }
+    ) -> TypeRelating<'infcx, 'tcx> {
+        assert!(!infcx.next_trait_solver);
+        TypeRelating {
+            infcx,
+            trace,
+            param_env,
+            define_opaque_types,
+            ambient_variance,
+            obligations: PredicateObligations::new(),
+            cache: Default::default(),
+        }
+    }
+
+    pub(crate) fn into_obligations(self) -> PredicateObligations<'tcx> {
+        self.obligations
     }
 }
 
-impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
-        self.fields.infcx.tcx
+        self.infcx.tcx
     }
 
     fn relate_item_args(
@@ -74,9 +121,13 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
             return Ok(a);
         }
 
-        let infcx = self.fields.infcx;
+        let infcx = self.infcx;
         let a = infcx.shallow_resolve(a);
         let b = infcx.shallow_resolve(b);
+
+        if self.cache.contains(&(self.ambient_variance, a, b)) {
+            return Ok(a);
+        }
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
@@ -84,9 +135,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                     ty::Covariant => {
                         // can't make progress on `A <: B` if both A and B are
                         // type variables, so record an obligation.
-                        self.fields.goals.push(Goal::new(
+                        self.obligations.push(Obligation::new(
                             self.cx(),
-                            self.fields.param_env,
+                            self.trace.cause.clone(),
+                            self.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
                                 a_is_expected: true,
                                 a,
@@ -97,9 +149,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                     ty::Contravariant => {
                         // can't make progress on `B <: A` if both A and B are
                         // type variables, so record an obligation.
-                        self.fields.goals.push(Goal::new(
+                        self.obligations.push(Obligation::new(
                             self.cx(),
-                            self.fields.param_env,
+                            self.trace.cause.clone(),
+                            self.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
                                 a_is_expected: false,
                                 a: b,
@@ -129,36 +182,31 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                 )?;
             }
 
-            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
-                infcx.set_tainted_by_errors(e);
-                return Ok(Ty::new_error(self.cx(), e));
-            }
-
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => {
-                infcx.super_combine_tys(self, a, b)?;
+                super_combine_tys(infcx, self, a, b)?;
             }
 
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
-                    && def_id.is_local()
-                    && !infcx.next_trait_solver() =>
+                if self.define_opaque_types == DefineOpaqueTypes::Yes && def_id.is_local() =>
             {
-                self.fields.goals.extend(infcx.handle_opaque_type(
+                self.register_goals(infcx.handle_opaque_type(
                     a,
                     b,
-                    self.fields.trace.cause.span,
+                    self.trace.cause.span,
                     self.param_env(),
                 )?);
             }
 
             _ => {
-                infcx.super_combine_tys(self, a, b)?;
+                super_combine_tys(infcx, self, a, b)?;
             }
         }
+
+        assert!(self.cache.insert((self.ambient_variance, a, b)));
 
         Ok(a)
     }
@@ -169,13 +217,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
+        let origin = SubregionOrigin::Subtype(Box::new(self.trace.clone()));
 
         match self.ambient_variance {
             // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
             ty::Covariant => {
-                self.fields
-                    .infcx
+                self.infcx
                     .inner
                     .borrow_mut()
                     .unwrap_region_constraints()
@@ -183,16 +230,14 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
             }
             // Suptype(&'a u8, &'b u8) => Outlives('b: 'a) => SubRegion('a, 'b)
             ty::Contravariant => {
-                self.fields
-                    .infcx
+                self.infcx
                     .inner
                     .borrow_mut()
                     .unwrap_region_constraints()
                     .make_subregion(origin, a, b);
             }
             ty::Invariant => {
-                self.fields
-                    .infcx
+                self.infcx
                     .inner
                     .borrow_mut()
                     .unwrap_region_constraints()
@@ -212,7 +257,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        self.fields.infcx.super_combine_consts(self, a, b)
+        super_combine_consts(self.infcx, self, a, b)
     }
 
     fn binders<T>(
@@ -230,8 +275,8 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         {
             self.relate(a, b)?;
         } else {
-            let span = self.fields.trace.cause.span;
-            let infcx = self.fields.infcx;
+            let span = self.trace.cause.span;
+            let infcx = self.infcx;
 
             match self.ambient_variance {
                 // Checks whether `for<..> sub <: for<..> sup` holds.
@@ -294,31 +339,37 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
+impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
     fn span(&self) -> Span {
-        self.fields.trace.span()
+        self.trace.span()
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.fields.param_env
+        self.param_env
     }
 
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        self.structurally_relate_aliases
+        StructurallyRelateAliases::No
     }
 
     fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
+        preds: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
-        self.fields.register_predicates(obligations);
+        self.obligations.extend(preds.into_iter().map(|pred| {
+            Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, pred)
+        }))
     }
 
-    fn register_goals(
-        &mut self,
-        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) {
-        self.fields.register_obligations(obligations);
+    fn register_goals(&mut self, goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>) {
+        self.obligations.extend(goals.into_iter().map(|goal| {
+            Obligation::new(
+                self.infcx.tcx,
+                self.trace.cause.clone(),
+                goal.param_env,
+                goal.predicate,
+            )
+        }))
     }
 
     fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {

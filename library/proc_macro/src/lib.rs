@@ -1166,7 +1166,7 @@ impl fmt::Debug for Ident {
     }
 }
 
-/// A literal string (`"hello"`), byte string (`b"hello"`),
+/// A literal string (`"hello"`), byte string (`b"hello"`), C string (`c"hello"`),
 /// character (`'a'`), byte character (`b'a'`), an integer or floating point number
 /// with or without a suffix (`1`, `1u8`, `2.3`, `2.3f32`).
 /// Boolean literals like `true` and `false` do not belong here, they are `Ident`s.

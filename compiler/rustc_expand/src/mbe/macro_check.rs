@@ -119,7 +119,7 @@ use rustc_span::symbol::{MacroRulesNormalizedIdent, kw};
 use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 
-use super::quoted::VALID_FRAGMENT_NAMES_MSG_2021;
+use super::quoted::VALID_FRAGMENT_NAMES_MSG;
 use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 
@@ -274,7 +274,7 @@ fn check_binders(
                     psess.dcx().emit_err(errors::MissingFragmentSpecifier {
                         span,
                         add_span: span.shrink_to_hi(),
-                        valid: VALID_FRAGMENT_NAMES_MSG_2021,
+                        valid: VALID_FRAGMENT_NAMES_MSG,
                     });
                 } else {
                     psess.buffer_lint(

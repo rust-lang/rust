@@ -3,18 +3,19 @@
 
 use chalk_ir::{cast::Cast, Mutability};
 use hir_def::{
-    hir::{Array, BinaryOp, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp},
+    hir::{
+        Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp,
+    },
     lang_item::LangItem,
 };
 use hir_expand::name::Name;
 use intern::sym;
 
 use crate::{
-    infer::Expectation, lower::lower_to_chalk_mutability, Adjust, Adjustment, AutoBorrow, Interner,
-    OverloadedDeref, TyBuilder, TyKind,
+    infer::{expr::ExprIsRead, Expectation, InferenceContext},
+    lower::lower_to_chalk_mutability,
+    Adjust, Adjustment, AutoBorrow, Interner, OverloadedDeref, TyBuilder, TyKind,
 };
-
-use super::InferenceContext;
 
 impl InferenceContext<'_> {
     pub(crate) fn infer_mut_body(&mut self) {
@@ -39,7 +40,25 @@ impl InferenceContext<'_> {
     fn infer_mut_expr_without_adjust(&mut self, tgt_expr: ExprId, mutability: Mutability) {
         match &self.body[tgt_expr] {
             Expr::Missing => (),
-            Expr::InlineAsm(e) => self.infer_mut_expr_without_adjust(e.e, Mutability::Not),
+            Expr::InlineAsm(e) => {
+                e.operands.iter().for_each(|(_, op)| match op {
+                    AsmOperand::In { expr, .. }
+                    | AsmOperand::Out { expr: Some(expr), .. }
+                    | AsmOperand::InOut { expr, .. } => {
+                        self.infer_mut_expr_without_adjust(*expr, Mutability::Not)
+                    }
+                    AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        self.infer_mut_expr_without_adjust(*in_expr, Mutability::Not);
+                        if let Some(out_expr) = out_expr {
+                            self.infer_mut_expr_without_adjust(*out_expr, Mutability::Not);
+                        }
+                    }
+                    AsmOperand::Out { expr: None, .. }
+                    | AsmOperand::Label(_)
+                    | AsmOperand::Sym(_)
+                    | AsmOperand::Const(_) => (),
+                });
+            }
             Expr::OffsetOf(_) => (),
             &Expr::If { condition, then_branch, else_branch } => {
                 self.infer_mut_expr(condition, Mutability::Not);
@@ -129,7 +148,7 @@ impl InferenceContext<'_> {
                                     target,
                                 }) = base_adjustments
                                 {
-                                    // For assignee exprs `IndexMut` obiligations are already applied
+                                    // For assignee exprs `IndexMut` obligations are already applied
                                     if !is_assignee_expr {
                                         if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
                                             base_ty = Some(ty.clone());
@@ -144,7 +163,11 @@ impl InferenceContext<'_> {
                                         if let Some(ty) = self.result.type_of_expr.get(index) {
                                             ty.clone()
                                         } else {
-                                            self.infer_expr(index, &Expectation::none())
+                                            self.infer_expr(
+                                                index,
+                                                &Expectation::none(),
+                                                ExprIsRead::Yes,
+                                            )
                                         };
                                     let trait_ref = TyBuilder::trait_ref(self.db, index_trait)
                                         .push(base_ty)
@@ -160,6 +183,7 @@ impl InferenceContext<'_> {
                 self.infer_mut_expr(index, Mutability::Not);
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
+                let mut mutability = mutability;
                 if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
                     if mutability == Mutability::Mut {
                         if let Some(deref_trait) = self
@@ -167,7 +191,17 @@ impl InferenceContext<'_> {
                             .lang_item(self.table.trait_env.krate, LangItem::DerefMut)
                             .and_then(|l| l.as_trait())
                         {
-                            if let Some(deref_fn) = self
+                            let ty = self.result.type_of_expr.get(*expr);
+                            let is_mut_ptr = ty.is_some_and(|ty| {
+                                let ty = self.table.resolve_ty_shallow(ty);
+                                matches!(
+                                    ty.kind(Interner),
+                                    chalk_ir::TyKind::Raw(Mutability::Mut, _)
+                                )
+                            });
+                            if is_mut_ptr {
+                                mutability = Mutability::Not;
+                            } else if let Some(deref_fn) = self
                                 .db
                                 .trait_data(deref_trait)
                                 .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))

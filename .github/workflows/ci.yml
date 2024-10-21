@@ -104,6 +104,18 @@ jobs:
         with:
           fetch-depth: 2
 
+      # Free up disk space on Linux by removing preinstalled components that
+      # we do not need. We do this to enable some of the less resource
+      # intensive jobs to run on free runners, which however also have
+      # less disk space.
+      - name: free up disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        if: contains(matrix.os, 'ubuntu')
+        with:
+          # Removing packages with APT saves ~5 GiB, but takes several
+          # minutes (and potentially removes important packages).
+          large-packages: false
+
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
       # point it in the right direction.
@@ -121,6 +133,9 @@ jobs:
           # are passed to the `setup-environment.sh` script encoded in JSON,
           # which then uses log commands to actually set them.
           EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
+
+      - name: setup upstream remote
+        run: src/ci/scripts/setup-upstream-remote.sh
 
       - name: ensure the channel matches the target branch
         run: src/ci/scripts/verify-channel.sh
@@ -191,6 +206,11 @@ jobs:
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
 
+      - name: print disk usage
+        run: |
+          echo "disk usage:"
+          df -h
+
       - name: upload artifacts to github
         uses: actions/upload-artifact@v4
         with:
@@ -211,6 +231,16 @@ jobs:
         # deploying artifacts from a dist builder if the variables are misconfigured,
         # erroring about invalid credentials instead.
         if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
+
+      - name: upload job metrics to DataDog
+        if: needs.calculate_matrix.outputs.run_type != 'pr'
+        env:
+          DATADOG_SITE: datadoghq.com
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DD_GITHUB_JOB_NAME: ${{ matrix.name }}
+        run: |
+          npm install -g @datadog/datadog-ci@^2.x.x
+          python3 src/ci/scripts/upload-build-metrics.py build/cpu-usage.csv
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).

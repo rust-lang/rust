@@ -633,8 +633,8 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
             PredicateKind::Clause(clause_kind) => {
                 stable_mir::ty::PredicateKind::Clause(clause_kind.stable(tables))
             }
-            PredicateKind::ObjectSafe(did) => {
-                stable_mir::ty::PredicateKind::ObjectSafe(tables.trait_def(*did))
+            PredicateKind::DynCompatible(did) => {
+                stable_mir::ty::PredicateKind::DynCompatible(tables.trait_def(*did))
             }
             PredicateKind::Subtype(subtype_predicate) => {
                 stable_mir::ty::PredicateKind::SubType(subtype_predicate.stable(tables))

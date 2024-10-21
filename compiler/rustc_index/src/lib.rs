@@ -17,6 +17,7 @@ mod vec;
 pub use idx::Idx;
 pub use rustc_index_macros::newtype_index;
 pub use slice::IndexSlice;
+#[doc(no_inline)]
 pub use vec::IndexVec;
 
 /// Type size assertion. The first argument is a type and the second argument is its expected size.

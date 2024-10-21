@@ -92,7 +92,11 @@ pub unsafe extern "C" fn runtime_entry(
     unsafe {
         crate::sys::thread_local::destructors::run();
     }
-    unsafe { hermit_abi::exit(result) }
+    crate::rt::thread_cleanup();
+
+    unsafe {
+        hermit_abi::exit(result);
+    }
 }
 
 #[inline]

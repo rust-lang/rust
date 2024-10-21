@@ -5,11 +5,11 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::io::{self, ErrorKind, IsTerminal, Read, SeekFrom, Write};
 use std::ops::Deref;
-use std::rc::Rc;
-use std::rc::Weak;
+use std::rc::{Rc, Weak};
 
 use rustc_target::abi::Size;
 
+use crate::helpers::check_min_arg_count;
 use crate::shims::unix::linux::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::*;
@@ -151,7 +151,10 @@ impl FileDescription for io::Stdin {
             helpers::isolation_abort_error("`read` from stdin")?;
         }
         let result = Read::read(&mut { self }, &mut bytes);
-        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
+        match result {
+            Ok(read_size) => ecx.return_read_success(ptr, &bytes, read_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -182,7 +185,10 @@ impl FileDescription for io::Stdout {
         // the host -- there is no good in adding extra buffering
         // here.
         io::stdout().flush().unwrap();
-        ecx.return_written_byte_count_or_error(result, dest)
+        match result {
+            Ok(write_size) => ecx.return_write_success(write_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -208,7 +214,10 @@ impl FileDescription for io::Stderr {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
         let result = Write::write(&mut { self }, bytes);
-        ecx.return_written_byte_count_or_error(result, dest)
+        match result {
+            Ok(write_size) => ecx.return_write_success(write_size, dest),
+            Err(e) => ecx.set_last_error_and_return(e, dest),
+        }
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -235,8 +244,7 @@ impl FileDescription for NullOutput {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
         // We just don't write anything, but report to the user that we did.
-        let result = Ok(len);
-        ecx.return_written_byte_count_or_error(result, dest)
+        ecx.return_write_success(len, dest)
     }
 }
 
@@ -278,7 +286,7 @@ impl FileDescriptionRef {
 
                 fd.file_description.close(communicate_allowed, ecx)
             }
-            None => Ok(Ok(())),
+            None => interp_ok(Ok(())),
         }
     }
 
@@ -415,16 +423,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
-            return Ok(Scalar::from_i32(this.fd_not_found()?));
+            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        Ok(Scalar::from_i32(this.machine.fds.insert(fd)))
+        interp_ok(Scalar::from_i32(this.machine.fds.insert(fd)))
     }
 
     fn dup2(&mut self, old_fd_num: i32, new_fd_num: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
-            return Ok(Scalar::from_i32(this.fd_not_found()?));
+            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
         };
         if new_fd_num != old_fd_num {
             // Close new_fd if it is previously opened.
@@ -434,13 +442,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 old_new_fd.close(this.machine.communicate(), this)?.ok();
             }
         }
-        Ok(Scalar::from_i32(new_fd_num))
+        interp_ok(Scalar::from_i32(new_fd_num))
     }
 
     fn flock(&mut self, fd_num: i32, op: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return Ok(Scalar::from_i32(this.fd_not_found()?));
+            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
         };
 
         // We need to check that there aren't unsupported options in `op`.
@@ -468,62 +476,68 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         drop(fd);
         // return `0` if flock is successful
         let result = result.map(|()| 0i32);
-        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
     fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if args.len() < 2 {
-            throw_ub_format!(
-                "incorrect number of arguments for fcntl: got {}, expected at least 2",
-                args.len()
-            );
-        }
-        let fd_num = this.read_scalar(&args[0])?.to_i32()?;
-        let cmd = this.read_scalar(&args[1])?.to_i32()?;
+        let [fd_num, cmd] = check_min_arg_count("fcntl", args)?;
+
+        let fd_num = this.read_scalar(fd_num)?.to_i32()?;
+        let cmd = this.read_scalar(cmd)?.to_i32()?;
+
+        let f_getfd = this.eval_libc_i32("F_GETFD");
+        let f_dupfd = this.eval_libc_i32("F_DUPFD");
+        let f_dupfd_cloexec = this.eval_libc_i32("F_DUPFD_CLOEXEC");
 
         // We only support getting the flags for a descriptor.
-        if cmd == this.eval_libc_i32("F_GETFD") {
-            // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
-            // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
-            // always sets this flag when opening a file. However we still need to check that the
-            // file itself is open.
-            Ok(Scalar::from_i32(if this.machine.fds.is_fd_num(fd_num) {
-                this.eval_libc_i32("FD_CLOEXEC")
-            } else {
-                this.fd_not_found()?
-            }))
-        } else if cmd == this.eval_libc_i32("F_DUPFD")
-            || cmd == this.eval_libc_i32("F_DUPFD_CLOEXEC")
-        {
-            // Note that we always assume the FD_CLOEXEC flag is set for every open file, in part
-            // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
-            // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
-            // thus they can share the same implementation here.
-            if args.len() < 3 {
-                throw_ub_format!(
-                    "incorrect number of arguments for fcntl with cmd=`F_DUPFD`/`F_DUPFD_CLOEXEC`: got {}, expected at least 3",
-                    args.len()
-                );
+        match cmd {
+            cmd if cmd == f_getfd => {
+                // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
+                // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
+                // always sets this flag when opening a file. However we still need to check that the
+                // file itself is open.
+                interp_ok(Scalar::from_i32(if this.machine.fds.is_fd_num(fd_num) {
+                    this.eval_libc_i32("FD_CLOEXEC")
+                } else {
+                    this.fd_not_found()?
+                }))
             }
-            let start = this.read_scalar(&args[2])?.to_i32()?;
+            cmd if cmd == f_dupfd || cmd == f_dupfd_cloexec => {
+                // Note that we always assume the FD_CLOEXEC flag is set for every open file, in part
+                // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
+                // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
+                // thus they can share the same implementation here.
+                let cmd_name = if cmd == f_dupfd {
+                    "fcntl(fd, F_DUPFD, ...)"
+                } else {
+                    "fcntl(fd, F_DUPFD_CLOEXEC, ...)"
+                };
 
-            match this.machine.fds.get(fd_num) {
-                Some(fd) => Ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start))),
-                None => Ok(Scalar::from_i32(this.fd_not_found()?)),
-            }
-        } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC") {
-            // Reject if isolation is enabled.
-            if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-                this.reject_in_isolation("`fcntl`", reject_with)?;
-                this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-                return Ok(Scalar::from_i32(-1));
-            }
+                let [_, _, start] = check_min_arg_count(cmd_name, args)?;
+                let start = this.read_scalar(start)?.to_i32()?;
 
-            this.ffullsync_fd(fd_num)
-        } else {
-            throw_unsup_format!("the {:#x} command is not supported for `fcntl`)", cmd);
+                if let Some(fd) = this.machine.fds.get(fd_num) {
+                    interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start)))
+                } else {
+                    interp_ok(Scalar::from_i32(this.fd_not_found()?))
+                }
+            }
+            cmd if this.tcx.sess.target.os == "macos"
+                && cmd == this.eval_libc_i32("F_FULLFSYNC") =>
+            {
+                // Reject if isolation is enabled.
+                if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+                    this.reject_in_isolation("`fcntl`", reject_with)?;
+                    return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+                }
+
+                this.ffullsync_fd(fd_num)
+            }
+            cmd => {
+                throw_unsup_format!("fcntl: unsupported command {cmd:#x}");
+            }
         }
     }
 
@@ -533,12 +547,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let fd_num = this.read_scalar(fd_op)?.to_i32()?;
 
         let Some(fd) = this.machine.fds.remove(fd_num) else {
-            return Ok(Scalar::from_i32(this.fd_not_found()?));
+            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
         };
         let result = fd.close(this.machine.communicate(), this)?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
-        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
     /// Function used when a file descriptor does not exist. It returns `Ok(-1)`and sets
@@ -549,7 +563,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let ebadf = this.eval_libc("EBADF");
         this.set_last_error(ebadf)?;
-        Ok((-1).into())
+        interp_ok((-1).into())
     }
 
     /// Read data from `fd` into buffer specified by `buf` and `count`.
@@ -587,7 +601,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             trace!("read: FD not found");
             let res: i32 = this.fd_not_found()?;
             this.write_int(res, dest)?;
-            return Ok(());
+            return interp_ok(());
         };
 
         trace!("read: FD mapped to {fd:?}");
@@ -599,15 +613,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => fd.read(&fd, communicate, buf, count, dest, this)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
-                    let einval = this.eval_libc("EINVAL");
-                    this.set_last_error(einval)?;
-                    this.write_int(-1, dest)?;
-                    return Ok(());
+                    return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
                 fd.pread(communicate, offset, buf, count, dest, this)?
             }
         };
-        Ok(())
+        interp_ok(())
     }
 
     fn write(
@@ -637,65 +648,55 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.get(fd_num) else {
             let res: i32 = this.fd_not_found()?;
             this.write_int(res, dest)?;
-            return Ok(());
+            return interp_ok(());
         };
 
         match offset {
             None => fd.write(&fd, communicate, buf, count, dest, this)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
-                    let einval = this.eval_libc("EINVAL");
-                    this.set_last_error(einval)?;
-                    this.write_int(-1, dest)?;
-                    return Ok(());
+                    return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
                 fd.pwrite(communicate, buf, count, offset, dest, this)?
             }
         };
-        Ok(())
+        interp_ok(())
     }
 
     /// Helper to implement `FileDescription::read`:
-    /// `result` should be the return value of some underlying `read` call that used `bytes` as its output buffer.
+    /// This is only used when `read` is successful.
+    /// `actual_read_size` should be the return value of some underlying `read` call that used
+    /// `bytes` as its output buffer.
     /// The length of `bytes` must not exceed either the host's or the target's `isize`.
-    /// If `Result` indicates success, `bytes` is written to `buf` and the size is written to `dest`.
-    /// Otherwise, `-1` is written to `dest` and the last libc error is set appropriately.
-    fn return_read_bytes_and_count(
+    /// `bytes` is written to `buf` and the size is written to `dest`.
+    fn return_read_success(
         &mut self,
         buf: Pointer,
         bytes: &[u8],
-        result: io::Result<usize>,
+        actual_read_size: usize,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        match result {
-            Ok(read_bytes) => {
-                // If reading to `bytes` did not fail, we write those bytes to the buffer.
-                // Crucially, if fewer than `bytes.len()` bytes were read, only write
-                // that much into the output buffer!
-                this.write_bytes_ptr(buf, bytes[..read_bytes].iter().copied())?;
-                // The actual read size is always less than what got originally requested so this cannot fail.
-                this.write_int(u64::try_from(read_bytes).unwrap(), dest)?;
-                return Ok(());
-            }
-            Err(e) => {
-                this.set_last_error_from_io_error(e)?;
-                this.write_int(-1, dest)?;
-                return Ok(());
-            }
-        }
+        // If reading to `bytes` did not fail, we write those bytes to the buffer.
+        // Crucially, if fewer than `bytes.len()` bytes were read, only write
+        // that much into the output buffer!
+        this.write_bytes_ptr(buf, bytes[..actual_read_size].iter().copied())?;
+
+        // The actual read size is always less than what got originally requested so this cannot fail.
+        this.write_int(u64::try_from(actual_read_size).unwrap(), dest)?;
+        interp_ok(())
     }
 
-    /// This function writes the number of written bytes (given in `result`) to `dest`, or sets the
-    /// last libc error and writes -1 to dest.
-    fn return_written_byte_count_or_error(
+    /// Helper to implement `FileDescription::write`:
+    /// This function is only used when `write` is successful, and writes `actual_write_size` to `dest`
+    fn return_write_success(
         &mut self,
-        result: io::Result<usize>,
+        actual_write_size: usize,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let result = this.try_unwrap_io_result(result.map(|c| i64::try_from(c).unwrap()))?;
-        this.write_int(result, dest)?;
-        Ok(())
+        // The actual write size is always less than what got originally requested so this cannot fail.
+        this.write_int(u64::try_from(actual_write_size).unwrap(), dest)?;
+        interp_ok(())
     }
 }

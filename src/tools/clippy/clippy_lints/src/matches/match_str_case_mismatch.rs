@@ -40,7 +40,7 @@ struct MatchExprVisitor<'a, 'tcx> {
     case_method: Option<CaseMethod>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for MatchExprVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for MatchExprVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         match ex.kind {
             ExprKind::MethodCall(segment, receiver, [], _) if self.case_altered(segment.ident.as_str(), receiver) => {},
@@ -49,7 +49,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchExprVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MatchExprVisitor<'a, 'tcx> {
+impl MatchExprVisitor<'_, '_> {
     fn case_altered(&mut self, segment_ident: &str, receiver: &Expr<'_>) -> bool {
         if let Some(case_method) = get_case_method(segment_ident) {
             let ty = self.cx.typeck_results().expr_ty(receiver).peel_refs();

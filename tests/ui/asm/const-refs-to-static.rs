@@ -2,8 +2,6 @@
 //@ ignore-nvptx64
 //@ ignore-spirv
 
-#![feature(const_refs_to_static)]
-
 use std::arch::{asm, global_asm};
 use std::ptr::addr_of;
 

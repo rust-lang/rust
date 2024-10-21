@@ -768,8 +768,10 @@ pub enum ProjectionElem {
     ConstantIndex {
         /// index or -index (in Python terms), depending on from_end
         offset: u64,
-        /// The thing being indexed must be at least this long. For arrays this
-        /// is always the exact length.
+        /// The thing being indexed must be at least this long -- otherwise, the
+        /// projection is UB.
+        ///
+        /// For arrays this is always the exact length.
         min_length: u64,
         /// Counting backwards from end? This is always false when indexing an
         /// array.
@@ -946,10 +948,10 @@ pub enum PointerCoercion {
     ArrayToPointer,
 
     /// Unsize a pointer/reference value, e.g., `&[T; n]` to
-    /// `&[T]`. Note that the source could be a thin or fat pointer.
-    /// This will do things like convert thin pointers to fat
+    /// `&[T]`. Note that the source could be a thin or wide pointer.
+    /// This will do things like convert thin pointers to wide
     /// pointers, or convert structs containing thin pointers to
-    /// structs containing fat pointers, or convert between fat
+    /// structs containing wide pointers, or convert between wide
     /// pointers.
     Unsize,
 }
@@ -1026,7 +1028,7 @@ impl ProjectionElem {
             ProjectionElem::Field(_idx, fty) => Ok(*fty),
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => Self::index_ty(ty),
             ProjectionElem::Subslice { from, to, from_end } => {
-                Self::subslice_ty(ty, from, to, from_end)
+                Self::subslice_ty(ty, *from, *to, *from_end)
             }
             ProjectionElem::Downcast(_) => Ok(ty),
             ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
@@ -1037,13 +1039,13 @@ impl ProjectionElem {
         ty.kind().builtin_index().ok_or_else(|| error!("Cannot index non-array type: {ty:?}"))
     }
 
-    fn subslice_ty(ty: Ty, from: &u64, to: &u64, from_end: &bool) -> Result<Ty, Error> {
+    fn subslice_ty(ty: Ty, from: u64, to: u64, from_end: bool) -> Result<Ty, Error> {
         let ty_kind = ty.kind();
         match ty_kind {
             TyKind::RigidTy(RigidTy::Slice(..)) => Ok(ty),
             TyKind::RigidTy(RigidTy::Array(inner, _)) if !from_end => Ty::try_new_array(
                 inner,
-                to.checked_sub(*from).ok_or_else(|| error!("Subslice overflow: {from}..{to}"))?,
+                to.checked_sub(from).ok_or_else(|| error!("Subslice overflow: {from}..{to}"))?,
             ),
             TyKind::RigidTy(RigidTy::Array(inner, size)) => {
                 let size = size.eval_target_usize()?;

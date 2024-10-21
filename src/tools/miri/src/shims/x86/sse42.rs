@@ -115,7 +115,7 @@ fn compare_strings<'tcx>(
                     (false, true) => i32::from(ch.to_i8()?),
                     (false, false) => i32::from(ch.to_u8()?),
                 };
-                Ok(result)
+                interp_ok(result)
             };
 
             for i in 0..len2 {
@@ -183,7 +183,7 @@ fn compare_strings<'tcx>(
         _ => (),
     }
 
-    Ok(result)
+    interp_ok(result)
 }
 
 /// Obtain the arguments of the intrinsic based on its name.
@@ -235,7 +235,7 @@ fn deconstruct_args<'tcx>(
         let str1 = str1.transmute(array_layout, this)?;
         let str2 = str2.transmute(array_layout, this)?;
 
-        Ok((str1, str2, Some((len1, len2)), imm))
+        interp_ok((str1, str2, Some((len1, len2)), imm))
     } else {
         let [str1, str2, imm] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
         let imm = this.read_scalar(imm)?.to_u8()?;
@@ -244,7 +244,7 @@ fn deconstruct_args<'tcx>(
         let str1 = str1.transmute(array_layout, this)?;
         let str2 = str2.transmute(array_layout, this)?;
 
-        Ok((str1, str2, None, imm))
+        interp_ok((str1, str2, None, imm))
     }
 }
 
@@ -266,7 +266,7 @@ fn implicit_len<'tcx>(
             break;
         }
     }
-    Ok(result)
+    interp_ok(result)
 }
 
 #[inline]
@@ -433,7 +433,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 if bit_size == 64 && this.tcx.sess.target.arch != "x86_64" {
-                    return Ok(EmulateItemResult::NotSupported);
+                    return interp_ok(EmulateItemResult::NotSupported);
                 }
 
                 let [left, right] =
@@ -493,8 +493,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 this.write_scalar(result, dest)?;
             }
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

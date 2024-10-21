@@ -3,7 +3,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -420,7 +419,7 @@ fn report_unexpected_variant_res(
                 }
             }
 
-            err.multipart_suggestion_verbose(descr, suggestion, Applicability::MaybeIncorrect);
+            err.multipart_suggestion_verbose(descr, suggestion, Applicability::HasPlaceholders);
             err
         }
         Res::Def(DefKind::Variant, _) if expr.is_none() => {

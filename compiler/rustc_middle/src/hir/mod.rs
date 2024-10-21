@@ -28,6 +28,7 @@ pub struct ModuleItems {
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
     foreign_items: Box<[ForeignItemId]>,
+    opaques: Box<[LocalDefId]>,
     body_owners: Box<[LocalDefId]>,
 }
 
@@ -65,6 +66,10 @@ impl ModuleItems {
             .chain(self.foreign_items.iter().map(|id| id.owner_id))
     }
 
+    pub fn opaques(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.opaques.iter().copied()
+    }
+
     pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         self.owners().map(|id| id.def_id)
     }
@@ -95,6 +100,13 @@ impl ModuleItems {
         f: impl Fn(ForeignItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         try_par_for_each_in(&self.foreign_items[..], |&id| f(id))
+    }
+
+    pub fn par_opaques(
+        &self,
+        f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        try_par_for_each_in(&self.opaques[..], |&id| f(id))
     }
 }
 

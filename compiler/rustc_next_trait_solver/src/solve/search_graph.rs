@@ -40,9 +40,6 @@ where
     }
 
     const DIVIDE_AVAILABLE_DEPTH_ON_OVERFLOW: usize = 4;
-    fn recursion_limit(cx: I) -> usize {
-        cx.recursion_limit()
-    }
 
     fn initial_provisional_result(
         cx: I,
@@ -99,14 +96,19 @@ where
     }
 
     fn step_is_coinductive(cx: I, input: CanonicalInput<I>) -> bool {
-        input.value.goal.predicate.is_coinductive(cx)
+        input.canonical.value.goal.predicate.is_coinductive(cx)
     }
 }
 
 fn response_no_constraints<I: Interner>(
     cx: I,
-    goal: CanonicalInput<I>,
+    input: CanonicalInput<I>,
     certainty: Certainty,
 ) -> QueryResult<I> {
-    Ok(super::response_no_constraints_raw(cx, goal.max_universe, goal.variables, certainty))
+    Ok(super::response_no_constraints_raw(
+        cx,
+        input.canonical.max_universe,
+        input.canonical.variables,
+        certainty,
+    ))
 }

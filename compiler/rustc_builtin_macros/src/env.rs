@@ -15,7 +15,7 @@ use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::errors;
-use crate::util::{expr_to_string, get_exprs_from_tts, get_single_str_from_tts};
+use crate::util::{expr_to_string, get_exprs_from_tts, get_single_expr_from_tts};
 
 fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Result<Symbol, VarError> {
     let var = var.as_str();
@@ -32,19 +32,28 @@ pub(crate) fn expand_option_env<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
-    let ExpandResult::Ready(mac) = get_single_str_from_tts(cx, sp, tts, "option_env!") else {
+    let ExpandResult::Ready(mac_expr) = get_single_expr_from_tts(cx, sp, tts, "option_env!") else {
+        return ExpandResult::Retry(());
+    };
+    let var_expr = match mac_expr {
+        Ok(var_expr) => var_expr,
+        Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
+    };
+    let ExpandResult::Ready(mac) =
+        expr_to_string(cx, var_expr.clone(), "argument must be a string literal")
+    else {
         return ExpandResult::Retry(());
     };
     let var = match mac {
-        Ok(var) => var,
+        Ok((var, _)) => var,
         Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = lookup_env(cx, var).ok();
-    cx.sess.psess.env_depinfo.borrow_mut().insert((var, value));
+    let value = lookup_env(cx, var);
+    cx.sess.psess.env_depinfo.borrow_mut().insert((var, value.as_ref().ok().copied()));
     let e = match value {
-        None => {
+        Err(VarError::NotPresent) => {
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));
             cx.expr_path(cx.path_all(
                 sp,
@@ -58,7 +67,18 @@ pub(crate) fn expand_option_env<'cx>(
                 ))],
             ))
         }
-        Some(value) => {
+        Err(VarError::NotUnicode(_)) => {
+            let ExprKind::Lit(token::Lit {
+                kind: LitKind::Str | LitKind::StrRaw(..), symbol, ..
+            }) = &var_expr.kind
+            else {
+                unreachable!("`expr_to_string` ensures this is a string lit")
+            };
+
+            let guar = cx.dcx().emit_err(errors::EnvNotUnicode { span: sp, var: *symbol });
+            return ExpandResult::Ready(DummyResult::any(sp, guar));
+        }
+        Ok(value) => {
             cx.expr_call_global(sp, cx.std_path(&[sym::option, sym::Option, sym::Some]), thin_vec![
                 cx.expr_str(sp, value)
             ])

@@ -178,7 +178,7 @@ impl Parker {
     }
 
     fn ptr(&self) -> *const c_void {
-        core::ptr::addr_of!(self.state).cast::<c_void>()
+        (&raw const self.state).cast::<c_void>()
     }
 }
 

@@ -1,4 +1,5 @@
 #![warn(clippy::str_split_at_newline)]
+#![allow(clippy::needless_lifetimes)]
 
 use core::str::Split;
 use std::ops::Deref;

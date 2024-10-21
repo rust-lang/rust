@@ -44,10 +44,12 @@ where
     let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
     let target = rustc_session::config::build_target_config(&early_dcx, &sessopts, &sysroot);
     let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
+    let checksum_hash_kind = sessopts.unstable_opts.checksum_hash_algorithm();
     let sm_inputs = Some(SourceMapInputs {
         file_loader: Box::new(RealFileLoader) as _,
         path_mapping: sessopts.file_path_mapping(),
         hash_kind,
+        checksum_hash_kind,
     });
 
     rustc_span::create_session_globals_then(DEFAULT_EDITION, sm_inputs, || {
@@ -770,7 +772,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
-    tracked!(default_hidden_visibility, Some(true));
+    tracked!(default_visibility, Some(rustc_target::spec::SymbolVisibility::Hidden));
     tracked!(dep_info_omit_d_target, true);
     tracked!(direct_access_external_data, Some(true));
     tracked!(dual_proc_macros, true);
@@ -808,7 +810,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, false);
-    tracked!(next_solver, Some(NextSolverConfig { coherence: true, globally: false }));
+    tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
     tracked!(no_generate_arange_section, true);
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);

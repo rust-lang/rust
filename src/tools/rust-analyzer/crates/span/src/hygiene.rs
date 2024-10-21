@@ -21,7 +21,7 @@
 //! `ExpnData::call_site` in rustc, [`MacroCallLoc::call_site`] in rust-analyzer.
 use std::fmt;
 
-use salsa::{InternId, InternValue};
+use ra_salsa::{InternId, InternValue};
 
 use crate::MacroCallId;
 
@@ -39,11 +39,11 @@ impl fmt::Debug for SyntaxContextId {
     }
 }
 
-impl salsa::InternKey for SyntaxContextId {
-    fn from_intern_id(v: salsa::InternId) -> Self {
+impl ra_salsa::InternKey for SyntaxContextId {
+    fn from_intern_id(v: ra_salsa::InternId) -> Self {
         SyntaxContextId(v)
     }
-    fn as_intern_id(&self) -> salsa::InternId {
+    fn as_intern_id(&self) -> ra_salsa::InternId {
         self.0
     }
 }
@@ -81,7 +81,7 @@ pub struct SyntaxContextData {
     /// Invariant: Only [`SyntaxContextId::ROOT`] has a [`None`] outer expansion.
     // FIXME: The None case needs to encode the context crate id. We can encode that as the MSB of
     // MacroCallId is reserved anyways so we can do bit tagging here just fine.
-    // The bigger issue is that that will cause interning to now create completely separate chains
+    // The bigger issue is that this will cause interning to now create completely separate chains
     // per crate. Though that is likely not a problem as `MacroCallId`s are already crate calling dependent.
     pub outer_expn: Option<MacroCallId>,
     pub outer_transparency: Transparency,
@@ -141,4 +141,13 @@ pub enum Transparency {
     /// Identifier produced by an opaque expansion is always resolved at definition-site.
     /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
     Opaque,
+}
+
+impl Transparency {
+    /// Returns `true` if the transparency is [`Opaque`].
+    ///
+    /// [`Opaque`]: Transparency::Opaque
+    pub fn is_opaque(&self) -> bool {
+        matches!(self, Self::Opaque)
+    }
 }

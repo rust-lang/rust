@@ -136,7 +136,7 @@ enum ProbeResult {
 /// `mut`), or it has type `*mut T` and we convert it to `*const T`.
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub(crate) enum AutorefOrPtrAdjustment {
-    /// Receiver has type `T`, add `&` or `&mut` (it `T` is `mut`), and maybe also "unsize" it.
+    /// Receiver has type `T`, add `&` or `&mut` (if `T` is `mut`), and maybe also "unsize" it.
     /// Unsizing is used to convert a `[T; N]` to `[T]`, which only makes sense when autorefing.
     Autoref {
         mutbl: hir::Mutability,
@@ -147,6 +147,9 @@ pub(crate) enum AutorefOrPtrAdjustment {
     },
     /// Receiver has type `*mut T`, convert to `*const T`
     ToConstPtr,
+
+    /// Reborrow a `Pin<&mut T>` or `Pin<&T>`.
+    ReborrowPin(hir::Mutability),
 }
 
 impl AutorefOrPtrAdjustment {
@@ -154,6 +157,7 @@ impl AutorefOrPtrAdjustment {
         match self {
             AutorefOrPtrAdjustment::Autoref { mutbl: _, unsize } => *unsize,
             AutorefOrPtrAdjustment::ToConstPtr => false,
+            AutorefOrPtrAdjustment::ReborrowPin(_) => false,
         }
     }
 }
@@ -224,7 +228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
     #[instrument(level = "debug", skip(self, candidate_filter))]
-    pub fn probe_for_return_type_for_diagnostic(
+    pub(crate) fn probe_for_return_type_for_diagnostic(
         &self,
         span: Span,
         mode: Mode,
@@ -267,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn probe_for_name(
+    pub(crate) fn probe_for_name(
         &self,
         mode: Mode,
         item_name: Ident,
@@ -336,13 +340,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
-        let param_env_and_self_ty = self.canonicalize_query(
+        let query_input = self.canonicalize_query(
             ParamEnvAnd { param_env: self.param_env, value: self_ty },
             &mut orig_values,
         );
 
         let steps = match mode {
-            Mode::MethodCall => self.tcx.method_autoderef_steps(param_env_and_self_ty),
+            Mode::MethodCall => self.tcx.method_autoderef_steps(query_input),
             Mode::Path => self.probe(|_| {
                 // Mode::Path - the deref steps is "trivial". This turns
                 // our CanonicalQuery into a "trivial" QueryResponse. This
@@ -351,11 +355,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let infcx = &self.infcx;
                 let (ParamEnvAnd { param_env: _, value: self_ty }, canonical_inference_vars) =
-                    infcx.instantiate_canonical(span, &param_env_and_self_ty);
-                debug!(
-                    "probe_op: Mode::Path, param_env_and_self_ty={:?} self_ty={:?}",
-                    param_env_and_self_ty, self_ty
-                );
+                    infcx.instantiate_canonical(span, &query_input.canonical);
+                debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
                         self_ty: self.make_query_response_ignoring_pending_obligations(
@@ -446,13 +447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => bug!("unexpected bad final type in method autoderef"),
                 };
                 self.demand_eqtype(span, ty, Ty::new_error(self.tcx, guar));
-                return Err(MethodError::NoMatch(NoMatchData {
-                    static_candidates: Vec::new(),
-                    unsatisfied_predicates: Vec::new(),
-                    out_of_scope_traits: Vec::new(),
-                    similar_candidate: None,
-                    mode,
-                }));
+                return Err(MethodError::ErrorReported(guar));
             }
         }
 
@@ -779,8 +774,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         });
 
         // It is illegal to invoke a method on a trait instance that refers to
-        // the `Self` type. An [`ObjectSafetyViolation::SupertraitSelf`] error
-        // will be reported by `object_safety.rs` if the method refers to the
+        // the `Self` type. An [`DynCompatibilityViolation::SupertraitSelf`] error
+        // will be reported by `dyn_compatibility.rs` if the method refers to the
         // `Self` type anywhere other than the receiver. Here, we use a
         // instantiation that replaces `Self` with the object type itself. Hence,
         // a `&self` method will wind up with an argument type like `&dyn Trait`.
@@ -1109,6 +1104,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 unstable_candidates.as_deref_mut(),
                             )
                         })
+                        .or_else(|| {
+                            self.pick_reborrow_pin_method(
+                                step,
+                                self_ty,
+                                unstable_candidates.as_deref_mut(),
+                            )
+                        })
                     })
             })
     }
@@ -1133,13 +1135,28 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
 
-                // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::Ref(_, _, mutbl) = *step.self_ty.value.value.kind() {
-                    pick.autoderefs += 1;
-                    pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
-                        mutbl,
-                        unsize: pick.autoref_or_ptr_adjustment.is_some_and(|a| a.get_unsize()),
-                    })
+                match *step.self_ty.value.value.kind() {
+                    // Insert a `&*` or `&mut *` if this is a reference type:
+                    ty::Ref(_, _, mutbl) => {
+                        pick.autoderefs += 1;
+                        pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
+                            mutbl,
+                            unsize: pick.autoref_or_ptr_adjustment.is_some_and(|a| a.get_unsize()),
+                        })
+                    }
+
+                    ty::Adt(def, args)
+                        if self.tcx.features().pin_ergonomics
+                            && self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) =>
+                    {
+                        // make sure this is a pinned reference (and not a `Pin<Box>` or something)
+                        if let ty::Ref(_, _, mutbl) = args[0].expect_ty().kind() {
+                            pick.autoref_or_ptr_adjustment =
+                                Some(AutorefOrPtrAdjustment::ReborrowPin(*mutbl));
+                        }
+                    }
+
+                    _ => (),
                 }
 
                 pick
@@ -1165,6 +1182,43 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment =
                     Some(AutorefOrPtrAdjustment::Autoref { mutbl, unsize: step.unsize });
+                pick
+            })
+        })
+    }
+
+    /// Looks for applicable methods if we reborrow a `Pin<&mut T>` as a `Pin<&T>`.
+    #[instrument(level = "debug", skip(self, step, unstable_candidates))]
+    fn pick_reborrow_pin_method(
+        &self,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+    ) -> Option<PickResult<'tcx>> {
+        if !self.tcx.features().pin_ergonomics {
+            return None;
+        }
+
+        // make sure self is a Pin<&mut T>
+        let inner_ty = match self_ty.kind() {
+            ty::Adt(def, args) if self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) => {
+                match args[0].expect_ty().kind() {
+                    ty::Ref(_, ty, hir::Mutability::Mut) => *ty,
+                    _ => {
+                        return None;
+                    }
+                }
+            }
+            _ => return None,
+        };
+
+        let region = self.tcx.lifetimes.re_erased;
+        let autopin_ty = Ty::new_pinned_ref(self.tcx, region, inner_ty, hir::Mutability::Not);
+        self.pick_method(autopin_ty, unstable_candidates).map(|r| {
+            r.map(|mut pick| {
+                pick.autoderefs = step.autoderefs;
+                pick.autoref_or_ptr_adjustment =
+                    Some(AutorefOrPtrAdjustment::ReborrowPin(hir::Mutability::Not));
                 pick
             })
         })

@@ -11,6 +11,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::FnMutDelegate;
+use rustc_middle::ty::relate::combine::{super_combine_consts, super_combine_tys};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -362,7 +363,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
-                infcx.super_combine_tys(self, a, b).map(|_| ()).or_else(|err| {
+                super_combine_tys(&infcx.infcx, self, a, b).map(|_| ()).or_else(|err| {
                     // This behavior is only there for the old solver, the new solver
                     // shouldn't ever fail. Instead, it unconditionally emits an
                     // alias-relate goal.
@@ -385,7 +386,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 debug!(?a, ?b, ?self.ambient_variance);
 
                 // Will also handle unification of `IntVar` and `FloatVar`.
-                self.type_checker.infcx.super_combine_tys(self, a, b)?;
+                super_combine_tys(&self.type_checker.infcx.infcx, self, a, b)?;
             }
         }
 
@@ -422,7 +423,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
         assert!(!a.has_non_region_infer(), "unexpected inference var {:?}", a);
         assert!(!b.has_non_region_infer(), "unexpected inference var {:?}", b);
 
-        self.type_checker.infcx.super_combine_consts(self, a, b)
+        super_combine_consts(&self.type_checker.infcx.infcx, self, a, b)
     }
 
     #[instrument(skip(self), level = "trace")]

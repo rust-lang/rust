@@ -1,4 +1,5 @@
 #![deny(clippy::useless_asref)]
+#![allow(clippy::needless_lifetimes)]
 
 trait Trait {
     fn as_ptr(&self);

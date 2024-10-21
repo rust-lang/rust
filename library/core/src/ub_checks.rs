@@ -109,15 +109,15 @@ pub(crate) const fn check_language_ub() -> bool {
     intrinsics::ub_checks() && const_eval_select((), comptime, runtime)
 }
 
-/// Checks whether `ptr` is properly aligned with respect to
-/// `align_of::<T>()`.
+/// Checks whether `ptr` is properly aligned with respect to the given alignment, and
+/// if `is_zst == false`, that `ptr` is not null.
 ///
 /// In `const` this is approximate and can fail spuriously. It is primarily intended
 /// for `assert_unsafe_precondition!` with `check_language_ub`, in which case the
 /// check is anyway not executed in `const`.
 #[inline]
-pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize) -> bool {
-    !ptr.is_null() && ptr.is_aligned_to(align)
+pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize, is_zst: bool) -> bool {
+    ptr.is_aligned_to(align) && (is_zst || !ptr.is_null())
 }
 
 #[inline]

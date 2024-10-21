@@ -123,7 +123,7 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SameItemPushVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             // Non-determinism may occur ... don't give a lint
@@ -172,10 +172,8 @@ fn get_vec_push<'tcx>(
     stmt: &'tcx Stmt<'_>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, SyntaxContext)> {
     if let StmtKind::Semi(semi_stmt) = &stmt.kind
-            // Extract method being called
-            && let ExprKind::MethodCall(path, self_expr, args, _) = &semi_stmt.kind
-            // Figure out the parameters for the method call
-            && let Some(pushed_item) = args.first()
+            // Extract method being called and figure out the parameters for the method call
+            && let ExprKind::MethodCall(path, self_expr, [pushed_item], _) = &semi_stmt.kind
             // Check that the method being called is push() on a Vec
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec)
             && path.ident.name.as_str() == "push"

@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::{fmt, fs};
 
 use rinja::Template;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -39,15 +39,15 @@ pub(crate) fn collect_local_sources<'tcx>(
     tcx: TyCtxt<'tcx>,
     src_root: &Path,
     krate: &clean::Crate,
-) -> FxHashMap<PathBuf, String> {
-    let mut lsc = LocalSourcesCollector { tcx, local_sources: FxHashMap::default(), src_root };
+) -> FxIndexMap<PathBuf, String> {
+    let mut lsc = LocalSourcesCollector { tcx, local_sources: FxIndexMap::default(), src_root };
     lsc.visit_crate(krate);
     lsc.local_sources
 }
 
 struct LocalSourcesCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    local_sources: FxHashMap<PathBuf, String>,
+    local_sources: FxIndexMap<PathBuf, String>,
     src_root: &'a Path,
 }
 
@@ -103,7 +103,7 @@ impl LocalSourcesCollector<'_, '_> {
     }
 }
 
-impl DocVisitor for LocalSourcesCollector<'_, '_> {
+impl DocVisitor<'_> for LocalSourcesCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
         self.add_local_source(item);
 
@@ -122,7 +122,7 @@ struct SourceCollector<'a, 'tcx> {
     crate_name: &'a str,
 }
 
-impl DocVisitor for SourceCollector<'_, '_> {
+impl DocVisitor<'_> for SourceCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
         if !self.cx.include_sources {
             return;

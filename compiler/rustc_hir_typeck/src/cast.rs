@@ -66,7 +66,7 @@ pub(crate) struct CastCheck<'tcx> {
 }
 
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
-/// only allow casts between fat pointers if their metadata have the same
+/// only allow casts between wide pointers if their metadata have the same
 /// kind.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, TypeVisitable, TypeFoldable)]
 enum PointerKind<'tcx> {
@@ -162,7 +162,7 @@ enum CastError<'tcx> {
         src_kind: PointerKind<'tcx>,
         dst_kind: PointerKind<'tcx>,
     },
-    /// Cast of thin to fat raw ptr (e.g., `*const () as *const [u8]`).
+    /// Cast of thin to wide raw ptr (e.g., `*const () as *const [u8]`).
     SizedUnsizedCast,
     IllegalCast,
     NeedDeref,
@@ -172,12 +172,12 @@ enum CastError<'tcx> {
     NonScalar,
     UnknownExprPtrKind,
     UnknownCastPtrKind,
-    /// Cast of int to (possibly) fat raw pointer.
+    /// Cast of int to (possibly) wide raw pointer.
     ///
     /// Argument is the specific name of the metadata in plain words, such as "a vtable"
     /// or "a length". If this argument is None, then the metadata is unknown, for example,
     /// when we're typechecking a type parameter with a ?Sized bound.
-    IntToFatCast(Option<&'static str>),
+    IntToWideCast(Option<&'static str>),
     ForeignNonExhaustiveAdt,
 }
 
@@ -409,7 +409,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
                     if let ty::RawPtr(expr_ty, _) = *self.expr_ty.kind()
-                        && fcx.can_coerce(
+                        && fcx.may_coerce(
                             Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, expr_ty, mutbl),
                             self.cast_ty,
                         )
@@ -418,14 +418,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
-                        && fcx.can_coerce(Ty::new_mut_ref(fcx.tcx, expr_reg, expr_ty), self.cast_ty)
+                        && fcx.may_coerce(Ty::new_mut_ref(fcx.tcx, expr_reg, expr_ty), self.cast_ty)
                     {
                         sugg_mutref = true;
                     }
 
                     if !sugg_mutref
                         && sugg == None
-                        && fcx.can_coerce(
+                        && fcx.may_coerce(
                             Ty::new_ref(fcx.tcx, reg, self.expr_ty, mutbl),
                             self.cast_ty,
                         )
@@ -433,7 +433,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
                 } else if let ty::RawPtr(_, mutbl) = *self.cast_ty.kind()
-                    && fcx.can_coerce(
+                    && fcx.may_coerce(
                         Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, self.expr_ty, mutbl),
                         self.cast_ty,
                     )
@@ -545,14 +545,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
-                fcx.dcx().emit_err(errors::CastThinPointerToFatPointer {
+                fcx.dcx().emit_err(errors::CastThinPointerToWidePointer {
                     span: self.span,
                     expr_ty: self.expr_ty,
                     cast_ty: fcx.ty_to_string(self.cast_ty),
                     teach: fcx.tcx.sess.teach(E0607),
                 });
             }
-            CastError::IntToFatCast(known_metadata) => {
+            CastError::IntToWideCast(known_metadata) => {
                 let expr_if_nightly = fcx.tcx.sess.is_nightly_build().then_some(self.expr_span);
                 let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
                 let expr_ty = fcx.ty_to_string(self.expr_ty);
@@ -671,7 +671,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     #[instrument(skip(fcx), level = "debug")]
-    pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
+    pub(crate) fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
         self.expr_ty = fcx.structurally_resolve_type(self.expr_span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolve_type(self.cast_span, self.cast_ty);
 
@@ -861,7 +861,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             return Ok(CastKind::PtrPtrCast);
         }
 
-        // We can't cast to fat pointer if source pointer kind is unknown
+        // We can't cast to wide pointer if source pointer kind is unknown
         let Some(src_kind) = src_kind else {
             return Err(CastError::UnknownCastPtrKind);
         };
@@ -1054,10 +1054,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         match fcx.pointer_kind(m_cast.ty, self.span)? {
             None => Err(CastError::UnknownCastPtrKind),
             Some(PointerKind::Thin) => Ok(CastKind::AddrPtrCast),
-            Some(PointerKind::VTable(_)) => Err(CastError::IntToFatCast(Some("a vtable"))),
-            Some(PointerKind::Length) => Err(CastError::IntToFatCast(Some("a length"))),
+            Some(PointerKind::VTable(_)) => Err(CastError::IntToWideCast(Some("a vtable"))),
+            Some(PointerKind::Length) => Err(CastError::IntToWideCast(Some("a length"))),
             Some(PointerKind::OfAlias(_) | PointerKind::OfParam(_)) => {
-                Err(CastError::IntToFatCast(None))
+                Err(CastError::IntToWideCast(None))
             }
         }
     }

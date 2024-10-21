@@ -8,7 +8,7 @@ use crate::passes::{ImplStripper, ImportStripper, Pass, Stripper};
 
 pub(crate) const STRIP_PRIVATE: Pass = Pass {
     name: "strip-private",
-    run: strip_private,
+    run: Some(strip_private),
     description: "strips all private items from a crate which cannot be seen externally, \
                   implies strip-priv-imports",
 };

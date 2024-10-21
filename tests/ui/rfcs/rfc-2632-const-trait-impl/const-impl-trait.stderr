@@ -68,38 +68,6 @@ LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
    |                                                ^^^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:25:29
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                             ^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:25:48
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                                                ^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:25:29
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                             ^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:25:48
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                                                ^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:29:29
    |
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
@@ -138,6 +106,38 @@ error: `~const` can only be applied to `#[const_trait]` traits
    |
 LL | const fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T> + ~const Destruct) {}
    |                                                                         ^^^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:25:29
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |                             ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:25:48
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |                                                ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:25:29
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |                             ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:25:48
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |                                                ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:25:29

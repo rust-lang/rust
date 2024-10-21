@@ -16,7 +16,7 @@ use crate::visit::DocVisitor;
 
 pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
-    run: collect_trait_impls,
+    run: Some(collect_trait_impls),
     description: "retrieves trait impls for items in the crate",
 };
 
@@ -219,6 +219,8 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         panic!("collect-trait-impls can't run");
     };
 
+    krate.external_traits.extend(cx.external_traits.drain(..));
+
     krate
 }
 
@@ -227,7 +229,7 @@ struct SyntheticImplCollector<'a, 'tcx> {
     impls: Vec<Item>,
 }
 
-impl<'a, 'tcx> DocVisitor for SyntheticImplCollector<'a, 'tcx> {
+impl<'a, 'tcx> DocVisitor<'_> for SyntheticImplCollector<'a, 'tcx> {
     fn visit_item(&mut self, i: &Item) {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
@@ -254,7 +256,7 @@ impl<'cache> ItemAndAliasCollector<'cache> {
     }
 }
 
-impl<'cache> DocVisitor for ItemAndAliasCollector<'cache> {
+impl<'cache> DocVisitor<'_> for ItemAndAliasCollector<'cache> {
     fn visit_item(&mut self, i: &Item) {
         self.items.insert(i.item_id);
 

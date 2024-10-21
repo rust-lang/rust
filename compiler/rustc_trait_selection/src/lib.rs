@@ -20,7 +20,6 @@
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(cfg_version)]
-#![feature(control_flow_enum)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]

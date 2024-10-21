@@ -229,10 +229,10 @@ fn foo() {
         check_diagnostics(
             r#"
 struct non_camel_case_name {}
-    // ^^^^^^^^^^^^^^^^^^^ 💡 warn: Structure `non_camel_case_name` should have CamelCase name, e.g. `NonCamelCaseName`
+    // ^^^^^^^^^^^^^^^^^^^ 💡 warn: Structure `non_camel_case_name` should have UpperCamelCase name, e.g. `NonCamelCaseName`
 
 struct SCREAMING_CASE {}
-    // ^^^^^^^^^^^^^^ 💡 warn: Structure `SCREAMING_CASE` should have CamelCase name, e.g. `ScreamingCase`
+    // ^^^^^^^^^^^^^^ 💡 warn: Structure `SCREAMING_CASE` should have UpperCamelCase name, e.g. `ScreamingCase`
 "#,
         );
     }
@@ -261,10 +261,10 @@ struct SomeStruct { SomeField: u8 }
         check_diagnostics(
             r#"
 enum some_enum { Val(u8) }
-  // ^^^^^^^^^ 💡 warn: Enum `some_enum` should have CamelCase name, e.g. `SomeEnum`
+  // ^^^^^^^^^ 💡 warn: Enum `some_enum` should have UpperCamelCase name, e.g. `SomeEnum`
 
 enum SOME_ENUM {}
-  // ^^^^^^^^^ 💡 warn: Enum `SOME_ENUM` should have CamelCase name, e.g. `SomeEnum`
+  // ^^^^^^^^^ 💡 warn: Enum `SOME_ENUM` should have UpperCamelCase name, e.g. `SomeEnum`
 "#,
         );
     }
@@ -283,7 +283,7 @@ enum AABB {}
         check_diagnostics(
             r#"
 enum SomeEnum { SOME_VARIANT(u8) }
-             // ^^^^^^^^^^^^ 💡 warn: Variant `SOME_VARIANT` should have CamelCase name, e.g. `SomeVariant`
+             // ^^^^^^^^^^^^ 💡 warn: Variant `SOME_VARIANT` should have UpperCamelCase name, e.g. `SomeVariant`
 "#,
         );
     }
@@ -313,7 +313,7 @@ static some_weird_const: u8 = 10;
         check_diagnostics(
             r#"
 struct someStruct;
-    // ^^^^^^^^^^ 💡 warn: Structure `someStruct` should have CamelCase name, e.g. `SomeStruct`
+    // ^^^^^^^^^^ 💡 warn: Structure `someStruct` should have UpperCamelCase name, e.g. `SomeStruct`
 
 impl someStruct {
     fn SomeFunc(&self) {
@@ -370,6 +370,23 @@ mod F {
     }
 
     #[test]
+    fn external_macro() {
+        check_diagnostics(
+            r#"
+//- /library.rs library crate:library
+#[macro_export]
+macro_rules! trigger_lint {
+    () => { let FOO: () };
+}
+//- /user.rs crate:user deps:library
+fn foo() {
+    library::trigger_lint!();
+}
+    "#,
+        );
+    }
+
+    #[test]
     fn complex_ignore() {
         check_diagnostics(
             r#"
@@ -419,6 +436,64 @@ fn f((_O): u8) {}
     }
 
     #[test]
+    fn ignores_no_mangle_items() {
+        cov_mark::check!(extern_func_no_mangle_ignored);
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+            "#,
+        );
+    }
+
+    #[test]
+    fn ignores_no_mangle_items_with_no_abi() {
+        cov_mark::check!(extern_func_no_mangle_ignored);
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern fn NonSnakeCaseName(some_var: u8) -> u8;
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_mangle_items_with_rust_abi() {
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern "Rust" fn NonSnakeCaseName(some_var: u8) -> u8;
+              // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_mangle_items_non_extern() {
+        check_diagnostics(
+            r#"
+#[no_mangle]
+fn NonSnakeCaseName(some_var: u8) -> u8;
+// ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
+    }
+
+    #[test]
+    fn extern_fn_name() {
+        check_diagnostics(
+            r#"
+extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+           // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+extern "Rust" fn NonSnakeCaseName(some_var: u8) -> u8;
+              // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+extern fn NonSnakeCaseName(some_var: u8) -> u8;
+       // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
+    }
+
+    #[test]
     fn ignores_extern_items() {
         cov_mark::check!(extern_func_incorrect_case_ignored);
         cov_mark::check!(extern_static_incorrect_case_ignored);
@@ -455,11 +530,11 @@ extern {
         check_diagnostics(
             r#"
 trait BAD_TRAIT {
-   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have UpperCamelCase name, e.g. `BadTrait`
     const bad_const: u8;
        // ^^^^^^^^^ 💡 warn: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
     type BAD_TYPE;
-      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have UpperCamelCase name, e.g. `BadType`
     fn BAD_FUNCTION();
     // ^^^^^^^^^^^^ 💡 warn: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
     fn BadFunction();
@@ -477,11 +552,11 @@ trait BAD_TRAIT {
         check_diagnostics_with_disabled(
             r#"
 trait BAD_TRAIT {
-   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have UpperCamelCase name, e.g. `BadTrait`
     const bad_const: u8;
        // ^^^^^^^^^ 💡 warn: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
     type BAD_TYPE;
-      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have UpperCamelCase name, e.g. `BadType`
     fn BAD_FUNCTION(BAD_PARAM: u8);
     // ^^^^^^^^^^^^ 💡 warn: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
                  // ^^^^^^^^^ 💡 warn: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
@@ -589,11 +664,11 @@ mod CheckNonstandardStyle {
 mod CheckBadStyle {
   //^^^^^^^^^^^^^ 💡 error: Module `CheckBadStyle` should have snake_case name, e.g. `check_bad_style`
     struct fooo;
-         //^^^^ 💡 error: Structure `fooo` should have CamelCase name, e.g. `Fooo`
+         //^^^^ 💡 error: Structure `fooo` should have UpperCamelCase name, e.g. `Fooo`
 }
 
 mod F {
-  //^ 💡 warn: Module `F` should have snake_case name, e.g. `f`
+  //^ 💡 error: Module `F` should have snake_case name, e.g. `f`
     #![deny(non_snake_case)]
     fn CheckItWorksWithModAttr() {}
      //^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Function `CheckItWorksWithModAttr` should have snake_case name, e.g. `check_it_works_with_mod_attr`
@@ -601,7 +676,7 @@ mod F {
 
 #[deny(non_snake_case, non_camel_case_types)]
 pub struct some_type {
-         //^^^^^^^^^ 💡 error: Structure `some_type` should have CamelCase name, e.g. `SomeType`
+         //^^^^^^^^^ 💡 error: Structure `some_type` should have UpperCamelCase name, e.g. `SomeType`
     SOME_FIELD: u8,
   //^^^^^^^^^^ 💡 error: Field `SOME_FIELD` should have snake_case name, e.g. `some_field`
     SomeField: u16,
@@ -618,11 +693,11 @@ pub static SomeStatic: u8 = 10;
 
 #[deny(non_snake_case, non_camel_case_types, non_upper_case_globals)]
 trait BAD_TRAIT {
-   // ^^^^^^^^^ 💡 error: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+   // ^^^^^^^^^ 💡 error: Trait `BAD_TRAIT` should have UpperCamelCase name, e.g. `BadTrait`
     const bad_const: u8;
        // ^^^^^^^^^ 💡 error: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
     type BAD_TYPE;
-      // ^^^^^^^^ 💡 error: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+      // ^^^^^^^^ 💡 error: Type alias `BAD_TYPE` should have UpperCamelCase name, e.g. `BadType`
     fn BAD_FUNCTION(BAD_PARAM: u8);
     // ^^^^^^^^^^^^ 💡 error: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
                  // ^^^^^^^^^ 💡 error: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
@@ -854,6 +929,106 @@ fn func() {
     for non_snake in [] { non_snake; }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn override_lint_level() {
+        check_diagnostics(
+            r#"
+#[warn(nonstandard_style)]
+fn foo() {
+    let BAR;
+     // ^^^ 💡 warn: Variable `BAR` should have snake_case name, e.g. `bar`
+    #[allow(non_snake_case)]
+    let FOO;
+}
+
+#[warn(nonstandard_style)]
+fn foo() {
+    let BAR;
+     // ^^^ 💡 warn: Variable `BAR` should have snake_case name, e.g. `bar`
+    #[expect(non_snake_case)]
+    let FOO;
+    #[allow(non_snake_case)]
+    struct qux;
+        // ^^^ 💡 warn: Structure `qux` should have UpperCamelCase name, e.g. `Qux`
+
+    fn BAZ() {
+    // ^^^ 💡 error: Function `BAZ` should have snake_case name, e.g. `baz`
+        #![forbid(bad_style)]
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn different_files() {
+        check_diagnostics(
+            r#"
+//- /lib.rs
+#![expect(nonstandard_style)]
+
+mod BAD_CASE;
+
+fn BAD_CASE() {}
+
+//- /BAD_CASE.rs
+mod OtherBadCase;
+ // ^^^^^^^^^^^^ 💡 error: Module `OtherBadCase` should have snake_case name, e.g. `other_bad_case`
+
+//- /BAD_CASE/OtherBadCase.rs
+#![deny(non_snake_case)]
+
+fn FOO() {}
+// ^^^ 💡 error: Function `FOO` should have snake_case name, e.g. `foo`
+
+#[allow(bad_style)]
+mod FINE_WITH_BAD_CASE;
+
+//- /BAD_CASE/OtherBadCase/FINE_WITH_BAD_CASE.rs
+struct QUX;
+const foo: i32 = 0;
+fn BAR() {
+    let BAZ;
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn cfged_lint_attrs() {
+        check_diagnostics(
+            r#"
+//- /lib.rs cfg:feature=cool_feature
+#[cfg_attr(any(), allow(non_snake_case))]
+fn FOO() {}
+// ^^^ 💡 warn: Function `FOO` should have snake_case name, e.g. `foo`
+
+#[cfg_attr(non_existent, allow(non_snake_case))]
+fn BAR() {}
+// ^^^ 💡 warn: Function `BAR` should have snake_case name, e.g. `bar`
+
+#[cfg_attr(feature = "cool_feature", allow(non_snake_case))]
+fn BAZ() {}
+
+#[cfg_attr(feature = "cool_feature", cfg_attr ( all ( ) , allow ( non_snake_case ) ) ) ]
+fn QUX() {}
+        "#,
+        );
+    }
+
+    #[test]
+    fn allow_with_comment() {
+        check_diagnostics(
+            r#"
+#[allow(
+    // Yo, sup
+    non_snake_case
+)]
+fn foo(_HelloWorld: ()) {}
+        "#,
         );
     }
 }

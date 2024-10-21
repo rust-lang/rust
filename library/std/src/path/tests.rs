@@ -139,7 +139,7 @@ fn test_pathbuf_leak() {
 }
 
 #[test]
-#[cfg(unix)]
+#[cfg(any(unix, target_os = "wasi"))]
 pub fn test_decompositions_unix() {
     t!("",
     iter: [],
@@ -1201,7 +1201,10 @@ pub fn test_push() {
         });
     );
 
-    if cfg!(unix) || cfg!(all(target_env = "sgx", target_vendor = "fortanix")) {
+    if cfg!(unix)
+        || cfg!(target_os = "wasi")
+        || cfg!(all(target_env = "sgx", target_vendor = "fortanix"))
+    {
         tp!("", "foo", "foo");
         tp!("foo", "bar", "foo/bar");
         tp!("foo/", "bar", "foo/bar");
@@ -1358,7 +1361,10 @@ pub fn test_set_file_name() {
     tfn!("foo", "bar", "bar");
     tfn!("foo", "", "");
     tfn!("", "foo", "foo");
-    if cfg!(unix) || cfg!(all(target_env = "sgx", target_vendor = "fortanix")) {
+    if cfg!(unix)
+        || cfg!(target_os = "wasi")
+        || cfg!(all(target_env = "sgx", target_vendor = "fortanix"))
+    {
         tfn!(".", "foo", "./foo");
         tfn!("foo/", "bar", "bar");
         tfn!("foo/.", "bar", "bar");
@@ -1758,7 +1764,7 @@ fn test_components_debug() {
     assert_eq!(expected, actual);
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, target_os = "wasi"))]
 #[test]
 fn test_iter_debug() {
     let path = Path::new("/tmp");
@@ -1859,7 +1865,7 @@ fn test_ord() {
 }
 
 #[test]
-#[cfg(unix)]
+#[cfg(any(unix, target_os = "wasi"))]
 fn test_unix_absolute() {
     use crate::path::absolute;
 

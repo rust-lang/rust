@@ -1,5 +1,3 @@
-use core::ptr::addr_of;
-
 use super::api::{self, WinError};
 use super::{IoResult, to_u16s};
 use crate::borrow::Cow;
@@ -116,7 +114,7 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.handle.0 == c::INVALID_HANDLE_VALUE {
             // This iterator was initialized with an `INVALID_HANDLE_VALUE` as its handle.
-            // Simply return `None` because this is only the case when `FindFirstFileW` in
+            // Simply return `None` because this is only the case when `FindFirstFileExW` in
             // the construction of this iterator returns `ERROR_FILE_NOT_FOUND` which means
             // no matchhing files can be found.
             return None;
@@ -325,7 +323,7 @@ impl File {
                     let result = c::SetFileInformationByHandle(
                         handle.as_raw_handle(),
                         c::FileEndOfFileInfo,
-                        ptr::addr_of!(eof).cast::<c_void>(),
+                        (&raw const eof).cast::<c_void>(),
                         mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
                     );
                     if result == 0 {
@@ -364,7 +362,7 @@ impl File {
                 cvt(c::GetFileInformationByHandleEx(
                     self.handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
-                    ptr::addr_of_mut!(attr_tag).cast(),
+                    (&raw mut attr_tag).cast(),
                     mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
@@ -396,7 +394,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             let mut attr = FileAttr {
@@ -428,7 +426,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileStandardInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             attr.file_size = info.AllocationSize as u64;
@@ -438,7 +436,7 @@ impl File {
                 cvt(c::GetFileInformationByHandleEx(
                     self.handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
-                    ptr::addr_of_mut!(attr_tag).cast(),
+                    (&raw mut attr_tag).cast(),
                     mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
@@ -545,22 +543,20 @@ impl File {
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
-                    let info: *mut c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                        ptr::addr_of_mut!((*buf).rest).cast();
+                    let info: *mut c::SYMBOLIC_LINK_REPARSE_BUFFER = (&raw mut (*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
+                        (&raw mut (*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0,
                     )
                 }
                 c::IO_REPARSE_TAG_MOUNT_POINT => {
-                    let info: *mut c::MOUNT_POINT_REPARSE_BUFFER =
-                        ptr::addr_of_mut!((*buf).rest).cast();
+                    let info: *mut c::MOUNT_POINT_REPARSE_BUFFER = (&raw mut (*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
+                        (&raw mut (*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         false,
@@ -643,7 +639,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             Ok(info)
@@ -790,11 +786,11 @@ impl<'a> Iterator for DirBuffIter<'a> {
             // it does not seem that reality is so kind, and assuming this
             // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
             // presumably, this can be blamed on buggy filesystem drivers, but who knows.
-            let next_entry = ptr::addr_of!((*info).NextEntryOffset).read_unaligned() as usize;
-            let length = ptr::addr_of!((*info).FileNameLength).read_unaligned() as usize;
-            let attrs = ptr::addr_of!((*info).FileAttributes).read_unaligned();
+            let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
+            let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
+            let attrs = (&raw const (*info).FileAttributes).read_unaligned();
             let name = from_maybe_unaligned(
-                ptr::addr_of!((*info).FileName).cast::<u16>(),
+                (&raw const (*info).FileName).cast::<u16>(),
                 length / size_of::<u16>(),
             );
             let is_directory = (attrs & c::FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -1051,8 +1047,22 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let path = maybe_verbatim(&star)?;
 
     unsafe {
-        let mut wfd = mem::zeroed();
-        let find_handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+        let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
+        // this is like FindFirstFileW (see https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfileexw),
+        // but with FindExInfoBasic it should skip filling WIN32_FIND_DATAW.cAlternateFileName
+        // (see https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataw)
+        // (which will be always null string value and currently unused) and should be faster.
+        //
+        // We can pass FIND_FIRST_EX_LARGE_FETCH to dwAdditionalFlags to speed up things more,
+        // but as we don't know user's use profile of this function, lets be conservative.
+        let find_handle = c::FindFirstFileExW(
+            path.as_ptr(),
+            c::FindExInfoBasic,
+            &mut wfd as *mut _ as _,
+            c::FindExSearchNameMatch,
+            ptr::null(),
+            0,
+        );
 
         if find_handle != c::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
@@ -1061,7 +1071,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
                 first: Some(wfd),
             })
         } else {
-            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileW` function
+            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileExW` function
             // if no matching files can be found, but not necessarily that the path to find the
             // files in does not exist.
             //
@@ -1083,7 +1093,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
             // Just return the error constructed from the raw OS error if the above is not the case.
             //
-            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileW` function
+            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileExW` function
             // when the path to search in does not exist in the first place.
             Err(Error::from_raw_os_error(last_error.code as i32))
         }
@@ -1224,7 +1234,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | reparse.as_flag());
 
     // Attempt to open the file normally.
-    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileW`.
+    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileExW`.
     // If the fallback fails for any reason we return the original error.
     match File::open(path, &opts) {
         Ok(file) => file.file_attr(),
@@ -1241,13 +1251,20 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
             unsafe {
                 let path = maybe_verbatim(path)?;
 
-                // `FindFirstFileW` accepts wildcard file names.
+                // `FindFirstFileExW` accepts wildcard file names.
                 // Fortunately wildcards are not valid file names and
                 // `ERROR_SHARING_VIOLATION` means the file exists (but is locked)
                 // therefore it's safe to assume the file name given does not
                 // include wildcards.
-                let mut wfd = mem::zeroed();
-                let handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+                let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
+                let handle = c::FindFirstFileExW(
+                    path.as_ptr(),
+                    c::FindExInfoBasic,
+                    &mut wfd as *mut _ as _,
+                    c::FindExSearchNameMatch,
+                    ptr::null(),
+                    0,
+                );
 
                 if handle == c::INVALID_HANDLE_VALUE {
                     // This can fail if the user does not have read access to the
@@ -1257,7 +1274,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
                     // We no longer need the find handle.
                     c::FindClose(handle);
 
-                    // `FindFirstFileW` reads the cached file information from the
+                    // `FindFirstFileExW` reads the cached file information from the
                     // directory. The downside is that this metadata may be outdated.
                     let attrs = FileAttr::from(wfd);
                     if reparse == ReparsePoint::Follow && attrs.file_type().is_symlink() {
@@ -1326,7 +1343,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             pfrom.as_ptr(),
             pto.as_ptr(),
             Some(callback),
-            core::ptr::addr_of_mut!(size) as *mut _,
+            (&raw mut size) as *mut _,
             ptr::null_mut(),
             0,
         )
@@ -1405,7 +1422,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
         cvt(c::DeviceIoControl(
             d.as_raw_handle(),
             c::FSCTL_SET_REPARSE_POINT,
-            addr_of!(header).cast::<c_void>(),
+            (&raw const header).cast::<c_void>(),
             data_len as u32 + 8,
             ptr::null_mut(),
             0,

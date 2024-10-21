@@ -10,7 +10,10 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     data::adt::VariantData,
-    hir::{Array, BinaryOp, BindingId, CaptureBy, Expr, ExprId, Pat, PatId, Statement, UnaryOp},
+    hir::{
+        Array, AsmOperand, BinaryOp, BindingId, CaptureBy, Expr, ExprId, Pat, PatId, Statement,
+        UnaryOp,
+    },
     lang_item::LangItem,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
@@ -26,6 +29,7 @@ use crate::{
     db::{HirDatabase, InternedClosure},
     error_lifetime, from_chalk_trait_id, from_placeholder_idx,
     generics::Generics,
+    infer::coerce::CoerceNever,
     make_binders,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
     to_chalk_trait_id,
@@ -62,7 +66,7 @@ impl InferenceContext<'_> {
         }
 
         // Deduction from where-clauses in scope, as well as fn-pointer coercion are handled here.
-        let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty);
+        let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty, CoerceNever::Yes);
 
         // Coroutines are not Fn* so return early.
         if matches!(closure_ty.kind(Interner), TyKind::Coroutine(..)) {
@@ -666,7 +670,21 @@ impl InferenceContext<'_> {
     fn walk_expr_without_adjust(&mut self, tgt_expr: ExprId) {
         match &self.body[tgt_expr] {
             Expr::OffsetOf(_) => (),
-            Expr::InlineAsm(e) => self.walk_expr_without_adjust(e.e),
+            Expr::InlineAsm(e) => e.operands.iter().for_each(|(_, op)| match op {
+                AsmOperand::In { expr, .. }
+                | AsmOperand::Out { expr: Some(expr), .. }
+                | AsmOperand::InOut { expr, .. } => self.walk_expr_without_adjust(*expr),
+                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    self.walk_expr_without_adjust(*in_expr);
+                    if let Some(out_expr) = out_expr {
+                        self.walk_expr_without_adjust(*out_expr);
+                    }
+                }
+                AsmOperand::Out { expr: None, .. }
+                | AsmOperand::Const(_)
+                | AsmOperand::Label(_)
+                | AsmOperand::Sym(_) => (),
+            }),
             Expr::If { condition, then_branch, else_branch } => {
                 self.consume_expr(*condition);
                 self.consume_expr(*then_branch);

@@ -5,11 +5,15 @@ import type * as ra from "./lsp_ext";
 
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
-import { prepareEnv } from "./run";
+import { createTaskFromRunnable, prepareEnv } from "./run";
+import { execSync } from "node:child_process";
 import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
 import type { Config } from "./config";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
+
+// Here we want to keep track on everything that's currently running
+const activeDebugSessionIds: string[] = [];
 
 export async function makeDebugConfig(ctx: Ctx, runnable: ra.Runnable): Promise<void> {
     const scope = ctx.activeRustEditor?.document.uri;
@@ -45,6 +49,8 @@ export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promis
     const wsLaunchSection = vscode.workspace.getConfiguration("launch");
     const configurations = wsLaunchSection.get<any[]>("configurations") || [];
 
+    // The runnable label is the name of the test with the "test prefix"
+    // e.g. test test_feature_x
     const index = configurations.findIndex((c) => c.name === runnable.label);
     if (-1 !== index) {
         debugConfig = configurations[index];
@@ -100,9 +106,11 @@ async function getDebugConfiguration(
         const commandCCpp: string = createCommandLink("ms-vscode.cpptools");
         const commandCodeLLDB: string = createCommandLink("vadimcn.vscode-lldb");
         const commandNativeDebug: string = createCommandLink("webfreak.debug");
+        const commandLLDBDap: string = createCommandLink("llvm-vs-code-extensions.lldb-dap");
 
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
+                `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
                 `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
                 `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
         );
@@ -168,6 +176,8 @@ async function getDebugConfiguration(
     if (debugConfig.name === "run binary") {
         // The LSP side: crates\rust-analyzer\src\main_loop\handlers.rs,
         // fn to_lsp_runnable(...) with RunnableKind::Bin
+        // FIXME: Neither crates\rust-analyzer\src\main_loop\handlers.rs
+        // nor to_lsp_runnable exist anymore
         debugConfig.name = `run ${path.basename(executable)}`;
     }
 
@@ -213,10 +223,30 @@ type DebugConfigProvider<Type extends string, DebugConfig extends BaseDebugConfi
 
 type KnownEnginesType = (typeof knownEngines)[keyof typeof knownEngines];
 const knownEngines: {
+    "llvm-vs-code-extensions.lldb-dap": DebugConfigProvider<"lldb-dap", LldbDapDebugConfig>;
     "vadimcn.vscode-lldb": DebugConfigProvider<"lldb", CodeLldbDebugConfig>;
     "ms-vscode.cpptools": DebugConfigProvider<"cppvsdbg" | "cppdbg", CCppDebugConfig>;
     "webfreak.debug": DebugConfigProvider<"gdb", NativeDebugConfig>;
 } = {
+    "llvm-vs-code-extensions.lldb-dap": {
+        type: "lldb-dap",
+        executableProperty: "program",
+        environmentProperty: (env) => ["env", Object.entries(env).map(([k, v]) => `${k}=${v}`)],
+        runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
+            "args",
+            runnableArgs.executableArgs,
+        ],
+        additional: {
+            sourceMap: [
+                [
+                    `/rustc/${/commit-hash:\s(.*)$/m.exec(
+                        execSync("rustc -V -v", {}).toString(),
+                    )?.[1]}/library`,
+                    "${config:rust-analyzer.cargo.sysroot}/lib/rustlib/src/rust/library",
+                ],
+            ],
+        },
+    },
     "vadimcn.vscode-lldb": {
         type: "lldb",
         executableProperty: "program",
@@ -329,6 +359,13 @@ type CCppDebugConfig = {
     };
 } & BaseDebugConfig<"cppvsdbg" | "cppdbg">;
 
+type LldbDapDebugConfig = {
+    program: string;
+    args: string[];
+    env: string[];
+    sourceMap: [string, string][];
+} & BaseDebugConfig<"lldb-dap">;
+
 type CodeLldbDebugConfig = {
     program: string;
     args: string[];
@@ -358,4 +395,50 @@ function quote(xs: string[]) {
             return s.replace(/([A-Za-z]:)?([#!"$&'()*,:;<=>?@[\\\]^`{|}])/g, "$1\\$2");
         })
         .join(" ");
+}
+
+async function recompileTestFromDebuggingSession(session: vscode.DebugSession, ctx: Ctx) {
+    const { cwd, args: sessionArgs }: vscode.DebugConfiguration = session.configuration;
+
+    const args: ra.CargoRunnableArgs = {
+        cwd: cwd,
+        cargoArgs: ["test", "--no-run", "--test", "lib"],
+
+        // The first element of the debug configuration args is the test path e.g. "test_bar::foo::test_a::test_b"
+        executableArgs: sessionArgs,
+    };
+    const runnable: ra.Runnable = {
+        kind: "cargo",
+        label: "compile-test",
+        args,
+    };
+    const task: vscode.Task = await createTaskFromRunnable(runnable, ctx.config);
+
+    // It is not needed to call the language server, since the test path is already resolved in the
+    // configuration option. We can simply call a debug configuration with the --no-run option to compile
+    await vscode.tasks.executeTask(task);
+}
+
+export function initializeDebugSessionTrackingAndRebuild(ctx: Ctx) {
+    vscode.debug.onDidStartDebugSession((session: vscode.DebugSession) => {
+        if (!activeDebugSessionIds.includes(session.id)) {
+            activeDebugSessionIds.push(session.id);
+        }
+    });
+
+    vscode.debug.onDidTerminateDebugSession(async (session: vscode.DebugSession) => {
+        // The id of the session will be the same when pressing restart the restart button
+        if (activeDebugSessionIds.find((s) => s === session.id)) {
+            await recompileTestFromDebuggingSession(session, ctx);
+        }
+        removeActiveSession(session);
+    });
+}
+
+function removeActiveSession(session: vscode.DebugSession) {
+    const activeSessionId = activeDebugSessionIds.findIndex((id) => id === session.id);
+
+    if (activeSessionId !== -1) {
+        activeDebugSessionIds.splice(activeSessionId, 1);
+    }
 }

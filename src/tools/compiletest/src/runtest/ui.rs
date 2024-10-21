@@ -18,14 +18,14 @@ impl TestCx<'_> {
             let pm = Some(PassMode::Check);
             let proc_res =
                 self.compile_test_general(WillExecute::No, Emit::Metadata, pm, Vec::new());
-            self.check_if_test_should_compile(&proc_res, pm);
+            self.check_if_test_should_compile(self.props.fail_mode, pm, &proc_res);
         }
 
         let pm = self.pass_mode();
         let should_run = self.should_run(pm);
         let emit_metadata = self.should_emit_metadata(pm);
         let proc_res = self.compile_test(should_run, emit_metadata);
-        self.check_if_test_should_compile(&proc_res, pm);
+        self.check_if_test_should_compile(self.props.fail_mode, pm, &proc_res);
         if matches!(proc_res.truncated, Truncated::Yes)
             && !self.props.dont_check_compiler_stdout
             && !self.props.dont_check_compiler_stderr

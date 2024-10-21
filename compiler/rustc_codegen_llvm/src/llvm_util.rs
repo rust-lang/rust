@@ -6,6 +6,7 @@ use std::{ptr, slice, str};
 
 use libc::c_int;
 use rustc_codegen_ssa::base::wants_wasm_eh;
+use rustc_codegen_ssa::codegen_attrs::check_tied_features;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::unord::UnordSet;
@@ -19,8 +20,8 @@ use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATU
 
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    FixedX18InvalidArch, InvalidTargetFeaturePrefix, PossibleFeature, TargetFeatureDisableOrEnable,
-    UnknownCTargetFeature, UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
+    FixedX18InvalidArch, InvalidTargetFeaturePrefix, PossibleFeature, UnknownCTargetFeature,
+    UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
 
@@ -247,7 +248,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "pmuv3") => Some(LLVMFeature::new("perfmon")),
         ("aarch64", "paca") => Some(LLVMFeature::new("pauth")),
         ("aarch64", "pacg") => Some(LLVMFeature::new("pauth")),
-        ("aarch64", "sve-b16b16") => Some(LLVMFeature::new("b16b16")),
+        // Before LLVM 20 those two features were packaged together as b16b16
+        ("aarch64", "sve-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
+        ("aarch64", "sme-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
         ("aarch64", "flagm2") => Some(LLVMFeature::new("altnzcv")),
         // Rust ties fp and neon together.
         ("aarch64", "neon") => {
@@ -264,31 +267,16 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
             Some(LLVMFeature::new("fast-unaligned-access"))
         }
+        // Filter out features that are not supported by the current LLVM version
+        ("riscv32" | "riscv64", "zaamo") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zabha") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zalrsc") if get_version().0 < 19 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => {
             Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
         }
         (_, s) => Some(LLVMFeature::new(s)),
     }
-}
-
-/// Given a map from target_features to whether they are enabled or disabled,
-/// ensure only valid combinations are allowed.
-pub(crate) fn check_tied_features(
-    sess: &Session,
-    features: &FxHashMap<&str, bool>,
-) -> Option<&'static [&'static str]> {
-    if !features.is_empty() {
-        for tied in sess.target.tied_target_features() {
-            // Tied features must be set to the same value, or not set at all
-            let mut tied_iter = tied.iter();
-            let enabled = features.get(tied_iter.next().unwrap());
-            if tied_iter.any(|f| enabled != features.get(f)) {
-                return Some(tied);
-            }
-        }
-    }
-    None
 }
 
 /// Used to generate cfg variables and apply features
@@ -478,7 +466,7 @@ pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
                     &tm,
                     cpu_cstring.as_ptr(),
                     callback,
-                    std::ptr::addr_of_mut!(out) as *mut c_void,
+                    (&raw mut out) as *mut c_void,
                 );
             }
         }
@@ -536,6 +524,11 @@ pub(crate) fn global_llvm_features(
     // -Ctarget-cpu=native
     match sess.opts.cg.target_cpu {
         Some(ref s) if s == "native" => {
+            // We have already figured out the actual CPU name with `LLVMRustGetHostCPUName` and set
+            // that for LLVM, so the features implied by that CPU name will be available everywhere.
+            // However, that is not sufficient: e.g. `skylake` alone is not sufficient to tell if
+            // some of the instructions are available or not. So we have to also explicitly ask for
+            // the exact set of features available on the host, and enable all of them.
             let features_string = unsafe {
                 let ptr = llvm::LLVMGetHostCPUFeatures();
                 let features_string = if !ptr.is_null() {
@@ -676,7 +669,7 @@ pub(crate) fn global_llvm_features(
         features.extend(feats);
 
         if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-            sess.dcx().emit_err(TargetFeatureDisableOrEnable {
+            sess.dcx().emit_err(rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable {
                 features: f,
                 span: None,
                 missing_features: None,

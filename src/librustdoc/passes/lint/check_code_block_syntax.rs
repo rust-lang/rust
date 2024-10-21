@@ -145,7 +145,7 @@ struct BufferEmitter {
 }
 
 impl Translate for BufferEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+    fn fluent_bundle(&self) -> Option<&rustc_errors::FluentBundle> {
         None
     }
 
@@ -169,7 +169,7 @@ impl Emitter for BufferEmitter {
         }
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+    fn source_map(&self) -> Option<&SourceMap> {
         None
     }
 }
