@@ -391,9 +391,21 @@ fn compute_discriminant_value<'ll, 'tcx>(
 
                 DiscrResult::Range(min, max)
             } else {
-                let value = (variant_index.as_u32() as u128)
-                    .wrapping_sub(niche_variants.start().as_u32() as u128)
-                    .wrapping_add(niche_start);
+                let discr_len = niche_variants.end().as_u32() as u128
+                    - niche_variants.start().as_u32() as u128
+                    + 1;
+                // FIXME: Why do we even return discriminant for absent variants?
+                let adj_idx = (variant_index.as_u32() as u128)
+                    .wrapping_sub(niche_variants.start().as_u32() as u128);
+
+                let discr = if niche_variants.contains(&untagged_variant) {
+                    let adj_untagged_idx =
+                        (untagged_variant.as_u32() - niche_variants.start().as_u32()) as u128;
+                    (adj_idx + discr_len - adj_untagged_idx) % discr_len - 1
+                } else {
+                    adj_idx
+                };
+                let value = discr.wrapping_add(niche_start);
                 let value = tag.size(cx).truncate(value);
                 DiscrResult::Value(value)
             }
