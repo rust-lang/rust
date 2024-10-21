@@ -1,12 +1,14 @@
 use super::Builder;
 use crate::any::Any;
+use crate::assert_matches::assert_matches;
+use crate::future::Future as _;
 use crate::panic::panic_any;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::mpsc::{Sender, channel};
 use crate::sync::{Arc, Barrier};
 use crate::thread::{self, Scope, ThreadId};
 use crate::time::{Duration, Instant};
-use crate::{mem, result};
+use crate::{mem, result, task};
 
 // !!! These tests are dangerous. If something is buggy, they will hang, !!!
 // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
@@ -409,4 +411,48 @@ fn test_minimal_thread_stack() {
     let before = builder.spawn(|| COUNT.fetch_add(1, Ordering::Relaxed)).unwrap().join().unwrap();
     assert_eq!(before, 0);
     assert_eq!(COUNT.load(Ordering::Relaxed), 1);
+}
+
+fn join_future_test(scoped: bool) {
+    /// Simple `Waker` implementation.
+    /// If `std` ever gains a `block_on()`, we can consider replacing this with that.
+    struct MyWaker(Sender<()>);
+    impl task::Wake for MyWaker {
+        fn wake(self: Arc<Self>) {
+            _ = self.0.send(());
+        }
+    }
+
+    // Communication setup.
+    let (thread_delay_tx, thread_delay_rx) = channel();
+    let (waker_tx, waker_rx) = channel();
+    let waker = task::Waker::from(Arc::new(MyWaker(waker_tx)));
+    let ctx = &mut task::Context::from_waker(&waker);
+
+    thread::scope(|s| {
+        // Create the thread and the future under test
+        let thread_body = move || {
+            thread_delay_rx.recv().unwrap();
+            "hello"
+        };
+        let mut future = crate::pin::pin!(if scoped {
+            s.spawn(thread_body).into_join_future()
+        } else {
+            thread::spawn(thread_body).into_join_future()
+        });
+
+        // Actual test
+        assert_matches!(future.as_mut().poll(ctx), task::Poll::Pending);
+        thread_delay_tx.send(()).unwrap(); // Unblock the thread
+        waker_rx.recv().unwrap(); // Wait for waking (as an executor would)
+        assert_matches!(future.as_mut().poll(ctx), task::Poll::Ready(Ok("hello")));
+    });
+}
+#[test]
+fn join_future_unscoped() {
+    join_future_test(false)
+}
+#[test]
+fn join_future_scoped() {
+    join_future_test(true)
 }
