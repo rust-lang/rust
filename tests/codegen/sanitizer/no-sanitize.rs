@@ -7,6 +7,16 @@
 #![crate_type = "lib"]
 #![feature(no_sanitize)]
 
+// CHECK:     @UNSANITIZED = constant{{.*}} no_sanitize_address
+// CHECK-NOT: @__asan_global_UNSANITIZED
+#[no_mangle]
+#[no_sanitize(address)]
+pub static UNSANITIZED: u32 = 0;
+
+// CHECK: @__asan_global_SANITIZED
+#[no_mangle]
+pub static SANITIZED: u32 = 0;
+
 // CHECK-LABEL: ; no_sanitize::unsanitized
 // CHECK-NEXT:  ; Function Attrs:
 // CHECK-NOT:   sanitize_address
