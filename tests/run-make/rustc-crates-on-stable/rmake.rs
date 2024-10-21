@@ -31,6 +31,10 @@ fn main() {
             "rustc_pattern_analysis",
             "-p",
             "rustc_lexer",
+            "-p",
+            "rustc_abi",
+            "-p",
+            "rustc_parse_format",
         ])
         .run();
 }

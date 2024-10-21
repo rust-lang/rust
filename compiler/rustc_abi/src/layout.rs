@@ -11,8 +11,10 @@ use crate::{
     Variants, WrappingRange,
 };
 
+#[cfg(feature = "nightly")]
 mod ty;
 
+#[cfg(feature = "nightly")]
 pub use ty::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
 
 // A variant is absent if it's uninhabited and only has ZST fields.

@@ -3,18 +3,23 @@ mod abi {
     pub(crate) use crate::Variants;
 }
 
+#[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 
-use crate::{Abi, Align, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+#[cfg(feature = "nightly")]
+use crate::{Abi, FieldsShape, TyAbiInterface, TyAndLayout};
+use crate::{Align, HasDataLayout, Size};
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RegKind {
     Integer,
     Float,
     Vector,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Reg {
     pub kind: RegKind,
     pub size: Size,
@@ -108,15 +113,8 @@ impl HomogeneousAggregate {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl<'a, Ty> TyAndLayout<'a, Ty> {
-    /// Returns `true` if this is an aggregate type (including a ScalarPair!)
-    pub fn is_aggregate(&self) -> bool {
-        match self.abi {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
-            Abi::ScalarPair(..) | Abi::Aggregate { .. } => true,
-        }
-    }
-
     /// Returns `Homogeneous` if this layout is an aggregate containing fields of
     /// only a single type (e.g., `(u32, u32)`). Such aggregates are often
     /// special-cased in ABIs.
