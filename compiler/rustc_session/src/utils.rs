@@ -70,13 +70,6 @@ impl NativeLibKind {
     pub fn is_statically_included(&self) -> bool {
         matches!(self, NativeLibKind::Static { .. })
     }
-
-    pub fn is_dllimport(&self) -> bool {
-        matches!(
-            self,
-            NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified
-        )
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]

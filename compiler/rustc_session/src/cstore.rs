@@ -88,6 +88,31 @@ impl NativeLib {
     }
 }
 
+#[derive(Debug, HashStable_Generic)]
+pub struct NativeLibs {
+    libs: Vec<NativeLib>,
+}
+impl NativeLibs {
+    pub fn iter(&self) -> impl Iterator<Item = &NativeLib> {
+        // Hide entries without a library name.
+        self.iter_all_items().filter(|l| !l.name.is_empty())
+    }
+
+    pub fn iter_all_items(&self) -> impl Iterator<Item = &NativeLib> {
+        self.libs.iter()
+    }
+}
+impl From<Vec<NativeLib>> for NativeLibs {
+    fn from(libs: Vec<NativeLib>) -> Self {
+        Self { libs }
+    }
+}
+impl FromIterator<NativeLib> for NativeLibs {
+    fn from_iter<T: IntoIterator<Item = NativeLib>>(iter: T) -> Self {
+        Self { libs: FromIterator::from_iter(iter) }
+    }
+}
+
 /// Different ways that the PE Format can decorate a symbol name.
 /// From <https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-name-type>
 #[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, PartialEq, Eq)]

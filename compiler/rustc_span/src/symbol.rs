@@ -490,6 +490,7 @@ symbols! {
         avx512f,
         await_macro,
         bang,
+        bare_link_kind,
         begin_panic,
         bench,
         bin,

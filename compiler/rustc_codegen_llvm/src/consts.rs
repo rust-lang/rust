@@ -358,10 +358,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
         }
 
-        if self.use_dll_storage_attrs
-            && let Some(library) = self.tcx.native_library(def_id)
-            && library.kind.is_dllimport()
-        {
+        if self.use_dll_storage_attrs && self.tcx.is_dllimport(def_id) {
             // For foreign (native) libs we know the exact storage type to use.
             unsafe {
                 llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
