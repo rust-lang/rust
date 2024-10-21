@@ -1,4 +1,4 @@
-// 32-bit x86 returns `f32` and `f64` differently to avoid the x87 stack.
+// 32-bit x86 returns float types differently to avoid the x87 stack.
 // 32-bit systems will return 128bit values using a return area pointer.
 //@ revisions: x86 bit32 bit64
 //@[x86] only-x86
@@ -58,42 +58,44 @@ pub fn f16_le(a: f16, b: f16) -> bool {
     a <= b
 }
 
-// CHECK-LABEL: half @f16_neg(
+// This is where we check the argument and return ABI for f16.
+// other-LABEL: half @f16_neg(half
+// x86-LABEL: i16 @f16_neg(half
 #[no_mangle]
 pub fn f16_neg(a: f16) -> f16 {
     // CHECK: fneg half %{{.+}}
     -a
 }
 
-// CHECK-LABEL: half @f16_add(
+// CHECK-LABEL: @f16_add
 #[no_mangle]
 pub fn f16_add(a: f16, b: f16) -> f16 {
     // CHECK: fadd half %{{.+}}, %{{.+}}
     a + b
 }
 
-// CHECK-LABEL: half @f16_sub(
+// CHECK-LABEL: @f16_sub
 #[no_mangle]
 pub fn f16_sub(a: f16, b: f16) -> f16 {
     // CHECK: fsub half %{{.+}}, %{{.+}}
     a - b
 }
 
-// CHECK-LABEL: half @f16_mul(
+// CHECK-LABEL: @f16_mul
 #[no_mangle]
 pub fn f16_mul(a: f16, b: f16) -> f16 {
     // CHECK: fmul half %{{.+}}, %{{.+}}
     a * b
 }
 
-// CHECK-LABEL: half @f16_div(
+// CHECK-LABEL: @f16_div
 #[no_mangle]
 pub fn f16_div(a: f16, b: f16) -> f16 {
     // CHECK: fdiv half %{{.+}}, %{{.+}}
     a / b
 }
 
-// CHECK-LABEL: half @f16_rem(
+// CHECK-LABEL: @f16_rem
 #[no_mangle]
 pub fn f16_rem(a: f16, b: f16) -> f16 {
     // CHECK: frem half %{{.+}}, %{{.+}}
@@ -142,10 +144,13 @@ pub fn f16_rem_assign(a: &mut f16, b: f16) {
 
 /* float to float conversions */
 
-// CHECK-LABEL: half @f16_as_self(
+// other-LABEL: half @f16_as_self(
+// x86-LABEL: i16 @f16_as_self(
 #[no_mangle]
 pub fn f16_as_self(a: f16) -> f16 {
-    // CHECK: ret half %{{.+}}
+    // other-CHECK: ret half %{{.+}}
+    // x86-CHECK: bitcast half
+    // x86-CHECK: ret i16
     a as f16
 }
 
@@ -176,21 +181,21 @@ pub fn f16_as_f128(a: f16) -> f128 {
     a as f128
 }
 
-// CHECK-LABEL: half @f32_as_f16(
+// CHECK-LABEL: @f32_as_f16
 #[no_mangle]
 pub fn f32_as_f16(a: f32) -> f16 {
     // CHECK: fptrunc float %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @f64_as_f16(
+// CHECK-LABEL: @f64_as_f16
 #[no_mangle]
 pub fn f64_as_f16(a: f64) -> f16 {
     // CHECK: fptrunc double %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @f128_as_f16(
+// CHECK-LABEL: @f128_as_f16
 #[no_mangle]
 pub fn f128_as_f16(a: f128) -> f16 {
     // CHECK: fptrunc fp128 %{{.+}} to half
@@ -273,70 +278,70 @@ pub fn f16_as_i128(a: f16) -> i128 {
 
 /* int to float conversions */
 
-// CHECK-LABEL: half @u8_as_f16(
+// CHECK-LABEL: @u8_as_f16
 #[no_mangle]
 pub fn u8_as_f16(a: u8) -> f16 {
     // CHECK: uitofp i8 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @u16_as_f16(
+// CHECK-LABEL: @u16_as_f16
 #[no_mangle]
 pub fn u16_as_f16(a: u16) -> f16 {
     // CHECK: uitofp i16 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @u32_as_f16(
+// CHECK-LABEL: @u32_as_f16
 #[no_mangle]
 pub fn u32_as_f16(a: u32) -> f16 {
     // CHECK: uitofp i32 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @u64_as_f16(
+// CHECK-LABEL: @u64_as_f16
 #[no_mangle]
 pub fn u64_as_f16(a: u64) -> f16 {
     // CHECK: uitofp i64 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @u128_as_f16(
+// CHECK-LABEL: @u128_as_f16
 #[no_mangle]
 pub fn u128_as_f16(a: u128) -> f16 {
     // CHECK: uitofp i128 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @i8_as_f16(
+// CHECK-LABEL: @i8_as_f16
 #[no_mangle]
 pub fn i8_as_f16(a: i8) -> f16 {
     // CHECK: sitofp i8 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @i16_as_f16(
+// CHECK-LABEL: @i16_as_f16
 #[no_mangle]
 pub fn i16_as_f16(a: i16) -> f16 {
     // CHECK: sitofp i16 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @i32_as_f16(
+// CHECK-LABEL: @i32_as_f16
 #[no_mangle]
 pub fn i32_as_f16(a: i32) -> f16 {
     // CHECK: sitofp i32 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @i64_as_f16(
+// CHECK-LABEL: @i64_as_f16
 #[no_mangle]
 pub fn i64_as_f16(a: i64) -> f16 {
     // CHECK: sitofp i64 %{{.+}} to half
     a as f16
 }
 
-// CHECK-LABEL: half @i128_as_f16(
+// CHECK-LABEL: @i128_as_f16
 #[no_mangle]
 pub fn i128_as_f16(a: i128) -> f16 {
     // CHECK: sitofp i128 %{{.+}} to half
