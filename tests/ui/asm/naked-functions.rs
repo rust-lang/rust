@@ -183,6 +183,12 @@ pub unsafe extern "C" fn invalid_asm_syntax(a: u32) -> u32 {
     //~^ ERROR asm template must be a string literal
 }
 
+// this previously ICE'd, see https://github.com/rust-lang/rust/issues/124375
+#[naked]
+pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
+    naked_asm!("lea rax, [rdi + rsi]", "ret");
+}
+
 #[cfg(target_arch = "x86_64")]
 #[cfg_attr(target_pointer_width = "64", no_mangle)]
 #[naked]
