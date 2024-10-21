@@ -2345,6 +2345,7 @@ Windows.Win32.Storage.FileSystem.FlushFileBuffers
 Windows.Win32.Storage.FileSystem.GetFileAttributesW
 Windows.Win32.Storage.FileSystem.GetFileInformationByHandle
 Windows.Win32.Storage.FileSystem.GetFileInformationByHandleEx
+Windows.Win32.Storage.FileSystem.GetFileSizeEx
 Windows.Win32.Storage.FileSystem.GetFileType
 Windows.Win32.Storage.FileSystem.GETFINALPATHNAMEBYHANDLE_FLAGS
 Windows.Win32.Storage.FileSystem.GetFinalPathNameByHandleW
