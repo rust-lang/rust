@@ -17,7 +17,7 @@ use rustc_session::search_paths::SearchPath;
 use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::FileName;
 use rustc_span::edition::Edition;
-use rustc_target::spec::TargetTriple;
+use rustc_target::spec::TargetTuple;
 
 use crate::core::new_dcx;
 use crate::externalfiles::ExternalHtml;
@@ -96,7 +96,7 @@ pub(crate) struct Options {
     /// Unstable (`-Z`) options strings to pass to the compiler.
     pub(crate) unstable_opts_strs: Vec<String>,
     /// The target used to compile the crate against.
-    pub(crate) target: TargetTriple,
+    pub(crate) target: TargetTuple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
     /// compiling doctests from the crate.
     pub(crate) edition: Edition,
