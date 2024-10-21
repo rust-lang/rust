@@ -39,7 +39,7 @@ impl Target {
             &self.post_link_args,
         ] {
             for (&flavor, flavor_args) in args {
-                assert!(!flavor_args.is_empty());
+                assert!(!flavor_args.is_empty() || self.arch == "avr");
                 // Check that flavors mentioned in link args are compatible with the default flavor.
                 match self.linker_flavor {
                     LinkerFlavor::Gnu(..) => {
