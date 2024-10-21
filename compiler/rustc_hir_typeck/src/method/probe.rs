@@ -112,6 +112,7 @@ pub(crate) enum CandidateKind<'tcx> {
     InherentImplCandidate(DefId),
     ObjectCandidate(ty::PolyTraitRef<'tcx>),
     TraitCandidate(ty::PolyTraitRef<'tcx>),
+    TraitImplSelfCandidate(ty::TraitRef<'tcx>),
     WhereClauseCandidate(ty::PolyTraitRef<'tcx>),
 }
 
@@ -653,6 +654,24 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn assemble_inherent_candidates(&mut self) {
         for step in self.steps.iter() {
             self.assemble_probe(&step.self_ty);
+        }
+
+        // HACK:
+        // Assemble an "inherent" candidate for the self type of the impl we're inside of.
+        if let Some(own_item) =
+            self.tcx.opt_associated_item(self.tcx.typeck_root_def_id(self.body_id.to_def_id()))
+            && let ty::AssocItemContainer::ImplContainer = own_item.container
+            && let Some(trait_ref) = self.tcx.impl_trait_ref(own_item.container_id(self.tcx))
+            && let trait_ref = trait_ref.instantiate_identity()
+            && matches!(trait_ref.self_ty().kind(), ty::Param(_))
+        {
+            for item in self.impl_or_trait_item(trait_ref.def_id) {
+                self.inherent_candidates.push(Candidate {
+                    item,
+                    import_ids: smallvec![],
+                    kind: TraitImplSelfCandidate(trait_ref),
+                })
+            }
         }
     }
 
@@ -1450,7 +1469,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             InherentImplCandidate(_) => {
                 CandidateSource::Impl(candidate.item.container_id(self.tcx))
             }
-            ObjectCandidate(_) | WhereClauseCandidate(_) => {
+            ObjectCandidate(_) | WhereClauseCandidate(_) | TraitImplSelfCandidate(_) => {
                 CandidateSource::Trait(candidate.item.container_id(self.tcx))
             }
             TraitCandidate(trait_ref) => self.probe(|_| {
@@ -1536,6 +1555,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         self.param_env,
                         impl_bounds,
                     ));
+                }
+                TraitImplSelfCandidate(trait_ref) => {
+                    (xform_self_ty, xform_ret_ty) =
+                        self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
+                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    match ocx.sup(cause, self.param_env, xform_self_ty, self_ty) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            debug!("--> cannot relate self-types {:?}", err);
+                            return ProbeResult::NoMatch;
+                        }
+                    }
                 }
                 TraitCandidate(poly_trait_ref) => {
                     // Some trait methods are excluded for arrays before 2021.
@@ -2022,6 +2053,10 @@ impl<'tcx> Candidate<'tcx> {
                 InherentImplCandidate(_) => InherentImplPick,
                 ObjectCandidate(_) => ObjectPick,
                 TraitCandidate(_) => TraitPick,
+
+                // HACK:
+                TraitImplSelfCandidate(w) => WhereClausePick(ty::Binder::dummy(w)),
+
                 WhereClauseCandidate(trait_ref) => {
                     // Only trait derived from where-clauses should
                     // appear here, so they should not contain any
