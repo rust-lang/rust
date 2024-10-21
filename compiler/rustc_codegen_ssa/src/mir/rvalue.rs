@@ -130,6 +130,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let variant_dest = dest.project_downcast(bx, variant_index);
                         (variant_index, variant_dest, active_field_index)
                     }
+                    mir::AggregateKind::Coroutine(_, _) => {
+                        (FIRST_VARIANT, dest.project_downcast(bx, FIRST_VARIANT), None)
+                    }
                     _ => (FIRST_VARIANT, dest, None),
                 };
                 if active_field_index.is_some() {
