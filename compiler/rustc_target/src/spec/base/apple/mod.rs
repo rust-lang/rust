@@ -175,6 +175,19 @@ pub fn platform(target: &Target) -> Option<u32> {
     })
 }
 
+/// Name of the environment variable used to fetch the deployment target on
+/// the given OS.
+pub fn deployment_target_env(os: &str) -> &'static str {
+    match os {
+        "macos" => "MACOSX_DEPLOYMENT_TARGET",
+        "ios" => "IPHONEOS_DEPLOYMENT_TARGET",
+        "watchos" => "WATCHOS_DEPLOYMENT_TARGET",
+        "tvos" => "TVOS_DEPLOYMENT_TARGET",
+        "visionos" => "XROS_DEPLOYMENT_TARGET",
+        _ => unreachable!("tried to get deployment target env var for non-Apple platform"),
+    }
+}
+
 /// Hack for calling `deployment_target` outside of this module.
 pub fn deployment_target_for_target(target: &Target) -> (u16, u8, u8) {
     let arch = if target.llvm_target.starts_with("arm64e") {
@@ -230,17 +243,13 @@ fn deployment_target(os: &str, arch: Arch, abi: TargetAbi) -> (u16, u8, u8) {
         _ => os_min,
     };
 
-    // The environment variable used to fetch the deployment target.
-    let env_var = match os {
-        "macos" => "MACOSX_DEPLOYMENT_TARGET",
-        "ios" => "IPHONEOS_DEPLOYMENT_TARGET",
-        "watchos" => "WATCHOS_DEPLOYMENT_TARGET",
-        "tvos" => "TVOS_DEPLOYMENT_TARGET",
-        "visionos" => "XROS_DEPLOYMENT_TARGET",
-        _ => unreachable!("tried to get deployment target env var for non-Apple platform"),
-    };
-
-    if let Ok(deployment_target) = env::var(env_var) {
+    // NOTE: We access the deployment target environment variable here, which
+    // makes the variable an **implicit** input which affects compilation.
+    //
+    // We make sure to rebuild when the variable changes, both by busting the
+    // incremental cache, and by telling Cargo that it is a dependency.
+    // Search for usages of `deployment_target_env` to see how.
+    if let Ok(deployment_target) = env::var(deployment_target_env(os)) {
         match parse_version(&deployment_target) {
             // It is common that the deployment target is set too low, e.g. on
             // macOS Aarch64 to also target older x86_64, the user may set a
