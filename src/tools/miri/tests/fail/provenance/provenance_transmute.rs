@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(strict_provenance)]
 
 use std::mem;
 

@@ -4,8 +4,6 @@
 
 // Based on https://github.com/rust-lang/rust/issues/107975#issuecomment-1434203908
 
-#![feature(strict_provenance)]
-
 use std::ptr;
 
 fn f() -> usize {

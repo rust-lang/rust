@@ -2,7 +2,6 @@
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![feature(link_cfg)]
 #![feature(staged_api)]
-#![feature(strict_provenance)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![cfg_attr(
     all(target_family = "wasm", not(target_os = "emscripten")),

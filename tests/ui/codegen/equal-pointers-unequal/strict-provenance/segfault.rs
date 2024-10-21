@@ -4,8 +4,6 @@
 
 // https://github.com/rust-lang/rust/issues/107975#issuecomment-1431758601
 
-#![feature(strict_provenance)]
-
 use std::{
     cell::{Ref, RefCell},
     ptr,

@@ -1,4 +1,3 @@
-#![feature(strict_provenance)]
 use core::ptr;
 
 fn main() {

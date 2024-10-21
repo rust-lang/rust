@@ -283,40 +283,39 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// For more details see the equivalent method on a raw pointer, [`pointer::addr`].
     ///
-    /// This API and its claimed semantics are part of the Strict Provenance experiment,
-    /// see the [`ptr` module documentation][crate::ptr].
+    /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[unstable(feature = "strict_provenance", issue = "95228")]
+    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
     pub fn addr(self) -> NonZero<usize> {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
         unsafe { NonZero::new_unchecked(self.pointer.addr()) }
     }
 
-    /// Creates a new pointer with the given address.
+    /// Creates a new pointer with the given address and the [provenance][crate::ptr#provenance] of
+    /// `self`.
     ///
     /// For more details see the equivalent method on a raw pointer, [`pointer::with_addr`].
     ///
-    /// This API and its claimed semantics are part of the Strict Provenance experiment,
-    /// see the [`ptr` module documentation][crate::ptr].
+    /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[unstable(feature = "strict_provenance", issue = "95228")]
+    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
     pub fn with_addr(self, addr: NonZero<usize>) -> Self {
         // SAFETY: The result of `ptr::from::with_addr` is non-null because `addr` is guaranteed to be non-zero.
         unsafe { NonNull::new_unchecked(self.pointer.with_addr(addr.get()) as *mut _) }
     }
 
-    /// Creates a new pointer by mapping `self`'s address to a new one.
+    /// Creates a new pointer by mapping `self`'s address to a new one, preserving the
+    /// [provenance][crate::ptr#provenance] of `self`.
     ///
     /// For more details see the equivalent method on a raw pointer, [`pointer::map_addr`].
     ///
-    /// This API and its claimed semantics are part of the Strict Provenance experiment,
-    /// see the [`ptr` module documentation][crate::ptr].
+    /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[unstable(feature = "strict_provenance", issue = "95228")]
+    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
     pub fn map_addr(self, f: impl FnOnce(NonZero<usize>) -> NonZero<usize>) -> Self {
         self.with_addr(f(self.addr()))
     }
@@ -749,7 +748,6 @@ impl<T: ?Sized> NonNull<T> {
     /// *Incorrect* usage:
     ///
     /// ```rust,no_run
-    /// #![feature(strict_provenance)]
     /// use std::ptr::NonNull;
     ///
     /// let ptr1 = NonNull::new(Box::into_raw(Box::new(0u8))).unwrap();

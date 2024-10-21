@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(exposed_provenance)]
 
 use std::ptr;
 

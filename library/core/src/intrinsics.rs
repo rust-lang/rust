@@ -2794,7 +2794,6 @@ where
 /// #![feature(is_val_statically_known)]
 /// #![feature(core_intrinsics)]
 /// # #![allow(internal_features)]
-/// #![feature(strict_provenance)]
 /// use std::intrinsics::is_val_statically_known;
 ///
 /// fn foo(x: &i32) -> bool {
