@@ -520,6 +520,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
+            hir::QPath::Resolved(
+                _,
+                hir::Path { res: Res::Err, segments: [.., item_segment], .. },
+            ) if item_segment.args.is_some_and(|args| {
+                matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
+            }) =>
+            {
+                Ty::new_error_with_message(tcx, hir_ty.span, "bad resolution for RTN")
+            }
             _ => self.lower_ty(hir_ty),
         }
     }
