@@ -193,7 +193,7 @@ fn suggest_changing_unsized_bound(
             .enumerate()
             .filter(|(_, bound)| {
                 if let hir::GenericBound::Trait(poly) = bound
-                    && poly.modifiers == hir::TraitBoundModifier::Maybe
+                    && let hir::BoundPolarity::Maybe(_) = poly.modifiers.polarity
                     && poly.trait_ref.trait_def_id() == def_id
                 {
                     true

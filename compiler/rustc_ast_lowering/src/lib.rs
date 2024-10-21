@@ -1956,7 +1956,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         hir::GenericBound::Trait(hir::PolyTraitRef {
             bound_generic_params: &[],
-            modifiers: hir::TraitBoundModifier::None,
+            modifiers: hir::TraitBoundModifiers::NONE,
             trait_ref: hir::TraitRef {
                 path: self.make_lang_item_path(trait_lang_item, opaque_ty_span, Some(bound_args)),
                 hir_ref_id: self.next_id(),
@@ -2445,22 +2445,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_bound_modifiers(
         &mut self,
         modifiers: TraitBoundModifiers,
-    ) -> hir::TraitBoundModifier {
-        // Invalid modifier combinations will cause an error during AST validation.
-        // Arbitrarily pick a placeholder for them to make compilation proceed.
-        match (modifiers.constness, modifiers.polarity) {
-            (BoundConstness::Never, BoundPolarity::Positive) => hir::TraitBoundModifier::None,
-            (_, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
-            (BoundConstness::Never, BoundPolarity::Negative(_)) => {
-                if self.tcx.features().negative_bounds {
-                    hir::TraitBoundModifier::Negative
-                } else {
-                    hir::TraitBoundModifier::None
-                }
-            }
-            (BoundConstness::Always(_), _) => hir::TraitBoundModifier::Const,
-            (BoundConstness::Maybe(_), _) => hir::TraitBoundModifier::MaybeConst,
-        }
+    ) -> hir::TraitBoundModifiers {
+        hir::TraitBoundModifiers { constness: modifiers.constness, polarity: modifiers.polarity }
     }
 
     // Helper methods for building HIR.
@@ -2626,7 +2612,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: &[],
-                            modifiers: hir::TraitBoundModifier::None,
+                            modifiers: hir::TraitBoundModifiers::NONE,
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },
                             span: self.lower_span(span),
                         };

@@ -1257,7 +1257,7 @@ impl Eq for Attributes {}
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericBound {
-    TraitBound(PolyTrait, hir::TraitBoundModifier),
+    TraitBound(PolyTrait, hir::TraitBoundModifiers),
     Outlives(Lifetime),
     /// `use<'a, T>` precise-capturing bound syntax
     Use(Vec<Symbol>),
@@ -1265,19 +1265,22 @@ pub(crate) enum GenericBound {
 
 impl GenericBound {
     pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifier::None)
+        Self::sized_with(cx, hir::TraitBoundModifiers::NONE)
     }
 
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifier::Maybe)
+        Self::sized_with(cx, hir::TraitBoundModifiers {
+            polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
+            constness: hir::BoundConstness::Never,
+        })
     }
 
-    fn sized_with(cx: &mut DocContext<'_>, modifier: hir::TraitBoundModifier) -> GenericBound {
+    fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
-        GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifier)
+        GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifiers)
     }
 
     pub(crate) fn is_trait_bound(&self) -> bool {
@@ -1285,8 +1288,10 @@ impl GenericBound {
     }
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        use rustc_hir::TraitBoundModifier as TBM;
-        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self
+        if let GenericBound::TraitBound(
+            PolyTrait { ref trait_, .. },
+            rustc_hir::TraitBoundModifiers::NONE,
+        ) = *self
             && Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
         {
             return true;

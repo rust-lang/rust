@@ -40,8 +40,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
         for trait_bound in hir_trait_bounds.iter().rev() {
-            // FIXME: This doesn't handle `? const`.
-            if trait_bound.modifiers == hir::TraitBoundModifier::Maybe {
+            if let hir::BoundPolarity::Maybe(_) = trait_bound.modifiers.polarity {
                 continue;
             }
             if let GenericArgCountResult {

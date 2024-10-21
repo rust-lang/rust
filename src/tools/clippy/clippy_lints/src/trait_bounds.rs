@@ -11,7 +11,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
     GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
-    TraitBoundModifier, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
+    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicate, BoundPolarity,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -233,7 +233,7 @@ impl TraitBounds {
     fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
         if !self.msrv.meets(msrvs::MAYBE_BOUND_IN_WHERE)
             && let GenericBound::Trait(tr) = bound
-            && let TraitBoundModifier::Maybe = tr.modifiers
+            && let BoundPolarity::Maybe(_) = tr.modifiers.polarity
         {
             cx.tcx.lang_items().get(LangItem::Sized) == tr.trait_ref.path.res.opt_def_id()
         } else {
@@ -374,12 +374,12 @@ fn check_trait_bound_duplication<'tcx>(cx: &LateContext<'tcx>, generics: &'_ Gen
 struct ComparableTraitRef<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     trait_ref: &'tcx TraitRef<'tcx>,
-    modifier: TraitBoundModifier,
+    modifiers: TraitBoundModifiers,
 }
 
 impl PartialEq for ComparableTraitRef<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
-        self.modifier == other.modifier
+        SpanlessEq::new(self.cx).eq_modifiers(self.modifiers, other.modifiers)
             && SpanlessEq::new(self.cx)
                 .paths_by_resolution()
                 .eq_path(self.trait_ref.path, other.trait_ref.path)
@@ -390,8 +390,8 @@ impl Hash for ComparableTraitRef<'_, '_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let mut s = SpanlessHash::new(self.cx).paths_by_resolution();
         s.hash_path(self.trait_ref.path);
+        s.hash_modifiers(self.modifiers);
         state.write_u64(s.finish());
-        self.modifier.hash(state);
     }
 }
 
@@ -400,7 +400,7 @@ fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'
         let trait_path = t.trait_ref.path;
         let trait_span = {
             let path_span = trait_path.span;
-            if let TraitBoundModifier::Maybe = t.modifiers {
+            if let BoundPolarity::Maybe(_) = t.modifiers.polarity {
                 path_span.with_lo(path_span.lo() - BytePos(1)) // include the `?`
             } else {
                 path_span
@@ -427,7 +427,7 @@ fn rollup_traits<'cx, 'tcx>(
                 ComparableTraitRef {
                     cx,
                     trait_ref: &t.trait_ref,
-                    modifier: t.modifiers,
+                    modifiers: t.modifiers,
                 },
                 t.span,
             ))

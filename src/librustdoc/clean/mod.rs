@@ -216,7 +216,7 @@ fn clean_generic_bound<'tcx>(
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
         hir::GenericBound::Trait(ref t) => {
             // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
-            if t.modifiers == hir::TraitBoundModifier::MaybeConst
+            if let hir::BoundConstness::Maybe(_) = t.modifiers.constness
                 && cx.tcx.lang_items().destruct_trait() == Some(t.trait_ref.trait_def_id().unwrap())
             {
                 return None;
@@ -263,7 +263,7 @@ fn clean_poly_trait_ref_with_constraints<'tcx>(
             trait_: clean_trait_ref_with_constraints(cx, poly_trait_ref, constraints),
             generic_params: clean_bound_vars(poly_trait_ref.bound_vars()),
         },
-        hir::TraitBoundModifier::None,
+        hir::TraitBoundModifiers::NONE,
     )
 }
 
