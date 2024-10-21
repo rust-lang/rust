@@ -2098,11 +2098,11 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
 
 fn parse_assert_incr_state(
     early_dcx: &EarlyDiagCtxt,
-    opt_assertion: &Option<String>,
+    opt_assertion: Option<&str>,
 ) -> Option<IncrementalStateAssertion> {
     match opt_assertion {
-        Some(s) if s.as_str() == "loaded" => Some(IncrementalStateAssertion::Loaded),
-        Some(s) if s.as_str() == "not-loaded" => Some(IncrementalStateAssertion::NotLoaded),
+        Some("loaded") => Some(IncrementalStateAssertion::Loaded),
+        Some("not-loaded") => Some(IncrementalStateAssertion::NotLoaded),
         Some(s) => {
             early_dcx.early_fatal(format!("unexpected incremental state assertion value: {s}"))
         }
@@ -2474,7 +2474,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
 
-    let assert_incr_state = parse_assert_incr_state(early_dcx, &unstable_opts.assert_incr_state);
+    let assert_incr_state =
+        parse_assert_incr_state(early_dcx, unstable_opts.assert_incr_state.as_deref());
 
     if unstable_opts.profile && incremental.is_some() {
         early_dcx.early_fatal("can't instrument with gcov profiling when compiling incrementally");

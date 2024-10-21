@@ -40,7 +40,15 @@ pub(crate) fn compute_mir_scopes<'ll, 'tcx>(
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
-        make_mir_scope(cx, instance, mir, &variables, debug_context, &mut instantiated, scope);
+        make_mir_scope(
+            cx,
+            instance,
+            mir,
+            variables.as_ref(),
+            debug_context,
+            &mut instantiated,
+            scope,
+        );
     }
     assert!(instantiated.count() == mir.source_scopes.len());
 }
@@ -49,7 +57,7 @@ fn make_mir_scope<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
-    variables: &Option<BitSet<SourceScope>>,
+    variables: Option<&BitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<'tcx, &'ll DIScope, &'ll DILocation>,
     instantiated: &mut BitSet<SourceScope>,
     scope: SourceScope,
