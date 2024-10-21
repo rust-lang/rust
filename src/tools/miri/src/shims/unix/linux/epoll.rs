@@ -256,14 +256,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let epollhup = this.eval_libc_u32("EPOLLHUP");
         let epollerr = this.eval_libc_u32("EPOLLERR");
 
-        // Fail on unsupported operations.
-        if op & epoll_ctl_add != epoll_ctl_add
-            && op & epoll_ctl_mod != epoll_ctl_mod
-            && op & epoll_ctl_del != epoll_ctl_del
-        {
-            throw_unsup_format!("epoll_ctl: encountered unknown unsupported operation {:#x}", op);
-        }
-
         // Throw EINVAL if epfd and fd have the same value.
         if epfd_value == fd {
             this.set_last_error(LibcError("EINVAL"))?;
@@ -368,7 +360,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Notification will be returned for current epfd if there is event in the file
             // descriptor we registered.
             check_and_update_one_event_interest(&fd_ref, interest, id, this)?;
-            return interp_ok(Scalar::from_i32(0));
+            interp_ok(Scalar::from_i32(0))
         } else if op == epoll_ctl_del {
             let epoll_key = (id, fd);
 
@@ -394,9 +386,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .unwrap()
                 .retain(|event| event.upgrade().is_some());
 
-            return interp_ok(Scalar::from_i32(0));
+            interp_ok(Scalar::from_i32(0))
+        } else {
+            throw_unsup_format!("unsupported epoll_ctl operation: {op}");
         }
-        interp_ok(Scalar::from_i32(-1))
     }
 
     /// The `epoll_wait()` system call waits for events on the `Epoll`
