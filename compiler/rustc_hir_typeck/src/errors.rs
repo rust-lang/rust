@@ -724,3 +724,38 @@ pub(crate) struct PassToVariadicFunction<'a, 'tcx> {
     #[note(hir_typeck_teach_help)]
     pub(crate) teach: bool,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_supertrait_method_shadowing)]
+pub(crate) struct SupertraitMethodShadowing {
+    pub method: Symbol,
+    pub subtrait: Symbol,
+    #[subdiagnostic]
+    pub shadower: SupertraitMethodShadower,
+    #[subdiagnostic]
+    pub shadowee: SupertraitMethodShadowee,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_supertrait_method_shadower)]
+pub(crate) struct SupertraitMethodShadower {
+    pub subtrait: Symbol,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum SupertraitMethodShadowee {
+    #[note(hir_typeck_supertrait_method_shadowee)]
+    Labeled {
+        #[primary_span]
+        span: Span,
+        supertrait: Symbol,
+    },
+    #[note(hir_typeck_supertrait_method_multiple_shadowee)]
+    Several {
+        #[primary_span]
+        spans: MultiSpan,
+        traits: DiagSymbolList,
+    },
+}
