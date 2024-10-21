@@ -73,6 +73,30 @@ LL |
 LL |     V9,
    |     -- `-2` assigned here
 
-error: aborting due to 5 previous errors
+error[E0370]: enum discriminant overflowed
+  --> $DIR/E0081.rs:87:5
+   |
+LL |     X256,
+   |     ^^^^ overflowed on value after 255
+   |
+   = note: explicitly set `X256 = 0` if that is desired outcome
 
-For more information about this error, try `rustc --explain E0081`.
+error[E0081]: discriminant value `0` assigned more than once
+  --> $DIR/E0081.rs:57:1
+   |
+LL | enum TooManyVariants {
+   | ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     X000, X001, X002, X003, X004, X005, X006, X007, X008, X009,
+   |     ----
+   |     |
+   |     `0` assigned here
+   |     discriminant for `X256` incremented from this startpoint (`X000` + 256 variants later => `X256` = 0)
+...
+LL |     X256,
+   |     ---- `0` assigned here
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0081, E0370.
+For more information about an error, try `rustc --explain E0081`.
