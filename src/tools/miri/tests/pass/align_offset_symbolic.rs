@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-symbolic-alignment-check
-#![feature(strict_provenance)]
 
 use std::mem;
 

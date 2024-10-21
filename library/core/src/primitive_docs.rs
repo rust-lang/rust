@@ -1784,9 +1784,11 @@ mod prim_ref {}
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
-///   optimization](option/index.html#representation), then `T` and `Option<T>` are ABI-compatible.
-///   Furthermore, if `U` satisfies the requirements [outlined here](result/index.html#representation),
-///   then `T` and `Result<T, U>` and `Result<U, T>` are all ABI-compatible.
+///   optimization](option/index.html#representation), and `E` is an enum satisfying the following
+///   requirements, then `T` and `E` are ABI-compatible. Such an enum `E` is called "option-like".
+///   - The enum `E` has exactly two variants.
+///   - One variant has exactly one field, of type `T`.
+///   - All fields of the other variant are zero-sized with 1-byte alignment.
 ///
 /// Furthermore, ABI compatibility satisfies the following general properties:
 ///

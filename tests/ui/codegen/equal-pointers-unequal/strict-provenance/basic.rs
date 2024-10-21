@@ -2,8 +2,6 @@
 //@ compile-flags: -Copt-level=2
 //@ run-pass
 
-#![feature(strict_provenance)]
-
 use std::ptr;
 
 fn main() {

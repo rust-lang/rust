@@ -1,7 +1,6 @@
 //! Regression test for <https://github.com/rust-lang/miri/issues/3450>:
 //! When the address gets reused, there should be a happens-before relation.
 //@compile-flags: -Zmiri-address-reuse-cross-thread-rate=1.0
-#![feature(strict_provenance)]
 #![feature(sync_unsafe_cell)]
 
 use std::cell::SyncUnsafeCell;

@@ -5,7 +5,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
-#![feature(strict_provenance)]
 
 use std::alloc::{AllocError, Allocator, Layout};
 use std::cell::{Cell, UnsafeCell};

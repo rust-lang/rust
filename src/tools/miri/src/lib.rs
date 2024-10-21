@@ -11,8 +11,6 @@
 #![feature(let_chains)]
 #![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
-#![feature(strict_provenance)]
-#![feature(exposed_provenance)]
 #![feature(pointer_is_aligned_to)]
 #![feature(unqualified_local_imports)]
 // Configure clippy and other lints

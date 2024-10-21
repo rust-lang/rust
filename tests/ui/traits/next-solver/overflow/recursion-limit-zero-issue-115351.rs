@@ -1,7 +1,7 @@
-//~ ERROR overflow evaluating the requirement `Self: Trait`
-//~^ ERROR overflow evaluating the requirement `Self well-formed`
-// This is a non-regression test for issue #115351, where a recursion limit of 0 caused an ICE.
+//@ check-pass
 //@ compile-flags: -Znext-solver --crate-type=lib
+
+// This is a non-regression test for issue #115351, where a recursion limit of 0 caused an ICE.
 
 #![recursion_limit = "0"]
 trait Trait {}
