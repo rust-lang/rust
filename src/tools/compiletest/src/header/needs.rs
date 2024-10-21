@@ -159,6 +159,16 @@ pub(super) fn handle_needs(
             condition: cache.llvm_zstd,
             ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression",
         },
+        Need {
+            name: "needs-rustc-debug-assertions",
+            condition: config.with_rustc_debug_assertions,
+            ignore_reason: "ignored if rustc wasn't built with debug assertions",
+        },
+        Need {
+            name: "needs-std-debug-assertions",
+            condition: config.with_std_debug_assertions,
+            ignore_reason: "ignored if std wasn't built with debug assertions",
+        },
     ];
 
     let (name, comment) = match ln.split_once([':', ' ']) {

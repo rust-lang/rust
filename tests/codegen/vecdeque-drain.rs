@@ -2,7 +2,7 @@
 
 //@ compile-flags: -O
 //@ needs-deterministic-layouts
-//@ ignore-debug: FIXME: checks for call detect scoped noalias metadata
+//@ ignore-std-debug-assertions (FIXME: checks for call detect scoped noalias metadata)
 
 #![crate_type = "lib"]
 

@@ -1,5 +1,5 @@
 //@ compile-flags: -O
-//@ ignore-debug
+//@ ignore-std-debug-assertions
 #![crate_type = "lib"]
 
 use std::collections::binary_heap::PeekMut;
