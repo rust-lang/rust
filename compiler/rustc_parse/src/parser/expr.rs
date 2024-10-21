@@ -1472,7 +1472,7 @@ impl<'a> Parser<'a> {
                         err
                     },
                 )
-            } else if this.check_inline_const(0) {
+            } else if this.check_keyword(kw::Const) {
                 this.parse_const_block(lo.to(this.token.span), false)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
