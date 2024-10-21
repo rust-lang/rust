@@ -1,0 +1,32 @@
+- // MIR for `no_fields_failed` before MergeBranchSimplification
++ // MIR for `no_fields_failed` after MergeBranchSimplification
+  
+  fn no_fields_failed(_1: NoFields) -> NoFields {
+      debug a => _1;
+      let mut _0: NoFields;
+      let mut _2: isize;
+  
+      bb0: {
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = NoFields::A;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = NoFields::B;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          return;
+      }
+  }
+  

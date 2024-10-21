@@ -12,17 +12,70 @@
 //!     will still not cause any further changes.
 //!
 
+use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_mir_dataflow::impls::{
     LivenessTransferFunction, MaybeTransitiveLiveLocals, borrowed_locals,
 };
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 
 use crate::util::is_within_packed;
+
+pub(crate) struct DeadStoreAnalysis<'tcx, 'mir, 'a> {
+    live: ResultsCursor<'mir, 'tcx, MaybeTransitiveLiveLocals<'a>>,
+    always_live: &'a BitSet<Local>,
+}
+
+impl<'tcx, 'mir, 'a> DeadStoreAnalysis<'tcx, 'mir, 'a> {
+    pub(crate) fn new(
+        tcx: TyCtxt<'tcx>,
+        body: &'mir Body<'tcx>,
+        always_live: &'a BitSet<Local>,
+    ) -> Self {
+        let live = MaybeTransitiveLiveLocals::new(&always_live)
+            .into_engine(tcx, body)
+            .iterate_to_fixpoint()
+            .into_results_cursor(body);
+        Self { live, always_live }
+    }
+
+    pub(crate) fn is_dead_store(&mut self, loc: Location, stmt_kind: &StatementKind<'tcx>) -> bool {
+        if let StatementKind::Assign(assign) = stmt_kind {
+            if !assign.1.is_safe_to_remove() {
+                return false;
+            }
+        }
+        match stmt_kind {
+            StatementKind::Assign(box (place, _))
+            | StatementKind::SetDiscriminant { place: box place, .. }
+            | StatementKind::Deinit(box place) => {
+                if !place.is_indirect() && !self.always_live.contains(place.local) {
+                    self.live.seek_before_primary_effect(loc);
+                    !self.live.get().contains(place.local)
+                } else {
+                    false
+                }
+            }
+
+            StatementKind::Retag(_, _)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::Coverage(_)
+            | StatementKind::Intrinsic(_)
+            | StatementKind::ConstEvalCounter
+            | StatementKind::PlaceMention(_)
+            | StatementKind::Nop => false,
+
+            StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
+                bug!("{:?} not found in this MIR phase!", stmt_kind)
+            }
+        }
+    }
+}
 
 /// Performs the optimization on the body
 ///
@@ -36,10 +89,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut always_live = debuginfo_locals(body);
     always_live.union(&borrowed_locals);
 
-    let mut live = MaybeTransitiveLiveLocals::new(&always_live)
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
-        .into_results_cursor(body);
+    let mut analysis = DeadStoreAnalysis::new(tcx, body, &always_live);
 
     // For blocks with a call terminator, if an argument copy can be turned into a move,
     // record it as (block, argument index).
@@ -51,8 +101,8 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             let loc = Location { block: bb, statement_index: bb_data.statements.len() };
 
             // Position ourselves between the evaluation of `args` and the write to `destination`.
-            live.seek_to_block_end(bb);
-            let mut state = live.get().clone();
+            analysis.live.seek_to_block_end(bb);
+            let mut state = analysis.live.get().clone();
 
             for (index, arg) in args.iter().map(|a| &a.node).enumerate().rev() {
                 if let Operand::Copy(place) = *arg
@@ -74,37 +124,10 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 LivenessTransferFunction(&mut state).visit_operand(arg, loc);
             }
         }
-
         for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
             let loc = Location { block: bb, statement_index };
-            if let StatementKind::Assign(assign) = &statement.kind {
-                if !assign.1.is_safe_to_remove() {
-                    continue;
-                }
-            }
-            match &statement.kind {
-                StatementKind::Assign(box (place, _))
-                | StatementKind::SetDiscriminant { place: box place, .. }
-                | StatementKind::Deinit(box place) => {
-                    if !place.is_indirect() && !always_live.contains(place.local) {
-                        live.seek_before_primary_effect(loc);
-                        if !live.get().contains(place.local) {
-                            patch.push(loc);
-                        }
-                    }
-                }
-                StatementKind::Retag(_, _)
-                | StatementKind::StorageLive(_)
-                | StatementKind::StorageDead(_)
-                | StatementKind::Coverage(_)
-                | StatementKind::Intrinsic(_)
-                | StatementKind::ConstEvalCounter
-                | StatementKind::PlaceMention(_)
-                | StatementKind::Nop => (),
-
-                StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
-                    bug!("{:?} not found in this MIR phase!", statement.kind)
-                }
+            if analysis.is_dead_store(loc, &statement.kind) {
+                patch.push(loc);
             }
         }
     }

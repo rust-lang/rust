@@ -1,0 +1,41 @@
+- // MIR for `option` before MergeBranchSimplification
++ // MIR for `option` after MergeBranchSimplification
+  
+  fn option(_1: Option<i32>) -> Option<i32> {
+      debug a => _1;
+      let mut _0: std::option::Option<i32>;
+      let mut _2: isize;
+      let _3: i32;
+      scope 1 {
+          debug _b => _3;
+      }
+  
+      bb0: {
+          _2 = discriminant(_1);
+-         switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+-         unreachable;
+-     }
+- 
+-     bb2: {
+-         _0 = Option::<i32>::None;
+-         goto -> bb4;
+-     }
+- 
+-     bb3: {
+-         StorageLive(_3);
+-         _3 = copy ((_1 as Some).0: i32);
+          _0 = copy _1;
+-         StorageDead(_3);
+-         goto -> bb4;
++         goto -> bb1;
+      }
+  
+-     bb4: {
++     bb1: {
+          return;
+      }
+  }
+  
