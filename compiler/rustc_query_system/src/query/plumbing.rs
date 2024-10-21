@@ -3,13 +3,12 @@
 //! manage the caches, and so forth.
 
 use std::cell::Cell;
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
@@ -33,7 +32,7 @@ use crate::query::{
 };
 
 pub struct QueryState<K> {
-    active: Sharded<FxHashMap<K, QueryResult>>,
+    active: Sharded<FxIndexMap<K, QueryResult>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
@@ -187,7 +186,7 @@ where
                 // since unwinding also wants to look at this map, this can also prevent a double
                 // panic.
                 let mut lock = state.active.lock_shard_by_value(&key);
-                lock.remove(&key)
+                lock.shift_remove(&key)
             };
             val.unwrap().expect_job()
         };
@@ -207,7 +206,7 @@ where
         let state = self.state;
         let job = {
             let mut shard = state.active.lock_shard_by_value(&self.key);
-            let job = shard.remove(&self.key).unwrap().expect_job();
+            let job = shard.shift_remove(&self.key).unwrap().expect_job();
 
             shard.insert(self.key, QueryResult::Poisoned);
             job
@@ -344,7 +343,7 @@ where
     let current_job_id = qcx.current_query_job();
 
     match state_lock.entry(key) {
-        Entry::Vacant(entry) => {
+        IndexEntry::Vacant(entry) => {
             // Nothing has computed or is computing the query, so we start a new job and insert it in the
             // state map.
             let id = qcx.next_job_id();
@@ -356,7 +355,7 @@ where
 
             execute_job::<_, _, INCR>(query, qcx, state, key, id, dep_node)
         }
-        Entry::Occupied(mut entry) => {
+        IndexEntry::Occupied(mut entry) => {
             match entry.get_mut() {
                 QueryResult::Started(job) => {
                     #[cfg(parallel_compiler)]
