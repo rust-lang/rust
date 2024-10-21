@@ -1831,12 +1831,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => DropVictim::No,
 
             // (*)
-            (BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_), _) => {
-                DropVictim::Yes
-            }
-            (_, BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_)) => {
-                DropVictim::No
-            }
+            (BuiltinCandidate { has_nested: false }, _) => DropVictim::Yes,
+            (_, BuiltinCandidate { has_nested: false }) => DropVictim::No,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
@@ -1853,11 +1849,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 } else {
                     DropVictim::No
                 }
-            }
-
-            // Drop otherwise equivalent non-const fn pointer candidates
-            (FnPointerCandidate { .. }, FnPointerCandidate { fn_host_effect }) => {
-                DropVictim::drop_if(*fn_host_effect == self.tcx().consts.true_)
             }
 
             (
@@ -2766,7 +2757,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         self_ty: Ty<'tcx>,
         fn_trait_def_id: DefId,
-        fn_host_effect: ty::Const<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
         let ty::Closure(_, args) = *self_ty.kind() else {
             bug!("expected closure, found {self_ty}");
@@ -2779,7 +2769,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             self_ty,
             closure_sig,
             util::TupleArgumentsFlag::No,
-            fn_host_effect,
         )
         .map_bound(|(trait_ref, _)| trait_ref)
     }
