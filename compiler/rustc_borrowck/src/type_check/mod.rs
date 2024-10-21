@@ -891,14 +891,14 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     ///
     /// To keep everything in sync, do not insert this set
     /// directly. Instead, use the `placeholder_region` helper.
-    pub(crate) placeholder_indices: PlaceholderIndices,
+    placeholder_indices: PlaceholderIndices,
 
     /// Each time we add a placeholder to `placeholder_indices`, we
     /// also create a corresponding "representative" region vid for
     /// that wraps it. This vector tracks those. This way, when we
     /// convert the same `ty::RePlaceholder(p)` twice, we can map to
     /// the same underlying `RegionVid`.
-    pub(crate) placeholder_index_to_region: IndexVec<PlaceholderIndex, ty::Region<'tcx>>,
+    placeholder_index_to_region: IndexVec<PlaceholderIndex, ty::Region<'tcx>>,
 
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,

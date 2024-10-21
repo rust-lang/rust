@@ -48,6 +48,20 @@ pub trait Annotation: Debug + Copy {
     }
 }
 
+/// An accumulator for annotations.
+pub trait Annotations<N: Idx, S: Idx, A: Annotation> {
+    fn new(&self, element: N) -> A;
+    fn annotate_scc(&mut self, scc: S, annotation: A);
+}
+
+/// The nil annotation accumulator, which does nothing.
+impl<N: Idx, S: Idx> Annotations<N, S, ()> for () {
+    fn new(&self, _element: N) -> () {
+        ()
+    }
+    fn annotate_scc(&mut self, _scc: S, _annotation: ()) {}
+}
+
 /// The empty annotation, which does nothing.
 impl Annotation for () {
     fn merge_reached(self, _other: Self) -> Self {
@@ -62,23 +76,20 @@ impl Annotation for () {
 /// the index type for the graph nodes and `S` is the index type for
 /// the SCCs. We can map from each node to the SCC that it
 /// participates in, and we also have the successors of each SCC.
-pub struct Sccs<N: Idx, S: Idx, A: Annotation = ()> {
+pub struct Sccs<N: Idx, S: Idx> {
     /// For each node, what is the SCC index of the SCC to which it
     /// belongs.
     scc_indices: IndexVec<N, S>,
 
     /// Data about all the SCCs.
-    scc_data: SccData<S, A>,
+    scc_data: SccData<S>,
 }
 
 /// Information about an invidividual SCC node.
-struct SccDetails<A: Annotation> {
+struct SccDetails {
     /// For this SCC, the range of `all_successors` where its
     /// successors can be found.
     range: Range<usize>,
-
-    /// User-specified metadata about the SCC.
-    annotation: A,
 }
 
 // The name of this struct should discourage you from making it public and leaking
@@ -87,10 +98,10 @@ struct SccDetails<A: Annotation> {
 // is difficult when it's publicly inspectable.
 //
 // Obey the law of Demeter!
-struct SccData<S: Idx, A: Annotation> {
+struct SccData<S: Idx> {
     /// Maps SCC indices to their metadata, including
     /// offsets into `all_successors`.
-    scc_details: IndexVec<S, SccDetails<A>>,
+    scc_details: IndexVec<S, SccDetails>,
 
     /// Contains the successors for all the Sccs, concatenated. The
     /// range of indices corresponding to a given SCC is found in its
@@ -98,24 +109,18 @@ struct SccData<S: Idx, A: Annotation> {
     all_successors: Vec<S>,
 }
 
-impl<N: Idx, S: Idx + Ord> Sccs<N, S, ()> {
+impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
     /// Compute SCCs without annotations.
     pub fn new(graph: &impl Successors<Node = N>) -> Self {
-        Self::new_with_annotation(graph, |_| ())
+        Self::new_with_annotation(graph, &mut ())
     }
-}
 
-impl<N: Idx, S: Idx + Ord, A: Annotation> Sccs<N, S, A> {
     /// Compute SCCs and annotate them with a user-supplied annotation
-    pub fn new_with_annotation<F: Fn(N) -> A>(
+    pub fn new_with_annotation<A: Annotation, AA: Annotations<N, S, A>>(
         graph: &impl Successors<Node = N>,
-        to_annotation: F,
+        annotations: &mut AA,
     ) -> Self {
-        SccsConstruction::construct(graph, to_annotation)
-    }
-
-    pub fn annotation(&self, scc: S) -> A {
-        self.scc_data.annotation(scc)
+        SccsConstruction::construct(graph, annotations)
     }
 
     pub fn scc_indices(&self) -> &IndexSlice<N, S> {
@@ -136,7 +141,13 @@ impl<N: Idx, S: Idx + Ord, A: Annotation> Sccs<N, S, A> {
     pub fn all_sccs(&self) -> impl Iterator<Item = S> {
         (0..self.scc_data.len()).map(S::new)
     }
-
+    /*
+        /// Returns an iterator over the SCC annotations in the graph
+        /// The order is the same as `all_sccs()`, dependency order.
+        pub fn all_annotations(&self, annotations: &A) -> impl Iterator<Item = (S, A)> + use<'_, N, S, A> {
+            self.all_sccs().map(|scc| (scc, self.annotation(scc)))
+        }
+    */
     /// Returns the SCC to which a node `r` belongs.
     pub fn scc(&self, r: N) -> S {
         self.scc_indices[r]
@@ -160,7 +171,7 @@ impl<N: Idx, S: Idx + Ord, A: Annotation> Sccs<N, S, A> {
     }
 }
 
-impl<N: Idx, S: Idx + Ord, A: Annotation> DirectedGraph for Sccs<N, S, A> {
+impl<N: Idx, S: Idx + Ord> DirectedGraph for Sccs<N, S> {
     type Node = S;
 
     fn num_nodes(&self) -> usize {
@@ -168,19 +179,19 @@ impl<N: Idx, S: Idx + Ord, A: Annotation> DirectedGraph for Sccs<N, S, A> {
     }
 }
 
-impl<N: Idx, S: Idx + Ord, A: Annotation> NumEdges for Sccs<N, S, A> {
+impl<N: Idx, S: Idx + Ord> NumEdges for Sccs<N, S> {
     fn num_edges(&self) -> usize {
         self.scc_data.all_successors.len()
     }
 }
 
-impl<N: Idx, S: Idx + Ord, A: Annotation> Successors for Sccs<N, S, A> {
+impl<N: Idx, S: Idx + Ord> Successors for Sccs<N, S> {
     fn successors(&self, node: S) -> impl Iterator<Item = Self::Node> {
         self.successors(node).iter().cloned()
     }
 }
 
-impl<S: Idx, A: Annotation> SccData<S, A> {
+impl<S: Idx> SccData<S> {
     /// Number of SCCs,
     fn len(&self) -> usize {
         self.scc_details.len()
@@ -192,9 +203,8 @@ impl<S: Idx, A: Annotation> SccData<S, A> {
     }
 
     /// Creates a new SCC with `successors` as its successors and
-    /// the maximum weight of its internal nodes `scc_max_weight` and
     /// returns the resulting index.
-    fn create_scc(&mut self, successors: impl IntoIterator<Item = S>, annotation: A) -> S {
+    fn create_scc(&mut self, successors: impl IntoIterator<Item = S>) -> S {
         // Store the successors on `scc_successors_vec`, remembering
         // the range of indices.
         let all_successors_start = self.all_successors.len();
@@ -202,28 +212,23 @@ impl<S: Idx, A: Annotation> SccData<S, A> {
         let all_successors_end = self.all_successors.len();
 
         debug!(
-            "create_scc({:?}) successors={:?}, annotation={:?}",
+            "create_scc({:?}) successors={:?}",
             self.len(),
             &self.all_successors[all_successors_start..all_successors_end],
-            annotation
         );
 
         let range = all_successors_start..all_successors_end;
-        let metadata = SccDetails { range, annotation };
+        let metadata = SccDetails { range };
         self.scc_details.push(metadata)
-    }
-
-    fn annotation(&self, scc: S) -> A {
-        self.scc_details[scc].annotation
     }
 }
 
-struct SccsConstruction<'c, G, S, A, F>
+struct SccsConstruction<'c, 'a, G, S, A, AA>
 where
     G: DirectedGraph + Successors,
     S: Idx,
     A: Annotation,
-    F: Fn(G::Node) -> A,
+    AA: Annotations<G::Node, S, A>,
 {
     graph: &'c G,
 
@@ -247,11 +252,9 @@ where
     /// around between successors to amortize memory allocation costs.
     duplicate_set: FxHashSet<S>,
 
-    scc_data: SccData<S, A>,
+    scc_data: SccData<S>,
 
-    /// A function that constructs an initial SCC annotation
-    /// out of a single node.
-    to_annotation: F,
+    annotations: &'a mut AA,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -299,12 +302,12 @@ enum WalkReturn<S, A> {
     Complete { scc_index: S, annotation: A },
 }
 
-impl<'c, G, S, A, F> SccsConstruction<'c, G, S, A, F>
+impl<'c, 'a, G, S, A, AA> SccsConstruction<'c, 'a, G, S, A, AA>
 where
     G: DirectedGraph + Successors,
     S: Idx,
-    F: Fn(G::Node) -> A,
     A: Annotation,
+    AA: Annotations<G::Node, S, A>,
 {
     /// Identifies SCCs in the graph `G` and computes the resulting
     /// DAG. This uses a variant of [Tarjan's
@@ -320,7 +323,7 @@ where
     /// Additionally, we keep track of a current annotation of the SCC.
     ///
     /// [wikipedia]: https://bit.ly/2EZIx84
-    fn construct(graph: &'c G, to_annotation: F) -> Sccs<G::Node, S, A> {
+    fn construct(graph: &'c G, annotations: &'a mut AA) -> Sccs<G::Node, S> {
         let num_nodes = graph.num_nodes();
 
         let mut this = Self {
@@ -330,7 +333,7 @@ where
             successors_stack: Vec::new(),
             scc_data: SccData { scc_details: IndexVec::new(), all_successors: Vec::new() },
             duplicate_set: FxHashSet::default(),
-            to_annotation,
+            annotations,
         };
 
         let scc_indices = (0..num_nodes)
@@ -537,7 +540,7 @@ where
             successors_len: 0,
             min_cycle_root: initial,
             successor_node: initial,
-            current_component_annotation: (self.to_annotation)(initial),
+            current_component_annotation: self.annotations.new(initial),
         }];
 
         let mut return_value = None;
@@ -558,7 +561,7 @@ where
 
             // node is definitely in the current component, add it to the annotation.
             if node != initial {
-                current_component_annotation.update_scc((self.to_annotation)(node));
+                current_component_annotation.update_scc(self.annotations.new(node));
             }
             debug!(
                 "Visiting {node:?} at depth {depth:?}, annotation: {current_component_annotation:?}"
@@ -652,7 +655,7 @@ where
                             min_depth: depth,
                             min_cycle_root: successor_node,
                             successor_node,
-                            current_component_annotation: (self.to_annotation)(successor_node),
+                            current_component_annotation: self.annotations.new(successor_node),
                         });
                         continue 'recurse;
                     }
@@ -691,8 +694,9 @@ where
 
                 debug!("Creating SCC rooted in {node:?} with successor {:?}", frame.successor_node);
 
-                let scc_index =
-                    self.scc_data.create_scc(deduplicated_successors, current_component_annotation);
+                let scc_index = self.scc_data.create_scc(deduplicated_successors);
+
+                self.annotations.annotate_scc(scc_index, current_component_annotation);
 
                 self.node_states[node] =
                     NodeState::InCycle { scc_index, annotation: current_component_annotation };

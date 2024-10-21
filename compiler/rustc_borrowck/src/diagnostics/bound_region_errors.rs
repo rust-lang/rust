@@ -181,24 +181,12 @@ trait TypeOpInfo<'tcx> {
             bound: placeholder.bound,
         });
 
-        let error_region =
-            if let RegionElement::PlaceholderRegion(error_placeholder) = error_element {
-                let adjusted_universe =
-                    error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
-                adjusted_universe.map(|adjusted| {
-                    ty::Region::new_placeholder(tcx, ty::Placeholder {
-                        universe: adjusted.into(),
-                        bound: error_placeholder.bound,
-                    })
-                })
-            } else {
-                None
-            };
-
         debug!(?placeholder_region);
 
+        // FIXME: this is obviously weird; this whole argument now does nothing and maybe
+        // it should?
         let span = cause.span;
-        let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_region);
+        let nice_error = self.nice_error(mbcx, cause, placeholder_region, None);
 
         debug!(?nice_error);
 

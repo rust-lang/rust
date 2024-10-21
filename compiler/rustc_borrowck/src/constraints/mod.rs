@@ -1,13 +1,16 @@
 use std::fmt;
 use std::ops::Index;
 
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::graph::scc;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
-use crate::region_infer::{ConstraintSccs, RegionDefinition, RegionTracker};
+use crate::region_infer::{PlaceholderTracking, RegionDefinition, RegionTracker, SccAnnotations};
 use crate::type_check::Locations;
 use crate::universal_regions::UniversalRegions;
 
@@ -57,16 +60,39 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
     /// Computes cycles (SCCs) in the graph of regions. In particular,
     /// find all regions R1, R2 such that R1: R2 and R2: R1 and group
     /// them into an SCC, and find the relationships between SCCs.
-    pub(crate) fn compute_sccs(
+    pub(crate) fn compute_sccs<
+        A: scc::Annotation,
+        AA: scc::Annotations<RegionVid, ConstraintSccIndex, A>,
+    >(
         &self,
         static_region: RegionVid,
-        definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
-    ) -> ConstraintSccs {
-        let constraint_graph = self.graph(definitions.len());
+        num_region_vars: usize,
+        annotations: &mut AA,
+    ) -> scc::Sccs<RegionVid, ConstraintSccIndex> {
+        let constraint_graph = self.graph(num_region_vars);
         let region_graph = &constraint_graph.region_graph(self, static_region);
-        ConstraintSccs::new_with_annotation(&region_graph, |r| {
-            RegionTracker::new(r, &definitions[r])
-        })
+        scc::Sccs::new_with_annotation(&region_graph, annotations)
+    }
+
+    /// There is a placeholder violation; add a requirement
+    /// that some SCC outlive static and explain which region
+    /// reaching which other region caused that.
+    fn add_placeholder_violation_constraint(
+        &mut self,
+        outlives_static: RegionVid,
+        blame_from: RegionVid,
+        blame_to: RegionVid,
+        fr_static: RegionVid,
+    ) {
+        self.push(OutlivesConstraint {
+            sup: outlives_static,
+            sub: fr_static,
+            category: ConstraintCategory::IllegalPlaceholder(blame_from, blame_to),
+            locations: Locations::All(rustc_span::DUMMY_SP),
+            span: rustc_span::DUMMY_SP,
+            variance_info: VarianceDiagInfo::None,
+            from_closure: false,
+        });
     }
 
     /// This method handles Universe errors by rewriting the constraint
@@ -79,7 +105,7 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
     /// eventually go away.
     ///
     /// For a more precise definition, see the documentation for
-    /// [`RegionTracker::has_incompatible_universes()`].
+    /// [`RegionTracker`] and its methods!.
     ///
     /// This edge case used to be handled during constraint propagation
     /// by iterating over the strongly connected components in the constraint
@@ -104,57 +130,90 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
     /// Every constraint added by this method is an
     /// internal `IllegalUniverse` constraint.
     #[instrument(skip(self, universal_regions, definitions))]
-    pub(crate) fn add_outlives_static(
+    pub(crate) fn add_outlives_static<'d>(
         &mut self,
         universal_regions: &UniversalRegions<'tcx>,
-        definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
-    ) -> ConstraintSccs {
+        definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    ) -> (scc::Sccs<RegionVid, ConstraintSccIndex>, PlaceholderTracking) {
         let fr_static = universal_regions.fr_static;
-        let sccs = self.compute_sccs(fr_static, definitions);
+        let mut annotations = SccAnnotations::init(definitions);
+        let sccs = self.compute_sccs(fr_static, definitions.len(), &mut annotations);
 
-        // Changed to `true` if we added any constraints to `self` and need to
-        // recompute SCCs.
-        let mut added_constraints = false;
+        // Is this SCC already outliving static directly or transitively?
+        let mut outlives_static = FxHashSet::default();
 
         for scc in sccs.all_sccs() {
-            // No point in adding 'static: 'static!
-            // This micro-optimisation makes somewhat sense
-            // because static outlives *everything*.
+            let annotation: RegionTracker = annotations.scc_to_annotation[scc];
             if scc == sccs.scc(fr_static) {
+                // No use adding 'static: 'static.
                 continue;
             }
 
-            let annotation = sccs.annotation(scc);
-
-            // If this SCC participates in a universe violation,
+            // If this SCC participates in a universe violation
             // e.g. if it reaches a region with a universe smaller than
             // the largest region reached, add a requirement that it must
-            // outlive `'static`.
-            if annotation.has_incompatible_universes() {
-                // Optimisation opportunity: this will add more constraints than
-                // needed for correctness, since an SCC upstream of another with
-                // a universe violation will "infect" its downstream SCCs to also
-                // outlive static.
-                added_constraints = true;
-                let scc_representative_outlives_static = OutlivesConstraint {
-                    sup: annotation.representative,
-                    sub: fr_static,
-                    category: ConstraintCategory::IllegalUniverse,
-                    locations: Locations::All(rustc_span::DUMMY_SP),
-                    span: rustc_span::DUMMY_SP,
-                    variance_info: VarianceDiagInfo::None,
-                    from_closure: false,
-                };
-                self.push(scc_representative_outlives_static);
+            // outlive `'static`. Here we get to know which reachable region
+            // caused the violation.
+            if let Some(to) = annotation.universe_violation() {
+                outlives_static.insert(scc);
+                self.add_placeholder_violation_constraint(
+                    annotation.representative_rvid(),
+                    annotation.representative_rvid(),
+                    to,
+                    fr_static,
+                );
             }
         }
 
-        if added_constraints {
+        // Note: it's possible to sort this iterator by SCC and get dependency order,
+        // which makes it easy to only add only one constraint per future cycle.
+        // However, this worsens diagnostics and requires iterating over
+        // all successors to determine if we outlive static transitively,
+        // a cost you pay even if you have no placeholders.
+        let placeholders_and_sccs =
+            definitions.iter_enumerated().filter_map(|(rvid, definition)| {
+                if matches!(definition.origin, NllRegionVariableOrigin::Placeholder { .. }) {
+                    Some((sccs.scc(rvid), rvid))
+                } else {
+                    None
+                }
+            });
+
+        // The second kind of violation: a placeholder reaching another placeholder.
+        for (scc, rvid) in placeholders_and_sccs {
+            let annotation = annotations.scc_to_annotation[scc];
+
+            if sccs.scc(fr_static) == scc || outlives_static.contains(&scc) {
+                debug!("{:?} already outlives (or is) static", annotation.representative_rvid());
+                continue;
+            }
+
+            if let Some(other_placeholder) = annotation.reaches_other_placeholder(rvid) {
+                debug!(
+                    "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
+                );
+                outlives_static.insert(scc);
+                self.add_placeholder_violation_constraint(
+                    annotation.representative_rvid(),
+                    rvid,
+                    other_placeholder,
+                    fr_static,
+                );
+            };
+        }
+
+        if !outlives_static.is_empty() {
+            debug!("The following SCCs had :'static constraints added: {:?}", outlives_static);
+            let mut annotations = SccAnnotations::init(definitions);
+
             // We changed the constraint set and so must recompute SCCs.
-            self.compute_sccs(fr_static, definitions)
+            (
+                self.compute_sccs(fr_static, definitions.len(), &mut annotations),
+                PlaceholderTracking::On(annotations.scc_to_annotation),
+            )
         } else {
             // If we didn't add any back-edges; no more work needs doing
-            sccs
+            (sccs, PlaceholderTracking::On(annotations.scc_to_annotation))
         }
     }
 }
