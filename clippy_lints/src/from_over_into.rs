@@ -181,9 +181,6 @@ fn convert_to_from(
     let from = self_ty.span.get_source_text(cx)?;
     let into = target_ty.span.get_source_text(cx)?;
 
-    let return_type = matches!(sig.decl.output, FnRetTy::Return(_))
-        .then_some(String::from("Self"))
-        .unwrap_or_default();
     let mut suggestions = vec![
         // impl Into<T> for U  ->  impl From<T> for U
         //      ~~~~                    ~~~~
@@ -200,10 +197,13 @@ fn convert_to_from(
         // fn into([mut] self) -> T  ->  fn into([mut] v: T) -> T
         //               ~~~~                          ~~~~
         (self_ident.span, format!("val: {from}")),
+    ];
+
+    if let FnRetTy::Return(_) = sig.decl.output {
         // fn into(self) -> T  ->  fn into(self) -> Self
         //                  ~                       ~~~~
-        (sig.decl.output.span(), return_type),
-    ];
+        suggestions.push((sig.decl.output.span(), String::from("Self")));
+    }
 
     let mut finder = SelfFinder {
         cx,
