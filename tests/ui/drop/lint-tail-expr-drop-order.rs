@@ -1,12 +1,10 @@
-//@ compile-flags: -Z unstable-options
-//@ edition: 2024
+//@ edition: 2021
 
 // Edition 2024 lint for change in drop order at tail expression
 // This lint is to capture potential change in program semantics
 // due to implementation of RFC 3606 <https://github.com/rust-lang/rfcs/pull/3606>
 
 #![deny(tail_expr_drop_order)]
-#![feature(shorter_tail_lifetimes)]
 
 struct LoudDropper;
 impl Drop for LoudDropper {

@@ -4,8 +4,6 @@
 //@ [edition2024] compile-flags: -Zunstable-options
 //@ [edition2024] check-pass
 
-#![cfg_attr(edition2024, feature(shorter_tail_lifetimes))]
-
 fn main() {
     let cell = std::cell::RefCell::new(0u8);
 

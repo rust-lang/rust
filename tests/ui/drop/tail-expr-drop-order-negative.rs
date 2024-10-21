@@ -3,8 +3,6 @@
 //@ [edition2024] edition: 2024
 //@ [edition2021] check-pass
 
-#![feature(shorter_tail_lifetimes)]
-
 fn why_would_you_do_this() -> bool {
     let mut x = None;
     // Make a temporary `RefCell` and put a `Ref` that borrows it in `x`.

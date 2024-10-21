@@ -21,8 +21,7 @@ declare_lint! {
     /// Your discretion on the new drop order introduced by Edition 2024 is required.
     ///
     /// ### Example
-    /// ```rust,edition2024
-    /// #![feature(shorter_tail_lifetimes)]
+    /// ```rust,edition2021
     /// #![warn(tail_expr_drop_order)]
     /// struct Droppy(i32);
     /// impl Droppy {
@@ -37,12 +36,12 @@ declare_lint! {
     ///         println!("loud drop {}", self.0);
     ///     }
     /// }
-    /// fn edition_2024() -> i32 {
+    /// fn edition_2021() -> i32 {
     ///     let another_droppy = Droppy(0);
     ///     Droppy(1).get()
     /// }
     /// fn main() {
-    ///     edition_2024();
+    ///     edition_2021();
     /// }
     /// ```
     ///
@@ -137,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for TailExprDropOrder {
         _: Span,
         def_id: rustc_span::def_id::LocalDefId,
     ) {
-        if cx.tcx.sess.at_least_rust_2024() && cx.tcx.features().shorter_tail_lifetimes {
+        if !body.value.span.edition().at_least_rust_2024() {
             Self::check_fn_or_closure(cx, fn_kind, body, def_id);
         }
     }
@@ -185,7 +184,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LintVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> LintVisitor<'a, 'tcx> {
     fn check_block_inner(&mut self, block: &Block<'tcx>) {
-        if !block.span.at_least_rust_2024() {
+        if block.span.at_least_rust_2024() {
             // We only lint for Edition 2024 onwards
             return;
         }

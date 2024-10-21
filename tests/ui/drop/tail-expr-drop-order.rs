@@ -4,7 +4,6 @@
 //@ edition: 2024
 //@ run-pass
 
-#![feature(shorter_tail_lifetimes)]
 #![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
