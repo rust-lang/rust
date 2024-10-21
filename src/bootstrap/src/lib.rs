@@ -665,7 +665,7 @@ impl Build {
         }
         // Generate memcpy, etc.  FIXME: Remove this once compiler-builtins
         // automatically detects this target.
-        if target.contains("zkvm") {
+        if target.contains("zkvm") || target.contains("vex") {
             features.insert("compiler-builtins-mem");
         }
 

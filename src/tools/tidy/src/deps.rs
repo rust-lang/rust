@@ -495,6 +495,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "shlex",
     "unicode-width",
     "unwinding",
+    "vex-sdk",
     "wasi",
     "windows-sys",
     "windows-targets",

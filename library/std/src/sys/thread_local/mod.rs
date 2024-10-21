@@ -28,6 +28,7 @@ cfg_if::cfg_if! {
         all(target_family = "wasm", not(target_feature = "atomics")),
         target_os = "uefi",
         target_os = "zkvm",
+        target_os = "vexos",
     ))] {
         mod statik;
         pub use statik::{EagerStorage, LazyStorage, thread_local_inner};
@@ -89,6 +90,7 @@ pub(crate) mod guard {
             target_family = "wasm",
             target_os = "uefi",
             target_os = "zkvm",
+            target_os = "vexos",
         ))] {
             pub(crate) fn enable() {
                 // FIXME: Right now there is no concept of "thread exit" on

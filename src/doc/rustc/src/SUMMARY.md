@@ -45,6 +45,7 @@
     - [armv7-sony-vita-newlibeabihf](platform-support/armv7-sony-vita-newlibeabihf.md)
     - [armv7-unknown-linux-uclibceabi](platform-support/armv7-unknown-linux-uclibceabi.md)
     - [armv7-unknown-linux-uclibceabihf](platform-support/armv7-unknown-linux-uclibceabihf.md)
+    - [armv7a-vex-v5](platform-support/armv7a-vex-v5.md)
     - [\*-android and \*-androideabi](platform-support/android.md)
     - [\*-linux-ohos](platform-support/openharmony.md)
     - [\*-hurd-gnu](platform-support/hurd.md)

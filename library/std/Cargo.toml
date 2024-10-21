@@ -67,7 +67,7 @@ path = "../windows_targets"
 rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.3.0"
 
-[target.'cfg(any(all(target_family = "wasm", target_os = "unknown"), target_os = "xous", all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
+[target.'cfg(any(all(target_family = "wasm", target_os = "unknown"), target_os = "vexos", target_os = "xous", all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
@@ -88,6 +88,9 @@ wasi = { version = "0.11.0", features = [
 [target.'cfg(target_os = "uefi")'.dependencies]
 r-efi = { version = "4.5.0", features = ['rustc-dep-of-std'] }
 r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
+
+[target.'cfg(target_os = "vexos")'.dependencies]
+vex-sdk = { version = "0.22.0", features = ['rustc-dep-of-std'] }
 
 [features]
 backtrace = [
@@ -150,4 +153,5 @@ check-cfg = [
     'cfg(feature, values(any()))',
     # #[cfg(bootstrap)] rtems
     'cfg(target_os, values("rtems"))',
+    'cfg(target_os, values("vexos"))',
 ]
