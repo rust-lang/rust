@@ -224,14 +224,12 @@ fn find_similar_kw(lookup: Ident, candidates: &[Symbol]) -> Option<MisspelledKw>
     let lowercase_sym = Symbol::intern(&lowercase);
     if candidates.contains(&lowercase_sym) {
         Some(MisspelledKw { similar_kw: lowercase, span: lookup.span, is_incorrect_case: true })
-    } else if let Some(similar_sym) = find_best_match_for_name(candidates, lookup.name, None) {
-        Some(MisspelledKw {
+    } else {
+        find_best_match_for_name(candidates, lookup.name, None).map(|similar_sym| MisspelledKw {
             similar_kw: similar_sym.to_string(),
             span: lookup.span,
             is_incorrect_case: false,
         })
-    } else {
-        None
     }
 }
 

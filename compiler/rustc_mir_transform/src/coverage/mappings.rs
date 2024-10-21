@@ -363,7 +363,7 @@ fn calc_test_vectors_index(conditions: &mut Vec<MCDCBranch>) -> usize {
             let ConditionInfo { condition_id, true_next_id, false_next_id } = branch.condition_info;
             [true_next_id, false_next_id]
                 .into_iter()
-                .filter_map(std::convert::identity)
+                .flatten()
                 .for_each(|next_id| indegree_stats[next_id] += 1);
             (condition_id, branch)
         })
