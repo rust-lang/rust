@@ -15,6 +15,12 @@ test-musl-serialized = ["rand"]
 anyhow = "1.0.90"
 libm = { path = "../.." }
 libm-macros = { path = "../libm-macros" }
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+# Enable randomness on WASM
+getrandom = { version = "0.2", features = ["js"] }
 
 [build-dependencies]
 rand = { version = "0.8.5", optional = true }
