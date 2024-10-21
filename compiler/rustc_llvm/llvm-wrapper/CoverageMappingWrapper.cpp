@@ -33,45 +33,6 @@ static coverage::Counter fromRust(LLVMRustCounter Counter) {
   report_fatal_error("Bad LLVMRustCounterKind!");
 }
 
-// FFI equivalent of enum `llvm::coverage::CounterMappingRegion::RegionKind`
-// https://github.com/rust-lang/llvm-project/blob/ea6fa9c2/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L213-L234
-enum class LLVMRustCounterMappingRegionKind {
-  CodeRegion = 0,
-  ExpansionRegion = 1,
-  SkippedRegion = 2,
-  GapRegion = 3,
-  BranchRegion = 4,
-  MCDCDecisionRegion = 5,
-  MCDCBranchRegion = 6
-};
-
-static coverage::CounterMappingRegion::RegionKind
-fromRust(LLVMRustCounterMappingRegionKind Kind) {
-  switch (Kind) {
-  case LLVMRustCounterMappingRegionKind::CodeRegion:
-    return coverage::CounterMappingRegion::CodeRegion;
-  case LLVMRustCounterMappingRegionKind::ExpansionRegion:
-    return coverage::CounterMappingRegion::ExpansionRegion;
-  case LLVMRustCounterMappingRegionKind::SkippedRegion:
-    return coverage::CounterMappingRegion::SkippedRegion;
-  case LLVMRustCounterMappingRegionKind::GapRegion:
-    return coverage::CounterMappingRegion::GapRegion;
-  case LLVMRustCounterMappingRegionKind::BranchRegion:
-    return coverage::CounterMappingRegion::BranchRegion;
-  case LLVMRustCounterMappingRegionKind::MCDCDecisionRegion:
-    return coverage::CounterMappingRegion::MCDCDecisionRegion;
-  case LLVMRustCounterMappingRegionKind::MCDCBranchRegion:
-    return coverage::CounterMappingRegion::MCDCBranchRegion;
-  }
-  report_fatal_error("Bad LLVMRustCounterMappingRegionKind!");
-}
-
-enum LLVMRustMCDCParametersTag {
-  None = 0,
-  Decision = 1,
-  Branch = 2,
-};
-
 struct LLVMRustMCDCDecisionParameters {
   uint32_t BitmapIdx;
   uint16_t NumConditions;
@@ -82,47 +43,58 @@ struct LLVMRustMCDCBranchParameters {
   int16_t ConditionIDs[2];
 };
 
-struct LLVMRustMCDCParameters {
-  LLVMRustMCDCParametersTag Tag;
-  LLVMRustMCDCDecisionParameters DecisionParameters;
-  LLVMRustMCDCBranchParameters BranchParameters;
-};
-
 #if LLVM_VERSION_GE(19, 0)
-static coverage::mcdc::Parameters fromRust(LLVMRustMCDCParameters Params) {
-  switch (Params.Tag) {
-  case LLVMRustMCDCParametersTag::None:
-    return std::monostate();
-  case LLVMRustMCDCParametersTag::Decision:
-    return coverage::mcdc::DecisionParameters(
-        Params.DecisionParameters.BitmapIdx,
-        Params.DecisionParameters.NumConditions);
-  case LLVMRustMCDCParametersTag::Branch:
-    return coverage::mcdc::BranchParameters(
-        static_cast<coverage::mcdc::ConditionID>(
-            Params.BranchParameters.ConditionID),
-        {static_cast<coverage::mcdc::ConditionID>(
-             Params.BranchParameters.ConditionIDs[0]),
-         static_cast<coverage::mcdc::ConditionID>(
-             Params.BranchParameters.ConditionIDs[1])});
-  }
-  report_fatal_error("Bad LLVMRustMCDCParametersTag!");
+static coverage::mcdc::BranchParameters
+fromRust(LLVMRustMCDCBranchParameters Params) {
+  return coverage::mcdc::BranchParameters(
+      Params.ConditionID, {Params.ConditionIDs[0], Params.ConditionIDs[1]});
+}
+
+static coverage::mcdc::DecisionParameters
+fromRust(LLVMRustMCDCDecisionParameters Params) {
+  return coverage::mcdc::DecisionParameters(Params.BitmapIdx,
+                                            Params.NumConditions);
 }
 #endif
 
-// FFI equivalent of struct `llvm::coverage::CounterMappingRegion`
-// https://github.com/rust-lang/llvm-project/blob/ea6fa9c2/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L211-L304
-struct LLVMRustCounterMappingRegion {
-  LLVMRustCounter Count;
-  LLVMRustCounter FalseCount;
-  LLVMRustMCDCParameters MCDCParameters;
+// Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::CoverageSpan`.
+struct LLVMRustCoverageSpan {
   uint32_t FileID;
-  uint32_t ExpandedFileID;
   uint32_t LineStart;
   uint32_t ColumnStart;
   uint32_t LineEnd;
   uint32_t ColumnEnd;
-  LLVMRustCounterMappingRegionKind Kind;
+};
+
+// Must match the layout of `rustc_codegen_llvm::coverageinfo::ffi::CodeRegion`.
+struct LLVMRustCoverageCodeRegion {
+  LLVMRustCoverageSpan Span;
+  LLVMRustCounter Count;
+};
+
+// Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::BranchRegion`.
+struct LLVMRustCoverageBranchRegion {
+  LLVMRustCoverageSpan Span;
+  LLVMRustCounter TrueCount;
+  LLVMRustCounter FalseCount;
+};
+
+// Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::MCDCBranchRegion`.
+struct LLVMRustCoverageMCDCBranchRegion {
+  LLVMRustCoverageSpan Span;
+  LLVMRustCounter TrueCount;
+  LLVMRustCounter FalseCount;
+  LLVMRustMCDCBranchParameters MCDCBranchParams;
+};
+
+// Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::MCDCDecisionRegion`.
+struct LLVMRustCoverageMCDCDecisionRegion {
+  LLVMRustCoverageSpan Span;
+  LLVMRustMCDCDecisionParameters MCDCDecisionParams;
 };
 
 // FFI equivalent of enum `llvm::coverage::CounterExpression::ExprKind`
@@ -174,28 +146,16 @@ extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
 extern "C" void LLVMRustCoverageWriteMappingToBuffer(
     const unsigned *VirtualFileMappingIDs, unsigned NumVirtualFileMappingIDs,
     const LLVMRustCounterExpression *RustExpressions, unsigned NumExpressions,
-    const LLVMRustCounterMappingRegion *RustMappingRegions,
-    unsigned NumMappingRegions, RustStringRef BufferOut) {
+    const LLVMRustCoverageCodeRegion *CodeRegions, unsigned NumCodeRegions,
+    const LLVMRustCoverageBranchRegion *BranchRegions,
+    unsigned NumBranchRegions,
+    const LLVMRustCoverageMCDCBranchRegion *MCDCBranchRegions,
+    unsigned NumMCDCBranchRegions,
+    const LLVMRustCoverageMCDCDecisionRegion *MCDCDecisionRegions,
+    unsigned NumMCDCDecisionRegions, RustStringRef BufferOut) {
   // Convert from FFI representation to LLVM representation.
-  SmallVector<coverage::CounterMappingRegion, 0> MappingRegions;
-  MappingRegions.reserve(NumMappingRegions);
-  for (const auto &Region : ArrayRef<LLVMRustCounterMappingRegion>(
-           RustMappingRegions, NumMappingRegions)) {
-    MappingRegions.emplace_back(
-        fromRust(Region.Count), fromRust(Region.FalseCount),
-#if LLVM_VERSION_LT(19, 0)
-        coverage::CounterMappingRegion::MCDCParameters{},
-#endif
-        Region.FileID, Region.ExpandedFileID, // File IDs, then region info.
-        Region.LineStart, Region.ColumnStart, Region.LineEnd, Region.ColumnEnd,
-        fromRust(Region.Kind)
-#if LLVM_VERSION_GE(19, 0)
-            ,
-        fromRust(Region.MCDCParameters)
-#endif
-    );
-  }
 
+  // Expressions:
   std::vector<coverage::CounterExpression> Expressions;
   Expressions.reserve(NumExpressions);
   for (const auto &Expression :
@@ -205,6 +165,46 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
                              fromRust(Expression.RHS));
   }
 
+  std::vector<coverage::CounterMappingRegion> MappingRegions;
+  MappingRegions.reserve(NumCodeRegions + NumBranchRegions +
+                         NumMCDCBranchRegions + NumMCDCDecisionRegions);
+
+  // Code regions:
+  for (const auto &Region : ArrayRef(CodeRegions, NumCodeRegions)) {
+    MappingRegions.push_back(coverage::CounterMappingRegion::makeRegion(
+        fromRust(Region.Count), Region.Span.FileID, Region.Span.LineStart,
+        Region.Span.ColumnStart, Region.Span.LineEnd, Region.Span.ColumnEnd));
+  }
+
+  // Branch regions:
+  for (const auto &Region : ArrayRef(BranchRegions, NumBranchRegions)) {
+    MappingRegions.push_back(coverage::CounterMappingRegion::makeBranchRegion(
+        fromRust(Region.TrueCount), fromRust(Region.FalseCount),
+        Region.Span.FileID, Region.Span.LineStart, Region.Span.ColumnStart,
+        Region.Span.LineEnd, Region.Span.ColumnEnd));
+  }
+
+#if LLVM_VERSION_GE(19, 0)
+  // MC/DC branch regions:
+  for (const auto &Region : ArrayRef(MCDCBranchRegions, NumMCDCBranchRegions)) {
+    MappingRegions.push_back(coverage::CounterMappingRegion::makeBranchRegion(
+        fromRust(Region.TrueCount), fromRust(Region.FalseCount),
+        Region.Span.FileID, Region.Span.LineStart, Region.Span.ColumnStart,
+        Region.Span.LineEnd, Region.Span.ColumnEnd,
+        fromRust(Region.MCDCBranchParams)));
+  }
+
+  // MC/DC decision regions:
+  for (const auto &Region :
+       ArrayRef(MCDCDecisionRegions, NumMCDCDecisionRegions)) {
+    MappingRegions.push_back(coverage::CounterMappingRegion::makeDecisionRegion(
+        fromRust(Region.MCDCDecisionParams), Region.Span.FileID,
+        Region.Span.LineStart, Region.Span.ColumnStart, Region.Span.LineEnd,
+        Region.Span.ColumnEnd));
+  }
+#endif
+
+  // Write the converted expressions and mappings to a byte buffer.
   auto CoverageMappingWriter = coverage::CoverageMappingWriter(
       ArrayRef<unsigned>(VirtualFileMappingIDs, NumVirtualFileMappingIDs),
       Expressions, MappingRegions);

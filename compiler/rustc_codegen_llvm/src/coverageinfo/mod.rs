@@ -18,7 +18,6 @@ use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
-use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
 use crate::coverageinfo::map_data::FunctionCoverageCollector;
 use crate::llvm;
 
@@ -257,8 +256,11 @@ pub(crate) fn write_filenames_section_to_buffer<'a>(
 
 pub(crate) fn write_mapping_to_buffer(
     virtual_file_mapping: Vec<u32>,
-    expressions: Vec<CounterExpression>,
-    mapping_regions: Vec<CounterMappingRegion>,
+    expressions: Vec<ffi::CounterExpression>,
+    code_regions: &[ffi::CodeRegion],
+    branch_regions: &[ffi::BranchRegion],
+    mcdc_branch_regions: &[ffi::MCDCBranchRegion],
+    mcdc_decision_regions: &[ffi::MCDCDecisionRegion],
     buffer: &RustString,
 ) {
     unsafe {
@@ -267,8 +269,14 @@ pub(crate) fn write_mapping_to_buffer(
             virtual_file_mapping.len() as c_uint,
             expressions.as_ptr(),
             expressions.len() as c_uint,
-            mapping_regions.as_ptr(),
-            mapping_regions.len() as c_uint,
+            code_regions.as_ptr(),
+            code_regions.len() as c_uint,
+            branch_regions.as_ptr(),
+            branch_regions.len() as c_uint,
+            mcdc_branch_regions.as_ptr(),
+            mcdc_branch_regions.len() as c_uint,
+            mcdc_decision_regions.as_ptr(),
+            mcdc_decision_regions.len() as c_uint,
             buffer,
         );
     }

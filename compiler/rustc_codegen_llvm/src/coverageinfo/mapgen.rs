@@ -5,6 +5,7 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
+use rustc_middle::mir::coverage::MappingKind;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;
@@ -12,7 +13,7 @@ use rustc_span::def_id::DefIdSet;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::ffi::CounterMappingRegion;
+use crate::coverageinfo::ffi;
 use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
 use crate::{coverageinfo, llvm};
 
@@ -237,7 +238,10 @@ fn encode_mappings_for_function(
     let expressions = function_coverage.counter_expressions().collect::<Vec<_>>();
 
     let mut virtual_file_mapping = VirtualFileMapping::default();
-    let mut mapping_regions = Vec::with_capacity(counter_regions.len());
+    let mut code_regions = vec![];
+    let mut branch_regions = vec![];
+    let mut mcdc_branch_regions = vec![];
+    let mut mcdc_decision_regions = vec![];
 
     // Group mappings into runs with the same filename, preserving the order
     // yielded by `FunctionCoverage`.
@@ -257,11 +261,36 @@ fn encode_mappings_for_function(
         // form suitable for FFI.
         for (mapping_kind, region) in counter_regions_for_file {
             debug!("Adding counter {mapping_kind:?} to map for {region:?}");
-            mapping_regions.push(CounterMappingRegion::from_mapping(
-                &mapping_kind,
-                local_file_id.as_u32(),
-                region,
-            ));
+            let span = ffi::CoverageSpan::from_source_region(local_file_id.as_u32(), region);
+            match mapping_kind {
+                MappingKind::Code(term) => {
+                    code_regions
+                        .push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
+                }
+                MappingKind::Branch { true_term, false_term } => {
+                    branch_regions.push(ffi::BranchRegion {
+                        span,
+                        true_counter: ffi::Counter::from_term(true_term),
+                        false_counter: ffi::Counter::from_term(false_term),
+                    });
+                }
+                MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
+                    mcdc_branch_regions.push(ffi::MCDCBranchRegion {
+                        span,
+                        true_counter: ffi::Counter::from_term(true_term),
+                        false_counter: ffi::Counter::from_term(false_term),
+                        mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
+                    });
+                }
+                MappingKind::MCDCDecision(mcdc_decision_params) => {
+                    mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
+                        span,
+                        mcdc_decision_params: ffi::mcdc::DecisionParameters::from(
+                            mcdc_decision_params,
+                        ),
+                    });
+                }
+            }
         }
     }
 
@@ -270,7 +299,10 @@ fn encode_mappings_for_function(
         coverageinfo::write_mapping_to_buffer(
             virtual_file_mapping.into_vec(),
             expressions,
-            mapping_regions,
+            &code_regions,
+            &branch_regions,
+            &mcdc_branch_regions,
+            &mcdc_decision_regions,
             buffer,
         );
     })
