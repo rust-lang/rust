@@ -745,6 +745,7 @@ where
 
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "blanket_into_impl"]
 impl<T, U> Into<U> for T
 where
     U: From<T>,

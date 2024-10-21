@@ -19,4 +19,5 @@ where
 fn main() {
     let a = A(B);
     a.method(); //~ ERROR type annotations needed
+    // <A<B> as V<u32>>::method(a);
 }
