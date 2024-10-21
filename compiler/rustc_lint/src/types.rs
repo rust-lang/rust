@@ -898,15 +898,24 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         match *ty.kind() {
             ty::Adt(def, args) => {
-                if let Some(boxed) = ty.boxed_ty()
+                if let Some(inner_ty) = ty.boxed_ty()
                     && matches!(self.mode, CItemKind::Definition)
                 {
-                    if boxed.is_sized(tcx, self.cx.param_env) {
+                    if inner_ty.is_sized(tcx, self.cx.param_env)
+                        || matches!(inner_ty.kind(), ty::Foreign(..))
+                    {
+                        let _probe = self.check_type_for_ffi(acc, inner_ty);
                         return FfiSafe;
                     } else {
+                        //let help = match inner_ty.kind() {
+                        //    ty::Dynamic(..) => Some(fluent::lint_improper_ctypes_unsized_help_dyn),
+                        //    ty::Closure(..) => Some(fluent::lint_improper_ctypes_unsized_help_closure),
+                        //    ty::Slice(..) => Some(fluent::lint_improper_ctypes_unsized_help_slice),
+                        //    _ => None,
+                        //};
                         return FfiUnsafe {
                             ty,
-                            reason: fluent::lint_improper_ctypes_box,
+                            reason: fluent::lint_improper_ctypes_unsized_box,
                             help: None,
                         };
                     }
@@ -1047,6 +1056,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_slice_help),
             },
 
+
             ty::Dynamic(..) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_dyn, help: None }
             }
@@ -1063,13 +1073,22 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_tuple_help),
             },
 
-            ty::RawPtr(ty, _) | ty::Ref(_, ty, _)
-                if {
-                    matches!(self.mode, CItemKind::Definition)
-                        && ty.is_sized(self.cx.tcx, self.cx.param_env)
-                } =>
+            ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _)
+                if matches!(self.mode, CItemKind::Definition) =>
             {
-                FfiSafe
+                if inner_ty.is_sized(tcx, self.cx.param_env)
+                    || matches!(inner_ty.kind(), ty::Foreign(..))
+                {
+                    let _probe = self.check_type_for_ffi(acc, inner_ty);
+                    FfiSafe
+                } else {
+                    let reason = match ty.kind() {
+                        ty::RawPtr(..) => fluent::lint_improper_ctypes_unsized_ptr,
+                        ty::Ref(..) => fluent::lint_improper_ctypes_unsized_ref,
+                        _ => unreachable!(),
+                    };
+                    FfiUnsafe { ty, reason, help: None }
+                }
             }
 
             ty::RawPtr(ty, _)
