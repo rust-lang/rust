@@ -673,6 +673,10 @@ passes_should_be_applied_to_fn =
         *[false] not a function definition
     }
 
+passes_should_be_applied_to_fn_or_struct =
+    attribute should be applied to a function definition or struct
+    .label = not a function definition or a struct
+
 passes_should_be_applied_to_static =
     attribute should be applied to a static
     .label = not a static

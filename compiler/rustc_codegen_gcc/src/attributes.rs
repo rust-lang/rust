@@ -6,7 +6,7 @@ use rustc_attr::InlineAttr;
 use rustc_attr::InstructionSetAttr;
 #[cfg(feature = "master")]
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, ParamEnv};
 
 use crate::context::CodegenCx;
 use crate::gcc_util::to_gcc_features;
@@ -70,8 +70,9 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         }
     }
 
-    let mut function_features = codegen_fn_attrs
-        .target_features
+    let function_features =
+        codegen_fn_attrs.target_features_for_instance(cx.tcx, ParamEnv::reveal_all(), instance);
+    let mut function_features = function_features
         .iter()
         .map(|features| features.name.as_str())
         .flat_map(|feat| to_gcc_features(cx.tcx.sess, feat).into_iter())

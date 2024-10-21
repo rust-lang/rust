@@ -464,7 +464,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *leaf_trait_ref.skip_binder().self_ty().kind()
                         {
-                            !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                            self.tcx.codegen_fn_attrs(def_id).def_target_features.iter().any(|x| !x.implied)
                         } else {
                             false
                         };

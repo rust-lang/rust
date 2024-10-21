@@ -700,6 +700,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     });
                 }
             }
+            Target::Struct if self.tcx.features().struct_target_features => {}
             Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {}
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
@@ -719,11 +720,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "target_feature");
             }
             _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span,
-                    defn_span: span,
-                    on_crate: hir_id == CRATE_HIR_ID,
-                });
+                if self.tcx.features().struct_target_features {
+                    self.dcx().emit_err(errors::AttrShouldBeAppliedToFnOrStruct {
+                        attr_span: attr.span,
+                        defn_span: span,
+                    });
+                } else {
+                    self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
+                        attr_span: attr.span,
+                        defn_span: span,
+                        on_crate: hir_id == CRATE_HIR_ID,
+                    });
+                }
             }
         }
     }

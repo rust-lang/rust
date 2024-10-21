@@ -125,6 +125,37 @@ mir_build_initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed 
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
 
+mir_build_initializing_type_with_target_feature_requires_unsafe =
+    initializing type `{$adt}` with `#[target_feature]` is unsafe and requires unsafe block
+    .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
+        [1] feature
+        *[count] features
+        }: {$missing_target_features}
+    .note = the {$build_target_features} target {$build_target_features_count ->
+        [1] feature
+        *[count] features
+        } being enabled in the build configuration does not remove the requirement to list {$build_target_features_count ->
+        [1] it
+        *[count] them
+        } in `#[target_feature]`
+    .label = call to function with `#[target_feature]`
+
+mir_build_initializing_type_with_target_feature_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    initializing type `{$adt}` with `#[target_feature]` is unsafe and requires unsafe function or block
+    .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
+        [1] feature
+        *[count] features
+        }: {$missing_target_features}
+    .note = the {$build_target_features} target {$build_target_features_count ->
+        [1] feature
+        *[count] features
+        } being enabled in the build configuration does not remove the requirement to list {$build_target_features_count ->
+        [1] it
+        *[count] them
+        } in `#[target_feature]`
+    .label = call to function with `#[target_feature]`
+
+
 mir_build_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
     .note = inline assembly is entirely unchecked and can cause undefined behavior
@@ -387,6 +418,21 @@ mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe =
     initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe block
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
+
+mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_target_feature_requires_unsafe =
+    initializing type `{$adt}` with `#[target_feature]` is unsafe and requires unsafe block
+    .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
+        [1] feature
+        *[count] features
+        }: {$missing_target_features}
+    .note = the {$build_target_features} target {$build_target_features_count ->
+        [1] feature
+        *[count] features
+        } being enabled in the build configuration does not remove the requirement to list {$build_target_features_count ->
+        [1] it
+        *[count] them
+        } in `#[target_feature]`
+    .label = call to function with `#[target_feature]`
 
 mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
