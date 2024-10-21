@@ -1,4 +1,7 @@
+//@ compile-flags: -Znext-solver
 //@ known-bug: #110395
+//@ failure-status: 101
+//@ dont-check-compiler-stderr
 // Broken until we have `&T: const Deref` impl in stdlib
 
 #![allow(incomplete_features)]

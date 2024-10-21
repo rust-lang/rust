@@ -1,5 +1,5 @@
 warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/call-generic-method-chain.rs:6:30
+  --> $DIR/call-generic-method-chain.rs:7:30
    |
 LL | #![feature(const_trait_impl, effects)]
    |                              ^^^^^^^
@@ -7,13 +7,8 @@ LL | #![feature(const_trait_impl, effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
-  --> $DIR/call-generic-method-chain.rs:10:12
+  --> $DIR/call-generic-method-chain.rs:11:12
    |
 LL | impl const PartialEq for S {
    |            ^^^^^^^^^
@@ -22,13 +17,13 @@ LL | impl const PartialEq for S {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-method-chain.rs:19:32
+  --> $DIR/call-generic-method-chain.rs:20:32
    |
 LL | const fn equals_self<T: ~const PartialEq>(t: &T) -> bool {
    |                                ^^^^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-method-chain.rs:19:32
+  --> $DIR/call-generic-method-chain.rs:20:32
    |
 LL | const fn equals_self<T: ~const PartialEq>(t: &T) -> bool {
    |                                ^^^^^^^^^
@@ -36,18 +31,18 @@ LL | const fn equals_self<T: ~const PartialEq>(t: &T) -> bool {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-method-chain.rs:23:40
+  --> $DIR/call-generic-method-chain.rs:24:40
    |
 LL | const fn equals_self_wrapper<T: ~const PartialEq>(t: &T) -> bool {
    |                                        ^^^^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-method-chain.rs:23:40
+  --> $DIR/call-generic-method-chain.rs:24:40
    |
 LL | const fn equals_self_wrapper<T: ~const PartialEq>(t: &T) -> bool {
    |                                        ^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors; 1 warning emitted
 

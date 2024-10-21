@@ -1,5 +1,6 @@
 //! Basic test for calling methods on generic type parameters in `const fn`.
 
+//@ compile-flags: -Znext-solver
 //@ known-bug: #110395
 // FIXME(effects) check-pass
 

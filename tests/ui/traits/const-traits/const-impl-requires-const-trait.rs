@@ -1,11 +1,10 @@
-//@ known-bug: #110395
-
+//@ compile-flags: -Znext-solver
 #![feature(const_trait_impl, effects)]
+#![allow(incomplete_features)]
 
 pub trait A {}
-// FIXME ~^ HELP: mark `A` as const
 
 impl const A for () {}
-// FIXME ~^ ERROR: const `impl` for trait `A` which is not marked with `#[const_trait]`
+//~^ ERROR: const `impl` for trait `A` which is not marked with `#[const_trait]`
 
 fn main() {}

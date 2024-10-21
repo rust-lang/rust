@@ -1,7 +1,23 @@
-error: using `#![feature(effects)]` without enabling next trait solver globally
+error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
+  --> $DIR/assoc-type-const-bound-usage-1.rs:4:39
    |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
+LL | #![feature(const_trait_impl, effects, generic_const_exprs)]
+   |                                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove one of these features
 
-error: aborting due to 1 previous error
+error[E0271]: type mismatch resolving `<T as Trait>::Assoc == T`
+  --> $DIR/assoc-type-const-bound-usage-1.rs:15:44
+   |
+LL | fn unqualified<T: const Trait>() -> Type<{ T::Assoc::func() }> {
+   |                                            ^^^^^^^^^^^^^^^^ types differ
 
+error[E0271]: type mismatch resolving `<T as Trait>::Assoc == T`
+  --> $DIR/assoc-type-const-bound-usage-1.rs:19:42
+   |
+LL | fn qualified<T: const Trait>() -> Type<{ <T as Trait>::Assoc::func() }> {
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

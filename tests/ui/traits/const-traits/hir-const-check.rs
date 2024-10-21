@@ -1,3 +1,5 @@
+//@ compile-flags: -Znext-solver
+
 // Regression test for #69615.
 
 #![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete

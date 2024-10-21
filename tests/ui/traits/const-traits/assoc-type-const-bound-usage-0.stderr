@@ -1,7 +1,15 @@
-error: using `#![feature(effects)]` without enabling next trait solver globally
+error[E0271]: type mismatch resolving `<T as Trait>::Assoc == T`
+  --> $DIR/assoc-type-const-bound-usage-0.rs:14:5
    |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
+LL |     T::Assoc::func()
+   |     ^^^^^^^^^^^^^^^^ types differ
 
-error: aborting due to 1 previous error
+error[E0271]: type mismatch resolving `<T as Trait>::Assoc == T`
+  --> $DIR/assoc-type-const-bound-usage-0.rs:18:5
+   |
+LL |     <T as Trait>::Assoc::func()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

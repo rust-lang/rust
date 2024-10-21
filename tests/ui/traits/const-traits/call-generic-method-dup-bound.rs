@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 //@ known-bug: #110395
 // FIXME(effects) check-pass
 
