@@ -595,7 +595,7 @@ declare_features! (
     /// Allows attributes on expressions and non-item statements.
     (unstable, stmt_expr_attributes, "1.6.0", Some(15701)),
     /// Allows lints part of the strict provenance effort.
-    (unstable, strict_provenance, "1.61.0", Some(95228)),
+    (unstable, strict_provenance_lints, "1.61.0", Some(130351)),
     /// Allows string patterns to dereference values to match them.
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
     /// Allows the use of `#[target_feature]` on safe functions.
