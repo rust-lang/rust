@@ -248,27 +248,6 @@ macro_rules! impl_op_for_ty {
                 }
             }
 
-            pub mod [<nextafter $suffix>] {
-                use super::*;
-                pub struct Operation(MpFloat, MpFloat);
-
-                impl MpOp for Operation {
-                    type Input = ($fty, $fty);
-                    type Output = $fty;
-
-                    fn new() -> Self {
-                        Self(new_mpfloat::<$fty>(), new_mpfloat::<$fty>())
-                    }
-
-                    fn run(&mut self, input: Self::Input) -> Self::Output {
-                        self.0.assign(input.0);
-                        self.1.assign(input.1);
-                        self.0.next_toward(&self.1);
-                        prep_retval::<Self::Output>(&mut self.0, Ordering::Equal)
-                    }
-                }
-            }
-
             pub mod [<pow $suffix>] {
                 use super::*;
                 pub struct Operation(MpFloat, MpFloat);

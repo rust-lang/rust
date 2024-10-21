@@ -58,20 +58,6 @@ impl MaybeOverride<(f32,)> for SpecialCase {
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
         if ctx.basis == CheckBasis::Musl {
-            if ctx.fname == "acoshf" && input.0 < -1.0 {
-                // acoshf is undefined for x <= 1.0, but we return a random result at lower
-                // values.
-                return XFAIL;
-            }
-
-            if ctx.fname == "sincosf" {
-                let factor_frac_pi_2 = input.0.abs() / f32::consts::FRAC_PI_2;
-                if (factor_frac_pi_2 - factor_frac_pi_2.round()).abs() < 1e-2 {
-                    // we have a bad approximation near multiples of pi/2
-                    return XFAIL;
-                }
-            }
-
             if ctx.fname == "expm1f" && input.0 > 80.0 && actual.is_infinite() {
                 // we return infinity but the number is representable
                 return XFAIL;
@@ -82,14 +68,39 @@ impl MaybeOverride<(f32,)> for SpecialCase {
                 // doesn't seem to happen on x86
                 return XFAIL;
             }
+        }
 
-            if ctx.fname == "lgammaf" || ctx.fname == "lgammaf_r" && input.0 < 0.0 {
-                // loggamma should not be defined for x < 0, yet we both return results
-                return XFAIL;
-            }
+        if ctx.fname == "acoshf" && input.0 < -1.0 {
+            // acoshf is undefined for x <= 1.0, but we return a random result at lower
+            // values.
+            return XFAIL;
+        }
+
+        if ctx.fname == "lgammaf" || ctx.fname == "lgammaf_r" && input.0 < 0.0 {
+            // loggamma should not be defined for x < 0, yet we both return results
+            return XFAIL;
         }
 
         maybe_check_nan_bits(actual, expected, ctx)
+    }
+
+    fn check_int<I: Int>(
+        input: (f32,),
+        actual: I,
+        expected: I,
+        ctx: &CheckCtx,
+    ) -> Option<anyhow::Result<()>> {
+        // On MPFR for lgammaf_r, we set -1 as the integer result for negative infinity but MPFR
+        // sets +1
+        if ctx.basis == CheckBasis::Mpfr
+            && ctx.fname == "lgammaf_r"
+            && input.0 == f32::NEG_INFINITY
+            && actual.abs() == expected.abs()
+        {
+            XFAIL
+        } else {
+            None
+        }
     }
 }
 
@@ -117,14 +128,39 @@ impl MaybeOverride<(f64,)> for SpecialCase {
                 // musl returns -0.0, we return +0.0
                 return XFAIL;
             }
+        }
 
-            if ctx.fname == "lgamma" || ctx.fname == "lgamma_r" && input.0 < 0.0 {
-                // loggamma should not be defined for x < 0, yet we both return results
-                return XFAIL;
-            }
+        if ctx.fname == "acosh" && input.0 < 1.0 {
+            // The function is undefined for the inputs, musl and our libm both return
+            // random results.
+            return XFAIL;
+        }
+
+        if ctx.fname == "lgamma" || ctx.fname == "lgamma_r" && input.0 < 0.0 {
+            // loggamma should not be defined for x < 0, yet we both return results
+            return XFAIL;
         }
 
         maybe_check_nan_bits(actual, expected, ctx)
+    }
+
+    fn check_int<I: Int>(
+        input: (f64,),
+        actual: I,
+        expected: I,
+        ctx: &CheckCtx,
+    ) -> Option<anyhow::Result<()>> {
+        // On MPFR for lgamma_r, we set -1 as the integer result for negative infinity but MPFR
+        // sets +1
+        if ctx.basis == CheckBasis::Mpfr
+            && ctx.fname == "lgamma_r"
+            && input.0 == f64::NEG_INFINITY
+            && actual.abs() == expected.abs()
+        {
+            XFAIL
+        } else {
+            None
+        }
     }
 }
 
@@ -139,6 +175,11 @@ fn maybe_check_nan_bits<F: Float>(actual: F, expected: F, ctx: &CheckCtx) -> Opt
     // LLVM issue <https://github.com/llvm/llvm-project/issues/66803>
     // Rust issue <https://github.com/rust-lang/rust/issues/115567>
     if cfg!(target_arch = "x86") && ctx.basis == CheckBasis::Musl {
+        return SKIP;
+    }
+
+    // MPFR only has one NaN bitpattern; allow the default `.is_nan()` checks to validate.
+    if ctx.basis == CheckBasis::Mpfr {
         return SKIP;
     }
 
@@ -158,9 +199,10 @@ impl MaybeOverride<(f32, f32)> for SpecialCase {
         _ulp: &mut u32,
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
-        maybe_skip_min_max_nan(input, expected, ctx)
+        maybe_skip_binop_nan(input, expected, ctx)
     }
 }
+
 impl MaybeOverride<(f64, f64)> for SpecialCase {
     fn check_float<F: Float>(
         input: (f64, f64),
@@ -169,47 +211,86 @@ impl MaybeOverride<(f64, f64)> for SpecialCase {
         _ulp: &mut u32,
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
-        maybe_skip_min_max_nan(input, expected, ctx)
+        maybe_skip_binop_nan(input, expected, ctx)
     }
 }
 
 /// Musl propagates NaNs if one is provided as the input, but we return the other input.
 // F1 and F2 are always the same type, this is just to please generics
-fn maybe_skip_min_max_nan<F1: Float, F2: Float>(
+fn maybe_skip_binop_nan<F1: Float, F2: Float>(
     input: (F1, F1),
     expected: F2,
     ctx: &CheckCtx,
 ) -> Option<TestResult> {
-    if (ctx.canonical_name == "fmax" || ctx.canonical_name == "fmin")
-        && (input.0.is_nan() || input.1.is_nan())
-        && expected.is_nan()
-    {
-        return XFAIL;
-    } else {
-        None
+    match ctx.basis {
+        CheckBasis::Musl => {
+            if (ctx.canonical_name == "fmax" || ctx.canonical_name == "fmin")
+                && (input.0.is_nan() || input.1.is_nan())
+                && expected.is_nan()
+            {
+                XFAIL
+            } else {
+                None
+            }
+        }
+        CheckBasis::Mpfr => {
+            if ctx.canonical_name == "copysign" && input.1.is_nan() {
+                SKIP
+            } else {
+                None
+            }
+        }
     }
 }
 
 impl MaybeOverride<(i32, f32)> for SpecialCase {
     fn check_float<F: Float>(
         input: (i32, f32),
-        _actual: F,
-        _expected: F,
+        actual: F,
+        expected: F,
         ulp: &mut u32,
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
-        bessel_prec_dropoff(input, ulp, ctx)
+        match ctx.basis {
+            CheckBasis::Musl => bessel_prec_dropoff(input, ulp, ctx),
+            CheckBasis::Mpfr => {
+                // We return +0.0, MPFR returns -0.0
+                if ctx.fname == "jnf"
+                    && input.1 == f32::NEG_INFINITY
+                    && actual == F::ZERO
+                    && expected == F::ZERO
+                {
+                    XFAIL
+                } else {
+                    None
+                }
+            }
+        }
     }
 }
 impl MaybeOverride<(i32, f64)> for SpecialCase {
     fn check_float<F: Float>(
         input: (i32, f64),
-        _actual: F,
-        _expected: F,
+        actual: F,
+        expected: F,
         ulp: &mut u32,
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
-        bessel_prec_dropoff(input, ulp, ctx)
+        match ctx.basis {
+            CheckBasis::Musl => bessel_prec_dropoff(input, ulp, ctx),
+            CheckBasis::Mpfr => {
+                // We return +0.0, MPFR returns -0.0
+                if ctx.fname == "jn"
+                    && input.1 == f64::NEG_INFINITY
+                    && actual == F::ZERO
+                    && expected == F::ZERO
+                {
+                    XFAIL
+                } else {
+                    bessel_prec_dropoff(input, ulp, ctx)
+                }
+            }
+        }
     }
 }
 

@@ -29,8 +29,8 @@ macro_rules! musl_rand_tests {
         fn [< musl_random_ $fn_name >]() {
             let fname = stringify!($fn_name);
             let ulp = musl_allowed_ulp(fname);
-            let cases = random::get_test_cases::<$RustArgs>(fname);
             let ctx = CheckCtx::new(ulp, fname, CheckBasis::Musl);
+            let cases = random::get_test_cases::<$RustArgs>(&ctx);
 
             for input in cases {
                 let musl_res = input.call(musl::$fn_name as $CFn);
