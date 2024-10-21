@@ -171,16 +171,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 hir::GenericBound::Trait(poly_trait_ref) => {
                     let (constness, polarity) = match poly_trait_ref.modifiers {
                         hir::TraitBoundModifier::Const => {
-                            (ty::BoundConstness::Const, ty::PredicatePolarity::Positive)
+                            (Some(ty::BoundConstness::Const), ty::PredicatePolarity::Positive)
                         }
-                        hir::TraitBoundModifier::MaybeConst => {
-                            (ty::BoundConstness::ConstIfConst, ty::PredicatePolarity::Positive)
-                        }
-                        hir::TraitBoundModifier::None => {
-                            (ty::BoundConstness::NotConst, ty::PredicatePolarity::Positive)
-                        }
+                        hir::TraitBoundModifier::MaybeConst => (
+                            Some(ty::BoundConstness::ConstIfConst),
+                            ty::PredicatePolarity::Positive,
+                        ),
+                        hir::TraitBoundModifier::None => (None, ty::PredicatePolarity::Positive),
                         hir::TraitBoundModifier::Negative => {
-                            (ty::BoundConstness::NotConst, ty::PredicatePolarity::Negative)
+                            (None, ty::PredicatePolarity::Negative)
                         }
                         hir::TraitBoundModifier::Maybe => continue,
                     };
