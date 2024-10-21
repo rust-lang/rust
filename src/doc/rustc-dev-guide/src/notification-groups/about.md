@@ -22,8 +22,11 @@ Here's the list of the notification groups:
 - [Apple](./apple.md)
 - [ARM](./arm.md)
 - [Cleanup Crew](./cleanup-crew.md)
+- [Emscripten](./emscripten.md)
 - [LLVM](./llvm.md)
 - [RISC-V](./risc-v.md)
+- [WASI](./wasi.md)
+- [WebAssembly](./wasm.md)
 - [Windows](./windows.md)
 - [Rust for Linux](./rust-for-linux.md)
 
@@ -62,8 +65,11 @@ Example PRs:
 * [Example of adding yourself to the Apple group.](https://github.com/rust-lang/team/pull/1434)
 * [Example of adding yourself to the ARM group.](https://github.com/rust-lang/team/pull/358)
 * [Example of adding yourself to the Cleanup Crew.](https://github.com/rust-lang/team/pull/221)
+* [Example of adding yourself to the Emscripten group.](https://github.com/rust-lang/team/pull/1579)
 * [Example of adding yourself to the LLVM group.](https://github.com/rust-lang/team/pull/140)
 * [Example of adding yourself to the RISC-V group.](https://github.com/rust-lang/team/pull/394)
+* [Example of adding yourself to the WASI group.](https://github.com/rust-lang/team/pull/1580)
+* [Example of adding yourself to the WebAssembly group.](https://github.com/rust-lang/team/pull/1581)
 * [Example of adding yourself to the Windows group.](https://github.com/rust-lang/team/pull/348)
 
 ## Tagging an issue for a notification group
@@ -74,10 +80,14 @@ group. For example:
 
 ```text
 @rustbot ping apple
-@rustbot ping llvm
-@rustbot ping cleanup-crew
-@rustbot ping windows
 @rustbot ping arm
+@rustbot ping cleanup-crew
+@rustbot ping emscripten
+@rustbot ping llvm
+@rustbot ping risc-v
+@rustbot ping wasi
+@rustbot ping wasm
+@rustbot ping windows
 ```
 
 To make some commands shorter and easier to remember, there are aliases,
