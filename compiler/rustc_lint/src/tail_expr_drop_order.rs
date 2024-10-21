@@ -14,10 +14,8 @@ use rustc_span::edition::Edition;
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {
-    /// The `tail_expr_drop_order` lint looks for those values generated at the tail expression location, that of type
-    /// with a significant `Drop` implementation, such as locks.
-    /// In case there are also local variables of type with significant `Drop` implementation as well,
-    /// this lint warns you of a potential transposition in the drop order.
+    /// The `tail_expr_drop_order` lint looks for those values generated at the tail expression location,
+    /// that of type with a custom `Drop` destructor implementation, which will be dropped earlier in Edition 2024.
     /// Your discretion on the new drop order introduced by Edition 2024 is required.
     ///
     /// ### Example
@@ -185,7 +183,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LintVisitor<'a, 'tcx> {
 impl<'a, 'tcx> LintVisitor<'a, 'tcx> {
     fn check_block_inner(&mut self, block: &Block<'tcx>) {
         if block.span.at_least_rust_2024() {
-            // We only lint for Edition 2024 onwards
+            // We only lint for up to Edition 2021
             return;
         }
         let Some(tail_expr) = block.expr else { return };

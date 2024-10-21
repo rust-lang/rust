@@ -1,3 +1,6 @@
+// This test is to demonstrate that the lint is gated behind Edition and
+// is triggered only for Edition 2021 and before.
+
 //@ check-pass
 //@ edition: 2024
 //@ compile-flags: -Z unstable-options
