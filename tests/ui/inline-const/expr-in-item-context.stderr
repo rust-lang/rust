@@ -1,0 +1,13 @@
+error: expected item, found keyword `const`
+  --> $DIR/expr-in-item-context.rs:9:1
+   |
+LL | const { assert!(size_of::<u32>() <= size_of::<usize>()) };
+   | ^^^^^
+   |
+help: to evaluate a const expression, use an anonymous const
+   |
+LL | const _: () = const { assert!(size_of::<u32>() <= size_of::<usize>()) };
+   | +++++++++++++
+
+error: aborting due to 1 previous error
+
