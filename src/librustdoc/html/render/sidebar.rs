@@ -620,6 +620,39 @@ fn sidebar_render_assoc_items(
     blanket_impl: Vec<&Impl>,
     items: &mut Vec<LinkBlock<'_>>,
 ) {
+    let format_concrete_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
+        let mut links = FxHashSet::default();
+
+        let (locals, externals): (Vec<(Link<'static>, bool)>, Vec<(Link<'static>, bool)>) = impls
+            .iter()
+            .filter_map(|it| {
+                let trait_ = it.inner_impl().trait_.as_ref()?;
+
+                let encoded = id_map.derive(super::get_id_for_impl(cx.tcx(), it.impl_item.item_id));
+
+                let prefix = match it.inner_impl().polarity {
+                    ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+                    ty::ImplPolarity::Negative => "!",
+                };
+                let generated = Link::new(encoded, format!("{prefix}{:#}", trait_.print(cx)));
+                if links.insert(generated.clone()) {
+                    Some((generated, trait_.res.def_id().is_local()))
+                } else {
+                    None
+                }
+            })
+            .partition(|elem| elem.1);
+
+        let mut locals = locals.into_iter().map(|elem| elem.0).collect::<Vec<Link<'static>>>();
+        locals.sort();
+
+        let mut externals =
+            externals.into_iter().map(|elem| elem.0).collect::<Vec<Link<'static>>>();
+        externals.sort();
+
+        (locals, externals)
+    };
+
     let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
         let mut links = FxHashSet::default();
 
@@ -641,14 +674,19 @@ fn sidebar_render_assoc_items(
         ret
     };
 
-    let concrete = format_impls(concrete, id_map);
+    let (concrete_locals, concrete_externals) = format_concrete_impls(concrete, id_map);
     let synthetic = format_impls(synthetic, id_map);
     let blanket = format_impls(blanket_impl, id_map);
     items.extend([
         LinkBlock::new(
-            Link::new("trait-implementations", "Trait Implementations"),
+            Link::new("crate-trait-implementations", "Crate Trait Implementations"),
             "trait-implementation",
-            concrete,
+            concrete_locals,
+        ),
+        LinkBlock::new(
+            Link::new("external-trait-implementations", "External Trait Implementations"),
+            "trait-implementation",
+            concrete_externals,
         ),
         LinkBlock::new(
             Link::new("synthetic-implementations", "Auto Trait Implementations"),
