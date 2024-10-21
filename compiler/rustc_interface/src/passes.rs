@@ -29,11 +29,10 @@ use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
+use rustc_session::output::{collect_crate_types, filename_for_input};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{FileName, SourceFileHash, SourceFileHashAlgorithm};
+use rustc_span::{FileName, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 use tracing::{info, instrument};
@@ -740,8 +739,7 @@ pub(crate) fn create_global_ctxt<'tcx>(
 
     let pre_configured_attrs = rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
 
-    // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-    let crate_name = find_crate_name(sess, &pre_configured_attrs);
+    let crate_name = get_crate_name(sess, &pre_configured_attrs);
     let crate_types = collect_crate_types(sess, &pre_configured_attrs);
     let stable_crate_id = StableCrateId::new(
         crate_name,
@@ -750,7 +748,7 @@ pub(crate) fn create_global_ctxt<'tcx>(
         sess.cfg_version,
     );
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
-    let dep_graph = setup_dep_graph(sess)?;
+    let dep_graph = setup_dep_graph(sess, crate_name)?;
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -1147,23 +1145,83 @@ pub(crate) fn start_codegen<'tcx>(
     Ok(codegen)
 }
 
-fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
-    if let Some(attr) = krate_attrs
-        .iter()
-        .find(|attr| attr.has_name(sym::recursion_limit) && attr.value_str().is_none())
-    {
-        // This is here mainly to check for using a macro, such as
-        // #![recursion_limit = foo!()]. That is not supported since that
-        // would require expanding this while in the middle of expansion,
-        // which needs to know the limit before expanding. Otherwise,
-        // validation would normally be caught in AstValidator (via
-        // `check_builtin_attribute`), but by the time that runs the macro
-        // is expanded, and it doesn't give an error.
-        validate_attr::emit_fatal_malformed_builtin_attribute(
-            &sess.psess,
-            attr,
-            sym::recursion_limit,
-        );
+/// Compute and validate the crate name.
+pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol {
+    // We unconditionally validate all `#![crate_name]`s even if a crate name was
+    // set on the command line via `--crate-name` which we prioritize over the
+    // crate attributes. We perform the validation here instead of later to ensure
+    // it gets run in all code paths requiring the crate name very early on.
+    // Namely, print requests (`--print`).
+    let attr_crate_name =
+        validate_and_find_value_str_builtin_attr(sym::crate_name, sess, krate_attrs);
+
+    let validate = |name, span| {
+        rustc_session::output::validate_crate_name(sess, name, span);
+        name
+    };
+
+    if let Some(crate_name) = &sess.opts.crate_name {
+        let crate_name = Symbol::intern(crate_name);
+        if let Some((attr_crate_name, span)) = attr_crate_name
+            && attr_crate_name != crate_name
+        {
+            sess.dcx().emit_err(errors::CrateNameDoesNotMatch {
+                span,
+                crate_name,
+                attr_crate_name,
+            });
+        }
+        return validate(crate_name, None);
     }
+
+    if let Some((crate_name, span)) = attr_crate_name {
+        return validate(crate_name, Some(span));
+    }
+
+    if let Input::File(ref path) = sess.io.input
+        && let Some(file_stem) = path.file_stem().and_then(|s| s.to_str())
+    {
+        if file_stem.starts_with('-') {
+            sess.dcx().emit_err(errors::CrateNameInvalid { crate_name: file_stem });
+        } else {
+            return validate(Symbol::intern(&file_stem.replace('-', "_")), None);
+        }
+    }
+
+    Symbol::intern("rust_out")
+}
+
+fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
+    // We don't permit macro calls inside of the attribute (e.g., #![recursion_limit = `expand!()`])
+    // because that would require expanding this while in the middle of expansion, which needs to
+    // know the limit before expanding.
+    let _ = validate_and_find_value_str_builtin_attr(sym::recursion_limit, sess, krate_attrs);
     rustc_middle::middle::limits::get_recursion_limit(krate_attrs, sess)
+}
+
+/// Validate *all* occurrences of the given "[value-str]" built-in attribute and return the first find.
+///
+/// This validator is intended for built-in attributes whose value needs to be known very early
+/// during compilation (namely, before macro expansion) and it mainly exists to reject macro calls
+/// inside of the attributes, such as in `#![name = expand!()]`. Normal attribute validation happens
+/// during semantic analysis via [`TyCtxt::check_mod_attrs`] which happens *after* macro expansion
+/// when such macro calls (here: `expand`) have already been expanded and we can no longer check for
+/// their presence.
+///
+/// [value-str]: ast::Attribute::value_str
+fn validate_and_find_value_str_builtin_attr(
+    name: Symbol,
+    sess: &Session,
+    krate_attrs: &[ast::Attribute],
+) -> Option<(Symbol, Span)> {
+    let mut result = None;
+    // Validate *all* relevant attributes, not just the first occurrence.
+    for attr in ast::attr::filter_by_name(krate_attrs, name) {
+        let Some(value) = attr.value_str() else {
+            validate_attr::emit_fatal_malformed_builtin_attribute(&sess.psess, attr, name)
+        };
+        // Choose the first occurrence as our result.
+        result.get_or_insert((value, attr.span));
+    }
+    result
 }
