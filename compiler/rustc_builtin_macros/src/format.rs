@@ -316,6 +316,20 @@ fn make_format_args(
                     e.sugg_ = Some(errors::InvalidFormatStringSuggestion::RemoveRawIdent { span })
                 }
             }
+            parse::Suggestion::ReorderFormat(span) => {
+                let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
+                if let Ok(original_string) = ecx.source_map().span_to_snippet(span) {
+                    let reversed_string: String = original_string.chars().rev().collect();
+                    e.sugg_ = Some(errors::InvalidFormatStringSuggestion::ReorderFormat {
+                        span: span,
+                        string: reversed_string,
+                    });
+                }
+            }
+            parse::Suggestion::RemoveCharacter(span) => {
+                let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
+                e.sugg_ = Some(errors::InvalidFormatStringSuggestion::RemoveCharacter { span })
+            }
         }
         let guar = ecx.dcx().emit_err(e);
         return ExpandResult::Ready(Err(guar));
