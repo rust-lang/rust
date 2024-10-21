@@ -98,7 +98,7 @@ rustc_index::newtype_index! {
 pub fn save_as_intervals<'tcx, N, R>(
     elements: &DenseLocationMap,
     body: &mir::Body<'tcx>,
-    mut results: R,
+    results: R,
 ) -> SparseIntervalMatrix<N, PointIndex>
 where
     N: Idx,
@@ -109,7 +109,7 @@ where
     visit_results(
         body,
         body.basic_blocks.reverse_postorder().iter().copied(),
-        &mut results,
+        &results,
         &mut visitor,
     );
     visitor.values
@@ -128,7 +128,7 @@ where
 
     fn visit_statement_after_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &Self::Domain,
         _statement: &'mir mir::Statement<'tcx>,
         location: Location,
@@ -142,7 +142,7 @@ where
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &Self::Domain,
         _terminator: &'mir mir::Terminator<'tcx>,
         location: Location,

@@ -7,7 +7,7 @@ use super::{Analysis, Direction, Results};
 pub fn visit_results<'mir, 'tcx, D, R>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
-    results: &mut R,
+    results: &R,
     vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = D>,
 ) where
     R: ResultsVisitable<'tcx, Domain = D>,
@@ -37,7 +37,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     /// its `statement_effect`.
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         _state: &Self::Domain,
         _statement: &'mir mir::Statement<'tcx>,
         _location: Location,
@@ -48,7 +48,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     /// statement applied to `state`.
     fn visit_statement_after_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         _state: &Self::Domain,
         _statement: &'mir mir::Statement<'tcx>,
         _location: Location,
@@ -59,7 +59,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     /// its `terminator_effect`.
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         _state: &Self::Domain,
         _terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
@@ -72,7 +72,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     /// The `call_return_effect` (if one exists) will *not* be applied to `state`.
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         _state: &Self::Domain,
         _terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,

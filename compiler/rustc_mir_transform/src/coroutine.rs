@@ -888,7 +888,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &Self::Domain,
         _statement: &'a Statement<'tcx>,
         loc: Location,
@@ -898,7 +898,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &Self::Domain,
         _terminator: &'a Terminator<'tcx>,
         loc: Location,

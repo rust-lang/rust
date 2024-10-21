@@ -406,12 +406,8 @@ where
         w: &mut impl io::Write,
         block: BasicBlock,
     ) -> io::Result<()> {
-        let diffs = StateDiffCollector::run(
-            self.results.body(),
-            block,
-            self.results.mut_results(),
-            self.style,
-        );
+        let diffs =
+            StateDiffCollector::run(self.results.body(), block, self.results.results(), self.style);
 
         let mut diffs_before = diffs.before.map(|v| v.into_iter());
         let mut diffs_after = diffs.after.into_iter();
@@ -521,7 +517,7 @@ impl<D> StateDiffCollector<D> {
     fn run<'tcx, A>(
         body: &mir::Body<'tcx>,
         block: BasicBlock,
-        results: &mut Results<'tcx, A>,
+        results: &Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self
     where
@@ -560,7 +556,7 @@ where
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        results: &Results<'tcx, A>,
         state: &Self::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -573,7 +569,7 @@ where
 
     fn visit_statement_after_primary_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        results: &Results<'tcx, A>,
         state: &Self::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -584,7 +580,7 @@ where
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        results: &Results<'tcx, A>,
         state: &Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -597,7 +593,7 @@ where
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        results: &Results<'tcx, A>,
         state: &Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,

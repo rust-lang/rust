@@ -83,11 +83,6 @@ where
         &self.results
     }
 
-    /// Returns the underlying `Results`.
-    pub fn mut_results(&mut self) -> &mut Results<'tcx, A> {
-        &mut self.results
-    }
-
     /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn analysis(&self) -> &A {
         &self.results.analysis

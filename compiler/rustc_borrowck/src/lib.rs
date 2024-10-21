@@ -341,7 +341,7 @@ fn do_mir_borrowck<'tcx>(
     // Compute and report region errors, if any.
     mbcx.report_region_errors(nll_errors);
 
-    let mut results = BorrowckResults {
+    let results = BorrowckResults {
         ever_inits: flow_ever_inits,
         uninits: flow_uninits,
         borrows: flow_borrows,
@@ -350,7 +350,7 @@ fn do_mir_borrowck<'tcx>(
     rustc_mir_dataflow::visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        &mut results,
+        &results,
         &mut mbcx,
     );
 
@@ -602,7 +602,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &BorrowckDomain<'a, 'tcx>,
         stmt: &'a Statement<'tcx>,
         location: Location,
@@ -672,7 +672,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &BorrowckDomain<'a, 'tcx>,
         term: &'a Terminator<'tcx>,
         loc: Location,
@@ -785,7 +785,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &BorrowckDomain<'a, 'tcx>,
         term: &'a Terminator<'tcx>,
         loc: Location,

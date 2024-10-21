@@ -52,7 +52,7 @@ where
     }
 
     pub fn visit_with<'mir>(
-        &mut self,
+        &self,
         body: &'mir mir::Body<'tcx>,
         blocks: impl IntoIterator<Item = BasicBlock>,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, Self, Domain = A::Domain>,

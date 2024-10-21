@@ -37,7 +37,7 @@ pub trait Direction {
         state: &mut D,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut R,
+        results: &R,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = D>,
     ) where
         R: ResultsVisitable<'tcx, Domain = D>;
@@ -161,7 +161,7 @@ impl Direction for Backward {
         state: &mut D,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut R,
+        results: &R,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = D>,
     ) where
         R: ResultsVisitable<'tcx, Domain = D>,
@@ -393,7 +393,7 @@ impl Direction for Forward {
         state: &mut F,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut R,
+        results: &R,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = F>,
     ) where
         R: ResultsVisitable<'tcx, Domain = F>,
