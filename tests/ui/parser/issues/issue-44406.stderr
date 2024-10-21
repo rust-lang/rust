@@ -1,22 +1,55 @@
-error: invalid `struct` delimiters or `fn` call arguments
-  --> $DIR/issue-44406.rs:3:9
+error: expected expression, found `:`
+  --> $DIR/issue-44406.rs:3:16
    |
 LL |         bar(baz: $rest)
-   |         ^^^^^^^^^^^^^^^
+   |                ^ expected expression
 ...
 LL |     foo!(true);
    |     ---------- in this macro invocation
    |
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: if `bar` is a struct, use braces as delimiters
-   |
-LL |         bar { baz: $rest }
-   |             ~            ~
-help: if `bar` is a function, use the arguments directly
+help: if this is a parameter, remove the name for the parameter
    |
 LL -         bar(baz: $rest)
 LL +         bar($rest)
    |
 
-error: aborting due to 1 previous error
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `:`
+  --> $DIR/issue-44406.rs:3:16
+   |
+LL |         bar(baz: $rest)
+   |                ^
+   |                |
+   |                expected one of 8 possible tokens
+   |                help: missing `,`
+...
+LL |     foo!(true);
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0425]: cannot find value `baz` in this scope
+  --> $DIR/issue-44406.rs:3:13
+   |
+LL |         bar(baz: $rest)
+   |             ^^^ not found in this scope
+...
+LL |     foo!(true);
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/issue-44406.rs:3:9
+   |
+LL |         bar(baz: $rest)
+   |         ^^^ not found in this scope
+...
+LL |     foo!(true);
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
