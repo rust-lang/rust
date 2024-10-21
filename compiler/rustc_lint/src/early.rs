@@ -121,6 +121,19 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.with_lint_attrs(e.id, &e.attrs, |cx| {
             lint_callback!(cx, check_expr, e);
             ast_visit::walk_expr(cx, e);
+
+            // Explicitly check for lints associated with 'closure_id', since
+            // it does not have a corresponding AST node
+            match e.kind {
+                ast::ExprKind::Closure(box ast::Closure {
+                    coroutine_kind: Some(coroutine_kind),
+                    ..
+                }) => {
+                    cx.check_id(coroutine_kind.closure_id());
+                }
+                _ => {}
+            }
+            lint_callback!(cx, check_expr_post, e);
         })
     }
 
@@ -168,7 +181,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         if let Some(ctor_node_id) = s.ctor_node_id() {
             self.check_id(ctor_node_id);
         }
-        ast_visit::walk_struct_def(self, s);
+        ast_visit::walk_variant_data(self, s);
     }
 
     fn visit_field_def(&mut self, s: &'a ast::FieldDef) {
@@ -190,8 +203,9 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_ty(self, t);
     }
 
-    fn visit_ident(&mut self, ident: Ident) {
-        lint_callback!(self, check_ident, ident);
+    fn visit_ident(&mut self, ident: &Ident) {
+        // FIXME: Change check_ident so it receives a reference
+        lint_callback!(self, check_ident, *ident);
     }
 
     fn visit_local(&mut self, l: &'a ast::Local) {
@@ -212,21 +226,6 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
             lint_callback!(cx, check_arm, a);
             ast_visit::walk_arm(cx, a);
         })
-    }
-
-    fn visit_expr_post(&mut self, e: &'a ast::Expr) {
-        // Explicitly check for lints associated with 'closure_id', since
-        // it does not have a corresponding AST node
-        match e.kind {
-            ast::ExprKind::Closure(box ast::Closure {
-                coroutine_kind: Some(coroutine_kind),
-                ..
-            }) => {
-                self.check_id(coroutine_kind.closure_id());
-            }
-            _ => {}
-        }
-        lint_callback!(self, check_expr_post, e);
     }
 
     fn visit_generic_arg(&mut self, arg: &'a ast::GenericArg) {
@@ -288,14 +287,14 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         lint_callback!(self, check_attribute, attr);
     }
 
-    fn visit_mac_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
+    fn visit_macro_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
         lint_callback!(self, check_mac_def, mac);
         self.check_id(id);
     }
 
     fn visit_mac_call(&mut self, mac: &'a ast::MacCall) {
         lint_callback!(self, check_mac, mac);
-        ast_visit::walk_mac(self, mac);
+        ast_visit::walk_mac_call(self, mac);
     }
 }
 

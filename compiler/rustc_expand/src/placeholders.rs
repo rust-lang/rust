@@ -286,7 +286,7 @@ impl MutVisitor for PlaceholderExpander {
                     AssocCtxt::Impl => it.make_impl_items(),
                 }
             }
-            _ => walk_flat_map_item(self, item),
+            _ => walk_flat_map_assoc_item(self, item, ctxt),
         }
     }
 
@@ -296,7 +296,7 @@ impl MutVisitor for PlaceholderExpander {
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
         match item.kind {
             ast::ForeignItemKind::MacCall(_) => self.remove(item.id).make_foreign_items(),
-            _ => walk_flat_map_item(self, item),
+            _ => walk_flat_map_foreign_item(self, item),
         }
     }
 
