@@ -3,8 +3,8 @@ use std::cell::{RefCell, RefMut};
 use std::sync::Arc;
 
 use rustc_ast as ast;
-use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CodegenLintLevels, CodegenResults};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{OnceLock, WorkerLocal};
@@ -116,6 +116,7 @@ impl<'tcx> Queries<'tcx> {
 pub struct Linker {
     dep_graph: DepGraph,
     output_filenames: Arc<OutputFilenames>,
+    lint_levels: CodegenLintLevels,
     // Only present when incr. comp. is enabled.
     crate_hash: Option<Svh>,
     ongoing_codegen: Box<dyn Any>,
@@ -143,6 +144,7 @@ impl Linker {
         Ok(Linker {
             dep_graph: tcx.dep_graph.clone(),
             output_filenames: tcx.output_filenames(()).clone(),
+            lint_levels: CodegenLintLevels::from_tcx(tcx),
             crate_hash: if tcx.needs_crate_hash() {
                 Some(tcx.crate_hash(LOCAL_CRATE))
             } else {
@@ -186,6 +188,7 @@ impl Linker {
                 sess,
                 &rlink_file,
                 &codegen_results,
+                self.lint_levels,
                 &*self.output_filenames,
             )
             .map_err(|error| {
@@ -195,7 +198,7 @@ impl Linker {
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
-        codegen_backend.link(sess, codegen_results, &self.output_filenames)
+        codegen_backend.link(sess, codegen_results, self.lint_levels, &self.output_filenames)
     }
 }
 
