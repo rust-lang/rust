@@ -899,6 +899,43 @@ impl<T> RefCell<T> {
         mem::replace(&mut *self.borrow_mut(), t)
     }
 
+    /// Replaces the wrapped value with a new one, returning the old value,
+    /// without deinitializing either one.
+    ///
+    /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
+    ///
+    /// This is the non-panicking variant of [`replace`](#method.replace).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_try_replace)]
+    /// use std::cell::RefCell;
+    ///
+    /// let cell = RefCell::new(5);
+    ///
+    /// {
+    ///     let borrowed_five = cell.borrow();
+    ///     let replace_result = cell.try_replace(6);
+    ///     assert!(replace_result.is_err());
+    ///     assert_eq!(cell, RefCell::new(5));
+    ///
+    /// }
+    ///
+    /// {
+    ///     let replace_result = cell.try_replace(6);
+    ///     assert!(replace_result.is_ok());
+    ///     assert_eq!(cell, RefCell::new(6));
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "refcell_try_replace", issue = "none")]
+    #[track_caller]
+    #[rustc_confusables("try_swap")]
+    pub fn try_replace(&self, t: T) -> Result<T, BorrowMutError> {
+        Ok(mem::replace(&mut *self.try_borrow_mut()?, t))
+    }
+
     /// Replaces the wrapped value with a new one computed from `f`, returning
     /// the old value, without deinitializing either one.
     ///
@@ -922,6 +959,42 @@ impl<T> RefCell<T> {
         let mut_borrow = &mut *self.borrow_mut();
         let replacement = f(mut_borrow);
         mem::replace(mut_borrow, replacement)
+    }
+
+    /// Replaces the wrapped value with a new one computed from `f`, returning
+    /// the old value, without deinitializing either one.
+    ///
+    /// This is the non-panicking variant of [`replace_with`](#method.replace_with).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_try_replace)]
+    /// use std::cell::RefCell;
+    ///
+    /// let cell = RefCell::new(5);
+    ///
+    /// {
+    ///     let borrowed_five = cell.borrow();
+    ///     let replace_result = cell.try_replace_with(|&mut old| old + 1);
+    ///     assert!(replace_result.is_err());
+    ///     assert_eq!(cell, RefCell::new(5));
+    ///
+    /// }
+    ///
+    /// {
+    ///     let replace_result = cell.try_replace_with(|&mut old| old + 1);
+    ///     assert!(replace_result.is_ok());
+    ///     assert_eq!(cell, RefCell::new(6));
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "refcell_try_replace", issue = "none")]
+    #[track_caller]
+    pub fn try_replace_with<F: FnOnce(&mut T) -> T>(&self, f: F) -> Result<T, BorrowMutError> {
+        let mut_borrow = &mut *self.try_borrow_mut()?;
+        let replacement = f(mut_borrow);
+        Ok(mem::replace(mut_borrow, replacement))
     }
 
     /// Swaps the wrapped value of `self` with the wrapped value of `other`,
@@ -948,6 +1021,52 @@ impl<T> RefCell<T> {
     #[stable(feature = "refcell_swap", since = "1.24.0")]
     pub fn swap(&self, other: &Self) {
         mem::swap(&mut *self.borrow_mut(), &mut *other.borrow_mut())
+    }
+
+    /// Swaps the wrapped value of `self` with the wrapped value of `other`,
+    /// without deinitializing either one.
+    ///
+    /// This function corresponds to [`std::mem::swap`](../mem/fn.swap.html).
+    ///
+    /// This is the non-panicking variant of [`swap`](#method.swap).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_try_replace)]
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    /// let d = RefCell::new(6);
+    ///
+    /// {
+    ///     let borrowed_c = c.borrow();
+    ///     let swap_result = c.try_swap(&d);
+    ///     assert!(swap_result.is_err());
+    ///     assert_eq!(c, RefCell::new(5));
+    ///     assert_eq!(d, RefCell::new(6));
+    /// }
+    ///
+    /// {
+    ///     let borrowed_d = d.borrow();
+    ///     let swap_result = c.try_swap(&d);
+    ///     assert!(swap_result.is_err());
+    ///     assert_eq!(c, RefCell::new(5));
+    ///     assert_eq!(d, RefCell::new(6));
+    /// }
+    ///
+    /// {
+    ///     let swap_result = c.try_swap(&d);
+    ///     assert!(swap_result.is_ok());
+    ///     assert_eq!(c, RefCell::new(6));
+    ///     assert_eq!(d, RefCell::new(5));
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "refcell_try_replace", issue = "none")]
+    #[track_caller]
+    pub fn try_swap(&self, other: &Self) -> Result<(), BorrowMutError> {
+        Ok(mem::swap(&mut *self.try_borrow_mut()?, &mut *other.try_borrow_mut()?))
     }
 }
 
