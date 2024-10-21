@@ -734,6 +734,58 @@ impl<T> Bound<T> {
             Excluded(x) => Excluded(f(x)),
         }
     }
+
+    /// Converts an `Option<T>` to a `Bound<T>`, mapping `Some(x)` to `Included(x)`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(bound_from_opt)]
+    /// use std::ops::Bound::*;
+    ///
+    /// let a = b"\0\0\0\0\0\0Hello world";
+    ///
+    /// let beg = a.iter().position(|&b| b != 0);
+    ///
+    /// let a_non_null = &a[(std::ops::Bound::from_opt_included(beg), Unbounded)];
+    ///
+    /// assert_eq!(a_non_null, b"Hello world");
+    ///
+    /// ```
+    #[inline]
+    #[unstable(feature = "bound_from_opt", issue = "none")]
+    pub fn from_opt_included(opt: Option<T>) -> Self {
+        match opt {
+            None => Self::Unbounded,
+            Some(b) => Bound::Included(b),
+        }
+    }
+
+    /// Converts an `Option<T>` to a `Bound<T>`, mapping `Some(x)` to `Excluded(x)`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(bound_from_opt)]
+    /// use std::ops::Bound::*;
+    ///
+    /// let a = b"Hello world\0Goodbye world";
+    ///
+    /// let end = a.iter().position(|&b| b == 0);
+    ///
+    /// let a_non_null = &a[(Unbounded, std::ops::Bound::from_opt_excluded(end))];
+    ///
+    /// assert_eq!(a_non_null, b"Hello world");
+    ///
+    /// ```
+    #[inline]
+    #[unstable(feature = "bound_from_opt", issue = "none")]
+    pub fn from_opt_excluded(opt: Option<T>) -> Self {
+        match opt {
+            None => Self::Unbounded,
+            Some(b) => Bound::Excluded(b),
+        }
+    }
 }
 
 impl<T: Clone> Bound<&T> {
