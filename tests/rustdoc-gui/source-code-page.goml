@@ -89,7 +89,7 @@ assert-css: (".src-line-numbers", {"text-align": "right"})
 // do anything (and certainly not add a `#NaN` to the URL!).
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // We use this assert-position to know where we will click.
-assert-position: ("//*[@id='1']", {"x": 88, "y": 163})
+assert-position: ("//*[@id='1']", {"x": 88, "y": 171})
 // We click on the left of the "1" anchor but still in the "src-line-number" `<pre>`.
 click: (163, 77)
 assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
@@ -165,7 +165,7 @@ assert-css: ("nav.sub", {"flex-direction": "row"})
 // offsetTop[nav.sub form] = offsetTop[#main-content] - offsetHeight[nav.sub form] - offsetTop[nav.sub form]
 assert-position: ("nav.sub form", {"y": 15})
 assert-property: ("nav.sub form", {"offsetHeight": 34})
-assert-position: ("h1", {"y": 64})
+assert-position: ("h1", {"y": 68})
 // 15 = 64 - 34 - 15
 
 // Now do the same check on moderately-sized, tablet mobile.
@@ -173,7 +173,7 @@ set-window-size: (700, 700)
 assert-css: ("nav.sub", {"flex-direction": "row"})
 assert-position: ("nav.sub form", {"y": 8})
 assert-property: ("nav.sub form", {"offsetHeight": 34})
-assert-position: ("h1", {"y": 50})
+assert-position: ("h1", {"y": 54})
 // 8 = 50 - 34 - 8
 
 // Check the sidebar directory entries have a marker and spacing (tablet).

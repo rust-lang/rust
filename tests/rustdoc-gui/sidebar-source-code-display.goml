@@ -141,7 +141,7 @@ click: "#sidebar-button"
 wait-for-css: (".src .sidebar > *", {"visibility": "hidden"})
 // We scroll to line 117 to change the scroll position.
 scroll-to: '//*[@id="117"]'
-store-value: (y_offset, "2570")
+store-value: (y_offset, "2578")
 assert-window-property: {"pageYOffset": |y_offset|}
 // Expanding the sidebar...
 click: "#sidebar-button"
