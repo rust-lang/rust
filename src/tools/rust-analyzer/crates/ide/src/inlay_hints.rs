@@ -475,6 +475,18 @@ impl InlayHintLabel {
         }
     }
 
+    pub fn append_part(&mut self, part: InlayHintLabelPart) {
+        if part.linked_location.is_none() && part.tooltip.is_none() {
+            if let Some(InlayHintLabelPart { text, linked_location: None, tooltip: None }) =
+                self.parts.last_mut()
+            {
+                text.push_str(&part.text);
+                return;
+            }
+        }
+        self.parts.push(part);
+    }
+
     pub fn needs_resolve(&self) -> bool {
         self.parts.iter().any(|part| part.linked_location.is_some() || part.tooltip.is_some())
     }
