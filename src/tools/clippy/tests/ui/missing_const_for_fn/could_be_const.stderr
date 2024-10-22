@@ -319,23 +319,23 @@ LL |     const extern "system-unwind" fn system_unwind() {}
 error: this could be a `const fn`
   --> tests/ui/missing_const_for_fn/could_be_const.rs:215:5
    |
-LL |     pub extern "stdcall" fn std_call() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     pub extern "vectorcall" fn std_call() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: make the function `const`
    |
-LL |     pub const extern "stdcall" fn std_call() {}
+LL |     pub const extern "vectorcall" fn std_call() {}
    |         +++++
 
 error: this could be a `const fn`
   --> tests/ui/missing_const_for_fn/could_be_const.rs:217:5
    |
-LL |     pub extern "stdcall-unwind" fn std_call_unwind() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     pub extern "vectorcall-unwind" fn std_call_unwind() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: make the function `const`
    |
-LL |     pub const extern "stdcall-unwind" fn std_call_unwind() {}
+LL |     pub const extern "vectorcall-unwind" fn std_call_unwind() {}
    |         +++++
 
 error: aborting due to 26 previous errors

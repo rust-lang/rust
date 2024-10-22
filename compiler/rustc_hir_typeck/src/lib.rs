@@ -155,7 +155,7 @@ fn typeck_with_fallback<'tcx>(
             tcx.fn_sig(def_id).instantiate_identity()
         };
 
-        check_abi(tcx, id, span, fn_sig.abi());
+        check_abi(tcx, span, fn_sig.abi());
 
         // Compute the function signature from point of view of inside the fn.
         let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
