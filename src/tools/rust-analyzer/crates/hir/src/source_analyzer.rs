@@ -363,7 +363,7 @@ impl SourceAnalyzer {
 
             // [E0586] inclusive ranges must be bounded at the end
             (RangeOp::Inclusive, None, None) => return None,
-            (RangeOp::Inclusive, Some(_), None) => return None
+            (RangeOp::Inclusive, Some(_), None) => return None,
         };
         self.resolver.resolve_known_struct(db.upcast(), &path)
     }
