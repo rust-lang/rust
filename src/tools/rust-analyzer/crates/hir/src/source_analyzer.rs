@@ -353,9 +353,17 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         range_expr: &ast::RangeExpr,
     ) -> Option<StructId> {
-        let path = match range_expr.op_kind()? {
-            RangeOp::Exclusive => path![core::ops::Range],
-            RangeOp::Inclusive => path![core::ops::RangeInclusive],
+        let path: ModPath = match (range_expr.op_kind()?, range_expr.start(), range_expr.end()) {
+            (RangeOp::Exclusive, None, None) => path![core::ops::RangeFull],
+            (RangeOp::Exclusive, None, Some(_)) => path![core::ops::RangeTo],
+            (RangeOp::Exclusive, Some(_), None) => path![core::ops::RangeFrom],
+            (RangeOp::Exclusive, Some(_), Some(_)) => path![core::ops::Range],
+            (RangeOp::Inclusive, None, Some(_)) => path![core::ops::RangeToInclusive],
+            (RangeOp::Inclusive, Some(_), Some(_)) => path![core::ops::RangeInclusive],
+
+            // [E0586] inclusive ranges must be bounded at the end
+            (RangeOp::Inclusive, None, None) => return None,
+            (RangeOp::Inclusive, Some(_), None) => return None
         };
         self.resolver.resolve_known_struct(db.upcast(), &path)
     }

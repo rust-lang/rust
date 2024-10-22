@@ -449,55 +449,76 @@ mod tests {
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
     }
 
-    #[test]
-    fn goto_def_range_inclusive_0() {
-        let ra_fixture = r#"
-//- minicore: range
-fn f(a: usize, b: usize) {
-    for _ in a.$0.=b {
-
-    }
-}
-"#;
+    fn check_name(expected_name: &str, ra_fixture: &str) {
         let (analysis, position, _) = fixture::annotations(ra_fixture);
-        let mut navs =
-            analysis.goto_definition(position).unwrap().expect("no definition found").info;
-        let Some(target) = navs.pop() else { panic!("no target found") };
-        assert_eq!(target.name, SmolStr::new_inline("RangeInclusive"));
-    }
-
-    #[test]
-    fn goto_def_range_inclusive_1() {
-        let ra_fixture = r#"
-//- minicore: range
-fn f(a: usize, b: usize) {
-    for _ in a..$0=b {
-
-    }
-}
-"#;
-        let (analysis, position, _) = fixture::annotations(ra_fixture);
-        let mut navs =
-            analysis.goto_definition(position).unwrap().expect("no definition found").info;
-        let Some(target) = navs.pop() else { panic!("no target found") };
-        assert_eq!(target.name, SmolStr::new_inline("RangeInclusive"));
+        let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
+        assert!(navs.len() < 2, "expected single navigation target but encountered {}", navs.len());
+        let Some(target) = navs.into_iter().next() else { 
+            panic!("expected single navigation target but encountered none"); 
+        };
+        assert_eq!(target.name, SmolStr::new_inline(expected_name));
     }
 
     #[test]
     fn goto_def_range() {
-        let ra_fixture = r#"
+        check_name("Range", r#"
 //- minicore: range
-fn f(a: usize, b: usize) {
-    for _ in a.$0.b {
-
+let x = 0.$0.1;
+"#
+        );
     }
+
+    #[test]
+    fn goto_def_range_from() {
+        check_name("RangeFrom", r#"
+//- minicore: range
+fn f(arr: &[i32]) -> &[i32] {
+    &arr[0.$0.]
 }
-"#;
-        let (analysis, position, _) = fixture::annotations(ra_fixture);
-        let mut navs =
-            analysis.goto_definition(position).unwrap().expect("no definition found").info;
-        let Some(target) = navs.pop() else { panic!("no target found") };
-        assert_eq!(target.name, SmolStr::new_inline("Range"));
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_range_inclusive() {
+        check_name("RangeInclusive", r#"
+//- minicore: range
+let x = 0.$0.=1;
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_range_full() {
+        check_name("RangeFull", r#"
+//- minicore: range
+fn f(arr: &[i32]) -> &[i32] {
+    &arr[.$0.]
+}
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_range_to() {
+        check_name("RangeTo", r#"
+//- minicore: range
+fn f(arr: &[i32]) -> &[i32] {
+    &arr[.$0.10]
+}
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_range_to_inclusive() {
+        check_name("RangeToInclusive", r#"
+//- minicore: range
+fn f(arr: &[i32]) -> &[i32] {
+    &arr[.$0.=10]
+}
+"#
+        );
     }
 
     #[test]
