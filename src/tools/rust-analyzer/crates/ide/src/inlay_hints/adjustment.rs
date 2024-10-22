@@ -17,8 +17,8 @@ use syntax::{
 };
 
 use crate::{
-    AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintPosition,
-    InlayHintsConfig, InlayKind, InlayTooltip,
+    AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintLabelPart,
+    InlayHintPosition, InlayHintsConfig, InlayKind, InlayTooltip,
 };
 
 pub(super) fn hints(
@@ -64,19 +64,34 @@ pub(super) fn hints(
     let (postfix, needs_outer_parens, needs_inner_parens) =
         mode_and_needs_parens_for_adjustment_hints(expr, config.adjustment_hints_mode);
 
-    if needs_outer_parens {
-        acc.push(InlayHint::opening_paren_before(
-            InlayKind::Adjustment,
-            expr.syntax().text_range(),
-        ));
+    let range = expr.syntax().text_range();
+    let mut pre = InlayHint {
+        range,
+        position: InlayHintPosition::Before,
+        pad_left: false,
+        pad_right: false,
+        kind: InlayKind::Adjustment,
+        label: InlayHintLabel::default(),
+        text_edit: None,
+        resolve_parent: Some(range),
+    };
+    let mut post = InlayHint {
+        range,
+        position: InlayHintPosition::After,
+        pad_left: false,
+        pad_right: false,
+        kind: InlayKind::Adjustment,
+        label: InlayHintLabel::default(),
+        text_edit: None,
+        resolve_parent: Some(range),
+    };
+
+    if needs_outer_parens || (postfix && needs_inner_parens) {
+        pre.label.append_str("(");
     }
 
     if postfix && needs_inner_parens {
-        acc.push(InlayHint::opening_paren_before(
-            InlayKind::Adjustment,
-            expr.syntax().text_range(),
-        ));
-        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
+        post.label.append_str(")");
     }
 
     let mut iter = if postfix {
@@ -138,35 +153,28 @@ pub(super) fn hints(
             }
             _ => continue,
         };
-        let label = InlayHintLabel::simple(
-            if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
-            Some(InlayTooltip::Markdown(format!(
+        let label = InlayHintLabelPart {
+            text: if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
+            linked_location: None,
+            tooltip: Some(InlayTooltip::Markdown(format!(
                 "`{}` → `{}` ({coercion} coercion)",
                 source.display(sema.db, file_id.edition()),
                 target.display(sema.db, file_id.edition()),
             ))),
-            None,
-        );
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            pad_left: false,
-            pad_right: false,
-            position: if postfix { InlayHintPosition::After } else { InlayHintPosition::Before },
-            kind: InlayKind::Adjustment,
-            label,
-            text_edit: None,
-            resolve_parent: Some(expr.syntax().text_range()),
-        });
+        };
+        if postfix { &mut post } else { &mut pre }.label.append_part(label);
     }
     if !postfix && needs_inner_parens {
-        acc.push(InlayHint::opening_paren_before(
-            InlayKind::Adjustment,
-            expr.syntax().text_range(),
-        ));
-        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
+        pre.label.append_str("(");
     }
-    if needs_outer_parens {
-        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
+    if needs_outer_parens || (!postfix && needs_inner_parens) {
+        post.label.append_str(")");
+    }
+    if !pre.label.parts.is_empty() {
+        acc.push(pre);
+    }
+    if !post.label.parts.is_empty() {
+        acc.push(post);
     }
     Some(())
 }
@@ -293,25 +301,19 @@ fn main() {
     let _: u32         = loop {};
                        //^^^^^^^<never-to-any>
     let _: &u32        = &mut 0;
-                       //^^^^^^&
-                       //^^^^^^*
+                       //^^^^^^&*
     let _: &mut u32    = &mut 0;
-                       //^^^^^^&mut $
-                       //^^^^^^*
+                       //^^^^^^&mut *
     let _: *const u32  = &mut 0;
-                       //^^^^^^&raw const $
-                       //^^^^^^*
+                       //^^^^^^&raw const *
     let _: *mut u32    = &mut 0;
-                       //^^^^^^&raw mut $
-                       //^^^^^^*
+                       //^^^^^^&raw mut *
     let _: fn()        = main;
                        //^^^^<fn-item-to-fn-pointer>
     let _: unsafe fn() = main;
-                       //^^^^<safe-fn-pointer-to-unsafe-fn-pointer>
-                       //^^^^<fn-item-to-fn-pointer>
+                       //^^^^<safe-fn-pointer-to-unsafe-fn-pointer><fn-item-to-fn-pointer>
     let _: unsafe fn() = main as fn();
-                       //^^^^^^^^^^^^<safe-fn-pointer-to-unsafe-fn-pointer>
-                       //^^^^^^^^^^^^(
+                       //^^^^^^^^^^^^<safe-fn-pointer-to-unsafe-fn-pointer>(
                        //^^^^^^^^^^^^)
                        //^^^^<fn-item-to-fn-pointer>
     let _: fn()        = || {};
@@ -319,72 +321,51 @@ fn main() {
     let _: unsafe fn() = || {};
                        //^^^^^<closure-to-unsafe-fn-pointer>
     let _: *const u32  = &mut 0u32 as *mut u32;
-                       //^^^^^^^^^^^^^^^^^^^^^<mut-ptr-to-const-ptr>
-                       //^^^^^^^^^^^^^^^^^^^^^(
+                       //^^^^^^^^^^^^^^^^^^^^^<mut-ptr-to-const-ptr>(
                        //^^^^^^^^^^^^^^^^^^^^^)
-                       //^^^^^^^^^&raw mut $
-                       //^^^^^^^^^*
+                       //^^^^^^^^^&raw mut *
     let _: &mut [_]    = &mut [0; 0];
-                       //^^^^^^^^^^^<unsize>
-                       //^^^^^^^^^^^&mut $
-                       //^^^^^^^^^^^*
+                       //^^^^^^^^^^^<unsize>&mut *
 
     Struct.consume();
     Struct.by_ref();
-  //^^^^^^(
-  //^^^^^^&
+  //^^^^^^(&
   //^^^^^^)
     Struct.by_ref_mut();
-  //^^^^^^(
-  //^^^^^^&mut $
+  //^^^^^^(&mut $
   //^^^^^^)
 
     (&Struct).consume();
    //^^^^^^^*
     (&Struct).by_ref();
-   //^^^^^^^&
-   //^^^^^^^*
+   //^^^^^^^&*
 
     (&mut Struct).consume();
    //^^^^^^^^^^^*
     (&mut Struct).by_ref();
-   //^^^^^^^^^^^&
-   //^^^^^^^^^^^*
+   //^^^^^^^^^^^&*
     (&mut Struct).by_ref_mut();
-   //^^^^^^^^^^^&mut $
-   //^^^^^^^^^^^*
+   //^^^^^^^^^^^&mut *
 
     // Check that block-like expressions don't duplicate hints
     let _: &mut [u32] = (&mut []);
-                       //^^^^^^^<unsize>
-                       //^^^^^^^&mut $
-                       //^^^^^^^*
+                       //^^^^^^^<unsize>&mut *
     let _: &mut [u32] = { &mut [] };
-                        //^^^^^^^<unsize>
-                        //^^^^^^^&mut $
-                        //^^^^^^^*
+                        //^^^^^^^<unsize>&mut *
     let _: &mut [u32] = unsafe { &mut [] };
-                               //^^^^^^^<unsize>
-                               //^^^^^^^&mut $
-                               //^^^^^^^*
+                               //^^^^^^^<unsize>&mut *
     let _: &mut [u32] = if true {
         &mut []
-      //^^^^^^^<unsize>
-      //^^^^^^^&mut $
-      //^^^^^^^*
+      //^^^^^^^<unsize>&mut *
     } else {
         loop {}
       //^^^^^^^<never-to-any>
     };
     let _: &mut [u32] = match () { () => &mut [] };
-                                       //^^^^^^^<unsize>
-                                       //^^^^^^^&mut $
-                                       //^^^^^^^*
+                                       //^^^^^^^<unsize>&mut *
 
     let _: &mut dyn Fn() = &mut || ();
-                         //^^^^^^^^^^<unsize>
-                         //^^^^^^^^^^&mut $
-                         //^^^^^^^^^^*
+                         //^^^^^^^^^^<unsize>&mut *
     () == ();
  // ^^&
        // ^^&
@@ -393,16 +374,13 @@ fn main() {
          // ^^^^&
     let closure: dyn Fn = || ();
     closure();
-  //^^^^^^^(
-  //^^^^^^^&
+  //^^^^^^^(&
   //^^^^^^^)
     Struct[0];
-  //^^^^^^(
-  //^^^^^^&
+  //^^^^^^(&
   //^^^^^^)
     &mut Struct[0];
-       //^^^^^^(
-       //^^^^^^&mut $
+       //^^^^^^(&mut $
        //^^^^^^)
 }
 
@@ -442,72 +420,46 @@ fn main() {
 
     (&Struct).consume();
    //^^^^^^^(
-   //^^^^^^^)
-   //^^^^^^^.*
+   //^^^^^^^).*
     (&Struct).by_ref();
    //^^^^^^^(
-   //^^^^^^^)
-   //^^^^^^^.*
-   //^^^^^^^.&
+   //^^^^^^^).*.&
 
     (&mut Struct).consume();
    //^^^^^^^^^^^(
-   //^^^^^^^^^^^)
-   //^^^^^^^^^^^.*
+   //^^^^^^^^^^^).*
     (&mut Struct).by_ref();
    //^^^^^^^^^^^(
-   //^^^^^^^^^^^)
-   //^^^^^^^^^^^.*
-   //^^^^^^^^^^^.&
+   //^^^^^^^^^^^).*.&
     (&mut Struct).by_ref_mut();
    //^^^^^^^^^^^(
-   //^^^^^^^^^^^)
-   //^^^^^^^^^^^.*
-   //^^^^^^^^^^^.&mut
+   //^^^^^^^^^^^).*.&mut
 
     // Check that block-like expressions don't duplicate hints
     let _: &mut [u32] = (&mut []);
                        //^^^^^^^(
-                       //^^^^^^^)
-                       //^^^^^^^.*
-                       //^^^^^^^.&mut
-                       //^^^^^^^.<unsize>
+                       //^^^^^^^).*.&mut.<unsize>
     let _: &mut [u32] = { &mut [] };
                         //^^^^^^^(
-                        //^^^^^^^)
-                        //^^^^^^^.*
-                        //^^^^^^^.&mut
-                        //^^^^^^^.<unsize>
+                        //^^^^^^^).*.&mut.<unsize>
     let _: &mut [u32] = unsafe { &mut [] };
                                //^^^^^^^(
-                               //^^^^^^^)
-                               //^^^^^^^.*
-                               //^^^^^^^.&mut
-                               //^^^^^^^.<unsize>
+                               //^^^^^^^).*.&mut.<unsize>
     let _: &mut [u32] = if true {
         &mut []
       //^^^^^^^(
-      //^^^^^^^)
-      //^^^^^^^.*
-      //^^^^^^^.&mut
-      //^^^^^^^.<unsize>
+      //^^^^^^^).*.&mut.<unsize>
     } else {
         loop {}
       //^^^^^^^.<never-to-any>
     };
     let _: &mut [u32] = match () { () => &mut [] };
                                        //^^^^^^^(
-                                       //^^^^^^^)
-                                       //^^^^^^^.*
-                                       //^^^^^^^.&mut
-                                       //^^^^^^^.<unsize>
+                                       //^^^^^^^).*.&mut.<unsize>
 
     let _: &mut dyn Fn() = &mut || ();
                          //^^^^^^^^^^(
-                         //^^^^^^^^^^)
-                         //^^^^^^^^^^.*
-                         //^^^^^^^^^^.&mut
-                         //^^^^^^^^^^.<unsize>
+                         //^^^^^^^^^^).*.&mut.<unsize>
     () == ();
  // ^^.&
        // ^^.&
@@ -619,9 +571,7 @@ fn or_else() {
             r#"
 unsafe fn enabled() {
     f(&&());
-    //^^^^&
-    //^^^^*
-    //^^^^*
+    //^^^^&**
 }
 
 fn disabled() {
@@ -633,9 +583,7 @@ fn mixed() {
 
     unsafe {
         f(&&());
-        //^^^^&
-        //^^^^*
-        //^^^^*
+        //^^^^&**
     }
 }
 
@@ -644,9 +592,7 @@ const _: () = {
 
     unsafe {
         f(&&());
-        //^^^^&
-        //^^^^*
-        //^^^^*
+        //^^^^&**
     }
 };
 
@@ -655,18 +601,14 @@ static STATIC: () = {
 
     unsafe {
         f(&&());
-        //^^^^&
-        //^^^^*
-        //^^^^*
+        //^^^^&**
     }
 };
 
 enum E {
     Disable = { f(&&()); 0 },
     Enable = unsafe { f(&&()); 1 },
-                      //^^^^&
-                      //^^^^*
-                      //^^^^*
+                      //^^^^&**
 }
 
 const fn f(_: &()) {}
@@ -692,8 +634,7 @@ fn a() {
     _ = Struct.by_ref();
 
     _ = unsafe { Struct.by_ref() };
-               //^^^^^^(
-               //^^^^^^&
+               //^^^^^^(&
                //^^^^^^)
 }
             "#,
@@ -726,10 +667,7 @@ trait T<RHS = Self> {}
 
 fn hello(it: &&[impl T]) {
     it.len();
-  //^^(
-  //^^&
-  //^^*
-  //^^*
+  //^^(&**
   //^^)
 }
 "#,
