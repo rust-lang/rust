@@ -223,20 +223,6 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
     }
 }
 
-impl<I: Interner> Relate<I> for ty::BoundConstness {
-    fn relate<R: TypeRelation<I>>(
-        _relation: &mut R,
-        a: ty::BoundConstness,
-        b: ty::BoundConstness,
-    ) -> RelateResult<I, ty::BoundConstness> {
-        if a != b {
-            Err(TypeError::ConstnessMismatch(ExpectedFound::new(true, a, b)))
-        } else {
-            Ok(a)
-        }
-    }
-}
-
 impl<I: Interner> Relate<I> for ty::AliasTy<I> {
     fn relate<R: TypeRelation<I>>(
         relation: &mut R,
@@ -664,29 +650,18 @@ impl<I: Interner, T: Relate<I>> Relate<I> for ty::Binder<I, T> {
     }
 }
 
-impl<I: Interner> Relate<I> for ty::PredicatePolarity {
-    fn relate<R: TypeRelation<I>>(
-        _relation: &mut R,
-        a: ty::PredicatePolarity,
-        b: ty::PredicatePolarity,
-    ) -> RelateResult<I, ty::PredicatePolarity> {
-        if a != b {
-            Err(TypeError::PolarityMismatch(ExpectedFound::new(true, a, b)))
-        } else {
-            Ok(a)
-        }
-    }
-}
-
 impl<I: Interner> Relate<I> for ty::TraitPredicate<I> {
     fn relate<R: TypeRelation<I>>(
         relation: &mut R,
         a: ty::TraitPredicate<I>,
         b: ty::TraitPredicate<I>,
     ) -> RelateResult<I, ty::TraitPredicate<I>> {
-        Ok(ty::TraitPredicate {
-            trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
-            polarity: relation.relate(a.polarity, b.polarity)?,
-        })
+        let trait_ref = relation.relate(a.trait_ref, b.trait_ref)?;
+        if a.polarity != b.polarity {
+            return Err(TypeError::PolarityMismatch(ExpectedFound::new(
+                true, a.polarity, b.polarity,
+            )));
+        }
+        Ok(ty::TraitPredicate { trait_ref, polarity: a.polarity })
     }
 }

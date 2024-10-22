@@ -35,9 +35,6 @@ impl<'tcx> TypeError<'tcx> {
             TypeError::CyclicTy(_) => "cyclic type of infinite size".into(),
             TypeError::CyclicConst(_) => "encountered a self-referencing constant".into(),
             TypeError::Mismatch => "types differ".into(),
-            TypeError::ConstnessMismatch(values) => {
-                format!("expected {} bound, found {} bound", values.expected, values.found).into()
-            }
             TypeError::PolarityMismatch(values) => {
                 format!("expected {} polarity, found {} polarity", values.expected, values.found)
                     .into()
