@@ -7,6 +7,11 @@
 //! purely for "IDE needs".
 use std::iter::{self, once};
 
+use crate::{
+    db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,
+    BuiltinType, Callable, Const, DeriveHelper, Field, Function, Local, Macro, ModuleDef, Static,
+    Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, Variant,
+};
 use either::Either;
 use hir_def::{
     body::{
@@ -21,7 +26,7 @@ use hir_def::{
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
     type_ref::Mutability,
     AsMacroCall, AssocItemId, ConstId, DefWithBodyId, FieldId, FunctionId, ItemContainerId,
-    LocalFieldId, Lookup, ModuleDefId, TraitId, VariantId,
+    LocalFieldId, Lookup, ModuleDefId, StructId, TraitId, VariantId,
 };
 use hir_expand::{
     mod_path::path,
@@ -40,17 +45,12 @@ use hir_ty::{
 use intern::sym;
 use itertools::Itertools;
 use smallvec::SmallVec;
+use syntax::ast::{RangeItem, RangeOp};
 use syntax::{
     ast::{self, AstNode},
     SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 use triomphe::Arc;
-
-use crate::{
-    db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,
-    BuiltinType, Callable, Const, DeriveHelper, Field, Function, Local, Macro, ModuleDef, Static,
-    Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, Variant,
-};
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
 /// original source files. It should not be used inside the HIR itself.
@@ -346,6 +346,18 @@ impl SourceAnalyzer {
                 Either::Right(self.resolve_impl_method_or_trait_def(db, f, substs).into())
             }),
         }
+    }
+
+    pub(crate) fn resolve_range_expr(
+        &self,
+        db: &dyn HirDatabase,
+        range_expr: &ast::RangeExpr,
+    ) -> Option<StructId> {
+        let path = match range_expr.op_kind()? {
+            RangeOp::Exclusive => path![core::ops::Range],
+            RangeOp::Inclusive => path![core::ops::RangeInclusive],
+        };
+        self.resolver.resolve_known_struct(db.upcast(), &path)
     }
 
     pub(crate) fn resolve_await_to_poll(

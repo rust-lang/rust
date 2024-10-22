@@ -5,14 +5,17 @@
 
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
+use crate::documentation::{Documentation, HasDocs};
+use crate::famous_defs::FamousDefs;
+use crate::RootDatabase;
 use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
     Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
     Function, GenericParam, HasVisibility, HirDisplay, Impl, InlineAsmOperand, Label, Local, Macro,
-    Module, ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, ToolModule, Trait,
-    TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
+    Module, ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule,
+    Trait, TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use span::Edition;
 use stdx::{format_to, impl_from};
@@ -20,10 +23,6 @@ use syntax::{
     ast::{self, AstNode},
     match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
 };
-
-use crate::documentation::{Documentation, HasDocs};
-use crate::famous_defs::FamousDefs;
-use crate::RootDatabase;
 
 // FIXME: a more precise name would probably be `Symbol`?
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -319,6 +318,7 @@ impl IdentClass {
                         .map(IdentClass::NameClass)
                         .or_else(|| NameRefClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameRefClass))
                 },
+                ast::RangeExpr(range_expr) => OperatorClass::classify_range(sema, &range_expr).map(IdentClass::Operator),
                 ast::AwaitExpr(await_expr) => OperatorClass::classify_await(sema, &await_expr).map(IdentClass::Operator),
                 ast::BinExpr(bin_expr) => OperatorClass::classify_bin(sema, &bin_expr).map(IdentClass::Operator),
                 ast::IndexExpr(index_expr) => OperatorClass::classify_index(sema, &index_expr).map(IdentClass::Operator),
@@ -372,6 +372,9 @@ impl IdentClass {
                 | OperatorClass::Index(func)
                 | OperatorClass::Try(func),
             ) => res.push(Definition::Function(func)),
+            IdentClass::Operator(OperatorClass::Range(struct0)) => {
+                res.push(Definition::Adt(Adt::Struct(struct0)))
+            }
         }
         res
     }
@@ -546,6 +549,7 @@ impl NameClass {
 
 #[derive(Debug)]
 pub enum OperatorClass {
+    Range(Struct),
     Await(Function),
     Prefix(Function),
     Index(Function),
@@ -554,6 +558,13 @@ pub enum OperatorClass {
 }
 
 impl OperatorClass {
+    pub fn classify_range(
+        sema: &Semantics<'_, RootDatabase>,
+        range_expr: &ast::RangeExpr,
+    ) -> Option<OperatorClass> {
+        sema.resolve_range_expr(range_expr).map(OperatorClass::Range)
+    }
+
     pub fn classify_await(
         sema: &Semantics<'_, RootDatabase>,
         await_expr: &ast::AwaitExpr,

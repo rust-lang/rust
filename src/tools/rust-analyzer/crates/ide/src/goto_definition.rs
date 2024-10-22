@@ -5,7 +5,7 @@ use crate::{
     navigation_target::{self, ToNav},
     FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
-use hir::{Adt, AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
+use hir::{AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileLoader, SourceDatabase},
     defs::{Definition, IdentClass},
@@ -13,7 +13,6 @@ use ide_db::{
     RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
-use ide_db::famous_defs::FamousDefs;
 use span::{Edition, FileId};
 use syntax::{
     ast::{self, HasLoopBody},
@@ -41,22 +40,6 @@ pub(crate) fn goto_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = &Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
-
-    if let syntax::TokenAtOffset::Single(tok) = file.token_at_offset(offset) {
-        if let Some(module) = sema.file_to_module_def(file_id) {
-            let famous_defs = FamousDefs(sema, module.krate());
-            let maybe_famous_struct = match tok.kind() {
-                T![..]  => famous_defs.core_ops_Range(),
-                T![..=] => famous_defs.core_ops_RangeInclusive(),
-                _ => None
-            };
-            if let Some(fstruct) = maybe_famous_struct {
-                let target = def_to_nav(db, Definition::Adt(Adt::Struct(fstruct)));
-                return Some(RangeInfo::new(tok.text_range(), target));
-            }
-        }
-    }
-
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
@@ -434,10 +417,10 @@ fn expr_to_nav(
 
 #[cfg(test)]
 mod tests {
+    use crate::fixture;
     use ide_db::FileRange;
     use itertools::Itertools;
     use syntax::SmolStr;
-    use crate::fixture;
 
     #[track_caller]
     fn check(ra_fixture: &str) {
@@ -466,9 +449,25 @@ mod tests {
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
     }
 
+    #[test]
+    fn goto_def_range_inclusive_0() {
+        let ra_fixture = r#"
+//- minicore: range
+fn f(a: usize, b: usize) {
+    for _ in a.$0.=b {
+
+    }
+}
+"#;
+        let (analysis, position, _) = fixture::annotations(ra_fixture);
+        let mut navs =
+            analysis.goto_definition(position).unwrap().expect("no definition found").info;
+        let Some(target) = navs.pop() else { panic!("no target found") };
+        assert_eq!(target.name, SmolStr::new_inline("RangeInclusive"));
+    }
 
     #[test]
-    fn goto_def_range_inclusive() {
+    fn goto_def_range_inclusive_1() {
         let ra_fixture = r#"
 //- minicore: range
 fn f(a: usize, b: usize) {
@@ -478,13 +477,14 @@ fn f(a: usize, b: usize) {
 }
 "#;
         let (analysis, position, _) = fixture::annotations(ra_fixture);
-        let mut navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
+        let mut navs =
+            analysis.goto_definition(position).unwrap().expect("no definition found").info;
         let Some(target) = navs.pop() else { panic!("no target found") };
         assert_eq!(target.name, SmolStr::new_inline("RangeInclusive"));
     }
 
     #[test]
-    fn goto_def_range_half_open() {
+    fn goto_def_range() {
         let ra_fixture = r#"
 //- minicore: range
 fn f(a: usize, b: usize) {
@@ -494,7 +494,8 @@ fn f(a: usize, b: usize) {
 }
 "#;
         let (analysis, position, _) = fixture::annotations(ra_fixture);
-        let mut navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
+        let mut navs =
+            analysis.goto_definition(position).unwrap().expect("no definition found").info;
         let Some(target) = navs.pop() else { panic!("no target found") };
         assert_eq!(target.name, SmolStr::new_inline("Range"));
     }
