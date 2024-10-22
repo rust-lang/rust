@@ -333,7 +333,7 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
                 a.args,
                 b.args,
             )?;
-            Ok(ty::ExistentialProjection { def_id: a.def_id, args, term })
+            Ok(ty::ExistentialProjection::new_from_args(relation.cx(), a.def_id, args, term))
         }
     }
 }
@@ -373,7 +373,7 @@ impl<I: Interner> Relate<I> for ty::ExistentialTraitRef<I> {
             }))
         } else {
             let args = relate_args_invariantly(relation, a.args, b.args)?;
-            Ok(ty::ExistentialTraitRef { def_id: a.def_id, args })
+            Ok(ty::ExistentialTraitRef::new_from_args(relation.cx(), a.def_id, args))
         }
     }
 }

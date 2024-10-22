@@ -15,9 +15,7 @@ use crate::solve::{
     CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, SolverMode,
 };
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{
-    search_graph, {self as ty},
-};
+use crate::{self as ty, search_graph};
 
 pub trait Interner:
     Sized
@@ -172,6 +170,10 @@ pub trait Interner:
     fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool;
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
+
+    /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
+    /// are compatible with the `DefId`.
+    fn debug_assert_existential_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
 
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where

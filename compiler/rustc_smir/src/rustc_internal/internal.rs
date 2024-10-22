@@ -380,11 +380,12 @@ impl RustcInternal for ExistentialProjection {
     type T<'tcx> = rustc_ty::ExistentialProjection<'tcx>;
 
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
-        rustc_ty::ExistentialProjection {
-            def_id: self.def_id.0.internal(tables, tcx),
-            args: self.generic_args.internal(tables, tcx),
-            term: self.term.internal(tables, tcx),
-        }
+        rustc_ty::ExistentialProjection::new_from_args(
+            tcx,
+            self.def_id.0.internal(tables, tcx),
+            self.generic_args.internal(tables, tcx),
+            self.term.internal(tables, tcx),
+        )
     }
 }
 
@@ -403,10 +404,11 @@ impl RustcInternal for ExistentialTraitRef {
     type T<'tcx> = rustc_ty::ExistentialTraitRef<'tcx>;
 
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
-        rustc_ty::ExistentialTraitRef {
-            def_id: self.def_id.0.internal(tables, tcx),
-            args: self.generic_args.internal(tables, tcx),
-        }
+        rustc_ty::ExistentialTraitRef::new_from_args(
+            tcx,
+            self.def_id.0.internal(tables, tcx),
+            self.generic_args.internal(tables, tcx),
+        )
     }
 }
 
