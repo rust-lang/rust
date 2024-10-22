@@ -3549,9 +3549,7 @@ impl Step for TestFloatParse {
         let path = self.path.to_str().unwrap();
         let crate_name = self.path.components().last().unwrap().as_os_str().to_str().unwrap();
 
-        if !builder.download_rustc() {
-            builder.ensure(compile::Std::new(compiler, self.host));
-        }
+        builder.ensure(tool::TestFloatParse { host: self.host });
 
         // Run any unit tests in the crate
         let cargo_test = tool::prepare_tool_cargo(
