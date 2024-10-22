@@ -1183,15 +1183,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                         sym::masked => self.check_doc_masked(attr, meta, hir_id, target),
 
-                        // no_default_passes: deprecated
-                        // passes: deprecated
-                        // plugins: removed, but rustdoc warns about it itself
-                        sym::cfg
-                        | sym::hidden
-                        | sym::no_default_passes
-                        | sym::notable_trait
-                        | sym::passes
-                        | sym::plugins => {}
+                        sym::cfg | sym::hidden | sym::notable_trait => {}
 
                         sym::rust_logo => {
                             if self.check_attr_crate_level(attr, meta, hir_id)
@@ -1239,6 +1231,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                         },
                                         sugg: (attr.meta().unwrap().span, applicability),
                                     },
+                                );
+                            } else if i_meta.has_name(sym::passes)
+                                || i_meta.has_name(sym::no_default_passes)
+                            {
+                                self.tcx.emit_node_span_lint(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    i_meta.span,
+                                    errors::DocTestUnknownPasses { path, span: i_meta.span },
+                                );
+                            } else if i_meta.has_name(sym::plugins) {
+                                self.tcx.emit_node_span_lint(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    i_meta.span,
+                                    errors::DocTestUnknownPlugins { path, span: i_meta.span },
                                 );
                             } else {
                                 self.tcx.emit_node_span_lint(
