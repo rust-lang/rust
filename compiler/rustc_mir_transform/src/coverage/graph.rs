@@ -21,6 +21,10 @@ pub(crate) struct CoverageGraph {
     pub(crate) successors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     pub(crate) predecessors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     dominators: Option<Dominators<BasicCoverageBlock>>,
+    /// Allows nodes to be compared in some total order such that _if_
+    /// `a` dominates `b`, then `a < b`. If neither node dominates the other,
+    /// their relative order is consistent but arbitrary.
+    dominator_order_rank: IndexVec<BasicCoverageBlock, u32>,
 }
 
 impl CoverageGraph {
@@ -54,9 +58,26 @@ impl CoverageGraph {
             }
         }
 
-        let mut this = Self { bcbs, bb_to_bcb, successors, predecessors, dominators: None };
+        let num_nodes = bcbs.len();
+        let mut this = Self {
+            bcbs,
+            bb_to_bcb,
+            successors,
+            predecessors,
+            dominators: None,
+            dominator_order_rank: IndexVec::from_elem_n(0, num_nodes),
+        };
+        assert_eq!(num_nodes, this.num_nodes());
 
         this.dominators = Some(dominators::dominators(&this));
+
+        // The dominator rank of each node is just its index in a reverse-postorder traversal.
+        let reverse_post_order = graph::iterate::reverse_post_order(&this, this.start_node());
+        // The coverage graph is created by traversal, so all nodes are reachable.
+        assert_eq!(reverse_post_order.len(), this.num_nodes());
+        for (rank, bcb) in (0u32..).zip(reverse_post_order) {
+            this.dominator_order_rank[bcb] = rank;
+        }
 
         // The coverage graph's entry-point node (bcb0) always starts with bb0,
         // which never has predecessors. Any other blocks merged into bcb0 can't
@@ -162,7 +183,7 @@ impl CoverageGraph {
         a: BasicCoverageBlock,
         b: BasicCoverageBlock,
     ) -> Ordering {
-        self.dominators.as_ref().unwrap().cmp_in_dominator_order(a, b)
+        self.dominator_order_rank[a].cmp(&self.dominator_order_rank[b])
     }
 
     /// Returns the source of this node's sole in-edge, if it has exactly one.
