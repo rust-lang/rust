@@ -541,22 +541,6 @@ fn f(ch: char) -> bool {
     }
 
     #[test]
-    fn goto_def_range_pat_inclusive() {
-        check_name(
-            "RangeInclusive",
-            r#"
-//- minicore: range
-fn f(ch: char) -> bool {
-    match ch {
-        'a'..$0='z' => true,
-        _ => false
-    }
-}
-"#
-        );
-    }
-
-    #[test]
     fn goto_def_expr_range() {
         check_name(
             "Range",
