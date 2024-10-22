@@ -753,7 +753,7 @@ impl Printer<'_> {
                 }
                 wln!(self);
             }
-            Statement::Item => (),
+            Statement::Item(_) => (),
         }
     }
 

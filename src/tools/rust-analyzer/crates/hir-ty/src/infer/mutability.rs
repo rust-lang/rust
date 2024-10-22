@@ -89,7 +89,7 @@ impl InferenceContext<'_> {
                         Statement::Expr { expr, has_semi: _ } => {
                             self.infer_mut_expr(*expr, Mutability::Not);
                         }
-                        Statement::Item => (),
+                        Statement::Item(_) => (),
                     }
                 }
                 if let Some(tail) = tail {

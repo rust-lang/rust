@@ -1656,7 +1656,7 @@ impl InferenceContext<'_> {
                                 );
                             }
                         }
-                        Statement::Item => (),
+                        Statement::Item(_) => (),
                     }
                 }
 

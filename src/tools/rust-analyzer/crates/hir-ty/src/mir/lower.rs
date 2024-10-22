@@ -1783,7 +1783,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.push_fake_read(c, p, expr.into());
                     current = scope2.pop_and_drop(self, c, expr.into());
                 }
-                hir_def::hir::Statement::Item => (),
+                hir_def::hir::Statement::Item(_) => (),
             }
         }
         if let Some(tail) = tail {
