@@ -164,8 +164,15 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     op_idx.insert(idx, constraints.len());
                     constraints.push("s".to_string());
                 }
-                InlineAsmOperandRef::SymStatic { def_id } => {
-                    inputs.push(self.cx.get_static(def_id));
+                InlineAsmOperandRef::SymStatic { def_id, offset } => {
+                    let llval = self.cx.get_static(def_id);
+                    let llval = if offset.bytes() > 0 {
+                        let offset = self.const_usize(offset.bytes());
+                        self.ptradd(llval, offset)
+                    } else {
+                        llval
+                    };
+                    inputs.push(llval);
                     op_idx.insert(idx, constraints.len());
                     constraints.push("s".to_string());
                 }
@@ -395,7 +402,12 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                             .expect("symbol is not valid UTF-8");
                             template_str.push_str(&symbol);
                         }
-                        GlobalAsmOperandRef::SymStatic { def_id } => {
+                        GlobalAsmOperandRef::SymStatic { def_id, offset } => {
+                            if offset.bytes() > 0 {
+                                bug!(
+                                    "We don't know how to codegen on static with a non-zero offset"
+                                );
+                            }
                             let llval = self
                                 .renamed_statics
                                 .borrow()

@@ -1,3 +1,4 @@
+use rustc_abi::Size;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
@@ -47,13 +48,21 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                                             .tcx()
                                             .typeck_body(anon_const.body)
                                             .node_type(anon_const.hir_id);
-                                        let string = common::asm_const_to_str(
+                                        match common::asm_const_to_opr_ref(
                                             cx.tcx(),
                                             *op_sp,
                                             const_value,
                                             cx.layout_of(ty),
-                                        );
-                                        GlobalAsmOperandRef::Const { string }
+                                        ) {
+                                            common::AsmConstOperandRef::Const { string } => {
+                                                GlobalAsmOperandRef::Const { string }
+                                            }
+                                            common::AsmConstOperandRef::Static {
+                                                def_id,
+                                                offset,
+                                                ptr_size: _,
+                                            } => GlobalAsmOperandRef::SymStatic { def_id, offset },
+                                        }
                                     }
                                     Err(ErrorHandled::Reported { .. }) => {
                                         // An error has already been reported and
@@ -83,7 +92,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                                 GlobalAsmOperandRef::SymFn { instance }
                             }
                             hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
-                                GlobalAsmOperandRef::SymStatic { def_id }
+                                GlobalAsmOperandRef::SymStatic { def_id, offset: Size::ZERO }
                             }
                             hir::InlineAsmOperand::In { .. }
                             | hir::InlineAsmOperand::Out { .. }
