@@ -419,7 +419,7 @@ macro_rules! impl_trait {
                     self.as_array().iter().sum()
                 } else {
                     // Safety: `self` is a float vector
-                    unsafe { core::intrinsics::simd::simd_reduce_add_ordered(self, 0.) }
+                    unsafe { core::intrinsics::simd::simd_reduce_add_ordered(self, -0.) }
                 }
             }
 
