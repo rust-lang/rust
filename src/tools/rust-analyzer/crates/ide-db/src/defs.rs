@@ -330,7 +330,8 @@ impl IdentClass {
                         .map(IdentClass::NameClass)
                         .or_else(|| NameRefClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameRefClass))
                 },
-                ast::RangeExpr(range_expr) => OperatorClass::classify_range(sema, &range_expr).map(IdentClass::Operator),
+                ast::RangePat(range_pat) => OperatorClass::classify_range_pat(sema, &range_pat).map(IdentClass::Operator),
+                ast::RangeExpr(range_expr) => OperatorClass::classify_range_expr(sema, &range_expr).map(IdentClass::Operator),
                 ast::AwaitExpr(await_expr) => OperatorClass::classify_await(sema, &await_expr).map(IdentClass::Operator),
                 ast::BinExpr(bin_expr) => OperatorClass::classify_bin(sema, &bin_expr).map(IdentClass::Operator),
                 ast::IndexExpr(index_expr) => OperatorClass::classify_index(sema, &index_expr).map(IdentClass::Operator),
@@ -570,7 +571,14 @@ pub enum OperatorClass {
 }
 
 impl OperatorClass {
-    pub fn classify_range(
+    pub fn classify_range_pat(
+        sema: &Semantics<'_, RootDatabase>,
+        range_pat: &ast::RangePat,
+    ) -> Option<OperatorClass> {
+        sema.resolve_range_pat(range_pat).map(OperatorClass::Range)
+    }
+
+    pub fn classify_range_expr(
         sema: &Semantics<'_, RootDatabase>,
         range_expr: &ast::RangeExpr,
     ) -> Option<OperatorClass> {

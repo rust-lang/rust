@@ -348,6 +348,25 @@ impl SourceAnalyzer {
         }
     }
 
+    pub(crate) fn resolve_range_pat(
+        &self,
+        db: &dyn HirDatabase,
+        range_pat: &ast::RangePat,
+    ) -> Option<StructId> {
+        let path: ModPath = match (range_pat.op_kind()?, range_pat.start(), range_pat.end()) {
+            (RangeOp::Exclusive, None, Some(_)) => path![core::ops::RangeTo],
+            (RangeOp::Exclusive, Some(_), None) => path![core::ops::RangeFrom],
+            (RangeOp::Exclusive, Some(_), Some(_)) => path![core::ops::Range],
+            (RangeOp::Inclusive, None, Some(_)) => path![core::ops::RangeToInclusive],
+            (RangeOp::Inclusive, Some(_), Some(_)) => path![core::ops::RangeInclusive],
+
+            (RangeOp::Exclusive, None, None) => return None,
+            (RangeOp::Inclusive, None, None) => return None,
+            (RangeOp::Inclusive, Some(_), None) => return None,
+        };
+        self.resolver.resolve_known_struct(db.upcast(), &path)
+    }
+
     pub(crate) fn resolve_range_expr(
         &self,
         db: &dyn HirDatabase,

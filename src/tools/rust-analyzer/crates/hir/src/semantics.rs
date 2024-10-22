@@ -203,6 +203,10 @@ impl<DB: HirDatabase> Semantics<'_, DB> {
         self.imp.descend_node_at_offset(node, offset).filter_map(|mut it| it.find_map(N::cast))
     }
 
+    pub fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<Struct> {
+        self.imp.resolve_range_pat(range_pat).map(Struct::from)
+    }
+
     pub fn resolve_range_expr(&self, range_expr: &ast::RangeExpr) -> Option<Struct> {
         self.imp.resolve_range_expr(range_expr).map(Struct::from)
     }
@@ -1365,6 +1369,10 @@ impl<'db> SemanticsImpl<'db> {
         call: &ast::MethodCallExpr,
     ) -> Option<Either<Function, Field>> {
         self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
+    }
+
+    fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<StructId> {
+        self.analyze(range_pat.syntax())?.resolve_range_pat(self.db, range_pat)
     }
 
     fn resolve_range_expr(&self, range_expr: &ast::RangeExpr) -> Option<StructId> {
