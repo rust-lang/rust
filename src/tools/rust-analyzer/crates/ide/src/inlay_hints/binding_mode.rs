@@ -2,13 +2,15 @@
 //! ```no_run
 //! let /* & */ (/* ref */ x,) = &(0,);
 //! ```
+use std::mem;
+
 use hir::Mutability;
 use ide_db::famous_defs::FamousDefs;
 
 use span::EditionedFileId;
 use syntax::ast::{self, AstNode};
 
-use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -42,7 +44,18 @@ pub(super) fn hints(
         },
         |it| it.syntax().text_range(),
     );
+    let mut hint = InlayHint {
+        range,
+        kind: InlayKind::BindingMode,
+        label: InlayHintLabel::default(),
+        text_edit: None,
+        position: InlayHintPosition::Before,
+        pad_left: false,
+        pad_right: false,
+        resolve_parent: Some(pat.syntax().text_range()),
+    };
     let pattern_adjustments = sema.pattern_adjustments(pat);
+    let mut was_mut_last = false;
     pattern_adjustments.iter().for_each(|ty| {
         let reference = ty.is_reference();
         let mut_reference = ty.is_mutable_reference();
@@ -51,17 +64,15 @@ pub(super) fn hints(
             (true, false) => "&",
             _ => return,
         };
-        acc.push(InlayHint {
-            range,
-            kind: InlayKind::BindingMode,
-            label: r.into(),
-            text_edit: None,
-            position: InlayHintPosition::Before,
-            pad_left: false,
-            pad_right: mut_reference,
-            resolve_parent: Some(pat.syntax().text_range()),
-        });
+        if mem::replace(&mut was_mut_last, mut_reference) {
+            hint.label.append_str(" ");
+        }
+        hint.label.append_str(r);
     });
+    hint.pad_right = was_mut_last;
+    if !hint.label.parts.is_empty() {
+        acc.push(hint);
+    }
     match pat {
         ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
             let bm = sema.binding_mode_of_pat(pat)?;
@@ -117,6 +128,13 @@ fn __(
     (x,): &mut (u32,)
   //^^^^&mut
    //^ ref mut
+   (x,): &mut &mut (u32,)
+ //^^^^&mut &mut
+  //^ ref mut
+   (x,): &&(u32,)
+ //^^^^&&
+  //^ ref
+
 ) {
     let (x,) = (0,);
     let (x,) = &(0,);
