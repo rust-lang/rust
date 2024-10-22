@@ -30,7 +30,7 @@ use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::FnAbi;
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
+use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, WasmCAbi, X86Abi};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
@@ -2344,6 +2344,12 @@ impl<'tcx> HasTargetSpec for Builder<'_, '_, 'tcx> {
 impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
     fn wasm_c_abi_opt(&self) -> WasmCAbi {
         self.cx.wasm_c_abi_opt()
+    }
+}
+
+impl<'tcx> HasX86AbiOpt for Builder<'_, '_, 'tcx> {
+    fn x86_abi_opt(&self) -> X86Abi {
+        self.cx.x86_abi_opt()
     }
 }
 
