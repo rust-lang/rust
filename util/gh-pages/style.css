@@ -204,7 +204,7 @@ details[open] {
 }
 
 /* Expanding the mdBook theme*/
-.light {
+.light, body:not([class]) {
     --inline-code-bg: #f6f7f6;
 }
 .rust {
@@ -218,6 +218,16 @@ details[open] {
 }
 .ayu {
     --inline-code-bg: #191f26;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([class]) {
+        /*
+        In case JS is disabled and the user's system is in dark mode, we take "coal" as default
+        dark theme.
+        */
+        --inline-code-bg: #1d1f21;
+    }
 }
 
 #settings-dropdown {
