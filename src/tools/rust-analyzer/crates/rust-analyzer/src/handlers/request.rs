@@ -489,12 +489,12 @@ pub(crate) fn handle_document_symbol(
             tags.push(SymbolTag::DEPRECATED)
         };
 
+        #[allow(deprecated)]
         let doc_symbol = lsp_types::DocumentSymbol {
             name: symbol.label,
             detail: symbol.detail,
             kind: to_proto::structure_node_kind(symbol.kind),
             tags: Some(tags),
-            #[allow(deprecated)]
             deprecated: Some(symbol.deprecated),
             range: to_proto::range(&line_index, symbol.node_range),
             selection_range: to_proto::range(&line_index, symbol.navigation_range),
@@ -539,11 +539,11 @@ pub(crate) fn handle_document_symbol(
         url: &Url,
         res: &mut Vec<SymbolInformation>,
     ) {
+        #[allow(deprecated)]
         res.push(SymbolInformation {
             name: symbol.name.clone(),
             kind: symbol.kind,
             tags: symbol.tags.clone(),
-            #[allow(deprecated)]
             deprecated: symbol.deprecated,
             location: Location::new(url.clone(), symbol.range),
             container_name,

@@ -134,7 +134,7 @@ pub enum TokenTreeRef<'a, Span> {
     Leaf(&'a Leaf<Span>, &'a TokenTree<Span>),
 }
 
-impl<'a, Span: Copy> TokenTreeRef<'a, Span> {
+impl<Span: Copy> TokenTreeRef<'_, Span> {
     pub fn span(&self) -> Span {
         match self {
             TokenTreeRef::Subtree(subtree, _) => subtree.delimiter.open,

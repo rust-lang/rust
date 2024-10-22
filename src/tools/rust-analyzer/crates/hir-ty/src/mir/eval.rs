@@ -1628,6 +1628,10 @@ impl Evaluator<'_> {
                 }
                 CastKind::FnPtrToPtr => not_supported!("fn ptr to ptr cast"),
             },
+            Rvalue::ThreadLocalRef(n)
+            | Rvalue::AddressOf(n)
+            | Rvalue::BinaryOp(n)
+            | Rvalue::NullaryOp(n) => match *n {},
         })
     }
 
@@ -2703,17 +2707,15 @@ impl Evaluator<'_> {
             TyKind::Function(_) => {
                 self.exec_fn_pointer(func_data, destination, &args[1..], locals, target_bb, span)
             }
-            TyKind::Closure(closure, subst) => {
-                return self.exec_closure(
-                    *closure,
-                    func_data,
-                    &Substitution::from_iter(Interner, ClosureSubst(subst).parent_subst()),
-                    destination,
-                    &args[1..],
-                    locals,
-                    span,
-                );
-            }
+            TyKind::Closure(closure, subst) => self.exec_closure(
+                *closure,
+                func_data,
+                &Substitution::from_iter(Interner, ClosureSubst(subst).parent_subst()),
+                destination,
+                &args[1..],
+                locals,
+                span,
+            ),
             _ => {
                 // try to execute the manual impl of `FnTrait` for structs (nightly feature used in std)
                 let arg0 = func;

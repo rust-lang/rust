@@ -34,7 +34,7 @@ impl<'a> OuterImplTraitGuard<'a> {
     }
 }
 
-impl<'a> Drop for OuterImplTraitGuard<'a> {
+impl Drop for OuterImplTraitGuard<'_> {
     fn drop(&mut self) {
         self.ctx.outer_impl_trait.replace(self.old);
     }

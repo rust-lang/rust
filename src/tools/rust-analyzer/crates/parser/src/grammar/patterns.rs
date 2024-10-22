@@ -40,9 +40,6 @@ pub(super) fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     pattern_r(p, recovery_set);
 }
 
-/// Parses a pattern list separated by pipes `|`, with no leading `|`,using the
-/// given `recovery_set`.
-
 // test or_pattern
 // fn main() {
 //     match () {
@@ -52,6 +49,8 @@ pub(super) fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
 //         [_ | _,] => (),
 //     }
 // }
+/// Parses a pattern list separated by pipes `|`, with no leading `|`,using the
+/// given `recovery_set`.
 fn pattern_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     let m = p.start();
     pattern_single_r(p, recovery_set);
