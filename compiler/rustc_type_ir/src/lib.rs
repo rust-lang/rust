@@ -19,14 +19,13 @@ use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 
 // These modules are `pub` since they are not glob-imported.
 #[macro_use]
-pub mod visit;
+pub mod traverse;
 #[cfg(feature = "nightly")]
 pub mod codec;
 pub mod data_structures;
 pub mod elaborate;
 pub mod error;
 pub mod fast_reject;
-pub mod fold;
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_inherent")]
 pub mod inherent;
 pub mod ir_print;
@@ -79,6 +78,7 @@ pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
+pub use traverse::{visit, fold};
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
