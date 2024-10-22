@@ -10,7 +10,7 @@
 
 //@[riscv32imac] compile-flags: --target=riscv32imac-unknown-none-elf
 //@[riscv32imac] needs-llvm-components: riscv
-// riscv32imac-NOT: !"target-abi"
+// riscv32imac: !{i32 1, !"target-abi", !"ilp32"}
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]
