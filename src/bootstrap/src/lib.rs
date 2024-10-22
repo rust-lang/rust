@@ -545,23 +545,28 @@ impl Build {
             .args(["--get-regexp", "path"])
             .run_capture(self)
             .stdout();
-        for line in output.lines() {
+        std::thread::scope(|s| {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
-            let submodule = line.split_once(' ').unwrap().1;
-            self.update_existing_submodule(submodule);
-        }
+            for line in output.lines() {
+                let submodule = line.split_once(' ').unwrap().1;
+                let config = self.config.clone();
+                s.spawn(move || {
+                    Self::update_existing_submodule(&config, submodule);
+                });
+            }
+        });
     }
 
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
-    pub fn update_existing_submodule(&self, submodule: &str) {
+    pub fn update_existing_submodule(config: &Config, submodule: &str) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules() {
+        if !config.submodules() {
             return;
         }
 
         if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
-            self.config.update_submodule(submodule);
+            config.update_submodule(submodule);
         }
     }
 
