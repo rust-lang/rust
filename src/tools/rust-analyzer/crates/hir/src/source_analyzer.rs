@@ -364,8 +364,7 @@ impl SourceAnalyzer {
             (RangeOp::Inclusive, None, None) => return None,
             (RangeOp::Inclusive, Some(_), None) => return None,
         };
-        let s = self.resolver.resolve_known_struct(db.upcast(), &path);
-        return s;
+        self.resolver.resolve_known_struct(db.upcast(), &path)
     }
 
     pub(crate) fn resolve_range_expr(
