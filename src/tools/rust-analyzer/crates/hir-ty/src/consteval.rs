@@ -319,7 +319,7 @@ pub(crate) fn eval_to_const(
             return true;
         }
         let mut r = false;
-        body[expr].walk_child_exprs(|idx| r |= has_closure(body, idx));
+        body.walk_child_exprs(expr, |idx| r |= has_closure(body, idx));
         r
     }
     if has_closure(ctx.body, expr) {

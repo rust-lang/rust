@@ -282,7 +282,7 @@ fn compute_expr_scopes(
             *scope = scopes.new_scope(*scope);
             scopes.add_pat_bindings(body, *scope, pat);
         }
-        e => e.walk_child_exprs(|e| compute_expr_scopes(scopes, e, scope)),
+        _ => body.walk_child_exprs(expr, |e| compute_expr_scopes(scopes, e, scope)),
     };
 }
 
@@ -333,6 +333,8 @@ mod tests {
 
         let expr_id = source_map
             .node_expr(InFile { file_id: file_id.into(), value: &marker.into() })
+            .unwrap()
+            .as_expr()
             .unwrap();
         let scope = scopes.scope_for(expr_id);
 
@@ -488,8 +490,11 @@ fn foo() {
 
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();
-            let expr_id =
-                source_map.node_expr(InFile { file_id: file_id.into(), value: &expr_ast }).unwrap();
+            let expr_id = source_map
+                .node_expr(InFile { file_id: file_id.into(), value: &expr_ast })
+                .unwrap()
+                .as_expr()
+                .unwrap();
             scopes.scope_for(expr_id).unwrap()
         };
 

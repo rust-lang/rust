@@ -13,7 +13,7 @@ use hir_def::{
     },
     lang_item::{LangItem, LangItemTarget},
     path::Path,
-    resolver::{resolver_for_expr, HasResolver, ResolveValueResult, ValueNs},
+    resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
     Lookup, TraitId, TupleId, TypeOrConstParamId,
 };
@@ -76,6 +76,7 @@ struct MirLowerCtx<'a> {
     db: &'a dyn HirDatabase,
     body: &'a Body,
     infer: &'a InferenceResult,
+    resolver: Resolver,
     drop_scopes: Vec<DropScope>,
 }
 
@@ -278,6 +279,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             owner,
             closures: vec![],
         };
+        let resolver = owner.resolver(db.upcast());
 
         MirLowerCtx {
             result: mir,
@@ -285,6 +287,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             infer,
             body,
             owner,
+            resolver,
             current_loop_blocks: None,
             labeled_loop_blocks: Default::default(),
             discr_temp: None,
@@ -410,43 +413,48 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 Err(MirLowerError::IncompleteExpr)
             }
             Expr::Path(p) => {
-                let pr =
-                    if let Some((assoc, subst)) = self.infer.assoc_resolutions_for_expr(expr_id) {
-                        match assoc {
-                            hir_def::AssocItemId::ConstId(c) => {
-                                self.lower_const(
-                                    c.into(),
-                                    current,
-                                    place,
-                                    subst,
-                                    expr_id.into(),
-                                    self.expr_ty_without_adjust(expr_id),
-                                )?;
-                                return Ok(Some(current));
-                            }
-                            hir_def::AssocItemId::FunctionId(_) => {
-                                // FnDefs are zero sized, no action is needed.
-                                return Ok(Some(current));
-                            }
-                            hir_def::AssocItemId::TypeAliasId(_) => {
-                                // FIXME: If it is unreachable, use proper error instead of `not_supported`.
-                                not_supported!("associated functions and types")
-                            }
+                let pr = if let Some((assoc, subst)) =
+                    self.infer.assoc_resolutions_for_expr(expr_id)
+                {
+                    match assoc {
+                        hir_def::AssocItemId::ConstId(c) => {
+                            self.lower_const(
+                                c.into(),
+                                current,
+                                place,
+                                subst,
+                                expr_id.into(),
+                                self.expr_ty_without_adjust(expr_id),
+                            )?;
+                            return Ok(Some(current));
                         }
-                    } else if let Some(variant) = self.infer.variant_resolution_for_expr(expr_id) {
-                        match variant {
-                            VariantId::EnumVariantId(e) => ValueNs::EnumVariantId(e),
-                            VariantId::StructId(s) => ValueNs::StructId(s),
-                            VariantId::UnionId(_) => implementation_error!("Union variant as path"),
+                        hir_def::AssocItemId::FunctionId(_) => {
+                            // FnDefs are zero sized, no action is needed.
+                            return Ok(Some(current));
                         }
-                    } else {
-                        let unresolved_name =
-                            || MirLowerError::unresolved_path(self.db, p, self.edition());
-                        let resolver = resolver_for_expr(self.db.upcast(), self.owner, expr_id);
-                        resolver
-                            .resolve_path_in_value_ns_fully(self.db.upcast(), p)
-                            .ok_or_else(unresolved_name)?
-                    };
+                        hir_def::AssocItemId::TypeAliasId(_) => {
+                            // FIXME: If it is unreachable, use proper error instead of `not_supported`.
+                            not_supported!("associated functions and types")
+                        }
+                    }
+                } else if let Some(variant) = self.infer.variant_resolution_for_expr(expr_id) {
+                    match variant {
+                        VariantId::EnumVariantId(e) => ValueNs::EnumVariantId(e),
+                        VariantId::StructId(s) => ValueNs::StructId(s),
+                        VariantId::UnionId(_) => implementation_error!("Union variant as path"),
+                    }
+                } else {
+                    let resolver_guard =
+                        self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr_id);
+                    let result = self
+                        .resolver
+                        .resolve_path_in_value_ns_fully(self.db.upcast(), p)
+                        .ok_or_else(|| {
+                            MirLowerError::unresolved_path(self.db, p, self.edition())
+                        })?;
+                    self.resolver.reset_to_guard(resolver_guard);
+                    result
+                };
                 match pr {
                     ValueNs::LocalBinding(_) | ValueNs::StaticId(_) => {
                         let Some((temp, current)) =
@@ -553,8 +561,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     return Ok(None);
                 };
                 self.push_fake_read(current, cond_place, expr_id.into());
+                let resolver_guard =
+                    self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr_id);
                 let (then_target, else_target) =
                     self.pattern_match(current, None, cond_place, *pat)?;
+                self.resolver.reset_to_guard(resolver_guard);
                 self.write_bytes_to_place(
                     then_target,
                     place,
@@ -688,6 +699,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 };
                 self.push_fake_read(current, cond_place, expr_id.into());
                 let mut end = None;
+                let resolver_guard =
+                    self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr_id);
                 for MatchArm { pat, guard, expr } in arms.iter() {
                     let (then, mut otherwise) =
                         self.pattern_match(current, None, cond_place, *pat)?;
@@ -721,6 +734,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         }
                     }
                 }
+                self.resolver.reset_to_guard(resolver_guard);
                 if self.is_unterminated(current) {
                     self.set_terminator(current, TerminatorKind::Unreachable, expr_id.into());
                 }
@@ -795,7 +809,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::Become { .. } => not_supported!("tail-calls"),
             Expr::Yield { .. } => not_supported!("yield"),
-            Expr::RecordLit { fields, path, spread, ellipsis: _, is_assignee_expr: _ } => {
+            Expr::RecordLit { fields, path, spread } => {
                 let spread_place = match spread {
                     &Some(it) => {
                         let Some((p, c)) = self.lower_expr_as_place(current, it, true)? else {
@@ -1010,35 +1024,28 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         );
                     }
                 }
-                if let hir_def::hir::BinaryOp::Assignment { op } = op {
-                    if let Some(op) = op {
-                        // last adjustment is `&mut` which we don't want it.
-                        let adjusts = self
-                            .infer
-                            .expr_adjustments
-                            .get(lhs)
-                            .and_then(|it| it.split_last())
-                            .map(|it| it.1)
-                            .ok_or(MirLowerError::TypeError(
-                                "adjustment of binary op was missing",
-                            ))?;
-                        let Some((lhs_place, current)) =
-                            self.lower_expr_as_place_with_adjust(current, *lhs, false, adjusts)?
-                        else {
-                            return Ok(None);
-                        };
-                        let Some((rhs_op, current)) =
-                            self.lower_expr_to_some_operand(*rhs, current)?
-                        else {
-                            return Ok(None);
-                        };
-                        let r_value =
-                            Rvalue::CheckedBinaryOp(op.into(), Operand::Copy(lhs_place), rhs_op);
-                        self.push_assignment(current, lhs_place, r_value, expr_id.into());
-                        return Ok(Some(current));
-                    } else {
-                        return self.lower_assignment(current, *lhs, *rhs, expr_id.into());
-                    }
+                if let hir_def::hir::BinaryOp::Assignment { op: Some(op) } = op {
+                    // last adjustment is `&mut` which we don't want it.
+                    let adjusts = self
+                        .infer
+                        .expr_adjustments
+                        .get(lhs)
+                        .and_then(|it| it.split_last())
+                        .map(|it| it.1)
+                        .ok_or(MirLowerError::TypeError("adjustment of binary op was missing"))?;
+                    let Some((lhs_place, current)) =
+                        self.lower_expr_as_place_with_adjust(current, *lhs, false, adjusts)?
+                    else {
+                        return Ok(None);
+                    };
+                    let Some((rhs_op, current)) = self.lower_expr_to_some_operand(*rhs, current)?
+                    else {
+                        return Ok(None);
+                    };
+                    let r_value =
+                        Rvalue::CheckedBinaryOp(op.into(), Operand::Copy(lhs_place), rhs_op);
+                    self.push_assignment(current, lhs_place, r_value, expr_id.into());
+                    return Ok(Some(current));
                 }
                 let Some((lhs_op, current)) = self.lower_expr_to_some_operand(*lhs, current)?
                 else {
@@ -1095,6 +1102,18 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     ),
                     expr_id.into(),
                 );
+                Ok(Some(current))
+            }
+            &Expr::Assignment { target, value } => {
+                let Some((value, mut current)) = self.lower_expr_as_place(current, value, true)?
+                else {
+                    return Ok(None);
+                };
+                self.push_fake_read(current, value, expr_id.into());
+                let resolver_guard =
+                    self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr_id);
+                current = self.pattern_match_assignment(current, value, target)?;
+                self.resolver.reset_to_guard(resolver_guard);
                 Ok(Some(current))
             }
             &Expr::Range { lhs, rhs, range_type: _ } => {
@@ -1213,7 +1232,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 );
                 Ok(Some(current))
             }
-            Expr::Tuple { exprs, is_assignee_expr: _ } => {
+            Expr::Tuple { exprs } => {
                 let Some(values) = exprs
                     .iter()
                     .map(|it| {
@@ -1291,73 +1310,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
         }
     }
 
-    fn lower_destructing_assignment(
-        &mut self,
-        mut current: BasicBlockId,
-        lhs: ExprId,
-        rhs: Place,
-        span: MirSpan,
-    ) -> Result<Option<BasicBlockId>> {
-        match &self.body.exprs[lhs] {
-            Expr::Tuple { exprs, is_assignee_expr: _ } => {
-                for (i, expr) in exprs.iter().enumerate() {
-                    let rhs = rhs.project(
-                        ProjectionElem::Field(Either::Right(TupleFieldId {
-                            tuple: TupleId(!0), // Dummy this as its unused
-                            index: i as u32,
-                        })),
-                        &mut self.result.projection_store,
-                    );
-                    let Some(c) = self.lower_destructing_assignment(current, *expr, rhs, span)?
-                    else {
-                        return Ok(None);
-                    };
-                    current = c;
-                }
-                Ok(Some(current))
-            }
-            Expr::Underscore => Ok(Some(current)),
-            _ => {
-                let Some((lhs_place, current)) = self.lower_expr_as_place(current, lhs, false)?
-                else {
-                    return Ok(None);
-                };
-                self.push_assignment(current, lhs_place, Operand::Copy(rhs).into(), span);
-                Ok(Some(current))
-            }
-        }
-    }
-
-    fn lower_assignment(
-        &mut self,
-        current: BasicBlockId,
-        lhs: ExprId,
-        rhs: ExprId,
-        span: MirSpan,
-    ) -> Result<Option<BasicBlockId>> {
-        let Some((rhs_op, current)) = self.lower_expr_to_some_operand(rhs, current)? else {
-            return Ok(None);
-        };
-        if matches!(&self.body.exprs[lhs], Expr::Underscore) {
-            self.push_fake_read_for_operand(current, rhs_op, span);
-            return Ok(Some(current));
-        }
-        if matches!(
-            &self.body.exprs[lhs],
-            Expr::Tuple { .. } | Expr::RecordLit { .. } | Expr::Call { .. }
-        ) {
-            let temp = self.temp(self.expr_ty_after_adjustments(rhs), current, rhs.into())?;
-            let temp = Place::from(temp);
-            self.push_assignment(current, temp, rhs_op.into(), span);
-            return self.lower_destructing_assignment(current, lhs, temp, span);
-        }
-        let Some((lhs_place, current)) = self.lower_expr_as_place(current, lhs, false)? else {
-            return Ok(None);
-        };
-        self.push_assignment(current, lhs_place, rhs_op.into(), span);
-        Ok(Some(current))
-    }
-
     fn placeholder_subst(&mut self) -> Substitution {
         match self.owner.as_generic_def_id(self.db.upcast()) {
             Some(it) => TyBuilder::placeholder_subst(self.db, it),
@@ -1407,8 +1359,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let edition = self.edition();
                 let unresolved_name =
                     || MirLowerError::unresolved_path(self.db, c.as_ref(), edition);
-                let resolver = self.owner.resolver(self.db.upcast());
-                let pr = resolver
+                let pr = self
+                    .resolver
                     .resolve_path_in_value_ns(self.db.upcast(), c.as_ref())
                     .ok_or_else(unresolved_name)?;
                 match pr {
@@ -1632,12 +1584,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
         self.push_statement(block, StatementKind::FakeRead(p).with_span(span));
     }
 
-    fn push_fake_read_for_operand(&mut self, block: BasicBlockId, operand: Operand, span: MirSpan) {
-        if let Operand::Move(p) | Operand::Copy(p) = operand {
-            self.push_fake_read(block, p, span);
-        }
-    }
-
     fn push_assignment(
         &mut self,
         block: BasicBlockId,
@@ -1791,8 +1737,16 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         };
                         current = c;
                         self.push_fake_read(current, init_place, span);
+                        // Using the initializer for the resolver scope is good enough for us, as it cannot create new declarations
+                        // and has all declarations of the `let`.
+                        let resolver_guard = self.resolver.update_to_inner_scope(
+                            self.db.upcast(),
+                            self.owner,
+                            *expr_id,
+                        );
                         (current, else_block) =
                             self.pattern_match(current, None, init_place, *pat)?;
+                        self.resolver.reset_to_guard(resolver_guard);
                         match (else_block, else_branch) {
                             (None, _) => (),
                             (Some(else_block), None) => {
@@ -2066,11 +2020,13 @@ pub fn mir_body_for_closure_query(
     let Some(sig) = ClosureSubst(substs).sig_ty().callable_sig(db) else {
         implementation_error!("closure has not callable sig");
     };
+    let resolver_guard = ctx.resolver.update_to_inner_scope(db.upcast(), owner, expr);
     let current = ctx.lower_params_and_bindings(
         args.iter().zip(sig.params().iter()).map(|(it, y)| (*it, y.clone())),
         None,
         |_| true,
     )?;
+    ctx.resolver.reset_to_guard(resolver_guard);
     if let Some(current) = ctx.lower_expr_to_place(*root, return_slot().into(), current)? {
         let current = ctx.pop_drop_scope_assert_finished(current, root.into())?;
         ctx.set_terminator(current, TerminatorKind::Return, (*root).into());

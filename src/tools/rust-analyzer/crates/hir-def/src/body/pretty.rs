@@ -277,7 +277,7 @@ impl Printer<'_> {
                 w!(self, "loop ");
                 self.print_expr(*body);
             }
-            Expr::Call { callee, args, is_assignee_expr: _ } => {
+            Expr::Call { callee, args } => {
                 self.print_expr(*callee);
                 w!(self, "(");
                 if !args.is_empty() {
@@ -372,7 +372,7 @@ impl Printer<'_> {
                     self.print_expr(*expr);
                 }
             }
-            Expr::RecordLit { path, fields, spread, ellipsis, is_assignee_expr: _ } => {
+            Expr::RecordLit { path, fields, spread } => {
                 match path {
                     Some(path) => self.print_path(path),
                     None => w!(self, "�"),
@@ -390,9 +390,6 @@ impl Printer<'_> {
                         w!(p, "..");
                         p.print_expr(*spread);
                         wln!(p);
-                    }
-                    if *ellipsis {
-                        wln!(p, "..");
                     }
                 });
                 w!(self, "}}");
@@ -466,7 +463,7 @@ impl Printer<'_> {
                     w!(self, ") ");
                 }
             }
-            Expr::Index { base, index, is_assignee_expr: _ } => {
+            Expr::Index { base, index } => {
                 self.print_expr(*base);
                 w!(self, "[");
                 self.print_expr(*index);
@@ -507,7 +504,7 @@ impl Printer<'_> {
                 self.whitespace();
                 self.print_expr(*body);
             }
-            Expr::Tuple { exprs, is_assignee_expr: _ } => {
+            Expr::Tuple { exprs } => {
                 w!(self, "(");
                 for expr in exprs.iter() {
                     self.print_expr(*expr);
@@ -519,7 +516,7 @@ impl Printer<'_> {
                 w!(self, "[");
                 if !matches!(arr, Array::ElementList { elements, .. } if elements.is_empty()) {
                     self.indented(|p| match arr {
-                        Array::ElementList { elements, is_assignee_expr: _ } => {
+                        Array::ElementList { elements } => {
                             for elem in elements.iter() {
                                 p.print_expr(*elem);
                                 w!(p, ", ");
@@ -550,6 +547,11 @@ impl Printer<'_> {
             }
             Expr::Const(id) => {
                 w!(self, "const {{ /* {id:?} */ }}");
+            }
+            &Expr::Assignment { target, value } => {
+                self.print_pat(target);
+                w!(self, " = ");
+                self.print_expr(value);
             }
         }
     }
@@ -718,6 +720,9 @@ impl Printer<'_> {
             Pat::ConstBlock(c) => {
                 w!(self, "const ");
                 self.print_expr(*c);
+            }
+            Pat::Expr(expr) => {
+                self.print_expr(*expr);
             }
         }
     }

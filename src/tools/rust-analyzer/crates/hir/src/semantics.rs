@@ -11,7 +11,7 @@ use std::{
 
 use either::Either;
 use hir_def::{
-    hir::Expr,
+    hir::{Expr, ExprOrPatId},
     lower::LowerCtx,
     nameres::{MacroSubNs, ModuleOrigin},
     path::ModPath,
@@ -1777,7 +1777,9 @@ impl<'db> SemanticsImpl<'db> {
             }
 
             if let Some(parent) = ast::Expr::cast(parent.clone()) {
-                if let Some(expr_id) = source_map.node_expr(InFile { file_id, value: &parent }) {
+                if let Some(ExprOrPatId::ExprId(expr_id)) =
+                    source_map.node_expr(InFile { file_id, value: &parent })
+                {
                     if let Expr::Unsafe { .. } = body[expr_id] {
                         break true;
                     }

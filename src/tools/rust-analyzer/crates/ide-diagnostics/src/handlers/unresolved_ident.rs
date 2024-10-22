@@ -11,7 +11,7 @@ pub(crate) fn unresolved_ident(
         ctx,
         DiagnosticCode::RustcHardError("E0425"),
         "no such value in this scope",
-        d.expr.map(Into::into),
+        d.expr_or_pat.map(Into::into),
     )
     .experimental()
 }
