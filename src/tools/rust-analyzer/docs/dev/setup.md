@@ -1,16 +1,10 @@
 # Setup Guide
 
-This guide gives a simplified opinionated setup for developers contributing to rust-analyzer.
+This guide gives a simplified opinionated setup for developers contributing to rust-analyzer using Visual Studio Code to make changes and Visual Studio Code Insiders to test those changes. This guide will assume you have Visual Studio Code and Visual Studio Code Insiders installed.
 
 ## Prerequisites
 
 Since rust-analyzer is a Rust project, you will need to install Rust. You can download and install the latest stable version of Rust [here](https://www.rust-lang.org/tools/install).
-
-You will also need Visual Studio Code and Visual Studio Code Insiders for this workflow. You can download and install Visual Studio Code [here](https://code.visualstudio.com/Download) and you can download and install Visual Studio Code Insiders [here](https://code.visualstudio.com/insiders/).
-
-You will also need to install the rust-analyzer extension for Visual Studio Code and Visual Studio Code Insiders.
-
-More information about Rust on Visual Studio Code can be found [here](https://code.visualstudio.com/docs/languages/rust)
 
 ## Step-by-Step Setup
 
@@ -27,7 +21,7 @@ cargo xtask install --server --code-bin code-insiders --dev-rel
 ```
 
 In the output of this command, there should be a file path provided to the installed binary on  your local machine.
-It should look something like the following output below
+It should look something like the following output below:
 
 ```
 Installing <path-to-rust-analyzer-binary>
