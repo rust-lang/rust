@@ -123,7 +123,7 @@ pub(super) struct ClauseElaborator<'a> {
     seen: FxHashSet<WhereClause>,
 }
 
-impl<'a> ClauseElaborator<'a> {
+impl ClauseElaborator<'_> {
     fn extend_deduped(&mut self, clauses: impl IntoIterator<Item = WhereClause>) {
         self.stack.extend(clauses.into_iter().filter(|c| self.seen.insert(c.clone())))
     }

@@ -1022,7 +1022,7 @@ impl<'a> InferenceContext<'a> {
             non_assocs: FxHashMap<OpaqueTyId, Ty>,
         }
 
-        impl<'a, 'b> TypeVisitor<Interner> for TypeAliasImplTraitCollector<'a, 'b> {
+        impl TypeVisitor<Interner> for TypeAliasImplTraitCollector<'_, '_> {
             type BreakTy = ();
 
             fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {

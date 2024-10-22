@@ -459,6 +459,10 @@ impl<'a> MirPrettyCtx<'a> {
                 self.place(p);
                 w!(self, ")");
             }
+            Rvalue::ThreadLocalRef(n)
+            | Rvalue::AddressOf(n)
+            | Rvalue::BinaryOp(n)
+            | Rvalue::NullaryOp(n) => match *n {},
         }
     }
 

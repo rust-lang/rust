@@ -539,18 +539,11 @@ pub(crate) fn handle_document_symbol(
         url: &Url,
         res: &mut Vec<SymbolInformation>,
     ) {
-        let mut tags = Vec::new();
-
-        #[allow(deprecated)]
-        if let Some(true) = symbol.deprecated {
-            tags.push(SymbolTag::DEPRECATED)
-        }
-
         #[allow(deprecated)]
         res.push(SymbolInformation {
             name: symbol.name.clone(),
             kind: symbol.kind,
-            tags: Some(tags),
+            tags: symbol.tags.clone(),
             deprecated: symbol.deprecated,
             location: Location::new(url.clone(), symbol.range),
             container_name,

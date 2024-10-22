@@ -521,7 +521,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
 }
 
-impl<'a> ChalkContext<'a> {
+impl ChalkContext<'_> {
     fn edition(&self) -> Edition {
         self.db.crate_graph()[self.krate].edition
     }

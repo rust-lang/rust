@@ -519,7 +519,7 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
     }
 }
 
-impl<'db> fmt::Debug for MatchCheckCtx<'db> {
+impl fmt::Debug for MatchCheckCtx<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MatchCheckCtx").finish()
     }

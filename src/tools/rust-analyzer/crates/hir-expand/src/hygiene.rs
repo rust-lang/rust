@@ -227,7 +227,7 @@ pub(crate) fn dump_syntax_contexts(db: &dyn ExpandDatabase) -> String {
             &'a SyntaxContextData,
         );
 
-        impl<'a> std::fmt::Debug for SyntaxContextDebug<'a> {
+        impl std::fmt::Debug for SyntaxContextDebug<'_> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 fancy_debug(self.2, self.1, self.0, f)
             }
