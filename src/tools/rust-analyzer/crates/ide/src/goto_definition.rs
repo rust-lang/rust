@@ -98,6 +98,7 @@ pub(crate) fn goto_definition(
                     return Some(vec![x]);
                 }
             }
+
             Some(
                 IdentClass::classify_node(sema, &parent)?
                     .definitions()
@@ -460,7 +461,103 @@ mod tests {
     }
 
     #[test]
-    fn goto_def_range() {
+    fn goto_def_pat_range_to_inclusive() {
+        check_name(
+            "RangeToInclusive",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        ..$0='z' => true,
+        _ => false
+    }
+}
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_pat_range_to() {
+        check_name(
+            "RangeTo",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        .$0.'z' => true,
+        _ => false
+    }
+}
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_pat_range() {
+        check_name(
+            "Range",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        'a'.$0.'z' => true,
+        _ => false
+    }
+}
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_pat_range_inclusive() {
+        check_name(
+            "RangeInclusive",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        'a'..$0='z' => true,
+        _ => false
+    }
+}
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_pat_range_from() {
+        check_name(
+            "RangeFrom",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        'a'..$0 => true,
+        _ => false
+    }
+}
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_range_pat_inclusive() {
+        check_name(
+            "RangeInclusive",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        'a'..$0='z' => true,
+        _ => false
+    }
+}
+"#
+        );
+    }
+
+    #[test]
+    fn goto_def_expr_range() {
         check_name(
             "Range",
             r#"
@@ -471,7 +568,7 @@ let x = 0.$0.1;
     }
 
     #[test]
-    fn goto_def_range_from() {
+    fn goto_def_expr_range_from() {
         check_name(
             "RangeFrom",
             r#"
@@ -484,7 +581,7 @@ fn f(arr: &[i32]) -> &[i32] {
     }
 
     #[test]
-    fn goto_def_range_inclusive() {
+    fn goto_def_expr_range_inclusive() {
         check_name(
             "RangeInclusive",
             r#"
@@ -495,7 +592,7 @@ let x = 0.$0.=1;
     }
 
     #[test]
-    fn goto_def_range_full() {
+    fn goto_def_expr_range_full() {
         check_name(
             "RangeFull",
             r#"
@@ -508,7 +605,7 @@ fn f(arr: &[i32]) -> &[i32] {
     }
 
     #[test]
-    fn goto_def_range_to() {
+    fn goto_def_expr_range_to() {
         check_name(
             "RangeTo",
             r#"
@@ -521,7 +618,7 @@ fn f(arr: &[i32]) -> &[i32] {
     }
 
     #[test]
-    fn goto_def_range_to_inclusive() {
+    fn goto_def_expr_range_to_inclusive() {
         check_name(
             "RangeToInclusive",
             r#"
