@@ -600,59 +600,61 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 }
 
 fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate) {
-    // checks if `#![feature]` has been used to enable any lang feature
-    // does not check the same for lib features unless there's at least one
-    // declared lang feature
-    if !sess.opts.unstable_features.is_nightly_build() {
-        if features.declared_features.is_empty() {
-            return;
-        }
-        for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
-            let mut err = errors::FeatureOnNonNightly {
-                span: attr.span,
-                channel: option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)"),
-                stable_features: vec![],
-                sugg: None,
-            };
-
-            let mut all_stable = true;
-            for ident in
-                attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident())
-            {
-                let name = ident.name;
-                let stable_since = features
-                    .declared_lang_features
-                    .iter()
-                    .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
-                    .next();
-                if let Some(since) = stable_since {
-                    err.stable_features.push(errors::StableFeature { name, since });
-                } else {
-                    all_stable = false;
-                }
-            }
-            if all_stable {
-                err.sugg = Some(attr.span);
-            }
-            sess.dcx().emit_err(err);
-        }
+    // checks if `#![feature]` has been used to enable any feature.
+    if sess.opts.unstable_features.is_nightly_build() {
+        return;
     }
+    if features.enabled_features().is_empty() {
+        return;
+    }
+    let mut errored = false;
+    for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
+        // `feature(...)` used on non-nightly. This is definitely an error.
+        let mut err = errors::FeatureOnNonNightly {
+            span: attr.span,
+            channel: option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)"),
+            stable_features: vec![],
+            sugg: None,
+        };
+
+        let mut all_stable = true;
+        for ident in attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident()) {
+            let name = ident.name;
+            let stable_since = features
+                .enabled_lang_features()
+                .iter()
+                .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
+                .next();
+            if let Some(since) = stable_since {
+                err.stable_features.push(errors::StableFeature { name, since });
+            } else {
+                all_stable = false;
+            }
+        }
+        if all_stable {
+            err.sugg = Some(attr.span);
+        }
+        sess.dcx().emit_err(err);
+        errored = true;
+    }
+    // Just make sure we actually error if anything is listed in `enabled_features`.
+    assert!(errored);
 }
 
 fn check_incompatible_features(sess: &Session, features: &Features) {
-    let declared_features = features
-        .declared_lang_features
+    let enabled_features = features
+        .enabled_lang_features()
         .iter()
         .copied()
         .map(|(name, span, _)| (name, span))
-        .chain(features.declared_lib_features.iter().copied());
+        .chain(features.enabled_lib_features().iter().copied());
 
     for (f1, f2) in rustc_feature::INCOMPATIBLE_FEATURES
         .iter()
-        .filter(|&&(f1, f2)| features.active(f1) && features.active(f2))
+        .filter(|&&(f1, f2)| features.enabled(f1) && features.enabled(f2))
     {
-        if let Some((f1_name, f1_span)) = declared_features.clone().find(|(name, _)| name == f1) {
-            if let Some((f2_name, f2_span)) = declared_features.clone().find(|(name, _)| name == f2)
+        if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1) {
+            if let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
             {
                 let spans = vec![f1_span, f2_span];
                 sess.dcx().emit_err(errors::IncompatibleFeatures {
@@ -672,7 +674,7 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
 
     // Ban GCE with the new solver, because it does not implement GCE correctly.
     if let Some(&(_, gce_span, _)) = features
-        .declared_lang_features
+        .enabled_lang_features()
         .iter()
         .find(|&&(feat, _, _)| feat == sym::generic_const_exprs)
     {

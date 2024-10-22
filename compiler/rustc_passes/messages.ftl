@@ -256,7 +256,7 @@ passes_duplicate_diagnostic_item_in_crate =
     .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
 
 passes_duplicate_feature_err =
-    the feature `{$feature}` has already been declared
+    the feature `{$feature}` has already been enabled
 
 passes_duplicate_lang_item =
     found duplicate lang item `{$lang_item_name}`

@@ -52,7 +52,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
     let mut features = Features::default();
 
-    // Process all features declared in the code.
+    // Process all features enabled in the code.
     for attr in krate_attrs {
         for mi in feature_list(attr) {
             let name = match mi.ident() {
@@ -76,7 +76,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 }
             };
 
-            // If the declared feature has been removed, issue an error.
+            // If the enabled feature has been removed, issue an error.
             if let Some(f) = REMOVED_FEATURES.iter().find(|f| name == f.feature.name) {
                 sess.dcx().emit_err(FeatureRemoved {
                     span: mi.span(),
@@ -85,14 +85,14 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 continue;
             }
 
-            // If the declared feature is stable, record it.
+            // If the enabled feature is stable, record it.
             if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
                 let since = Some(Symbol::intern(f.since));
-                features.set_declared_lang_feature(name, mi.span(), since);
+                features.set_enabled_lang_feature(name, mi.span(), since, None);
                 continue;
             }
 
-            // If `-Z allow-features` is used and the declared feature is
+            // If `-Z allow-features` is used and the enabled feature is
             // unstable and not also listed as one of the allowed features,
             // issue an error.
             if let Some(allowed) = sess.opts.unstable_opts.allow_features.as_ref() {
@@ -102,9 +102,8 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 }
             }
 
-            // If the declared feature is unstable, record it.
+            // If the enabled feature is unstable, record it.
             if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name) {
-                (f.set_enabled)(&mut features);
                 // When the ICE comes from core, alloc or std (approximation of the standard
                 // library), there's a chance that the person hitting the ICE may be using
                 // -Zbuild-std or similar with an untested target. The bug is probably in the
@@ -115,13 +114,13 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 {
                     sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
-                features.set_declared_lang_feature(name, mi.span(), None);
+                features.set_enabled_lang_feature(name, mi.span(), None, Some(f));
                 continue;
             }
 
-            // Otherwise, the feature is unknown. Record it as a lib feature.
-            // It will be checked later.
-            features.set_declared_lib_feature(name, mi.span());
+            // Otherwise, the feature is unknown. Enable it as a lib feature.
+            // It will be checked later whether the feature really exists.
+            features.set_enabled_lib_feature(name, mi.span());
 
             // Similar to above, detect internal lib features to suppress
             // the ICE message that asks for a report.

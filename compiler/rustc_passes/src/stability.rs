@@ -935,9 +935,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         tcx.hir().visit_all_item_likes_in_crate(&mut missing);
     }
 
-    let declared_lang_features = &tcx.features().declared_lang_features;
+    let enabled_lang_features = tcx.features().enabled_lang_features();
     let mut lang_features = UnordSet::default();
-    for &(feature, span, since) in declared_lang_features {
+    for &(feature, span, since) in enabled_lang_features {
         if let Some(since) = since {
             // Warn if the user has enabled an already-stable lang feature.
             unnecessary_stable_feature_lint(tcx, span, feature, since);
@@ -948,9 +948,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         }
     }
 
-    let declared_lib_features = &tcx.features().declared_lib_features;
+    let enabled_lib_features = tcx.features().enabled_lib_features();
     let mut remaining_lib_features = FxIndexMap::default();
-    for (feature, span) in declared_lib_features {
+    for (feature, span) in enabled_lib_features {
         if remaining_lib_features.contains_key(&feature) {
             // Warn if the user enables a lib feature multiple times.
             tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *span, feature: *feature });
@@ -961,7 +961,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     // recognise the feature when building std.
     // Likewise, libtest is handled specially, so `test` isn't
     // available as we'd like it to be.
-    // FIXME: only remove `libc` when `stdbuild` is active.
+    // FIXME: only remove `libc` when `stdbuild` is enabled.
     // FIXME: remove special casing for `test`.
     // FIXME(#120456) - is `swap_remove` correct?
     remaining_lib_features.swap_remove(&sym::libc);
@@ -1021,7 +1021,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     // All local crate implications need to have the feature that implies it confirmed to exist.
     let mut remaining_implications = tcx.stability_implications(LOCAL_CRATE).clone();
 
-    // We always collect the lib features declared in the current crate, even if there are
+    // We always collect the lib features enabled in the current crate, even if there are
     // no unknown features, because the collection also does feature attribute validation.
     let local_defined_features = tcx.lib_features(LOCAL_CRATE);
     if !remaining_lib_features.is_empty() || !remaining_implications.is_empty() {
