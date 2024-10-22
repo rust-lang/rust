@@ -1067,7 +1067,7 @@ impl<'a> TyLoweringContext<'a> {
                     lifetime,
                 })))
             }
-            TypeBound::Error => None,
+            TypeBound::Use(_) | TypeBound::Error => None,
         };
         clause.into_iter().chain(
             trait_ref
@@ -1087,6 +1087,7 @@ impl<'a> TyLoweringContext<'a> {
                 path.segments().last()
             }
             TypeBound::Path(_, TraitBoundModifier::Maybe)
+            | TypeBound::Use(_)
             | TypeBound::Error
             | TypeBound::Lifetime(_) => None,
         };
@@ -1571,7 +1572,7 @@ pub(crate) fn generic_predicates_for_param_query(
                         })
                     })
                 }
-                TypeBound::Lifetime(_) | TypeBound::Error => false,
+                TypeBound::Use(_) | TypeBound::Lifetime(_) | TypeBound::Error => false,
             }
         }
         WherePredicate::Lifetime { .. } => false,

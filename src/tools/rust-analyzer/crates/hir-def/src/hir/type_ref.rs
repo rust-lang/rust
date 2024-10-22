@@ -157,7 +157,17 @@ pub enum TypeBound {
     Path(Path, TraitBoundModifier),
     ForLifetime(Box<[Name]>, Path),
     Lifetime(LifetimeRef),
+    Use(Box<[UseArgRef]>),
     Error,
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: [(); 56] = [(); ::std::mem::size_of::<TypeBound>()];
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum UseArgRef {
+    Name(Name),
+    Lifetime(LifetimeRef),
 }
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
@@ -295,7 +305,7 @@ impl TypeRef {
                             TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
                                 go_path(path, f)
                             }
-                            TypeBound::Lifetime(_) | TypeBound::Error => (),
+                            TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => (),
                         }
                     }
                 }
@@ -328,7 +338,7 @@ impl TypeRef {
                                 TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
                                     go_path(path, f)
                                 }
-                                TypeBound::Lifetime(_) | TypeBound::Error => (),
+                                TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => (),
                             }
                         }
                     }
@@ -380,7 +390,16 @@ impl TypeBound {
                     None => TypeBound::Error,
                 }
             }
-            ast::TypeBoundKind::Use(_) => TypeBound::Error,
+            ast::TypeBoundKind::Use(gal) => TypeBound::Use(
+                gal.use_bound_generic_args()
+                    .map(|p| match p {
+                        ast::UseBoundGenericArg::Lifetime(l) => {
+                            UseArgRef::Lifetime(LifetimeRef::new(&l))
+                        }
+                        ast::UseBoundGenericArg::NameRef(n) => UseArgRef::Name(n.as_name()),
+                    })
+                    .collect(),
+            ),
             ast::TypeBoundKind::Lifetime(lifetime) => {
                 TypeBound::Lifetime(LifetimeRef::new(&lifetime))
             }
@@ -391,7 +410,7 @@ impl TypeBound {
         match self {
             TypeBound::Path(p, m) => Some((p, m)),
             TypeBound::ForLifetime(_, p) => Some((p, &TraitBoundModifier::None)),
-            TypeBound::Lifetime(_) | TypeBound::Error => None,
+            TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => None,
         }
     }
 }

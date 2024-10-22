@@ -19,7 +19,7 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
     nameres::DefMap,
     path::{Path, PathKind},
-    type_ref::{TraitBoundModifier, TypeBound, TypeRef},
+    type_ref::{TraitBoundModifier, TypeBound, TypeRef, UseArgRef},
     visibility::Visibility,
     GenericDefId, HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId,
     ModuleId, TraitId,
@@ -2024,6 +2024,19 @@ impl HirDisplay for TypeBound {
                     lifetimes.iter().map(|it| it.display(f.db.upcast(), edition)).format(", ")
                 )?;
                 path.hir_fmt(f)
+            }
+            TypeBound::Use(args) => {
+                let edition = f.edition();
+                write!(
+                    f,
+                    "use<{}> ",
+                    args.iter()
+                        .map(|it| match it {
+                            UseArgRef::Lifetime(lt) => lt.name.display(f.db.upcast(), edition),
+                            UseArgRef::Name(n) => n.display(f.db.upcast(), edition),
+                        })
+                        .format(", ")
+                )
             }
             TypeBound::Error => write!(f, "{{error}}"),
         }

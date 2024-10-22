@@ -795,7 +795,7 @@ pub enum TypeBoundKind {
     /// for<'a> ...
     ForType(ast::ForType),
     /// use
-    Use(ast::GenericParamList),
+    Use(ast::UseBoundGenericArgs),
     /// 'a
     Lifetime(ast::Lifetime),
 }
@@ -806,8 +806,8 @@ impl ast::TypeBound {
             TypeBoundKind::PathType(path_type)
         } else if let Some(for_type) = support::children(self.syntax()).next() {
             TypeBoundKind::ForType(for_type)
-        } else if let Some(generic_param_list) = self.generic_param_list() {
-            TypeBoundKind::Use(generic_param_list)
+        } else if let Some(args) = self.use_bound_generic_args() {
+            TypeBoundKind::Use(args)
         } else if let Some(lifetime) = self.lifetime() {
             TypeBoundKind::Lifetime(lifetime)
         } else {
