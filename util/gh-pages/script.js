@@ -512,7 +512,7 @@ function scrollToLint(lintId) {
 
 // If the page we arrive on has link to a given lint, we scroll to it.
 function scrollToLintByURL() {
-    const lintId = window.location.hash.substring(2);
+    const lintId = window.location.hash.substring(1);
     if (lintId.length > 0) {
         scrollToLint(lintId);
     }
