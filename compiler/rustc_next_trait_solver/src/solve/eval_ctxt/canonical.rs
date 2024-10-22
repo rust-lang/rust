@@ -170,7 +170,7 @@ where
         //
         // We don't do so for `NormalizesTo` goals as we erased the expected term and
         // bailing with overflow here would prevent us from detecting a type-mismatch,
-        // causing a coherence error in diesel, see #131969. We still bail with verflow
+        // causing a coherence error in diesel, see #131969. We still bail with overflow
         // when later returning from the parent AliasRelate goal.
         if !self.is_normalizes_to_goal {
             let num_non_region_vars =
