@@ -85,18 +85,18 @@ tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.71.0", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.71.0", default-features = false }
-ra-ap-rustc_index = { version = "0.71.0", default-features = false }
-ra-ap-rustc_abi = { version = "0.71.0", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.71.0", default-features = false }
+ra-ap-rustc_lexer = { version = "0.73", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.73", default-features = false }
+ra-ap-rustc_index = { version = "0.73", default-features = false }
+ra-ap-rustc_abi = { version = "0.73", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.73", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 test-fixture = { path = "./crates/test-fixture" }
 test-utils = { path = "./crates/test-utils" }
 
 # In-tree crates that are published separately and follow semver. See lib/README.md
-line-index = { version = "0.1.1" }
+line-index = { version = "0.1.2" }
 la-arena = { version = "0.3.1" }
 lsp-server = { version = "0.7.6" }
 
@@ -136,7 +136,7 @@ process-wrap = { version = "8.0.2", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.0", default-features = false }
 rayon = "1.8.0"
-rustc-hash = "1.1.0"
+rustc-hash = "2.0.0"
 semver = "1.0.14"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"

@@ -58,14 +58,14 @@
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
         "@vscode/test-electron": "^2.3.8",
-        "@vscode/vsce": "^2.19.0",
+        "@vscode/vsce": "^3.0.0",
         "esbuild": "^0.18.12",
         "eslint": "^8.44.0",
         "eslint-config-prettier": "^8.8.0",
         "ovsx": "^0.8.2",
         "prettier": "^3.0.0",
         "tslib": "^2.6.0",
-        "typescript": "^5.1.6"
+        "typescript": "^5.6.0"
     },
     "activationEvents": [
         "workspaceContains:Cargo.toml",
@@ -347,6 +347,11 @@
                     },
                     "rust-analyzer.testExplorer": {
                         "markdownDescription": "Whether to show the test explorer.",
+                        "default": false,
+                        "type": "boolean"
+                    },
+                    "rust-analyzer.initializeStopped": {
+                        "markdownDescription": "Do not start rust-analyzer server when the extension is activated.",
                         "default": false,
                         "type": "boolean"
                     }
@@ -728,8 +733,8 @@
                     "rust-analyzer.cargo.cfgs": {
                         "markdownDescription": "List of cfg options to enable with the given values.",
                         "default": {
-                            "debug_assertions": null,
-                            "miri": null
+                            "miri": null,
+                            "debug_assertions": null
                         },
                         "type": "object"
                     }
@@ -1152,18 +1157,10 @@
                     "rust-analyzer.completion.snippets.custom": {
                         "markdownDescription": "Custom completion snippets.",
                         "default": {
-                            "Arc::new": {
-                                "postfix": "arc",
-                                "body": "Arc::new(${receiver})",
-                                "requires": "std::sync::Arc",
-                                "description": "Put the expression into an `Arc`",
-                                "scope": "expr"
-                            },
-                            "Rc::new": {
-                                "postfix": "rc",
-                                "body": "Rc::new(${receiver})",
-                                "requires": "std::rc::Rc",
-                                "description": "Put the expression into an `Rc`",
+                            "Ok": {
+                                "postfix": "ok",
+                                "body": "Ok(${receiver})",
+                                "description": "Wrap the expression in a `Result::Ok`",
                                 "scope": "expr"
                             },
                             "Box::pin": {
@@ -1173,10 +1170,11 @@
                                 "description": "Put the expression into a pinned `Box`",
                                 "scope": "expr"
                             },
-                            "Err": {
-                                "postfix": "err",
-                                "body": "Err(${receiver})",
-                                "description": "Wrap the expression in a `Result::Err`",
+                            "Arc::new": {
+                                "postfix": "arc",
+                                "body": "Arc::new(${receiver})",
+                                "requires": "std::sync::Arc",
+                                "description": "Put the expression into an `Arc`",
                                 "scope": "expr"
                             },
                             "Some": {
@@ -1185,10 +1183,17 @@
                                 "description": "Wrap the expression in an `Option::Some`",
                                 "scope": "expr"
                             },
-                            "Ok": {
-                                "postfix": "ok",
-                                "body": "Ok(${receiver})",
-                                "description": "Wrap the expression in a `Result::Ok`",
+                            "Err": {
+                                "postfix": "err",
+                                "body": "Err(${receiver})",
+                                "description": "Wrap the expression in a `Result::Err`",
+                                "scope": "expr"
+                            },
+                            "Rc::new": {
+                                "postfix": "rc",
+                                "body": "Rc::new(${receiver})",
+                                "requires": "std::rc::Rc",
+                                "description": "Put the expression into an `Rc`",
                                 "scope": "expr"
                             }
                         },

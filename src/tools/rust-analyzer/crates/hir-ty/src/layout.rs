@@ -72,18 +72,15 @@ pub type Variants = hir_def::layout::Variants<RustcFieldIdx, RustcEnumVariantIdx
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum LayoutError {
-    // FIXME: Remove variants that duplicate LayoutCalculatorError's variants after sync
+    // FIXME: Remove more variants once they get added to LayoutCalculatorError
     BadCalc(LayoutCalculatorError<()>),
-    EmptyUnion,
     HasErrorConst,
     HasErrorType,
     HasPlaceholder,
     InvalidSimdType,
     NotImplemented,
     RecursiveTypeWithoutIndirection,
-    SizeOverflow,
     TargetLayoutNotAvailable,
-    UnexpectedUnsized,
     Unknown,
     UserReprTooSmall,
 }
@@ -93,7 +90,6 @@ impl fmt::Display for LayoutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LayoutError::BadCalc(err) => err.fallback_fmt(f),
-            LayoutError::EmptyUnion => write!(f, "type is an union with no fields"),
             LayoutError::HasErrorConst => write!(f, "type contains an unevaluatable const"),
             LayoutError::HasErrorType => write!(f, "type contains an error"),
             LayoutError::HasPlaceholder => write!(f, "type contains placeholders"),
@@ -102,11 +98,7 @@ impl fmt::Display for LayoutError {
             LayoutError::RecursiveTypeWithoutIndirection => {
                 write!(f, "recursive type without indirection")
             }
-            LayoutError::SizeOverflow => write!(f, "size overflow"),
             LayoutError::TargetLayoutNotAvailable => write!(f, "target layout not available"),
-            LayoutError::UnexpectedUnsized => {
-                write!(f, "an unsized type was found where a sized type was expected")
-            }
             LayoutError::Unknown => write!(f, "unknown"),
             LayoutError::UserReprTooSmall => {
                 write!(f, "the `#[repr]` hint is too small to hold the discriminants of the enum")
@@ -181,7 +173,10 @@ fn layout_of_simd_ty(
     };
 
     // Compute the size and alignment of the vector:
-    let size = e_ly.size.checked_mul(e_len, dl).ok_or(LayoutError::SizeOverflow)?;
+    let size = e_ly
+        .size
+        .checked_mul(e_len, dl)
+        .ok_or(LayoutError::BadCalc(LayoutCalculatorError::SizeOverflow))?;
     let align = dl.vector_align(size);
     let size = size.align_to(align.abi);
 
@@ -294,7 +289,10 @@ pub fn layout_of_ty_query(
         TyKind::Array(element, count) => {
             let count = try_const_usize(db, count).ok_or(LayoutError::HasErrorConst)? as u64;
             let element = db.layout_of_ty(element.clone(), trait_env)?;
-            let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow)?;
+            let size = element
+                .size
+                .checked_mul(count, dl)
+                .ok_or(LayoutError::BadCalc(LayoutCalculatorError::SizeOverflow))?;
 
             let abi = if count != 0 && matches!(element.abi, Abi::Uninhabited) {
                 Abi::Uninhabited

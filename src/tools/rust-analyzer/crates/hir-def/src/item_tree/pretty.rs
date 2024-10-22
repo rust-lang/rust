@@ -278,6 +278,9 @@ impl Printer<'_> {
                 if flags.contains(FnFlags::HAS_UNSAFE_KW) {
                     w!(self, "unsafe ");
                 }
+                if flags.contains(FnFlags::HAS_SAFE_KW) {
+                    w!(self, "safe ");
+                }
                 if let Some(abi) = abi {
                     w!(self, "extern \"{}\" ", abi);
                 }
@@ -379,9 +382,23 @@ impl Printer<'_> {
                 wln!(self, " = _;");
             }
             ModItem::Static(it) => {
-                let Static { name, visibility, mutable, type_ref, ast_id } = &self.tree[it];
+                let Static {
+                    name,
+                    visibility,
+                    mutable,
+                    type_ref,
+                    ast_id,
+                    has_safe_kw,
+                    has_unsafe_kw,
+                } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
+                if *has_safe_kw {
+                    w!(self, "safe ");
+                }
+                if *has_unsafe_kw {
+                    w!(self, "unsafe ");
+                }
                 w!(self, "static ");
                 if *mutable {
                     w!(self, "mut ");

@@ -440,6 +440,9 @@ impl<'a> Ctx<'a> {
         if func.unsafe_token().is_some() {
             flags |= FnFlags::HAS_UNSAFE_KW;
         }
+        if func.safe_token().is_some() {
+            flags |= FnFlags::HAS_SAFE_KW;
+        }
         if has_var_args {
             flags |= FnFlags::IS_VARARGS;
         }
@@ -484,8 +487,11 @@ impl<'a> Ctx<'a> {
         let type_ref = self.lower_type_ref_opt(static_.ty());
         let visibility = self.lower_visibility(static_);
         let mutable = static_.mut_token().is_some();
+        let has_safe_kw = static_.safe_token().is_some();
+        let has_unsafe_kw = static_.unsafe_token().is_some();
         let ast_id = self.source_ast_id_map.ast_id(static_);
-        let res = Static { name, visibility, mutable, type_ref, ast_id };
+        let res =
+            Static { name, visibility, mutable, type_ref, ast_id, has_safe_kw, has_unsafe_kw };
         Some(id(self.data().statics.alloc(res)))
     }
 

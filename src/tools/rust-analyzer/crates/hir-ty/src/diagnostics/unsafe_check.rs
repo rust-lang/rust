@@ -89,7 +89,7 @@ fn walk_unsafe(
             let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path);
             if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
                 let static_data = db.static_data(id);
-                if static_data.mutable || static_data.is_extern {
+                if static_data.mutable || (static_data.is_extern && !static_data.has_safe_kw) {
                     unsafe_expr_cb(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
             }
