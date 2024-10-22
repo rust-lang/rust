@@ -472,7 +472,7 @@ fn f(ch: char) -> bool {
         _ => false
     }
 }
-"#
+"#,
         );
     }
 
@@ -488,7 +488,7 @@ fn f(ch: char) -> bool {
         _ => false
     }
 }
-"#
+"#,
         );
     }
 
@@ -504,7 +504,7 @@ fn f(ch: char) -> bool {
         _ => false
     }
 }
-"#
+"#,
         );
     }
 
@@ -520,7 +520,7 @@ fn f(ch: char) -> bool {
         _ => false
     }
 }
-"#
+"#,
         );
     }
 
@@ -536,7 +536,7 @@ fn f(ch: char) -> bool {
         _ => false
     }
 }
-"#
+"#,
         );
     }
 
