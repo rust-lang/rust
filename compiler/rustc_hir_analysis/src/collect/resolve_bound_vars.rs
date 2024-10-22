@@ -291,6 +291,21 @@ fn late_arg_as_bound_arg<'tcx>(
     }
 }
 
+/// Turn a [`ty::GenericParamDef`] into a bound arg. Generally, this should only
+/// be used when turning early-bound vars into late-bound vars when lowering
+/// return type notation.
+fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVariableKind {
+    match param.kind {
+        ty::GenericParamDefKind::Lifetime => {
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(param.def_id, param.name))
+        }
+        ty::GenericParamDefKind::Type { .. } => {
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
+        }
+        ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
+    }
+}
+
 impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     /// Returns the binders in scope and the type of `Binder` that should be created for a poly trait ref.
     fn poly_trait_ref_binder_info(&mut self) -> (Vec<ty::BoundVariableKind>, BinderScopeType) {
@@ -1628,17 +1643,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         constraint.ident,
                         ty::AssocKind::Fn,
                     ) {
-                    bound_vars.extend(self.tcx.generics_of(assoc_fn.def_id).own_params.iter().map(
-                        |param| match param.kind {
-                            ty::GenericParamDefKind::Lifetime => ty::BoundVariableKind::Region(
-                                ty::BoundRegionKind::BrNamed(param.def_id, param.name),
-                            ),
-                            ty::GenericParamDefKind::Type { .. } => ty::BoundVariableKind::Ty(
-                                ty::BoundTyKind::Param(param.def_id, param.name),
-                            ),
-                            ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
-                        },
-                    ));
+                    bound_vars.extend(
+                        self.tcx
+                            .generics_of(assoc_fn.def_id)
+                            .own_params
+                            .iter()
+                            .map(|param| generic_param_def_as_bound_arg(param)),
+                    );
                     bound_vars.extend(
                         self.tcx.fn_sig(assoc_fn.def_id).instantiate_identity().bound_vars(),
                     );
@@ -1957,17 +1968,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // Append the early-bound vars on the function, and then the late-bound ones.
         // We actually turn type parameters into higher-ranked types here, but we
         // deny them later in HIR lowering.
-        bound_vars.extend(self.tcx.generics_of(item_def_id).own_params.iter().map(|param| {
-            match param.kind {
-                ty::GenericParamDefKind::Lifetime => ty::BoundVariableKind::Region(
-                    ty::BoundRegionKind::BrNamed(param.def_id, param.name),
-                ),
-                ty::GenericParamDefKind::Type { .. } => {
-                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
-                }
-                ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
-            }
-        }));
+        bound_vars.extend(
+            self.tcx
+                .generics_of(item_def_id)
+                .own_params
+                .iter()
+                .map(|param| generic_param_def_as_bound_arg(param)),
+        );
         bound_vars.extend(self.tcx.fn_sig(item_def_id).instantiate_identity().bound_vars());
 
         // SUBTLE: Stash the old bound vars onto the *item segment* before appending
