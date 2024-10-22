@@ -1,0 +1,18 @@
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-in-sync.rs:6:5
+   |
+LL |     foo()?;
+   |     ^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = Result<(), ()>>`
+   |
+   = help: the trait `Try` is not implemented for `impl Future<Output = Result<(), ()>>`
+note: this implements `Future` and its output type supports `?`, but the future cannot be awaited in a synchronous function
+  --> $DIR/try-in-sync.rs:6:10
+   |
+LL | fn main() -> Result<(), ()> {
+   | --------------------------- this is not `async`
+LL |     foo()?;
+   |          ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
