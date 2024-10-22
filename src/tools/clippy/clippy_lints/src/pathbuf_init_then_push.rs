@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// // or
     /// let path_buf = PathBuf::new().join("foo");
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.82.0"]
     pub PATHBUF_INIT_THEN_PUSH,
     restriction,
     "`push` immediately after `PathBuf` creation"

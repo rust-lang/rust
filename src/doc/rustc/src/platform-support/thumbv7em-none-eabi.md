@@ -35,9 +35,9 @@ to use these flags.
 | CPU        | FPU | DSP | Target CPU  | Target Features |
 | ---------- | --- | --- | ----------- | --------------- |
 | Any        | No  | Yes | None        | None            |
-| Cortex-M4  | No  | Yes | `cortex-m4` | `+soft-float`   |
+| Cortex-M4  | No  | Yes | `cortex-m4` | `-fpregs`       |
 | Cortex-M4F | SP  | Yes | `cortex-m4` | None            |
-| Cortex-M7  | No  | Yes | `cortex-m7` | `+soft-float`   |
+| Cortex-M7  | No  | Yes | `cortex-m7` | `-fpregs`       |
 | Cortex-M7F | SP  | Yes | `cortex-m7` | `-fp64`         |
 | Cortex-M7F | DP  | Yes | `cortex-m7` | None            |
 
@@ -50,6 +50,13 @@ to use these flags.
 | Cortex-M7F | SP  | Yes | `cortex-m7` | `-fp64`         |
 | Cortex-M7F | DP  | Yes | `cortex-m7` | None            |
 
+<div class="warning">
+
+Never use the `-fpregs` *target-feature* with the `thumbv7em-none-eabihf` target
+as it will cause compilation units to have different ABIs, which is unsound.
+
+</div>
+
 ### Arm Cortex-M4 and Arm Cortex-M4F
 
 The target CPU is `cortex-m4`.
@@ -59,7 +66,7 @@ The target CPU is `cortex-m4`.
   * enabled by default with this *target*
 * Cortex-M4F has a single precision FPU
   * support is enabled by default with this *target-cpu*
-  * disable support using the `+soft-float` feature (`eabi` only)
+  * disable support using the `-fpregs` *target-feature* (`eabi` only)
 
 ### Arm Cortex-M7 and Arm Cortex-M7F
 
@@ -71,4 +78,4 @@ The target CPU is `cortex-m7`.
 * Cortex-M7F have either a single-precision or double-precision FPU
   * double-precision support is enabled by default with this *target-cpu*
     * opt-out by using the `-f64` *target-feature*
-  * disable support entirely using the `+soft-float` feature (`eabi` only)
+  * disable support entirely using the `-fpregs` *target-feature* (`eabi` only)

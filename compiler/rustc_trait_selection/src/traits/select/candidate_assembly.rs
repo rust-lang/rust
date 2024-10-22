@@ -543,23 +543,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Provide an impl, but only for suitable `fn` pointers.
             ty::FnPtr(sig_tys, hdr) => {
                 if sig_tys.with(hdr).is_fn_trait_compatible() {
-                    candidates
-                        .vec
-                        .push(FnPointerCandidate { fn_host_effect: self.tcx().consts.true_ });
+                    candidates.vec.push(FnPointerCandidate);
                 }
             }
             // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
-            ty::FnDef(def_id, args) => {
+            ty::FnDef(def_id, _args) => {
                 let tcx = self.tcx();
                 if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
                     && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                 {
-                    candidates.vec.push(FnPointerCandidate {
-                        fn_host_effect: tcx
-                            .generics_of(def_id)
-                            .host_effect_index
-                            .map_or(tcx.consts.true_, |idx| args.const_at(idx)),
-                    });
+                    candidates.vec.push(FnPointerCandidate);
                 }
             }
             _ => {}
@@ -1018,7 +1011,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // #2 (region bounds).
                 let principal_def_id_a = a_data.principal_def_id();
                 let principal_def_id_b = b_data.principal_def_id();
-                if principal_def_id_a == principal_def_id_b {
+                if principal_def_id_a == principal_def_id_b || principal_def_id_b.is_none() {
                     // We may upcast to auto traits that are either explicitly listed in
                     // the object type's bounds, or implied by the principal trait ref's
                     // supertraits.
@@ -1170,103 +1163,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn assemble_const_destruct_candidates(
         &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
+        _obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // If the predicate is `~const Destruct` in a non-const environment, we don't actually need
-        // to check anything. We'll short-circuit checking any obligations in confirmation, too.
-        let Some(host_effect_index) =
-            self.tcx().generics_of(obligation.predicate.def_id()).host_effect_index
-        else {
-            candidates.vec.push(BuiltinCandidate { has_nested: false });
-            return;
-        };
-        // If the obligation has `host = true`, then the obligation is non-const and it's always
-        // trivially implemented.
-        if obligation.predicate.skip_binder().trait_ref.args.const_at(host_effect_index)
-            == self.tcx().consts.true_
-        {
-            candidates.vec.push(BuiltinCandidate { has_nested: false });
-            return;
-        }
-
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        match self_ty.kind() {
-            ty::Alias(..)
-            | ty::Dynamic(..)
-            | ty::Error(_)
-            | ty::Bound(..)
-            | ty::Param(_)
-            | ty::Placeholder(_) => {
-                // We don't know if these are `~const Destruct`, at least
-                // not structurally... so don't push a candidate.
-            }
-
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Infer(ty::IntVar(_))
-            | ty::Infer(ty::FloatVar(_))
-            | ty::Str
-            | ty::RawPtr(_, _)
-            | ty::Ref(..)
-            | ty::FnDef(..)
-            | ty::FnPtr(..)
-            | ty::Never
-            | ty::Foreign(_)
-            | ty::Array(..)
-            | ty::Pat(..)
-            | ty::Slice(_)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::Tuple(_)
-            | ty::CoroutineWitness(..) => {
-                // These are built-in, and cannot have a custom `impl const Destruct`.
-                candidates.vec.push(ConstDestructCandidate(None));
-            }
-
-            ty::Adt(..) => {
-                let mut relevant_impl = None;
-                self.tcx().for_each_relevant_impl(
-                    self.tcx().require_lang_item(LangItem::Drop, None),
-                    obligation.predicate.skip_binder().trait_ref.self_ty(),
-                    |impl_def_id| {
-                        if let Some(old_impl_def_id) = relevant_impl {
-                            self.tcx()
-                                .dcx()
-                                .struct_span_err(
-                                    self.tcx().def_span(impl_def_id),
-                                    "multiple drop impls found",
-                                )
-                                .with_span_note(
-                                    self.tcx().def_span(old_impl_def_id),
-                                    "other impl here",
-                                )
-                                .delay_as_bug();
-                        }
-
-                        relevant_impl = Some(impl_def_id);
-                    },
-                );
-
-                if let Some(impl_def_id) = relevant_impl {
-                    // Check that `impl Drop` is actually const, if there is a custom impl
-                    if self.tcx().constness(impl_def_id) == hir::Constness::Const {
-                        candidates.vec.push(ConstDestructCandidate(Some(impl_def_id)));
-                    }
-                } else {
-                    // Otherwise check the ADT like a built-in type (structurally)
-                    candidates.vec.push(ConstDestructCandidate(None));
-                }
-            }
-
-            ty::Infer(_) => {
-                candidates.ambiguous = true;
-            }
-        }
+        // FIXME(effects): Destruct is not const yet, and it is implemented
+        // by all types today in non-const setting.
+        candidates.vec.push(BuiltinCandidate { has_nested: false });
     }
 
     fn assemble_candidate_for_tuple(

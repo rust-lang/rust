@@ -3,7 +3,6 @@
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-num-cpus=4
 #![feature(io_error_more)]
 #![feature(pointer_is_aligned_to)]
-#![feature(strict_provenance)]
 
 use std::mem::{size_of, size_of_val};
 

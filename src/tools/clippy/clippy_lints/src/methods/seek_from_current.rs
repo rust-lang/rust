@@ -34,14 +34,13 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
 }
 
 fn arg_is_seek_from_current<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    if let ExprKind::Call(f, args) = expr.kind
+    if let ExprKind::Call(f, [arg]) = expr.kind
         && let ExprKind::Path(ref path) = f.kind
         && let Some(ctor_call_id) = cx.qpath_res(path, f.hir_id).opt_def_id()
         && is_enum_variant_ctor(cx, sym::SeekFrom, sym!(Current), ctor_call_id)
     {
         // check if argument of `SeekFrom::Current` is `0`
-        if args.len() == 1
-            && let ExprKind::Lit(lit) = args[0].kind
+        if let ExprKind::Lit(lit) = arg.kind
             && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed) = lit.node
         {
             return true;

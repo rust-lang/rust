@@ -787,7 +787,9 @@ fn codegen_msvc_try<'ll>(
         let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
         unsafe {
             llvm::LLVMRustSetLinkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
-            llvm::SetUniqueComdat(bx.llmod, tydesc);
+            if bx.cx.tcx.sess.target.supports_comdat() {
+                llvm::SetUniqueComdat(bx.llmod, tydesc);
+            }
             llvm::LLVMSetInitializer(tydesc, type_info);
         }
 
@@ -1177,8 +1179,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
-                        == Some(expected_bytes) =>
+                    && len
+                        .try_to_target_usize(bx.tcx)
+                        .expect("expected monomorphic const in codegen")
+                        == expected_bytes =>
             {
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
@@ -1243,12 +1247,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_shuffle_generic {
-        let idx = fn_args[2]
-            .expect_const()
-            .eval(tcx, ty::ParamEnv::reveal_all(), span)
-            .unwrap()
-            .1
-            .unwrap_branch();
+        let idx = fn_args[2].expect_const().try_to_valtree().unwrap().0.unwrap_branch();
         let n = idx.len() as u64;
 
         let (out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
@@ -1467,8 +1466,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
-                        == Some(expected_bytes) =>
+                    && len
+                        .try_to_target_usize(bx.tcx)
+                        .expect("expected monomorphic const in codegen")
+                        == expected_bytes =>
             {
                 // Zero-extend iN to the array length:
                 let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));

@@ -42,16 +42,15 @@ their own document.
 There are two 32-bit instruction set architectures (ISAs) defined by Arm:
 
 - The [*A32 ISA*][a32-isa], with fixed-width 32-bit instructions. Previously
-  known as the *Arm* ISA, this originated with the original Arm1 of 1985 and has
+  known as the *Arm* ISA, this originated with the original ARM1 of 1985 and has
   been updated by various revisions to the architecture specifications ever
   since.
 - The [*T32 ISA*][t32-isa], with a mix of 16-bit and 32-bit width instructions.
   Note that this term includes both the original 16-bit width *Thumb* ISA
   introduced with the Armv4T architecture in 1994, and the later 16/32-bit sized
-  *Thumb-2* ISA introduced with the Armv6T2 architecture in 2003.
-
-Again, these ISAs have been revised by subsequent revisions to the relevant Arm
-architecture specifications.
+  *Thumb-2* ISA introduced with the Armv6T2 architecture in 2003. Again, these
+  ISAs have been revised by subsequent revisions to the relevant Arm
+  architecture specifications.
 
 There is also a 64-bit ISA with fixed-width 32-bit instructions called the *A64
 ISA*, but targets which implement that instruction set generally start with
@@ -106,9 +105,13 @@ features you do not have available, leaving you with the optimized instruction
 scheduling and support for the features you do have. More details are available
 in the detailed target-specific documentation.
 
-**Note:** Many target-features are currently unstable and subject to change, and
+<div class="warning">
+
+Many target-features are currently unstable and subject to change, and
 if you use them you should disassemble the compiler output and manually inspect
 it to ensure only appropriate instructions for your CPU have been generated.
+
+</div>
 
 If you wish to use the *target-cpu* and *target-feature* options, you can add
 them to your `.cargo/config.toml` file alongside any other flags your project

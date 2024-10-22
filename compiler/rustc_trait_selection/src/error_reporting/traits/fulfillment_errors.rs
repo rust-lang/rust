@@ -290,7 +290,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
 
                         if tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Drop)
-                            && matches!(predicate_constness, ty::BoundConstness::ConstIfConst | ty::BoundConstness::Const)
+                            && matches!(predicate_constness, Some(ty::BoundConstness::ConstIfConst | ty::BoundConstness::Const))
                         {
                             err.note("`~const Drop` was renamed to `~const Destruct`");
                             err.note("See <https://github.com/rust-lang/rust/pull/94901> for more details");
@@ -1277,19 +1277,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let normalized_term =
                         ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);
 
-                    let is_normalized_term_expected = !matches!(
-                        obligation.cause.code().peel_derives(),
-                        ObligationCauseCode::WhereClause(..)
-                            | ObligationCauseCode::WhereClauseInExpr(..)
-                            | ObligationCauseCode::Coercion { .. }
-                    );
-
-                    let (expected, actual) = if is_normalized_term_expected {
-                        (normalized_term, data.term)
-                    } else {
-                        (data.term, normalized_term)
-                    };
-
                     // constrain inference variables a bit more to nested obligations from normalize so
                     // we can have more helpful errors.
                     //
@@ -1298,12 +1285,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let _ = ocx.select_where_possible();
 
                     if let Err(new_err) =
-                        ocx.eq(&obligation.cause, obligation.param_env, expected, actual)
+                        ocx.eq(&obligation.cause, obligation.param_env, data.term, normalized_term)
                     {
                         (
                             Some((
                                 data.projection_term,
-                                is_normalized_term_expected,
+                                false,
                                 self.resolve_vars_if_possible(normalized_term),
                                 data.term,
                             )),
@@ -1444,12 +1431,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 &mut diag,
                 &obligation.cause,
                 secondary_span,
-                values.map(|(_, is_normalized_ty_expected, normalized_ty, expected_ty)| {
-                    infer::ValuePairs::Terms(ExpectedFound::new(
-                        is_normalized_ty_expected,
-                        normalized_ty,
-                        expected_ty,
-                    ))
+                values.map(|(_, _, normalized_ty, expected_ty)| {
+                    infer::ValuePairs::Terms(ExpectedFound::new(true, expected_ty, normalized_ty))
                 }),
                 err,
                 false,
@@ -2209,7 +2192,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         message: Option<String>,
-        predicate_constness: ty::BoundConstness,
+        predicate_constness: Option<ty::BoundConstness>,
         append_const_msg: Option<AppendConstMessage>,
         post_message: String,
     ) -> String {
@@ -2217,19 +2200,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .and_then(|cannot_do_this| {
                 match (predicate_constness, append_const_msg) {
                     // do nothing if predicate is not const
-                    (ty::BoundConstness::NotConst, _) => Some(cannot_do_this),
+                    (None, _) => Some(cannot_do_this),
                     // suggested using default post message
                     (
-                        ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst,
+                        Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst),
                         Some(AppendConstMessage::Default),
                     ) => Some(format!("{cannot_do_this} in const contexts")),
                     // overridden post message
                     (
-                        ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst,
+                        Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst),
                         Some(AppendConstMessage::Custom(custom_msg, _)),
                     ) => Some(format!("{cannot_do_this}{custom_msg}")),
                     // fallback to generic message
-                    (ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst, None) => None,
+                    (Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst), None) => {
+                        None
+                    }
                 }
             })
             .unwrap_or_else(|| {
@@ -2247,124 +2232,143 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
     ) -> GetSafeTransmuteErrorAndReason {
         use rustc_transmute::Answer;
+        self.probe(|_| {
+            // We don't assemble a transmutability candidate for types that are generic
+            // and we should have ambiguity for types that still have non-region infer.
+            if obligation.predicate.has_non_region_param() || obligation.has_non_region_infer() {
+                return GetSafeTransmuteErrorAndReason::Default;
+            }
 
-        // We don't assemble a transmutability candidate for types that are generic
-        // and we should have ambiguity for types that still have non-region infer.
-        if obligation.predicate.has_non_region_param() || obligation.has_non_region_infer() {
-            return GetSafeTransmuteErrorAndReason::Default;
-        }
+            // Erase regions because layout code doesn't particularly care about regions.
+            let trait_ref =
+                self.tcx.erase_regions(self.tcx.instantiate_bound_regions_with_erased(trait_ref));
 
-        // Erase regions because layout code doesn't particularly care about regions.
-        let trait_ref =
-            self.tcx.erase_regions(self.tcx.instantiate_bound_regions_with_erased(trait_ref));
+            let src_and_dst = rustc_transmute::Types {
+                dst: trait_ref.args.type_at(0),
+                src: trait_ref.args.type_at(1),
+            };
 
-        let src_and_dst = rustc_transmute::Types {
-            dst: trait_ref.args.type_at(0),
-            src: trait_ref.args.type_at(1),
-        };
-        let Some(assume) = rustc_transmute::Assume::from_const(
-            self.infcx.tcx,
-            obligation.param_env,
-            trait_ref.args.const_at(2),
-        ) else {
-            self.dcx().span_delayed_bug(
-                span,
-                "Unable to construct rustc_transmute::Assume where it was previously possible",
-            );
-            return GetSafeTransmuteErrorAndReason::Silent;
-        };
+            let ocx = ObligationCtxt::new(self);
+            let Ok(assume) = ocx.structurally_normalize_const(
+                &obligation.cause,
+                obligation.param_env,
+                trait_ref.args.const_at(2),
+            ) else {
+                self.dcx().span_delayed_bug(
+                    span,
+                    "Unable to construct rustc_transmute::Assume where it was previously possible",
+                );
+                return GetSafeTransmuteErrorAndReason::Silent;
+            };
 
-        let dst = trait_ref.args.type_at(0);
-        let src = trait_ref.args.type_at(1);
+            let Some(assume) =
+                rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, assume)
+            else {
+                self.dcx().span_delayed_bug(
+                    span,
+                    "Unable to construct rustc_transmute::Assume where it was previously possible",
+                );
+                return GetSafeTransmuteErrorAndReason::Silent;
+            };
 
-        let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
+            let dst = trait_ref.args.type_at(0);
+            let src = trait_ref.args.type_at(1);
+            let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
 
-        match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
-            obligation.cause,
-            src_and_dst,
-            assume,
-        ) {
-            Answer::No(reason) => {
-                let safe_transmute_explanation = match reason {
-                    rustc_transmute::Reason::SrcIsNotYetSupported => {
-                        format!("analyzing the transmutability of `{src}` is not yet supported")
-                    }
+            match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
+                obligation.cause,
+                src_and_dst,
+                assume,
+            ) {
+                Answer::No(reason) => {
+                    let safe_transmute_explanation = match reason {
+                        rustc_transmute::Reason::SrcIsNotYetSupported => {
+                            format!("analyzing the transmutability of `{src}` is not yet supported")
+                        }
 
-                    rustc_transmute::Reason::DstIsNotYetSupported => {
-                        format!("analyzing the transmutability of `{dst}` is not yet supported")
-                    }
+                        rustc_transmute::Reason::DstIsNotYetSupported => {
+                            format!("analyzing the transmutability of `{dst}` is not yet supported")
+                        }
 
-                    rustc_transmute::Reason::DstIsBitIncompatible => {
-                        format!("at least one value of `{src}` isn't a bit-valid value of `{dst}`")
-                    }
+                        rustc_transmute::Reason::DstIsBitIncompatible => {
+                            format!(
+                                "at least one value of `{src}` isn't a bit-valid value of `{dst}`"
+                            )
+                        }
 
-                    rustc_transmute::Reason::DstUninhabited => {
-                        format!("`{dst}` is uninhabited")
-                    }
+                        rustc_transmute::Reason::DstUninhabited => {
+                            format!("`{dst}` is uninhabited")
+                        }
 
-                    rustc_transmute::Reason::DstMayHaveSafetyInvariants => {
-                        format!("`{dst}` may carry safety invariants")
+                        rustc_transmute::Reason::DstMayHaveSafetyInvariants => {
+                            format!("`{dst}` may carry safety invariants")
+                        }
+                        rustc_transmute::Reason::DstIsTooBig => {
+                            format!("the size of `{src}` is smaller than the size of `{dst}`")
+                        }
+                        rustc_transmute::Reason::DstRefIsTooBig { src, dst } => {
+                            let src_size = src.size;
+                            let dst_size = dst.size;
+                            format!(
+                                "the referent size of `{src}` ({src_size} bytes) \
+                        is smaller than that of `{dst}` ({dst_size} bytes)"
+                            )
+                        }
+                        rustc_transmute::Reason::SrcSizeOverflow => {
+                            format!(
+                                "values of the type `{src}` are too big for the target architecture"
+                            )
+                        }
+                        rustc_transmute::Reason::DstSizeOverflow => {
+                            format!(
+                                "values of the type `{dst}` are too big for the target architecture"
+                            )
+                        }
+                        rustc_transmute::Reason::DstHasStricterAlignment {
+                            src_min_align,
+                            dst_min_align,
+                        } => {
+                            format!(
+                                "the minimum alignment of `{src}` ({src_min_align}) should \
+                        be greater than that of `{dst}` ({dst_min_align})"
+                            )
+                        }
+                        rustc_transmute::Reason::DstIsMoreUnique => {
+                            format!(
+                                "`{src}` is a shared reference, but `{dst}` is a unique reference"
+                            )
+                        }
+                        // Already reported by rustc
+                        rustc_transmute::Reason::TypeError => {
+                            return GetSafeTransmuteErrorAndReason::Silent;
+                        }
+                        rustc_transmute::Reason::SrcLayoutUnknown => {
+                            format!("`{src}` has an unknown layout")
+                        }
+                        rustc_transmute::Reason::DstLayoutUnknown => {
+                            format!("`{dst}` has an unknown layout")
+                        }
+                    };
+                    GetSafeTransmuteErrorAndReason::Error {
+                        err_msg,
+                        safe_transmute_explanation: Some(safe_transmute_explanation),
                     }
-                    rustc_transmute::Reason::DstIsTooBig => {
-                        format!("the size of `{src}` is smaller than the size of `{dst}`")
-                    }
-                    rustc_transmute::Reason::DstRefIsTooBig { src, dst } => {
-                        let src_size = src.size;
-                        let dst_size = dst.size;
-                        format!(
-                            "the referent size of `{src}` ({src_size} bytes) is smaller than that of `{dst}` ({dst_size} bytes)"
-                        )
-                    }
-                    rustc_transmute::Reason::SrcSizeOverflow => {
-                        format!(
-                            "values of the type `{src}` are too big for the target architecture"
-                        )
-                    }
-                    rustc_transmute::Reason::DstSizeOverflow => {
-                        format!(
-                            "values of the type `{dst}` are too big for the target architecture"
-                        )
-                    }
-                    rustc_transmute::Reason::DstHasStricterAlignment {
-                        src_min_align,
-                        dst_min_align,
-                    } => {
-                        format!(
-                            "the minimum alignment of `{src}` ({src_min_align}) should be greater than that of `{dst}` ({dst_min_align})"
-                        )
-                    }
-                    rustc_transmute::Reason::DstIsMoreUnique => {
-                        format!("`{src}` is a shared reference, but `{dst}` is a unique reference")
-                    }
-                    // Already reported by rustc
-                    rustc_transmute::Reason::TypeError => {
-                        return GetSafeTransmuteErrorAndReason::Silent;
-                    }
-                    rustc_transmute::Reason::SrcLayoutUnknown => {
-                        format!("`{src}` has an unknown layout")
-                    }
-                    rustc_transmute::Reason::DstLayoutUnknown => {
-                        format!("`{dst}` has an unknown layout")
-                    }
-                };
-                GetSafeTransmuteErrorAndReason::Error {
-                    err_msg,
-                    safe_transmute_explanation: Some(safe_transmute_explanation),
                 }
+                // Should never get a Yes at this point! We already ran it before, and did not get a Yes.
+                Answer::Yes => span_bug!(
+                    span,
+                    "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
+                ),
+                // Reached when a different obligation (namely `Freeze`) causes the
+                // transmutability analysis to fail. In this case, silence the
+                // transmutability error message in favor of that more specific
+                // error.
+                Answer::If(_) => GetSafeTransmuteErrorAndReason::Error {
+                    err_msg,
+                    safe_transmute_explanation: None,
+                },
             }
-            // Should never get a Yes at this point! We already ran it before, and did not get a Yes.
-            Answer::Yes => span_bug!(
-                span,
-                "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
-            ),
-            // Reached when a different obligation (namely `Freeze`) causes the
-            // transmutability analysis to fail. In this case, silence the
-            // transmutability error message in favor of that more specific
-            // error.
-            Answer::If(_) => {
-                GetSafeTransmuteErrorAndReason::Error { err_msg, safe_transmute_explanation: None }
-            }
-        }
+        })
     }
 
     /// For effects predicates such as `<u32 as Add>::Effects: Compat<host>`, pretend that the
@@ -2375,26 +2379,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         p: ty::PolyTraitPredicate<'tcx>,
         leaf: ty::PolyTraitPredicate<'tcx>,
         span: Span,
-    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, ty::BoundConstness) {
+    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, Option<ty::BoundConstness>)
+    {
         let trait_ref = p.to_poly_trait_ref();
         if !self.tcx.is_lang_item(trait_ref.def_id(), LangItem::EffectsCompat) {
-            return (p, leaf, ty::BoundConstness::NotConst);
+            return (p, leaf, None);
         }
 
         let Some(ty::Alias(ty::AliasTyKind::Projection, projection)) =
             trait_ref.self_ty().no_bound_vars().map(Ty::kind)
         else {
-            return (p, leaf, ty::BoundConstness::NotConst);
+            return (p, leaf, None);
         };
 
         let constness = trait_ref.skip_binder().args.const_at(1);
 
         let constness = if constness == self.tcx.consts.true_ || constness.is_ct_infer() {
-            ty::BoundConstness::NotConst
+            None
         } else if constness == self.tcx.consts.false_ {
-            ty::BoundConstness::Const
+            Some(ty::BoundConstness::Const)
         } else if matches!(constness.kind(), ty::ConstKind::Param(_)) {
-            ty::BoundConstness::ConstIfConst
+            Some(ty::BoundConstness::ConstIfConst)
         } else {
             self.dcx().span_bug(span, format!("Unknown constness argument: {constness:?}"));
         };

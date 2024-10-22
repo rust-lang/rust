@@ -1,4 +1,9 @@
 //@ compile-flags: -O
+//@ revisions: host x86-64-v3
+
+// This particular CPU regressed in #131563
+//@[x86-64-v3] only-x86_64
+//@[x86-64-v3] compile-flags: -Ctarget-cpu=x86-64-v3
 
 #![crate_type = "lib"]
 

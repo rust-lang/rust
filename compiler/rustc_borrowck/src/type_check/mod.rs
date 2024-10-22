@@ -1128,7 +1128,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
-                self.param_env,
                 proj,
                 |this, field, ()| {
                     let ty = this.field_ty(tcx, field);
@@ -1919,7 +1918,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // than 1.
                 // If the length is larger than 1, the repeat expression will need to copy the
                 // element, so we require the `Copy` trait.
-                if len.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
+                if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
                         Operand::Copy(..) | Operand::Constant(..) => {
                             // These are always okay: direct use of a const, or a value that can evidently be copied.

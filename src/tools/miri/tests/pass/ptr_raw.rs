@@ -1,4 +1,3 @@
-#![feature(strict_provenance)]
 use std::mem;
 use std::ptr::{self, addr_of};
 

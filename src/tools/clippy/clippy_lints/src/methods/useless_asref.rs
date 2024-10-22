@@ -86,12 +86,11 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
             // changing the type, then we can move forward.
             && rcv_ty.peel_refs() == res_ty.peel_refs()
             && let Some(parent) = get_parent_expr(cx, expr)
-            && let hir::ExprKind::MethodCall(segment, _, args, _) = parent.kind
+            // Check that it only has one argument.
+            && let hir::ExprKind::MethodCall(segment, _, [arg], _) = parent.kind
             && segment.ident.span != expr.span
             // We check that the called method name is `map`.
             && segment.ident.name == sym::map
-            // And that it only has one argument.
-            && let [arg] = args
             && is_calling_clone(cx, arg)
             // And that we are not recommending recv.clone() over Arc::clone() or similar
             && !should_call_clone_as_function(cx, rcv_ty)

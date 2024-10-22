@@ -505,9 +505,11 @@ impl () {}
 ///
 /// *[See also the `std::ptr` module](ptr).*
 ///
-/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
-/// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
-/// dereferenced (using the `*` operator), it must be non-null and aligned.
+/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns. Raw pointers
+/// can be out-of-bounds, unaligned, or [`null`]. However, when loading from or storing to a raw
+/// pointer, it must be [valid] for the given access and aligned. When using a field expression,
+/// tuple index expression, or array/slice index expression on a raw pointer, it follows the rules
+/// of [in-bounds pointer arithmetic][`offset`].
 ///
 /// Storing through a raw pointer using `*ptr = data` calls `drop` on the old value, so
 /// [`write`] must be used if the type has drop glue and memory is not already
@@ -613,6 +615,7 @@ impl () {}
 /// [`offset`]: pointer::offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
 /// [`write`]: ptr::write
+/// [valid]: ptr#safety
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
@@ -1781,9 +1784,11 @@ mod prim_ref {}
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
-///   optimization](option/index.html#representation), then `T` and `Option<T>` are ABI-compatible.
-///   Furthermore, if `U` satisfies the requirements [outlined here](result/index.html#representation),
-///   then `T` and `Result<T, U>` and `Result<U, T>` are all ABI-compatible.
+///   optimization](option/index.html#representation), and `E` is an enum satisfying the following
+///   requirements, then `T` and `E` are ABI-compatible. Such an enum `E` is called "option-like".
+///   - The enum `E` has exactly two variants.
+///   - One variant has exactly one field, of type `T`.
+///   - All fields of the other variant are zero-sized with 1-byte alignment.
 ///
 /// Furthermore, ABI compatibility satisfies the following general properties:
 ///

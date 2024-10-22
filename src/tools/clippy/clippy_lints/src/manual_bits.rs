@@ -95,7 +95,7 @@ fn get_one_size_of_ty<'tcx>(
 }
 
 fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<(&'tcx rustc_hir::Ty<'tcx>, Ty<'tcx>)> {
-    if let ExprKind::Call(count_func, _func_args) = expr.kind
+    if let ExprKind::Call(count_func, []) = expr.kind
         && let ExprKind::Path(ref count_func_qpath) = count_func.kind
         && let QPath::Resolved(_, count_func_path) = count_func_qpath
         && let Some(segment_zero) = count_func_path.segments.first()

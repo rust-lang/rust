@@ -377,7 +377,7 @@ dependencies = [
  "cargo_metadata",
  "directories",
  "rustc-build-sysroot",
- "rustc_tools_util 0.4.0",
+ "rustc_tools_util",
  "rustc_version",
  "serde",
  "serde_json",
@@ -537,7 +537,7 @@ checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
 
 [[package]]
 name = "clippy"
-version = "0.1.83"
+version = "0.1.84"
 dependencies = [
  "anstream",
  "cargo_metadata",
@@ -550,9 +550,11 @@ dependencies = [
  "if_chain",
  "itertools",
  "parking_lot",
+ "pulldown-cmark 0.11.3",
  "quote",
  "regex",
- "rustc_tools_util 0.3.0",
+ "rinja",
+ "rustc_tools_util",
  "serde",
  "serde_json",
  "syn 2.0.79",
@@ -566,7 +568,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.83"
+version = "0.1.84"
 dependencies = [
  "itertools",
  "serde",
@@ -582,20 +584,19 @@ dependencies = [
  "clap",
  "indoc",
  "itertools",
- "opener 0.6.1",
+ "opener",
  "shell-escape",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.83"
+version = "0.1.84"
 dependencies = [
  "arrayvec",
  "cargo_metadata",
  "clippy_config",
  "clippy_utils",
- "declare_clippy_lint",
  "itertools",
  "quine-mc_cluskey",
  "regex",
@@ -613,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.83"
+version = "0.1.84"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -917,15 +918,6 @@ dependencies = [
  "libc",
  "libdbus-sys",
  "winapi",
-]
-
-[[package]]
-name = "declare_clippy_lint"
-version = "0.1.83"
-dependencies = [
- "itertools",
- "quote",
- "syn 2.0.79",
 ]
 
 [[package]]
@@ -1915,7 +1907,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fs-err",
- "rustc-hash 1.1.0",
+ "rustc-hash 2.0.0",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -2163,7 +2155,7 @@ dependencies = [
  "log",
  "memchr",
  "once_cell",
- "opener 0.7.2",
+ "opener",
  "pulldown-cmark 0.10.3",
  "regex",
  "serde",
@@ -2499,17 +2491,6 @@ dependencies = [
  "hashbrown",
  "parking_lot",
  "stable_deref_trait",
-]
-
-[[package]]
-name = "opener"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c62dcb6174f9cb326eac248f07e955d5d559c272730b6c03e396b443b562788"
-dependencies = [
- "bstr",
- "normpath",
- "winapi",
 ]
 
 [[package]]
@@ -2879,6 +2860,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "679341d22c78c6c649893cbd6c3278dcbe9fc4faa62fea3a9296ae2b50c14625"
 dependencies = [
  "bitflags 2.6.0",
+ "getopts",
  "memchr",
  "pulldown-cmark-escape 0.11.0",
  "unicase",
@@ -3532,7 +3514,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "portable-atomic",
- "rustc-hash 1.1.0",
+ "rustc-hash 2.0.0",
  "rustc-rayon",
  "rustc-stable-hash",
  "rustc_arena",
@@ -4229,7 +4211,7 @@ dependencies = [
 name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
- "rustc-hash 1.1.0",
+ "rustc-hash 2.0.0",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_data_structures",
@@ -4462,12 +4444,6 @@ dependencies = [
 
 [[package]]
 name = "rustc_tools_util"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ba09476327c4b70ccefb6180f046ef588c26a24cf5d269a9feba316eb4f029f"
-
-[[package]]
-name = "rustc_tools_util"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3316159ab19e19d1065ecc49278e87f767a9dae9fae80348d2b4d4fa4ae02d4d"
@@ -4608,6 +4584,7 @@ dependencies = [
  "rustdoc-json-types",
  "serde",
  "serde_json",
+ "sha2",
  "smallvec",
  "tempfile",
  "threadpool",
@@ -4632,7 +4609,7 @@ name = "rustdoc-json-types"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "rustc-hash 1.1.0",
+ "rustc-hash 2.0.0",
  "serde",
  "serde_json",
 ]
@@ -5262,7 +5239,7 @@ dependencies = [
  "ignore",
  "miropt-test-tools",
  "regex",
- "rustc-hash 1.1.0",
+ "rustc-hash 2.0.0",
  "semver",
  "similar",
  "termcolor",
@@ -5594,13 +5571,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "unicode-bdd"
-version = "0.1.0"
-dependencies = [
- "ucd-parse",
-]
-
-[[package]]
 name = "unicode-bidi"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5648,6 +5618,13 @@ name = "unicode-segmentation"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6ccf251212114b54433ec949fd6a7841275f9ada20dddd2f29e9ceea4501493"
+
+[[package]]
+name = "unicode-table-generator"
+version = "0.1.0"
+dependencies = [
+ "ucd-parse",
+]
 
 [[package]]
 name = "unicode-width"

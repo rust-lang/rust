@@ -29,7 +29,6 @@ mod errors;
 mod implied_bounds;
 mod instance;
 mod layout;
-mod layout_sanity_check;
 mod needs_drop;
 mod opaque_types;
 mod representability;

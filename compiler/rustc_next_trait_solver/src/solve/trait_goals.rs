@@ -627,11 +627,16 @@ where
         }
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let assume = ecx.structurally_normalize_const(
+                goal.param_env,
+                goal.predicate.trait_ref.args.const_at(2),
+            )?;
+
             let certainty = ecx.is_transmutable(
                 goal.param_env,
                 goal.predicate.trait_ref.args.type_at(0),
                 goal.predicate.trait_ref.args.type_at(1),
-                goal.predicate.trait_ref.args.const_at(2),
+                assume,
             )?;
             ecx.evaluate_added_goals_and_make_canonical_response(certainty)
         })
@@ -785,7 +790,8 @@ where
         let mut responses = vec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
-        if a_data.principal_def_id() == b_data.principal_def_id() {
+        let b_principal_def_id = b_data.principal_def_id();
+        if a_data.principal_def_id() == b_principal_def_id || b_principal_def_id.is_none() {
             responses.extend(self.consider_builtin_upcast_to_principal(
                 goal,
                 CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),

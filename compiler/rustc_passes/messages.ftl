@@ -553,9 +553,9 @@ passes_only_has_effect_on =
         *[unspecified] (unspecified--this is a compiler bug)
     }
 
-passes_optimize_not_fn_or_closure =
-    attribute should be applied to function or closure
-    .label = not a function or closure
+passes_optimize_invalid_target =
+    attribute applied to an invalid target
+    .label = invalid target
 
 passes_outer_crate_level_attr =
     crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`

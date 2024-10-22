@@ -50,7 +50,7 @@ pub(super) fn check(
             ),
             "replace this with",
             suggestion,
-            Applicability::MaybeIncorrect,
+            Applicability::MachineApplicable,
         );
     }
 }

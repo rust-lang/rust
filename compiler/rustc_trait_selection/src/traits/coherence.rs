@@ -298,6 +298,7 @@ fn equate_impl_headers<'tcx>(
 }
 
 /// The result of [fn impl_intersection_has_impossible_obligation].
+#[derive(Debug)]
 enum IntersectionHasImpossibleObligations<'tcx> {
     Yes,
     No {
@@ -328,6 +329,7 @@ enum IntersectionHasImpossibleObligations<'tcx> {
 /// of the two impls above to be empty.
 ///
 /// Importantly, this works even if there isn't a `impl !Error for MyLocalType`.
+#[instrument(level = "debug", skip(selcx), ret)]
 fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligations: &'a [PredicateObligation<'tcx>],

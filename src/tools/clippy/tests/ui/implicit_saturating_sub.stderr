@@ -185,5 +185,16 @@ LL | |         i_64 -= 1;
 LL | |     }
    | |_____^ help: try: `i_64 = i_64.saturating_sub(1);`
 
-error: aborting due to 23 previous errors
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:275:12
+   |
+LL |       } else if a >= b {
+   |  ____________^
+LL | |         0
+LL | |     } else {
+LL | |         b - a
+LL | |     }
+   | |_____^ help: replace it with: `{ b.saturating_sub(a) }`
+
+error: aborting due to 24 previous errors
 

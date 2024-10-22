@@ -8,14 +8,14 @@ error[E0271]: expected `Box<dyn Iterator>` to be an iterator that yields `u32`, 
   --> $DIR/trait-hidden-method.rs:3:32
    |
 LL | pub fn i_can_has_iterator() -> impl Iterator<Item = u32> {
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^ expected associated type, found `u32`
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u32`, found associated type
 ...
 LL |     Box::new(1..=10) as Box<dyn Iterator>
    |     ------------------------------------- return type was inferred to be `Box<dyn Iterator>` here
    |
-   = note: expected associated type `<dyn Iterator as Iterator>::Item`
-                         found type `u32`
-   = help: consider constraining the associated type `<dyn Iterator as Iterator>::Item` to `u32` or calling a method that returns `<dyn Iterator as Iterator>::Item`
+   = note:         expected type `u32`
+           found associated type `<dyn Iterator as Iterator>::Item`
+   = help: consider constraining the associated type `<dyn Iterator as Iterator>::Item` to `u32`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to 2 previous errors

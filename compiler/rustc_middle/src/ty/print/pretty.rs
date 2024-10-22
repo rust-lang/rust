@@ -1956,7 +1956,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         define_scoped_cx!(self);
 
         match constness {
-            ty::BoundConstness::NotConst => {}
             ty::BoundConstness::Const => {
                 p!("const ");
             }
@@ -2948,7 +2947,10 @@ impl<'tcx> ty::TraitPredicate<'tcx> {
 }
 
 #[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
-pub struct TraitPredPrintWithBoundConstness<'tcx>(ty::TraitPredicate<'tcx>, ty::BoundConstness);
+pub struct TraitPredPrintWithBoundConstness<'tcx>(
+    ty::TraitPredicate<'tcx>,
+    Option<ty::BoundConstness>,
+);
 
 impl<'tcx> fmt::Debug for TraitPredPrintWithBoundConstness<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2966,7 +2968,7 @@ impl<'tcx> ty::PolyTraitPredicate<'tcx> {
 
     fn print_with_bound_constness(
         self,
-        constness: ty::BoundConstness,
+        constness: Option<ty::BoundConstness>,
     ) -> ty::Binder<'tcx, TraitPredPrintWithBoundConstness<'tcx>> {
         self.map_bound(|trait_pred| TraitPredPrintWithBoundConstness(trait_pred, constness))
     }
@@ -3206,7 +3208,9 @@ define_print_and_forward_display! {
 
     TraitPredPrintWithBoundConstness<'tcx> {
         p!(print(self.0.trait_ref.self_ty()), ": ");
-        p!(pretty_print_bound_constness(self.1));
+        if let Some(constness) = self.1 {
+            p!(pretty_print_bound_constness(constness));
+        }
         if let ty::PredicatePolarity::Negative = self.0.polarity {
             p!("!");
         }

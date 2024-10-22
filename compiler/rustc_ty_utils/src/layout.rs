@@ -30,7 +30,8 @@ use {rustc_abi as abi, rustc_hir as hir};
 use crate::errors::{
     MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
 };
-use crate::layout_sanity_check::sanity_check_layout;
+
+mod invariant;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { layout_of, ..*providers };
@@ -79,7 +80,7 @@ fn layout_of<'tcx>(
         record_layout_for_printing(&cx, layout);
     }
 
-    sanity_check_layout(&cx, &layout);
+    invariant::partially_check_layout(&cx, &layout);
 
     Ok(layout)
 }
@@ -113,6 +114,11 @@ fn map_error<'tcx>(
         LayoutCalculatorError::EmptyUnion => {
             // This is always a compile error.
             cx.tcx().dcx().delayed_bug(format!("computed layout of empty union: {ty:?}"));
+            LayoutError::Unknown(ty)
+        }
+        LayoutCalculatorError::ReprConflict => {
+            // packed enums are the only known trigger of this, but others might arise
+            cx.tcx().dcx().delayed_bug(format!("computed impossible repr (packed enum?): {ty:?}"));
             LayoutError::Unknown(ty)
         }
     };
@@ -170,12 +176,12 @@ fn layout_of_uncached<'tcx>(
                     if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &mut layout.abi {
                         if let Some(start) = start {
                             scalar.valid_range_mut().start = start
-                                .try_eval_bits(tcx, param_env)
+                                .try_to_bits(tcx, param_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
                             let mut end = end
-                                .try_eval_bits(tcx, param_env)
+                                .try_to_bits(tcx, param_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
                                 end = end.wrapping_sub(1);
@@ -315,7 +321,7 @@ fn layout_of_uncached<'tcx>(
             }
 
             let count = count
-                .try_eval_target_usize(tcx, param_env)
+                .try_to_target_usize(tcx)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
             let element = cx.layout_of(element)?;
             let size = element

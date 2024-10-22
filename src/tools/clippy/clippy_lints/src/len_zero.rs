@@ -513,7 +513,7 @@ fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>
         return;
     }
 
-    if let (&ExprKind::MethodCall(method_path, receiver, args, _), ExprKind::Lit(lit)) = (&method.kind, &lit.kind) {
+    if let (&ExprKind::MethodCall(method_path, receiver, [], _), ExprKind::Lit(lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
             if name.as_str() == "is_empty" {
@@ -521,29 +521,17 @@ fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>
             }
         }
 
-        check_len(
-            cx,
-            span,
-            method_path.ident.name,
-            receiver,
-            args,
-            &lit.node,
-            op,
-            compare_to,
-        );
+        check_len(cx, span, method_path.ident.name, receiver, &lit.node, op, compare_to);
     } else {
         check_empty_expr(cx, span, method, lit, op);
     }
 }
 
-// FIXME(flip1995): Figure out how to reduce the number of arguments
-#[allow(clippy::too_many_arguments)]
 fn check_len(
     cx: &LateContext<'_>,
     span: Span,
     method_name: Symbol,
     receiver: &Expr<'_>,
-    args: &[Expr<'_>],
     lit: &LitKind,
     op: &str,
     compare_to: u32,
@@ -554,7 +542,7 @@ fn check_len(
             return;
         }
 
-        if method_name == sym::len && args.is_empty() && has_is_empty(cx, receiver) {
+        if method_name == sym::len && has_is_empty(cx, receiver) {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,

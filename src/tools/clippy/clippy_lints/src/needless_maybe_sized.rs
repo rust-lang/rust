@@ -64,7 +64,7 @@ fn type_param_bounds<'tcx>(generics: &'tcx Generics<'tcx>) -> impl Iterator<Item
                     .iter()
                     .enumerate()
                     .filter_map(move |(bound_pos, bound)| match bound {
-                        &GenericBound::Trait(ref trait_bound) => Some(Bound {
+                        GenericBound::Trait(trait_bound) => Some(Bound {
                             param,
                             ident,
                             trait_bound,

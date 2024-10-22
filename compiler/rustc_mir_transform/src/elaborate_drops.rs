@@ -58,8 +58,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
         // For types that do not need dropping, the behaviour is trivial. So we only need to track
         // init/uninit for types that do need dropping.
-        let move_data =
-            MoveData::gather_moves(body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));
+        let move_data = MoveData::gather_moves(body, tcx, |ty| ty.needs_drop(tcx, param_env));
         let elaborate_patch = {
             let env = MoveDataParamEnv { move_data, param_env };
 

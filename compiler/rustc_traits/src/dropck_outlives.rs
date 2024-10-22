@@ -10,7 +10,7 @@ use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::dropck_outlives::{
     compute_dropck_outlives_inner, dtorck_constraint_for_ty_inner,
 };
-use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
+use rustc_trait_selection::traits::query::{CanonicalDropckOutlivesGoal, NoSolution};
 use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
@@ -19,7 +19,7 @@ pub(crate) fn provide(p: &mut Providers) {
 
 fn dropck_outlives<'tcx>(
     tcx: TyCtxt<'tcx>,
-    canonical_goal: CanonicalTyGoal<'tcx>,
+    canonical_goal: CanonicalDropckOutlivesGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>, NoSolution> {
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
 

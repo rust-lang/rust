@@ -2515,6 +2515,13 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
 }
 
 impl TargetOptions {
+    pub fn supports_comdat(&self) -> bool {
+        // XCOFF and MachO don't support COMDAT.
+        !self.is_like_aix && !self.is_like_osx
+    }
+}
+
+impl TargetOptions {
     fn link_args(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
         let mut link_args = LinkArgs::new();
         add_link_args(&mut link_args, flavor, args);
@@ -2750,10 +2757,9 @@ impl Target {
         }
     }
 
-    /// Returns a None if the UNSUPPORTED_CALLING_CONVENTIONS lint should be emitted
-    pub fn is_abi_supported(&self, abi: Abi) -> Option<bool> {
+    pub fn is_abi_supported(&self, abi: Abi) -> bool {
         use Abi::*;
-        Some(match abi {
+        match abi {
             Rust
             | C { .. }
             | System { .. }
@@ -2812,9 +2818,9 @@ impl Target {
             // architectures for which these calling conventions are actually well defined.
             Stdcall { .. } | Fastcall { .. } if self.arch == "x86" => true,
             Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
-            // Return a `None` for other cases so that we know to emit a future compat lint.
-            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => return None,
-        })
+            // Reject these calling conventions everywhere else.
+            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => false,
+        }
     }
 
     /// Minimum integer size in bits that this target can perform atomic

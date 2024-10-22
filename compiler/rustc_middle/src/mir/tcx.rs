@@ -55,7 +55,7 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty, |_, ty| ty)
+        self.projection_ty_core(tcx, &elem, |_, _, ty| ty, |_, ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -66,7 +66,6 @@ impl<'tcx> PlaceTy<'tcx> {
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         elem: &ProjectionElem<V, T>,
         mut handle_field: impl FnMut(&Self, FieldIdx, T) -> Ty<'tcx>,
         mut handle_opaque_cast_and_subtype: impl FnMut(&Self, T) -> Ty<'tcx>,
@@ -93,7 +92,9 @@ impl<'tcx> PlaceTy<'tcx> {
                     ty::Slice(..) => self.ty,
                     ty::Array(inner, _) if !from_end => Ty::new_array(tcx, *inner, to - from),
                     ty::Array(inner, size) if from_end => {
-                        let size = size.eval_target_usize(tcx, param_env);
+                        let size = size
+                            .try_to_target_usize(tcx)
+                            .expect("expected subslice projection on fixed-size array");
                         let len = size - from - to;
                         Ty::new_array(tcx, *inner, len)
                     }

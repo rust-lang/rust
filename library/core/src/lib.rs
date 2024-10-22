@@ -129,7 +129,7 @@
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
 #![feature(const_option_ext)]
-#![feature(const_pin)]
+#![feature(const_pin_2)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_is_null)]
 #![feature(const_ptr_sub_ptr)]
@@ -163,7 +163,6 @@
 #![feature(str_internals)]
 #![feature(str_split_inclusive_remainder)]
 #![feature(str_split_remainder)]
-#![feature(strict_provenance)]
 #![feature(ub_checks)]
 #![feature(unchecked_neg)]
 #![feature(unchecked_shifts)]
@@ -174,6 +173,8 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(strict_provenance))]
+#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
