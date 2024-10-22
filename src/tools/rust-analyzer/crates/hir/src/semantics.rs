@@ -17,7 +17,7 @@ use hir_def::{
     path::ModPath,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
-    AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
+    AsMacroCall, DefWithBodyId, FunctionId, MacroId, StructId, TraitId, VariantId,
 };
 use hir_expand::{
     attrs::collect_attrs,
@@ -201,6 +201,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         offset: TextSize,
     ) -> impl Iterator<Item = N> + 'slf {
         self.imp.descend_node_at_offset(node, offset).filter_map(|mut it| it.find_map(N::cast))
+    }
+
+    pub fn resolve_range_expr(&self, range_expr: &ast::RangeExpr) -> Option<Struct> {
+        self.imp.resolve_range_expr(range_expr).map(Struct::from)
     }
 
     pub fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<Function> {
@@ -1361,6 +1365,10 @@ impl<'db> SemanticsImpl<'db> {
         call: &ast::MethodCallExpr,
     ) -> Option<Either<Function, Field>> {
         self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
+    }
+
+    fn resolve_range_expr(&self, range_expr: &ast::RangeExpr) -> Option<StructId> {
+        self.analyze(range_expr.syntax())?.resolve_range_expr(self.db, range_expr)
     }
 
     fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<FunctionId> {
