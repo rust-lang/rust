@@ -174,12 +174,17 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
                 ExpectedFound::new(true, a, b)
             }));
         }
-        let safety = relation.relate(a.safety, b.safety)?;
-        let abi = relation.relate(a.abi, b.abi)?;
+
+        if a.safety != b.safety {
+            return Err(TypeError::SafetyMismatch(ExpectedFound::new(true, a.safety, b.safety)));
+        }
+
+        if a.abi != b.abi {
+            return Err(TypeError::AbiMismatch(ExpectedFound::new(true, a.abi, b.abi)));
+        };
 
         let a_inputs = a.inputs();
         let b_inputs = b.inputs();
-
         if a_inputs.len() != b_inputs.len() {
             return Err(TypeError::ArgCount);
         }
@@ -212,8 +217,8 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
         Ok(ty::FnSig {
             inputs_and_output: cx.mk_type_list_from_iter(inputs_and_output)?,
             c_variadic: a.c_variadic,
-            safety,
-            abi,
+            safety: a.safety,
+            abi: a.abi,
         })
     }
 }
