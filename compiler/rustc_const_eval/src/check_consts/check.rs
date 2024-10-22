@@ -34,7 +34,7 @@ use crate::check_consts::is_fn_or_trait_safe_to_expose_on_stable;
 use crate::errors;
 
 type QualifResults<'mir, 'tcx, Q> =
-    rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
+    rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'tcx, Q>>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ConstConditionsHold {
