@@ -2,6 +2,18 @@
 //!
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
+//!
+//! We expose a `rustc-hash` feature that is disabled by default. This feature switches the
+//! [`std::collections::HashMap`] for [`rustc_hash::FxHashMap`] to improve the performance of said
+//! `HashMap` in specific situations.
+//!
+//! `cargo-semver-checks` for example, saw a [-3% improvement][1] when benchmarking using the
+//! `aws_sdk_ec2` JSON output (~500MB of JSON). As always, we recommend measuring the impact before
+//! turning this feature on, as [`FxHashMap`][2] only concerns itself with hash speed, and may
+//! increase the number of collisions.
+//!
+//! [1]: https://rust-lang.zulipchat.com/#narrow/channel/266220-t-rustdoc/topic/rustc-hash.20and.20performance.20of.20rustdoc-types/near/474855731
+//! [2]: https://crates.io/crates/rustc-hash
 
 #[cfg(not(feature = "rustc-hash"))]
 use std::collections::HashMap;
@@ -305,10 +317,10 @@ pub enum AssocItemConstraintKind {
 // FIXME(aDotInTheVoid): Consider making this non-public in rustdoc-types.
 pub struct Id(pub u32);
 
-/// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any aditional info.
+/// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any additional info.
 ///
 /// Part of [`ItemSummary`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemKind {
     /// A module declaration, e.g. `mod foo;` or `mod foo {}`
@@ -698,7 +710,7 @@ pub enum Abi {
     Aapcs { unwind: bool },
     /// Can be specified as `extern "win64"`.
     Win64 { unwind: bool },
-    /// Can be specifed as `extern "sysv64"`.
+    /// Can be specified as `extern "sysv64"`.
     SysV64 { unwind: bool },
     /// Can be specified as `extern "system"`.
     System { unwind: bool },
@@ -892,7 +904,7 @@ pub enum GenericBound {
 }
 
 /// A set of modifiers applied to a trait.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TraitBoundModifier {
     /// Marks the absence of a modifier.
@@ -996,7 +1008,7 @@ pub enum Type {
     QualifiedPath {
         /// The name of the associated type in the parent type.
         ///
-        /// ```ignore (incomplete expresssion)
+        /// ```ignore (incomplete expression)
         /// <core::array::IntoIter<u32, 42> as Iterator>::Item
         /// //                                            ^^^^
         /// ```
@@ -1083,7 +1095,7 @@ pub struct FunctionSignature {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Trait {
     /// Whether the trait is marked `auto` and is thus implemented automatically
-    /// for all aplicable types.
+    /// for all applicable types.
     pub is_auto: bool,
     /// Whether the trait is marked as `unsafe`.
     pub is_unsafe: bool,
@@ -1193,7 +1205,7 @@ pub struct ProcMacro {
 }
 
 /// The way a [`ProcMacro`] is declared to be used.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MacroKind {
     /// A bang macro `foo!()`.

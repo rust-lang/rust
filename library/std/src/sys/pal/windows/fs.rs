@@ -114,7 +114,7 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.handle.0 == c::INVALID_HANDLE_VALUE {
             // This iterator was initialized with an `INVALID_HANDLE_VALUE` as its handle.
-            // Simply return `None` because this is only the case when `FindFirstFileW` in
+            // Simply return `None` because this is only the case when `FindFirstFileExW` in
             // the construction of this iterator returns `ERROR_FILE_NOT_FOUND` which means
             // no matchhing files can be found.
             return None;
@@ -1047,8 +1047,22 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let path = maybe_verbatim(&star)?;
 
     unsafe {
-        let mut wfd = mem::zeroed();
-        let find_handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+        let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
+        // this is like FindFirstFileW (see https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfileexw),
+        // but with FindExInfoBasic it should skip filling WIN32_FIND_DATAW.cAlternateFileName
+        // (see https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataw)
+        // (which will be always null string value and currently unused) and should be faster.
+        //
+        // We can pass FIND_FIRST_EX_LARGE_FETCH to dwAdditionalFlags to speed up things more,
+        // but as we don't know user's use profile of this function, lets be conservative.
+        let find_handle = c::FindFirstFileExW(
+            path.as_ptr(),
+            c::FindExInfoBasic,
+            &mut wfd as *mut _ as _,
+            c::FindExSearchNameMatch,
+            ptr::null(),
+            0,
+        );
 
         if find_handle != c::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
@@ -1057,7 +1071,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
                 first: Some(wfd),
             })
         } else {
-            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileW` function
+            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileExW` function
             // if no matching files can be found, but not necessarily that the path to find the
             // files in does not exist.
             //
@@ -1079,7 +1093,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
             // Just return the error constructed from the raw OS error if the above is not the case.
             //
-            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileW` function
+            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileExW` function
             // when the path to search in does not exist in the first place.
             Err(Error::from_raw_os_error(last_error.code as i32))
         }
@@ -1220,7 +1234,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | reparse.as_flag());
 
     // Attempt to open the file normally.
-    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileW`.
+    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileExW`.
     // If the fallback fails for any reason we return the original error.
     match File::open(path, &opts) {
         Ok(file) => file.file_attr(),
@@ -1237,13 +1251,20 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
             unsafe {
                 let path = maybe_verbatim(path)?;
 
-                // `FindFirstFileW` accepts wildcard file names.
+                // `FindFirstFileExW` accepts wildcard file names.
                 // Fortunately wildcards are not valid file names and
                 // `ERROR_SHARING_VIOLATION` means the file exists (but is locked)
                 // therefore it's safe to assume the file name given does not
                 // include wildcards.
-                let mut wfd = mem::zeroed();
-                let handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+                let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
+                let handle = c::FindFirstFileExW(
+                    path.as_ptr(),
+                    c::FindExInfoBasic,
+                    &mut wfd as *mut _ as _,
+                    c::FindExSearchNameMatch,
+                    ptr::null(),
+                    0,
+                );
 
                 if handle == c::INVALID_HANDLE_VALUE {
                     // This can fail if the user does not have read access to the
@@ -1253,7 +1274,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
                     // We no longer need the find handle.
                     c::FindClose(handle);
 
-                    // `FindFirstFileW` reads the cached file information from the
+                    // `FindFirstFileExW` reads the cached file information from the
                     // directory. The downside is that this metadata may be outdated.
                     let attrs = FileAttr::from(wfd);
                     if reparse == ReparsePoint::Follow && attrs.file_type().is_symlink() {

@@ -5,7 +5,6 @@
 #![allow(dead_code)]
 #![feature(never_type)]
 #![feature(pointer_is_aligned_to)]
-#![feature(strict_provenance)]
 
 use std::mem::size_of;
 use std::num::NonZero;

@@ -142,7 +142,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// There is an implied binder around `param_ty` and `hir_bounds`.
     /// See `lower_poly_trait_ref` for more details.
     #[instrument(level = "debug", skip(self, hir_bounds, bounds))]
-    pub(crate) fn lower_poly_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
+    pub(crate) fn lower_bounds<'hir, I: IntoIterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
         hir_bounds: I,
@@ -171,16 +171,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 hir::GenericBound::Trait(poly_trait_ref) => {
                     let (constness, polarity) = match poly_trait_ref.modifiers {
                         hir::TraitBoundModifier::Const => {
-                            (ty::BoundConstness::Const, ty::PredicatePolarity::Positive)
+                            (Some(ty::BoundConstness::Const), ty::PredicatePolarity::Positive)
                         }
-                        hir::TraitBoundModifier::MaybeConst => {
-                            (ty::BoundConstness::ConstIfConst, ty::PredicatePolarity::Positive)
-                        }
-                        hir::TraitBoundModifier::None => {
-                            (ty::BoundConstness::NotConst, ty::PredicatePolarity::Positive)
-                        }
+                        hir::TraitBoundModifier::MaybeConst => (
+                            Some(ty::BoundConstness::ConstIfConst),
+                            ty::PredicatePolarity::Positive,
+                        ),
+                        hir::TraitBoundModifier::None => (None, ty::PredicatePolarity::Positive),
                         hir::TraitBoundModifier::Negative => {
-                            (ty::BoundConstness::NotConst, ty::PredicatePolarity::Negative)
+                            (None, ty::PredicatePolarity::Negative)
                         }
                         hir::TraitBoundModifier::Maybe => continue,
                     };
@@ -210,35 +209,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
-    }
-
-    /// Lower HIR bounds into `bounds` given the self type `param_ty` and *no* overarching late-bound vars.
-    ///
-    /// ### Example
-    ///
-    /// ```ignore (illustrative)
-    /// fn foo<T: Bar + Baz>() { }
-    /// //     ^  ^^^^^^^^^ hir_bounds
-    /// //     param_ty
-    /// ```
-    pub(crate) fn lower_mono_bounds(
-        &self,
-        param_ty: Ty<'tcx>,
-        hir_bounds: &[hir::GenericBound<'tcx>],
-        predicate_filter: PredicateFilter,
-    ) -> Bounds<'tcx> {
-        let mut bounds = Bounds::default();
-
-        self.lower_poly_bounds(
-            param_ty,
-            hir_bounds.iter(),
-            &mut bounds,
-            ty::List::empty(),
-            predicate_filter,
-        );
-        debug!(?bounds);
-
-        bounds
     }
 
     /// Lower an associated item constraint from the HIR into `bounds`.
@@ -444,9 +414,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // parameter to have a skipped binder.
                         let param_ty =
                             Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
-                        self.lower_poly_bounds(
+                        self.lower_bounds(
                             param_ty,
-                            hir_bounds.iter(),
+                            hir_bounds,
                             bounds,
                             projection_ty.bound_vars(),
                             predicate_filter,

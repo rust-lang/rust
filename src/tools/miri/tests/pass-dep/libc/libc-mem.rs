@@ -1,4 +1,4 @@
-#![feature(strict_provenance, pointer_is_aligned_to)]
+#![feature(pointer_is_aligned_to)]
 use std::{mem, ptr, slice};
 
 fn test_memcpy() {

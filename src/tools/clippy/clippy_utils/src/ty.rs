@@ -274,23 +274,10 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
         .collect::<Vec<_>>();
 
-    // If an effect arg was not specified, we need to specify it.
-    let effect_arg = if tcx
-        .generics_of(trait_id)
-        .host_effect_index
-        .is_some_and(|x| args.get(x - 1).is_none())
-    {
-        Some(GenericArg::from(callee_id.map_or(tcx.consts.true_, |def_id| {
-            tcx.expected_host_effect_param_for_body(def_id)
-        })))
-    } else {
-        None
-    };
-
     let trait_ref = TraitRef::new(
         tcx,
         trait_id,
-        [GenericArg::from(ty)].into_iter().chain(args).chain(effect_arg),
+        [GenericArg::from(ty)].into_iter().chain(args),
     );
 
     debug_assert_matches!(
@@ -989,7 +976,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),
         (Err(_), ty::Array(t, n)) => {
-            n.try_eval_target_usize(cx.tcx, cx.param_env).unwrap_or_default() * approx_ty_size(cx, *t)
+            n.try_to_target_usize(cx.tcx).unwrap_or_default() * approx_ty_size(cx, *t)
         },
         (Err(_), ty::Adt(def, subst)) if def.is_struct() => def
             .variants()
@@ -1207,7 +1194,7 @@ impl<'tcx> InteriorMut<'tcx> {
         let chain = match *ty.kind() {
             ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.interior_mut_ty_chain(cx, inner_ty),
             ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.interior_mut_ty_chain(cx, inner_ty),
-            ty::Array(inner_ty, size) if size.try_eval_target_usize(cx.tcx, cx.param_env) != Some(0) => {
+            ty::Array(inner_ty, size) if size.try_to_target_usize(cx.tcx) != Some(0) => {
                 self.interior_mut_ty_chain(cx, inner_ty)
             },
             ty::Tuple(fields) => fields.iter().find_map(|ty| self.interior_mut_ty_chain(cx, ty)),

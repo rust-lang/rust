@@ -1,4 +1,3 @@
-#![feature(strict_provenance)]
 use std::ptr;
 
 fn direct_raw(x: *const (i32, i32)) -> *const i32 {

@@ -726,9 +726,9 @@ pub struct CoercePredicate<I: Interner> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
 pub enum BoundConstness {
-    /// `Type: Trait`
-    NotConst,
     /// `Type: const Trait`
+    ///
+    /// A bound is required to be unconditionally const, even in a runtime function.
     Const,
     /// `Type: ~const Trait`
     ///
@@ -739,7 +739,6 @@ pub enum BoundConstness {
 impl BoundConstness {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::NotConst => "",
             Self::Const => "const",
             Self::ConstIfConst => "~const",
         }
@@ -749,7 +748,6 @@ impl BoundConstness {
 impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NotConst => f.write_str("normal"),
             Self::Const => f.write_str("const"),
             Self::ConstIfConst => f.write_str("~const"),
         }

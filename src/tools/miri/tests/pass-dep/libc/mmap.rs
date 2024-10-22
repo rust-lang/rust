@@ -1,6 +1,5 @@
 //@ignore-target: windows # No mmap on Windows
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-permissive-provenance
-#![feature(strict_provenance)]
 
 use std::io::Error;
 use std::{ptr, slice};
