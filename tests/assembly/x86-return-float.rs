@@ -305,8 +305,10 @@ pub unsafe fn call_other_f64(x: &mut (usize, f64)) {
 // CHECK-LABEL: return_f16:
 #[no_mangle]
 pub fn return_f16(x: f16) -> f16 {
-    // CHECK: pinsrw $0, {{.*}}(%ebp), %xmm0
-    // CHECK-NOT: xmm0
+    // CHECK: pushl %ebp
+    // CHECK: movl %esp, %ebp
+    // CHECK: movzwl 8(%ebp), %eax
+    // CHECK: popl %ebp
     // CHECK: retl
     x
 }
