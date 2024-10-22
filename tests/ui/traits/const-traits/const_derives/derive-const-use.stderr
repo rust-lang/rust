@@ -19,11 +19,6 @@ error[E0635]: unknown feature `const_default_impls`
 LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const, effects)]
    |                                         ^^^^^^^^^^^^^^^^^^^
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error: const `impl` for trait `Default` which is not marked with `#[const_trait]`
   --> $DIR/derive-const-use.rs:7:12
    |
@@ -122,7 +117,7 @@ LL | pub struct S((), A);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 13 previous errors; 1 warning emitted
+error: aborting due to 12 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0015, E0635.
 For more information about an error, try `rustc --explain E0015`.
