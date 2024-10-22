@@ -151,13 +151,6 @@ function expandLint(lintId) {
     highlightIfNeeded(lintId);
 }
 
-// Show details for one lint
-function openLint(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    expandLint(event.target.getAttribute("href").slice(1));
-}
-
 function copyToClipboard(event) {
     event.preventDefault();
     event.stopPropagation();
