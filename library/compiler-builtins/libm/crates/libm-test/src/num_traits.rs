@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::TestResult;
+use crate::{MaybeOverride, SpecialCase, TestResult};
 
 /// Common types and methods for floating point numbers.
 pub trait Float: Copy + fmt::Display + fmt::Debug + PartialEq<Self> {
@@ -137,13 +137,21 @@ macro_rules! impl_int {
             }
         }
 
-        impl<Input: Hex + fmt::Debug> $crate::CheckOutput<Input> for $ty {
+        impl<Input> $crate::CheckOutput<Input> for $ty
+        where
+            Input: Hex + fmt::Debug,
+            SpecialCase: MaybeOverride<Input>,
+        {
             fn validate<'a>(
                 self,
                 expected: Self,
                 input: Input,
-                _ctx: &$crate::CheckCtx,
+                ctx: &$crate::CheckCtx,
             ) -> TestResult {
+                if let Some(res) = SpecialCase::check_int(input, self, expected, ctx) {
+                    return res;
+                }
+
                 anyhow::ensure!(
                     self == expected,
                     "\

@@ -11,7 +11,7 @@ use std::fmt;
 
 use anyhow::{Context, bail, ensure};
 
-use crate::{Float, Hex, Int, TestResult};
+use crate::{Float, Hex, Int, MaybeOverride, SpecialCase, TestResult};
 
 /// Implement this on types that can generate a sequence of tuples for test input.
 pub trait GenerateInput<TupleArgs> {
@@ -34,8 +34,17 @@ pub struct CheckCtx {
     pub ulp: u32,
     /// Function name.
     pub fname: &'static str,
+    /// Return the unsuffixed version of the function name.
+    pub canonical_name: &'static str,
     /// Source of truth for tests.
     pub basis: CheckBasis,
+}
+
+impl CheckCtx {
+    pub fn new(ulp: u32, fname: &'static str, basis: CheckBasis) -> Self {
+        let canonical_fname = crate::canonical_name(fname);
+        Self { ulp, fname, canonical_name: canonical_fname, basis }
+    }
 }
 
 /// Possible items to test against
@@ -135,10 +144,20 @@ where
     F: Float + Hex,
     Input: Hex + fmt::Debug,
     u32: TryFrom<F::SignedInt, Error: fmt::Debug>,
+    SpecialCase: MaybeOverride<Input>,
 {
     fn validate<'a>(self, expected: Self, input: Input, ctx: &CheckCtx) -> TestResult {
         // Create a wrapper function so we only need to `.with_context` once.
         let inner = || -> TestResult {
+            let mut allowed_ulp = ctx.ulp;
+
+            // If the tested function requires a nonstandard test, run it here.
+            if let Some(res) =
+                SpecialCase::check_float(input, self, expected, &mut allowed_ulp, ctx)
+            {
+                return res;
+            }
+
             // Check when both are NaNs
             if self.is_nan() && expected.is_nan() {
                 ensure!(self.to_bits() == expected.to_bits(), "NaNs have different bitpatterns");
@@ -166,7 +185,6 @@ where
             let ulp_u32 = u32::try_from(ulp_diff)
                 .map_err(|e| anyhow::anyhow!("{e:?}: ulp of {ulp_diff} exceeds u32::MAX"))?;
 
-            let allowed_ulp = ctx.ulp;
             ensure!(ulp_u32 <= allowed_ulp, "ulp {ulp_diff} > {allowed_ulp}",);
 
             Ok(())
@@ -191,17 +209,28 @@ where
 macro_rules! impl_tuples {
     ($(($a:ty, $b:ty);)*) => {
         $(
-            impl<Input: Hex + fmt::Debug> CheckOutput<Input> for ($a, $b) {
+            impl<Input> CheckOutput<Input> for ($a, $b)
+            where
+                Input: Hex + fmt::Debug,
+                SpecialCase: MaybeOverride<Input>,
+              {
                 fn validate<'a>(
                     self,
                     expected: Self,
                     input: Input,
                     ctx: &CheckCtx,
                 ) -> TestResult {
-                    self.0.validate(expected.0, input, ctx,)
+                    self.0.validate(expected.0, input, ctx)
                         .and_then(|()| self.1.validate(expected.1, input, ctx))
                         .with_context(|| format!(
-                            "full input {input:?} full actual {self:?} expected {expected:?}"
+                            "full context:\
+                            \n    input:    {input:?} {ibits}\
+                            \n    expected: {expected:?} {expbits}\
+                            \n    actual:   {self:?} {actbits}\
+                            ",
+                            actbits = self.hex(),
+                            expbits = expected.hex(),
+                            ibits = input.hex(),
                         ))
                 }
             }
