@@ -890,6 +890,12 @@ fn files_related_to_test(
         related.push(path);
     }
 
+    // `minicore.rs` test auxiliary: we need to make sure tests get rerun if this changes.
+    //
+    // FIXME(jieyouxu): untangle these paths, we should provide both a path to root `tests/` or
+    // `tests/auxiliary/` and the test suite in question. `src_base` is also a terrible name.
+    related.push(config.src_base.parent().unwrap().join("auxiliary").join("minicore.rs"));
+
     related
 }
 
