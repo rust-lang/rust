@@ -179,7 +179,19 @@ impl Definition {
             Definition::Static(it) => it.docs(db),
             Definition::Trait(it) => it.docs(db),
             Definition::TraitAlias(it) => it.docs(db),
-            Definition::TypeAlias(it) => it.docs(db),
+            Definition::TypeAlias(it) => {
+                it.docs(db).or_else(|| {
+                    // docs are missing, try to fall back to the docs of the aliased item.
+                    let adt = it.ty(db).as_adt()?;
+                    let docs = adt.docs(db)?;
+                    let docs = format!(
+                        "*This is the documentation for* `{}`\n\n{}",
+                        adt.display(db, edition),
+                        docs.as_str()
+                    );
+                    Some(Documentation::new(docs))
+                })
+            }
             Definition::BuiltinType(it) => {
                 famous_defs.and_then(|fd| {
                     // std exposes prim_{} modules with docstrings on the root to document the builtins
