@@ -312,6 +312,8 @@ pub enum SyntaxKind {
     UNDERSCORE_EXPR,
     UNION,
     USE,
+    USE_BOUND_GENERIC_ARG,
+    USE_BOUND_GENERIC_ARGS,
     USE_TREE,
     USE_TREE_LIST,
     VARIANT,

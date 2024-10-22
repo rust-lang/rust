@@ -1,6 +1,9 @@
 //! Display and pretty printing routines.
 
-use std::fmt::{self, Write};
+use std::{
+    fmt::{self, Write},
+    mem,
+};
 
 use hir_expand::mod_path::PathKind;
 use intern::Interned;
@@ -11,7 +14,7 @@ use crate::{
     db::DefDatabase,
     lang_item::LangItemTarget,
     path::{GenericArg, GenericArgs, Path},
-    type_ref::{Mutability, TraitBoundModifier, TypeBound, TypeRef},
+    type_ref::{Mutability, TraitBoundModifier, TypeBound, TypeRef, UseArgRef},
 };
 
 pub(crate) fn print_path(
@@ -273,6 +276,22 @@ pub(crate) fn print_type_bounds(
                 print_path(db, path, buf, edition)?;
             }
             TypeBound::Lifetime(lt) => write!(buf, "{}", lt.name.display(db.upcast(), edition))?,
+            TypeBound::Use(args) => {
+                write!(buf, "use<")?;
+                let mut first = true;
+                for arg in args {
+                    if !mem::take(&mut first) {
+                        write!(buf, ", ")?;
+                    }
+                    match arg {
+                        UseArgRef::Name(it) => write!(buf, "{}", it.display(db.upcast(), edition))?,
+                        UseArgRef::Lifetime(it) => {
+                            write!(buf, "{}", it.name.display(db.upcast(), edition))?
+                        }
+                    }
+                }
+                write!(buf, ">")?
+            }
             TypeBound::Error => write!(buf, "{{unknown}}")?,
         }
     }
