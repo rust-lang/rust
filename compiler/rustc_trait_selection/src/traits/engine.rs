@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::fmt::Debug;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorGuaranteed;
@@ -15,6 +14,7 @@ use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::traverse::OptTryFoldWith;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast, Variance};
 use rustc_type_ir::relate::Relate;
 
@@ -259,7 +259,7 @@ impl<'tcx> ObligationCtxt<'_, 'tcx, ScrubbedTraitError<'tcx>> {
         answer: T,
     ) -> Result<CanonicalQueryResponse<'tcx, T>, NoSolution>
     where
-        T: Debug + TypeFoldable<TyCtxt<'tcx>>,
+        T: OptTryFoldWith<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         self.infcx.make_canonicalized_query_response(

@@ -27,9 +27,9 @@ impl<T> ExpectedFound<T> {
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum TypeError<I: Interner> {
     Mismatch,
-    PolarityMismatch(#[type_visitable(ignore)] ExpectedFound<ty::PredicatePolarity>),
-    SafetyMismatch(#[type_visitable(ignore)] ExpectedFound<I::Safety>),
-    AbiMismatch(#[type_visitable(ignore)] ExpectedFound<I::Abi>),
+    PolarityMismatch(ExpectedFound<ty::PredicatePolarity>),
+    SafetyMismatch(ExpectedFound<I::Safety>),
+    AbiMismatch(ExpectedFound<I::Abi>),
     Mutability,
     ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),

@@ -3,8 +3,10 @@ use std::fmt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{TyCtxt, TypeFoldable};
+use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::traverse::AlwaysTraversable;
 use rustc_span::Span;
+use rustc_type_ir::traverse::OptTryFoldWith;
 use tracing::info;
 
 use crate::infer::InferCtxt;
@@ -29,7 +31,7 @@ impl<F> CustomTypeOp<F> {
 impl<'tcx, F, R> super::TypeOp<'tcx> for CustomTypeOp<F>
 where
     F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
-    R: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
+    R: fmt::Debug + OptTryFoldWith<TyCtxt<'tcx>>,
 {
     type Output = R;
     /// We can't do any custom error reporting for `CustomTypeOp`, so
@@ -67,7 +69,7 @@ pub fn scrape_region_constraints<'tcx, Op, R>(
     span: Span,
 ) -> Result<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>), ErrorGuaranteed>
 where
-    R: TypeFoldable<TyCtxt<'tcx>>,
+    R: OptTryFoldWith<TyCtxt<'tcx>>,
     Op: super::TypeOp<'tcx, Output = R>,
 {
     // During NLL, we expect that nobody will register region
@@ -97,7 +99,7 @@ where
     })?;
 
     // Next trait solver performs operations locally, and normalize goals should resolve vars.
-    let value = infcx.resolve_vars_if_possible(value);
+    let value = infcx.resolve_vars_if_possible(AlwaysTraversable(value)).0;
 
     let region_obligations = infcx.take_registered_region_obligations();
     let region_constraint_data = infcx.take_and_reset_region_constraints();

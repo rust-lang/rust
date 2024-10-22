@@ -13,7 +13,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{HashStable, NoopTypeTraversable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
@@ -168,7 +168,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable, NoopTypeTraversable)]
 #[rustc_pass_by_value]
 pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 

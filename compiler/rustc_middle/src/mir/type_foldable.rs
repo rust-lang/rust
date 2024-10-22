@@ -1,7 +1,5 @@
 //! `TypeFoldable` implementations for MIR types
-
-use rustc_ast::InlineAsmTemplatePiece;
-use rustc_hir::def_id::LocalDefId;
+use rustc_index::bit_set::BitMatrix;
 
 use super::*;
 
@@ -20,38 +18,12 @@ TrivialTypeTraversalImpls! {
     SwitchTargets,
     CoroutineKind,
     CoroutineSavedLocal,
+    BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
 }
 
 TrivialTypeTraversalImpls! {
     ConstValue<'tcx>,
     NullOp<'tcx>,
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx [InlineAsmTemplatePiece] {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx [Span] {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<LocalDefId> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<PlaceElem<'tcx>> {

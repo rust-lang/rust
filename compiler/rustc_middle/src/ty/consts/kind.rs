@@ -1,6 +1,9 @@
 use std::assert_matches::assert_matches;
 
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension};
+use rustc_macros::{
+    HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+    extension,
+};
 
 use super::Const;
 use crate::mir;
@@ -42,7 +45,7 @@ impl<'tcx> ty::UnevaluatedConst<'tcx> {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-#[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
+#[derive(HashStable, TyEncodable, TyDecodable, NoopTypeTraversable)]
 pub enum ExprKind {
     Binop(mir::BinOp),
     UnOp(mir::UnOp),

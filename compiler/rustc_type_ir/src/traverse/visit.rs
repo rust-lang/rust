@@ -41,7 +41,6 @@
 //! - u.visit_with(visitor)
 //! ```
 
-use std::fmt;
 use std::ops::ControlFlow;
 
 use rustc_ast_ir::visit::VisitorResult;
@@ -49,6 +48,7 @@ use rustc_ast_ir::{try_visit, walk_visitable_list};
 use rustc_index::{Idx, IndexVec};
 use thin_vec::ThinVec;
 
+use super::{ImportantTypeTraversal, OptVisitWith, TypeTraversable};
 use crate::data_structures::Lrc;
 use crate::inherent::*;
 use crate::{self as ty, Interner, TypeFlags};
@@ -58,7 +58,7 @@ use crate::{self as ty, Interner, TypeFlags};
 ///
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
-pub trait TypeVisitable<I: Interner>: fmt::Debug + Clone {
+pub trait TypeVisitable<I: Interner>: TypeTraversable<I, Kind = ImportantTypeTraversal> {
     /// The entry point for visiting. To visit a value `t` with a visitor `v`
     /// call: `t.visit_with(v)`.
     ///
@@ -131,23 +131,34 @@ pub trait TypeVisitor<I: Interner>: Sized {
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
 
-impl<I: Interner, T: TypeVisitable<I>, U: TypeVisitable<I>> TypeVisitable<I> for (T, U) {
+impl<I: Interner, T: OptVisitWith<I>, U: OptVisitWith<I>> TypeTraversable<I> for (T, U) {
+    type Kind = ImportantTypeTraversal;
+}
+impl<I: Interner, T: OptVisitWith<I>, U: OptVisitWith<I>> TypeVisitable<I> for (T, U) {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        try_visit!(self.0.visit_with(visitor));
-        self.1.visit_with(visitor)
+        try_visit!(OptVisitWith::mk_visit_with()(&self.0, visitor));
+        OptVisitWith::mk_visit_with()(&self.1, visitor)
     }
 }
 
-impl<I: Interner, A: TypeVisitable<I>, B: TypeVisitable<I>, C: TypeVisitable<I>> TypeVisitable<I>
+impl<I: Interner, A: OptVisitWith<I>, B: OptVisitWith<I>, C: OptVisitWith<I>> TypeTraversable<I>
+    for (A, B, C)
+{
+    type Kind = ImportantTypeTraversal;
+}
+impl<I: Interner, A: OptVisitWith<I>, B: OptVisitWith<I>, C: OptVisitWith<I>> TypeVisitable<I>
     for (A, B, C)
 {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        try_visit!(self.0.visit_with(visitor));
-        try_visit!(self.1.visit_with(visitor));
-        self.2.visit_with(visitor)
+        try_visit!(OptVisitWith::mk_visit_with()(&self.0, visitor));
+        try_visit!(OptVisitWith::mk_visit_with()(&self.1, visitor));
+        OptVisitWith::mk_visit_with()(&self.2, visitor)
     }
 }
 
+impl<I: Interner, T: TypeTraversable<I>> TypeTraversable<I> for Option<T> {
+    type Kind = T::Kind;
+}
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Option<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         match self {
@@ -157,27 +168,38 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Option<T> {
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for Result<T, E> {
+impl<I: Interner, T: OptVisitWith<I>, E: OptVisitWith<I>> TypeTraversable<I> for Result<T, E> {
+    type Kind = ImportantTypeTraversal;
+}
+impl<I: Interner, T: OptVisitWith<I>, E: OptVisitWith<I>> TypeVisitable<I> for Result<T, E> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         match self {
-            Ok(v) => v.visit_with(visitor),
-            Err(e) => e.visit_with(visitor),
+            Ok(v) => OptVisitWith::mk_visit_with()(v, visitor),
+            Err(e) => OptVisitWith::mk_visit_with()(e, visitor),
         }
     }
 }
 
+impl<I: Interner, T: TypeTraversable<I>> TypeTraversable<I> for Lrc<T> {
+    type Kind = T::Kind;
+}
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Lrc<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        (**self).visit_with(visitor)
+        (&**self).visit_with(visitor)
     }
 }
-
+impl<I: Interner, T: TypeTraversable<I>> TypeTraversable<I> for Box<T> {
+    type Kind = T::Kind;
+}
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        (**self).visit_with(visitor)
+        (&**self).visit_with(visitor)
     }
 }
 
+impl<I: Interner, T: TypeTraversable<I>> TypeTraversable<I> for Vec<T> {
+    type Kind = T::Kind;
+}
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Vec<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
@@ -185,6 +207,9 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Vec<T> {
     }
 }
 
+impl<I: Interner, T: TypeTraversable<I>> TypeTraversable<I> for ThinVec<T> {
+    type Kind = T::Kind;
+}
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for ThinVec<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
@@ -192,9 +217,9 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for ThinVec<T> {
     }
 }
 
-// `TypeFoldable` isn't impl'd for `&[T]`. It doesn't make sense in the general
-// case, because we can't return a new slice. But note that there are a couple
-// of trivial impls of `TypeFoldable` for specific slice types elsewhere.
+impl<I: Interner, T: TypeTraversable<I>> TypeTraversable<I> for &[T] {
+    type Kind = T::Kind;
+}
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &[T] {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
@@ -202,6 +227,9 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &[T] {
     }
 }
 
+impl<I: Interner, T: TypeTraversable<I>> TypeTraversable<I> for Box<[T]> {
+    type Kind = T::Kind;
+}
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
@@ -209,6 +237,9 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
     }
 }
 
+impl<I: Interner, T: TypeTraversable<I>, Ix: Idx> TypeTraversable<I> for IndexVec<Ix, T> {
+    type Kind = T::Kind;
+}
 impl<I: Interner, T: TypeVisitable<I>, Ix: Idx> TypeVisitable<I> for IndexVec<Ix, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());

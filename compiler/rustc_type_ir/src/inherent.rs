@@ -12,6 +12,7 @@ use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::Reveal;
+use crate::traverse::{NoopTypeTraversal, TypeTraversable};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
@@ -208,14 +209,18 @@ pub trait Tys<I: Interner<Tys = Self>>:
     fn output(self) -> I::Ty;
 }
 
-pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
+pub trait Abi<I: Interner<Abi = Self>>:
+    Copy + Hash + Eq + TypeTraversable<I, Kind = NoopTypeTraversal>
+{
     fn rust() -> Self;
 
     /// Whether this ABI is `extern "Rust"`.
     fn is_rust(self) -> bool;
 }
 
-pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
+pub trait Safety<I: Interner<Safety = Self>>:
+    Copy + Hash + Eq + TypeTraversable<I, Kind = NoopTypeTraversal>
+{
     fn safe() -> Self;
 
     fn is_safe(self) -> bool;
@@ -545,7 +550,9 @@ pub trait Features<I: Interner>: Copy {
     fn associated_const_equality(self) -> bool;
 }
 
-pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+pub trait DefId<I: Interner>:
+    Copy + Debug + Hash + Eq + TypeTraversable<I, Kind = NoopTypeTraversal>
+{
     fn is_local(self) -> bool;
 
     fn as_local(self) -> Option<I::LocalDefId>;
@@ -565,7 +572,9 @@ pub trait BoundExistentialPredicates<I: Interner>:
     ) -> impl IntoIterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>>;
 }
 
-pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+pub trait Span<I: Interner>:
+    Copy + Debug + Hash + Eq + TypeTraversable<I, Kind = NoopTypeTraversal>
+{
     fn dummy() -> Self;
 }
 

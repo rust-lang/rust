@@ -75,10 +75,11 @@ pub use opaque_ty::*;
 pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
+use rustc_type_ir_macros::NoopTypeTraversable_Generic;
+pub use traverse::{fold, visit};
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
-pub use traverse::{visit, fold};
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
@@ -379,6 +380,7 @@ impl Default for UniverseIndex {
 
 rustc_index::newtype_index! {
     #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[derive(NoopTypeTraversable_Generic)]
     #[encodable]
     #[orderable]
     #[debug_format = "{}"]

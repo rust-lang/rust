@@ -8,7 +8,9 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::CoroutineKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{
+    HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
@@ -581,8 +583,8 @@ pub struct CopyNonOverlapping<'tcx> {
 
 /// Represents how a [`TerminatorKind::Call`] was constructed.
 /// Used only for diagnostics.
-#[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, NoopTypeTraversable)]
 pub enum CallSource {
     /// This came from something such as `a > b` or `a + b`. In THIR, if `from_hir_call`
     /// is false then this is the desugaring.
@@ -605,8 +607,8 @@ impl CallSource {
     }
 }
 
-#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(Clone, Copy, Debug, Hash, HashStable, PartialEq)]
+#[derive(TyEncodable, TyDecodable, NoopTypeTraversable)]
 /// The macro that an inline assembly block was created by
 pub enum InlineAsmMacro {
     /// The `asm!` macro
@@ -951,8 +953,8 @@ pub struct SwitchTargets {
 }
 
 /// Action to be taken when a stack unwind happens.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, NoopTypeTraversable)]
 pub enum UnwindAction {
     /// No action is to be taken. Continue unwinding.
     ///
@@ -970,8 +972,8 @@ pub enum UnwindAction {
 }
 
 /// The reason we are terminating the process during unwinding.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, NoopTypeTraversable)]
 pub enum UnwindTerminateReason {
     /// Unwinding is just not possible given the ABI of this function.
     Abi,
@@ -1501,8 +1503,8 @@ pub enum NullOp<'tcx> {
     UbChecks,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, NoopTypeTraversable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
@@ -1519,8 +1521,8 @@ pub enum UnOp {
     PtrMetadata,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, NoopTypeTraversable)]
 pub enum BinOp {
     /// The `+` operator (addition)
     Add,

@@ -14,6 +14,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
+use rustc_type_ir::traverse::{ImportantTypeTraversal, TypeTraversable};
 use smallvec::SmallVec;
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -329,6 +330,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for GenericArg<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.unpack() {
@@ -642,6 +646,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
     }
 }
 
+impl<'tcx, T: TypeTraversable<TyCtxt<'tcx>>> TypeTraversable<TyCtxt<'tcx>> for &'tcx ty::List<T> {
+    type Kind = T::Kind;
+}
 impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx ty::List<T> {
     #[inline]
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {

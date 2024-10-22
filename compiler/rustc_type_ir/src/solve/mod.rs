@@ -6,13 +6,15 @@ use std::hash::Hash;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    Lift_Generic, NoopTypeTraversable_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, NoopTypeTraversable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum Reveal {
     /// At type-checking time, we refuse to project any associated

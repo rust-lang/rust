@@ -55,8 +55,10 @@ pub use rustc_type_ir::ConstKind::{
     Placeholder as PlaceholderCt, Unevaluated, Value,
 };
 pub use rustc_type_ir::relate::VarianceDiagInfo;
+use rustc_type_ir::traverse::TypeTraversable;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
+use traverse::ImportantTypeTraversal;
 pub use vtable::*;
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
@@ -272,7 +274,6 @@ pub enum ImplSubject<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum Asyncness {
     Yes,
     No,
@@ -547,6 +548,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for Term<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.unpack() {
@@ -1031,15 +1035,18 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     ) -> Result<Self, F::Error> {
         Ok(ParamEnv::new(
             self.caller_bounds().try_fold_with(folder)?,
-            self.reveal().try_fold_with(folder)?,
+            self.reveal().noop_try_fold_with(folder)?,
         ))
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         try_visit!(self.caller_bounds().visit_with(visitor));
-        self.reveal().visit_with(visitor)
+        self.reveal().noop_visit_with(visitor)
     }
 }
 

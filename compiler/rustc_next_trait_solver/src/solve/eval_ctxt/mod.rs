@@ -11,7 +11,6 @@ use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{instrument, trace};
 
 use crate::coherence;
@@ -91,7 +90,6 @@ where
 }
 
 #[derive_where(Clone, Debug, Default; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation

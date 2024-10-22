@@ -15,8 +15,10 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::traverse::AlwaysTraversable;
 use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_type_ir::traverse::OptTryFoldWith;
 use tracing::{debug, instrument};
 
 use crate::infer::canonical::instantiate::{CanonicalExt, instantiate_value};
@@ -60,7 +62,7 @@ impl<'tcx> InferCtxt<'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx, ScrubbedTraitError<'tcx>>,
     ) -> Result<CanonicalQueryResponse<'tcx, T>, NoSolution>
     where
-        T: Debug + TypeFoldable<TyCtxt<'tcx>>,
+        T: OptTryFoldWith<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
@@ -107,7 +109,7 @@ impl<'tcx> InferCtxt<'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx, ScrubbedTraitError<'tcx>>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
-        T: Debug + TypeFoldable<TyCtxt<'tcx>>,
+        T: OptTryFoldWith<TyCtxt<'tcx>>,
     {
         let tcx = self.tcx;
 
@@ -243,7 +245,7 @@ impl<'tcx> InferCtxt<'tcx> {
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> InferResult<'tcx, R>
     where
-        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
+        R: OptTryFoldWith<TyCtxt<'tcx>>,
     {
         let InferOk { value: result_args, mut obligations } = self
             .query_response_instantiation_guess(
@@ -326,8 +328,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 .map(|p_c| instantiate_value(self.tcx, &result_args, p_c.clone())),
         );
 
-        let user_result: R =
-            query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
+        let user_result: R = query_response
+            .instantiate_projected(self.tcx, &result_args, |q_r| {
+                AlwaysTraversable(q_r.value.clone())
+            })
+            .0;
 
         Ok(InferOk { value: user_result, obligations })
     }
@@ -396,7 +401,7 @@ impl<'tcx> InferCtxt<'tcx> {
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
     where
-        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
+        R: OptTryFoldWith<TyCtxt<'tcx>>,
     {
         // For each new universe created in the query result that did
         // not appear in the original query, create a local

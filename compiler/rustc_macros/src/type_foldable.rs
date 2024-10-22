@@ -1,4 +1,4 @@
-use quote::{ToTokens, quote};
+use quote::quote;
 use syn::parse_quote;
 
 pub(super) fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
@@ -12,34 +12,25 @@ pub(super) fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_m
         s.add_impl_generic(parse_quote! { 'tcx });
     }
 
-    s.add_bounds(synstructure::AddBounds::Generics);
+    s.add_bounds(synstructure::AddBounds::None);
+    let mut where_clauses = None;
+    s.add_trait_bounds(
+        &parse_quote!(::rustc_type_ir::traverse::OptTryFoldWith<::rustc_middle::ty::TyCtxt<'tcx>>),
+        &mut where_clauses,
+        synstructure::AddBounds::Fields,
+    );
+    s.add_where_predicate(parse_quote! { Self: std::fmt::Debug + Clone });
+    for pred in where_clauses.into_iter().flat_map(|c| c.predicates) {
+        s.add_where_predicate(pred);
+    }
+
     s.bind_with(|_| synstructure::BindStyle::Move);
     let body_fold = s.each_variant(|vi| {
         let bindings = vi.bindings();
         vi.construct(|_, index| {
             let bind = &bindings[index];
-
-            let mut fixed = false;
-
-            // retain value of fields with #[type_foldable(identity)]
-            bind.ast().attrs.iter().for_each(|x| {
-                if !x.path().is_ident("type_foldable") {
-                    return;
-                }
-                let _ = x.parse_nested_meta(|nested| {
-                    if nested.path.is_ident("identity") {
-                        fixed = true;
-                    }
-                    Ok(())
-                });
-            });
-
-            if fixed {
-                bind.to_token_stream()
-            } else {
-                quote! {
-                    ::rustc_middle::ty::fold::TypeFoldable::try_fold_with(#bind, __folder)?
-                }
+            quote! {
+                ::rustc_middle::ty::traverse::OptTryFoldWith::mk_try_fold_with()(#bind, __folder)?
             }
         })
     });

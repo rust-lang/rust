@@ -1,11 +1,11 @@
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{HashStable, NoopTypeTraversable, TyDecodable, TyEncodable};
 
 use super::ScalarInt;
 use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq)]
-#[derive(HashStable)]
+#[derive(HashStable, NoopTypeTraversable)]
 /// This datastructure is used to represent the value of constants used in the type system.
 ///
 /// We explicitly choose a different datastructure from the way values are processed within

@@ -1,12 +1,14 @@
 use rustc_hir::HirId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{
+    HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::ty;
 use crate::ty::Ty;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(NoopTypeTraversable)]
 pub enum PlaceBase {
     /// A temporary variable.
     Rvalue,
@@ -19,7 +21,7 @@ pub enum PlaceBase {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(NoopTypeTraversable)]
 pub enum ProjectionKind {
     /// A dereference of a pointer, reference or `Box<T>` of the given type.
     Deref,

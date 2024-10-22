@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
+use rustc_macros::{HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
@@ -234,7 +234,8 @@ pub enum StmtKind<'tcx> {
     },
 }
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable)]
+#[derive(NoopTypeTraversable, TyEncodable, TyDecodable)]
 pub struct LocalVarId(pub HirId);
 
 /// A THIR expression.
@@ -739,9 +740,7 @@ pub enum PatKind<'tcx> {
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         name: Symbol,
-        #[type_visitable(ignore)]
         mode: BindingMode,
-        #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
         subpattern: Option<Box<Pat<'tcx>>>,
@@ -844,7 +843,6 @@ pub struct PatRange<'tcx> {
     pub lo: PatRangeBoundary<'tcx>,
     /// Must not be `NegInfinity`.
     pub hi: PatRangeBoundary<'tcx>,
-    #[type_visitable(ignore)]
     pub end: RangeEnd,
     pub ty: Ty<'tcx>,
 }

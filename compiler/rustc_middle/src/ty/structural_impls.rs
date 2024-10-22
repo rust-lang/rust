@@ -11,6 +11,7 @@ use rustc_hir::def::Namespace;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::ConstKind;
+use rustc_type_ir::traverse::{ImportantTypeTraversal, TypeTraversable};
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
@@ -18,7 +19,7 @@ use crate::mir::interpret;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{self, Lift, Term, TermKind, Ty, TyCtxt};
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -208,10 +209,11 @@ impl<'tcx> fmt::Debug for Region<'tcx> {
 // For things for which the type library provides traversal implementations
 // for all Interners, we only need to provide a Lift implementation:
 TrivialLiftImpls! {
-     (),
-     bool,
-     usize,
-     u64,
+    (),
+    bool,
+    usize,
+    u64,
+    crate::ty::ParamConst,
 }
 
 // For some things about which the type library does not know, or does not
@@ -224,11 +226,13 @@ TrivialTypeTraversalImpls! {
     ::rustc_ast::InlineAsmOptions,
     ::rustc_ast::InlineAsmTemplatePiece,
     ::rustc_ast::NodeId,
+    ::rustc_ast::ast::BindingMode,
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::ByRef,
     ::rustc_hir::HirId,
+    ::rustc_hir::RangeEnd,
     ::rustc_hir::MatchSource,
     ::rustc_target::asm::InlineAsmRegOrRegClass,
     crate::mir::coverage::BlockMarkerId,
@@ -237,7 +241,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::coverage::ConditionId,
     crate::mir::Local,
     crate::mir::Promoted,
-    crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
     crate::ty::BoundRegion,
@@ -255,8 +258,6 @@ TrivialTypeTraversalImpls! {
     crate::ty::adjustment::PointerCoercion,
     ::rustc_span::Span,
     ::rustc_span::symbol::Ident,
-    ty::BoundVar,
-    ty::ValTree<'tcx>,
 }
 // For some things about which the type library does not know, or does not
 // provide any traversal implementations, we need to provide a traversal
@@ -264,19 +265,15 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::def_id::DefId,
+    ::rustc_hir::Safety,
+    ::rustc_target::spec::abi::Abi,
     crate::ty::ClosureKind,
-    crate::ty::ParamConst,
     crate::ty::ParamTy,
     crate::ty::instance::ReifyReason,
     interpret::AllocId,
     interpret::CtfeProvenance,
     interpret::Scalar,
     rustc_target::abi::Size,
-}
-
-TrivialLiftImpls! {
-    ::rustc_hir::Safety,
-    ::rustc_target::spec::abi::Abi,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -304,12 +301,6 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Term<'a> {
 
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, _visitor: &mut V) -> V::Result {
-        V::Result::output()
-    }
-}
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
@@ -339,6 +330,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Pattern<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for Pattern<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Pattern<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
@@ -354,6 +348,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for Ty<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_ty(*self)
@@ -470,6 +467,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for ty::Region<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_region(*self)
@@ -495,12 +495,18 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_predicate(*self)
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_predicate(self.as_predicate())
@@ -523,6 +529,9 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_clauses(self)
@@ -553,6 +562,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for ty::Const<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_const(*self)
@@ -565,15 +577,15 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         let kind = match self.kind() {
-            ConstKind::Param(p) => ConstKind::Param(p.try_fold_with(folder)?),
-            ConstKind::Infer(i) => ConstKind::Infer(i.try_fold_with(folder)?),
+            ConstKind::Param(p) => ConstKind::Param(p.noop_try_fold_with(folder)?),
+            ConstKind::Infer(i) => ConstKind::Infer(i.noop_try_fold_with(folder)?),
             ConstKind::Bound(d, b) => {
-                ConstKind::Bound(d.try_fold_with(folder)?, b.try_fold_with(folder)?)
+                ConstKind::Bound(d.noop_try_fold_with(folder)?, b.noop_try_fold_with(folder)?)
             }
-            ConstKind::Placeholder(p) => ConstKind::Placeholder(p.try_fold_with(folder)?),
+            ConstKind::Placeholder(p) => ConstKind::Placeholder(p.noop_try_fold_with(folder)?),
             ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.try_fold_with(folder)?),
             ConstKind::Value(t, v) => {
-                ConstKind::Value(t.try_fold_with(folder)?, v.try_fold_with(folder)?)
+                ConstKind::Value(t.try_fold_with(folder)?, v.noop_try_fold_with(folder)?)
             }
             ConstKind::Error(e) => ConstKind::Error(e.try_fold_with(folder)?),
             ConstKind::Expr(e) => ConstKind::Expr(e.try_fold_with(folder)?),
@@ -585,17 +597,17 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.kind() {
-            ConstKind::Param(p) => p.visit_with(visitor),
-            ConstKind::Infer(i) => i.visit_with(visitor),
+            ConstKind::Param(p) => p.noop_visit_with(visitor),
+            ConstKind::Infer(i) => i.noop_visit_with(visitor),
             ConstKind::Bound(d, b) => {
-                try_visit!(d.visit_with(visitor));
-                b.visit_with(visitor)
+                try_visit!(d.noop_visit_with(visitor));
+                b.noop_visit_with(visitor)
             }
-            ConstKind::Placeholder(p) => p.visit_with(visitor),
+            ConstKind::Placeholder(p) => p.noop_visit_with(visitor),
             ConstKind::Unevaluated(uv) => uv.visit_with(visitor),
             ConstKind::Value(t, v) => {
                 try_visit!(t.visit_with(visitor));
-                v.visit_with(visitor)
+                v.noop_visit_with(visitor)
             }
             ConstKind::Error(e) => e.visit_with(visitor),
             ConstKind::Expr(e) => e.visit_with(visitor),
@@ -603,6 +615,9 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for rustc_span::ErrorGuaranteed {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for rustc_span::ErrorGuaranteed {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_error(*self)
@@ -618,33 +633,26 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for rustc_span::ErrorGuaranteed {
     }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for InferConst {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for TyAndLayout<'tcx, Ty<'tcx>> {
+    type Kind = ImportantTypeTraversal;
 }
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for InferConst {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, _visitor: &mut V) -> V::Result {
-        V::Result::output()
-    }
-}
-
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for TyAndLayout<'tcx, Ty<'tcx>> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_ty(self.ty)
     }
 }
 
+impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>> + Debug + Clone> TypeTraversable<TyCtxt<'tcx>>
+    for Spanned<T>
+{
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>> + Debug + Clone> TypeVisitable<TyCtxt<'tcx>>
     for Spanned<T>
 {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         try_visit!(self.node.visit_with(visitor));
-        self.span.visit_with(visitor)
+        self.span.noop_visit_with(visitor)
     }
 }
 
@@ -657,7 +665,7 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Debug + Clone> TypeFoldable<TyCtxt<'t
     ) -> Result<Self, F::Error> {
         Ok(Spanned {
             node: self.node.try_fold_with(folder)?,
-            span: self.span.try_fold_with(folder)?,
+            span: self.span.noop_try_fold_with(folder)?,
         })
     }
 }

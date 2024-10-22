@@ -5,7 +5,9 @@ use derive_where::derive_where;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    Lift_Generic, NoopTypeTraversable_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use crate::{self as ty, DebruijnIndex, Interner};
 
@@ -77,6 +79,7 @@ impl<I: Interner> UnevaluatedConst<I> {
 
 rustc_index::newtype_index! {
     /// A **`const`** **v**ariable **ID**.
+    #[derive(NoopTypeTraversable_Generic)]
     #[encodable]
     #[orderable]
     #[debug_format = "?{}c"]
@@ -92,6 +95,7 @@ rustc_index::newtype_index! {
     /// relate an effect variable with a normal one, we would ICE, which can catch bugs
     /// where we are not correctly using the effect var for an effect param. Fallback
     /// is also implemented on top of having separate effect and normal const variables.
+    #[derive(NoopTypeTraversable_Generic)]
     #[encodable]
     #[orderable]
     #[debug_format = "?{}e"]
@@ -100,7 +104,7 @@ rustc_index::newtype_index! {
 }
 
 /// An inference variable for a const, for use in const generics.
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash, NoopTypeTraversable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum InferConst {
     /// Infer the value of the const.

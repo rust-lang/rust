@@ -3,7 +3,7 @@
 use std::fmt::{self, Debug, Formatter};
 
 use rustc_index::IndexVec;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{HashStable, NoopTypeTraversable, TyDecodable, TyEncodable};
 use rustc_span::{Span, Symbol};
 
 rustc_index::newtype_index! {
@@ -77,7 +77,7 @@ impl ConditionId {
 /// but the zero/counter/expression distinction is also useful for representing
 /// the value of code/gap mappings, and the true/false arms of branch mappings.
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CovTerm {
     Zero,
     Counter(CounterId),
@@ -94,7 +94,7 @@ impl Debug for CovTerm {
     }
 }
 
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub enum CoverageKind {
     /// Marks a span that might otherwise not be represented in MIR, so that
     /// coverage instrumentation can associate it with its enclosing block/BCB.
@@ -155,8 +155,8 @@ impl Debug for CoverageKind {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, NoopTypeTraversable)]
 pub struct SourceRegion {
     pub file_name: Symbol,
     pub start_line: u32,
@@ -176,7 +176,7 @@ impl Debug for SourceRegion {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
-#[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, NoopTypeTraversable)]
 pub enum Op {
     Subtract,
     Add,
@@ -193,7 +193,7 @@ impl Op {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct Expression {
     pub lhs: CovTerm,
     pub op: Op,
@@ -201,7 +201,7 @@ pub struct Expression {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub enum MappingKind {
     /// Associates a normal region of code with a counter/expression/zero.
     Code(CovTerm),
@@ -233,7 +233,7 @@ impl MappingKind {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct Mapping {
     pub kind: MappingKind,
     pub source_region: SourceRegion,
@@ -243,7 +243,7 @@ pub struct Mapping {
 /// to be used in conjunction with the individual coverage statements injected
 /// into the function's basic blocks.
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
     pub num_counters: usize,
@@ -262,7 +262,7 @@ pub struct FunctionCoverageInfo {
 /// ("Hi" indicates that this is "high-level" information collected at the
 /// THIR/MIR boundary, before the MIR-based coverage instrumentation pass.)
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct CoverageInfoHi {
     /// 1 more than the highest-numbered [`CoverageKind::BlockMarker`] that was
     /// injected into the MIR body. This makes it possible to allocate per-ID
@@ -276,7 +276,7 @@ pub struct CoverageInfoHi {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct BranchSpan {
     pub span: Span,
     pub true_marker: BlockMarkerId,
@@ -284,7 +284,7 @@ pub struct BranchSpan {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct ConditionInfo {
     pub condition_id: ConditionId,
     pub true_next_id: Option<ConditionId>,
@@ -292,7 +292,7 @@ pub struct ConditionInfo {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct MCDCBranchSpan {
     pub span: Span,
     pub condition_info: ConditionInfo,
@@ -301,14 +301,14 @@ pub struct MCDCBranchSpan {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct DecisionInfo {
     pub bitmap_idx: u32,
     pub num_conditions: u16,
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, NoopTypeTraversable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
     pub end_markers: Vec<BlockMarkerId>,

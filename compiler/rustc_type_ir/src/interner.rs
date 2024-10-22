@@ -14,6 +14,7 @@ use crate::relate::Relate;
 use crate::solve::{
     CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, SolverMode,
 };
+use crate::traverse::{NoopTypeTraversal, TypeTraversable};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, search_graph};
 
@@ -33,7 +34,12 @@ pub trait Interner:
     + IrPrint<ty::FnSig<Self>>
 {
     type DefId: DefId<Self>;
-    type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
+    type LocalDefId: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Into<Self::DefId>
+        + TypeTraversable<Self, Kind = NoopTypeTraversal>;
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
@@ -60,7 +66,7 @@ pub trait Interner:
         + Hash
         + Default
         + Eq
-        + TypeVisitable<Self>
+        + TypeTraversable<Self, Kind = NoopTypeTraversal>
         + SliceLike<Item = Self::LocalDefId>;
 
     type CanonicalVars: Copy

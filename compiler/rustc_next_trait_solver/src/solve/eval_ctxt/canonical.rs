@@ -15,6 +15,7 @@ use rustc_index::IndexVec;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
+use rustc_type_ir::traverse::OptTryFoldWith;
 use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
 use tracing::{debug, instrument, trace};
 
@@ -426,7 +427,7 @@ pub(in crate::solve) fn make_canonical_state<D, T, I>(
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
-    T: TypeFoldable<I>,
+    T: OptTryFoldWith<I>,
 {
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
@@ -441,7 +442,7 @@ where
 
 // FIXME: needs to be pub to be accessed by downstream
 // `rustc_trait_selection::solve::inspect::analyse`.
-pub fn instantiate_canonical_state<D, I, T: TypeFoldable<I>>(
+pub fn instantiate_canonical_state<D, I, T: OptTryFoldWith<I>>(
     delegate: &D,
     span: D::Span,
     param_env: I::ParamEnv,

@@ -22,7 +22,9 @@ use rustc_hir::{
 };
 use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{
+    HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
@@ -1548,7 +1550,7 @@ pub struct SourceScopeLocalData {
 /// The first will lead to the constraint `w: &'1 str` (for some
 /// inferred region `'1`). The second will lead to the constraint `w:
 /// &'static str`.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, NoopTypeTraversable)]
 pub struct UserTypeProjections {
     pub contents: Vec<(UserTypeProjection, Span)>,
 }
@@ -1627,7 +1629,7 @@ impl<'tcx> UserTypeProjections {
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(NoopTypeTraversable)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,

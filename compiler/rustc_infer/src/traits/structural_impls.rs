@@ -4,6 +4,7 @@ use rustc_ast_ir::try_visit;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitor};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_type_ir::traverse::{ImportantTypeTraversal, TypeTraversable};
 
 use crate::traits;
 use crate::traits::project::Normalized;
@@ -55,6 +56,11 @@ impl<'tcx, O: TypeFoldable<TyCtxt<'tcx>>> TypeFoldable<TyCtxt<'tcx>>
     }
 }
 
+impl<'tcx, O: TypeVisitable<TyCtxt<'tcx>>> TypeTraversable<TyCtxt<'tcx>>
+    for traits::Obligation<'tcx, O>
+{
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx, O: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>>
     for traits::Obligation<'tcx, O>
 {

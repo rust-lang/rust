@@ -14,6 +14,7 @@ use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
 use crate::lift::Lift;
+use crate::traverse::{ImportantTypeTraversal, OptVisitWith, TypeTraversable};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{self as ty, Interner};
 
@@ -125,6 +126,9 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Binder<I, T> {
     }
 }
 
+impl<I: Interner, T: TypeVisitable<I>> TypeTraversable<I> for Binder<I, T> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Binder<I, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_binder(self)
@@ -182,14 +186,14 @@ impl<I: Interner, T> Binder<I, T> {
         Binder { value: &self.value, bound_vars: self.bound_vars }
     }
 
-    pub fn map_bound_ref<F, U: TypeVisitable<I>>(&self, f: F) -> Binder<I, U>
+    pub fn map_bound_ref<F, U: OptVisitWith<I>>(&self, f: F) -> Binder<I, U>
     where
         F: FnOnce(&T) -> U,
     {
         self.as_ref().map_bound(f)
     }
 
-    pub fn map_bound<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
+    pub fn map_bound<F, U: OptVisitWith<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,
     {
@@ -197,7 +201,7 @@ impl<I: Interner, T> Binder<I, T> {
         let value = f(value);
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
+            OptVisitWith::mk_visit_with()(&value, &mut validator);
         }
         Binder { value, bound_vars }
     }

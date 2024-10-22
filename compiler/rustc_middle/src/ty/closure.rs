@@ -5,7 +5,9 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::LocalDefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{
+    HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
@@ -23,7 +25,7 @@ use crate::{mir, ty};
 pub const CAPTURE_STRUCT_LOCAL: mir::Local = mir::Local::from_u32(1);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(NoopTypeTraversable)]
 pub struct UpvarPath {
     pub hir_id: HirId,
 }
@@ -32,7 +34,7 @@ pub struct UpvarPath {
 /// the original var ID (that is, the root variable that is referenced
 /// by the upvar) and the ID of the closure expression.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(NoopTypeTraversable)]
 pub struct UpvarId {
     pub var_path: UpvarPath,
     pub closure_expr_id: LocalDefId,
@@ -47,7 +49,7 @@ impl UpvarId {
 /// Information describing the capture of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`.
 #[derive(Eq, PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable, Hash)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(NoopTypeTraversable)]
 pub enum UpvarCapture {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
@@ -252,7 +254,7 @@ pub fn is_ancestor_or_same_capture(
 /// for a particular capture as well as identifying the part of the source code
 /// that triggered this capture to occur.
 #[derive(Eq, PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable, Hash)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(NoopTypeTraversable)]
 pub struct CaptureInfo {
     /// Expr Id pointing to use that resulted in selecting the current capture kind
     ///

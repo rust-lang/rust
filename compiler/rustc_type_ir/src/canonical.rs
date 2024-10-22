@@ -5,7 +5,9 @@ use std::ops::Index;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    Lift_Generic, NoopTypeTraversable_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use crate::inherent::*;
 use crate::{self as ty, Interner, UniverseIndex};
@@ -141,7 +143,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(NoopTypeTraversable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum CanonicalVarKind<I: Interner> {
     /// Some kind of type inference variable.

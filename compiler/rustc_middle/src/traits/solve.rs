@@ -1,8 +1,9 @@
 use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable;
-use rustc_type_ir as ir;
 pub use rustc_type_ir::solve::*;
+use rustc_type_ir::traverse::{ImportantTypeTraversal, TypeTraversable};
+use rustc_type_ir::{self as ir};
 
 use crate::ty::{
     self, FallibleTypeFolder, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
@@ -72,6 +73,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         try_visit!(self.region_constraints.visit_with(visitor));
@@ -106,6 +110,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
     }
 }
 
+impl<'tcx> TypeTraversable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
+    type Kind = ImportantTypeTraversal;
+}
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         self.opaque_types.visit_with(visitor)

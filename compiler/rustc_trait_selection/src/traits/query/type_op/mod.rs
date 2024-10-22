@@ -6,6 +6,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::Span;
+use rustc_type_ir::traverse::OptTryFoldWith;
 
 use crate::infer::canonical::{
     CanonicalQueryInput, CanonicalQueryResponse, Certainty, OriginalQueryValues,
@@ -62,7 +63,7 @@ pub struct TypeOpOutput<'tcx, Op: TypeOp<'tcx>> {
 ///
 /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 'tcx {
-    type QueryResponse: TypeFoldable<TyCtxt<'tcx>>;
+    type QueryResponse: OptTryFoldWith<TyCtxt<'tcx>>;
 
     /// Give query the option for a simple fast path that never
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with

@@ -8,7 +8,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    Lift_Generic, NoopTypeTraversable_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use self::TyKind::*;
 pub use self::closure::*;
@@ -861,11 +863,7 @@ pub struct TypeAndMut<I: Interner> {
 pub struct FnSig<I: Interner> {
     pub inputs_and_output: I::Tys,
     pub c_variadic: bool,
-    #[type_visitable(ignore)]
-    #[type_foldable(identity)]
     pub safety: I::Safety,
-    #[type_visitable(ignore)]
-    #[type_foldable(identity)]
     pub abi: I::Abi,
 }
 
@@ -1016,7 +1014,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
 
 #[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(NoopTypeTraversable_Generic, Lift_Generic)]
 pub struct FnHeader<I: Interner> {
     pub c_variadic: bool,
     pub safety: I::Safety,

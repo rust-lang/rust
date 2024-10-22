@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 pub use rustc_infer::infer::*;
@@ -11,6 +9,7 @@ use rustc_middle::infer::canonical::{
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_span::DUMMY_SP;
+use rustc_type_ir::traverse::OptTryFoldWith;
 use tracing::instrument;
 
 use crate::infer::at::ToTrace;
@@ -139,7 +138,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     ) -> Result<CanonicalQueryResponse<'tcx, R>, NoSolution>
     where
         K: TypeFoldable<TyCtxt<'tcx>>,
-        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
+        R: OptTryFoldWith<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
         let (infcx, key, canonical_inference_vars) =

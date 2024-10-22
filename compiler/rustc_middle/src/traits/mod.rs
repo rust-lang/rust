@@ -17,7 +17,8 @@ use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{
-    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+    Decodable, Encodable, HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeFoldable,
+    TypeVisitable,
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_span::symbol::Symbol;
@@ -422,7 +423,7 @@ crate::TrivialTypeTraversalAndLiftImpls! {
 /// we can walk in order to obtain precise spans for any
 /// 'nested' types (e.g. `Foo` in `Option<Foo>`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, Encodable, Decodable)]
-#[derive(TypeVisitable, TypeFoldable)]
+#[derive(NoopTypeTraversable)]
 pub enum WellFormedLoc {
     /// Use the type of the provided definition.
     Ty(LocalDefId),

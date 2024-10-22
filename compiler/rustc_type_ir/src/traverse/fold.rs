@@ -51,6 +51,7 @@ use rustc_index::{Idx, IndexVec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
+use super::OptTryFoldWith;
 use crate::data_structures::Lrc;
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
@@ -234,9 +235,12 @@ where
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
 
-impl<I: Interner, T: TypeFoldable<I>, U: TypeFoldable<I>> TypeFoldable<I> for (T, U) {
+impl<I: Interner, T: OptTryFoldWith<I>, U: OptTryFoldWith<I>> TypeFoldable<I> for (T, U) {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<(T, U), F::Error> {
-        Ok((self.0.try_fold_with(folder)?, self.1.try_fold_with(folder)?))
+        Ok((
+            OptTryFoldWith::mk_try_fold_with()(self.0, folder)?,
+            OptTryFoldWith::mk_try_fold_with()(self.1, folder)?,
+        ))
     }
 }
 
@@ -248,9 +252,9 @@ impl<I: Interner, A: TypeFoldable<I>, B: TypeFoldable<I>, C: TypeFoldable<I>> Ty
         folder: &mut F,
     ) -> Result<(A, B, C), F::Error> {
         Ok((
-            self.0.try_fold_with(folder)?,
-            self.1.try_fold_with(folder)?,
-            self.2.try_fold_with(folder)?,
+            OptTryFoldWith::mk_try_fold_with()(self.0, folder)?,
+            OptTryFoldWith::mk_try_fold_with()(self.1, folder)?,
+            OptTryFoldWith::mk_try_fold_with()(self.2, folder)?,
         ))
     }
 }

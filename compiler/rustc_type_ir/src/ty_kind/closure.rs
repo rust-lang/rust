@@ -372,12 +372,8 @@ pub struct CoroutineClosureSignature<I: Interner> {
     /// Always false
     pub c_variadic: bool,
     /// Always `Normal` (safe)
-    #[type_visitable(ignore)]
-    #[type_foldable(identity)]
     pub safety: I::Safety,
     /// Always `RustCall`
-    #[type_visitable(ignore)]
-    #[type_foldable(identity)]
     pub abi: I::Abi,
 }
 

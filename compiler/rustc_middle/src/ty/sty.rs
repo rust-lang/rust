@@ -13,7 +13,9 @@ use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
+use rustc_macros::{
+    HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeFoldable, extension,
+};
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
@@ -323,7 +325,7 @@ impl<'tcx> ParamTy {
 }
 
 #[derive(Copy, Clone, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
-#[derive(HashStable)]
+#[derive(HashStable, NoopTypeTraversable)]
 pub struct ParamConst {
     pub index: u32,
     pub name: Symbol,

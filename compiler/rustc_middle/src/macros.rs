@@ -73,32 +73,8 @@ macro_rules! TrivialLiftImpls {
 macro_rules! TrivialTypeTraversalImpls {
     ($($ty:ty),+ $(,)?) => {
         $(
-            impl<'tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<'tcx>> for $ty {
-                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$crate::ty::TyCtxt<'tcx>>>(
-                    self,
-                    _: &mut F,
-                ) -> ::std::result::Result<Self, F::Error> {
-                    Ok(self)
-                }
-
-                #[inline]
-                fn fold_with<F: $crate::ty::fold::TypeFolder<$crate::ty::TyCtxt<'tcx>>>(
-                    self,
-                    _: &mut F,
-                ) -> Self {
-                    self
-                }
-            }
-
-            impl<'tcx> $crate::ty::visit::TypeVisitable<$crate::ty::TyCtxt<'tcx>> for $ty {
-                #[inline]
-                fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<'tcx>>>(
-                    &self,
-                    _: &mut F)
-                    -> F::Result
-                {
-                    <F::Result as ::rustc_ast_ir::visit::VisitorResult>::output()
-                }
+            impl<'tcx> $crate::ty::traverse::TypeTraversable<$crate::ty::TyCtxt<'tcx>> for $ty {
+                type Kind = $crate::ty::traverse::NoopTypeTraversal;
             }
         )+
     };

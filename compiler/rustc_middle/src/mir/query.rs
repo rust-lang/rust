@@ -9,7 +9,9 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{
+    HashStable, NoopTypeTraversable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -57,8 +59,6 @@ pub struct CoroutineLayout<'tcx> {
     /// Which saved locals are storage-live at the same time. Locals that do not
     /// have conflicts with each other are allowed to overlap in the computed
     /// layout.
-    #[type_foldable(identity)]
-    #[type_visitable(ignore)]
     pub storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
 }
 
@@ -278,7 +278,7 @@ pub enum ConstraintCategory<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive(TyEncodable, TyDecodable, HashStable, NoopTypeTraversable)]
 pub enum ReturnConstraint {
     Normal,
     ClosureUpvar(FieldIdx),
