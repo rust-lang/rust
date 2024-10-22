@@ -154,7 +154,13 @@ LL | #[deprecated = "hello"]
    |
    = note: `#[deny(useless_deprecated)]` on by default
 
-error: aborting due to 10 previous errors
+error: this `#[deprecated]` annotation has no effect
+  --> $DIR/deprecation-sanity.rs:46:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^ help: remove the unnecessary deprecation attribute
+
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0538, E0539, E0541, E0565.
 For more information about an error, try `rustc --explain E0538`.

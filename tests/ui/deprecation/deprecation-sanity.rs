@@ -39,4 +39,11 @@ impl Default for X {
     }
 }
 
+mod inner {
+    pub struct Y;
+}
+
+#[deprecated] //~ ERROR this `#[deprecated]` annotation has no effect
+pub use inner::Y;
+
 fn main() { }
