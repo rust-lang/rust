@@ -148,6 +148,10 @@ impl FunctionData {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
+    pub fn is_safe(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_SAFE_KW)
+    }
+
     pub fn is_varargs(&self) -> bool {
         self.flags.contains(FnFlags::IS_VARARGS)
     }
@@ -567,6 +571,8 @@ pub struct StaticData {
     pub visibility: RawVisibility,
     pub mutable: bool,
     pub is_extern: bool,
+    pub has_safe_kw: bool,
+    pub has_unsafe_kw: bool,
 }
 
 impl StaticData {
@@ -581,6 +587,8 @@ impl StaticData {
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
+            has_safe_kw: statik.has_safe_kw,
+            has_unsafe_kw: statik.has_unsafe_kw,
         })
     }
 }

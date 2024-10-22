@@ -48,12 +48,16 @@ pub(crate) struct QualifierCtx {
     // TODO: Add try_tok and default_tok
     pub(crate) async_tok: Option<SyntaxToken>,
     pub(crate) unsafe_tok: Option<SyntaxToken>,
+    pub(crate) safe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
 }
 
 impl QualifierCtx {
     pub(crate) fn none(&self) -> bool {
-        self.async_tok.is_none() && self.unsafe_tok.is_none() && self.vis_node.is_none()
+        self.async_tok.is_none()
+            && self.unsafe_tok.is_none()
+            && self.safe_tok.is_none()
+            && self.vis_node.is_none()
     }
 }
 
@@ -229,7 +233,7 @@ pub(crate) enum ItemListKind {
     Impl,
     TraitImpl(Option<ast::Impl>),
     Trait,
-    ExternBlock,
+    ExternBlock { is_unsafe: bool },
 }
 
 #[derive(Debug)]

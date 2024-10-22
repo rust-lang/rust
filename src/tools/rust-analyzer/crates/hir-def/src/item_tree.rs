@@ -754,6 +754,7 @@ bitflags::bitflags! {
         const HAS_ASYNC_KW = 1 << 4;
         const HAS_UNSAFE_KW = 1 << 5;
         const IS_VARARGS = 1 << 6;
+        const HAS_SAFE_KW = 1 << 7;
     }
 }
 
@@ -822,7 +823,10 @@ pub struct Const {
 pub struct Static {
     pub name: Name,
     pub visibility: RawVisibilityId,
+    // TODO: use bitflags when we have more flags
     pub mutable: bool,
+    pub has_safe_kw: bool,
+    pub has_unsafe_kw: bool,
     pub type_ref: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Static>,
 }

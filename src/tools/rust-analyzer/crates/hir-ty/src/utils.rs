@@ -257,10 +257,12 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
         return true;
     }
 
-    match func.lookup(db.upcast()).container {
+    let loc = func.lookup(db.upcast());
+    match loc.container {
         hir_def::ItemContainerId::ExternBlockId(block) => {
-            // Function in an `extern` block are always unsafe to call, except when it has
-            // `"rust-intrinsic"` ABI there are a few exceptions.
+            // Function in an `extern` block are always unsafe to call, except when
+            // it is marked as `safe` or it has `"rust-intrinsic"` ABI there are a
+            // few exceptions.
             let id = block.lookup(db.upcast()).id;
 
             let is_intrinsic =
@@ -270,8 +272,8 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
                 // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
                 !data.attrs.by_key(&sym::rustc_safe_intrinsic).exists()
             } else {
-                // Extern items are always unsafe
-                true
+                // Extern items without `safe` modifier are always unsafe
+                !data.is_safe()
             }
         }
         _ => false,
