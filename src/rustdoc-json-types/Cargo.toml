@@ -11,7 +11,7 @@ default = ["rustc-hash"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-rustc-hash = { version = "1.1.0", optional = true }
+rustc-hash = { version = "2.0", optional = true }
 
 [dev-dependencies]
 serde_json = "1.0"

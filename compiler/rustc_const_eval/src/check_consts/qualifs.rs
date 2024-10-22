@@ -6,13 +6,10 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
-use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty};
 use rustc_middle::{bug, mir};
-use rustc_trait_selection::traits::{
-    ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext,
-};
-use tracing::{instrument, trace};
+use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
+use tracing::instrument;
 
 use super::ConstCx;
 
@@ -195,50 +192,8 @@ impl Qualif for NeedsNonConstDrop {
             return false;
         }
 
-        // FIXME(effects): If `destruct` is not a `const_trait`,
-        // or effects are disabled in this crate, then give up.
-        let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
-        if !cx.tcx.has_host_param(destruct_def_id) || !cx.tcx.features().effects {
-            return NeedsDrop::in_any_value_of_ty(cx, ty);
-        }
-
-        let obligation = Obligation::new(
-            cx.tcx,
-            ObligationCause::dummy_with_span(cx.body.span),
-            cx.param_env,
-            ty::TraitRef::new(cx.tcx, destruct_def_id, [
-                ty::GenericArg::from(ty),
-                ty::GenericArg::from(cx.tcx.expected_host_effect_param_for_body(cx.def_id())),
-            ]),
-        );
-
-        let infcx = cx.tcx.infer_ctxt().build();
-        let mut selcx = SelectionContext::new(&infcx);
-        let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
-            // If we couldn't select a const destruct candidate, then it's bad
-            return true;
-        };
-
-        trace!(?impl_src);
-
-        if !matches!(
-            impl_src,
-            ImplSource::Builtin(BuiltinImplSource::Misc, _) | ImplSource::Param(_)
-        ) {
-            // If our const destruct candidate is not ConstDestruct or implied by the param env,
-            // then it's bad
-            return true;
-        }
-
-        if impl_src.borrow_nested_obligations().is_empty() {
-            return false;
-        }
-
-        // If we had any errors, then it's bad
-        let ocx = ObligationCtxt::new(&infcx);
-        ocx.register_obligations(impl_src.nested_obligations());
-        let errors = ocx.select_all_or_error();
-        !errors.is_empty()
+        // FIXME(effects): Reimplement const drop checking.
+        NeedsDrop::in_any_value_of_ty(cx, ty)
     }
 
     fn in_adt_inherently<'tcx>(

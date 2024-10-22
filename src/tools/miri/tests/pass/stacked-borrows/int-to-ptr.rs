@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(exposed_provenance)]
 use std::ptr;
 
 // Just to make sure that casting a ref to raw, to int and back to raw

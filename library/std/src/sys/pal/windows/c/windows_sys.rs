@@ -26,7 +26,7 @@ windows_targets::link!("kernel32.dll" "system" fn DeviceIoControl(hdevice : HAND
 windows_targets::link!("kernel32.dll" "system" fn DuplicateHandle(hsourceprocesshandle : HANDLE, hsourcehandle : HANDLE, htargetprocesshandle : HANDLE, lptargethandle : *mut HANDLE, dwdesiredaccess : u32, binherithandle : BOOL, dwoptions : DUPLICATE_HANDLE_OPTIONS) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn ExitProcess(uexitcode : u32) -> !);
 windows_targets::link!("kernel32.dll" "system" fn FindClose(hfindfile : HANDLE) -> BOOL);
-windows_targets::link!("kernel32.dll" "system" fn FindFirstFileW(lpfilename : PCWSTR, lpfindfiledata : *mut WIN32_FIND_DATAW) -> HANDLE);
+windows_targets::link!("kernel32.dll" "system" fn FindFirstFileExW(lpfilename : PCWSTR, finfolevelid : FINDEX_INFO_LEVELS, lpfindfiledata : *mut core::ffi::c_void, fsearchop : FINDEX_SEARCH_OPS, lpsearchfilter : *const core::ffi::c_void, dwadditionalflags : FIND_FIRST_EX_FLAGS) -> HANDLE);
 windows_targets::link!("kernel32.dll" "system" fn FindNextFileW(hfindfile : HANDLE, lpfindfiledata : *mut WIN32_FIND_DATAW) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn FlushFileBuffers(hfile : HANDLE) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn FormatMessageW(dwflags : FORMAT_MESSAGE_OPTIONS, lpsource : *const core::ffi::c_void, dwmessageid : u32, dwlanguageid : u32, lpbuffer : PWSTR, nsize : u32, arguments : *const *const i8) -> u32);
@@ -2501,6 +2501,9 @@ pub const FILE_WRITE_ATTRIBUTES: FILE_ACCESS_RIGHTS = 256u32;
 pub const FILE_WRITE_DATA: FILE_ACCESS_RIGHTS = 2u32;
 pub const FILE_WRITE_EA: FILE_ACCESS_RIGHTS = 16u32;
 pub const FILE_WRITE_THROUGH: NTCREATEFILE_CREATE_OPTIONS = 2u32;
+pub type FINDEX_INFO_LEVELS = i32;
+pub type FINDEX_SEARCH_OPS = i32;
+pub type FIND_FIRST_EX_FLAGS = u32;
 pub const FIONBIO: i32 = -2147195266i32;
 #[repr(C)]
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "x86_64"))]
@@ -2565,6 +2568,8 @@ pub const FileRenameInfoEx: FILE_INFO_BY_HANDLE_CLASS = 22i32;
 pub const FileStandardInfo: FILE_INFO_BY_HANDLE_CLASS = 1i32;
 pub const FileStorageInfo: FILE_INFO_BY_HANDLE_CLASS = 16i32;
 pub const FileStreamInfo: FILE_INFO_BY_HANDLE_CLASS = 7i32;
+pub const FindExInfoBasic: FINDEX_INFO_LEVELS = 1i32;
+pub const FindExSearchNameMatch: FINDEX_SEARCH_OPS = 0i32;
 pub type GENERIC_ACCESS_RIGHTS = u32;
 pub const GENERIC_ALL: GENERIC_ACCESS_RIGHTS = 268435456u32;
 pub const GENERIC_EXECUTE: GENERIC_ACCESS_RIGHTS = 536870912u32;
@@ -3307,7 +3312,6 @@ pub struct XSAVE_FORMAT {
     pub XmmRegisters: [M128A; 8],
     pub Reserved4: [u8; 224],
 }
-
 #[cfg(target_arch = "arm")]
 #[repr(C)]
 pub struct WSADATA {

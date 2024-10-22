@@ -51,7 +51,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             } = self.lower_poly_trait_ref(
                 &trait_bound.trait_ref,
                 trait_bound.span,
-                ty::BoundConstness::NotConst,
+                None,
                 ty::PredicatePolarity::Positive,
                 dummy_self,
                 &mut bounds,

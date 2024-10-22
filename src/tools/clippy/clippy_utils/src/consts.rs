@@ -472,7 +472,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             ExprKind::Tup(tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(value, _) => {
                 let n = match self.typeck.expr_ty(e).kind() {
-                    ty::Array(_, n) => n.try_eval_target_usize(self.tcx, self.param_env)?,
+                    ty::Array(_, n) => n.try_to_target_usize(self.tcx)?,
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
@@ -553,7 +553,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             ExprKind::Array(vec) => self.multi(vec).map(|v| v.is_empty()),
             ExprKind::Repeat(..) => {
                 if let ty::Array(_, n) = self.typeck.expr_ty(e).kind() {
-                    Some(n.try_eval_target_usize(self.tcx, self.param_env)? == 0)
+                    Some(n.try_to_target_usize(self.tcx)? == 0)
                 } else {
                     span_bug!(e.span, "typeck error");
                 }
