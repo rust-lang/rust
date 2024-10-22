@@ -2096,6 +2096,18 @@ pub trait HasWasmCAbiOpt {
     fn wasm_c_abi_opt(&self) -> WasmCAbi;
 }
 
+/// x86 (32-bit) abi options.
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct X86Abi {
+    /// On x86-32 targets, the regparm N causes the compiler to pass arguments
+    /// in registers EAX, EDX, and ECX instead of on the stack.
+    pub regparm: Option<u32>,
+}
+
+pub trait HasX86AbiOpt {
+    fn x86_abi_opt(&self) -> X86Abi;
+}
+
 type StaticCow<T> = Cow<'static, T>;
 
 /// Optional aspects of a target specification.
