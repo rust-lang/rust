@@ -129,7 +129,7 @@ fn into_iter_bound<'tcx>(
 
 /// Extracts the receiver of a `.into_iter()` method call.
 fn into_iter_call<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Option<&'hir Expr<'hir>> {
-    if let ExprKind::MethodCall(name, recv, _, _) = expr.kind
+    if let ExprKind::MethodCall(name, recv, [], _) = expr.kind
         && is_trait_method(cx, expr, sym::IntoIterator)
         && name.ident.name == sym::into_iter
     {
@@ -173,7 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 }
             },
 
-            ExprKind::MethodCall(name, recv, ..) => {
+            ExprKind::MethodCall(name, recv, [], _) => {
                 if is_trait_method(cx, e, sym::Into) && name.ident.as_str() == "into" {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);

@@ -51,9 +51,8 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                         None
                     }
                 },
-                hir::ExprKind::Call(to_digits_call, to_digit_args) => {
-                    if let [char_arg, radix_arg] = *to_digit_args
-                        && let hir::ExprKind::Path(to_digits_path) = &to_digits_call.kind
+                hir::ExprKind::Call(to_digits_call, [char_arg, radix_arg]) => {
+                    if let hir::ExprKind::Path(to_digits_path) = &to_digits_call.kind
                         && let to_digits_call_res = cx.qpath_res(to_digits_path, to_digits_call.hir_id)
                         && let Some(to_digits_def_id) = to_digits_call_res.opt_def_id()
                         && match_def_path(cx, to_digits_def_id, &[

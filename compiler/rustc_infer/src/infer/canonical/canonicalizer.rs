@@ -17,7 +17,8 @@ use tracing::debug;
 
 use crate::infer::InferCtxt;
 use crate::infer::canonical::{
-    Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
+    Canonical, CanonicalQueryInput, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind,
+    OriginalQueryValues,
 };
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -40,12 +41,12 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         value: ty::ParamEnvAnd<'tcx, V>,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonical<'tcx, ty::ParamEnvAnd<'tcx, V>>
+    ) -> CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, V>>
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
         let (param_env, value) = value.into_parts();
-        let mut param_env = self.tcx.canonical_param_env_cache.get_or_insert(
+        let param_env = self.tcx.canonical_param_env_cache.get_or_insert(
             self.tcx,
             param_env,
             query_state,
@@ -62,9 +63,7 @@ impl<'tcx> InferCtxt<'tcx> {
             },
         );
 
-        param_env.defining_opaque_types = self.defining_opaque_types;
-
-        Canonicalizer::canonicalize_with_base(
+        let canonical = Canonicalizer::canonicalize_with_base(
             param_env,
             value,
             Some(self),
@@ -72,7 +71,8 @@ impl<'tcx> InferCtxt<'tcx> {
             &CanonicalizeAllFreeRegions,
             query_state,
         )
-        .unchecked_map(|(param_env, value)| param_env.and(value))
+        .unchecked_map(|(param_env, value)| param_env.and(value));
+        CanonicalQueryInput { canonical, defining_opaque_types: self.defining_opaque_types() }
     }
 
     /// Canonicalizes a query *response* `V`. When we canonicalize a
@@ -544,7 +544,6 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             max_universe: ty::UniverseIndex::ROOT,
             variables: List::empty(),
             value: (),
-            defining_opaque_types: infcx.map(|i| i.defining_opaque_types).unwrap_or_default(),
         };
         Canonicalizer::canonicalize_with_base(
             base,
@@ -614,15 +613,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .max()
             .unwrap_or(ty::UniverseIndex::ROOT);
 
-        assert!(
-            !infcx.is_some_and(|infcx| infcx.defining_opaque_types != base.defining_opaque_types)
-        );
-        Canonical {
-            max_universe,
-            variables: canonical_variables,
-            value: (base.value, out_value),
-            defining_opaque_types: base.defining_opaque_types,
-        }
+        Canonical { max_universe, variables: canonical_variables, value: (base.value, out_value) }
     }
 
     /// Creates a canonical variable replacing `kind` from the input,

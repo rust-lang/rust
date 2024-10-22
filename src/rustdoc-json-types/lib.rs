@@ -2,18 +2,35 @@
 //!
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
+//!
+//! We expose a `rustc-hash` feature that is disabled by default. This feature switches the
+//! [`std::collections::HashMap`] for [`rustc_hash::FxHashMap`] to improve the performance of said
+//! `HashMap` in specific situations.
+//!
+//! `cargo-semver-checks` for example, saw a [-3% improvement][1] when benchmarking using the
+//! `aws_sdk_ec2` JSON output (~500MB of JSON). As always, we recommend measuring the impact before
+//! turning this feature on, as [`FxHashMap`][2] only concerns itself with hash speed, and may
+//! increase the number of collisions.
+//!
+//! [1]: https://rust-lang.zulipchat.com/#narrow/channel/266220-t-rustdoc/topic/rustc-hash.20and.20performance.20of.20rustdoc-types/near/474855731
+//! [2]: https://crates.io/crates/rustc-hash
 
+#[cfg(not(feature = "rustc-hash"))]
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub use rustc_hash::FxHashMap;
+#[cfg(feature = "rustc-hash")]
+use rustc_hash::FxHashMap as HashMap;
 use serde::{Deserialize, Serialize};
+
+pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 
 /// The version of JSON output that this crate represents.
 ///
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 35;
+pub const FORMAT_VERSION: u32 = 36;
 
 /// The root of the emitted JSON blob.
 ///
@@ -30,11 +47,11 @@ pub struct Crate {
     pub includes_private: bool,
     /// A collection of all items in the local crate as well as some external traits and their
     /// items that are referenced locally.
-    pub index: FxHashMap<Id, Item>,
+    pub index: HashMap<Id, Item>,
     /// Maps IDs to fully qualified paths and other info helpful for generating links.
-    pub paths: FxHashMap<Id, ItemSummary>,
+    pub paths: HashMap<Id, ItemSummary>,
     /// Maps `crate_id` of items to a crate name and html_root_url if it exists.
-    pub external_crates: FxHashMap<u32, ExternalCrate>,
+    pub external_crates: HashMap<u32, ExternalCrate>,
     /// A single version number to be used in the future when making backwards incompatible changes
     /// to the JSON output.
     pub format_version: u32,
@@ -95,7 +112,7 @@ pub struct Item {
     /// Some("") if there is some documentation but it is empty (EG `#[doc = ""]`).
     pub docs: Option<String>,
     /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
-    pub links: FxHashMap<String, Id>,
+    pub links: HashMap<String, Id>,
     /// Stringified versions of the attributes on this item (e.g. `"#[inline]"`)
     pub attrs: Vec<String>,
     /// Information about the item’s deprecation, if present.
@@ -300,10 +317,10 @@ pub enum AssocItemConstraintKind {
 // FIXME(aDotInTheVoid): Consider making this non-public in rustdoc-types.
 pub struct Id(pub u32);
 
-/// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any aditional info.
+/// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any additional info.
 ///
 /// Part of [`ItemSummary`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemKind {
     /// A module declaration, e.g. `mod foo;` or `mod foo {}`
@@ -693,7 +710,7 @@ pub enum Abi {
     Aapcs { unwind: bool },
     /// Can be specified as `extern "win64"`.
     Win64 { unwind: bool },
-    /// Can be specifed as `extern "sysv64"`.
+    /// Can be specified as `extern "sysv64"`.
     SysV64 { unwind: bool },
     /// Can be specified as `extern "system"`.
     System { unwind: bool },
@@ -887,7 +904,7 @@ pub enum GenericBound {
 }
 
 /// A set of modifiers applied to a trait.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TraitBoundModifier {
     /// Marks the absence of a modifier.
@@ -991,7 +1008,7 @@ pub enum Type {
     QualifiedPath {
         /// The name of the associated type in the parent type.
         ///
-        /// ```ignore (incomplete expresssion)
+        /// ```ignore (incomplete expression)
         /// <core::array::IntoIter<u32, 42> as Iterator>::Item
         /// //                                            ^^^^
         /// ```
@@ -1078,12 +1095,15 @@ pub struct FunctionSignature {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Trait {
     /// Whether the trait is marked `auto` and is thus implemented automatically
-    /// for all aplicable types.
+    /// for all applicable types.
     pub is_auto: bool,
     /// Whether the trait is marked as `unsafe`.
     pub is_unsafe: bool,
-    /// Whether the trait is [object safe](https://doc.rust-lang.org/reference/items/traits.html#object-safety).
-    pub is_object_safe: bool,
+    // FIXME(dyn_compat_renaming): Update the URL once the Reference is updated and hits stable.
+    /// Whether the trait is [dyn compatible](https://doc.rust-lang.org/reference/items/traits.html#object-safety)[^1].
+    ///
+    /// [^1]: Formerly known as "object safe".
+    pub is_dyn_compatible: bool,
     /// Associated [`Item`]s that can/must be implemented by the `impl` blocks.
     pub items: Vec<Id>,
     /// Information about the type parameters and `where` clauses of the trait.
@@ -1185,7 +1205,7 @@ pub struct ProcMacro {
 }
 
 /// The way a [`ProcMacro`] is declared to be used.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MacroKind {
     /// A bang macro `foo!()`.

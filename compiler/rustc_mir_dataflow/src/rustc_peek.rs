@@ -40,8 +40,7 @@ pub fn sanity_check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         debug!("running rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
     }
 
-    let param_env = tcx.param_env(def_id);
-    let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
+    let move_data = MoveData::gather_moves(body, tcx, |_| true);
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
         let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)

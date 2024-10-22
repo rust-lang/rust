@@ -1,4 +1,6 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(strict_provenance))]
+#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 #![cfg_attr(test, feature(cfg_match))]
 #![feature(alloc_layout_extra)]
@@ -21,7 +23,7 @@
 #![feature(const_likely)]
 #![feature(const_nonnull_new)]
 #![feature(const_option_ext)]
-#![feature(const_pin)]
+#![feature(const_pin_2)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_three_way_compare)]
 #![feature(const_trait_impl)]
@@ -85,7 +87,6 @@
 #![feature(std_internals)]
 #![feature(step_trait)]
 #![feature(str_internals)]
-#![feature(strict_provenance)]
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(test)]
 #![feature(trait_upcasting)]

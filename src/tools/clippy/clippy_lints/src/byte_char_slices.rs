@@ -41,7 +41,7 @@ impl EarlyLintPass for ByteCharSlice {
                 "can be more succinctly written as a byte str",
                 "try",
                 format!("b\"{slice}\""),
-                Applicability::MaybeIncorrect,
+                Applicability::MachineApplicable,
             );
         }
     }

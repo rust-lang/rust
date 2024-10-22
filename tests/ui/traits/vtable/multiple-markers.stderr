@@ -14,7 +14,6 @@ error: vtable entries for `<S as B>`: [
            MetadataSize,
            MetadataAlign,
            Method(<S as T>::method),
-           TraitVPtr(<S as M2>),
        ]
   --> $DIR/multiple-markers.rs:24:1
    |
@@ -26,8 +25,6 @@ error: vtable entries for `<S as C>`: [
            MetadataSize,
            MetadataAlign,
            Method(<S as T>::method),
-           TraitVPtr(<S as M1>),
-           TraitVPtr(<S as M2>),
        ]
   --> $DIR/multiple-markers.rs:27:1
    |
@@ -39,9 +36,6 @@ error: vtable entries for `<S as D>`: [
            MetadataSize,
            MetadataAlign,
            Method(<S as T>::method),
-           TraitVPtr(<S as M0>),
-           TraitVPtr(<S as M1>),
-           TraitVPtr(<S as M2>),
        ]
   --> $DIR/multiple-markers.rs:30:1
    |

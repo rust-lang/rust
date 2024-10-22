@@ -43,7 +43,6 @@ impl MacroRefData {
 }
 
 #[derive(Default)]
-#[expect(clippy::module_name_repetitions)]
 pub struct MacroUseImports {
     /// the actual import path used and the span of the attribute above it. The value is
     /// the location, where the lint should be emitted.

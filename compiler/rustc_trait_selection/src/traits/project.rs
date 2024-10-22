@@ -1642,24 +1642,9 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
         sig,
     );
 
-    let host_effect_param = match *fn_type.kind() {
-        ty::FnDef(def_id, args) => tcx
-            .generics_of(def_id)
-            .host_effect_index
-            .map_or(tcx.consts.true_, |idx| args.const_at(idx)),
-        ty::FnPtr(..) => tcx.consts.true_,
-        _ => unreachable!("only expected FnPtr or FnDef in `confirm_fn_pointer_candidate`"),
-    };
-
-    confirm_callable_candidate(
-        selcx,
-        obligation,
-        sig,
-        util::TupleArgumentsFlag::Yes,
-        host_effect_param,
-    )
-    .with_addl_obligations(nested)
-    .with_addl_obligations(obligations)
+    confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
+        .with_addl_obligations(nested)
+        .with_addl_obligations(obligations)
 }
 
 fn confirm_closure_candidate<'cx, 'tcx>(
@@ -1739,16 +1724,9 @@ fn confirm_closure_candidate<'cx, 'tcx>(
 
     debug!(?obligation, ?closure_sig, ?obligations, "confirm_closure_candidate");
 
-    confirm_callable_candidate(
-        selcx,
-        obligation,
-        closure_sig,
-        util::TupleArgumentsFlag::No,
-        // FIXME(effects): This doesn't handle const closures correctly!
-        selcx.tcx().consts.true_,
-    )
-    .with_addl_obligations(nested)
-    .with_addl_obligations(obligations)
+    confirm_callable_candidate(selcx, obligation, closure_sig, util::TupleArgumentsFlag::No)
+        .with_addl_obligations(nested)
+        .with_addl_obligations(obligations)
 }
 
 fn confirm_callable_candidate<'cx, 'tcx>(
@@ -1756,7 +1734,6 @@ fn confirm_callable_candidate<'cx, 'tcx>(
     obligation: &ProjectionTermObligation<'tcx>,
     fn_sig: ty::PolyFnSig<'tcx>,
     flag: util::TupleArgumentsFlag,
-    fn_host_effect: ty::Const<'tcx>,
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
 
@@ -1771,7 +1748,6 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         obligation.predicate.self_ty(),
         fn_sig,
         flag,
-        fn_host_effect,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
         projection_term: ty::AliasTerm::new_from_args(tcx, fn_once_output_def_id, trait_ref.args),

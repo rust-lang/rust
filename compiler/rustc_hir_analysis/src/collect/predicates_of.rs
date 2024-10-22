@@ -16,7 +16,7 @@ use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
-use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason};
+use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter, RegionInferReason};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `explicit_predicates_of`, plus
@@ -181,9 +181,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
     if let Some(self_bounds) = is_trait {
-        let bounds = icx.lowerer().lower_mono_bounds(
+        let mut bounds = Bounds::default();
+        icx.lowerer().lower_bounds(
             tcx.types.self_param,
             self_bounds,
+            &mut bounds,
+            ty::List::empty(),
             PredicateFilter::All,
         );
         predicates.extend(bounds.clauses(tcx));
@@ -265,12 +268,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }
 
                 let mut bounds = Bounds::default();
-                icx.lowerer().lower_poly_bounds(
+                icx.lowerer().lower_bounds(
                     ty,
-                    bound_pred.bounds.iter(),
+                    bound_pred.bounds,
                     &mut bounds,
                     bound_vars,
-                    OnlySelfBounds(false),
+                    PredicateFilter::All,
                 );
                 predicates.extend(bounds.clauses(tcx));
                 effects_min_tys.extend(bounds.effects_min_tys());
@@ -626,7 +629,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
         bug!("trait_def_id {trait_def_id:?} is not an item");
     };
 
-    let (generics, bounds) = match item.kind {
+    let (generics, superbounds) = match item.kind {
         hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
         hir::ItemKind::TraitAlias(generics, supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
@@ -635,7 +638,8 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     let self_param_ty = tcx.types.self_param;
-    let superbounds = icx.lowerer().lower_mono_bounds(self_param_ty, bounds, filter);
+    let mut bounds = Bounds::default();
+    icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
 
     let where_bounds_that_match = icx.probe_ty_param_bounds_in_generics(
         generics,
@@ -646,7 +650,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
-        &*tcx.arena.alloc_from_iter(superbounds.clauses(tcx).chain(where_bounds_that_match));
+        &*tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
     // Now require that immediate supertraits are lowered, which will, in
@@ -825,20 +829,6 @@ impl<'tcx> ItemCtxt<'tcx> {
                 continue;
             };
 
-            // Subtle: If we're collecting `SelfAndAssociatedTypeBounds`, then we
-            // want to only consider predicates with `Self: ...`, but we don't want
-            // `OnlySelfBounds(true)` since we want to collect the nested associated
-            // type bound as well.
-            let (only_self_bounds, assoc_name) = match filter {
-                PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                    (OnlySelfBounds(false), None)
-                }
-                PredicateFilter::SelfOnly => (OnlySelfBounds(true), None),
-                PredicateFilter::SelfThatDefines(assoc_name) => {
-                    (OnlySelfBounds(true), Some(assoc_name))
-                }
-            };
-
             let bound_ty = if predicate.is_param_bound(param_def_id.to_def_id()) {
                 ty
             } else if matches!(filter, PredicateFilter::All) {
@@ -848,33 +838,15 @@ impl<'tcx> ItemCtxt<'tcx> {
             };
 
             let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
-            self.lowerer().lower_poly_bounds(
+            self.lowerer().lower_bounds(
                 bound_ty,
-                predicate.bounds.iter().filter(|bound| {
-                    assoc_name
-                        .map_or(true, |assoc_name| self.bound_defines_assoc_item(bound, assoc_name))
-                }),
+                predicate.bounds,
                 &mut bounds,
                 bound_vars,
-                only_self_bounds,
+                filter,
             );
         }
 
         bounds.clauses(self.tcx).collect()
-    }
-
-    #[instrument(level = "trace", skip(self))]
-    fn bound_defines_assoc_item(&self, b: &hir::GenericBound<'_>, assoc_name: Ident) -> bool {
-        match b {
-            hir::GenericBound::Trait(poly_trait_ref) => {
-                let trait_ref = &poly_trait_ref.trait_ref;
-                if let Some(trait_did) = trait_ref.trait_def_id() {
-                    self.tcx.trait_may_define_assoc_item(trait_did, assoc_name)
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        }
     }
 }

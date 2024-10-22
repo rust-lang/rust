@@ -83,8 +83,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         let (max_universe, variables) = canonicalizer.finalize();
 
-        let defining_opaque_types = delegate.defining_opaque_types();
-        Canonical { defining_opaque_types, max_universe, variables, value }
+        Canonical { max_universe, variables, value }
     }
 
     fn get_or_insert_bound_var(

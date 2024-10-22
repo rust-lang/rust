@@ -22,7 +22,7 @@ use rustc_middle::ty::{
     AdtDef, GenericArgKind, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt,
 };
-use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
+use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
@@ -36,36 +36,25 @@ use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_i
 use super::*;
 use crate::check::intrinsicck::InlineAsmCtxt;
 
-pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
-    match tcx.sess.target.is_abi_supported(abi) {
-        Some(true) => (),
-        Some(false) => {
-            struct_span_code_err!(
-                tcx.dcx(),
-                span,
-                E0570,
-                "`{abi}` is not a supported ABI for the current target",
-            )
-            .emit();
-        }
-        None => {
-            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message("use of calling convention not supported on this target");
-            });
-        }
+pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
+    if !tcx.sess.target.is_abi_supported(abi) {
+        struct_span_code_err!(
+            tcx.dcx(),
+            span,
+            E0570,
+            "`{abi}` is not a supported ABI for the current target",
+        )
+        .emit();
     }
 }
 
 pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
-    match tcx.sess.target.is_abi_supported(abi) {
-        Some(true) => (),
-        Some(false) | None => {
-            tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message(format!(
-                    "the calling convention {abi} is not supported on this target"
-                ));
-            });
-        }
+    if !tcx.sess.target.is_abi_supported(abi) {
+        tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
+            lint.primary_message(format!(
+                "the calling convention {abi} is not supported on this target"
+            ));
+        });
     }
 }
 
@@ -705,7 +694,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
                 return;
             };
-            check_abi(tcx, it.hir_id(), it.span, abi);
+            check_abi(tcx, it.span, abi);
 
             match abi {
                 Abi::RustIntrinsic => {
@@ -1037,7 +1026,11 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             return;
         }
 
-        if let Some(len) = len_const.try_eval_target_usize(tcx, tcx.param_env(def.did())) {
+        // FIXME(repr_simd): This check is nice, but perhaps unnecessary due to the fact
+        // we do not expect users to implement their own `repr(simd)` types. If they could,
+        // this check is easily side-steppable by hiding the const behind normalization.
+        // The consequence is that the error is, in general, only observable post-mono.
+        if let Some(len) = len_const.try_to_target_usize(tcx) {
             if len == 0 {
                 struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
                 return;

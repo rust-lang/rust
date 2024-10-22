@@ -1,3 +1,5 @@
+use std::ffi::CStr;
+
 use itertools::Itertools as _;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -132,7 +134,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
             .collect::<Vec<_>>();
         let initializer = cx.const_array(cx.type_ptr(), &name_globals);
 
-        let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), "__llvm_coverage_names");
+        let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), c"__llvm_coverage_names");
         llvm::set_global_constant(array, true);
         llvm::set_linkage(array, llvm::Linkage::InternalLinkage);
         llvm::set_initializer(array, initializer);
@@ -305,7 +307,7 @@ fn generate_coverage_map<'ll>(
 /// specific, well-known section and name.
 fn save_function_record(
     cx: &CodegenCx<'_, '_>,
-    covfun_section_name: &str,
+    covfun_section_name: &CStr,
     mangled_function_name: &str,
     source_hash: u64,
     filenames_ref: u64,

@@ -82,7 +82,7 @@ fn mutex_lock_call<'tcx>(
     expr: &'tcx Expr<'_>,
     op_mutex: Option<&'tcx Expr<'_>>,
 ) -> ControlFlow<&'tcx Expr<'tcx>> {
-    if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
+    if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
         && path.ident.as_str() == "lock"
         && let ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
         && is_type_diagnostic_item(cx, ty, sym::Mutex)

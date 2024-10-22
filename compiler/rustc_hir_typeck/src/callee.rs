@@ -537,40 +537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
                 if let ty::FnDef(def_id, _args) = *arg_ty.kind() {
-                    let fn_once_def_id =
-                        self.tcx.require_lang_item(hir::LangItem::FnOnce, Some(span));
-                    let fn_once_output_def_id =
-                        self.tcx.require_lang_item(hir::LangItem::FnOnceOutput, Some(span));
-                    if self.tcx.has_host_param(fn_once_def_id) {
-                        let const_param: ty::GenericArg<'tcx> =
-                            ([self.tcx.consts.false_, self.tcx.consts.true_])[idx].into();
-                        self.register_predicate(traits::Obligation::new(
-                            self.tcx,
-                            self.misc(span),
-                            self.param_env,
-                            ty::TraitRef::new(self.tcx, fn_once_def_id, [
-                                arg_ty.into(),
-                                fn_sig.inputs()[0].into(),
-                                const_param,
-                            ]),
-                        ));
-
-                        self.register_predicate(traits::Obligation::new(
-                            self.tcx,
-                            self.misc(span),
-                            self.param_env,
-                            ty::ProjectionPredicate {
-                                projection_term: ty::AliasTerm::new(
-                                    self.tcx,
-                                    fn_once_output_def_id,
-                                    [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],
-                                ),
-                                term: fn_sig.output().into(),
-                            },
-                        ));
-
-                        self.select_obligations_where_possible(|_| {});
-                    } else if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
+                    if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
                         self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
                     }
                 } else {

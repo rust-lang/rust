@@ -413,7 +413,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 self.selcx.infcx,
                 &mut self.universes,
                 constant,
-                |constant| constant.normalize(tcx, self.param_env),
+                |constant| constant.normalize_internal(tcx, self.param_env),
             )
         }
     }

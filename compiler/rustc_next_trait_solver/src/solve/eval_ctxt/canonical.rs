@@ -16,7 +16,7 @@ use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use crate::delegate::SolverDelegate;
@@ -60,7 +60,7 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical_goal = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize(
             self.delegate,
             CanonicalizeMode::Input,
             &mut orig_values,
@@ -71,7 +71,11 @@ where
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
-        (orig_values, canonical_goal)
+        let query_input = ty::CanonicalQueryInput {
+            canonical,
+            defining_opaque_types: self.delegate.defining_opaque_types(),
+        };
+        (orig_values, query_input)
     }
 
     /// To return the constraints of a canonical query to the caller, we canonicalize:
@@ -161,12 +165,22 @@ where
         // HACK: We bail with overflow if the response would have too many non-region
         // inference variables. This tends to only happen if we encounter a lot of
         // ambiguous alias types which get replaced with fresh inference variables
-        // during generalization. This prevents a hang in nalgebra.
-        let num_non_region_vars = canonical.variables.iter().filter(|c| !c.is_region()).count();
-        if num_non_region_vars > self.cx().recursion_limit() {
-            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
-                suggest_increasing_limit: true,
-            }));
+        // during generalization. This prevents hangs caused by an exponential blowup,
+        // see tests/ui/traits/next-solver/coherence-alias-hang.rs.
+        //
+        // We don't do so for `NormalizesTo` goals as we erased the expected term and
+        // bailing with overflow here would prevent us from detecting a type-mismatch,
+        // causing a coherence error in diesel, see #131969. We still bail with verflow
+        // when later returning from the parent AliasRelate goal.
+        if !self.is_normalizes_to_goal {
+            let num_non_region_vars =
+                canonical.variables.iter().filter(|c| !c.is_region() && c.is_existential()).count();
+            if num_non_region_vars > self.cx().recursion_limit() {
+                debug!(?num_non_region_vars, "too many inference variables -> overflow");
+                return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
+                    suggest_increasing_limit: true,
+                }));
+            }
         }
 
         Ok(canonical)

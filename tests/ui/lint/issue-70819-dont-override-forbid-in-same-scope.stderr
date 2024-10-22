@@ -1,9 +1,10 @@
-error: deny(unused) incompatible with previous forbid
-  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:21:13
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
    |
 LL |     #![forbid(unused)]
    |               ------ `forbid` level set here
 LL |     #![deny(unused)]
+LL |     #![warn(unused)]
    |             ^^^^^^ overruled by previous forbid
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

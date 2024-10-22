@@ -1,9 +1,10 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::trait_ref_of_method;
 use clippy_utils::ty::InteriorMut;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -132,8 +133,14 @@ impl<'tcx> MutableKeyType<'tcx> {
             )
         {
             let subst_ty = args.type_at(0);
-            if self.interior_mut.is_interior_mut_ty(cx, subst_ty) {
-                span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
+            if let Some(chain) = self.interior_mut.interior_mut_ty_chain(cx, subst_ty) {
+                span_lint_and_then(cx, MUTABLE_KEY_TYPE, span, "mutable key type", |diag| {
+                    for ty in chain.iter().rev() {
+                        diag.note(with_forced_trimmed_paths!(format!(
+                            "... because it contains `{ty}`, which has interior mutability"
+                        )));
+                    }
+                });
             }
         }
     }

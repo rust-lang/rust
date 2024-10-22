@@ -187,5 +187,41 @@ LL -     r#"hello world"#;
 LL +     r"hello world";
    |
 
-error: aborting due to 15 previous errors
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:30:14
+   |
+LL |     println!(r#"SELECT * FROM posts"#);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove all the hashes around the string literal
+   |
+LL -     println!(r#"SELECT * FROM posts"#);
+LL +     println!(r"SELECT * FROM posts");
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:31:14
+   |
+LL |     println!(r##"SELECT * FROM "posts""##);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove one hash from both sides of the string literal
+   |
+LL -     println!(r##"SELECT * FROM "posts""##);
+LL +     println!(r#"SELECT * FROM "posts""#);
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:32:14
+   |
+LL |     println!(r##"SELECT * FROM "posts""##);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove one hash from both sides of the string literal
+   |
+LL -     println!(r##"SELECT * FROM "posts""##);
+LL +     println!(r#"SELECT * FROM "posts""#);
+   |
+
+error: aborting due to 18 previous errors
 

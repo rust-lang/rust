@@ -38,13 +38,11 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
         if expr.span.from_expansion() {
             return;
         }
-        if let hir::ExprKind::MethodCall(path, recv, args, ..) = expr.kind
+        if let hir::ExprKind::MethodCall(path, recv, [map_arg], ..) = expr.kind
             && let Some(sym::Option | sym::Result) = get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(recv))
         {
-            let (constructor_path, constructor_item) = if let hir::ExprKind::Call(constructor, constructor_args) =
-                recv.kind
+            let (constructor_path, constructor_item) = if let hir::ExprKind::Call(constructor, [arg, ..]) = recv.kind
                 && let hir::ExprKind::Path(constructor_path) = constructor.kind
-                && let Some(arg) = constructor_args.first()
             {
                 if constructor.span.from_expansion() || arg.span.from_expansion() {
                     return;
@@ -70,9 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
                 _ => return,
             }
 
-            if let Some(map_arg) = args.first()
-                && let hir::ExprKind::Path(fun) = map_arg.kind
-            {
+            if let hir::ExprKind::Path(fun) = map_arg.kind {
                 if map_arg.span.from_expansion() {
                     return;
                 }

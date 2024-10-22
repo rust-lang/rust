@@ -580,9 +580,6 @@ declare_features! (
     (incomplete, repr128, "1.16.0", Some(56071)),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (unstable, repr_simd, "1.4.0", Some(27731)),
-    /// Allows enums like Result<T, E> to be used across FFI, if T's niche value can
-    /// be used to describe E or vise-versa.
-    (unstable, result_ffi_guarantees, "1.80.0", Some(110503)),
     /// Allows bounding the return type of AFIT/RPITIT.
     (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
@@ -598,7 +595,7 @@ declare_features! (
     /// Allows attributes on expressions and non-item statements.
     (unstable, stmt_expr_attributes, "1.6.0", Some(15701)),
     /// Allows lints part of the strict provenance effort.
-    (unstable, strict_provenance, "1.61.0", Some(95228)),
+    (unstable, strict_provenance_lints, "1.61.0", Some(130351)),
     /// Allows string patterns to dereference values to match them.
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
     /// Allows the use of `#[target_feature]` on safe functions.

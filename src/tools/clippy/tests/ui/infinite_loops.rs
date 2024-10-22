@@ -390,4 +390,42 @@ fn span_inside_fn() {
     }
 }
 
+fn continue_outer() {
+    // Should not lint (issue #13511)
+    let mut count = 0;
+    'outer: loop {
+        if count != 0 {
+            break;
+        }
+
+        loop {
+            count += 1;
+            continue 'outer;
+        }
+    }
+
+    // This should lint as we continue the loop itself
+    'infinite: loop {
+        //~^ ERROR: infinite loop detected
+        loop {
+            continue 'infinite;
+        }
+    }
+    // This should lint as we continue an inner loop
+    loop {
+        //~^ ERROR: infinite loop detected
+        'inner: loop {
+            loop {
+                continue 'inner;
+            }
+        }
+    }
+
+    // This should lint as we continue the loop itself
+    loop {
+        //~^ ERROR: infinite loop detected
+        continue;
+    }
+}
+
 fn main() {}

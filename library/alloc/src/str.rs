@@ -20,7 +20,7 @@ pub use core::str::SplitInclusive;
 pub use core::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
-use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
+use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher, Utf8Pattern};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Bytes, CharIndices, Chars, from_utf8, from_utf8_mut};
 #[stable(feature = "str_escape", since = "1.34.0")]
@@ -269,6 +269,18 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn replace<P: Pattern>(&self, from: P, to: &str) -> String {
+        // Fast path for ASCII to ASCII case.
+
+        if let Some(from_byte) = match from.as_utf8_pattern() {
+            Some(Utf8Pattern::StringPattern([from_byte])) => Some(*from_byte),
+            Some(Utf8Pattern::CharPattern(c)) => c.as_ascii().map(|ascii_char| ascii_char.to_u8()),
+            _ => None,
+        } {
+            if let [to_byte] = to.as_bytes() {
+                return unsafe { replace_ascii(self.as_bytes(), from_byte, *to_byte) };
+            }
+        }
+
         let mut result = String::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
@@ -685,4 +697,15 @@ pub fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
 
         (ascii_string, rest)
     }
+}
+#[inline]
+#[cfg(not(test))]
+#[cfg(not(no_global_oom_handling))]
+#[allow(dead_code)]
+/// Faster implementation of string replacement for ASCII to ASCII cases.
+/// Should produce fast vectorized code.
+unsafe fn replace_ascii(utf8_bytes: &[u8], from: u8, to: u8) -> String {
+    let result: Vec<u8> = utf8_bytes.iter().map(|b| if *b == from { to } else { *b }).collect();
+    // SAFETY: We replaced ascii with ascii on valid utf8 strings.
+    unsafe { String::from_utf8_unchecked(result) }
 }

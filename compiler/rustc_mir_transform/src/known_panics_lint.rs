@@ -232,7 +232,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         f(self)
-            .map_err(|err| {
+            .map_err_info(|err| {
                 trace!("InterpCx operation failed: {:?}", err);
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
@@ -602,7 +602,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Len(place) => {
                 let len = if let ty::Array(_, n) = place.ty(self.local_decls(), self.tcx).ty.kind()
                 {
-                    n.try_eval_target_usize(self.tcx, self.param_env)?
+                    n.try_to_target_usize(self.tcx)?
                 } else {
                     match self.get_const(place)? {
                         Value::Immediate(src) => src.len(&self.ecx).discard_err()?,

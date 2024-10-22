@@ -1,6 +1,7 @@
-thread 'main' panicked at $DIR/panic-in-ffi.rs:12:5:
+thread 'main' panicked at $DIR/panic-in-ffi.rs:21:5:
 Test
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Noisy Drop
 thread 'main' panicked at core/src/panicking.rs:$LINE:$COL:
 panic in a function that cannot unwind
 stack backtrace:

@@ -65,9 +65,6 @@ use crate::require_c_abi_if_c_variadic;
 pub struct GenericPathSegment(pub DefId, pub usize);
 
 #[derive(Copy, Clone, Debug)]
-pub struct OnlySelfBounds(pub bool);
-
-#[derive(Copy, Clone, Debug)]
 pub enum PredicateFilter {
     /// All predicates may be implied by the trait.
     All,
@@ -76,7 +73,8 @@ pub enum PredicateFilter {
     SelfOnly,
 
     /// Only traits that reference `Self: ..` and define an associated type
-    /// with the given ident are implied by the trait.
+    /// with the given ident are implied by the trait. This mode exists to
+    /// side-step query cycles when lowering associated types.
     SelfThatDefines(Ident),
 
     /// Only traits that reference `Self: ..` and their associated type bounds.
@@ -336,14 +334,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) = self.lower_generic_args_of_path(
-            span,
-            def_id,
-            &[],
-            item_segment,
-            None,
-            ty::BoundConstness::NotConst,
-        );
+        let (args, _) = self.lower_generic_args_of_path(span, def_id, &[], item_segment, None);
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((def_id, item_segment, span)));
         }
@@ -392,7 +383,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         parent_args: &[ty::GenericArg<'tcx>],
         segment: &hir::PathSegment<'tcx>,
         self_ty: Option<Ty<'tcx>>,
-        constness: ty::BoundConstness,
     ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -415,7 +405,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assert!(self_ty.is_none());
         }
 
-        let mut arg_count = check_generic_arg_count(
+        let arg_count = check_generic_arg_count(
             self,
             def_id,
             segment,
@@ -573,16 +563,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
-        if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
-            && generics.has_self
-            && !tcx.is_const_trait(def_id)
-        {
-            let reported = self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
-                span,
-                modifier: constness.as_str(),
-            });
-            arg_count.correct = Err(GenericArgCountMismatch { reported, invalid_args: vec![] });
-        }
 
         let mut args_ctx = GenericArgsCtxt {
             lowerer: self,
@@ -614,14 +594,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         parent_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
         debug!(?span, ?item_def_id, ?item_segment);
-        let (args, _) = self.lower_generic_args_of_path(
-            span,
-            item_def_id,
-            parent_args,
-            item_segment,
-            None,
-            ty::BoundConstness::NotConst,
-        );
+        let (args, _) =
+            self.lower_generic_args_of_path(span, item_def_id, parent_args, item_segment, None);
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((item_def_id, item_segment, span)));
         }
@@ -647,7 +621,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self_ty,
             trait_ref.path.segments.last().unwrap(),
             true,
-            ty::BoundConstness::NotConst,
         )
     }
 
@@ -679,11 +652,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         trait_ref: &hir::TraitRef<'tcx>,
         span: Span,
-        constness: ty::BoundConstness,
+        constness: Option<ty::BoundConstness>,
         polarity: ty::PredicatePolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
-        only_self_bounds: OnlySelfBounds,
+        predicate_filter: PredicateFilter,
     ) -> GenericArgCountResult {
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
         let trait_segment = trait_ref.path.segments.last().unwrap();
@@ -700,8 +673,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &[],
             trait_segment,
             Some(self_ty),
-            constness,
         );
+
+        if let Some(constness) = constness
+            && !self.tcx().is_const_trait(trait_def_id)
+        {
+            self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
+                span: trait_ref.path.span,
+                modifier: constness.as_str(),
+            });
+        }
 
         let tcx = self.tcx();
         let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
@@ -720,7 +701,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             polarity,
             constness,
-            only_self_bounds,
+            predicate_filter,
         );
 
         let mut dup_constraints = FxIndexMap::default();
@@ -744,7 +725,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 bounds,
                 &mut dup_constraints,
                 constraint.span,
-                only_self_bounds,
+                predicate_filter,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
@@ -762,19 +743,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self_ty: Ty<'tcx>,
         trait_segment: &hir::PathSegment<'tcx>,
         is_impl: bool,
-        // FIXME(effects): Move all host param things in HIR ty lowering to AST lowering.
-        constness: ty::BoundConstness,
     ) -> ty::TraitRef<'tcx> {
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
-        let (generic_args, _) = self.lower_generic_args_of_path(
-            span,
-            trait_def_id,
-            &[],
-            trait_segment,
-            Some(self_ty),
-            constness,
-        );
+        let (generic_args, _) =
+            self.lower_generic_args_of_path(span, trait_def_id, &[], trait_segment, Some(self_ty));
         if let Some(c) = trait_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((trait_def_id, trait_segment, span)));
         }
@@ -1542,7 +1515,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         item_def_id: DefId,
         trait_segment: &hir::PathSegment<'tcx>,
         item_segment: &hir::PathSegment<'tcx>,
-        constness: ty::BoundConstness,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
 
@@ -1555,7 +1527,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?self_ty);
 
         let trait_ref =
-            self.lower_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false, constness);
+            self.lower_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false);
         debug!(?trait_ref);
 
         let item_args =
@@ -1918,7 +1890,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     def_id,
                     &path.segments[path.segments.len() - 2],
                     path.segments.last().unwrap(),
-                    ty::BoundConstness::NotConst,
                 )
             }
             Res::PrimTy(prim_ty) => {
@@ -2151,7 +2122,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &[],
                     &hir::PathSegment::invalid(),
                     None,
-                    ty::BoundConstness::NotConst,
                 );
                 tcx.at(span).type_of(def_id).instantiate(tcx, args)
             }

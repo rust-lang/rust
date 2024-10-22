@@ -3,8 +3,8 @@ use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    AssocItemConstraint, GenericArg, GenericBound, GenericBounds, PredicateOrigin, TraitBoundModifier,
-    TyKind, WherePredicate,
+    AssocItemConstraint, GenericArg, GenericBound, GenericBounds, PredicateOrigin, TraitBoundModifier, TyKind,
+    WherePredicate,
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -190,15 +190,6 @@ fn is_same_generics<'tcx>(
         .enumerate()
         .skip(1) // skip `Self` implicit arg
         .all(|(arg_index, arg)| {
-            if [
-                implied_by_generics.host_effect_index,
-                implied_generics.host_effect_index,
-            ]
-            .contains(&Some(arg_index))
-            {
-                // skip host effect params in determining whether generics are same
-                return true;
-            }
             if let Some(ty) = arg.as_type() {
                 if let &ty::Param(ty::ParamTy { index, .. }) = ty.kind()
                     // `index == 0` means that it's referring to `Self`,

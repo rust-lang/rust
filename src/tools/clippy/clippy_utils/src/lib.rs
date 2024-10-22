@@ -3,6 +3,7 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_private)]
@@ -128,7 +129,6 @@ use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
-
 use rustc_middle::hir::nested_filter;
 
 #[macro_export]

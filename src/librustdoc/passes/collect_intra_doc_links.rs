@@ -1091,7 +1091,6 @@ impl LinkCollector<'_, '_> {
             // resolutions are cached, for other links we want to report an error every
             // time so they are not cached.
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
-            false,
         )?;
 
         if resolved.len() > 1 {
@@ -1404,9 +1403,6 @@ impl LinkCollector<'_, '_> {
         // If errors are cached then they are only reported on first occurrence
         // which we want in some cases but not in others.
         cache_errors: bool,
-        // If this call is intended to be recoverable, then pass true to silence.
-        // This is only recoverable when path is failed to resolved.
-        recoverable: bool,
     ) -> Option<Vec<(Res, Option<UrlFragment>)>> {
         if let Some(res) = self.visited_links.get(&key) {
             if res.is_some() || cache_errors {
@@ -1414,7 +1410,7 @@ impl LinkCollector<'_, '_> {
             }
         }
 
-        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone(), recoverable);
+        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone());
 
         // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
         // However I'm not sure how to check that across crates.
@@ -1463,14 +1459,10 @@ impl LinkCollector<'_, '_> {
     }
 
     /// After parsing the disambiguator, resolve the main part of the link.
-    // FIXME(jynelson): wow this is just so much
     fn resolve_with_disambiguator(
         &mut self,
         key: &ResolutionInfo,
         diag: DiagnosticInfo<'_>,
-        // If this call is intended to be recoverable, then pass true to silence.
-        // This is only recoverable when path is failed to resolved.
-        recoverable: bool,
     ) -> Vec<(Res, Option<DefId>)> {
         let disambiguator = key.dis;
         let path_str = &key.path_str;
@@ -1500,9 +1492,7 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        if !recoverable {
-                            resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
-                        }
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
                         return vec![];
                     }
                 }
@@ -1539,15 +1529,13 @@ impl LinkCollector<'_, '_> {
                     .fold(0, |acc, res| if let Ok(res) = res { acc + res.len() } else { acc });
 
                 if len == 0 {
-                    if !recoverable {
-                        resolution_failure(
-                            self,
-                            diag,
-                            path_str,
-                            disambiguator,
-                            candidates.into_iter().filter_map(|res| res.err()).collect(),
-                        );
-                    }
+                    resolution_failure(
+                        self,
+                        diag,
+                        path_str,
+                        disambiguator,
+                        candidates.into_iter().filter_map(|res| res.err()).collect(),
+                    );
                     return vec![];
                 } else if len == 1 {
                     candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()

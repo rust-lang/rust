@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -29,7 +27,7 @@ use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{PathBufExt, add_dylib_path, logv, static_regex};
-use crate::{ColorConfig, json};
+use crate::{ColorConfig, json, stamp_file_path};
 
 mod debugger;
 
@@ -468,7 +466,19 @@ impl<'test> TestCx<'test> {
 
         if let Some(revision) = self.revision {
             let normalized_revision = normalize_revision(revision);
-            cmd.args(&["--cfg", &normalized_revision]);
+            let cfg_arg = ["--cfg", &normalized_revision];
+            let arg = format!("--cfg={normalized_revision}");
+            if self
+                .props
+                .compile_flags
+                .windows(2)
+                .any(|args| args == cfg_arg || args[0] == arg || args[1] == arg)
+            {
+                panic!(
+                    "error: redundant cfg argument `{normalized_revision}` is already created by the revision"
+                );
+            }
+            cmd.args(cfg_arg);
         }
 
         if !self.props.no_auto_check_cfg {
@@ -1885,7 +1895,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn compare_to_default_rustdoc(&mut self, out_dir: &Path) {
-        if !self.config.has_tidy {
+        if !self.config.has_html_tidy {
             return;
         }
         println!("info: generating a diff against nightly rustdoc");
@@ -2595,8 +2605,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let stamp = crate::stamp(&self.config, self.testpaths, self.revision);
-        fs::write(&stamp, compute_stamp_hash(&self.config)).unwrap();
+        let stamp_file_path = stamp_file_path(&self.config, self.testpaths, self.revision);
+        fs::write(&stamp_file_path, compute_stamp_hash(&self.config)).unwrap();
     }
 
     fn init_incremental_test(&self) {

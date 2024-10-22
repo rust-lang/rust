@@ -19,9 +19,7 @@ use tracing::{debug, instrument};
 use super::errors::GenericsArgsErrExtend;
 use crate::bounds::Bounds;
 use crate::errors;
-use crate::hir_ty_lowering::{
-    AssocItemQSelf, HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason,
-};
+use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer, PredicateFilter, RegionInferReason};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `Sized` bound to the `bounds` if appropriate.
@@ -144,31 +142,44 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// There is an implied binder around `param_ty` and `hir_bounds`.
     /// See `lower_poly_trait_ref` for more details.
     #[instrument(level = "debug", skip(self, hir_bounds, bounds))]
-    pub(crate) fn lower_poly_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
+    pub(crate) fn lower_bounds<'hir, I: IntoIterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
         hir_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
-        only_self_bounds: OnlySelfBounds,
+        predicate_filter: PredicateFilter,
     ) where
         'tcx: 'hir,
     {
         for hir_bound in hir_bounds {
+            // In order to avoid cycles, when we're lowering `SelfThatDefines`,
+            // we skip over any traits that don't define the given associated type.
+
+            if let PredicateFilter::SelfThatDefines(assoc_name) = predicate_filter {
+                if let Some(trait_ref) = hir_bound.trait_ref()
+                    && let Some(trait_did) = trait_ref.trait_def_id()
+                    && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
+                {
+                    // Okay
+                } else {
+                    continue;
+                }
+            }
+
             match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref) => {
                     let (constness, polarity) = match poly_trait_ref.modifiers {
                         hir::TraitBoundModifier::Const => {
-                            (ty::BoundConstness::Const, ty::PredicatePolarity::Positive)
+                            (Some(ty::BoundConstness::Const), ty::PredicatePolarity::Positive)
                         }
-                        hir::TraitBoundModifier::MaybeConst => {
-                            (ty::BoundConstness::ConstIfConst, ty::PredicatePolarity::Positive)
-                        }
-                        hir::TraitBoundModifier::None => {
-                            (ty::BoundConstness::NotConst, ty::PredicatePolarity::Positive)
-                        }
+                        hir::TraitBoundModifier::MaybeConst => (
+                            Some(ty::BoundConstness::ConstIfConst),
+                            ty::PredicatePolarity::Positive,
+                        ),
+                        hir::TraitBoundModifier::None => (None, ty::PredicatePolarity::Positive),
                         hir::TraitBoundModifier::Negative => {
-                            (ty::BoundConstness::NotConst, ty::PredicatePolarity::Negative)
+                            (None, ty::PredicatePolarity::Negative)
                         }
                         hir::TraitBoundModifier::Maybe => continue,
                     };
@@ -179,7 +190,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         polarity,
                         param_ty,
                         bounds,
-                        only_self_bounds,
+                        predicate_filter,
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
@@ -200,56 +211,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    /// Lower HIR bounds into `bounds` given the self type `param_ty` and *no* overarching late-bound vars.
-    ///
-    /// ### Example
-    ///
-    /// ```ignore (illustrative)
-    /// fn foo<T: Bar + Baz>() { }
-    /// //     ^  ^^^^^^^^^ hir_bounds
-    /// //     param_ty
-    /// ```
-    pub(crate) fn lower_mono_bounds(
-        &self,
-        param_ty: Ty<'tcx>,
-        hir_bounds: &[hir::GenericBound<'tcx>],
-        filter: PredicateFilter,
-    ) -> Bounds<'tcx> {
-        let mut bounds = Bounds::default();
-
-        let only_self_bounds = match filter {
-            PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                OnlySelfBounds(false)
-            }
-            PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => OnlySelfBounds(true),
-        };
-
-        self.lower_poly_bounds(
-            param_ty,
-            hir_bounds.iter().filter(|bound| match filter {
-                PredicateFilter::All
-                | PredicateFilter::SelfOnly
-                | PredicateFilter::SelfAndAssociatedTypeBounds => true,
-                PredicateFilter::SelfThatDefines(assoc_name) => {
-                    if let Some(trait_ref) = bound.trait_ref()
-                        && let Some(trait_did) = trait_ref.trait_def_id()
-                        && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
-                    {
-                        true
-                    } else {
-                        false
-                    }
-                }
-            }),
-            &mut bounds,
-            ty::List::empty(),
-            only_self_bounds,
-        );
-        debug!(?bounds);
-
-        bounds
-    }
-
     /// Lower an associated item constraint from the HIR into `bounds`.
     ///
     /// ### A Note on Binders
@@ -267,7 +228,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Bounds<'tcx>,
         duplicates: &mut FxIndexMap<DefId, Span>,
         path_span: Span,
-        only_self_bounds: OnlySelfBounds,
+        predicate_filter: PredicateFilter,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
 
@@ -444,21 +405,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Lower a constraint like `Item: Debug` as found in HIR bound `T: Iterator<Item: Debug>`
             // to a bound involving a projection: `<T as Iterator>::Item: Debug`.
             hir::AssocItemConstraintKind::Bound { bounds: hir_bounds } => {
-                // NOTE: If `only_self_bounds` is true, do NOT expand this associated type bound into
-                // a trait predicate, since we only want to add predicates for the `Self` type.
-                if !only_self_bounds.0 {
-                    let projection_ty = projection_term
-                        .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
-                    // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
-                    // parameter to have a skipped binder.
-                    let param_ty = Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
-                    self.lower_poly_bounds(
-                        param_ty,
-                        hir_bounds.iter(),
-                        bounds,
-                        projection_ty.bound_vars(),
-                        only_self_bounds,
-                    );
+                match predicate_filter {
+                    PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {}
+                    PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                        let projection_ty = projection_term
+                            .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
+                        // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
+                        // parameter to have a skipped binder.
+                        let param_ty =
+                            Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
+                        self.lower_bounds(
+                            param_ty,
+                            hir_bounds,
+                            bounds,
+                            projection_ty.bound_vars(),
+                            predicate_filter,
+                        );
+                    }
                 }
             }
         }
@@ -516,7 +479,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self_ty,
                     trait_segment,
                     false,
-                    ty::BoundConstness::NotConst,
                 );
 
                 // SUBTLE: As noted at the end of `try_append_return_type_notation_params`
