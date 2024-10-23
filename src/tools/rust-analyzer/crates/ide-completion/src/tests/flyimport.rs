@@ -1669,3 +1669,45 @@ mod module {
         "#]],
     );
 }
+
+#[test]
+fn re_export_aliased_function() {
+    check(
+        r#"
+//- /lib.rs crate:bar
+pub fn func(_: i32) -> i32 {}
+
+//- /lib.rs crate:foo deps:bar
+pub use bar::func as my_func;
+
+//- /main.rs crate:main deps:foo
+fn main() {
+    m$0
+}
+"#,
+        expect![[r#"
+            fn my_func(…) (use foo::my_func) fn(i32) -> i32
+        "#]],
+    );
+}
+
+#[test]
+fn re_export_aliased_module() {
+    check(
+        r#"
+//- /lib.rs crate:bar
+pub mod baz {}
+
+//- /lib.rs crate:foo deps:bar
+pub use bar::baz as my_baz;
+
+//- /main.rs crate:main deps:foo
+fn main() {
+    m$0
+}
+"#,
+        expect![[r#"
+            md my_baz (use foo::my_baz)
+        "#]],
+    );
+}
