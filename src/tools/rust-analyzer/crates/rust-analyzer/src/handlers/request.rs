@@ -119,7 +119,7 @@ pub(crate) fn handle_analyzer_status(
     format_to!(buf, "{}", crate::version());
 
     buf.push_str("\nConfiguration: \n");
-    format_to!(buf, "{:?}", snap.config);
+    format_to!(buf, "{:#?}", snap.config);
 
     Ok(buf)
 }
