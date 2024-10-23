@@ -72,10 +72,26 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        Ok(buf.len())
+        let written =
+            unsafe { vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, buf.as_ptr(), buf.len() as u32) };
+
+        if written < 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::Uncategorized,
+                "Internal write error occurred.",
+            ));
+        }
+
+        Ok(written as usize)
     }
 
     fn flush(&mut self) -> io::Result<()> {
+        unsafe {
+            while (vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) as usize) != STDOUT_BUF_SIZE {
+                vex_sdk::vexTasksRun();
+            }
+        }
+
         Ok(())
     }
 }

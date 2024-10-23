@@ -30,7 +30,7 @@ This target generates binaries in the ELF format that may uploaded to the brain 
 This includes:
 
 - `std::time`, not including `SystemTime` as the SDK does not provide absolute time information.
-- `std::io`, including `stdin()` and `stdout()`, but not `stderr()`, as stderr does not exist on this platform.
+- `std::io`, including `stdin`/`stdout`/`stderr`. `stdout` and `stderr` are both written to USB channel 1 on this platform and are not differentiated.
 - `std::fs`, with the exception of directory reading and file deletion, due to public SDK limitations.
 - modules which do not need to interact with the OS beyond allocation,
   such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc.
