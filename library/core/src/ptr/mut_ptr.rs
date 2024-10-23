@@ -867,7 +867,7 @@ impl<T: ?Sized> *mut T {
     /// but it provides slightly more information to the optimizer, which can
     /// sometimes allow it to optimize slightly better with some backends.
     ///
-    /// This method can be though of as recovering the `count` that was passed
+    /// This method can be thought of as recovering the `count` that was passed
     /// to [`add`](#method.add) (or, with the parameters in the other order,
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
