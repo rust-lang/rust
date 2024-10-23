@@ -985,12 +985,8 @@ impl DefCollector<'_> {
         for (name, res) in resolutions {
             match name {
                 Some(name) => {
-                    changed |= self.push_res_and_update_glob_vis(
-                        module_id,
-                        name,
-                        res.with_visibility(vis),
-                        import,
-                    );
+                    changed |=
+                        self.push_res_and_update_glob_vis(module_id, name, *res, vis, import);
                 }
                 None => {
                     let tr = match res.take_types() {
@@ -1043,10 +1039,11 @@ impl DefCollector<'_> {
             .collect::<Vec<_>>();
 
         for (glob_importing_module, glob_import_vis, use_) in glob_imports {
+            let vis = glob_import_vis.min(vis, &self.def_map).unwrap_or(glob_import_vis);
             self.update_recursive(
                 glob_importing_module,
                 resolutions,
-                glob_import_vis,
+                vis,
                 Some(ImportType::Glob(use_)),
                 depth + 1,
             );
@@ -1058,8 +1055,19 @@ impl DefCollector<'_> {
         module_id: LocalModuleId,
         name: &Name,
         mut defs: PerNs,
+        vis: Visibility,
         def_import_type: Option<ImportType>,
     ) -> bool {
+        if let Some((_, v, _)) = defs.types.as_mut() {
+            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        }
+        if let Some((_, v, _)) = defs.values.as_mut() {
+            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        }
+        if let Some((_, v, _)) = defs.macros.as_mut() {
+            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        }
+
         let mut changed = false;
 
         if let Some(ImportType::Glob(_)) = def_import_type {
