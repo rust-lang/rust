@@ -3,8 +3,6 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
-#![feature(do_not_recommend)]
-
 trait Foo {}
 trait Bar {}
 trait Baz {}
