@@ -1,6 +1,9 @@
 use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
-use crate::abi::{Abi, Align, HasDataLayout, TyAbiInterface, TyAndLayout};
+use crate::abi::{
+    Abi, AddressSpace, Align, Float, HasDataLayout, Pointer, TyAbiInterface, TyAndLayout,
+};
 use crate::spec::HasTargetSpec;
+use crate::spec::abi::Abi as SpecAbi;
 
 #[derive(PartialEq)]
 pub(crate) enum Flavor {
@@ -204,6 +207,38 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
 
         if free_regs == 0 {
             break;
+        }
+    }
+}
+
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: SpecAbi)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    // Avoid returning floats in x87 registers on x86 as loading and storing from x87
+    // registers will quiet signalling NaNs. Also avoid using SSE registers since they
+    // are not always available (depending on target features).
+    if !fn_abi.ret.is_ignore()
+        // Intrinsics themselves are not actual "real" functions, so theres no need to change their ABIs.
+        && abi != SpecAbi::RustIntrinsic
+    {
+        let has_float = match fn_abi.ret.layout.abi {
+            Abi::Scalar(s) => matches!(s.primitive(), Float(_)),
+            Abi::ScalarPair(s1, s2) => {
+                matches!(s1.primitive(), Float(_)) || matches!(s2.primitive(), Float(_))
+            }
+            _ => false, // anyway not passed via registers on x86
+        };
+        if has_float {
+            if fn_abi.ret.layout.size <= Pointer(AddressSpace::DATA).size(cx) {
+                // Same size or smaller than pointer, return in a register.
+                fn_abi.ret.cast_to(Reg { kind: RegKind::Integer, size: fn_abi.ret.layout.size });
+            } else {
+                // Larger than a pointer, return indirectly.
+                fn_abi.ret.make_indirect();
+            }
+            return;
         }
     }
 }
