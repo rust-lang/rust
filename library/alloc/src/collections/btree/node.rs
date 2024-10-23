@@ -1521,7 +1521,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                     right_node.val_area_mut(..count - 1),
                 );
 
-                // Move the left-most stolen pair to the parent.
+                // Move the leftmost stolen pair to the parent.
                 let k = left_node.key_area_mut(new_left_len).assume_init_read();
                 let v = left_node.val_area_mut(new_left_len).assume_init_read();
                 let (k, v) = self.parent.replace_kv(k, v);
@@ -1570,7 +1570,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
             // Move leaf data.
             {
-                // Move the right-most stolen pair to the parent.
+                // Move the rightmost stolen pair to the parent.
                 let k = right_node.key_area_mut(count - 1).assume_init_read();
                 let v = right_node.val_area_mut(count - 1).assume_init_read();
                 let (k, v) = self.parent.replace_kv(k, v);

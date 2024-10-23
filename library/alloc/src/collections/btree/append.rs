@@ -79,7 +79,7 @@ impl<K, V> Root<K, V> {
                 }
                 open_node.push(key, value, right_tree);
 
-                // Go down to the right-most leaf again.
+                // Go down to the rightmost leaf again.
                 cur_node = open_node.forget_type().last_leaf_edge().into_node();
             }
 
