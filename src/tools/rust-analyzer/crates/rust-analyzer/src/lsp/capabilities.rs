@@ -212,7 +212,8 @@ impl ClientCapabilities {
                 .label_details_support
                 .as_ref()
         })()
-        .is_some()
+        .copied()
+        .unwrap_or_default()
     }
 
     fn completion_item(&self) -> Option<CompletionOptionsCompletionItem> {
