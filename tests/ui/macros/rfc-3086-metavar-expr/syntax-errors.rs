@@ -10,12 +10,12 @@ macro_rules! curly__no_rhs_dollar__round {
 
 macro_rules! curly__no_rhs_dollar__no_round {
     ( $i:ident ) => { ${ count($i) } };
-    //~^ ERROR `count` can not be placed inside the inner-most repetition
+    //~^ ERROR `count` can not be placed inside the innermost repetition
 }
 
 macro_rules! curly__rhs_dollar__no_round {
     ( $i:ident ) => { ${ count($i) } };
-    //~^ ERROR `count` can not be placed inside the inner-most repetition
+    //~^ ERROR `count` can not be placed inside the innermost repetition
 }
 
 #[rustfmt::skip] // autoformatters can break a few of the error traces

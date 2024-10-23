@@ -1048,8 +1048,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // | +------------|outer_scope cache|--+                    |
         // +------------------------------|middle_scope cache|------+
         //
-        // Now, a new, inner-most scope is added along with a new drop into
-        // both inner-most and outer-most scopes:
+        // Now, a new, innermost scope is added along with a new drop into
+        // both innermost and outermost scopes:
         //
         // +------------------------------------------------------------+
         // | +----------------------------------+                       |
@@ -1061,11 +1061,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // +----=----------------|invalid middle_scope cache|-----------+
         //
         // If, when adding `drop(new)` we do not invalidate the cached blocks for both
-        // outer_scope and middle_scope, then, when building drops for the inner (right-most)
+        // outer_scope and middle_scope, then, when building drops for the inner (rightmost)
         // scope, the old, cached blocks, without `drop(new)` will get used, producing the
         // wrong results.
         //
-        // Note that this code iterates scopes from the inner-most to the outer-most,
+        // Note that this code iterates scopes from the innermost to the outermost,
         // invalidating caches of each scope visited. This way bare minimum of the
         // caches gets invalidated. i.e., if a new drop is added into the middle scope, the
         // cache of outer scope stays intact.
