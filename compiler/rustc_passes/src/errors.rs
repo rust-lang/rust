@@ -109,6 +109,15 @@ pub(crate) struct AttrShouldBeAppliedToFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_should_be_applied_to_struct_enum)]
+pub(crate) struct AttrShouldBeAppliedToStructEnum {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn, code = E0739)]
 pub(crate) struct TrackedCallerWrongLocation {
     #[primary_span]
