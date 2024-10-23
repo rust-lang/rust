@@ -496,8 +496,8 @@ where
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
     /// but on an iterator of values that deref to a `TypeFoldable`.
-    pub fn iter_identity_copied(self) -> impl Iterator<Item = <Iter::Item as Deref>::Target> {
-        self.value.into_iter().map(|v| *v)
+    pub fn iter_identity_copied(self) -> IterIdentityCopied<Iter> {
+        IterIdentityCopied { it: self.value.into_iter() }
     }
 }
 
@@ -546,6 +546,44 @@ where
 {
 }
 
+pub struct IterIdentityCopied<Iter: IntoIterator> {
+    it: Iter::IntoIter,
+}
+
+impl<Iter: IntoIterator> Iterator for IterIdentityCopied<Iter>
+where
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+    type Item = <Iter::Item as Deref>::Target;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.it.next().map(|i| *i)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<Iter: IntoIterator> DoubleEndedIterator for IterIdentityCopied<Iter>
+where
+    Iter::IntoIter: DoubleEndedIterator,
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.it.next_back().map(|i| *i)
+    }
+}
+
+impl<Iter: IntoIterator> ExactSizeIterator for IterIdentityCopied<Iter>
+where
+    Iter::IntoIter: ExactSizeIterator,
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+}
 pub struct EarlyBinderIter<I, T> {
     t: T,
     _tcx: PhantomData<I>,
