@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 - 2024-10-23
+
+- Fix `SmolStrBuilder::push` incorrectly padding null bytes when spilling onto the heap on a
+  multibyte character push
+
 ## 0.3.1 - 2024-09-04
 
 - Fix `SmolStrBuilder` leaking implementation details

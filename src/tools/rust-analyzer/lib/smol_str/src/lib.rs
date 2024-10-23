@@ -763,7 +763,7 @@ impl SmolStrBuilder {
                     let mut heap = String::with_capacity(new_len);
                     // copy existing inline bytes over to the heap
                     // SAFETY: inline data is guaranteed to be valid utf8 for `old_len` bytes
-                    unsafe { heap.as_mut_vec().extend_from_slice(buf) };
+                    unsafe { heap.as_mut_vec().extend_from_slice(&buf[..*len]) };
                     heap.push(c);
                     self.0 = SmolStrBuilderRepr::Heap(heap);
                 }

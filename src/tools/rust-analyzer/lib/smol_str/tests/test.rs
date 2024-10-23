@@ -255,6 +255,7 @@ fn test_to_smolstr() {
         assert_eq!(a, smol_str::format_smolstr!("{}", a));
     }
 }
+
 #[test]
 fn test_builder_push_str() {
     //empty
@@ -290,6 +291,14 @@ fn test_builder_push_str() {
     let s = builder.finish();
     assert!(s.is_heap_allocated());
     assert_eq!("a".repeat(46), s);
+
+    // heap push on multibyte char
+    let mut builder = SmolStrBuilder::new();
+    builder.push_str("ohnonononononononono!");
+    builder.push('🤯');
+    let s = builder.finish();
+    assert!(s.is_heap_allocated());
+    assert_eq!("ohnonononononononono!🤯", s);
 }
 
 #[test]
