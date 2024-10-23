@@ -195,6 +195,7 @@ target | std | notes
 `wasm32-wasi` | ✓ | WebAssembly with WASI (undergoing a [rename to `wasm32-wasip1`][wasi-rename])
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASI
 [`wasm32-wasip1-threads`](platform-support/wasm32-wasip1-threads.md) | ✓ | WebAssembly with WASI Preview 1 and threads
+[`wasm32v1-none`](platform-support/wasm32v1-none.md) | * | WebAssembly limited to 1.0 features and no imports
 [`x86_64-apple-ios`](platform-support/apple-ios.md) | ✓ | 64-bit x86 iOS
 [`x86_64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ | Mac Catalyst on x86_64
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX

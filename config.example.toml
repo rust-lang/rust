@@ -419,6 +419,9 @@
 # passed to cargo invocations.
 #jobs = 0
 
+# What custom diff tool to use for displaying compiletest tests.
+#compiletest-diff-tool = <none>
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
