@@ -185,7 +185,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LintVisitor<'a, 'tcx> {
 impl<'a, 'tcx> LintVisitor<'a, 'tcx> {
     fn check_block_inner(&mut self, block: &Block<'tcx>) {
         if block.span.at_least_rust_2024() {
-            // We only lint for up to Edition 2021
+            // We only lint up to Edition 2021
             return;
         }
         let Some(tail_expr) = block.expr else { return };
