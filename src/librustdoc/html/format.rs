@@ -399,13 +399,13 @@ impl clean::GenericBound {
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
             clean::GenericBound::Outlives(lt) => write!(f, "{}", lt.print()),
-            clean::GenericBound::TraitBound(ty, modifier) => {
-                f.write_str(match modifier {
-                    hir::TraitBoundModifier::None => "",
-                    hir::TraitBoundModifier::Maybe => "?",
-                    hir::TraitBoundModifier::Negative => "!",
-                    // `const` and `~const` trait bounds are experimental; don't render them.
-                    hir::TraitBoundModifier::Const | hir::TraitBoundModifier::MaybeConst => "",
+            clean::GenericBound::TraitBound(ty, modifiers) => {
+                // `const` and `~const` trait bounds are experimental; don't render them.
+                let hir::TraitBoundModifiers { polarity, constness: _ } = modifiers;
+                f.write_str(match polarity {
+                    hir::BoundPolarity::Positive => "",
+                    hir::BoundPolarity::Maybe(_) => "?",
+                    hir::BoundPolarity::Negative(_) => "!",
                 })?;
                 ty.print(cx).fmt(f)
             }
