@@ -6,10 +6,13 @@
 
 #![deny(tail_expr_drop_order)] //~ NOTE: the lint level is defined here
 #![feature(shorter_tail_lifetimes)]
+#![allow(dropping_copy_types)]
 
 struct LoudDropper;
 impl Drop for LoudDropper {
     //~^ NOTE: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
+    //~| NOTE: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
+    //~| NOTE: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
     //~| NOTE: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
     //~| NOTE: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
     //~| NOTE: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
@@ -211,6 +214,24 @@ fn should_lint_with_dtor_span() -> i32 {
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
     //~| NOTE: for more information, see issue #123739
+}
+
+fn should_lint_with_transient_drops() {
+    //~^ NOTE: temporary will be dropped on exiting the block, before the block's local variables
+    drop((
+        {
+            LoudDropper.get()
+            //~^ ERROR: relative drop order changing in Rust 2024
+            //~| NOTE: in Rust 2024, this temporary will be dropped first
+            //~| WARN: this changes meaning in Rust 2024
+            //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
+            //~| NOTE: for more information, see issue #123739
+        },
+        {
+            let _x = LoudDropper;
+            //~^ NOTE: in Rust 2024, this local variable or temporary value will be dropped second
+        },
+    ));
 }
 
 fn main() {}

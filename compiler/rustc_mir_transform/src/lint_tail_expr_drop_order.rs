@@ -1,10 +1,13 @@
-use std::collections::BTreeSet;
+use std::cell::RefCell;
+use std::collections::hash_map;
+use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_index::bit_set::{BitSet, ChunkedBitSet};
+use rustc_index::bit_set::ChunkedBitSet;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::{
     BasicBlock, Body, ClearCrossCrate, Local, Location, Place, ProjectionElem, StatementKind,
@@ -12,8 +15,8 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir_dataflow::move_paths::{MoveData, MovePathIndex};
-use rustc_mir_dataflow::{Analysis, MaybeReachable};
+use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
+use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
 use rustc_session::lint;
 use rustc_span::Span;
 use rustc_type_ir::data_structures::IndexMap;
@@ -25,48 +28,83 @@ fn place_has_common_prefix<'tcx>(left: &Place<'tcx>, right: &Place<'tcx>) -> boo
         && left.projection.iter().zip(right.projection).all(|(left, right)| left == right)
 }
 
-fn drops_reachable_from_location<'tcx>(
-    body: &Body<'tcx>,
-    block: BasicBlock,
-    place: &Place<'tcx>,
-) -> BitSet<BasicBlock> {
-    let mut reachable = BitSet::new_empty(body.basic_blocks.len());
-    let mut visited = reachable.clone();
-    let mut new_blocks = reachable.clone();
-    new_blocks.insert(block);
-    while !new_blocks.is_empty() {
-        let mut next_front = BitSet::new_empty(new_blocks.domain_size());
-        for bb in new_blocks.iter() {
-            if !visited.insert(bb) {
-                continue;
-            }
-            for succ in body.basic_blocks[bb].terminator.iter().flat_map(|term| term.successors()) {
-                let target = &body.basic_blocks[succ];
-                if target.is_cleanup {
-                    continue;
-                }
-                if !next_front.contains(succ)
-                    && let Some(terminator) = &target.terminator
-                    && let TerminatorKind::Drop {
-                        place: dropped_place,
-                        target: _,
-                        unwind: _,
-                        replace: _,
-                    } = &terminator.kind
-                    && place_has_common_prefix(dropped_place, place)
-                {
-                    reachable.insert(succ);
-                    // Now we have discovered a simple control flow path from a future drop point
-                    // to the current drop point.
-                    // We will not continue here.
-                } else {
-                    next_front.insert(succ);
-                }
+struct DropsReachable<'a, 'mir, 'tcx> {
+    body: &'a Body<'tcx>,
+    place: &'a Place<'tcx>,
+    drop_span: &'a mut Option<Span>,
+    move_data: &'a MoveData<'tcx>,
+    maybe_init: &'a mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
+    block_drop_value_info: &'a mut IndexSlice<BasicBlock, Option<MovePathIndex>>,
+    collected_drops: &'a mut ChunkedBitSet<MovePathIndex>,
+    visited: FxHashMap<BasicBlock, Rc<RefCell<ChunkedBitSet<MovePathIndex>>>>,
+}
+
+impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
+    fn visit(&mut self, block: BasicBlock) {
+        let move_set_size = self.move_data.move_paths.len();
+        let make_new_path_set = || Rc::new(RefCell::new(ChunkedBitSet::new_empty(move_set_size)));
+        let data = &self.body.basic_blocks[block];
+        let Some(terminator) = &data.terminator else { return };
+        let dropped_local_here =
+            self.visited.entry(block).or_insert_with(make_new_path_set).clone();
+        if let Some(dropped) = self.block_drop_value_info[block] {
+            dropped_local_here.borrow_mut().insert(dropped);
+        } else if let TerminatorKind::Drop { place, .. } = &terminator.kind
+            && let LookupResult::Exact(idx) | LookupResult::Parent(Some(idx)) =
+                self.move_data.rev_lookup.find(place.as_ref())
+        {
+            self.maybe_init.seek_before_primary_effect(Location {
+                block,
+                statement_index: data.statements.len(),
+            });
+            if let MaybeReachable::Reachable(maybe_init) = self.maybe_init.get()
+                && maybe_init.contains(idx)
+            {
+                self.block_drop_value_info[block] = Some(idx);
+                dropped_local_here.borrow_mut().insert(idx);
             }
         }
-        new_blocks = next_front;
+
+        for succ in terminator.successors() {
+            let target = &self.body.basic_blocks[succ];
+            if target.is_cleanup {
+                continue;
+            }
+
+            // As long as we are passing through a new block, or new dropped place to propagate, we will proceed
+            let dropped_local_there = match self.visited.entry(succ) {
+                hash_map::Entry::Occupied(occupied_entry) => {
+                    if !occupied_entry.get().borrow_mut().union(&*dropped_local_here.borrow()) {
+                        continue;
+                    }
+                    occupied_entry.get().clone()
+                }
+                hash_map::Entry::Vacant(vacant_entry) => {
+                    vacant_entry.insert(dropped_local_here.clone()).clone()
+                }
+            };
+            if let Some(terminator) = &target.terminator
+                && let TerminatorKind::Drop {
+                    place: dropped_place,
+                    target: _,
+                    unwind: _,
+                    replace: _,
+                } = &terminator.kind
+                && place_has_common_prefix(dropped_place, self.place)
+            {
+                self.collected_drops.union(&*dropped_local_there.borrow());
+                if self.drop_span.is_none() {
+                    *self.drop_span =
+                        Some(self.body.source_scopes[terminator.source_info.scope].span);
+                }
+                // Now we have discovered a simple control flow path from a future drop point
+                // to the current drop point.
+                // We will not continue from there.
+            } else {
+                self.visit(succ)
+            }
+        }
     }
-    reachable
 }
 
 #[instrument(level = "debug", skip(tcx, param_env))]
@@ -227,39 +265,26 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     let maybe_init = MaybeInitializedPlaces::new(tcx, body, &move_data);
     let mut maybe_init =
         maybe_init.into_engine(tcx, body).iterate_to_fixpoint().into_results_cursor(body);
+    let mut block_drop_value_info = IndexVec::from_elem_n(None, body.basic_blocks.len());
     for (&block, candidates) in &bid_per_block {
         let mut all_locals_dropped = ChunkedBitSet::new_empty(move_data.move_paths.len());
-        let mut linted_candidates = BTreeSet::new();
         let mut drop_span = None;
-        for (idx, &(candidate, place)) in candidates.iter().enumerate() {
-            maybe_init.seek_after_primary_effect(candidate);
-            let MaybeReachable::Reachable(maybe_init_in_future) = maybe_init.get() else {
-                continue;
+        for &(_, place) in candidates.iter() {
+            let mut collected_drops = ChunkedBitSet::new_empty(move_data.move_paths.len());
+            let mut search = DropsReachable {
+                body,
+                place,
+                drop_span: &mut drop_span,
+                move_data: &move_data,
+                maybe_init: &mut maybe_init,
+                block_drop_value_info: &mut block_drop_value_info,
+                collected_drops: &mut collected_drops,
+                visited: Default::default(),
             };
-            debug!(maybe_init_in_future = ?maybe_init_in_future.iter().map(|idx| &move_data.move_paths[idx]).collect::<Vec<_>>());
-            let maybe_init_in_future = maybe_init_in_future.clone();
-            for block in drops_reachable_from_location(body, block, place).iter() {
-                let data = &body.basic_blocks[block];
-                if drop_span.is_none() {
-                    drop_span = data
-                        .terminator
-                        .as_ref()
-                        .map(|term| body.source_scopes[term.source_info.scope].span);
-                }
-                debug!(?candidate, "inspect");
-                maybe_init.seek_before_primary_effect(Location {
-                    block,
-                    statement_index: data.statements.len(),
-                });
-                let MaybeReachable::Reachable(maybe_init_now) = maybe_init.get() else { continue };
-                let mut locals_dropped = maybe_init_in_future.clone();
-                debug!(maybe_init_now = ?maybe_init_now.iter().map(|idx| &move_data.move_paths[idx]).collect::<Vec<_>>());
-                locals_dropped.subtract(maybe_init_now);
-                debug!(locals_dropped = ?locals_dropped.iter().map(|idx| &move_data.move_paths[idx]).collect::<Vec<_>>());
-                if all_locals_dropped.union(&locals_dropped) {
-                    linted_candidates.insert(idx);
-                }
-            }
+            search.visit(block);
+            let _ = search;
+
+            all_locals_dropped.union(&collected_drops);
         }
         {
             let mut to_exclude = ChunkedBitSet::new_empty(all_locals_dropped.domain_size());
@@ -293,13 +318,9 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
                     continue;
                 }
             }
-            let mut iter = linted_candidates.iter();
-            let Some(first_linted_local) = iter.next().map(|&idx| candidates[idx].1.local) else {
-                continue;
-            };
-            if iter.all(|&idx| candidates[idx].1.local == first_linted_local) {
+            if candidates.iter().all(|&(_, place)| candidates[0].1.local == place.local) {
                 for path_idx in all_locals_dropped.iter() {
-                    if move_data.move_paths[path_idx].place.local == first_linted_local {
+                    if move_data.move_paths[path_idx].place.local == candidates[0].1.local {
                         to_exclude.insert(path_idx);
                     }
                 }

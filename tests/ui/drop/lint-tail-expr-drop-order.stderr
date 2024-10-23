@@ -1,5 +1,5 @@
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:40:15
+  --> $DIR/lint-tail-expr-drop-order.rs:43:15
    |
 LL | / fn should_lint() -> i32 {
 LL | |
@@ -17,7 +17,7 @@ LL | | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
 note: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -28,7 +28,7 @@ LL | |     }
 LL | | }
    | |_^
 note: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -46,7 +46,7 @@ LL | #![deny(tail_expr_drop_order)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:63:19
+  --> $DIR/lint-tail-expr-drop-order.rs:66:19
    |
 LL | /     fn should_lint_me() -> i32 {
 LL | |
@@ -64,7 +64,7 @@ LL | |     }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
 note: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -75,7 +75,7 @@ LL | |     }
 LL | | }
    | |_^
 note: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -88,7 +88,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:88:7
+  --> $DIR/lint-tail-expr-drop-order.rs:91:7
    |
 LL | / fn should_lint_in_nested_block() -> i32 {
 LL | |
@@ -105,7 +105,7 @@ LL | | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
 note: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -116,7 +116,7 @@ LL | |     }
 LL | | }
    | |_^
 note: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -129,7 +129,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:139:5
+  --> $DIR/lint-tail-expr-drop-order.rs:142:5
    |
 LL | / fn should_lint_into_async_body() -> i32 {
 LL | |
@@ -149,7 +149,7 @@ LL | | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
 note: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -160,7 +160,7 @@ LL | |     }
 LL | | }
    | |_^
 note: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -173,7 +173,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:154:14
+  --> $DIR/lint-tail-expr-drop-order.rs:157:14
    |
 LL | / fn should_lint_generics<T: Default>() -> &'static str {
 LL | |
@@ -195,7 +195,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:166:5
+  --> $DIR/lint-tail-expr-drop-order.rs:169:5
    |
 LL | / fn should_lint_adt() -> i32 {
 LL | |
@@ -212,7 +212,7 @@ LL | | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
 note: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -223,7 +223,7 @@ LL | |     }
 LL | | }
    | |_^
 note: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
    |
 LL | / impl Drop for LoudDropper {
 LL | |
@@ -236,7 +236,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:208:5
+  --> $DIR/lint-tail-expr-drop-order.rs:211:5
    |
 LL | / fn should_lint_with_dtor_span() -> i32 {
 LL | |
@@ -256,7 +256,7 @@ LL | | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
 note: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:182:5
+  --> $DIR/lint-tail-expr-drop-order.rs:185:5
    |
 LL | /     impl Drop for LoudDropper3 {
 LL | |
@@ -266,7 +266,7 @@ LL | |         }
 LL | |     }
    | |_____^
 note: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:194:5
+  --> $DIR/lint-tail-expr-drop-order.rs:197:5
    |
 LL | /     impl Drop for LoudDropper2 {
 LL | |
@@ -277,5 +277,48 @@ LL | |     }
    | |_____^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
 
-error: aborting due to 7 previous errors
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:223:13
+   |
+LL | / fn should_lint_with_transient_drops() {
+LL | |
+LL | |     drop((
+LL | |         {
+LL | |             LoudDropper.get()
+   | |             ^^^^^^^^^^^ in Rust 2024, this temporary will be dropped first
+...  |
+LL | |             let _x = LoudDropper;
+   | |                 -- in Rust 2024, this local variable or temporary value will be dropped second
+...  |
+LL | |     ));
+LL | | }
+   | |_- temporary will be dropped on exiting the block, before the block's local variables
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+note: dropping the temporary runs this custom `Drop` impl, which will run first in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+note: dropping the local runs this custom `Drop` impl, which will run second in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:12:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
+
+error: aborting due to 8 previous errors
 
