@@ -1,0 +1,22 @@
+error[E0658]: use of unstable library feature `unstable_a`
+  --> $DIR/mixed-levels.rs:12:5
+   |
+LL |     mixed_levels::unstable_mac!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_a)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `const_unstable_fn` is not yet stable as a const fn
+  --> $DIR/mixed-levels.rs:7:26
+   |
+LL | const USE_UNSTABLE: () = mixed_levels::const_unstable_fn();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: use of unstable library feature `unstable_c`
+   = help: add `#![feature(unstable_c)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
