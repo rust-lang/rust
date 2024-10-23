@@ -308,6 +308,7 @@ pub use once::OnceCell;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct Cell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
@@ -718,6 +719,7 @@ impl<T, const N: usize> Cell<[T; N]> {
 /// See the [module-level documentation](self) for more.
 #[rustc_diagnostic_item = "RefCell"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct RefCell<T: ?Sized> {
     borrow: Cell<BorrowFlag>,
     // Stores the location of the earliest currently active borrow.
@@ -2067,6 +2069,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }
