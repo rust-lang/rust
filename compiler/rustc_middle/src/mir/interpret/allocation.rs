@@ -294,6 +294,24 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
 
+    pub fn from_bytes_byte_aligned_immutable_with_null<'a>(
+        slice: impl Into<Cow<'a, [u8]>>,
+    ) -> Self {
+        let slice = slice.into();
+        let len = slice.len() + 1;
+        let size = Size::from_bytes(len);
+        let mut bytes = Bytes::zeroed(size, Align::ONE).unwrap();
+        bytes[..slice.len()].copy_from_slice(&slice);
+        Self {
+            bytes,
+            provenance: ProvenanceMap::new(),
+            init_mask: InitMask::new(size, true),
+            align: Align::ONE,
+            mutability: Mutability::Not,
+            extra: (),
+        }
+    }
+
     fn uninit_inner<R>(size: Size, align: Align, fail: impl FnOnce() -> R) -> Result<Self, R> {
         // We raise an error if we cannot create the allocation on the host.
         // This results in an error that can happen non-deterministically, since the memory

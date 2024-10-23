@@ -1462,6 +1462,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_memory_dedup(alloc, salt)
     }
 
+    pub fn allocate_bytes_dedup_with_null(self, bytes: &[u8], salt: usize) -> interpret::AllocId {
+        // Create an allocation that just contains these bytes.
+        let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable_with_null(bytes);
+        let alloc = self.mk_const_alloc(alloc);
+        self.reserve_and_set_memory_dedup(alloc, salt)
+    }
+
     /// Returns a range of the start/end indices specified with the
     /// `rustc_layout_scalar_valid_range` attribute.
     // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
