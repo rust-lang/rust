@@ -104,6 +104,7 @@ pub(super) fn hints(
     };
     let iter: &mut dyn Iterator<Item = _> = iter.as_mut().either(|it| it as _, |it| it as _);
 
+    let mut allow_edit = !postfix;
     for Adjustment { source, target, kind } in iter {
         if source == target {
             cov_mark::hit!(same_type_adjustment);
@@ -113,6 +114,7 @@ pub(super) fn hints(
         // FIXME: Add some nicer tooltips to each of these
         let (text, coercion) = match kind {
             Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
+                allow_edit = false;
                 ("<never-to-any>", "never to any")
             }
             Adjust::Deref(None) => ("*", "dereference"),
@@ -133,6 +135,7 @@ pub(super) fn hints(
             // some of these could be represented via `as` casts, but that's not too nice and
             // handling everything as a prefix expr makes the `(` and `)` insertion easier
             Adjust::Pointer(cast) if config.adjustment_hints == AdjustmentHints::Always => {
+                allow_edit = false;
                 match cast {
                     PointerCast::ReifyFnPointer => {
                         ("<fn-item-to-fn-pointer>", "fn item to fn pointer")
@@ -179,30 +182,32 @@ pub(super) fn hints(
     if pre.is_none() && post.is_none() {
         return None;
     }
-    let edit = {
-        let mut b = TextEditBuilder::default();
-        if let Some(pre) = &pre {
-            b.insert(
-                pre.range.start(),
-                pre.label.parts.iter().map(|part| &*part.text).collect::<String>(),
-            );
+    if allow_edit {
+        let edit = {
+            let mut b = TextEditBuilder::default();
+            if let Some(pre) = &pre {
+                b.insert(
+                    pre.range.start(),
+                    pre.label.parts.iter().map(|part| &*part.text).collect::<String>(),
+                );
+            }
+            if let Some(post) = &post {
+                b.insert(
+                    post.range.end(),
+                    post.label.parts.iter().map(|part| &*part.text).collect::<String>(),
+                );
+            }
+            b.finish()
+        };
+        match (&mut pre, &mut post) {
+            (Some(pre), Some(post)) => {
+                pre.text_edit = Some(edit.clone());
+                post.text_edit = Some(edit);
+            }
+            (Some(pre), None) => pre.text_edit = Some(edit),
+            (None, Some(post)) => post.text_edit = Some(edit),
+            (None, None) => (),
         }
-        if let Some(post) = &post {
-            b.insert(
-                post.range.end(),
-                post.label.parts.iter().map(|part| &*part.text).collect::<String>(),
-            );
-        }
-        b.finish()
-    };
-    match (&mut pre, &mut post) {
-        (Some(pre), Some(post)) => {
-            pre.text_edit = Some(edit.clone());
-            post.text_edit = Some(edit);
-        }
-        (Some(pre), None) => pre.text_edit = Some(edit),
-        (None, Some(post)) => post.text_edit = Some(edit),
-        (None, None) => (),
     }
     acc.extend(pre);
     acc.extend(post);
