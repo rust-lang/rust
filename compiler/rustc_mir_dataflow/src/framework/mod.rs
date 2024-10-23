@@ -33,25 +33,29 @@
 
 use std::cmp::Ordering;
 
-use rustc_index::Idx;
+use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_index::{Idx, IndexVec};
+use rustc_middle::bug;
+use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
 use rustc_middle::ty::TyCtxt;
+use tracing::error;
 
+use self::results::write_graphviz_results;
 use super::fmt::DebugWithContext;
 
 mod cursor;
 mod direction;
-mod engine;
 pub mod fmt;
 pub mod graphviz;
 pub mod lattice;
+mod results;
 mod visitor;
 
 pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
-pub use self::engine::{Engine, Results};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
+pub use self::results::Results;
 pub use self::visitor::{ResultsVisitable, ResultsVisitor, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
@@ -238,7 +242,7 @@ pub trait Analysis<'tcx> {
     /// Without a `pass_name` to differentiates them, only the results for the latest run will be
     /// saved.
     fn iterate_to_fixpoint<'mir>(
-        self,
+        mut self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
         pass_name: Option<&'static str>,
@@ -247,7 +251,69 @@ pub trait Analysis<'tcx> {
         Self: Sized,
         Self::Domain: DebugWithContext<Self>,
     {
-        Engine::iterate_to_fixpoint(tcx, body, self, pass_name)
+        let mut entry_sets =
+            IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
+        self.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
+
+        if Self::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != self.bottom_value(body) {
+            bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
+        }
+
+        let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+
+        if Self::Direction::IS_FORWARD {
+            for (bb, _) in traversal::reverse_postorder(body) {
+                dirty_queue.insert(bb);
+            }
+        } else {
+            // Reverse post-order on the reverse CFG may generate a better iteration order for
+            // backward dataflow analyses, but probably not enough to matter.
+            for (bb, _) in traversal::postorder(body) {
+                dirty_queue.insert(bb);
+            }
+        }
+
+        // `state` is not actually used between iterations;
+        // this is just an optimization to avoid reallocating
+        // every iteration.
+        let mut state = self.bottom_value(body);
+        while let Some(bb) = dirty_queue.pop() {
+            let bb_data = &body[bb];
+
+            // Set the state to the entry state of the block.
+            // This is equivalent to `state = entry_sets[bb].clone()`,
+            // but it saves an allocation, thus improving compile times.
+            state.clone_from(&entry_sets[bb]);
+
+            // Apply the block transfer function, using the cached one if it exists.
+            let edges = Self::Direction::apply_effects_in_block(&mut self, &mut state, bb, bb_data);
+
+            Self::Direction::join_state_into_successors_of(
+                &mut self,
+                body,
+                &mut state,
+                bb,
+                edges,
+                |target: BasicBlock, state: &Self::Domain| {
+                    let set_changed = entry_sets[target].join(state);
+                    if set_changed {
+                        dirty_queue.insert(target);
+                    }
+                },
+            );
+        }
+
+        let results = Results { analysis: self, entry_sets };
+
+        if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
+            let (res, results) = write_graphviz_results(tcx, body, results, pass_name);
+            if let Err(e) = res {
+                error!("Failed to write graphviz dataflow results: {}", e);
+            }
+            results
+        } else {
+            results
+        }
     }
 }
 
