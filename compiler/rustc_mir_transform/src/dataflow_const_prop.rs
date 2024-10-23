@@ -537,16 +537,16 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     }
 }
 
-pub(crate) struct Patch<'tcx> {
+struct Patch<'tcx> {
     tcx: TyCtxt<'tcx>,
 
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
     /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    pub(crate) before_effect: FxHashMap<(Location, Place<'tcx>), Const<'tcx>>,
+    before_effect: FxHashMap<(Location, Place<'tcx>), Const<'tcx>>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
-    pub(crate) assignments: FxHashMap<Location, Const<'tcx>>,
+    assignments: FxHashMap<Location, Const<'tcx>>,
 }
 
 impl<'tcx> Patch<'tcx> {
