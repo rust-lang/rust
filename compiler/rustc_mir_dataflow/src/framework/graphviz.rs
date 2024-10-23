@@ -32,8 +32,11 @@ pub(crate) struct Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    body: &'mir Body<'tcx>,
-    results: RefCell<Option<Results<'tcx, A>>>,
+    // The `RefCell` is used because `<Formatter as Labeller>::node_label`
+    // takes `&self`, but it needs to modify the cursor. This is also the
+    // reason for the `Formatter`/`BlockFormatter` split; `BlockFormatter` has
+    // the operations that involve the mutation, i.e. within the `borrow_mut`.
+    cursor: RefCell<ResultsCursor<'mir, 'tcx, A>>,
     style: OutputStyle,
     reachable: BitSet<BasicBlock>,
 }
@@ -48,11 +51,15 @@ where
         style: OutputStyle,
     ) -> Self {
         let reachable = mir::traversal::reachable_as_bitset(body);
-        Formatter { body, results: Some(results).into(), style, reachable }
+        Formatter { cursor: results.into_results_cursor(body).into(), style, reachable }
+    }
+
+    fn body(&self) -> &'mir Body<'tcx> {
+        self.cursor.borrow().body()
     }
 
     pub(crate) fn into_results(self) -> Results<'tcx, A> {
-        self.results.into_inner().unwrap()
+        self.cursor.into_inner().into_results()
     }
 }
 
@@ -81,7 +88,7 @@ where
     type Edge = CfgEdge;
 
     fn graph_id(&self) -> dot::Id<'_> {
-        let name = graphviz_safe_def_name(self.body.source.def_id());
+        let name = graphviz_safe_def_name(self.body().source.def_id());
         dot::Id::new(format!("graph_for_def_id_{name}")).unwrap()
     }
 
@@ -91,19 +98,11 @@ where
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
         let mut label = Vec::new();
-        self.results.replace_with(|results| {
-            // `Formatter::result` is a `RefCell<Option<_>>` so we can replace
-            // the value with `None`, move it into the results cursor, move it
-            // back out, and return it to the refcell wrapped in `Some`.
-            let mut fmt = BlockFormatter {
-                cursor: results.take().unwrap().into_results_cursor(self.body),
-                style: self.style,
-                bg: Background::Light,
-            };
+        let mut cursor = self.cursor.borrow_mut();
+        let mut fmt =
+            BlockFormatter { cursor: &mut cursor, style: self.style, bg: Background::Light };
+        fmt.write_node_label(&mut label, *block).unwrap();
 
-            fmt.write_node_label(&mut label, *block).unwrap();
-            Some(fmt.cursor.into_results())
-        });
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
 
@@ -112,12 +111,12 @@ where
     }
 
     fn edge_label(&self, e: &Self::Edge) -> dot::LabelText<'_> {
-        let label = &self.body[e.source].terminator().kind.fmt_successor_labels()[e.index];
+        let label = &self.body()[e.source].terminator().kind.fmt_successor_labels()[e.index];
         dot::LabelText::label(label.clone())
     }
 }
 
-impl<'mir, 'tcx, A> dot::GraphWalk<'mir> for Formatter<'mir, 'tcx, A>
+impl<'tcx, A> dot::GraphWalk<'_> for Formatter<'_, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -125,7 +124,7 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body
+        self.body()
             .basic_blocks
             .indices()
             .filter(|&idx| self.reachable.contains(idx))
@@ -134,10 +133,10 @@ where
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {
-        self.body
-            .basic_blocks
+        let body = self.body();
+        body.basic_blocks
             .indices()
-            .flat_map(|bb| dataflow_successors(self.body, bb))
+            .flat_map(|bb| dataflow_successors(body, bb))
             .collect::<Vec<_>>()
             .into()
     }
@@ -147,20 +146,20 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body[edge.source].terminator().successors().nth(edge.index).unwrap()
+        self.body()[edge.source].terminator().successors().nth(edge.index).unwrap()
     }
 }
 
-struct BlockFormatter<'mir, 'tcx, A>
+struct BlockFormatter<'a, 'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    cursor: ResultsCursor<'mir, 'tcx, A>,
+    cursor: &'a mut ResultsCursor<'mir, 'tcx, A>,
     bg: Background,
     style: OutputStyle,
 }
 
-impl<'mir, 'tcx, A> BlockFormatter<'mir, 'tcx, A>
+impl<'tcx, A> BlockFormatter<'_, '_, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
