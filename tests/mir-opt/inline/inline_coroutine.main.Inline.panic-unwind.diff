@@ -31,7 +31,7 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
--         _4 = g() -> [return: bb1, unwind continue];
+-         _4 = g() -> [return: bb1, unwind unreachable];
 +         _4 = {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8 (#0)};
 +         _3 = &mut _4;
 +         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}> { __pointer: copy _3 };

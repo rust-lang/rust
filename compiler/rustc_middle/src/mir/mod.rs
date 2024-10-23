@@ -1781,6 +1781,15 @@ impl DefLocation {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+pub struct MirFlags(u8);
+bitflags::bitflags! {
+    impl MirFlags: u8 {
+        const IS_NOUNWIND = 1 << 0;
+        const HAS_FFI_UNWIND_CALLS = 1 << 1;
+    }
+}
+
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {

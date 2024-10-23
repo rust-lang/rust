@@ -1,4 +1,4 @@
-use rustc_hir::def_id::{LOCAL_CRATE, LocalDefId};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::*;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{self, TyCtxt, layout};
@@ -11,17 +11,10 @@ use tracing::debug;
 use crate::errors;
 
 // Check if the body of this def_id can possibly leak a foreign unwind into Rust code.
-fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
-    debug!("has_ffi_unwind_calls({local_def_id:?})");
+pub(crate) fn has_ffi_unwind_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
+    let def_id = body.source.def_id();
 
-    // Only perform check on functions because constants cannot call FFI functions.
-    let def_id = local_def_id.to_def_id();
-    let kind = tcx.def_kind(def_id);
-    if !kind.is_fn_like() {
-        return false;
-    }
-
-    let body = &*tcx.mir_built(local_def_id).borrow();
+    debug!("has_ffi_unwind_calls({def_id:?})");
 
     let body_ty = tcx.type_of(def_id).skip_binder();
     let body_abi = match body_ty.kind() {
@@ -108,7 +101,7 @@ fn required_panic_strategy(tcx: TyCtxt<'_>, _: LocalCrate) -> Option<PanicStrate
     }
 
     for def_id in tcx.hir().body_owners() {
-        if tcx.has_ffi_unwind_calls(def_id) {
+        if tcx.has_ffi_unwind_calls(def_id.into()) {
             // Given that this crate is compiled in `-C panic=unwind`, the `AbortUnwindingCalls`
             // MIR pass will not be run on FFI-unwind call sites, therefore a foreign exception
             // can enter Rust through these sites.
@@ -139,5 +132,5 @@ fn required_panic_strategy(tcx: TyCtxt<'_>, _: LocalCrate) -> Option<PanicStrate
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { has_ffi_unwind_calls, required_panic_strategy, ..*providers };
+    *providers = Providers { required_panic_strategy, ..*providers };
 }

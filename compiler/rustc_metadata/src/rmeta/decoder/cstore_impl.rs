@@ -352,6 +352,7 @@ provide! { tcx, def_id, other, cdata,
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
     cross_crate_inlinable => { table_direct }
+    mir_flags => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_private_dep => { cdata.private_dep }

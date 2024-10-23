@@ -326,7 +326,9 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             _ => bug!("unexpected body ty: {:?}", body_ty),
         };
 
-        if !layout::fn_can_unwind(self.tcx, Some(def_id), body_abi) {
+        if !layout::fn_can_unwind(self.tcx, Some(def_id), body_abi)
+            || (self.tcx.sess.opts.incremental.is_none() && self.tcx.is_nounwind(def_id))
+        {
             *unwind = UnwindAction::Unreachable;
         }
     }

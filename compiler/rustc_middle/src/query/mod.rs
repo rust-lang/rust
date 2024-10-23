@@ -55,6 +55,7 @@ use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
 use crate::middle::stability::{self, DeprecationEntry};
+use crate::mir::MirFlags;
 use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId, LitToConstError, LitToConstInput,
@@ -1504,9 +1505,10 @@ rustc_queries! {
         desc { "checking if a crate is `#![profiler_runtime]`" }
         separate_provide_extern
     }
-    query has_ffi_unwind_calls(key: LocalDefId) -> bool {
-        desc { |tcx| "checking if `{}` contains FFI-unwind calls", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
+    query mir_flags(key: DefId) -> MirFlags {
+        desc { |tcx| "stashing some local properties of `{}` before the body is stolen", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
     query required_panic_strategy(_: CrateNum) -> Option<PanicStrategy> {
         fatal_cycle
