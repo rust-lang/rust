@@ -103,7 +103,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             }
 
             // If the enabled feature is unstable, record it.
-            if UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name).is_some() {
+            if UNSTABLE_FEATURES.iter().find(|f| name == f.name).is_some() {
                 // When the ICE comes from core, alloc or std (approximation of the standard
                 // library), there's a chance that the person hitting the ICE may be using
                 // -Zbuild-std or similar with an untested target. The bug is probably in the

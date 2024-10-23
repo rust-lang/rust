@@ -6,10 +6,6 @@ use rustc_span::symbol::{Symbol, sym};
 
 use super::{Feature, to_nonzero};
 
-pub struct UnstableFeature {
-    pub feature: Feature,
-}
-
 #[derive(PartialEq)]
 enum FeatureStatus {
     Default,
@@ -82,13 +78,11 @@ macro_rules! declare_features {
     )+) => {
         /// Unstable language features that are being implemented or being
         /// considered for acceptance (stabilization) or removal.
-        pub const UNSTABLE_FEATURES: &[UnstableFeature] = &[
-            $(UnstableFeature {
-                feature: Feature {
-                    name: sym::$feature,
-                    since: $ver,
-                    issue: to_nonzero($issue),
-                },
+        pub const UNSTABLE_FEATURES: &[Feature] = &[
+            $(Feature {
+                name: sym::$feature,
+                since: $ver,
+                issue: to_nonzero($issue),
             }),+
         ];
 

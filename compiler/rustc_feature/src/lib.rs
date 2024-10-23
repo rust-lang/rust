@@ -94,8 +94,8 @@ impl UnstableFeatures {
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<NonZero<u32>> {
     // Search in all the feature lists.
-    if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| f.feature.name == feature) {
-        return f.feature.issue;
+    if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| f.name == feature) {
+        return f.issue;
     }
     if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| f.name == feature) {
         return f.issue;
