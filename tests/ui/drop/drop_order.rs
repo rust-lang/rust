@@ -105,6 +105,7 @@ impl DropOrderCollector {
             () => self.print(10),
         }
 
+        #[cfg(edition2021)]
         match {
             match self.option_loud_drop(14) {
                 _ => {
@@ -114,6 +115,17 @@ impl DropOrderCollector {
             }
         } {
             _ => self.print(12),
+        }
+        #[cfg(edition2024)]
+        match {
+            match self.option_loud_drop(12) {
+                _ => {
+                    self.print(11);
+                    self.option_loud_drop(14)
+                }
+            }
+        } {
+            _ => self.print(13),
         }
 
         match {
