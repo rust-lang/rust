@@ -280,4 +280,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Allow setting `--jobs` in config.toml with `build.jobs`.",
     },
+    ChangeInfo {
+        change_id: 131181,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.compiletest-diff-tool` that adds support for a custom differ for compiletest",
+    },
 ];
