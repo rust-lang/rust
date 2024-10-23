@@ -23,10 +23,11 @@ mod improper_ctypes;
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
     AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
-    AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
-    InvalidNanComparisonsSuggestion, UnpredictableFunctionPointerComparisons,
-    UnpredictableFunctionPointerComparisonsSuggestion, UnusedComparisons, UsesPowerAlignment,
-    VariantSizeDifferencesDiag,
+    AtomicOrderingStore, ImproperCTypes, InteriorMutableConstsDiag,
+    InteriorMutableConstsSuggestionAllow, InteriorMutableConstsSuggestionStatic,
+    InvalidAtomicOrderingDiag, InvalidNanComparisons, InvalidNanComparisonsSuggestion,
+    UnpredictableFunctionPointerComparisons, UnpredictableFunctionPointerComparisonsSuggestion,
+    UnusedComparisons, UsesPowerAlignment, VariantSizeDifferencesDiag,
 };
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
@@ -198,6 +199,47 @@ declare_lint! {
     "detects unpredictable function pointer comparisons"
 }
 
+declare_lint! {
+    /// The `interior_mutable_consts` lint detects instance where
+    /// const-items have a interior mutable type, which silently does nothing.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// use std::sync::Once;
+    ///
+    /// // SAFETY: should only be call once
+    /// unsafe extern "C" fn ffi_init() { /* ... */ }
+    ///
+    /// const A: Once = Once::new(); // using `B` will always creates temporaries and
+    ///                              // never modify it-self on use, should be a
+    ///                              // static-item instead
+    ///
+    /// fn init() {
+    ///     A.call_once(|| unsafe {
+    ///         ffi_init();  // unsound, as the `call_once` is on a temporary
+    ///                      // and not on a shared variable
+    ///     })
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Using a const-item with an interior mutable type has no effect as const-item
+    /// are essentially inlined wherever they are used, meaning that they are copied
+    /// directly into the relevant context when used rendering modification through
+    /// interior mutability ineffective across usage of that const-item.
+    ///
+    /// The current implementation of this lint only warns on significant `std` and
+    /// `core` interior mutable types, like `Once`, `AtomicI32`, ... this is done out
+    /// of prudence and may be extended in the future.
+    INTERIOR_MUTABLE_CONSTS,
+    Warn,
+    "detects const items with interior mutable type",
+}
+
 #[derive(Copy, Clone, Default)]
 pub(crate) struct TypeLimits {
     /// Id of the last visited negated expression
@@ -211,7 +253,8 @@ impl_lint_pass!(TypeLimits => [
     OVERFLOWING_LITERALS,
     INVALID_NAN_COMPARISONS,
     AMBIGUOUS_WIDE_POINTER_COMPARISONS,
-    UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS
+    UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+    INTERIOR_MUTABLE_CONSTS,
 ]);
 
 impl TypeLimits {
@@ -669,6 +712,44 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 sym::cmp_partialord_lt => ComparisonOp::BinOp(hir::BinOpKind::Lt),
                 _ => return None,
             })
+        }
+    }
+
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        if let hir::ItemKind::Const(ty, _generics, _body_id) = item.kind
+            && let hir::TyKind::Path(ref qpath) = ty.kind
+            && let Some(def_id) = cx.qpath_res(qpath, ty.hir_id).opt_def_id()
+            && cx.tcx.has_attr(def_id, sym::rustc_significant_interior_mutable_type)
+            && let Some(ty_name) = cx.tcx.opt_item_ident(def_id)
+        {
+            let (sugg_static, sugg_allow) = if let Some(vis_span) =
+                item.vis_span.find_ancestor_inside(item.span)
+                && item.span.can_be_used_for_suggestions()
+                && vis_span.can_be_used_for_suggestions()
+            {
+                (
+                    InteriorMutableConstsSuggestionStatic::Spanful {
+                        const_: item.vis_span.between(item.ident.span),
+                        before: if !vis_span.is_empty() { " " } else { "" },
+                    },
+                    InteriorMutableConstsSuggestionAllow::Spanful {
+                        span: item.span.shrink_to_lo(),
+                    },
+                )
+            } else {
+                (
+                    InteriorMutableConstsSuggestionStatic::Spanless,
+                    InteriorMutableConstsSuggestionAllow::Spanless,
+                )
+            };
+
+            cx.emit_span_lint(INTERIOR_MUTABLE_CONSTS, item.span, InteriorMutableConstsDiag {
+                ty_name,
+                ty_span: ty.span,
+                const_name: item.ident,
+                sugg_static,
+                sugg_allow,
+            });
         }
     }
 }
