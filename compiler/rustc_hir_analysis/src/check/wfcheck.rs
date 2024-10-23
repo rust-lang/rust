@@ -110,7 +110,7 @@ where
 
     let mut wfcx = WfCheckingCtxt { ocx, span, body_def_id, param_env };
 
-    if !tcx.features().trivial_bounds {
+    if !tcx.features().trivial_bounds() {
         wfcx.check_false_global_bounds()
     }
     f(&mut wfcx)?;
@@ -921,7 +921,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
         } => {
             let ty = tcx.type_of(param.def_id).instantiate_identity();
 
-            if tcx.features().unsized_const_params {
+            if tcx.features().unsized_const_params() {
                 enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
                     wfcx.register_bound(
                         ObligationCause::new(
@@ -935,7 +935,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     );
                     Ok(())
                 })
-            } else if tcx.features().adt_const_params {
+            } else if tcx.features().adt_const_params() {
                 enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
                     wfcx.register_bound(
                         ObligationCause::new(
@@ -1698,9 +1698,9 @@ fn check_method_receiver<'tcx>(
         return Ok(());
     }
 
-    let arbitrary_self_types_level = if tcx.features().arbitrary_self_types_pointers {
+    let arbitrary_self_types_level = if tcx.features().arbitrary_self_types_pointers() {
         Some(ArbitrarySelfTypesLevel::WithPointers)
-    } else if tcx.features().arbitrary_self_types {
+    } else if tcx.features().arbitrary_self_types() {
         Some(ArbitrarySelfTypesLevel::Basic)
     } else {
         None

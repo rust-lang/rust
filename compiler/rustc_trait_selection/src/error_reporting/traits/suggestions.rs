@@ -3044,7 +3044,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if local {
                     err.note("all local variables must have a statically known size");
                 }
-                if !tcx.features().unsized_locals {
+                if !tcx.features().unsized_locals() {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
@@ -3125,7 +3125,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.note("all function arguments must have a statically known size");
                 }
                 if tcx.sess.opts.unstable_features.is_nightly_build()
-                    && !tcx.features().unsized_fn_params
+                    && !tcx.features().unsized_fn_params()
                 {
                     err.help("unsized fn params are gated as an unstable feature");
                 }
@@ -4510,7 +4510,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) {
         // Don't suggest if RTN is active -- we should prefer a where-clause bound instead.
-        if self.tcx.features().return_type_notation {
+        if self.tcx.features().return_type_notation() {
             return;
         }
 

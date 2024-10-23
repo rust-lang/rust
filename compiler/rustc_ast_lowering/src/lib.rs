@@ -193,7 +193,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
-            allow_gen_future: if tcx.features().async_fn_track_caller {
+            allow_gen_future: if tcx.features().async_fn_track_caller() {
                 [sym::gen_future, sym::closure_track_caller].into()
             } else {
                 [sym::gen_future].into()
@@ -1035,7 +1035,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: data.inputs_span,
                             })
                         };
-                        if !self.tcx.features().return_type_notation
+                        if !self.tcx.features().return_type_notation()
                             && self.tcx.sess.is_nightly_build()
                         {
                             add_feature_diagnostics(
@@ -1160,7 +1160,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
             ast::GenericArg::Type(ty) => {
                 match &ty.kind {
-                    TyKind::Infer if self.tcx.features().generic_arg_infer => {
+                    TyKind::Infer if self.tcx.features().generic_arg_infer() => {
                         return GenericArg::Infer(hir::InferArg {
                             hir_id: self.lower_node_id(ty.id),
                             span: self.lower_span(ty.span),
@@ -1500,7 +1500,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // is enabled. We don't check the span of the edition, since this is done
         // on a per-opaque basis to account for nested opaques.
         let always_capture_in_scope = match origin {
-            _ if self.tcx.features().lifetime_capture_rules_2024 => true,
+            _ if self.tcx.features().lifetime_capture_rules_2024() => true,
             hir::OpaqueTyOrigin::TyAlias { .. } => true,
             hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl, .. } => in_trait_or_impl.is_some(),
             hir::OpaqueTyOrigin::AsyncFn { .. } => {
@@ -1519,7 +1519,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Feature gate for RPITIT + use<..>
         match origin {
             rustc_hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl: Some(_), .. } => {
-                if !self.tcx.features().precise_capturing_in_traits
+                if !self.tcx.features().precise_capturing_in_traits()
                     && let Some(span) = bounds.iter().find_map(|bound| match *bound {
                         ast::GenericBound::Use(_, span) => Some(span),
                         _ => None,
@@ -2270,7 +2270,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
-                if self.tcx.features().generic_arg_infer {
+                if self.tcx.features().generic_arg_infer() {
                     hir::ArrayLen::Infer(hir::InferArg {
                         hir_id: self.lower_node_id(c.id),
                         span: self.lower_span(c.value.span),

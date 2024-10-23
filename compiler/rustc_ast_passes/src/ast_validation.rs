@@ -295,7 +295,8 @@ impl<'a> AstValidator<'a> {
             return;
         };
 
-        let make_impl_const_sugg = if self.features.const_trait_impl
+        let const_trait_impl = self.features.const_trait_impl();
+        let make_impl_const_sugg = if const_trait_impl
             && let TraitOrTraitImpl::TraitImpl {
                 constness: Const::No,
                 polarity: ImplPolarity::Positive,
@@ -308,13 +309,12 @@ impl<'a> AstValidator<'a> {
             None
         };
 
-        let make_trait_const_sugg = if self.features.const_trait_impl
-            && let TraitOrTraitImpl::Trait { span, constness: None } = parent
-        {
-            Some(span.shrink_to_lo())
-        } else {
-            None
-        };
+        let make_trait_const_sugg =
+            if const_trait_impl && let TraitOrTraitImpl::Trait { span, constness: None } = parent {
+                Some(span.shrink_to_lo())
+            } else {
+                None
+            };
 
         let parent_constness = parent.constness();
         self.dcx().emit_err(errors::TraitFnConst {
@@ -1145,7 +1145,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.check_type_no_bounds(bounds, "this context");
 
-                if self.features.lazy_type_alias {
+                if self.features.lazy_type_alias() {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }
@@ -1286,7 +1286,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             GenericBound::Trait(trait_ref) => {
                 match (ctxt, trait_ref.modifiers.constness, trait_ref.modifiers.polarity) {
                     (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds =>
+                        if !self.features.more_maybe_bounds() =>
                     {
                         self.sess
                             .create_feature_err(
@@ -1299,7 +1299,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             .emit();
                     }
                     (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds =>
+                        if !self.features.more_maybe_bounds() =>
                     {
                         self.sess
                             .create_feature_err(

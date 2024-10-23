@@ -170,7 +170,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
     let mut upstream_in_dylibs = FxHashSet::default();
 
-    if tcx.features().rustc_private {
+    if tcx.features().rustc_private() {
         // We need this to prevent users of `rustc_driver` from linking dynamically to `std`
         // which does not work as `std` is also statically linked into `rustc_driver`.
 

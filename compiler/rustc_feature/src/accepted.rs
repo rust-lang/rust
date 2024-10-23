@@ -9,7 +9,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (accepted, $feature:ident, $ver:expr, $issue:expr),
     )+) => {
         /// Formerly unstable features that have now been accepted (stabilized).
-        pub const ACCEPTED_FEATURES: &[Feature] = &[
+        pub const ACCEPTED_LANG_FEATURES: &[Feature] = &[
             $(Feature {
                 name: sym::$feature,
                 since: $ver,

@@ -1512,7 +1512,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     continue;
                 }
                 let is_param = *is_param.get_or_insert_with(compute_is_param);
-                if !is_param && !self.tcx.features().more_maybe_bounds {
+                if !is_param && !self.tcx.features().more_maybe_bounds() {
                     self.tcx
                         .sess
                         .create_feature_err(
@@ -1530,7 +1530,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let host_param_parts = if let Const::Yes(span) = constness
             // if this comes from implementing a `const` trait, we must force constness to be appended
             // to the impl item, no matter whether effects is enabled.
-            && (self.tcx.features().effects || force_append_constness)
+            && (self.tcx.features().effects() || force_append_constness)
         {
             let span = self.lower_span(span);
             let param_node_id = self.next_node_id();

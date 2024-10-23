@@ -10,7 +10,7 @@ use rustc_attr::{
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
-use rustc_feature::ACCEPTED_FEATURES;
+use rustc_feature::ACCEPTED_LANG_FEATURES;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
@@ -144,7 +144,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        if !self.tcx.features().staged_api {
+        if !self.tcx.features().staged_api() {
             // Propagate unstability. This can happen even for non-staged-api crates in case
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
@@ -248,7 +248,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
 
             if let Stability { level: Unstable { .. }, feature } = stab {
-                if ACCEPTED_FEATURES.iter().find(|f| f.name == feature).is_some() {
+                if ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some() {
                     self.tcx
                         .dcx()
                         .emit_err(errors::UnstableAttrForAlreadyStableFeature { span, item_sp });
@@ -261,7 +261,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
 
             if let Some(ConstStability { level: Unstable { .. }, feature, .. }) = const_stab {
-                if ACCEPTED_FEATURES.iter().find(|f| f.name == feature).is_some() {
+                if ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some() {
                     self.tcx.dcx().emit_err(errors::UnstableAttrForAlreadyStableFeature {
                         span: const_span.unwrap(), // If const_stab contains Some(..), same is true for const_span
                         item_sp,
@@ -541,7 +541,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
-        if !self.tcx.features().staged_api {
+        if !self.tcx.features().staged_api() {
             return;
         }
 
@@ -734,7 +734,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // items.
             hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref t), self_ty, items, .. }) => {
                 let features = self.tcx.features();
-                if features.staged_api {
+                if features.staged_api() {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
                     let stab = attr::find_stability(self.tcx.sess, attrs, item.span);
                     let const_stab = attr::find_const_stability(self.tcx.sess, attrs, item.span);
@@ -762,7 +762,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
 
                     // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
                     // needs to have an error emitted.
-                    if features.const_trait_impl
+                    if features.const_trait_impl()
                         && self.tcx.is_const_trait_impl_raw(item.owner_id.to_def_id())
                         && const_stab.is_some_and(|(stab, _)| stab.is_const_stable())
                     {
@@ -926,7 +926,7 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let is_staged_api =
-        tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api;
+        tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api();
     if is_staged_api {
         let effective_visibilities = &tcx.effective_visibilities(());
         let mut missing = MissingStabilityAnnotations { tcx, effective_visibilities };
