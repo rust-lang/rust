@@ -1,12 +1,38 @@
 //! Random access inspection of the results of a dataflow analysis.
 
 use std::cmp::Ordering;
+use std::ops::Deref;
 
 #[cfg(debug_assertions)]
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
+
+/// Some `ResultsCursor`s want to own a `Results`, and some want to borrow a `Results`. This type
+/// allows either. We could use `Cow` but that would require `Results` and `A` to impl `Clone`. So
+/// this is a greatly cut-down alternative to `Cow`.
+pub enum ResultsHandle<'a, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    Borrowed(&'a Results<'tcx, A>),
+    Owned(Results<'tcx, A>),
+}
+
+impl<'tcx, A> Deref for ResultsHandle<'_, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    type Target = Results<'tcx, A>;
+
+    fn deref(&self) -> &Results<'tcx, A> {
+        match self {
+            ResultsHandle::Borrowed(borrowed) => borrowed,
+            ResultsHandle::Owned(owned) => owned,
+        }
+    }
+}
 
 /// Allows random access inspection of the results of a dataflow analysis.
 ///
@@ -19,7 +45,7 @@ where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    results: Results<'tcx, A>,
+    results: ResultsHandle<'mir, 'tcx, A>,
     state: A::Domain,
 
     pos: CursorPosition,
@@ -47,13 +73,8 @@ where
         self.body
     }
 
-    /// Unwraps this cursor, returning the underlying `Results`.
-    pub fn into_results(self) -> Results<'tcx, A> {
-        self.results
-    }
-
     /// Returns a new cursor that can inspect `results`.
-    pub fn new(body: &'mir mir::Body<'tcx>, results: Results<'tcx, A>) -> Self {
+    pub fn new(body: &'mir mir::Body<'tcx>, results: ResultsHandle<'mir, 'tcx, A>) -> Self {
         let bottom_value = results.analysis.bottom_value(body);
         ResultsCursor {
             body,

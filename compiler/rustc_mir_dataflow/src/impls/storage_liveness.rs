@@ -100,13 +100,13 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct MaybeRequiresStorage<'mir, 'tcx> {
     body: &'mir Body<'tcx>,
-    borrowed_locals: Results<'tcx, MaybeBorrowedLocals>,
+    borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
 }
 
 impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     pub fn new(
         body: &'mir Body<'tcx>,
-        borrowed_locals: Results<'tcx, MaybeBorrowedLocals>,
+        borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
     ) -> Self {
         MaybeRequiresStorage { body, borrowed_locals }
     }
@@ -278,7 +278,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
 impl<'tcx> MaybeRequiresStorage<'_, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&self, trans: &mut <Self as Analysis<'tcx>>::Domain, loc: Location) {
-        let borrowed_locals = self.borrowed_locals.clone().into_results_cursor(self.body);
+        let borrowed_locals = self.borrowed_locals.as_results_cursor(self.body);
         let mut visitor = MoveVisitor { trans, borrowed_locals };
         visitor.visit_location(self.body, loc);
     }
