@@ -106,17 +106,19 @@ pub fn abort_internal() -> ! {
     unsafe {
         // Force the serial buffer to flush
         while exit_time.elapsed() < FLUSH_TIMEOUT {
+            vex_sdk::vexTasksRun();
+            
             // If the buffer has been fully flushed, exit the loop
             if vex_sdk::vexSerialWriteFree(stdio::STDIO_CHANNEL) == (stdio::STDOUT_BUF_SIZE as i32)
             {
                 break;
             }
+        }
+        
+        vex_sdk::vexSystemExitRequest();
+        
+        loop {
             vex_sdk::vexTasksRun();
         }
-        vex_sdk::vexSystemExitRequest();
-    }
-
-    loop {
-        crate::hint::spin_loop()
     }
 }
