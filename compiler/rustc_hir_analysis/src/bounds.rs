@@ -89,7 +89,11 @@ impl<'tcx> Bounds<'tcx> {
         host: ty::HostPolarity,
         span: Span,
     ) {
-        self.clauses.push((bound_trait_ref.to_host_effect_clause(tcx, host), span));
+        if tcx.is_const_trait(bound_trait_ref.def_id()) {
+            self.clauses.push((bound_trait_ref.to_host_effect_clause(tcx, host), span));
+        } else {
+            tcx.dcx().span_delayed_bug(span, "tried to lower {host:?} bound for non-const trait");
+        }
     }
 
     pub(crate) fn clauses(

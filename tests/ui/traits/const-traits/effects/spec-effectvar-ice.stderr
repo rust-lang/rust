@@ -42,14 +42,6 @@ error: `const` can only be applied to `#[const_trait]` traits
 LL | impl<T> const Foo for T where T: const Specialize {}
    |                                        ^^^^^^^^^^
 
-error: `const` can only be applied to `#[const_trait]` traits
-  --> $DIR/spec-effectvar-ice.rs:14:40
-   |
-LL | impl<T> const Foo for T where T: const Specialize {}
-   |                                        ^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 error: specialization impl does not specialize any associated items
   --> $DIR/spec-effectvar-ice.rs:14:1
    |
@@ -62,17 +54,11 @@ note: impl is a specialization of this impl
 LL | impl<T> const Foo for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: cannot specialize on predicate `T: const Specialize`
-  --> $DIR/spec-effectvar-ice.rs:14:34
-   |
-LL | impl<T> const Foo for T where T: const Specialize {}
-   |                                  ^^^^^^^^^^^^^^^^
-
 error: cannot specialize on trait `Specialize`
   --> $DIR/spec-effectvar-ice.rs:14:34
    |
 LL | impl<T> const Foo for T where T: const Specialize {}
    |                                  ^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors; 1 warning emitted
 

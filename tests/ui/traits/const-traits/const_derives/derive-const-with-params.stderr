@@ -30,14 +30,5 @@ LL | #[derive_const(PartialEq)]
    |
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/derive-const-with-params.rs:7:16
-   |
-LL | #[derive_const(PartialEq)]
-   |                ^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors; 1 warning emitted
 

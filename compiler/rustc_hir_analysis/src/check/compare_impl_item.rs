@@ -206,8 +206,8 @@ fn compare_method_predicate_entailment<'tcx>(
     );
 
     // FIXME(effects): This should be replaced with a more dedicated method.
-    let check_const_if_const = tcx.constness(impl_def_id) == hir::Constness::Const;
-    if check_const_if_const {
+    let is_conditionally_const = tcx.is_conditionally_const(impl_def_id);
+    if is_conditionally_const {
         // Augment the hybrid param-env with the const conditions
         // of the impl header and the trait method.
         hybrid_preds.extend(
@@ -255,7 +255,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // This registers the `~const` bounds of the impl method, which we will prove
     // using the hybrid param-env that we earlier augmented with the const conditions
     // from the impl header and trait method declaration.
-    if check_const_if_const {
+    if is_conditionally_const {
         for (const_condition, span) in
             tcx.const_conditions(impl_m.def_id).instantiate_own_identity()
         {
@@ -1904,9 +1904,8 @@ fn compare_type_predicate_entailment<'tcx>(
     let trait_ty_predicates = tcx.predicates_of(trait_ty.def_id);
 
     let impl_ty_own_bounds = impl_ty_predicates.instantiate_own_identity();
-    let impl_ty_own_const_conditions =
-        tcx.const_conditions(impl_ty.def_id).instantiate_own_identity();
-    if impl_ty_own_bounds.len() == 0 && impl_ty_own_const_conditions.len() == 0 {
+    // If there are no bounds, then there are no const conditions, so no need to check that here.
+    if impl_ty_own_bounds.len() == 0 {
         // Nothing to check.
         return Ok(());
     }
@@ -1931,8 +1930,8 @@ fn compare_type_predicate_entailment<'tcx>(
     let impl_ty_span = tcx.def_span(impl_ty_def_id);
     let normalize_cause = ObligationCause::misc(impl_ty_span, impl_ty_def_id);
 
-    let check_const_if_const = tcx.constness(impl_def_id) == hir::Constness::Const;
-    if check_const_if_const {
+    let is_conditionally_const = tcx.is_conditionally_const(impl_ty.def_id);
+    if is_conditionally_const {
         // Augment the hybrid param-env with the const conditions
         // of the impl header and the trait assoc type.
         hybrid_preds.extend(
@@ -1968,8 +1967,10 @@ fn compare_type_predicate_entailment<'tcx>(
         ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
     }
 
-    if check_const_if_const {
+    if is_conditionally_const {
         // Validate the const conditions of the impl associated type.
+        let impl_ty_own_const_conditions =
+            tcx.const_conditions(impl_ty.def_id).instantiate_own_identity();
         for (const_condition, span) in impl_ty_own_const_conditions {
             let normalize_cause = traits::ObligationCause::misc(span, impl_ty_def_id);
             let const_condition = ocx.normalize(&normalize_cause, param_env, const_condition);
@@ -2081,7 +2082,7 @@ pub(super) fn check_type_bounds<'tcx>(
         .collect();
 
     // Only in a const implementation do we need to check that the `~const` item bounds hold.
-    if tcx.constness(container_id) == hir::Constness::Const {
+    if tcx.is_conditionally_const(impl_ty_def_id) {
         obligations.extend(
             tcx.implied_const_bounds(trait_ty.def_id)
                 .iter_instantiated_copied(tcx, rebased_args)

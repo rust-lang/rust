@@ -888,48 +888,8 @@ pub(super) fn const_conditions<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> ty::ConstConditions<'tcx> {
-    // This logic is spaghetti, and should be cleaned up. The current methods that are
-    // defined to deal with constness are very unintuitive.
-    if tcx.is_const_fn_raw(def_id.to_def_id()) {
-        // Ok, const fn or method in const trait.
-    } else {
-        match tcx.def_kind(def_id) {
-            DefKind::Trait => {
-                if !tcx.is_const_trait(def_id.to_def_id()) {
-                    return Default::default();
-                }
-            }
-            DefKind::Impl { .. } => {
-                // FIXME(effects): Should be using a dedicated function to
-                // test if this is a const trait impl.
-                if tcx.constness(def_id) != hir::Constness::Const {
-                    return Default::default();
-                }
-            }
-            DefKind::AssocTy | DefKind::AssocFn => {
-                let parent_def_id = tcx.local_parent(def_id).to_def_id();
-                match tcx.associated_item(def_id).container {
-                    ty::AssocItemContainer::TraitContainer => {
-                        if !tcx.is_const_trait(parent_def_id) {
-                            return Default::default();
-                        }
-                    }
-                    ty::AssocItemContainer::ImplContainer => {
-                        // FIXME(effects): Should be using a dedicated function to
-                        // test if this is a const trait impl.
-                        if tcx.constness(parent_def_id) != hir::Constness::Const {
-                            return Default::default();
-                        }
-                    }
-                }
-            }
-            DefKind::Closure | DefKind::OpaqueTy => {
-                // Closures and RPITs will eventually have const conditions
-                // for `~const` bounds.
-                return Default::default();
-            }
-            _ => return Default::default(),
-        }
+    if !tcx.is_conditionally_const(def_id) {
+        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
     }
 
     let (generics, trait_def_id_and_supertraits, has_parent) = match tcx.hir_node_by_def_id(def_id)
@@ -940,7 +900,7 @@ pub(super) fn const_conditions<'tcx>(
             hir::ItemKind::Trait(_, _, generics, supertraits, _) => {
                 (generics, Some((item.owner_id.def_id, supertraits)), false)
             }
-            _ => return Default::default(),
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
         // While associated types are not really const, we do allow them to have `~const`
         // bounds and where clauses. `const_conditions` is responsible for gathering
@@ -950,13 +910,21 @@ pub(super) fn const_conditions<'tcx>(
             hir::TraitItemKind::Fn(_, _) | hir::TraitItemKind::Type(_, _) => {
                 (item.generics, None, true)
             }
-            _ => return Default::default(),
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
         Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Fn(_, _) | hir::ImplItemKind::Type(_) => (item.generics, None, true),
-            _ => return Default::default(),
+            hir::ImplItemKind::Fn(_, _) | hir::ImplItemKind::Type(_) => {
+                (item.generics, None, tcx.is_conditionally_const(tcx.local_parent(def_id)))
+            }
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
-        _ => return Default::default(),
+        Node::ForeignItem(item) => match item.kind {
+            hir::ForeignItemKind::Fn(_, _, generics) => (generics, None, false),
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        // N.B. Tuple ctors are unconditionally constant.
+        Node::Ctor(hir::VariantData::Tuple { .. }) => return Default::default(),
+        _ => bug!("const_conditions called on wrong item: {def_id:?}"),
     };
 
     let icx = ItemCtxt::new(tcx, def_id);
@@ -1017,12 +985,12 @@ pub(super) fn implied_const_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
+    if !tcx.is_conditionally_const(def_id) {
+        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+    }
+
     let bounds = match tcx.hir_node_by_def_id(def_id) {
         Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
-            if !tcx.is_const_trait(def_id.to_def_id()) {
-                return ty::EarlyBinder::bind(&[]);
-            }
-
             implied_predicates_with_filter(
                 tcx,
                 def_id.to_def_id(),
@@ -1030,17 +998,9 @@ pub(super) fn implied_const_bounds<'tcx>(
             )
         }
         Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. }) => {
-            if !tcx.is_const_trait(tcx.local_parent(def_id).to_def_id()) {
-                return ty::EarlyBinder::bind(&[]);
-            }
-
             explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
         }
-        Node::OpaqueTy(..) => {
-            // We should eventually collect the `~const` bounds on opaques.
-            return ty::EarlyBinder::bind(&[]);
-        }
-        _ => return ty::EarlyBinder::bind(&[]),
+        _ => bug!("implied_const_bounds called on wrong item: {def_id:?}"),
     };
 
     bounds.map_bound(|bounds| {

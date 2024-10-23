@@ -861,12 +861,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // FIXME(effects): Should this be `is_const_fn_raw`? It depends on if we move
         // const stability checking here too, I guess.
-        if self.tcx.is_const_fn(callee_did)
-            || self
-                .tcx
-                .trait_of_item(callee_did)
-                .is_some_and(|def_id| self.tcx.is_const_trait(def_id))
-        {
+        if self.tcx.is_conditionally_const(callee_did) {
             let q = self.tcx.const_conditions(callee_did);
             // FIXME(effects): Use this span with a better cause code.
             for (cond, _) in q.instantiate(self.tcx, callee_args) {

@@ -384,7 +384,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn is_const_impl(self, def_id: DefId) -> bool {
-        self.constness(def_id) == hir::Constness::Const
+        self.is_conditionally_const(def_id)
     }
 
     fn const_conditions(
@@ -3140,6 +3140,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    // FIXME(effects): Please remove this. It's a footgun.
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl_raw(self, def_id: DefId) -> bool {
         let Some(local_def_id) = def_id.as_local() else { return false };
