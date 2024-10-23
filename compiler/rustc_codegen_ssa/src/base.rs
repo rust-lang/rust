@@ -888,7 +888,7 @@ impl CrateInfo {
         // below.
         //
         // In order to get this left-to-right dependency ordering, we use the reverse
-        // postorder of all crates putting the leaves at the right-most positions.
+        // postorder of all crates putting the leaves at the rightmost positions.
         let mut compiler_builtins = None;
         let mut used_crates: Vec<_> = tcx
             .postorder_cnums(())

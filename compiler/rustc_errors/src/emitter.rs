@@ -58,9 +58,9 @@ impl HumanReadableErrorType {
 struct Margin {
     /// The available whitespace in the left that can be consumed when centering.
     pub whitespace_left: usize,
-    /// The column of the beginning of left-most span.
+    /// The column of the beginning of leftmost span.
     pub span_left: usize,
-    /// The column of the end of right-most span.
+    /// The column of the end of rightmost span.
     pub span_right: usize,
     /// The beginning of the line to be displayed.
     pub computed_left: usize,
@@ -128,7 +128,7 @@ impl Margin {
         } else {
             0
         };
-        // We want to show as much as possible, max_line_len is the right-most boundary for the
+        // We want to show as much as possible, max_line_len is the rightmost boundary for the
         // relevant code.
         self.computed_right = max(max_line_len, self.computed_left);
 
@@ -685,7 +685,7 @@ impl HumanEmitter {
             buffer.puts(line_offset, code_offset, "...", Style::LineNumber);
         }
         if margin.was_cut_right(line_len) {
-            // We have stripped some code after the right-most span end, make it clear we did so.
+            // We have stripped some code after the rightmost span end, make it clear we did so.
             buffer.puts(line_offset, code_offset + taken - 3, "...", Style::LineNumber);
         }
         buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
