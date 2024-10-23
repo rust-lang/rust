@@ -27,7 +27,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
+    self, ClauseKind, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
     suggest_constraining_type_params,
 };
 use rustc_middle::util::CallKind;
@@ -39,6 +39,7 @@ use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::{debug, instrument};
 
@@ -201,16 +202,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
                 let mut has_suggest_reborrow = false;
                 if !seen_spans.contains(&move_span) {
-                    if !closure {
-                        self.suggest_ref_or_clone(
-                            mpi,
-                            &mut err,
-                            &mut in_pattern,
-                            move_spans,
-                            moved_place.as_ref(),
-                            &mut has_suggest_reborrow,
-                        );
-                    }
+                    self.suggest_ref_or_clone(
+                        mpi,
+                        &mut err,
+                        &mut in_pattern,
+                        move_spans,
+                        moved_place.as_ref(),
+                        &mut has_suggest_reborrow,
+                        closure,
+                    );
 
                     let msg_opt = CapturedMessageOpt {
                         is_partial_move,
@@ -266,27 +266,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
             }
 
-            let opt_name = self.describe_place_with_options(place.as_ref(), DescribePlaceOpt {
-                including_downcast: true,
-                including_tuple_field: true,
-            });
-            let note_msg = match opt_name {
-                Some(name) => format!("`{name}`"),
-                None => "value".to_owned(),
-            };
-            if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, &note_msg)
-                || if let UseSpans::FnSelfUse { kind, .. } = use_spans
-                    && let CallKind::FnCall { fn_trait_id, self_ty } = kind
-                    && let ty::Param(_) = self_ty.kind()
-                    && ty == self_ty
-                    && self.infcx.tcx.is_lang_item(fn_trait_id, LangItem::FnOnce)
-                {
-                    // this is a type parameter `T: FnOnce()`, don't suggest `T: FnOnce() + Clone`.
-                    true
-                } else {
-                    false
-                }
-            {
+            if self.param_env.caller_bounds().iter().any(|c| {
+                c.as_trait_clause().is_some_and(|pred| {
+                    pred.skip_binder().self_ty() == ty && self.infcx.tcx.is_fn_trait(pred.def_id())
+                })
+            }) {
                 // Suppress the next suggestion since we don't want to put more bounds onto
                 // something that already has `Fn`-like bounds (or is a closure), so we can't
                 // restrict anyways.
@@ -295,6 +279,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.suggest_adding_bounds(&mut err, ty, copy_did, span);
             }
 
+            let opt_name = self.describe_place_with_options(place.as_ref(), DescribePlaceOpt {
+                including_downcast: true,
+                including_tuple_field: true,
+            });
+            let note_msg = match opt_name {
+                Some(name) => format!("`{name}`"),
+                None => "value".to_owned(),
+            };
             if needs_note {
                 if let Some(local) = place.as_local() {
                     let span = self.body.local_decls[local].source_info.span;
@@ -341,6 +333,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         move_spans: UseSpans<'tcx>,
         moved_place: PlaceRef<'tcx>,
         has_suggest_reborrow: &mut bool,
+        moved_or_invoked_closure: bool,
     ) {
         let move_span = match move_spans {
             UseSpans::ClosureUse { capture_kind_span, .. } => capture_kind_span,
@@ -428,17 +421,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
                 let parent = self.infcx.tcx.parent_hir_node(expr.hir_id);
-                let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
+                let (def_id, call_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
                 {
-                    (typeck.type_dependent_def_id(parent_expr.hir_id), args, 1)
+                    let def_id = typeck.type_dependent_def_id(parent_expr.hir_id);
+                    (def_id, Some(parent_expr.hir_id), args, 1)
                 } else if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call, args) = parent_expr.kind
                     && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
                 {
-                    (Some(*def_id), args, 0)
+                    (Some(*def_id), Some(call.hir_id), args, 0)
                 } else {
-                    (None, &[][..], 0)
+                    (None, None, &[][..], 0)
                 };
                 let ty = place.ty(self.body, self.infcx.tcx).ty;
 
@@ -449,14 +443,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // The move occurred as one of the arguments to a function call. Is that
                     // argument generic? `def_id` can't be a closure here, so using `fn_sig` is fine
                     let arg_param = if self.infcx.tcx.def_kind(def_id).is_fn_like()
-                        && let Some(arg_ty) = self
-                            .infcx
-                            .tcx
-                            .fn_sig(def_id)
-                            .instantiate_identity()
-                            .skip_binder()
-                            .inputs()
-                            .get(pos + offset)
+                        && let sig =
+                            self.infcx.tcx.fn_sig(def_id).instantiate_identity().skip_binder()
+                        && let Some(arg_ty) = sig.inputs().get(pos + offset)
                         && let ty::Param(arg_param) = arg_ty.kind()
                     {
                         Some(arg_param)
@@ -478,54 +467,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         return;
                     }
 
-                    let mut mutbl = ty::Mutability::Not;
-                    if let Some(param) = arg_param
-                        && self
-                            .infcx
-                            .tcx
-                            .predicates_of(def_id)
-                            .instantiate_identity(self.infcx.tcx)
-                            .predicates
-                            .into_iter()
-                            .any(|pred| {
-                                if let ty::ClauseKind::Trait(predicate) = pred.kind().skip_binder()
-                                    && [
-                                        self.infcx.tcx.get_diagnostic_item(sym::AsRef),
-                                        self.infcx.tcx.get_diagnostic_item(sym::AsMut),
-                                        self.infcx.tcx.get_diagnostic_item(sym::Borrow),
-                                        self.infcx.tcx.get_diagnostic_item(sym::BorrowMut),
-                                    ]
-                                    .contains(&Some(predicate.def_id()))
-                                    && *predicate.self_ty().kind() == ty::Param(*param)
-                                {
-                                    if [
-                                        self.infcx.tcx.get_diagnostic_item(sym::AsMut),
-                                        self.infcx.tcx.get_diagnostic_item(sym::BorrowMut),
-                                    ]
-                                    .contains(&Some(predicate.def_id()))
-                                    {
-                                        mutbl = ty::Mutability::Mut;
-                                    }
-                                    true
-                                } else {
-                                    false
-                                }
-                            })
+                    // If the moved place is used generically by the callee and a reference to it
+                    // would still satisfy any bounds on its type, suggest borrowing.
+                    if let Some(&param) = arg_param
+                        && let Some(generic_args) = call_id.and_then(|id| typeck.node_args_opt(id))
+                        && let Some(ref_mutability) = self.suggest_borrow_generic_arg(
+                            err,
+                            def_id,
+                            generic_args,
+                            param,
+                            moved_place,
+                            pos + offset,
+                            ty,
+                            expr.span,
+                        )
                     {
-                        // The type of the argument corresponding to the expression that got moved
-                        // is a type parameter `T`, which is has a `T: AsRef` obligation.
-                        let place_desc = if let Some(desc) = self.describe_place(moved_place) {
-                            format!("`{desc}`")
-                        } else {
-                            "here".to_owned()
-                        };
-                        err.span_suggestion_verbose(
-                            expr.span.shrink_to_lo(),
-                            format!("consider {}borrowing {place_desc}", mutbl.mutably_str()),
-                            mutbl.ref_prefix_str(),
-                            Applicability::MaybeIncorrect,
-                        );
-                        can_suggest_clone = mutbl.is_mut();
+                        can_suggest_clone = ref_mutability.is_mut();
                     } else if let Some(local_def_id) = def_id.as_local()
                         && let node = self.infcx.tcx.hir_node_by_def_id(local_def_id)
                         && let Some(fn_decl) = node.fn_decl()
@@ -563,6 +520,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 } else if let UseSpans::FnSelfUse { kind: CallKind::Normal { .. }, .. } = move_spans
                 {
                     // We already suggest cloning for these cases in `explain_captures`.
+                } else if moved_or_invoked_closure {
+                    // Do not suggest `closure.clone()()`.
                 } else if let UseSpans::ClosureUse {
                     closure_kind:
                         ClosureKind::Coroutine(CoroutineKind::Desugared(_, CoroutineSource::Block)),
@@ -669,6 +628,113 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             "&mut *",
             Applicability::MachineApplicable,
         );
+    }
+
+    /// If a place is used after being moved as an argument to a function, the function is generic
+    /// in that argument, and a reference to the argument's type would still satisfy the function's
+    /// bounds, suggest borrowing. This covers, e.g., borrowing an `impl Fn()` argument being passed
+    /// in an `impl FnOnce()` position.
+    /// Returns `Some(mutability)` when suggesting to borrow with mutability `mutability`, or `None`
+    /// if no suggestion is made.
+    fn suggest_borrow_generic_arg(
+        &self,
+        err: &mut Diag<'_>,
+        callee_did: DefId,
+        generic_args: ty::GenericArgsRef<'tcx>,
+        param: ty::ParamTy,
+        moved_place: PlaceRef<'tcx>,
+        moved_arg_pos: usize,
+        moved_arg_ty: Ty<'tcx>,
+        place_span: Span,
+    ) -> Option<ty::Mutability> {
+        let tcx = self.infcx.tcx;
+        let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_binder();
+        let clauses = tcx.predicates_of(callee_did).instantiate_identity(self.infcx.tcx).predicates;
+
+        // First, is there at least one method on one of `param`'s trait bounds?
+        // This keeps us from suggesting borrowing the argument to `mem::drop`, e.g.
+        if !clauses.iter().any(|clause| {
+            clause.as_trait_clause().is_some_and(|tc| {
+                tc.self_ty().skip_binder().is_param(param.index)
+                    && tc.polarity() == ty::PredicatePolarity::Positive
+                    && tcx
+                        .supertrait_def_ids(tc.def_id())
+                        .flat_map(|trait_did| tcx.associated_items(trait_did).in_definition_order())
+                        .any(|item| item.fn_has_self_parameter)
+            })
+        }) {
+            return None;
+        }
+
+        // Try borrowing a shared reference first, then mutably.
+        if let Some(mutbl) = [ty::Mutability::Not, ty::Mutability::Mut].into_iter().find(|&mutbl| {
+            let re = self.infcx.tcx.lifetimes.re_erased;
+            let ref_ty = Ty::new_ref(self.infcx.tcx, re, moved_arg_ty, mutbl);
+
+            // Ensure that substituting `ref_ty` in the callee's signature doesn't break
+            // other inputs or the return type.
+            let new_args = tcx.mk_args_from_iter(generic_args.iter().enumerate().map(
+                |(i, arg)| {
+                    if i == param.index as usize { ref_ty.into() } else { arg }
+                },
+            ));
+            let can_subst = |ty: Ty<'tcx>| {
+                // Normalize before comparing to see through type aliases and projections.
+                let old_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, generic_args);
+                let new_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, new_args);
+                if let Ok(old_ty) = tcx.try_normalize_erasing_regions(self.param_env, old_ty)
+                    && let Ok(new_ty) = tcx.try_normalize_erasing_regions(self.param_env, new_ty)
+                {
+                    old_ty == new_ty
+                } else {
+                    false
+                }
+            };
+            if !can_subst(sig.output())
+                || sig
+                    .inputs()
+                    .iter()
+                    .enumerate()
+                    .any(|(i, &input_ty)| i != moved_arg_pos && !can_subst(input_ty))
+            {
+                return false;
+            }
+
+            // Test the callee's predicates, substituting a reference in for the self ty
+            // in bounds on `param`.
+            clauses.iter().all(|&clause| {
+                let clause_for_ref = clause.kind().map_bound(|kind| match kind {
+                    ClauseKind::Trait(c) if c.self_ty().is_param(param.index) => {
+                        ClauseKind::Trait(c.with_self_ty(tcx, ref_ty))
+                    }
+                    ClauseKind::Projection(c) if c.self_ty().is_param(param.index) => {
+                        ClauseKind::Projection(c.with_self_ty(tcx, ref_ty))
+                    }
+                    _ => kind,
+                });
+                self.infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+                    tcx,
+                    ObligationCause::dummy(),
+                    self.param_env,
+                    ty::EarlyBinder::bind(clause_for_ref).instantiate(tcx, generic_args),
+                ))
+            })
+        }) {
+            let place_desc = if let Some(desc) = self.describe_place(moved_place) {
+                format!("`{desc}`")
+            } else {
+                "here".to_owned()
+            };
+            err.span_suggestion_verbose(
+                place_span.shrink_to_lo(),
+                format!("consider {}borrowing {place_desc}", mutbl.mutably_str()),
+                mutbl.ref_prefix_str(),
+                Applicability::MaybeIncorrect,
+            );
+            Some(mutbl)
+        } else {
+            None
+        }
     }
 
     fn report_use_of_uninitialized(
@@ -849,74 +915,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             format!(" = {assign_value}"),
             Applicability::MaybeIncorrect,
         );
-    }
-
-    fn suggest_borrow_fn_like(
-        &self,
-        err: &mut Diag<'_>,
-        ty: Ty<'tcx>,
-        move_sites: &[MoveSite],
-        value_name: &str,
-    ) -> bool {
-        let tcx = self.infcx.tcx;
-
-        // Find out if the predicates show that the type is a Fn or FnMut
-        let find_fn_kind_from_did = |(pred, _): (ty::Clause<'tcx>, _)| {
-            if let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder()
-                && pred.self_ty() == ty
-            {
-                if tcx.is_lang_item(pred.def_id(), LangItem::Fn) {
-                    return Some(hir::Mutability::Not);
-                } else if tcx.is_lang_item(pred.def_id(), LangItem::FnMut) {
-                    return Some(hir::Mutability::Mut);
-                }
-            }
-            None
-        };
-
-        // If the type is opaque/param/closure, and it is Fn or FnMut, let's suggest (mutably)
-        // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
-        // These types seem reasonably opaque enough that they could be instantiated with their
-        // borrowed variants in a function body when we see a move error.
-        let borrow_level = match *ty.kind() {
-            ty::Param(_) => tcx
-                .explicit_predicates_of(self.mir_def_id().to_def_id())
-                .predicates
-                .iter()
-                .copied()
-                .find_map(find_fn_kind_from_did),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => tcx
-                .explicit_item_super_predicates(def_id)
-                .iter_instantiated_copied(tcx, args)
-                .find_map(|(clause, span)| find_fn_kind_from_did((clause, span))),
-            ty::Closure(_, args) => match args.as_closure().kind() {
-                ty::ClosureKind::Fn => Some(hir::Mutability::Not),
-                ty::ClosureKind::FnMut => Some(hir::Mutability::Mut),
-                _ => None,
-            },
-            _ => None,
-        };
-
-        let Some(borrow_level) = borrow_level else {
-            return false;
-        };
-        let sugg = move_sites
-            .iter()
-            .map(|move_site| {
-                let move_out = self.move_data.moves[(*move_site).moi];
-                let moved_place = &self.move_data.move_paths[move_out.path].place;
-                let move_spans = self.move_spans(moved_place.as_ref(), move_out.source);
-                let move_span = move_spans.args_or_use();
-                let suggestion = borrow_level.ref_prefix_str().to_owned();
-                (move_span.shrink_to_lo(), suggestion)
-            })
-            .collect();
-        err.multipart_suggestion_verbose(
-            format!("consider {}borrowing {value_name}", borrow_level.mutably_str()),
-            sugg,
-            Applicability::MaybeIncorrect,
-        );
-        true
     }
 
     /// In a move error that occurs on a call within a loop, we try to identify cases where cloning

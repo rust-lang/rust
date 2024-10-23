@@ -1,23 +1,20 @@
 //! auxiliary definitons for suggest-borrow-for-generic-arg.rs, to ensure the suggestion works on
 //! functions defined in other crates.
 
-use std::borrow::{Borrow, BorrowMut};
-use std::convert::{AsMut, AsRef};
-pub struct Bar;
+use std::io::{self, Read, Write};
+use std::iter::Sum;
 
-impl AsRef<Bar> for Bar {
-    fn as_ref(&self) -> &Bar {
-        self
-    }
+pub fn write_stuff<W: Write>(mut writer: W) -> io::Result<()> {
+    writeln!(writer, "stuff")
 }
 
-impl AsMut<Bar> for Bar {
-    fn as_mut(&mut self) -> &mut Bar {
-        self
-    }
+pub fn read_and_discard<R: Read>(mut reader: R) -> io::Result<()> {
+    let mut buf = Vec::new();
+    reader.read_to_end(&mut buf).map(|_| ())
 }
 
-pub fn foo<T: AsRef<Bar>>(_: T) {}
-pub fn qux<T: AsMut<Bar>>(_: T) {}
-pub fn bat<T: Borrow<T>>(_: T) {}
-pub fn baz<T: BorrowMut<T>>(_: T) {}
+pub fn sum_three<I: IntoIterator>(iter: I) -> <I as IntoIterator>::Item
+    where <I as IntoIterator>::Item: Sum
+{
+    iter.into_iter().take(3).sum()
+}
