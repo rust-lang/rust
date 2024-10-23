@@ -15,8 +15,10 @@ use crate::{LateContext, LateLintPass};
 
 declare_lint! {
     /// The `tail_expr_drop_order` lint looks for those values generated at the tail expression location,
-    /// that of type with a custom `Drop` destructor implementation, which will be dropped earlier in Edition 2024.
-    /// Your discretion on the new drop order introduced by Edition 2024 is required.
+    /// that runs a custom `Drop` destructor.
+    /// Some of them may be dropped earlier in Edition 2024 that they used to in Edition 2021 and prior.
+    /// This lint detects those cases and provides you information on those values and their custom destructor implementations.
+    /// Your discretion on this information is required.
     ///
     /// ### Example
     /// ```rust,edition2021
