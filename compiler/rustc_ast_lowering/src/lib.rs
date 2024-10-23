@@ -2210,6 +2210,41 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds.iter().map(move |bound| self.lower_param_bound(bound, itctx))
     }
 
+    fn lower_res_for_universal_param_and_bounds(
+        &mut self,
+        def_id: LocalDefId,
+        pred: &Option<hir::WherePredicate<'hir>>,
+    ) -> Res {
+        if let Some(predicate) = pred
+            && let hir::WherePredicate::BoundPredicate(bound_pred) = predicate
+            && bound_pred.bounds.iter().any(|bound| {
+                let mut references_error = false;
+                if let hir::GenericBound::Trait(poly) = bound {
+                    for segment in poly.trait_ref.path.segments {
+                        for arg in segment.args().args {
+                            if let hir::GenericArg::Type(ty) = arg
+                                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
+                                && let Res::Err = path.res
+                            {
+                                references_error = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                references_error
+            })
+        {
+            // When any of the arguments of an `impl Trait<A, B, C>` couldn't be resolved, we mark
+            // the type parameter corresponding to the `impl Trait` as `Err` in order to avoid
+            // knock down errors, particularly in trait selection, as if `A` isn't resolved,
+            // `impl Trait<A>: Trait<A>` *doesn't* hold.
+            Res::Err
+        } else {
+            Res::Def(DefKind::TyParam, def_id.to_def_id())
+        }
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     fn lower_universal_param_and_bounds(
         &mut self,
@@ -2246,7 +2281,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
 
         let hir_id = self.next_id();
-        let res = Res::Def(DefKind::TyParam, def_id.to_def_id());
+        let res = self.lower_res_for_universal_param_and_bounds(def_id, &preds);
         let ty = hir::TyKind::Path(hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
