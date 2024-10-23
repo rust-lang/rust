@@ -83,25 +83,25 @@ Additional proposals in the future are, of course, also not enabled by default.
 
 ## Rationale relative to wasm32-unknown-unknown
 
-As noted in the [`wasm32-unknown-unknown` document](./wasm32-unknown-unknown.md), it is possible to compile with `-target wasm32-unknown-unknown` and disable all WebAssembly proposals "by hand", by passing `-Ctarget-cpu=mvp`. Furthermore one can enable proposals one by one by passing LLVM target feature flags, such as `-Ctarget-feature=+mutable-globals`.
+As noted in the [`wasm32-unknown-unknown` document](./wasm32-unknown-unknown.md), it is possible to compile with `--target wasm32-unknown-unknown` and disable all WebAssembly proposals "by hand", by passing `-Ctarget-cpu=mvp`. Furthermore one can enable proposals one by one by passing LLVM target feature flags, such as `-Ctarget-feature=+mutable-globals`.
 
 Is it therefore reasonable to wonder what the difference is between building with this:
 
 ```sh
-$ rustc -target wasm32-unknown-unknown -Ctarget-cpu=mvp -Ctarget-feature=+mutable-globals
+$ rustc --target wasm32-unknown-unknown -Ctarget-cpu=mvp -Ctarget-feature=+mutable-globals
 ```
 
 and building with this:
 
 ```sh
-$ rustc -target wasm32v1-none
+$ rustc --target wasm32v1-none
 ```
 
 The difference is in how the `core` and `alloc` crates are compiled for distribution with the toolchain, and whether it works on _stable_ Rust toolchains or requires _nightly_ ones. Again referring back to the [`wasm32-unknown-unknown` document](./wasm32-unknown-unknown.md), note that to disable all post-MVP proposals on that target one _actually_ has to compile with this:
 
 ```sh
 $ export RUSTFLAGS="-Ctarget-cpu=mvp -Ctarget-feature=+mutable-globals"
-$ cargo +nightly build -Zbuild-std=panic_abort,std -target wasm32-unknown-unknown
+$ cargo +nightly build -Zbuild-std=panic_abort,std --target wasm32-unknown-unknown
 ```
 
 Which not only rebuilds `std`, `core` and `alloc` (which is somewhat costly and annoying) but more importantly requires the use of nightly Rust toolchains (for the `-Zbuild-std` flag). This is very undesirable for the target audience, which consists of people targeting WebAssembly implementations that prioritize stability, simplicity and/or security over feature support.
