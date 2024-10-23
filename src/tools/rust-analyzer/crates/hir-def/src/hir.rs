@@ -17,7 +17,7 @@ pub mod type_ref;
 
 use std::fmt;
 
-use hir_expand::name::Name;
+use hir_expand::{name::Name, MacroDefId};
 use intern::{Interned, Symbol};
 use la_arena::{Idx, RawIdx};
 use rustc_apfloat::ieee::{Half as f16, Quad as f128};
@@ -492,9 +492,13 @@ pub enum Statement {
         expr: ExprId,
         has_semi: bool,
     },
-    // At the moment, we only use this to figure out if a return expression
-    // is really the last statement of a block. See #16566
-    Item,
+    Item(Item),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Item {
+    MacroDef(Box<MacroDefId>),
+    Other,
 }
 
 /// Explicit binding annotations given in the HIR for a binding. Note

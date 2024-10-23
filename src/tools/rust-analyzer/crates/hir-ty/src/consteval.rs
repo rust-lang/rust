@@ -3,7 +3,7 @@
 use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
-    body::Body,
+    body::{Body, HygieneId},
     hir::{Expr, ExprId},
     path::Path,
     resolver::{Resolver, ValueNs},
@@ -80,7 +80,7 @@ pub(crate) fn path_to_const<'g>(
     debruijn: DebruijnIndex,
     expected_ty: Ty,
 ) -> Option<Const> {
-    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path) {
+    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path, HygieneId::ROOT) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
             let value = match mode {

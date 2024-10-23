@@ -45,7 +45,7 @@ use syntax::{
 use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{resolve_hir_path, SourceAnalyzer},
+    source_analyzer::{name_hygiene, resolve_hir_path, SourceAnalyzer},
     Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
     ConstParam, Crate, DeriveHelper, Enum, Field, Function, HasSource, HirFileId, Impl, InFile,
     InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name,
@@ -1952,10 +1952,15 @@ impl SemanticsScope<'_> {
 
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
-    pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
+    pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution> {
         let ctx = LowerCtx::new(self.db.upcast(), self.file_id);
-        let path = Path::from_src(&ctx, path.clone())?;
-        resolve_hir_path(self.db, &self.resolver, &path)
+        let path = Path::from_src(&ctx, ast_path.clone())?;
+        resolve_hir_path(
+            self.db,
+            &self.resolver,
+            &path,
+            name_hygiene(self.db, InFile::new(self.file_id, ast_path.syntax())),
+        )
     }
 
     /// Iterates over associated types that may be specified after the given path (using

@@ -289,10 +289,12 @@ impl ExprValidator {
         match &self.body[scrutinee_expr] {
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => false,
             Expr::Path(path) => {
-                let value_or_partial = self
-                    .owner
-                    .resolver(db.upcast())
-                    .resolve_path_in_value_ns_fully(db.upcast(), path);
+                let value_or_partial =
+                    self.owner.resolver(db.upcast()).resolve_path_in_value_ns_fully(
+                        db.upcast(),
+                        path,
+                        self.body.expr_path_hygiene(scrutinee_expr),
+                    );
                 value_or_partial.map_or(true, |v| !matches!(v, ValueNs::StaticId(_)))
             }
             Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {

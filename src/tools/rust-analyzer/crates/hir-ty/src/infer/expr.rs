@@ -201,7 +201,11 @@ impl InferenceContext<'_> {
             Expr::Path(Path::Normal { type_anchor: Some(_), .. }) => false,
             Expr::Path(path) => self
                 .resolver
-                .resolve_path_in_value_ns_fully(self.db.upcast(), path)
+                .resolve_path_in_value_ns_fully(
+                    self.db.upcast(),
+                    path,
+                    self.body.expr_path_hygiene(expr),
+                )
                 .map_or(true, |res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
@@ -1652,7 +1656,7 @@ impl InferenceContext<'_> {
                                 );
                             }
                         }
-                        Statement::Item => (),
+                        Statement::Item(_) => (),
                     }
                 }
 

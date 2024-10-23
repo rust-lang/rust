@@ -164,9 +164,10 @@ impl InferenceContext<'_> {
             let ty = self.table.normalize_associated_types_in(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
+            let hygiene = self.body.expr_or_pat_path_hygiene(id);
             // FIXME: report error, unresolved first path segment
             let value_or_partial =
-                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path)?;
+                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, hygiene)?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it, _) => (it, None),

@@ -16,7 +16,7 @@ use either::Either;
 use hir_def::{
     body::{
         scope::{ExprScopes, ScopeId},
-        Body, BodySourceMap,
+        Body, BodySourceMap, HygieneId,
     },
     hir::{BindingId, ExprId, ExprOrPatId, Pat, PatId},
     lang_item::LangItem,
@@ -562,7 +562,8 @@ impl SourceAnalyzer {
         let expr = ast::Expr::from(record_expr);
         let expr_id = self.body_source_map()?.node_expr(InFile::new(self.file_id, &expr))?;
 
-        let local_name = field.field_name()?.as_name();
+        let ast_name = field.field_name()?;
+        let local_name = ast_name.as_name();
         let local = if field.name_ref().is_some() {
             None
         } else {
@@ -571,7 +572,11 @@ impl SourceAnalyzer {
                 PathKind::Plain,
                 once(local_name.clone()),
             ));
-            match self.resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
+            match self.resolver.resolve_path_in_value_ns_fully(
+                db.upcast(),
+                &path,
+                name_hygiene(db, InFile::new(self.file_id, ast_name.syntax())),
+            ) {
                 Some(ValueNs::LocalBinding(binding_id)) => {
                     Some(Local { binding_id, parent: self.resolver.body_owner()? })
                 }
@@ -627,7 +632,7 @@ impl SourceAnalyzer {
             Pat::Path(path) => path,
             _ => return None,
         };
-        let res = resolve_hir_path(db, &self.resolver, path)?;
+        let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT)?;
         match res {
             PathResolution::Def(def) => Some(def),
             _ => None,
@@ -818,7 +823,13 @@ impl SourceAnalyzer {
         if parent().map_or(false, |it| ast::Visibility::can_cast(it.kind())) {
             resolve_hir_path_qualifier(db, &self.resolver, &hir_path)
         } else {
-            resolve_hir_path_(db, &self.resolver, &hir_path, prefer_value_ns)
+            resolve_hir_path_(
+                db,
+                &self.resolver,
+                &hir_path,
+                prefer_value_ns,
+                name_hygiene(db, InFile::new(self.file_id, path.syntax())),
+            )
         }
     }
 
@@ -944,7 +955,7 @@ impl SourceAnalyzer {
         format_args: InFile<&ast::FormatArgsExpr>,
         offset: TextSize,
     ) -> Option<(TextRange, Option<PathResolution>)> {
-        let implicits = self.body_source_map()?.implicit_format_args(format_args)?;
+        let (hygiene, implicits) = self.body_source_map()?.implicit_format_args(format_args)?;
         implicits.iter().find(|(range, _)| range.contains_inclusive(offset)).map(|(range, name)| {
             (
                 *range,
@@ -956,6 +967,7 @@ impl SourceAnalyzer {
                         PathKind::Plain,
                         Some(name.clone()),
                     )),
+                    hygiene,
                 ),
             )
         })
@@ -982,22 +994,22 @@ impl SourceAnalyzer {
         db: &'a dyn HirDatabase,
         format_args: InFile<&ast::FormatArgsExpr>,
     ) -> Option<impl Iterator<Item = (TextRange, Option<PathResolution>)> + 'a> {
-        Some(self.body_source_map()?.implicit_format_args(format_args)?.iter().map(
-            move |(range, name)| {
-                (
-                    *range,
-                    resolve_hir_value_path(
-                        db,
-                        &self.resolver,
-                        self.resolver.body_owner(),
-                        &Path::from_known_path_with_no_generic(ModPath::from_segments(
-                            PathKind::Plain,
-                            Some(name.clone()),
-                        )),
-                    ),
-                )
-            },
-        ))
+        let (hygiene, names) = self.body_source_map()?.implicit_format_args(format_args)?;
+        Some(names.iter().map(move |(range, name)| {
+            (
+                *range,
+                resolve_hir_value_path(
+                    db,
+                    &self.resolver,
+                    self.resolver.body_owner(),
+                    &Path::from_known_path_with_no_generic(ModPath::from_segments(
+                        PathKind::Plain,
+                        Some(name.clone()),
+                    )),
+                    hygiene,
+                ),
+            )
+        }))
     }
 
     pub(crate) fn as_asm_parts(
@@ -1143,8 +1155,9 @@ pub(crate) fn resolve_hir_path(
     db: &dyn HirDatabase,
     resolver: &Resolver,
     path: &Path,
+    hygiene: HygieneId,
 ) -> Option<PathResolution> {
-    resolve_hir_path_(db, resolver, path, false)
+    resolve_hir_path_(db, resolver, path, false, hygiene)
 }
 
 #[inline]
@@ -1164,6 +1177,7 @@ fn resolve_hir_path_(
     resolver: &Resolver,
     path: &Path,
     prefer_value_ns: bool,
+    hygiene: HygieneId,
 ) -> Option<PathResolution> {
     let types = || {
         let (ty, unresolved) = match path.type_anchor() {
@@ -1229,7 +1243,7 @@ fn resolve_hir_path_(
     };
 
     let body_owner = resolver.body_owner();
-    let values = || resolve_hir_value_path(db, resolver, body_owner, path);
+    let values = || resolve_hir_value_path(db, resolver, body_owner, path, hygiene);
 
     let items = || {
         resolver
@@ -1254,8 +1268,9 @@ fn resolve_hir_value_path(
     resolver: &Resolver,
     body_owner: Option<DefWithBodyId>,
     path: &Path,
+    hygiene: HygieneId,
 ) -> Option<PathResolution> {
-    resolver.resolve_path_in_value_ns_fully(db.upcast(), path).and_then(|val| {
+    resolver.resolve_path_in_value_ns_fully(db.upcast(), path, hygiene).and_then(|val| {
         let res = match val {
             ValueNs::LocalBinding(binding_id) => {
                 let var = Local { parent: body_owner?, binding_id };
@@ -1359,4 +1374,14 @@ fn resolve_hir_path_qualifier(
             .take_types()
             .map(|it| PathResolution::Def(it.into()))
     })
+}
+
+pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> HygieneId {
+    let Some(macro_file) = name.file_id.macro_file() else {
+        return HygieneId::ROOT;
+    };
+    let span_map = db.expansion_span_map(macro_file);
+    let ctx = span_map.span_at(name.value.text_range().start()).ctx;
+    let ctx = db.lookup_intern_syntax_context(ctx);
+    HygieneId::new(ctx.opaque_and_semitransparent)
 }

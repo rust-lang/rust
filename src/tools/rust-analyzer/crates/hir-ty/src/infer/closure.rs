@@ -514,8 +514,11 @@ impl InferenceContext<'_> {
         if path.type_anchor().is_some() {
             return None;
         }
-        let result = self.resolver.resolve_path_in_value_ns_fully(self.db.upcast(), path).and_then(
-            |result| match result {
+        let hygiene = self.body.expr_or_pat_path_hygiene(id);
+        let result = self
+            .resolver
+            .resolve_path_in_value_ns_fully(self.db.upcast(), path, hygiene)
+            .and_then(|result| match result {
                 ValueNs::LocalBinding(binding) => {
                     let mir_span = match id {
                         ExprOrPatId::ExprId(id) => MirSpan::ExprId(id),
@@ -525,8 +528,7 @@ impl InferenceContext<'_> {
                     Some(HirPlace { local: binding, projections: Vec::new() })
                 }
                 _ => None,
-            },
-        );
+            });
         result
     }
 
@@ -745,7 +747,7 @@ impl InferenceContext<'_> {
                         Statement::Expr { expr, has_semi: _ } => {
                             self.consume_expr(*expr);
                         }
-                        Statement::Item => (),
+                        Statement::Item(_) => (),
                     }
                 }
                 if let Some(tail) = tail {

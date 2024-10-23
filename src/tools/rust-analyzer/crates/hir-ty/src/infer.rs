@@ -33,7 +33,7 @@ use chalk_ir::{
 };
 use either::Either;
 use hir_def::{
-    body::Body,
+    body::{Body, HygieneId},
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
@@ -1398,7 +1398,7 @@ impl<'a> InferenceContext<'a> {
         };
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into());
         let (resolution, unresolved) = if value_ns {
-            match self.resolver.resolve_path_in_value_ns(self.db.upcast(), path) {
+            match self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, HygieneId::ROOT) {
                 Some(ResolveValueResult::ValueNs(value, _)) => match value {
                     ValueNs::EnumVariantId(var) => {
                         let substs = ctx.substs_from_path(path, var.into(), true);
