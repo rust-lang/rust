@@ -83,6 +83,7 @@ use crate::thread::{ThreadId, current_id};
 // we don't need to further synchronize the TID accesses, so they can be regular 64-bit
 // non-atomic accesses.
 #[unstable(feature = "reentrant_lock", issue = "121440")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct ReentrantLock<T: ?Sized> {
     mutex: sys::Mutex,
     owner: Tid,

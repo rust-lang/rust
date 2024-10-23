@@ -80,6 +80,7 @@ use crate::sys::sync as sys;
 /// [`Mutex`]: super::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "RwLock")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct RwLock<T: ?Sized> {
     inner: sys::RwLock,
     poison: poison::Flag,
