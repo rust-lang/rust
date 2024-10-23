@@ -1,10 +1,11 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+use std::iter;
 use std::ops::{Index, IndexMut};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::{self, Dominators};
+use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
@@ -20,11 +21,17 @@ pub(crate) struct CoverageGraph {
     bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     pub(crate) successors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     pub(crate) predecessors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
+
     dominators: Option<Dominators<BasicCoverageBlock>>,
     /// Allows nodes to be compared in some total order such that _if_
     /// `a` dominates `b`, then `a < b`. If neither node dominates the other,
     /// their relative order is consistent but arbitrary.
     dominator_order_rank: IndexVec<BasicCoverageBlock, u32>,
+    /// A loop header is a node that dominates one or more of its predecessors.
+    is_loop_header: BitSet<BasicCoverageBlock>,
+    /// For each node, the loop header node of its nearest enclosing loop.
+    /// This forms a linked list that can be traversed to find all enclosing loops.
+    enclosing_loop_header: IndexVec<BasicCoverageBlock, Option<BasicCoverageBlock>>,
 }
 
 impl CoverageGraph {
@@ -66,17 +73,38 @@ impl CoverageGraph {
             predecessors,
             dominators: None,
             dominator_order_rank: IndexVec::from_elem_n(0, num_nodes),
+            is_loop_header: BitSet::new_empty(num_nodes),
+            enclosing_loop_header: IndexVec::from_elem_n(None, num_nodes),
         };
         assert_eq!(num_nodes, this.num_nodes());
 
-        this.dominators = Some(dominators::dominators(&this));
+        // Set the dominators first, because later init steps rely on them.
+        this.dominators = Some(graph::dominators::dominators(&this));
 
-        // The dominator rank of each node is just its index in a reverse-postorder traversal.
-        let reverse_post_order = graph::iterate::reverse_post_order(&this, this.start_node());
+        // Iterate over all nodes, such that dominating nodes are visited before
+        // the nodes they dominate. Either preorder or reverse postorder is fine.
+        let dominator_order = graph::iterate::reverse_post_order(&this, this.start_node());
         // The coverage graph is created by traversal, so all nodes are reachable.
-        assert_eq!(reverse_post_order.len(), this.num_nodes());
-        for (rank, bcb) in (0u32..).zip(reverse_post_order) {
+        assert_eq!(dominator_order.len(), this.num_nodes());
+        for (rank, bcb) in (0u32..).zip(dominator_order) {
+            // The dominator rank of each node is its index in a dominator-order traversal.
             this.dominator_order_rank[bcb] = rank;
+
+            // A node is a loop header if it dominates any of its predecessors.
+            if this.reloop_predecessors(bcb).next().is_some() {
+                this.is_loop_header.insert(bcb);
+            }
+
+            // If the immediate dominator is a loop header, that's our enclosing loop.
+            // Otherwise, inherit the immediate dominator's enclosing loop.
+            // (Dominator order ensures that we already processed the dominator.)
+            if let Some(dom) = this.dominators().immediate_dominator(bcb) {
+                this.enclosing_loop_header[bcb] = this
+                    .is_loop_header
+                    .contains(dom)
+                    .then_some(dom)
+                    .or_else(|| this.enclosing_loop_header[dom]);
+            }
         }
 
         // The coverage graph's entry-point node (bcb0) always starts with bb0,
@@ -173,8 +201,13 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
+    fn dominators(&self) -> &Dominators<BasicCoverageBlock> {
+        self.dominators.as_ref().unwrap()
+    }
+
+    #[inline(always)]
     pub(crate) fn dominates(&self, dom: BasicCoverageBlock, node: BasicCoverageBlock) -> bool {
-        self.dominators.as_ref().unwrap().dominates(dom, node)
+        self.dominators().dominates(dom, node)
     }
 
     #[inline(always)]
@@ -213,6 +246,36 @@ impl CoverageGraph {
         } else {
             None
         }
+    }
+
+    /// For each loop that contains the given node, yields the "loop header"
+    /// node representing that loop, from innermost to outermost. If the given
+    /// node is itself a loop header, it is yielded first.
+    pub(crate) fn loop_headers_containing(
+        &self,
+        bcb: BasicCoverageBlock,
+    ) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
+        let self_if_loop_header = self.is_loop_header.contains(bcb).then_some(bcb).into_iter();
+
+        let mut curr = Some(bcb);
+        let strictly_enclosing = iter::from_fn(move || {
+            let enclosing = self.enclosing_loop_header[curr?];
+            curr = enclosing;
+            enclosing
+        });
+
+        self_if_loop_header.chain(strictly_enclosing)
+    }
+
+    /// For the given node, yields the subset of its predecessor nodes that
+    /// it dominates. If that subset is non-empty, the node is a "loop header",
+    /// and each of those predecessors represents an in-edge that jumps back to
+    /// the top of its loop.
+    pub(crate) fn reloop_predecessors(
+        &self,
+        to_bcb: BasicCoverageBlock,
+    ) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
+        self.predecessors[to_bcb].iter().copied().filter(move |&pred| self.dominates(to_bcb, pred))
     }
 }
 
@@ -439,15 +502,12 @@ struct TraversalContext {
 pub(crate) struct TraverseCoverageGraphWithLoops<'a> {
     basic_coverage_blocks: &'a CoverageGraph,
 
-    backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     context_stack: Vec<TraversalContext>,
     visited: BitSet<BasicCoverageBlock>,
 }
 
 impl<'a> TraverseCoverageGraphWithLoops<'a> {
     pub(crate) fn new(basic_coverage_blocks: &'a CoverageGraph) -> Self {
-        let backedges = find_loop_backedges(basic_coverage_blocks);
-
         let worklist = VecDeque::from([basic_coverage_blocks.start_node()]);
         let context_stack = vec![TraversalContext { loop_header: None, worklist }];
 
@@ -456,17 +516,7 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
         // of the stack as loops are entered, and popped off of the stack when a loop's worklist is
         // exhausted.
         let visited = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-        Self { basic_coverage_blocks, backedges, context_stack, visited }
-    }
-
-    /// For each loop on the loop context stack (top-down), yields a list of BCBs
-    /// within that loop that have an outgoing edge back to the loop header.
-    pub(crate) fn reloop_bcbs_per_loop(&self) -> impl Iterator<Item = &[BasicCoverageBlock]> {
-        self.context_stack
-            .iter()
-            .rev()
-            .filter_map(|context| context.loop_header)
-            .map(|header_bcb| self.backedges[header_bcb].as_slice())
+        Self { basic_coverage_blocks, context_stack, visited }
     }
 
     pub(crate) fn next(&mut self) -> Option<BasicCoverageBlock> {
@@ -488,7 +538,7 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
             }
             debug!("Visiting {bcb:?}");
 
-            if self.backedges[bcb].len() > 0 {
+            if self.basic_coverage_blocks.is_loop_header.contains(bcb) {
                 debug!("{bcb:?} is a loop header! Start a new TraversalContext...");
                 self.context_stack
                     .push(TraversalContext { loop_header: Some(bcb), worklist: VecDeque::new() });
@@ -564,29 +614,6 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
         unvisited_set.subtract(&self.visited);
         unvisited_set.iter().collect::<Vec<_>>()
     }
-}
-
-fn find_loop_backedges(
-    basic_coverage_blocks: &CoverageGraph,
-) -> IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>> {
-    let num_bcbs = basic_coverage_blocks.num_nodes();
-    let mut backedges = IndexVec::from_elem_n(Vec::<BasicCoverageBlock>::new(), num_bcbs);
-
-    // Identify loops by their backedges.
-    for (bcb, _) in basic_coverage_blocks.iter_enumerated() {
-        for &successor in &basic_coverage_blocks.successors[bcb] {
-            if basic_coverage_blocks.dominates(successor, bcb) {
-                let loop_header = successor;
-                let backedge_from_bcb = bcb;
-                debug!(
-                    "Found BCB backedge: {:?} -> loop_header: {:?}",
-                    backedge_from_bcb, loop_header
-                );
-                backedges[loop_header].push(backedge_from_bcb);
-            }
-        }
-    }
-    backedges
 }
 
 fn short_circuit_preorder<'a, 'tcx, F, Iter>(
