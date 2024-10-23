@@ -3,6 +3,7 @@
 use std::{fmt, iter};
 
 use rustc_apfloat::Float as _;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;

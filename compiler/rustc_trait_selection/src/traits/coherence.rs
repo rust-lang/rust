@@ -6,6 +6,7 @@
 
 use std::fmt::Debug;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;

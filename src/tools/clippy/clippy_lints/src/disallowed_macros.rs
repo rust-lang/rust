@@ -2,12 +2,11 @@ use clippy_config::Conf;
 use clippy_utils::create_disallowed_map;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::macros::macro_backtrace;
-use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{
-    Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, ItemKind, OwnerId, Pat, Path, Stmt, TraitItem, Ty,
+    Attribute, Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, ItemKind, OwnerId, Pat, Path, Stmt, TraitItem, Ty,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;

@@ -19,6 +19,7 @@ use std::iter;
 use std::ops::Bound;
 
 use rustc_ast::Recovered;
+use rustc_attr::AttributeExt;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;

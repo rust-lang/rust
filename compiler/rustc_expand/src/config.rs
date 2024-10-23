@@ -1,5 +1,6 @@
 //! Conditional compilation stripping.
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{

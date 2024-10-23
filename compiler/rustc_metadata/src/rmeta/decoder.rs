@@ -1056,7 +1056,7 @@ impl<'a> CrateMetadataRef<'a> {
         };
 
         let sess = tcx.sess;
-        let attrs: Vec<_> = self.get_item_attrs(id, sess).collect();
+        let attrs: Vec<_> = self.get_hir_attrs_for_def(id, sess).collect();
         SyntaxExtension::new(
             sess,
             tcx.features(),
@@ -1356,14 +1356,14 @@ impl<'a> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_attrs(
+    fn get_hir_attrs_for_def(
         self,
         id: DefIndex,
         sess: &'a Session,
-    ) -> impl Iterator<Item = ast::Attribute> + 'a {
+    ) -> impl Iterator<Item = hir::Attribute> + 'a {
         self.root
             .tables
-            .attributes
+            .hir_attributes
             .get(self, id)
             .unwrap_or_else(|| {
                 // Structure and variant constructors don't have any attributes encoded for them,
@@ -1374,7 +1374,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let parent_id = def_key.parent.expect("no parent for a constructor");
                 self.root
                     .tables
-                    .attributes
+                    .hir_attributes
                     .get(self, parent_id)
                     .expect("no encoded attributes for a structure or variant")
             })

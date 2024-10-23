@@ -7,7 +7,7 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
-use rustc_ast as ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -153,11 +153,11 @@ impl<CTX> HashStable<CTX> for LangItem {
 
 /// Extracts the first `lang = "$name"` out of a list of attributes.
 /// The `#[panic_handler]` attribute is also extracted out when found.
-pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
+pub fn extract(attrs: &[impl AttributeExt]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {
-            _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span),
-            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span),
+            _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span()),
+            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span()),
             _ => return None,
         })
     })

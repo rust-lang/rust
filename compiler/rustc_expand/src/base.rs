@@ -4,7 +4,7 @@ use std::path::Component::Prefix;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use rustc_ast::attr::MarkedAttrs;
+use rustc_ast::attr::{AttributeExt, MarkedAttrs};
 use rustc_ast::ptr::P;
 use rustc_ast::token::Nonterminal;
 use rustc_ast::tokenstream::TokenStream;
@@ -782,10 +782,12 @@ impl SyntaxExtension {
         }
     }
 
-    fn collapse_debuginfo_by_name(attr: &Attribute) -> Result<CollapseMacroDebuginfo, Span> {
+    fn collapse_debuginfo_by_name(
+        attr: &impl AttributeExt,
+    ) -> Result<CollapseMacroDebuginfo, Span> {
         let list = attr.meta_item_list();
         let Some([MetaItemInner::MetaItem(item)]) = list.as_deref() else {
-            return Err(attr.span);
+            return Err(attr.span());
         };
         if !item.is_word() {
             return Err(item.span);
@@ -805,7 +807,7 @@ impl SyntaxExtension {
     /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], ext: bool) -> bool {
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[impl AttributeExt], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
         let attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
             .and_then(|attr| {
@@ -842,11 +844,11 @@ impl SyntaxExtension {
         helper_attrs: Vec<Symbol>,
         edition: Edition,
         name: Symbol,
-        attrs: &[ast::Attribute],
+        attrs: &[impl AttributeExt],
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            attr::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
+            rustc_attr::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
 
         let allow_internal_unsafe = attr::contains_name(attrs, sym::allow_internal_unsafe);
         let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
@@ -1305,7 +1307,7 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
 
 pub fn parse_macro_name_and_helper_attrs(
     dcx: DiagCtxtHandle<'_>,
-    attr: &Attribute,
+    attr: &impl AttributeExt,
     macro_type: &str,
 ) -> Option<(Symbol, Vec<Symbol>)> {
     // Once we've located the `#[proc_macro_derive]` attribute, verify
@@ -1313,7 +1315,7 @@ pub fn parse_macro_name_and_helper_attrs(
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
     let list = attr.meta_item_list()?;
     let ([trait_attr] | [trait_attr, _]) = list.as_slice() else {
-        dcx.emit_err(errors::AttrNoArguments { span: attr.span });
+        dcx.emit_err(errors::AttrNoArguments { span: attr.span() });
         return None;
     };
     let Some(trait_attr) = trait_attr.meta_item() else {

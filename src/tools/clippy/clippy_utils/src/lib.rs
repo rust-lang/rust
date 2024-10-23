@@ -74,7 +74,6 @@ pub mod sugg;
 pub mod ty;
 pub mod usage;
 pub mod visitors;
-
 pub use self::attrs::*;
 pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
@@ -129,17 +128,30 @@ use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
+use rustc_ast::attr::AttributeExt;
+
 use rustc_middle::hir::nested_filter;
 
 #[macro_export]
 macro_rules! extract_msrv_attr {
-    ($context:ident) => {
-        fn check_attributes(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+    (LateContext) => {
+        fn check_attributes(&mut self, cx: &rustc_lint::LateContext<'_>, attrs: &[rustc_hir::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.check_attributes(sess, attrs);
         }
 
-        fn check_attributes_post(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn check_attributes_post(&mut self, cx: &rustc_lint::LateContext<'_>, attrs: &[rustc_hir::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.check_attributes_post(sess, attrs);
+        }
+    };
+    (EarlyContext) => {
+        fn check_attributes(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.check_attributes(sess, attrs);
+        }
+
+        fn check_attributes_post(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.check_attributes_post(sess, attrs);
         }
@@ -1926,7 +1938,7 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-pub fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
+pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(symbol))
 }
 
@@ -2276,23 +2288,19 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            normal.item.path == sym::no_std
-        } else {
-            false
-        }
-    })
+    cx.tcx
+        .hir()
+        .attrs(hir::CRATE_HIR_ID)
+        .iter()
+        .any(|attr| attr.name_or_empty() == sym::no_std)
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            normal.item.path == sym::no_core
-        } else {
-            false
-        }
-    })
+    cx.tcx
+        .hir()
+        .attrs(hir::CRATE_HIR_ID)
+        .iter()
+        .any(|attr| attr.name_or_empty() == sym::no_core)
 }
 
 /// Check if parent of a hir node is a trait implementation block.

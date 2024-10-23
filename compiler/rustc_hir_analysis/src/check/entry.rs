@@ -1,5 +1,6 @@
 use std::ops::Not;
 
+use rustc_attr::AttributeExt;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;

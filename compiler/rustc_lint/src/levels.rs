@@ -1,4 +1,5 @@
 use rustc_ast_pretty::pprust;
+use rustc_attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
@@ -575,7 +576,12 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         };
     }
 
-    fn add(&mut self, attrs: &[ast::Attribute], is_crate_node: bool, source_hir_id: Option<HirId>) {
+    fn add(
+        &mut self,
+        attrs: &[impl AttributeExt],
+        is_crate_node: bool,
+        source_hir_id: Option<HirId>,
+    ) {
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
             if attr.has_name(sym::automatically_derived) {
@@ -799,7 +805,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
                 let src = LintLevelSource::Node { name, span: sp, reason };
                 for &id in ids {
-                    if self.check_gated_lint(id, attr.span, false) {
+                    if self.check_gated_lint(id, attr.span(), false) {
                         self.insert_spec(id, (level, src));
                     }
                 }

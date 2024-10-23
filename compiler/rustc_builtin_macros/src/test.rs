@@ -4,6 +4,7 @@
 use std::assert_matches::assert_matches;
 use std::iter;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, GenericParamKind, attr};
 use rustc_ast_pretty::pprust;

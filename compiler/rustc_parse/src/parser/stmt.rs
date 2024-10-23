@@ -3,6 +3,7 @@ use std::mem;
 
 use ast::Label;
 use rustc_ast as ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};

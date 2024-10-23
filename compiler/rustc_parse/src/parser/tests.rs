@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::{io, str};
 
 use ast::token::IdentIsRaw;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};

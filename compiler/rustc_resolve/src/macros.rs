@@ -7,7 +7,7 @@ use std::mem;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, Inline, ItemKind, ModKind, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr::StabilityLevel;
+use rustc_attr::{AttributeExt, StabilityLevel};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
@@ -1122,7 +1122,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Compile the macro into a `SyntaxExtension` and its rule spans.
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
-    pub(crate) fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> MacroData {
+    pub(crate) fn compile_macro<A: AttributeExt>(
+        &mut self,
+        item: &ast::Item<ast::ItemKind, A>,
+        edition: Edition,
+    ) -> MacroData {
         let (mut ext, mut rule_spans) =
             compile_declarative_macro(self.tcx.sess, self.tcx.features(), item, edition);
 

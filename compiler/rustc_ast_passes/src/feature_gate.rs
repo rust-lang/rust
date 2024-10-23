@@ -1,4 +1,5 @@
 use rustc_ast as ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{NodeId, PatKind, attr, token};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};

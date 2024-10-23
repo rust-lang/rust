@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::{iter, mem};
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, AttrsTarget, DelimSpacing, DelimSpan, LazyAttrTokenStream,
