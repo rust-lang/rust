@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
-use build_helper::git::get_closest_merge_commit;
-
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::builder;
@@ -10,7 +8,7 @@ use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{add_dylib_path, exe, git, t};
+use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::{Compiler, Kind, Mode, gha};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -596,28 +594,11 @@ impl Step for Rustdoc {
             && target_compiler.stage > 0
             && builder.rust_info().is_managed_git_subrepository()
         {
-            let commit = get_closest_merge_commit(
-                Some(&builder.config.src),
-                &builder.config.git_config(),
-                &[],
-            )
-            .unwrap();
+            let files_to_track = &["src/librustdoc", "src/tools/rustdoc"];
 
-            let librustdoc_src = builder.config.src.join("src/librustdoc");
-            let rustdoc_src = builder.config.src.join("src/tools/rustdoc");
-
-            // FIXME: The change detection logic here is quite similar to `Config::download_ci_rustc_commit`.
-            // It would be better to unify them.
-            let has_changes = !git(Some(&builder.config.src))
-                .allow_failure()
-                .run_always()
-                .args(["diff-index", "--quiet", &commit])
-                .arg("--")
-                .arg(librustdoc_src)
-                .arg(rustdoc_src)
-                .run(builder);
-
-            if !has_changes {
+            // Check if unchanged
+            if builder.config.last_modified_commit(files_to_track, "download-rustc", true).is_some()
+            {
                 let precompiled_rustdoc = builder
                     .config
                     .ci_rustc_dir()
