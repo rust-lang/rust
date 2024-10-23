@@ -26,6 +26,7 @@ use crate::sync::{Condvar, Mutex};
 /// });
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct Barrier {
     lock: Mutex<BarrierState>,
     cvar: Condvar,

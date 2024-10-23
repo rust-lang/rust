@@ -103,6 +103,7 @@ use crate::sync::Once;
 ///
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct OnceLock<T> {
     // FIXME(nonpoison_once): switch to nonpoison version once it is available
     once: Once,
