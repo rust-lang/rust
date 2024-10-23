@@ -185,8 +185,9 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_is_char_boundary", issue = "131516")]
     #[inline]
-    pub fn is_char_boundary(&self, index: usize) -> bool {
+    pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
@@ -195,8 +196,8 @@ impl str {
             return true;
         }
 
-        match self.as_bytes().get(index) {
-            // For `None` we have two options:
+        if index >= self.len() {
+            // For `true` we have two options:
             //
             // - index == self.len()
             //   Empty strings are valid, so return true
@@ -205,9 +206,9 @@ impl str {
             //
             // The check is placed exactly here, because it improves generated
             // code on higher opt-levels. See PR #84751 for more details.
-            None => index == self.len(),
-
-            Some(&b) => b.is_utf8_char_boundary(),
+            index == self.len()
+        } else {
+            self.as_bytes()[index].is_utf8_char_boundary()
         }
     }
 
