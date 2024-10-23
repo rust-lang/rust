@@ -151,11 +151,14 @@ function expandLint(lintId) {
     highlightIfNeeded(lintId);
 }
 
-// Show details for one lint
-function openLint(event) {
+function lintAnchor(event) {
     event.preventDefault();
     event.stopPropagation();
-    expandLint(event.target.getAttribute("href").slice(1));
+
+    const id = event.target.getAttribute("href").replace("#", "");
+    window.location.hash = id;
+
+    expandLint(id);
 }
 
 function copyToClipboard(event) {
@@ -519,7 +522,7 @@ function scrollToLint(lintId) {
 
 // If the page we arrive on has link to a given lint, we scroll to it.
 function scrollToLintByURL() {
-    const lintId = window.location.hash.substring(2);
+    const lintId = window.location.hash.substring(1);
     if (lintId.length > 0) {
         scrollToLint(lintId);
     }
