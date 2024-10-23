@@ -107,9 +107,7 @@ impl<T: Sized> NonNull<T> {
     #[must_use]
     #[inline]
     pub const fn dangling() -> Self {
-        // SAFETY: mem::align_of() returns a non-zero usize which is then casted
-        // to a *mut T. Therefore, `ptr` is not null and the conditions for
-        // calling new_unchecked() are respected.
+        // SAFETY: ptr::dangling_mut() returns a non-null well-aligned pointer.
         unsafe {
             let ptr = crate::ptr::dangling_mut::<T>();
             NonNull::new_unchecked(ptr)
