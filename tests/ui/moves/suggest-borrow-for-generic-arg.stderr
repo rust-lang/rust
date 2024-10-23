@@ -8,7 +8,7 @@ LL |     aux::foo(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
-help: borrow the value to avoid moving it
+help: consider borrowing `bar`
    |
 LL |     aux::foo(&bar);
    |              +
@@ -23,7 +23,7 @@ LL |     aux::qux(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
-help: borrow the value to avoid moving it
+help: consider mutably borrowing `bar`
    |
 LL |     aux::qux(&mut bar);
    |              ++++
@@ -38,7 +38,7 @@ LL |     aux::bat(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
-help: borrow the value to avoid moving it
+help: consider borrowing `bar`
    |
 LL |     aux::bat(&bar);
    |              +
@@ -53,7 +53,7 @@ LL |     aux::baz(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
-help: borrow the value to avoid moving it
+help: consider mutably borrowing `bar`
    |
 LL |     aux::baz(&mut bar);
    |              ++++

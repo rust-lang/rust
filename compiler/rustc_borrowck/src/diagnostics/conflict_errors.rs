@@ -478,7 +478,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         return;
                     }
 
-                    let mut is_mut = false;
+                    let mut mutbl = ty::Mutability::Not;
                     if let Some(param) = arg_param
                         && self
                             .infcx
@@ -504,7 +504,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     ]
                                     .contains(&Some(predicate.def_id()))
                                     {
-                                        is_mut = true;
+                                        mutbl = ty::Mutability::Mut;
                                     }
                                     true
                                 } else {
@@ -514,13 +514,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     {
                         // The type of the argument corresponding to the expression that got moved
                         // is a type parameter `T`, which is has a `T: AsRef` obligation.
+                        let place_desc = if let Some(desc) = self.describe_place(moved_place) {
+                            format!("`{desc}`")
+                        } else {
+                            "here".to_owned()
+                        };
                         err.span_suggestion_verbose(
                             expr.span.shrink_to_lo(),
-                            "borrow the value to avoid moving it",
-                            format!("&{}", if is_mut { "mut " } else { "" }),
+                            format!("consider {}borrowing {place_desc}", mutbl.mutably_str()),
+                            mutbl.ref_prefix_str(),
                             Applicability::MaybeIncorrect,
                         );
-                        can_suggest_clone = is_mut;
+                        can_suggest_clone = mutbl.is_mut();
                     } else if let Some(local_def_id) = def_id.as_local()
                         && let node = self.infcx.tcx.hir_node_by_def_id(local_def_id)
                         && let Some(fn_decl) = node.fn_decl()
