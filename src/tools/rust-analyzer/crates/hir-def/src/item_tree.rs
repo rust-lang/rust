@@ -103,9 +103,8 @@ impl ItemTree {
         let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
         static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
-        let syntax = db.parse_or_expand(file_id);
-
         let ctx = lower::Ctx::new(db, file_id);
+        let syntax = db.parse_or_expand(file_id);
         let mut top_attrs = None;
         let mut item_tree = match_ast! {
             match syntax {
