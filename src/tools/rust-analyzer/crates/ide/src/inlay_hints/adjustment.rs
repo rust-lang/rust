@@ -3,6 +3,8 @@
 //! let _: u32  = /* <never-to-any> */ loop {};
 //! let _: &u32 = /* &* */ &mut 0;
 //! ```
+use std::ops::Not;
+
 use either::Either;
 use hir::{
     Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, OverloadedDeref, PointerCast, Safety,
@@ -15,6 +17,7 @@ use syntax::{
     ast::{self, make, AstNode},
     ted,
 };
+use text_edit::TextEditBuilder;
 
 use crate::{
     AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintLabelPart,
@@ -51,13 +54,13 @@ pub(super) fn hints(
     let adjustments = sema.expr_adjustments(desc_expr).filter(|it| !it.is_empty())?;
 
     if let ast::Expr::BlockExpr(_) | ast::Expr::IfExpr(_) | ast::Expr::MatchExpr(_) = desc_expr {
-        if let [Adjustment { kind: Adjust::Deref(_), source, .. }, Adjustment { kind: Adjust::Borrow(_), source: _, target }] =
-            &*adjustments
-        {
-            // Don't show unnecessary reborrows for these, they will just repeat the inner ones again
-            if source == target {
-                return None;
-            }
+        // Don't show unnecessary reborrows for these, they will just repeat the inner ones again
+        if matches!(
+            &*adjustments,
+            [Adjustment { kind: Adjust::Deref(_), source, .. }, Adjustment { kind: Adjust::Borrow(_), target, .. }]
+            if source == target
+        ) {
+            return None;
         }
     }
 
@@ -170,12 +173,39 @@ pub(super) fn hints(
     if needs_outer_parens || (!postfix && needs_inner_parens) {
         post.label.append_str(")");
     }
-    if !pre.label.parts.is_empty() {
-        acc.push(pre);
+
+    let mut pre = pre.label.parts.is_empty().not().then_some(pre);
+    let mut post = post.label.parts.is_empty().not().then_some(post);
+    if pre.is_none() && post.is_none() {
+        return None;
     }
-    if !post.label.parts.is_empty() {
-        acc.push(post);
+    let edit = {
+        let mut b = TextEditBuilder::default();
+        if let Some(pre) = &pre {
+            b.insert(
+                pre.range.start(),
+                pre.label.parts.iter().map(|part| &*part.text).collect::<String>(),
+            );
+        }
+        if let Some(post) = &post {
+            b.insert(
+                post.range.end(),
+                post.label.parts.iter().map(|part| &*part.text).collect::<String>(),
+            );
+        }
+        b.finish()
+    };
+    match (&mut pre, &mut post) {
+        (Some(pre), Some(post)) => {
+            pre.text_edit = Some(edit.clone());
+            post.text_edit = Some(edit);
+        }
+        (Some(pre), None) => pre.text_edit = Some(edit),
+        (None, Some(post)) => post.text_edit = Some(edit),
+        (None, None) => (),
     }
+    acc.extend(pre);
+    acc.extend(post);
     Some(())
 }
 

@@ -23,16 +23,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let outer_paren_pat = pat
-        .syntax()
-        .ancestors()
-        .skip(1)
-        .map_while(ast::Pat::cast)
-        .map_while(|pat| match pat {
-            ast::Pat::ParenPat(pat) => Some(pat),
-            _ => None,
-        })
-        .last();
+    let outer_paren_pat = pat.syntax().ancestors().skip(1).map_while(ast::ParenPat::cast).last();
     let range = outer_paren_pat.as_ref().map_or_else(
         || match pat {
             // for ident patterns that @ bind a name, render the un-ref patterns in front of the inner pattern
