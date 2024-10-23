@@ -116,7 +116,7 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
         self.enabled_lib_features().hash_stable(hcx, hasher);
 
         // FIXME: why do we hash something that is a compile-time constant?
-        for feature in rustc_feature::UNSTABLE_FEATURES.iter() {
+        for feature in rustc_feature::UNSTABLE_LANG_FEATURES.iter() {
             feature.name.hash_stable(hcx, hasher);
         }
     }

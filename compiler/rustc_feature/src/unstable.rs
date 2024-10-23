@@ -78,7 +78,7 @@ macro_rules! declare_features {
     )+) => {
         /// Unstable language features that are being implemented or being
         /// considered for acceptance (stabilization) or removal.
-        pub const UNSTABLE_FEATURES: &[Feature] = &[
+        pub const UNSTABLE_LANG_FEATURES: &[Feature] = &[
             $(Feature {
                 name: sym::$feature,
                 since: $ver,

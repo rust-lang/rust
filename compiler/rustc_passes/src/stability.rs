@@ -10,7 +10,7 @@ use rustc_attr::{
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
-use rustc_feature::ACCEPTED_FEATURES;
+use rustc_feature::ACCEPTED_LANG_FEATURES;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
@@ -248,7 +248,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
 
             if let Stability { level: Unstable { .. }, feature } = stab {
-                if ACCEPTED_FEATURES.iter().find(|f| f.name == feature).is_some() {
+                if ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some() {
                     self.tcx
                         .dcx()
                         .emit_err(errors::UnstableAttrForAlreadyStableFeature { span, item_sp });
@@ -261,7 +261,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
 
             if let Some(ConstStability { level: Unstable { .. }, feature, .. }) = const_stab {
-                if ACCEPTED_FEATURES.iter().find(|f| f.name == feature).is_some() {
+                if ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some() {
                     self.tcx.dcx().emit_err(errors::UnstableAttrForAlreadyStableFeature {
                         span: const_span.unwrap(), // If const_stab contains Some(..), same is true for const_span
                         item_sp,

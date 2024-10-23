@@ -14,7 +14,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, $reason:expr),
     )+) => {
         /// Formerly unstable features that have now been removed.
-        pub const REMOVED_FEATURES: &[RemovedFeature] = &[
+        pub const REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
             $(RemovedFeature {
                 feature: Feature {
                     name: sym::$feature,

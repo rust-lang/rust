@@ -11,7 +11,8 @@ use rustc_ast::{
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
-    ACCEPTED_FEATURES, AttributeSafety, Features, REMOVED_FEATURES, UNSTABLE_FEATURES,
+    ACCEPTED_LANG_FEATURES, AttributeSafety, Features, REMOVED_LANG_FEATURES,
+    UNSTABLE_LANG_FEATURES,
 };
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
@@ -77,7 +78,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             };
 
             // If the enabled feature has been removed, issue an error.
-            if let Some(f) = REMOVED_FEATURES.iter().find(|f| name == f.feature.name) {
+            if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| name == f.feature.name) {
                 sess.dcx().emit_err(FeatureRemoved {
                     span: mi.span(),
                     reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
@@ -86,7 +87,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             }
 
             // If the enabled feature is stable, record it.
-            if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
+            if let Some(f) = ACCEPTED_LANG_FEATURES.iter().find(|f| name == f.name) {
                 let since = Some(Symbol::intern(f.since));
                 features.set_enabled_lang_feature(name, mi.span(), since);
                 continue;
@@ -103,7 +104,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             }
 
             // If the enabled feature is unstable, record it.
-            if UNSTABLE_FEATURES.iter().find(|f| name == f.name).is_some() {
+            if UNSTABLE_LANG_FEATURES.iter().find(|f| name == f.name).is_some() {
                 // When the ICE comes from core, alloc or std (approximation of the standard
                 // library), there's a chance that the person hitting the ICE may be using
                 // -Zbuild-std or similar with an untested target. The bug is probably in the
