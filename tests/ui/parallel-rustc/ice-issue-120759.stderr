@@ -1,0 +1,46 @@
+error: expected identifier, found `"feature(transmutability)"`
+  --> <crate attribute>:1:1
+   |
+LL | "feature(transmutability)"
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected identifier
+
+error: `self` parameter is only allowed in associated functions
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>(&self, cpu: &mut CPU)
+   |                                            ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0432]: unresolved import `std::mem::BikeshedIntrinsicFrom`
+   |
+LL |     use std::mem::{Assume, BikeshedIntrinsicFrom};
+   |                            ^^^^^^^^^^^^^^^^^^^^^ no `BikeshedIntrinsicFrom` in `mem`
+
+error[E0412]: cannot find type `CPU` in this scope
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>(&self, cpu: &mut CPU)
+   |                                                             ^^^ not found in this scope
+
+error[E0658]: use of unstable library feature 'transmutability'
+   |
+LL |     use std::mem::{Assume, BikeshedIntrinsicFrom};
+   |                    ^^^^^^
+   |
+   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
+   = help: add `#![feature(transmutability)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0072]: recursive type `ExplicitlyPadded` has infinite size
+   |
+LL |     struct ExplicitlyPadded(ExplicitlyPadded);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     struct ExplicitlyPadded(Box<ExplicitlyPadded>);
+   |                             ++++                +
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0072, E0412, E0432, E0658.
+For more information about an error, try `rustc --explain E0072`.

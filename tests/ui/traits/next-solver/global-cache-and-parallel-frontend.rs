@@ -1,3 +1,4 @@
+//@ parallel-front-end
 //@ compile-flags: -Zthreads=16
 
 // original issue: https://github.com/rust-lang/rust/issues/129112

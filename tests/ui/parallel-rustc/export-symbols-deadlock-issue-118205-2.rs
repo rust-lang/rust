@@ -1,3 +1,4 @@
+//@ parallel-front-end
 //@ compile-flags:-C extra-filename=-1 -Z threads=16
 //@ no-prefer-dynamic
 //@ build-pass

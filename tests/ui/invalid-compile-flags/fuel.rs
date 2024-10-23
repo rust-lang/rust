@@ -1,6 +1,7 @@
 //@ revisions: incremental threads
 //@ dont-check-compiler-stderr
 //
+//@ parallel-front-end
 //@ [threads] compile-flags: -Zfuel=a=1 -Zthreads=2
 //@ [threads] error-pattern:optimization fuel is incompatible with multiple threads
 //

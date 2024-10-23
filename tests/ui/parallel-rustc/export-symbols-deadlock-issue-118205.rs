@@ -1,3 +1,4 @@
+//@ parallel-front-end
 //@ compile-flags: -Z threads=16
 //@ build-pass
 

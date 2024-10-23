@@ -1349,8 +1349,10 @@ impl<'test> TestCx<'test> {
         };
         rustc.arg(input_file);
 
-        // Use a single thread for efficiency and a deterministic error message order
-        rustc.arg("-Zthreads=1");
+        if !self.props.parallel_front_end {
+            // Use a single thread for efficiency and a deterministic error message order
+            rustc.arg("-Zthreads=1");
+        }
 
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.
@@ -2475,8 +2477,9 @@ impl<'test> TestCx<'test> {
         // provide extra output on failure, for example a WebAssembly runtime
         // might print the stack trace of an `unreachable` instruction by
         // default.
-        let compare_output_by_lines =
-            self.props.compare_output_lines_by_subset || self.config.runner.is_some();
+        let compare_output_by_lines = self.props.compare_output_lines_by_subset
+            || self.config.runner.is_some()
+            || self.props.parallel_front_end;
 
         let tmp;
         let (expected, actual): (&str, &str) = if compare_output_by_lines {

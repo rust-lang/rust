@@ -108,6 +108,9 @@ pub struct TestProps {
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
     pub check_stdout: bool,
+    // For parallel front end test, use repeated tests to avoid randomness
+    // in multithreaded environments
+    pub parallel_front_end: bool,
     // Check stdout & stderr for output of run-pass test
     pub check_run_results: bool,
     // For UI tests, allows compiler to generate arbitrary output to stdout
@@ -213,6 +216,7 @@ mod directives {
     pub const CHECK_RUN_RESULTS: &'static str = "check-run-results";
     pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
     pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
+    pub const PARALLEL_FRONT_END: &'static str = "parallel-front-end";
     pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
     pub const PRETTY_EXPANDED: &'static str = "pretty-expanded";
     pub const PRETTY_MODE: &'static str = "pretty-mode";
@@ -273,6 +277,7 @@ impl TestProps {
             dont_check_compiler_stderr: false,
             compare_output_lines_by_subset: false,
             no_prefer_dynamic: false,
+            parallel_front_end: false,
             pretty_expanded: false,
             pretty_mode: "normal".to_string(),
             pretty_compare_only: false,
@@ -494,6 +499,7 @@ impl TestProps {
                         DONT_CHECK_FAILURE_STATUS,
                         &mut self.dont_check_failure_status,
                     );
+                    config.set_name_directive(ln, PARALLEL_FRONT_END, &mut self.parallel_front_end);
 
                     config.set_name_directive(ln, RUN_RUSTFIX, &mut self.run_rustfix);
                     config.set_name_directive(
