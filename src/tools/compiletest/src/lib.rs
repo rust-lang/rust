@@ -175,6 +175,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "git-merge-commit-email",
             "email address used for finding merge commits",
             "EMAIL",
+        )
+        .optopt(
+            "",
+            "compiletest-diff-tool",
+            "What custom diff tool to use for displaying compiletest tests.",
+            "COMMAND",
         );
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -364,6 +370,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_runtime: matches.opt_present("profiler-runtime"),
+        diff_command: matches.opt_str("compiletest-diff-tool"),
     }
 }
 
