@@ -210,9 +210,7 @@ impl ClientCapabilities {
                 .completion_item
                 .as_ref()?
                 .label_details_support
-                .as_ref()
-        })()
-        .is_some()
+        })() == Some(true)
     }
 
     fn completion_item(&self) -> Option<CompletionOptionsCompletionItem> {
