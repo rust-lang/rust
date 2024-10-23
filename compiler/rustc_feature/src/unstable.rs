@@ -461,8 +461,6 @@ declare_features! (
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
-    /// Controls errors in trait implementations.
-    (unstable, do_not_recommend, "1.67.0", Some(51992)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (unstable, doc_auto_cfg, "1.58.0", Some(43781)),
     /// Allows `#[doc(cfg(...))]`.

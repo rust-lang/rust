@@ -2,7 +2,6 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-#![feature(do_not_recommend)]
 
 #[diagnostic::do_not_recommend]
 //~^WARN `#[diagnostic::do_not_recommend]` can only be placed

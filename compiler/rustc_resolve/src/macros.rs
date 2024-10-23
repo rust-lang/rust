@@ -689,8 +689,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
             && !(attribute.ident.name == sym::on_unimplemented
-                || (attribute.ident.name == sym::do_not_recommend
-                    && self.tcx.features().do_not_recommend()))
+                || attribute.ident.name == sym::do_not_recommend)
         {
             let distance =
                 edit_distance(attribute.ident.name.as_str(), sym::on_unimplemented.as_str(), 5);
