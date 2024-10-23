@@ -602,7 +602,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
     unsafe { mem::transmute(addr) }
 }
 
-/// Creates a new pointer that is dangling, but well-aligned.
+/// Creates a new pointer that is dangling, but non-null and well-aligned.
 ///
 /// This is useful for initializing types which lazily allocate, like
 /// `Vec::new` does.
@@ -645,7 +645,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     unsafe { mem::transmute(addr) }
 }
 
-/// Creates a new pointer that is dangling, but well-aligned.
+/// Creates a new pointer that is dangling, but non-null and well-aligned.
 ///
 /// This is useful for initializing types which lazily allocate, like
 /// `Vec::new` does.
