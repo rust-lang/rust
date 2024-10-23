@@ -4,9 +4,9 @@ use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 
 use either::{Left, Right};
-use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer};
+use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, AdtDef, Instance, Ty};
+use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
@@ -92,29 +92,46 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Unwrap types that are guaranteed a null-pointer-optimization
     fn unfold_npo(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        // Check if this is `Option` wrapping some type or if this is `Result` wrapping a 1-ZST and
-        // another type.
+        // Check if this is an option-like type wrapping some type.
         let ty::Adt(def, args) = layout.ty.kind() else {
             // Not an ADT, so definitely no NPO.
             return interp_ok(layout);
         };
-        let inner = if self.tcx.is_diagnostic_item(sym::Option, def.did()) {
-            // The wrapped type is the only arg.
-            self.layout_of(args[0].as_type().unwrap())?
-        } else if self.tcx.is_diagnostic_item(sym::Result, def.did()) {
-            // We want to extract which (if any) of the args is not a 1-ZST.
-            let lhs = self.layout_of(args[0].as_type().unwrap())?;
-            let rhs = self.layout_of(args[1].as_type().unwrap())?;
-            if lhs.is_1zst() {
-                rhs
-            } else if rhs.is_1zst() {
-                lhs
-            } else {
-                return interp_ok(layout); // no NPO
+        if def.variants().len() != 2 {
+            // Not a 2-variant enum, so no NPO.
+            return interp_ok(layout);
+        }
+        assert!(def.is_enum());
+
+        let all_fields_1zst = |variant: &VariantDef| -> InterpResult<'tcx, _> {
+            for field in &variant.fields {
+                let ty = field.ty(*self.tcx, args);
+                let layout = self.layout_of(ty)?;
+                if !layout.is_1zst() {
+                    return interp_ok(false);
+                }
             }
-        } else {
-            return interp_ok(layout); // no NPO
+            interp_ok(true)
         };
+
+        // If one variant consists entirely of 1-ZST, then the other variant
+        // is the only "relevant" one for this check.
+        let var0 = VariantIdx::from_u32(0);
+        let var1 = VariantIdx::from_u32(1);
+        let relevant_variant = if all_fields_1zst(def.variant(var0))? {
+            def.variant(var1)
+        } else if all_fields_1zst(def.variant(var1))? {
+            def.variant(var0)
+        } else {
+            // No varant is all-1-ZST, so no NPO.
+            return interp_ok(layout);
+        };
+        // The "relevant" variant must have exactly one field, and its type is the "inner" type.
+        if relevant_variant.fields.len() != 1 {
+            return interp_ok(layout);
+        }
+        let inner = relevant_variant.fields[FieldIdx::from_u32(0)].ty(*self.tcx, args);
+        let inner = self.layout_of(inner)?;
 
         // Check if the inner type is one of the NPO-guaranteed ones.
         // For that we first unpeel transparent *structs* (but not unions).
