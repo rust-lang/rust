@@ -151,6 +151,16 @@ function expandLint(lintId) {
     highlightIfNeeded(lintId);
 }
 
+function lintAnchor(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const id = event.target.getAttribute("href").replace("#", "");
+    window.location.hash = id;
+
+    expandLint(id);
+}
+
 function copyToClipboard(event) {
     event.preventDefault();
     event.stopPropagation();
