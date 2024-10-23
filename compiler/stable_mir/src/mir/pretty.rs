@@ -101,6 +101,9 @@ fn pretty_statement<W: Write>(writer: &mut W, statement: &StatementKind) -> io::
             writeln!(writer, "ConstEvalCounter;")
         }
         StatementKind::Nop => writeln!(writer, "nop;"),
+        StatementKind::BackwardIncompatibleDropHint { place, reason: _ } => {
+            writeln!(writer, "backwards incompatible drop({place:?});")
+        }
         StatementKind::AscribeUserType { .. }
         | StatementKind::Coverage(_)
         | StatementKind::Intrinsic(_) => {

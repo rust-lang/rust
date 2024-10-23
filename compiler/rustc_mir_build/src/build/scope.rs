@@ -151,6 +151,9 @@ struct DropData {
 
     /// Whether this is a value Drop or a StorageDead.
     kind: DropKind,
+
+    /// Whether this is a backwards-incompatible drop lint
+    backwards_incompatible_lint: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -274,8 +277,12 @@ impl DropTree {
         // represents the block in the tree that should be jumped to once all
         // of the required drops have been performed.
         let fake_source_info = SourceInfo::outermost(DUMMY_SP);
-        let fake_data =
-            DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
+        let fake_data = DropData {
+            source_info: fake_source_info,
+            local: Local::MAX,
+            kind: DropKind::Storage,
+            backwards_incompatible_lint: false,
+        };
         let drops = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
         Self { drops, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
     }
@@ -763,7 +770,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let local =
                         place.as_local().unwrap_or_else(|| bug!("projection in tail call args"));
 
-                    Some(DropData { source_info, local, kind: DropKind::Value })
+                    Some(DropData {
+                        source_info,
+                        local,
+                        kind: DropKind::Value,
+                        backwards_incompatible_lint: false,
+                    })
                 }
                 Operand::Constant(_) => None,
             })
@@ -1019,9 +1031,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if local.index() <= self.arg_count {
                     span_bug!(
                         span,
-                        "`schedule_drop` called with local {:?} and arg_count {}",
+                        "`schedule_drop` called with body argument {:?} \
+                        but its storage does not require a drop",
                         local,
-                        self.arg_count,
                     )
                 }
                 false
@@ -1089,6 +1101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
                     local,
                     kind: drop_kind,
+                    backwards_incompatible_lint: false,
                 });
 
                 return;
@@ -1096,6 +1109,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
+    }
+
+    /// Schedule emission of a backwards incompatible drop lint hint.
+    /// Applicable only to temporary values for now.
+    pub(crate) fn schedule_backwards_incompatible_drop(
+        &mut self,
+        span: Span,
+        region_scope: region::Scope,
+        local: Local,
+    ) {
+        if !self.local_decls[local].ty.has_significant_drop(self.tcx, self.param_env) {
+            return;
+        }
+        for scope in self.scopes.scopes.iter_mut().rev() {
+            // Since we are inserting linting MIR statement, we have to invalidate the caches
+            scope.invalidate_cache();
+            if scope.region_scope == region_scope {
+                let region_scope_span = region_scope.span(self.tcx, self.region_scope_tree);
+                let scope_end = self.tcx.sess.source_map().end_point(region_scope_span);
+
+                scope.drops.push(DropData {
+                    source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
+                    local,
+                    kind: DropKind::Value,
+                    backwards_incompatible_lint: true,
+                });
+
+                return;
+            }
+        }
+        span_bug!(
+            span,
+            "region scope {:?} not in scope to drop {:?} for linting",
+            region_scope,
+            local
+        );
     }
 
     /// Indicates that the "local operand" stored in `local` is
@@ -1378,16 +1427,25 @@ fn build_scope_drops<'tcx>(
                     continue;
                 }
 
-                unwind_drops.add_entry_point(block, unwind_to);
-
-                let next = cfg.start_new_block();
-                cfg.terminate(block, source_info, TerminatorKind::Drop {
-                    place: local.into(),
-                    target: next,
-                    unwind: UnwindAction::Continue,
-                    replace: false,
-                });
-                block = next;
+                if drop_data.backwards_incompatible_lint {
+                    cfg.push(block, Statement {
+                        source_info,
+                        kind: StatementKind::BackwardIncompatibleDropHint {
+                            place: Box::new(local.into()),
+                            reason: BackwardIncompatibleDropReason::Edition2024,
+                        },
+                    });
+                } else {
+                    unwind_drops.add_entry_point(block, unwind_to);
+                    let next = cfg.start_new_block();
+                    cfg.terminate(block, source_info, TerminatorKind::Drop {
+                        place: local.into(),
+                        target: next,
+                        unwind: UnwindAction::Continue,
+                        replace: false,
+                    });
+                    block = next;
+                }
             }
             DropKind::Storage => {
                 if storage_dead_on_unwind {

@@ -448,7 +448,13 @@ pub enum StatementKind {
     Coverage(Coverage),
     Intrinsic(NonDivergingIntrinsic),
     ConstEvalCounter,
+    BackwardIncompatibleDropHint { place: Place, reason: BackwardIncompatibleDropReason },
     Nop,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum BackwardIncompatibleDropReason {
+    Edition2024,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

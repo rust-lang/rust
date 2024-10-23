@@ -143,6 +143,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
+
+            // Only used for temporary lifetime lints
+            BackwardIncompatibleDropHint { .. } => {}
         }
 
         interp_ok(())
