@@ -9,6 +9,7 @@ use ide_db::famous_defs::FamousDefs;
 
 use span::EditionedFileId;
 use syntax::ast::{self, AstNode};
+use text_edit::TextEditBuilder;
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
@@ -23,16 +24,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let outer_paren_pat = pat
-        .syntax()
-        .ancestors()
-        .skip(1)
-        .map_while(ast::Pat::cast)
-        .map_while(|pat| match pat {
-            ast::Pat::ParenPat(pat) => Some(pat),
-            _ => None,
-        })
-        .last();
+    let outer_paren_pat = pat.syntax().ancestors().skip(1).map_while(ast::ParenPat::cast).last();
     let range = outer_paren_pat.as_ref().map_or_else(
         || match pat {
             // for ident patterns that @ bind a name, render the un-ref patterns in front of the inner pattern
@@ -70,39 +62,54 @@ pub(super) fn hints(
         hint.label.append_str(r);
     });
     hint.pad_right = was_mut_last;
-    if !hint.label.parts.is_empty() {
-        acc.push(hint);
-    }
+    let acc_base = acc.len();
     match pat {
         ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
             let bm = sema.binding_mode_of_pat(pat)?;
             let bm = match bm {
-                hir::BindingMode::Move => return None,
-                hir::BindingMode::Ref(Mutability::Mut) => "ref mut",
-                hir::BindingMode::Ref(Mutability::Shared) => "ref",
+                hir::BindingMode::Move => None,
+                hir::BindingMode::Ref(Mutability::Mut) => Some("ref mut"),
+                hir::BindingMode::Ref(Mutability::Shared) => Some("ref"),
             };
-            acc.push(InlayHint {
-                range: pat.syntax().text_range(),
-                kind: InlayKind::BindingMode,
-                label: bm.into(),
-                text_edit: None,
-                position: InlayHintPosition::Before,
-                pad_left: false,
-                pad_right: true,
-                resolve_parent: Some(pat.syntax().text_range()),
-            });
+            if let Some(bm) = bm {
+                acc.push(InlayHint {
+                    range: pat.syntax().text_range(),
+                    kind: InlayKind::BindingMode,
+                    label: bm.into(),
+                    text_edit: None,
+                    position: InlayHintPosition::Before,
+                    pad_left: false,
+                    pad_right: true,
+                    resolve_parent: Some(pat.syntax().text_range()),
+                });
+            }
         }
         ast::Pat::OrPat(pat) if !pattern_adjustments.is_empty() && outer_paren_pat.is_none() => {
-            acc.push(InlayHint::opening_paren_before(
-                InlayKind::BindingMode,
-                pat.syntax().text_range(),
-            ));
+            hint.label.append_str("(");
             acc.push(InlayHint::closing_paren_after(
                 InlayKind::BindingMode,
                 pat.syntax().text_range(),
             ));
         }
         _ => (),
+    }
+    if !hint.label.parts.is_empty() {
+        acc.push(hint);
+    }
+
+    if let hints @ [_, ..] = &mut acc[acc_base..] {
+        let mut edit = TextEditBuilder::default();
+        for h in &mut *hints {
+            edit.insert(
+                match h.position {
+                    InlayHintPosition::Before => h.range.start(),
+                    InlayHintPosition::After => h.range.end(),
+                },
+                h.label.parts.iter().map(|p| &*p.text).collect(),
+            );
+        }
+        let edit = edit.finish();
+        hints.iter_mut().for_each(|h| h.text_edit = Some(edit.clone()));
     }
 
     Some(())
@@ -154,11 +161,10 @@ fn __(
     }
     match &(0,) {
         (x,) | (x,) => (),
-      //^^^^^^^^^^^&
+      //^^^^^^^^^^^)
+      //^^^^^^^^^^^&(
        //^ ref
               //^ ref
-      //^^^^^^^^^^^(
-      //^^^^^^^^^^^)
         ((x,) | (x,)) => (),
       //^^^^^^^^^^^^^&
         //^ ref

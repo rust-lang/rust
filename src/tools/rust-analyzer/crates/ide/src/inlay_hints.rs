@@ -410,19 +410,6 @@ impl InlayHint {
         }
     }
 
-    fn opening_paren_before(kind: InlayKind, range: TextRange) -> InlayHint {
-        InlayHint {
-            range,
-            kind,
-            label: InlayHintLabel::from("("),
-            text_edit: None,
-            position: InlayHintPosition::Before,
-            pad_left: false,
-            pad_right: false,
-            resolve_parent: None,
-        }
-    }
-
     pub fn needs_resolve(&self) -> Option<TextRange> {
         self.resolve_parent.filter(|_| self.text_edit.is_some() || self.label.needs_resolve())
     }
