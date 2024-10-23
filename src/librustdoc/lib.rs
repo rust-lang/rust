@@ -817,7 +817,7 @@ fn main_args(
             return wrap_return(
                 dcx,
                 interface::run_compiler(config, |_compiler| {
-                    markdown::render(&md_input, render_options, edition)
+                    markdown::render_and_write(&md_input, render_options, edition)
                 }),
             );
         }
