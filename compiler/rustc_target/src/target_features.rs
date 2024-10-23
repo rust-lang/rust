@@ -428,6 +428,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("relaxed-simd", Stable, &["simd128"]),
     ("sign-ext", Stable, &[]),
     ("simd128", Stable, &[]),
+    ("wide-arithmetic", Unstable(sym::wasm_target_feature), &[]),
     // tidy-alphabetical-end
 ];
 

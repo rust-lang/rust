@@ -276,6 +276,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("x86", s) if s.starts_with("avx512") => {
             Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
         }
+        // Support for `wide-arithmetic` will first land in LLVM 20 as part of
+        // llvm/llvm-project#111598
+        ("wasm32" | "wasm64", "wide-arithmetic") if get_version() < (20, 0, 0) => None,
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }
