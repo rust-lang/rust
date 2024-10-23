@@ -7,18 +7,17 @@
 //!
 //! The `impls` module contains several examples of dataflow analyses.
 //!
-//! Create an `Engine` for your analysis using the `into_engine` method on the `Analysis` trait,
-//! then call `iterate_to_fixpoint`. From there, you can use a `ResultsCursor` to inspect the
-//! fixpoint solution to your dataflow problem, or implement the `ResultsVisitor` interface and use
-//! `visit_results`. The following example uses the `ResultsCursor` approach.
+//! Then call `iterate_to_fixpoint` on your type that impls `Analysis` to get a `Results`. From
+//! there, you can use a `ResultsCursor` to inspect the fixpoint solution to your dataflow problem,
+//! or implement the `ResultsVisitor` interface and use `visit_results`. The following example uses
+//! the `ResultsCursor` approach.
 //!
 //! ```ignore (cross-crate-imports)
-//! use rustc_const_eval::dataflow::Analysis; // Makes `into_engine` available.
+//! use rustc_const_eval::dataflow::Analysis; // Makes `iterate_to_fixpoint` available.
 //!
 //! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
 //!     let analysis = MyAnalysis::new()
-//!         .into_engine(tcx, body)
-//!         .iterate_to_fixpoint()
+//!         .iterate_to_fixpoint(tcx, body, None)
 //!         .into_results_cursor(body);
 //!
 //!     // Print the dataflow state *after* each statement in the start block.
@@ -38,6 +37,8 @@ use rustc_index::Idx;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::TyCtxt;
+
+use super::fmt::DebugWithContext;
 
 mod cursor;
 mod direction;
@@ -223,26 +224,30 @@ pub trait Analysis<'tcx> {
 
     /* Extension methods */
 
-    /// Creates an `Engine` to find the fixpoint for this dataflow problem.
+    /// Finds the fixpoint for this dataflow problem.
     ///
     /// You shouldn't need to override this. Its purpose is to enable method chaining like so:
     ///
     /// ```ignore (cross-crate-imports)
     /// let results = MyAnalysis::new(tcx, body)
-    ///     .into_engine(tcx, body, def_id)
-    ///     .iterate_to_fixpoint()
+    ///     .iterate_to_fixpoint(tcx, body, None)
     ///     .into_results_cursor(body);
     /// ```
-    #[inline]
-    fn into_engine<'mir>(
+    /// You can optionally add an identifier to the graphviz output for this particular run of a
+    /// dataflow analysis. Some analyses are run multiple times in the compilation pipeline.
+    /// Without a `pass_name` to differentiates them, only the results for the latest run will be
+    /// saved.
+    fn iterate_to_fixpoint<'mir>(
         self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
-    ) -> Engine<'mir, 'tcx, Self>
+        pass_name: Option<&'static str>,
+    ) -> Results<'tcx, Self>
     where
         Self: Sized,
+        Self::Domain: DebugWithContext<Self>,
     {
-        Engine::new(tcx, body, self)
+        Engine::iterate_to_fixpoint(tcx, body, self, pass_name)
     }
 }
 

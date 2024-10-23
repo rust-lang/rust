@@ -193,9 +193,7 @@ fn do_mir_borrowck<'tcx>(
         .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, Some("borrowck"))
         .into_results_cursor(body);
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def).is_fn_or_closure();
@@ -243,18 +241,21 @@ fn do_mir_borrowck<'tcx>(
     // usage significantly on some benchmarks.
     drop(flow_inits);
 
-    let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
-    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
-    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
+    let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
 
     let movable_coroutine =
         // The first argument is the coroutine type passed by value

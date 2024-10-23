@@ -43,31 +43,28 @@ pub fn sanity_check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
-        let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint();
+        let flow_inits =
+            MaybeInitializedPlaces::new(tcx, body, &move_data).iterate_to_fixpoint(tcx, body, None);
 
         sanity_check_via_rustc_peek(tcx, flow_inits.into_results_cursor(body));
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
         let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint();
+            .iterate_to_fixpoint(tcx, body, None);
 
         sanity_check_via_rustc_peek(tcx, flow_uninits.into_results_cursor(body));
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
-        let flow_def_inits = DefinitelyInitializedPlaces::new(body, &move_data)
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint();
+        let flow_def_inits =
+            DefinitelyInitializedPlaces::new(body, &move_data).iterate_to_fixpoint(tcx, body, None);
 
         sanity_check_via_rustc_peek(tcx, flow_def_inits.into_results_cursor(body));
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
-        let flow_liveness = MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint();
+        let flow_liveness = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, None);
 
         sanity_check_via_rustc_peek(tcx, flow_liveness.into_results_cursor(body));
     }

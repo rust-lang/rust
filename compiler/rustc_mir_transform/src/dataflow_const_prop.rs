@@ -61,7 +61,7 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
         let mut results = debug_span!("analyze")
-            .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
+            .in_scope(|| analysis.wrap().iterate_to_fixpoint(tcx, body, None));
 
         // Collect results and patch the body afterwards.
         let mut visitor = Collector::new(tcx, &body.local_decls);
