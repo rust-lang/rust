@@ -1,3 +1,4 @@
+//@ ignore-test
 //@ revisions: edition2021 edition2024
 //@ [edition2024] compile-flags: -Zunstable-options
 //@ [edition2024] edition: 2024

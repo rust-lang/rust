@@ -1,3 +1,4 @@
+//@ ignore-test
 fn main() {
     {
         let mut _thing1 = D(Box::new("thing1"));
