@@ -344,7 +344,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         };
 
         let mut nested_goals = vec![];
-        self.candidates_recur(&mut candidates, &mut nested_goals, &last_eval_step.evaluation);
+        self.candidates_recur(&mut candidates, &mut nested_goals, &last_eval_step);
 
         candidates
     }
