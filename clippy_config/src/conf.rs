@@ -727,6 +727,7 @@ define_Conf! {
         type_repetition_in_bounds,
         unchecked_time_subtraction,
         uninlined_format_args,
+        unnecessary_box_pin,
         unnecessary_lazy_evaluations,
         unnecessary_unwrap,
         unnested_or_patterns,
