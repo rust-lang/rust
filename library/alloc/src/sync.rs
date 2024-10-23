@@ -3447,13 +3447,16 @@ impl<T: Default> Default for Arc<T> {
     /// assert_eq!(*x, 0);
     /// ```
     fn default() -> Arc<T> {
-        let x = Box::into_raw(Box::write(Box::new_uninit(), ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data: T::default(),
-        }));
-        // SAFETY: `Box::into_raw` consumes the `Box` and never returns null
-        unsafe { Self::from_inner(NonNull::new_unchecked(x)) }
+        unsafe {
+            Self::from_inner(
+                Box::leak(Box::write(Box::new_uninit(), ArcInner {
+                    strong: atomic::AtomicUsize::new(1),
+                    weak: atomic::AtomicUsize::new(1),
+                    data: T::default(),
+                }))
+                .into(),
+            )
+        }
     }
 }
 

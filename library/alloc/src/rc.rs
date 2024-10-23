@@ -2312,7 +2312,16 @@ impl<T: Default> Default for Rc<T> {
     /// ```
     #[inline]
     fn default() -> Rc<T> {
-        Rc::new(Default::default())
+        unsafe {
+            Self::from_inner(
+                Box::leak(Box::write(Box::new_uninit(), RcInner {
+                    strong: Cell::new(1),
+                    weak: Cell::new(1),
+                    value: T::default(),
+                }))
+                .into(),
+            )
+        }
     }
 }
 
