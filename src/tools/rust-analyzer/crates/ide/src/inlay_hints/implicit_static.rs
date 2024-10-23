@@ -9,6 +9,7 @@ use syntax::{
     ast::{self, AstNode},
     SyntaxKind,
 };
+use text_edit::TextEdit;
 
 use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeElisionHints};
 
@@ -38,7 +39,7 @@ pub(super) fn hints(
                 range: t.text_range(),
                 kind: InlayKind::Lifetime,
                 label: "'static".into(),
-                text_edit: None,
+                text_edit: Some(TextEdit::insert(t.text_range().start(), "'static ".into())),
                 position: InlayHintPosition::After,
                 pad_left: false,
                 pad_right: true,
