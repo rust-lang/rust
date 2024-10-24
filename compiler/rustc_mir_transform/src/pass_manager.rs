@@ -252,7 +252,10 @@ fn run_passes_inner<'tcx>(
 
         let validate =
             (validate_each & tcx.sess.opts.unstable_opts.validate_mir & !body.should_skip())
-                || new_phase == MirPhase::Runtime(RuntimePhase::Optimized);
+                || matches!(
+                    new_phase,
+                    MirPhase::Runtime(RuntimePhase::Optimized | RuntimePhase::Codegen)
+                );
         let lint = tcx.sess.opts.unstable_opts.lint_mir & !body.should_skip();
         if validate {
             validate_body(tcx, body, format!("after phase change to {}", new_phase.name()));
@@ -265,7 +268,7 @@ fn run_passes_inner<'tcx>(
     }
 }
 
-pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
+fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
     validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
 }
 

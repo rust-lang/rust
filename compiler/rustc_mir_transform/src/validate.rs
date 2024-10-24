@@ -395,7 +395,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
                     // generation concern, the code generation should be responsible for handling
                     // it.
-                    if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Codegen)
                         && self.is_critical_call_edge(target, unwind)
                     {
                         self.fail(

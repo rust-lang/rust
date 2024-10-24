@@ -159,6 +159,7 @@ impl RuntimePhase {
             "initial" => Self::Initial,
             "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
             "optimized" => Self::Optimized,
+            "codegen" => Self::Codegen,
             _ => bug!("Unknown runtime phase: '{}'", phase),
         }
     }

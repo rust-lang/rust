@@ -32,7 +32,10 @@ pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
 #[no_mangle]
 pub fn option_nop_traits_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // CHECK-NEXT: insertvalue { i32, i32 }
+    // NINETEEN-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %0 to i1
+    // NINETEEN-NEXT: [[FIRST:%.*]] = select i1 [[TRUNC]], i32 %0
+    // NINETEEN-NEXT: insertvalue { i32, i32 } poison, i32 [[FIRST]], 0
+    // TWENTY-NEXT: insertvalue { i32, i32 } poison, i32 %0, 0
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: ret { i32, i32 }
     try { x? }

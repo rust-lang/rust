@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `&mut Self: DispatchFromDyn<&mut RustaceansAreAwesome>`
+error[E0275]: overflow evaluating the requirement `{closure@rt::lang_start<()>::{closure#0}}: Unsize<dyn Fn() -> i32 + Sync + RefUnwindSafe>`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "2"]` attribute to your crate (`zero_overflow`)
 

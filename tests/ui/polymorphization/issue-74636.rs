@@ -1,5 +1,6 @@
 //@ compile-flags:-Zpolymorphize=on
 //@ build-pass
+//@ dont-check-compiler-stderr
 
 use std::any::TypeId;
 

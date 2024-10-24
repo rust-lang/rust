@@ -1719,6 +1719,14 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn codegen_mir(self, instance: ty::Instance<'tcx>) -> &'tcx Body<'tcx> {
+        if self.sess.opts.incremental == None {
+            self.build_codegen_mir(instance)
+        } else {
+            self.instance_mir(instance.def)
+        }
+    }
+
     /// Returns the possibly-auto-generated MIR of a [`ty::InstanceKind`].
     #[instrument(skip(self), level = "debug")]
     pub fn instance_mir(self, instance: ty::InstanceKind<'tcx>) -> &'tcx Body<'tcx> {
