@@ -384,7 +384,10 @@ impl<T> Trait<T> for X {
                                     | DefKind::AssocFn
                                     | DefKind::AssocConst
                             )
-                            && tcx.is_type_alias_impl_trait(opaque_ty.def_id)
+                            && matches!(
+                                tcx.opaque_ty_origin(opaque_ty.def_id),
+                                hir::OpaqueTyOrigin::TyAlias { .. }
+                            )
                             && !tcx
                                 .opaque_types_defined_by(body_owner_def_id.expect_local())
                                 .contains(&opaque_ty.def_id.expect_local())

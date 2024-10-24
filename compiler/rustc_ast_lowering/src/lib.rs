@@ -288,7 +288,7 @@ enum ImplTraitContext {
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
     /// equivalent to a new opaque type like `type T = impl Debug; fn foo() -> T`.
     ///
-    OpaqueTy { origin: hir::OpaqueTyOrigin },
+    OpaqueTy { origin: hir::OpaqueTyOrigin<LocalDefId> },
     /// `impl Trait` is unstably accepted in this position.
     FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
@@ -1483,7 +1483,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_opaque_impl_trait(
         &mut self,
         span: Span,
-        origin: hir::OpaqueTyOrigin,
+        origin: hir::OpaqueTyOrigin<LocalDefId>,
         opaque_ty_node_id: NodeId,
         bounds: &GenericBounds,
         itctx: ImplTraitContext,
@@ -1551,7 +1551,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_opaque_inner(
         &mut self,
         opaque_ty_node_id: NodeId,
-        origin: hir::OpaqueTyOrigin,
+        origin: hir::OpaqueTyOrigin<LocalDefId>,
         captured_lifetimes_to_duplicate: FxIndexSet<Lifetime>,
         span: Span,
         opaque_ty_span: Span,
