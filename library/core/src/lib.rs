@@ -127,7 +127,6 @@
 #![feature(const_index_range_slice_index)]
 #![feature(const_likely)]
 #![feature(const_nonnull_new)]
-#![feature(const_num_midpoint)]
 #![feature(const_option_ext)]
 #![feature(const_pin_2)]
 #![feature(const_pointer_is_aligned)]

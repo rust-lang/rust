@@ -3190,14 +3190,13 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
+        /// #![feature(num_midpoint_signed)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-1), -1);")]
         #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(0), -1);")]
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
-        #[rustc_allow_const_fn_unstable(const_num_midpoint)]
+        #[unstable(feature = "num_midpoint_signed", issue = "110840")]
+        #[rustc_const_unstable(feature = "num_midpoint_signed", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
