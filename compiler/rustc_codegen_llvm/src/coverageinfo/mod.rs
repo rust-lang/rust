@@ -7,7 +7,6 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;
-use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -76,15 +75,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// `instrprof.increment()`. The `Value` is only created once per instance.
     /// Multiple invocations with the same instance return the same `Value`.
     fn get_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
-        if let Some(coverage_context) = self.coverage_context() {
-            debug!("getting pgo_func_name_var for instance={:?}", instance);
-            let mut pgo_func_name_var_map = coverage_context.pgo_func_name_var_map.borrow_mut();
-            pgo_func_name_var_map
-                .entry(instance)
-                .or_insert_with(|| create_pgo_func_name_var(self, instance))
-        } else {
-            bug!("Could not get the `coverage_context`");
-        }
+        debug!("getting pgo_func_name_var for instance={:?}", instance);
+        let mut pgo_func_name_var_map = self.coverage_cx().pgo_func_name_var_map.borrow_mut();
+        pgo_func_name_var_map
+            .entry(instance)
+            .or_insert_with(|| create_pgo_func_name_var(self, instance))
     }
 }
 
@@ -118,11 +113,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             cond_bitmaps.push(cond_bitmap);
         }
 
-        self.coverage_context()
-            .expect("always present when coverage is enabled")
-            .mcdc_condition_bitmap_map
-            .borrow_mut()
-            .insert(instance, cond_bitmaps);
+        self.coverage_cx().mcdc_condition_bitmap_map.borrow_mut().insert(instance, cond_bitmaps);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -143,8 +134,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             return;
         };
 
-        let Some(coverage_context) = bx.coverage_context() else { return };
-        let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
+        let mut coverage_map = bx.coverage_cx().function_coverage_map.borrow_mut();
         let func_coverage = coverage_map
             .entry(instance)
             .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
@@ -186,7 +176,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
             CoverageKind::CondBitmapUpdate { index, decision_depth } => {
                 drop(coverage_map);
-                let cond_bitmap = coverage_context
+                let cond_bitmap = bx
+                    .coverage_cx()
                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                     .expect("mcdc cond bitmap should have been allocated for updating");
                 let cond_index = bx.const_i32(index as i32);
@@ -194,7 +185,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
             CoverageKind::TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
                 drop(coverage_map);
-                let cond_bitmap = coverage_context
+                let cond_bitmap = bx.coverage_cx()
                                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                                     .expect("mcdc cond bitmap should have been allocated for merging into the global bitmap");
                 assert!(

@@ -54,11 +54,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         add_unused_functions(cx);
     }
 
-    let function_coverage_map = match cx.coverage_context() {
-        Some(ctx) => ctx.take_function_coverage_map(),
-        None => return,
-    };
-
+    let function_coverage_map = cx.coverage_cx().take_function_coverage_map();
     if function_coverage_map.is_empty() {
         // This module has no functions with coverage instrumentation
         return;
@@ -543,9 +539,5 @@ fn add_unused_function_coverage<'tcx>(
     // zero, because none of its counters/expressions are marked as seen.
     let function_coverage = FunctionCoverageCollector::unused(instance, function_coverage_info);
 
-    if let Some(coverage_context) = cx.coverage_context() {
-        coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);
-    } else {
-        bug!("Could not get the `coverage_context`");
-    }
+    cx.coverage_cx().function_coverage_map.borrow_mut().insert(instance, function_coverage);
 }
