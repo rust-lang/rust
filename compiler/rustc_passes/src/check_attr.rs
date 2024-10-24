@@ -126,7 +126,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
                 [sym::optimize, ..] => self.check_optimize(hir_id, attr, span, target),
                 [sym::no_sanitize, ..] => {
-                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                    // FIXME: We need to accept `no_sanitize(address)`/`no_sanitize(hwaddress)` on
+                    // static/const variables.
+
+                    // self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
                 [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target),
                 [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
