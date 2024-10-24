@@ -38,9 +38,9 @@ use rustc_session::{Session, filesearch};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,
-    LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SplitDebuginfo, current_apple_deployment_target,
+    AppleOSVersion, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
+    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel,
+    SanitizerSet, SplitDebuginfo,
 };
 use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, info, warn};
@@ -50,6 +50,7 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
+use crate::apple::{SDKSettings, deployment_target, ld64_arch, versioned_llvm_target};
 use crate::{
     CodegenResults, CompiledModule, CrateInfo, NativeLib, common, errors,
     looks_like_rust_object_file,
@@ -2101,16 +2102,20 @@ fn add_library_search_dirs(
     cmd: &mut dyn Linker,
     sess: &Session,
     self_contained_components: LinkSelfContainedComponents,
-    apple_sdk_root: Option<&Path>,
+    apple_sdk_data: &Option<(PathBuf, SDKSettings)>,
 ) {
     if !sess.opts.unstable_opts.link_native_libraries {
         return;
     }
 
+    let apple_sdk_data = apple_sdk_data
+        .as_ref()
+        .map(|(sdkroot, settings)| (&**sdkroot, settings.mac_catalyst_prefix_path()));
+
     walk_native_lib_search_dirs(
         sess,
         self_contained_components,
-        apple_sdk_root,
+        apple_sdk_data,
         |dir, is_framework| {
             if is_framework {
                 cmd.framework_path(dir);
@@ -2407,9 +2412,9 @@ fn add_order_independent_options(
     // Take care of the flavors and CLI options requesting the `lld` linker.
     add_lld_args(cmd, sess, flavor, self_contained_components);
 
-    add_apple_link_args(cmd, sess, flavor);
+    let apple_sdk_data = add_apple_sdk(cmd, sess, crate_type, flavor);
 
-    let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
+    add_apple_link_args(cmd, sess, flavor, &apple_sdk_data);
 
     add_link_script(cmd, sess, tmpdir, crate_type);
 
@@ -2447,7 +2452,7 @@ fn add_order_independent_options(
     if flavor == LinkerFlavor::Llbc {
         cmd.link_args(&[
             "--target",
-            sess.target.llvm_target.as_ref(),
+            &versioned_llvm_target(sess),
             "--target-cpu",
             &codegen_results.crate_info.target_cpu,
         ]);
@@ -2465,7 +2470,7 @@ fn add_order_independent_options(
 
     cmd.linker_plugin_lto();
 
-    add_library_search_dirs(cmd, sess, self_contained_components, apple_sdk_root.as_deref());
+    add_library_search_dirs(cmd, sess, self_contained_components, &apple_sdk_data);
 
     cmd.output_filename(out_filename);
 
@@ -2967,7 +2972,12 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
 /// - The environment / ABI.
 /// - The deployment target.
 /// - The SDK version.
-fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+fn add_apple_link_args(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    flavor: LinkerFlavor,
+    settings: &Option<(PathBuf, SDKSettings)>,
+) {
     if !sess.target.is_like_osx {
         return;
     }
@@ -2975,32 +2985,9 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         return;
     };
 
-    // `sess.target.arch` (`target_arch`) is not detailed enough.
-    let llvm_arch = sess.target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
     let target_os = &*sess.target.os;
     let target_abi = &*sess.target.abi;
-
-    // The architecture name to forward to the linker.
-    //
-    // Supported architecture names can be found in the source:
-    // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
-    //
-    // Intentially verbose to ensure that the list always matches correctly
-    // with the list in the source above.
-    let ld64_arch = match llvm_arch {
-        "armv7k" => "armv7k",
-        "armv7s" => "armv7s",
-        "arm64" => "arm64",
-        "arm64e" => "arm64e",
-        "arm64_32" => "arm64_32",
-        // ld64 doesn't understand i686, so fall back to i386 instead.
-        //
-        // Same story when linking with cc, since that ends up invoking ld64.
-        "i386" | "i686" => "i386",
-        "x86_64" => "x86_64",
-        "x86_64h" => "x86_64h",
-        _ => bug!("unsupported architecture in Apple target: {}", sess.target.llvm_target),
-    };
+    let ld64_arch = ld64_arch(&sess.target);
 
     if cc == Cc::No {
         // From the man page for ld64 (`man ld`):
@@ -3039,7 +3026,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
             _ => bug!("invalid OS/ABI combination for Apple target: {target_os}, {target_abi}"),
         };
 
-        let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+        let AppleOSVersion { major, minor, patch } = deployment_target(sess);
         let min_version = format!("{major}.{minor}.{patch}");
 
         // The SDK version is used at runtime when compiling with a newer SDK / version of Xcode:
@@ -3050,31 +3037,41 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         //   `-[NSView wantsBestResolutionOpenGLSurface]` is `YES` when the SDK version is >= 10.15.
         //   <https://developer.apple.com/documentation/appkit/nsview/1414938-wantsbestresolutionopenglsurface?language=objc>
         //
-        // We do not currently know the actual SDK version though, so we have a few options:
+        // So it is important that we pass the correct version here.
+        //
+        //
+        // For posterity, insufficient alternatives are listed below:
+        //
         // 1. Use the minimum version supported by rustc.
+        //    Too low / too conservative, and means that users will not get the same behaviour from
+        //    a binary compiled with rustc as with one compiled by clang.
+        //
         // 2. Use the same as the deployment target.
+        //    Similarly conservative, and also wrong since if the user specified a higher deployment
+        //    target than the SDK they're compiling/linking with, the runtime might make invalid
+        //    assumptions about the capabilities of the binary.
+        //
         // 3. Use an arbitary recent version.
+        //    Requires that `rustc` is periodically kept up to date with Apple's SDK version, and is
+        //    also wrong for similar reasons as above.
+        //
         // 4. Omit the version.
-        //
-        // The first option is too low / too conservative, and means that users will not get the
-        // same behaviour from a binary compiled with rustc as with one compiled by clang.
-        //
-        // The second option is similarly conservative, and also wrong since if the user specified a
-        // higher deployment target than the SDK they're compiling/linking with, the runtime might
-        // make invalid assumptions about the capabilities of the binary.
-        //
-        // The third option requires that `rustc` is periodically kept up to date with Apple's SDK
-        // version, and is also wrong for similar reasons as above.
-        //
-        // The fourth option is bad because while `ld`, `otool`, `vtool` and such understand it to
-        // mean "absent" or `n/a`, dyld doesn't actually understand it, and will end up interpreting
-        // it as 0.0, which is again too low/conservative.
-        //
-        // Currently, we lie about the SDK version, and choose the second option.
-        //
-        // FIXME(madsmtm): Parse the SDK version from the SDK root instead.
-        // <https://github.com/rust-lang/rust/issues/129432>
-        let sdk_version = &*min_version;
+        //    Bad because while `ld`, `otool`, `vtool` and such understand it to mean "absent" or
+        //    `n/a`, dyld doesn't actually understand it, and will end up interpreting it as 0.0,
+        //    which is again too low/conservative.
+        let AppleOSVersion { major, minor, patch } = if let Some((sdkroot, settings)) = settings {
+            settings.sdk_version(&sess.target, &sdkroot).unwrap_or_else(|err| {
+                sess.dcx().emit_err(err);
+                AppleOSVersion::MAX
+            })
+        } else {
+            // If the SDK wasn't read properly, we may have errored already, but we may also only
+            // have given a warning to support `zig cc` on non-macOS hosts. `ld64` requires the SDK
+            // version though, so we must actually error here.
+            sess.dcx().emit_err(errors::AppleSdkError::MustHaveWhenUsingLd64);
+            AppleOSVersion::MAX
+        };
+        let sdk_version = format!("{major}.{minor}.{patch}");
 
         // From the man page for ld64 (`man ld`):
         // > This is set to indicate the platform, oldest supported version of
@@ -3084,7 +3081,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // Like with `-arch`, the linker can figure out the platform versions
         // itself from the binaries being linked, but to be safe, we specify
         // the desired versions here explicitly.
-        cmd.link_args(&["-platform_version", platform_name, &*min_version, sdk_version]);
+        cmd.link_args(&["-platform_version", platform_name, &*min_version, &*sdk_version]);
     } else {
         // cc == Cc::Yes
         //
@@ -3109,7 +3106,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 
             // The presence of `-mmacosx-version-min` makes CC default to
             // macOS, and it sets the deployment target.
-            let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+            let AppleOSVersion { major, minor, patch } = deployment_target(sess);
             // Intentionally pass this as a single argument, Clang doesn't
             // seem to like it otherwise.
             cmd.cc_arg(&format!("-mmacosx-version-min={major}.{minor}.{patch}"));
@@ -3119,134 +3116,69 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
             //
             // We avoid `-m32`/`-m64`, as this is already encoded by `-arch`.
         } else {
-            cmd.cc_args(&["-target", &sess.target.llvm_target]);
+            cmd.cc_args(&["-target", &versioned_llvm_target(sess)]);
         }
     }
 }
 
-fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
-    let arch = &sess.target.arch;
-    let os = &sess.target.os;
-    let llvm_target = &sess.target.llvm_target;
-    if sess.target.vendor != "apple"
-        || !matches!(os.as_ref(), "ios" | "tvos" | "watchos" | "visionos" | "macos")
-        || !matches!(flavor, LinkerFlavor::Darwin(..))
-    {
+fn add_apple_sdk(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    crate_type: CrateType,
+    flavor: LinkerFlavor,
+) -> Option<(PathBuf, SDKSettings)> {
+    if !sess.target.is_like_osx {
         return None;
     }
-
-    if os == "macos" && !matches!(flavor, LinkerFlavor::Darwin(Cc::No, _)) {
+    let LinkerFlavor::Darwin(cc, _) = flavor else {
         return None;
-    }
-
-    let sdk_name = match (arch.as_ref(), os.as_ref()) {
-        ("aarch64", "tvos") if llvm_target.ends_with("-simulator") => "appletvsimulator",
-        ("aarch64", "tvos") => "appletvos",
-        ("x86_64", "tvos") => "appletvsimulator",
-        ("arm", "ios") => "iphoneos",
-        ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
-        ("aarch64", "ios") if llvm_target.ends_with("-simulator") => "iphonesimulator",
-        ("aarch64", "ios") => "iphoneos",
-        ("x86", "ios") => "iphonesimulator",
-        ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",
-        ("x86_64", "ios") => "iphonesimulator",
-        ("x86_64", "watchos") => "watchsimulator",
-        ("arm64_32", "watchos") => "watchos",
-        ("aarch64", "watchos") if llvm_target.ends_with("-simulator") => "watchsimulator",
-        ("aarch64", "watchos") => "watchos",
-        ("aarch64", "visionos") if llvm_target.ends_with("-simulator") => "xrsimulator",
-        ("aarch64", "visionos") => "xros",
-        ("arm", "watchos") => "watchos",
-        (_, "macos") => "macosx",
-        _ => {
-            sess.dcx().emit_err(errors::UnsupportedArch { arch, os });
-            return None;
-        }
     };
-    let sdk_root = match get_apple_sdk_root(sdk_name) {
-        Ok(s) => s,
+
+    let (sdkroot, settings) = match SDKSettings::from_environment(sess, crate_type) {
+        Ok((sdkroot, settings)) => (sdkroot, settings),
         Err(e) => {
-            sess.dcx().emit_err(e);
+            // If cross compiling from non-macOS, the user might be using something like `zig cc`.
+            //
+            // In that case, we shouldn't error when the SDK is missing, though we still warn.
+            if cfg!(target_os = "macos") {
+                sess.dcx().emit_err(e);
+            } else {
+                sess.dcx().emit_warn(e);
+            }
             return None;
         }
     };
 
-    match flavor {
-        LinkerFlavor::Darwin(Cc::Yes, _) => {
-            // Use `-isysroot` instead of `--sysroot`, as only the former
-            // makes Clang treat it as a platform SDK.
-            //
-            // This is admittedly a bit strange, as on most targets
-            // `-isysroot` only applies to include header files, but on Apple
-            // targets this also applies to libraries and frameworks.
-            cmd.cc_args(&["-isysroot", &sdk_root]);
-        }
-        LinkerFlavor::Darwin(Cc::No, _) => {
-            cmd.link_args(&["-syslibroot", &sdk_root]);
-        }
-        _ => unreachable!(),
+    if cc == Cc::Yes {
+        // To pass the SDK root to `cc`, we have a few options:
+        // 1. `--sysroot` flag.
+        // 2. `-isysroot` flag.
+        // 3. `SDKROOT` environment variable.
+        //
+        // `--sysroot` isn't actually enough to get Clang to treat it as a platform SDK, you need to
+        // specify `-isysroot` - this is admittedly a bit strange, as on most targets `-isysroot`
+        // only applies to include header files, but on Apple targets it also applies to libraries
+        // and frameworks.
+        //
+        // Now, while the `-isysroot` flag is pretty well supported (both Clang and GCC implements
+        // the desired behaviour), it may not be understood by any `cc`'s that the user might want
+        // to use.
+        //
+        // So to better support such use-cases, we pass the SDK root in the standard environment
+        // variable instead. This is also supported by GCC since 2019:
+        // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87243>
+        //
+        // This also works better with the trampoline `/usr/bin/cc` which calls `xcrun cc`
+        // internally, since the presence of `SDKROOT` means it won't have to look up the SDK root
+        // itself.
+        cmd.cmd().env("SDKROOT", &sdkroot);
+    } else {
+        // For `ld64`, we use the `-syslibroot` parameter (and there are no other options).
+        cmd.link_arg("-syslibroot");
+        cmd.link_arg(&sdkroot);
     }
 
-    Some(sdk_root.into())
-}
-
-fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {
-    // Following what clang does
-    // (https://github.com/llvm/llvm-project/blob/
-    // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
-    // to allow the SDK path to be set. (For clang, xcrun sets
-    // SDKROOT; for rustc, the user or build system can set it, or we
-    // can fall back to checking for xcrun on PATH.)
-    if let Ok(sdkroot) = env::var("SDKROOT") {
-        let p = Path::new(&sdkroot);
-        match sdk_name {
-            // Ignore `SDKROOT` if it's clearly set for the wrong platform.
-            "appletvos"
-                if sdkroot.contains("TVSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") => {}
-            "appletvsimulator"
-                if sdkroot.contains("TVOS.platform") || sdkroot.contains("MacOSX.platform") => {}
-            "iphoneos"
-                if sdkroot.contains("iPhoneSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") => {}
-            "iphonesimulator"
-                if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") => {
-            }
-            "macosx"
-                if sdkroot.contains("iPhoneOS.platform")
-                    || sdkroot.contains("iPhoneSimulator.platform") => {}
-            "watchos"
-                if sdkroot.contains("WatchSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") => {}
-            "watchsimulator"
-                if sdkroot.contains("WatchOS.platform") || sdkroot.contains("MacOSX.platform") => {}
-            "xros"
-                if sdkroot.contains("XRSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") => {}
-            "xrsimulator"
-                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
-            // Ignore `SDKROOT` if it's not a valid path.
-            _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
-            _ => return Ok(sdkroot),
-        }
-    }
-    let res =
-        Command::new("xcrun").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
-            |output| {
-                if output.status.success() {
-                    Ok(String::from_utf8(output.stdout).unwrap())
-                } else {
-                    let error = String::from_utf8(output.stderr);
-                    let error = format!("process exit with error: {}", error.unwrap());
-                    Err(io::Error::new(io::ErrorKind::Other, &error[..]))
-                }
-            },
-        );
-
-    match res {
-        Ok(output) => Ok(output.trim().to_string()),
-        Err(error) => Err(errors::AppleSdkRootError::SdkPath { sdk_name, error }),
-    }
+    Some((sdkroot, settings))
 }
 
 /// When using the linker flavors opting in to `lld`, add the necessary paths and arguments to
@@ -3345,7 +3277,7 @@ fn add_lld_args(
         // targeting a different linker flavor on macOS, and that's also always
         // the case when targeting WASM.
         if sess.target.linker_flavor != sess.host.linker_flavor {
-            cmd.cc_arg(format!("--target={}", sess.target.llvm_target));
+            cmd.cc_arg(format!("--target={}", versioned_llvm_target(sess)));
         }
     }
 }

@@ -23,12 +23,6 @@ fn has_sdk_version(file: &str, version: &str) {
 }
 
 fn main() {
-    // Fetch rustc's inferred deployment target.
-    let current_deployment_target =
-        rustc().target(target()).print("deployment-target").run().stdout_utf8();
-    let current_deployment_target =
-        current_deployment_target.strip_prefix("deployment_target=").unwrap().trim();
-
     // Fetch current SDK version via. xcrun.
     //
     // Assumes a standard Xcode distribution, where e.g. the macOS SDK's Mac Catalyst
@@ -87,9 +81,6 @@ fn main() {
             .input("foo.rs")
             .output(&file_name)
             .run();
-        // FIXME(madsmtm): This uses the current deployment target
-        // instead of the current SDK version like Clang does.
-        // https://github.com/rust-lang/rust/issues/129432
-        has_sdk_version(&file_name, current_deployment_target);
+        has_sdk_version(&file_name, current_sdk_version);
     }
 }
