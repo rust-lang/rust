@@ -1,5 +1,7 @@
 //! List of the unstable feature gates.
 
+use std::path::Path;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
@@ -634,6 +636,59 @@ declare_features! (
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
 );
+
+impl Features {
+    pub fn dump_feature_usage_metrics(&self, metrics_dir: &Path) {
+        #[derive(serde::Serialize)]
+        struct LibFeature {
+            symbol: String,
+        }
+
+        #[derive(serde::Serialize)]
+        struct LangFeature {
+            symbol: String,
+            since: Option<String>,
+        }
+
+        #[derive(serde::Serialize)]
+        struct FeatureUsage {
+            lib_features: Vec<LibFeature>,
+            lang_features: Vec<LangFeature>,
+        }
+
+        // TODO (DECIDE): How fine grained do we want to track feature usage?
+        //      Jane Preference: i want to track usage for code that gets used, not code
+        //      that is in development, but I don't know how we'd hook into this for code
+        //      that doesn't participate in the crates.io ecosystem, those crates won't even
+        //      necessarily have releases or versioning norms that match other crates, so we
+        //      may have to just track per compilation and aggressively collapse metrics to
+        //      avoid unnecessary disk usage.
+        // TODO avoid filename collisions between runs
+        let feature_metrics_file = metrics_dir.join("unstable_feature_usage.json");
+        println!("{}", feature_metrics_file.display());
+        let feature_metrics_file = std::fs::File::create(feature_metrics_file).unwrap();
+        let feature_metrics_file = std::io::BufWriter::new(feature_metrics_file);
+
+        let lib_features = self
+            .declared_lib_features
+            .iter()
+            .map(|(symbol, _)| LibFeature { symbol: symbol.to_string() })
+            .collect();
+
+        let lang_features = self
+            .declared_lang_features
+            .iter()
+            .map(|(symbol, _, since)| LangFeature {
+                symbol: symbol.to_string(),
+                since: since.map(|since| since.to_string()),
+            })
+            .collect();
+
+        let feature_usage = FeatureUsage { lib_features, lang_features };
+
+        let _ = serde_json::to_writer(feature_metrics_file, &feature_usage);
+    }
+}
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
