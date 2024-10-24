@@ -8,15 +8,25 @@ LL | |        if n < 0 {
 LL | |         return i;
 LL | |         } else if n < 10 {
 ...  |
-LL | |
+LL | |         }
 LL | |     }
    | |_____^ expected `i32`, found `()`
    |
    = note: `for` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the iterator expression.
+  --> $DIR/issue-100285.rs:2:5
+   |
+LL |     for i in 0..0 {
+   |     ^^^^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/issue-100285.rs:2:5
+   |
+LL |     for i in 0..0 {
+   |     ^^^^^^^^^^^^^
 help: consider returning a value here
    |
 LL ~     }
-LL ~     /* `i32` value */
+LL +     /* `i32` value */
    |
 
 error: aborting due to 1 previous error
