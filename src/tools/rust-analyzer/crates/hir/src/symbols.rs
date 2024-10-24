@@ -214,8 +214,7 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_impl(&mut self, impl_id: ImplId) {
         let impl_data = self.db.impl_data(impl_id);
-        let impl_name =
-            Some(SmolStr::new(impl_data.self_ty.display(self.db, self.edition).to_string()));
+        let impl_name = Some(impl_data.self_ty.display(self.db, self.edition).to_smolstr());
         self.with_container_name(impl_name, |s| {
             for &assoc_item_id in impl_data.items.iter() {
                 s.push_assoc_item(assoc_item_id)
