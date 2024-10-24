@@ -191,6 +191,11 @@ impl Visibility {
                     return None;
                 }
 
+                let def_block = def_map.block_id();
+                if (mod_a.containing_block(), mod_b.containing_block()) != (def_block, def_block) {
+                    return None;
+                }
+
                 let mut a_ancestors =
                     iter::successors(Some(mod_a.local_id), |&m| def_map[m].parent);
                 let mut b_ancestors =
@@ -204,6 +209,43 @@ impl Visibility {
                 if b_ancestors.any(|m| m == mod_a.local_id) {
                     // A is above B
                     return Some(Visibility::Module(mod_a, expl_a));
+                }
+
+                None
+            }
+        }
+    }
+
+    /// Returns the least permissive visibility of `self` and `other`.
+    ///
+    /// If there is no subset relation between `self` and `other`, returns `None` (ie. they're only
+    /// visible in unrelated modules).
+    pub(crate) fn min(self, other: Visibility, def_map: &DefMap) -> Option<Visibility> {
+        match (self, other) {
+            (vis, Visibility::Public) | (Visibility::Public, vis) => Some(vis),
+            (Visibility::Module(mod_a, expl_a), Visibility::Module(mod_b, expl_b)) => {
+                if mod_a.krate != mod_b.krate {
+                    return None;
+                }
+
+                let def_block = def_map.block_id();
+                if (mod_a.containing_block(), mod_b.containing_block()) != (def_block, def_block) {
+                    return None;
+                }
+
+                let mut a_ancestors =
+                    iter::successors(Some(mod_a.local_id), |&m| def_map[m].parent);
+                let mut b_ancestors =
+                    iter::successors(Some(mod_b.local_id), |&m| def_map[m].parent);
+
+                if a_ancestors.any(|m| m == mod_b.local_id) {
+                    // B is above A
+                    return Some(Visibility::Module(mod_a, expl_b));
+                }
+
+                if b_ancestors.any(|m| m == mod_a.local_id) {
+                    // A is above B
+                    return Some(Visibility::Module(mod_b, expl_a));
                 }
 
                 None
