@@ -70,8 +70,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 _ => (),
             }
 
-            let hir_id = self.lower_node_id(e.id);
-            self.lower_attrs(hir_id, &e.attrs);
+            let expr_hir_id = self.lower_node_id(e.id);
+            self.lower_attrs(expr_hir_id, &e.attrs);
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -175,18 +175,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::If(cond, then, else_opt) => {
                     self.lower_expr_if(cond, then, else_opt.as_deref())
                 }
-                ExprKind::While(cond, body, opt_label) => self.with_loop_scope(e.id, |this| {
-                    let span = this.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
-                    this.lower_expr_while_in_loop_scope(span, cond, body, *opt_label)
-                }),
-                ExprKind::Loop(body, opt_label, span) => self.with_loop_scope(e.id, |this| {
-                    hir::ExprKind::Loop(
-                        this.lower_block(body, false),
-                        this.lower_label(*opt_label),
-                        hir::LoopSource::Loop,
-                        this.lower_span(*span),
-                    )
-                }),
+                ExprKind::While(cond, body, opt_label) => {
+                    self.with_loop_scope(expr_hir_id, |this| {
+                        let span =
+                            this.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
+                        let opt_label = this.lower_label(*opt_label, e.id, expr_hir_id);
+                        this.lower_expr_while_in_loop_scope(span, cond, body, opt_label)
+                    })
+                }
+                ExprKind::Loop(body, opt_label, span) => {
+                    self.with_loop_scope(expr_hir_id, |this| {
+                        let opt_label = this.lower_label(*opt_label, e.id, expr_hir_id);
+                        hir::ExprKind::Loop(
+                            this.lower_block(body, false),
+                            opt_label,
+                            hir::LoopSource::Loop,
+                            this.lower_span(*span),
+                        )
+                    })
+                }
                 ExprKind::TryBlock(body) => self.lower_expr_try_block(body),
                 ExprKind::Match(expr, arms, kind) => hir::ExprKind::Match(
                     self.lower_expr(expr),
@@ -212,7 +219,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         binder,
                         *capture_clause,
                         e.id,
-                        hir_id,
+                        expr_hir_id,
                         *coroutine_kind,
                         fn_decl,
                         body,
@@ -223,7 +230,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         binder,
                         *capture_clause,
                         e.id,
-                        hir_id,
+                        expr_hir_id,
                         *constness,
                         *movability,
                         fn_decl,
@@ -250,8 +257,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 }
                 ExprKind::Block(blk, opt_label) => {
-                    let opt_label = self.lower_label(*opt_label);
-                    hir::ExprKind::Block(self.lower_block(blk, opt_label.is_some()), opt_label)
+                    // Different from loops, label of block resolves to block id rather than
+                    // expr node id.
+                    let block_hir_id = self.lower_node_id(blk.id);
+                    let opt_label = self.lower_label(*opt_label, blk.id, block_hir_id);
+                    let hir_block = self.arena.alloc(self.lower_block_noalloc(
+                        block_hir_id,
+                        blk,
+                        opt_label.is_some(),
+                    ));
+                    hir::ExprKind::Block(hir_block, opt_label)
                 }
                 ExprKind::Assign(el, er, span) => self.lower_expr_assign(el, er, *span, e.span),
                 ExprKind::AssignOp(op, el, er) => hir::ExprKind::AssignOp(
@@ -354,7 +369,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
             };
 
-            hir::Expr { hir_id, kind, span: self.lower_span(e.span) }
+            hir::Expr { hir_id: expr_hir_id, kind, span: self.lower_span(e.span) }
         })
     }
 
@@ -504,7 +519,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let if_expr = self.expr(span, if_kind);
         let block = self.block_expr(self.arena.alloc(if_expr));
         let span = self.lower_span(span.with_hi(cond.span.hi()));
-        let opt_label = self.lower_label(opt_label);
         hir::ExprKind::Loop(block, opt_label, hir::LoopSource::While, span)
     }
 
@@ -512,8 +526,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_output(()) }`
     /// and save the block id to use it as a break target for desugaring of the `?` operator.
     fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind<'hir> {
-        self.with_catch_scope(body.id, |this| {
-            let mut block = this.lower_block_noalloc(body, true);
+        let body_hir_id = self.lower_node_id(body.id);
+        self.with_catch_scope(body_hir_id, |this| {
+            let mut block = this.lower_block_noalloc(body_hir_id, body, true);
 
             // Final expression of the block (if present) or `()` with span at the end of block
             let (try_span, tail_expr) = if let Some(expr) = block.expr.take() {
@@ -869,7 +884,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let x_expr = self.expr_ident(gen_future_span, x_ident, x_pat_hid);
             let ready_field = self.single_pat_field(gen_future_span, x_pat);
             let ready_pat = self.pat_lang_item_variant(span, hir::LangItem::PollReady, ready_field);
-            let break_x = self.with_loop_scope(loop_node_id, move |this| {
+            let break_x = self.with_loop_scope(loop_hir_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
                 this.arena.alloc(this.expr(gen_future_span, expr_break))
@@ -1101,8 +1116,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::CoroutineSource::Closure,
                     );
 
-                    let hir_id = this.lower_node_id(coroutine_kind.closure_id());
-                    this.maybe_forward_track_caller(body.span, closure_hir_id, hir_id);
+                    this.maybe_forward_track_caller(body.span, closure_hir_id, expr.hir_id);
 
                     (parameters, expr)
                 });
@@ -1465,8 +1479,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         )
     }
 
-    fn lower_label(&self, opt_label: Option<Label>) -> Option<Label> {
+    // Record labelled expr's HirId so that we can retrieve it in `lower_jump_destination` without
+    // lowering node id again.
+    fn lower_label(
+        &mut self,
+        opt_label: Option<Label>,
+        dest_id: NodeId,
+        dest_hir_id: hir::HirId,
+    ) -> Option<Label> {
         let label = opt_label?;
+        self.ident_and_label_to_local_id.insert(dest_id, dest_hir_id.local_id);
         Some(Label { ident: self.lower_ident(label.ident) })
     }
 
@@ -1474,17 +1496,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let target_id = match destination {
             Some((id, _)) => {
                 if let Some(loop_id) = self.resolver.get_label_res(id) {
-                    Ok(self.lower_node_id(loop_id))
+                    let local_id = self.ident_and_label_to_local_id[&loop_id];
+                    let loop_hir_id = HirId { owner: self.current_hir_id_owner, local_id };
+                    Ok(loop_hir_id)
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
                 }
             }
-            None => self
-                .loop_scope
-                .map(|id| Ok(self.lower_node_id(id)))
-                .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)),
+            None => {
+                self.loop_scope.map(|id| Ok(id)).unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
+            }
         };
-        let label = self.lower_label(destination.map(|(_, label)| label));
+        let label = destination
+            .map(|(_, label)| label)
+            .map(|label| Label { ident: self.lower_ident(label.ident) });
         hir::Destination { label, target_id }
     }
 
@@ -1499,14 +1524,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn with_catch_scope<T>(&mut self, catch_id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
+    fn with_catch_scope<T>(&mut self, catch_id: hir::HirId, f: impl FnOnce(&mut Self) -> T) -> T {
         let old_scope = self.catch_scope.replace(catch_id);
         let result = f(self);
         self.catch_scope = old_scope;
         result
     }
 
-    fn with_loop_scope<T>(&mut self, loop_id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
+    fn with_loop_scope<T>(&mut self, loop_id: hir::HirId, f: impl FnOnce(&mut Self) -> T) -> T {
         // We're no longer in the base loop's condition; we're in another loop.
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
@@ -1658,9 +1683,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let head_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
         let pat_span = self.mark_span_with_reason(DesugaringKind::ForLoop, pat.span, None);
 
+        let loop_hir_id = self.lower_node_id(e.id);
+        let label = self.lower_label(opt_label, e.id, loop_hir_id);
+
         // `None => break`
         let none_arm = {
-            let break_expr = self.with_loop_scope(e.id, |this| this.expr_break_alloc(for_span));
+            let break_expr =
+                self.with_loop_scope(loop_hir_id, |this| this.expr_break_alloc(for_span));
             let pat = self.pat_none(for_span);
             self.arm(pat, break_expr)
         };
@@ -1668,7 +1697,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Some(<pat>) => <body>,
         let some_arm = {
             let some_pat = self.pat_some(pat_span, pat);
-            let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
+            let body_block =
+                self.with_loop_scope(loop_hir_id, |this| this.lower_block(body, false));
             let body_expr = self.arena.alloc(self.expr_block(body_block));
             self.arm(some_pat, body_expr)
         };
@@ -1722,12 +1752,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `[opt_ident]: loop { ... }`
         let kind = hir::ExprKind::Loop(
             loop_block,
-            self.lower_label(opt_label),
+            label,
             hir::LoopSource::ForLoop,
             self.lower_span(for_span.with_hi(head.span.hi())),
         );
-        let loop_expr =
-            self.arena.alloc(hir::Expr { hir_id: self.lower_node_id(e.id), kind, span: for_span });
+        let loop_expr = self.arena.alloc(hir::Expr { hir_id: loop_hir_id, kind, span: for_span });
 
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
@@ -1867,8 +1896,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.arena.alloc(residual_expr),
                 unstable_span,
             );
-            let ret_expr = if let Some(catch_node) = self.catch_scope {
-                let target_id = Ok(self.lower_node_id(catch_node));
+            let ret_expr = if let Some(catch_id) = self.catch_scope {
+                let target_id = Ok(catch_id);
                 self.arena.alloc(self.expr(
                     try_span,
                     hir::ExprKind::Break(
@@ -1922,8 +1951,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             yeeted_span,
         );
 
-        if let Some(catch_node) = self.catch_scope {
-            let target_id = Ok(self.lower_node_id(catch_node));
+        if let Some(catch_id) = self.catch_scope {
+            let target_id = Ok(catch_id);
             hir::ExprKind::Break(hir::Destination { label: None, target_id }, Some(from_yeet_expr))
         } else {
             hir::ExprKind::Ret(Some(from_yeet_expr))
