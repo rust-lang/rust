@@ -1305,6 +1305,144 @@ forward_iterator! { RSplitN: T, &'a [T] }
 forward_iterator! { SplitNMut: T, &'a mut [T] }
 forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
+/// An iterator over subslices separated by a given slice
+///
+/// This struct is created by the [`split_pattern`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// #![feature(split_pattern)]
+/// let slice = [10, 10, 40, 33, 30, 10, 40, 20];
+/// let pat = [10, 40];
+/// let mut iter = slice.split_pattern(&pat);
+/// assert_eq!(iter.next(), Some(&[10][..]));
+/// assert_eq!(iter.next(), Some(&[33, 30][..]));
+/// assert_eq!(iter.next(), Some(&[20][..]));
+/// assert_eq!(iter.next(), None);
+/// ```
+///
+/// [`split_pattern`]: slice::split_pattern
+/// [slices]: slice
+#[unstable(feature = "split_pattern", issue = "49036")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+pub struct SplitPattern<'a, 'b, T>
+where
+    T: cmp::PartialEq,
+{
+    v: &'a [T],
+    pattern: &'b [T],
+    finished: bool,
+}
+
+#[unstable(feature = "split_pattern", issue = "49036")]
+impl<'a, 'b, T: cmp::PartialEq> SplitPattern<'a, 'b, T> {
+    #![allow(unused)]
+    #[inline]
+    pub(super) fn new(slice: &'a [T], pattern: &'b [T]) -> Self {
+        Self { v: slice, pattern, finished: false }
+    }
+}
+
+#[unstable(feature = "split_pattern", issue = "49036")]
+impl<T: fmt::Debug> fmt::Debug for SplitPattern<'_, '_, T>
+where
+    T: cmp::PartialEq,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitPattern")
+            .field("v", &self.v)
+            .field("pattern", &self.pattern)
+            .field("finished", &self.finished)
+            .finish()
+    }
+}
+
+#[unstable(feature = "split_pattern", issue = "49036")]
+impl<T> Clone for SplitPattern<'_, '_, T>
+where
+    T: cmp::PartialEq,
+{
+    fn clone(&self) -> Self {
+        SplitPattern { v: self.v, pattern: self.pattern, finished: self.finished }
+    }
+}
+
+#[unstable(feature = "split_pattern", issue = "49036")]
+impl<'a, 'b, T> Iterator for SplitPattern<'a, 'b, T>
+where
+    T: cmp::PartialEq,
+{
+    type Item = &'a [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            return None;
+        }
+
+        for i in 0..self.v.len() {
+            if self.v[i..].starts_with(&self.pattern) {
+                let (left, right) = (&self.v[0..i], &self.v[i + self.pattern.len()..]);
+                let ret = Some(left);
+                self.v = right;
+                return ret;
+            }
+        }
+        self.finish()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.finished {
+            (0, Some(0))
+        } else {
+            // If the predicate doesn't match anything, we yield one slice.
+            // If it matches every element, we yield `len() + 1` empty slices.
+            (1, Some(self.v.len() + 1))
+        }
+    }
+}
+
+#[unstable(feature = "split_pattern", issue = "49036")]
+impl<'a, 'b, T> DoubleEndedIterator for SplitPattern<'a, 'b, T>
+where
+    T: cmp::PartialEq,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            return None;
+        }
+
+        for i in (0..self.v.len()).rev() {
+            if self.v[..i].ends_with(&self.pattern) {
+                let (left, right) = (&self.v[i..], &self.v[..i - self.pattern.len()]);
+                let ret = Some(left);
+                self.v = right;
+                return ret;
+            }
+        }
+        self.finish()
+    }
+}
+
+#[unstable(feature = "split_pattern", issue = "49036")]
+impl<'a, 'b, T> SplitIter for SplitPattern<'a, 'b, T>
+where
+    T: cmp::PartialEq,
+{
+    #[inline]
+    fn finish(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            None
+        } else {
+            self.finished = true;
+            Some(self.v)
+        }
+    }
+}
+
 /// An iterator over overlapping subslices of length `size`.
 ///
 /// This struct is created by the [`windows`] method on [slices].
