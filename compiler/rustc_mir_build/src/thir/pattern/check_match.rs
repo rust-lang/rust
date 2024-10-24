@@ -79,6 +79,8 @@ enum LetSource {
     IfLetGuard,
     LetElse,
     WhileLet,
+    Else,
+    ElseIfLet,
 }
 
 struct MatchVisitor<'p, 'tcx> {
@@ -129,15 +131,20 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 // Give a specific `let_source` for the condition.
                 let let_source = match ex.span.desugaring_kind() {
                     Some(DesugaringKind::WhileLoop) => LetSource::WhileLet,
-                    _ => LetSource::IfLet,
+                    _ => match self.let_source {
+                        LetSource::Else => LetSource::ElseIfLet,
+                        _ => LetSource::IfLet,
+                    },
                 };
                 self.with_let_source(let_source, |this| this.visit_expr(&self.thir[cond]));
                 self.with_let_source(LetSource::None, |this| {
                     this.visit_expr(&this.thir[then]);
-                    if let Some(else_) = else_opt {
-                        this.visit_expr(&this.thir[else_]);
-                    }
                 });
+                if let Some(else_) = else_opt {
+                    self.with_let_source(LetSource::Else, |this| {
+                        this.visit_expr(&this.thir[else_])
+                    });
+                }
                 return;
             }
             ExprKind::Match { scrutinee, scrutinee_hir_id: _, box ref arms, match_source } => {
@@ -573,9 +580,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // and we shouldn't lint.
             // For let guards inside a match, prefixes might use bindings of the match pattern,
             // so can't always be moved out.
+            // For `else if let`, an extra indentation level would be required to move the bindings.
             // FIXME: Add checking whether the bindings are actually used in the prefix,
             // and lint if they are not.
-            if !matches!(self.let_source, LetSource::WhileLet | LetSource::IfLetGuard) {
+            if !matches!(
+                self.let_source,
+                LetSource::WhileLet | LetSource::IfLetGuard | LetSource::ElseIfLet
+            ) {
                 // Emit the lint
                 let prefix = &chain_refutabilities[..until];
                 let span_start = prefix[0].unwrap().0;
@@ -906,8 +917,8 @@ fn report_irrefutable_let_patterns(
     }
 
     match source {
-        LetSource::None | LetSource::PlainLet => bug!(),
-        LetSource::IfLet => emit_diag!(IrrefutableLetPatternsIfLet),
+        LetSource::None | LetSource::PlainLet | LetSource::Else => bug!(),
+        LetSource::IfLet | LetSource::ElseIfLet => emit_diag!(IrrefutableLetPatternsIfLet),
         LetSource::IfLetGuard => emit_diag!(IrrefutableLetPatternsIfLetGuard),
         LetSource::LetElse => emit_diag!(IrrefutableLetPatternsLetElse),
         LetSource::WhileLet => emit_diag!(IrrefutableLetPatternsWhileLet),
