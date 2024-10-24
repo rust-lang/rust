@@ -132,6 +132,7 @@ pub(crate) fn thread_cleanup() {
     // print a nice message.
     panic::catch_unwind(|| {
         crate::thread::drop_current();
+        crate::sys::thread_cleanup();
     })
     .unwrap_or_else(handle_rt_panic);
 }
