@@ -10,8 +10,8 @@ use rustc_index::bit_set::ChunkedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::{
-    BasicBlock, Body, ClearCrossCrate, Local, Location, Place, ProjectionElem, StatementKind,
-    TerminatorKind, dump_mir,
+    BasicBlock, Body, ClearCrossCrate, Local, Location, Place, StatementKind, TerminatorKind,
+    dump_mir,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -43,16 +43,27 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
     fn visit(&mut self, block: BasicBlock) {
         let move_set_size = self.move_data.move_paths.len();
         let make_new_path_set = || Rc::new(RefCell::new(ChunkedBitSet::new_empty(move_set_size)));
+
         let data = &self.body.basic_blocks[block];
         let Some(terminator) = &data.terminator else { return };
+        // Given that we observe these dropped locals here at `block` so far,
+        // we will try to update the successor blocks.
+        // An occupied entry at `block` in `self.visited` signals that we have visited `block` before.
         let dropped_local_here =
             self.visited.entry(block).or_insert_with(make_new_path_set).clone();
+        // We could have invoked reverse lookup for a `MovePathIndex` every time, but unfortunately it is expensive.
+        // Let's cache them in `self.block_drop_value_info`.
         if let Some(dropped) = self.block_drop_value_info[block] {
             dropped_local_here.borrow_mut().insert(dropped);
         } else if let TerminatorKind::Drop { place, .. } = &terminator.kind
             && let LookupResult::Exact(idx) | LookupResult::Parent(Some(idx)) =
                 self.move_data.rev_lookup.find(place.as_ref())
         {
+            // Since we are working with MIRs at a very early stage,
+            // observing a `drop` terminator is not indicative enough that
+            // the drop will definitely happen.
+            // That is decided in the drop elaboration pass instead.
+            // Therefore, we need to consult with the maybe-initialization information.
             self.maybe_init.seek_before_primary_effect(Location {
                 block,
                 statement_index: data.statements.len(),
@@ -71,10 +82,13 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
                 continue;
             }
 
-            // As long as we are passing through a new block, or new dropped place to propagate, we will proceed
+            // As long as we are passing through a new block, or new dropped places to propagate,
+            // we will proceed with `succ`
             let dropped_local_there = match self.visited.entry(succ) {
                 hash_map::Entry::Occupied(occupied_entry) => {
                     if !occupied_entry.get().borrow_mut().union(&*dropped_local_here.borrow()) {
+                        // `succ` has been visited but no new drops observed so far,
+                        // so we can bail on `succ` until new drop information arrives
                         continue;
                     }
                     occupied_entry.get().clone()
@@ -92,8 +106,12 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
                 } = &terminator.kind
                 && place_has_common_prefix(dropped_place, self.place)
             {
+                // We have now reached the current drop of the `place`.
+                // Let's check the observed dropped places in.
                 self.collected_drops.union(&*dropped_local_there.borrow());
                 if self.drop_span.is_none() {
+                    // FIXME(@dingxiangfei2009): it turns out that `self.body.source_scopes` are still a bit wonky.
+                    // There is a high chance that this span still points to a block rather than a statement semicolon.
                     *self.drop_span =
                         Some(self.body.source_scopes[terminator.source_info.scope].span);
                 }
@@ -239,6 +257,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     {
         return;
     }
+    // ## About BIDs in blocks ##
     // We are using blocks to identify locals with the same scope targeted by backwards-incompatible drops (BID)
     // because they tend to be scheduled in the same drop ladder block.
     let mut bid_per_block = IndexMap::default();
@@ -271,7 +290,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
         let mut drop_span = None;
         for &(_, place) in candidates.iter() {
             let mut collected_drops = ChunkedBitSet::new_empty(move_data.move_paths.len());
-            let mut search = DropsReachable {
+            DropsReachable {
                 body,
                 place,
                 drop_span: &mut drop_span,
@@ -280,44 +299,48 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
                 block_drop_value_info: &mut block_drop_value_info,
                 collected_drops: &mut collected_drops,
                 visited: Default::default(),
-            };
-            search.visit(block);
-            let _ = search;
+            }
+            .visit(block);
 
             all_locals_dropped.union(&collected_drops);
         }
         {
             let mut to_exclude = ChunkedBitSet::new_empty(all_locals_dropped.domain_size());
+            // We will now do subtraction from the candidate dropped locals, because of the following reasons.
             for path_idx in all_locals_dropped.iter() {
                 let move_path = &move_data.move_paths[path_idx];
                 let dropped_local = move_path.place.local;
+                // a) A return value _0 will eventually be used
                 if dropped_local == Local::ZERO {
                     debug!(?dropped_local, "skip return value");
                     to_exclude.insert(path_idx);
                     continue;
                 }
+                // b) If we are analysing a closure, the captures are still dropped last.
+                // This is part of the closure capture lifetime contract.
                 if is_closure_like && matches!(dropped_local, ty::CAPTURE_STRUCT_LOCAL) {
                     debug!(?dropped_local, "skip closure captures");
                     to_exclude.insert(path_idx);
                     continue;
                 }
-                if let [.., ProjectionElem::Downcast(_, _)] = **move_path.place.projection {
-                    debug!(?move_path.place, "skip downcast which is not a real place");
-                    to_exclude.insert(path_idx);
-                    continue;
-                }
+                // c) Sometimes we collect places that are projections into the BID locals,
+                // so they are considered dropped now.
                 if place_descendent_of_bids(path_idx, &move_data, &bid_places) {
                     debug!(?dropped_local, "skip descendent of bids");
                     to_exclude.insert(path_idx);
                     continue;
                 }
                 let observer_ty = move_path.place.ty(body, tcx).ty;
+                // d) The collect local has no custom destructor.
                 if !observer_ty.has_significant_drop(tcx, param_env) {
                     debug!(?dropped_local, "skip non-droppy types");
                     to_exclude.insert(path_idx);
                     continue;
                 }
             }
+            // Suppose that all BIDs point into the same local,
+            // we can remove the this local from the observed drops,
+            // so that we can focus our diagnosis more on the others.
             if candidates.iter().all(|&(_, place)| candidates[0].1.local == place.local) {
                 for path_idx in all_locals_dropped.iter() {
                     if move_data.move_paths[path_idx].place.local == candidates[0].1.local {
@@ -334,24 +357,28 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
         let mut lint_root = None;
         let mut linted_spans = Vec::with_capacity(candidates.len());
         let mut tys = Vec::with_capacity(candidates.len());
+        // We now collect the types with custom destructors.
         for &(_, place) in candidates {
             let linted_local_decl = &body.local_decls[place.local];
             linted_spans.push(linted_local_decl.source_info.span);
-            if lint_root.is_none() {
-                lint_root =
-                    match &body.source_scopes[linted_local_decl.source_info.scope].local_data {
-                        ClearCrossCrate::Set(data) => Some(data.lint_root),
-                        _ => continue,
-                    };
+
+            if lint_root.is_none()
+                && let ClearCrossCrate::Set(data) =
+                    &body.source_scopes[linted_local_decl.source_info.scope].local_data
+            {
+                lint_root = Some(data.lint_root);
             }
+
             tys.extend(extract_component_with_significant_dtor(
                 tcx,
                 param_env,
                 linted_local_decl.ty,
             ));
         }
+        // Collect spans of the custom destructors.
         let linted_dtors = tys.into_iter().filter_map(|ty| ty_dtor_span(tcx, ty)).collect();
 
+        // Similarly, custom destructors of the observed drops.
         let mut observer_spans = Vec::with_capacity(all_locals_dropped.count());
         let mut observer_tys = Vec::with_capacity(all_locals_dropped.count());
         for path_idx in all_locals_dropped.iter() {

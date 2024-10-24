@@ -1438,6 +1438,9 @@ rustc_queries! {
     /// by the user or does anything that will have any observable behavior (other than
     /// freeing up memory). If the type is known to have a significant destructor then
     /// `Err(AlwaysRequiresDrop)` is returned.
+    /// *IMPORTANT*: *DO NOT* run this query before promoted MIR body is constructed,
+    /// because this query partially depends on that query.
+    /// Otherwise, there is a risk of query cycles.
     query list_significant_drop_tys(ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
         desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
         cache_on_disk_if { false }

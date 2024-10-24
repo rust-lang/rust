@@ -113,7 +113,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         Self {
             tcx,
             param_env,
-            reveal_coroutine_witnesses: false,
+            reveal_coroutine_witnesses: exhaustive,
             seen_tys,
             query_ty: ty,
             unchecked_tys: vec![(ty, 0)],
