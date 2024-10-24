@@ -145,6 +145,28 @@ pub fn provide(providers: &mut Providers) {
     outlives::provide(providers);
     hir_wf_check::provide(providers);
     *providers = Providers {
+        impls_in_crate: |tcx, cnum| {
+            assert_eq!(cnum , LOCAL_CRATE);
+            let mut impls = Vec::new();
+            for id in tcx.hir().items() {
+                if let Defkind::Impl = tcx.def_kind(id.owner_id){
+                    let def_id = id.owner_id.to_def_id();
+                    let simplified_self_ty = if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
+                        Some(fast_reject::simplify_type(
+                            tcx,
+                            trait_ref.self_ty(),
+                            TreatParams::AsInfer,
+                          ))
+                    } else {
+                        None
+                    };
+                    impls.push((def_id, simplified_self_ty));
+                }
+            }
+            // Keeping the sorting here for now to maintain existing behaviour
+            impls.sort_by_cached_Key(|&(def_id, _)| tcx.def_path_hash(def_id));
+            tcx.arena.alloc_slice(&impls)
+        },
         inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
         ..*providers
     };
