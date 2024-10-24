@@ -222,7 +222,7 @@ pub trait MutVisitor: Sized {
         walk_parenthesized_parameter_data(self, p);
     }
 
-    fn visit_local(&mut self, l: &mut P<Local>) {
+    fn visit_local(&mut self, l: &mut Local) {
         walk_local(self, l);
     }
 
@@ -605,8 +605,8 @@ fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut Pare
     vis.visit_span(inputs_span);
 }
 
-fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
-    let Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local.deref_mut();
+fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut Local) {
+    let Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
