@@ -180,7 +180,11 @@ builtin_macros_format_redundant_args = redundant {$n ->
     }
     .suggestion = this can be removed
 
+builtin_macros_format_remove = consider removing the format specifier instead
+
 builtin_macros_format_remove_raw_ident = remove the `r#`
+
+builtin_macros_format_reorder = consider reordering the format specifier instead
 
 builtin_macros_format_requires_string = requires at least a format string argument
 
