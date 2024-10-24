@@ -4,7 +4,6 @@ error[E0277]: the type `str` cannot be indexed by `{integer}`
 LL |     let _: u8 = s[4];
    |                   ^ string indices are ranges of `usize`
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
@@ -20,7 +19,6 @@ LL |     let _ = s.get(4);
    |               |
    |               required by a bound introduced by this call
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
@@ -37,7 +35,6 @@ LL |     let _ = s.get_unchecked(4);
    |               |
    |               required by a bound introduced by this call
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`

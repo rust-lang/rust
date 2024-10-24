@@ -6,8 +6,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Suggestions, pluralize,
-    struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions,
+    pluralize, struct_span_code_err,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -1831,6 +1831,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let impl_trait_ref = self.resolve_vars_if_possible(impl_trait_ref);
                     if impl_trait_ref.references_error() {
                         return false;
+                    }
+
+                    if let [child, ..] = &err.children[..]
+                        && child.level == Level::Help
+                        && let Some(line) = child.messages.get(0)
+                        && let Some(line) = line.0.as_str()
+                        && line.starts_with("the trait")
+                        && line.contains("is not implemented for")
+                    {
+                        // HACK(estebank): we remove the pre-existing
+                        // "the trait `X` is not implemented for" note, which only happens if there
+                        // was a custom label. We do this because we want that note to always be the
+                        // first, and making this logic run earlier will get tricky. For now, we
+                        // instead keep the logic the same and modify the already constructed error
+                        // to avoid the wording duplication.
+                        err.children.remove(0);
                     }
 
                     let traits = self.cmp_traits(
