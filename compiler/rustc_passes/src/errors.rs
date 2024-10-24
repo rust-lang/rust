@@ -1500,7 +1500,7 @@ pub(crate) struct DeprecatedAttribute {
 pub(crate) struct UselessStability {
     #[primary_span]
     #[label]
-    pub span: Span,
+    pub spans: Vec<Span>,
     #[label(passes_item)]
     pub item_sp: Span,
 }
@@ -1581,7 +1581,7 @@ pub(crate) struct MissingConstErr {
     #[help]
     pub fn_sig_span: Span,
     #[label]
-    pub const_span: Span,
+    pub const_spans: Vec<Span>,
 }
 
 #[derive(LintDiagnostic)]

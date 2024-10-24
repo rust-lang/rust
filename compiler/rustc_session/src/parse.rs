@@ -20,10 +20,7 @@ use rustc_span::{Span, Symbol};
 
 use crate::Session;
 use crate::config::{Cfg, CheckCfg};
-use crate::errors::{
-    CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
-    FeatureDiagnosticSuggestion, FeatureGateError, SuggestUpgradeCompiler,
-};
+use crate::errors::{FeatureDiagnosticForIssue, FeatureGateError, NightlyFeatureDiagnostic};
 use crate::lint::builtin::UNSTABLE_SYNTAX_PRE_EXPANSION;
 use crate::lint::{BufferedEarlyLint, BuiltinLintDiag, Lint, LintId};
 
@@ -183,17 +180,16 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.psess.unstable_features.is_nightly_build() {
+        let feature = feature.to_string();
         if feature_from_cli {
-            err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
+            err.subdiagnostic(NightlyFeatureDiagnostic::CliHelp { feature });
         } else if let Some(span) = inject_span {
-            err.subdiagnostic(FeatureDiagnosticSuggestion { feature, span });
+            err.subdiagnostic(NightlyFeatureDiagnostic::Suggestion { feature, span });
         } else {
-            err.subdiagnostic(FeatureDiagnosticHelp { feature });
+            err.subdiagnostic(NightlyFeatureDiagnostic::Help { feature });
         }
 
-        if sess.opts.unstable_opts.ui_testing {
-            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
-        } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
+        if let Some(suggestion) = NightlyFeatureDiagnostic::suggest_upgrade_compiler(sess) {
             err.subdiagnostic(suggestion);
         }
     }

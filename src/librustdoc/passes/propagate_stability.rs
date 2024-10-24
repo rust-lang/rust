@@ -6,7 +6,7 @@
 //! [`core::error`] module is marked as stable since 1.81.0, so we want to show
 //! [`core::error::Error`] as stable since 1.81.0 as well.
 
-use rustc_attr::{Stability, StabilityLevel};
+use rustc_attr::Stability;
 use rustc_hir::def_id::CRATE_DEF_ID;
 
 use crate::clean::{Crate, Item, ItemId};
@@ -22,7 +22,7 @@ pub(crate) const PROPAGATE_STABILITY: Pass = Pass {
 
 pub(crate) fn propagate_stability(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
     let crate_stability = cx.tcx.lookup_stability(CRATE_DEF_ID);
-    StabilityPropagator { parent_stability: crate_stability, cx }.fold_crate(cr)
+    StabilityPropagator { parent_stability: crate_stability.cloned(), cx }.fold_crate(cr)
 }
 
 struct StabilityPropagator<'a, 'tcx> {
@@ -32,28 +32,48 @@ struct StabilityPropagator<'a, 'tcx> {
 
 impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
-        let parent_stability = self.parent_stability;
+        use rustc_attr::StabilityLevel::*;
+
+        let parent_stability = self.parent_stability.clone();
 
         let stability = match item.item_id {
             ItemId::DefId(def_id) => {
                 let own_stability = self.cx.tcx.lookup_stability(def_id);
 
-                // If any of the item's parents was stabilized later or is still unstable,
-                // then use the parent's stability instead.
                 if let Some(own_stab) = own_stability
-                    && let StabilityLevel::Stable {
-                        since: own_since,
-                        allowed_through_unstable_modules: false,
-                    } = own_stab.level
-                    && let Some(parent_stab) = parent_stability
-                    && (parent_stab.is_unstable()
-                        || parent_stab
-                            .stable_since()
-                            .is_some_and(|parent_since| parent_since > own_since))
+                    && let Some(ref parent_stab) = parent_stability
                 {
-                    parent_stability
+                    match own_stab.level {
+                        // If any of the item's parents was stabilized later or is still unstable,
+                        // then use the parent's stability instead.
+                        Stable {
+                            since: own_since,
+                            allowed_through_unstable_modules: false,
+                            ..
+                        } if parent_stab.is_unstable()
+                            || parent_stab
+                                .stable_since()
+                                .is_some_and(|parent_since| parent_since > own_since) =>
+                        {
+                            parent_stability.clone()
+                        }
+                        // If any of an unstable item's parents depend on other unstable features,
+                        // then use those as well.
+                        Unstable { unstables: ref own_gates, is_soft }
+                            if let Unstable { unstables: parent_gates, .. } =
+                                &parent_stab.level =>
+                        {
+                            let missing_unstables = parent_gates
+                                .iter()
+                                .filter(|p| !own_gates.iter().any(|u| u.feature == p.feature));
+                            let unstables =
+                                own_gates.iter().chain(missing_unstables).cloned().collect();
+                            Some(Stability { level: Unstable { unstables, is_soft } })
+                        }
+                        _ => own_stability.cloned(),
+                    }
                 } else {
-                    own_stability
+                    own_stability.cloned()
                 }
             }
             ItemId::Auto { .. } | ItemId::Blanket { .. } => {
@@ -62,7 +82,7 @@ impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
             }
         };
 
-        item.inner.stability = stability;
+        item.inner.stability = stability.clone();
         self.parent_stability = stability;
         let item = self.fold_item_recur(item);
         self.parent_stability = parent_stability;

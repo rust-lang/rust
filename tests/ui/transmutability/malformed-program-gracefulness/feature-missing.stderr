@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'transmutability'
+error[E0658]: use of unstable library feature `transmutability`
   --> $DIR/feature-missing.rs:5:5
    |
 LL | use std::mem::TransmuteFrom;
@@ -8,7 +8,7 @@ LL | use std::mem::TransmuteFrom;
    = help: add `#![feature(transmutability)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'transmutability'
+error[E0658]: use of unstable library feature `transmutability`
   --> $DIR/feature-missing.rs:8:5
    |
 LL | use std::mem::Assume;

@@ -4,7 +4,9 @@ error: `Arguments::<'a>::new_const` is not yet stable as a const fn
 LL | static settings_dir: String = format!("");
    |                               ^^^^^^^^^^^
    |
+   = note: use of unstable library feature `const_fmt_arguments_new`
    = help: add `#![feature(const_fmt_arguments_new)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const fn `format` in statics

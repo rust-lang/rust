@@ -71,8 +71,6 @@ pub mod intrinsicck;
 mod region;
 pub mod wfcheck;
 
-use std::num::NonZero;
-
 pub use check::{check_abi, check_abi_fn_ptr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -82,6 +80,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt};
@@ -89,7 +88,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -295,42 +294,22 @@ fn default_body_is_unstable(
     tcx: TyCtxt<'_>,
     impl_span: Span,
     item_did: DefId,
-    feature: Symbol,
-    reason: Option<Symbol>,
-    issue: Option<NonZero<u32>>,
+    denials: &[stability::EvalDenial],
 ) {
     let missing_item_name = tcx.associated_item(item_did).name;
-    let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
-    match reason {
-        Some(r) => {
-            some_note = true;
-            reason_str = r.to_string();
-        }
-        None => none_note = true,
-    };
-
-    let mut err = tcx.dcx().create_err(errors::MissingTraitItemUnstable {
-        span: impl_span,
-        some_note,
-        none_note,
-        missing_item_name,
-        feature,
-        reason: reason_str,
-    });
-
     let inject_span = item_did
         .as_local()
         .and_then(|id| tcx.crate_level_attribute_injection_span(tcx.local_def_id_to_hir_id(id)));
-    rustc_session::parse::add_feature_diagnostics_for_issue(
-        &mut err,
-        &tcx.sess,
-        feature,
-        rustc_feature::GateIssue::Library(issue),
-        false,
-        inject_span,
-    );
+    let (features, info) = stability::unstable_notes(denials);
+    let nightly_subdiags = stability::unstable_nightly_subdiags(&tcx.sess, denials, inject_span);
 
-    err.emit();
+    tcx.dcx().emit_err(errors::MissingTraitItemUnstable {
+        span: impl_span,
+        missing_item_name,
+        features,
+        info,
+        nightly_subdiags,
+    });
 }
 
 /// Re-sugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.

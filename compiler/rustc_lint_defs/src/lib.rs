@@ -2,13 +2,15 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+use std::num::NonZero;
+
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagMessage, MultiSpan};
+use rustc_error_messages::MultiSpan;
 use rustc_hir::def::Namespace;
 use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -715,7 +717,10 @@ pub enum BuiltinLintDiag {
     MacroIsPrivate(Ident),
     UnusedMacroDefinition(Symbol),
     MacroRuleNeverUsed(usize, Symbol),
-    UnstableFeature(DiagMessage),
+    SoftUnstableMacro {
+        /// The name, optional reason, and issue number for each disabled unstable feature used.
+        features: Vec<(Symbol, Option<Symbol>, Option<NonZero<u32>>)>,
+    },
     AvoidUsingIntelSyntax,
     AvoidUsingAttSyntax,
     IncompleteInclude,

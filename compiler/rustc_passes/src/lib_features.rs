@@ -75,10 +75,6 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                         return Some((feature, FeatureStability::AcceptedSince(since), attr.span));
                     }
                 }
-                // We need to iterate over the other attributes, because
-                // `rustc_const_unstable` is not mutually exclusive with
-                // the other stability attributes, so we can't just `break`
-                // here.
             }
         }
 

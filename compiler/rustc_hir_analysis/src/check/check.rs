@@ -921,14 +921,9 @@ fn check_impl_items_against_trait<'tcx>(
             if !is_implemented_here {
                 let full_impl_span = tcx.hir().span_with_body(tcx.local_def_id_to_hir_id(impl_id));
                 match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
-                    EvalResult::Deny { feature, reason, issue, .. } => default_body_is_unstable(
-                        tcx,
-                        full_impl_span,
-                        trait_item_id,
-                        feature,
-                        reason,
-                        issue,
-                    ),
+                    EvalResult::Deny { denials, .. } => {
+                        default_body_is_unstable(tcx, full_impl_span, trait_item_id, &denials);
+                    }
 
                     // Unmarked default bodies are considered stable (at least for now).
                     EvalResult::Allow | EvalResult::Unmarked => {}
