@@ -236,7 +236,7 @@ fn dump_graph(query: &DepGraphQuery) {
                 EdgeFilter::new(&string).unwrap_or_else(|e| bug!("invalid filter: {}", e));
             let sources = node_set(query, &edge_filter.source);
             let targets = node_set(query, &edge_filter.target);
-            filter_nodes(query, &sources, &targets)
+            filter_nodes(query, sources.as_ref(), targets.as_ref())
         }
         Err(_) => query.nodes().into_iter().map(|n| n.kind).collect(),
     };
@@ -318,8 +318,8 @@ fn node_set<'q>(
 
 fn filter_nodes<'q>(
     query: &'q DepGraphQuery,
-    sources: &Option<FxIndexSet<&'q DepNode>>,
-    targets: &Option<FxIndexSet<&'q DepNode>>,
+    sources: Option<&FxIndexSet<&'q DepNode>>,
+    targets: Option<&FxIndexSet<&'q DepNode>>,
 ) -> FxIndexSet<DepKind> {
     if let Some(sources) = sources {
         if let Some(targets) = targets {

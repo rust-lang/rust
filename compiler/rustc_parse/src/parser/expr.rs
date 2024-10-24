@@ -1620,7 +1620,7 @@ impl<'a> Parser<'a> {
             let mac = P(MacCall { path, args: self.parse_delim_args()? });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(Delimiter::Brace))
-            && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
+            && let Some(expr) = self.maybe_parse_struct_expr(qself.as_ref(), &path)
         {
             if qself.is_some() {
                 self.psess.gated_spans.gate(sym::more_qualified_paths, path.span);
@@ -3476,7 +3476,7 @@ impl<'a> Parser<'a> {
 
     fn maybe_parse_struct_expr(
         &mut self,
-        qself: &Option<P<ast::QSelf>>,
+        qself: Option<&P<ast::QSelf>>,
         path: &ast::Path,
     ) -> Option<PResult<'a, P<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
@@ -3484,7 +3484,7 @@ impl<'a> Parser<'a> {
             if let Err(err) = self.expect(&token::OpenDelim(Delimiter::Brace)) {
                 return Some(Err(err));
             }
-            let expr = self.parse_expr_struct(qself.clone(), path.clone(), true);
+            let expr = self.parse_expr_struct(qself.cloned(), path.clone(), true);
             if let (Ok(expr), false) = (&expr, struct_allowed) {
                 // This is a struct literal, but we don't can't accept them here.
                 self.dcx().emit_err(errors::StructLiteralNotAllowedHere {

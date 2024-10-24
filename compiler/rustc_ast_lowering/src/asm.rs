@@ -198,7 +198,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         if let Some(def_id) = static_def_id {
                             let path = self.lower_qpath(
                                 sym.id,
-                                &sym.qself,
+                                sym.qself.as_ref(),
                                 &sym.path,
                                 ParamMode::Optional,
                                 AllowReturnTypeNotation::No,

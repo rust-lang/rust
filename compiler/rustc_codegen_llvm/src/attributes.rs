@@ -543,6 +543,6 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     attributes::apply_to_llfn(llfn, Function, &to_add);
 }
 
-fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<&String> {
-    tcx.wasm_import_module_map(id.krate).get(&id)
+fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<&str> {
+    tcx.wasm_import_module_map(id.krate).get(&id).map(String::as_str)
 }

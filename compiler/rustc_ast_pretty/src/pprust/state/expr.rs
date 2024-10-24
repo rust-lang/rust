@@ -151,7 +151,7 @@ impl<'a> State<'a> {
 
     fn print_expr_struct(
         &mut self,
-        qself: &Option<P<ast::QSelf>>,
+        qself: Option<&P<ast::QSelf>>,
         path: &ast::Path,
         fields: &[ast::ExprField],
         rest: &ast::StructRest,
@@ -388,7 +388,7 @@ impl<'a> State<'a> {
                 self.print_expr_repeat(element, count);
             }
             ast::ExprKind::Struct(se) => {
-                self.print_expr_struct(&se.qself, &se.path, &se.fields, &se.rest);
+                self.print_expr_struct(se.qself.as_ref(), &se.path, &se.fields, &se.rest);
             }
             ast::ExprKind::Tup(exprs) => {
                 self.print_expr_tup(exprs);

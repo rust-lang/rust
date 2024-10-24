@@ -25,7 +25,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     pub(crate) fn lower_qpath(
         &mut self,
         id: NodeId,
-        qself: &Option<ptr::P<QSelf>>,
+        qself: Option<&ptr::P<QSelf>>,
         p: &Path,
         param_mode: ParamMode,
         allow_return_type_notation: AllowReturnTypeNotation,

@@ -498,7 +498,7 @@ impl<D: Deps> EncoderState<D> {
         node: DepNode,
         edge_count: usize,
         edges: impl FnOnce(&mut Self) -> Vec<DepNodeIndex>,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        record_graph: Option<&Lock<DepGraphQuery>>,
     ) -> DepNodeIndex {
         let index = DepNodeIndex::new(self.total_node_count);
 
@@ -538,7 +538,7 @@ impl<D: Deps> EncoderState<D> {
     fn encode_node(
         &mut self,
         node: &NodeInfo,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        record_graph: Option<&Lock<DepGraphQuery>>,
     ) -> DepNodeIndex {
         node.encode::<D>(&mut self.encoder);
         self.record(node.node, node.edges.len(), |_| node.edges[..].to_vec(), record_graph)
@@ -554,7 +554,7 @@ impl<D: Deps> EncoderState<D> {
     fn encode_promoted_node(
         &mut self,
         prev_index: SerializedDepNodeIndex,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        record_graph: Option<&Lock<DepGraphQuery>>,
         prev_index_to_index: &IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>,
     ) -> DepNodeIndex {
         let node = self.previous.index_to_node(prev_index);
@@ -704,7 +704,7 @@ impl<D: Deps> GraphEncoder<D> {
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
-        self.status.lock().as_mut().unwrap().encode_node(&node, &self.record_graph)
+        self.status.lock().as_mut().unwrap().encode_node(&node, self.record_graph.as_ref())
     }
 
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from
@@ -718,7 +718,7 @@ impl<D: Deps> GraphEncoder<D> {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
         self.status.lock().as_mut().unwrap().encode_promoted_node(
             prev_index,
-            &self.record_graph,
+            self.record_graph.as_ref(),
             prev_index_to_index,
         )
     }
