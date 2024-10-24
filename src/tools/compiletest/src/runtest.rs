@@ -763,7 +763,9 @@ impl<'test> TestCx<'test> {
                 unexpected.len(),
                 not_found.len()
             ));
-            println!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
+            if env::var("COMPILETEST_DEBUG_INFO").is_ok() {
+                println!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
+            }
             if !unexpected.is_empty() {
                 println!("{}", "--- unexpected errors (from JSON output) ---".green());
                 for error in &unexpected {
@@ -2695,6 +2697,9 @@ impl ProcRes {
                      ------------------------------------------",
                 )
             }
+        }
+        if env::var("COMPILETEST_DEBUG_INFO").is_err() {
+            return;
         }
 
         println!(
