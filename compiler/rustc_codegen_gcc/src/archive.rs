@@ -2,6 +2,7 @@ use std::path::Path;
 
 use rustc_codegen_ssa::back::archive::{
     ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder, DEFAULT_OBJECT_READER,
+    ImportLibraryItem,
 };
 use rustc_session::Session;
 
@@ -16,7 +17,7 @@ impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
         &self,
         _sess: &Session,
         _lib_name: &str,
-        _import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,
+        _items: Vec<ImportLibraryItem>,
         _output_path: &Path,
     ) {
         unimplemented!("creating dll imports is not yet supported");
