@@ -33,3 +33,22 @@ impl<T> Baz<[T; 1]> for (T,) {}
 //@ has - '//section[@id="impl-Baz%3CT%3E-for-(T,)"]/h3' 'impl<T> Baz<T> for (T₁, T₂, …, Tₙ)'
 #[doc(fake_variadic)]
 impl<T> Baz<T> for (T,) {}
+
+pub trait Qux {}
+
+pub struct NewType<T>(T);
+
+//@ has foo/trait.Qux.html
+//@ has - '//section[@id="impl-Qux-for-NewType%3C(T,)%3E"]/h3' 'impl<T> Qux for NewType<(T₁, T₂, …, Tₙ)>'
+#[doc(fake_variadic)]
+impl<T> Qux for NewType<(T,)> {}
+
+//@ has foo/trait.Qux.html
+//@ has - '//section[@id="impl-Qux-for-NewType%3CNewType%3C(T,)%3E%3E"]/h3' 'impl<T> Qux for NewType<NewType<(T₁, T₂, …, Tₙ)>>'
+#[doc(fake_variadic)]
+impl<T> Qux for NewType<NewType<(T,)>> {}
+
+//@ has foo/trait.Qux.html
+//@ has - '//section[@id="impl-Qux-for-NewType%3Cfn(T)+-%3E+Out%3E"]/h3' 'impl<T, Out> Qux for NewType<fn(T₁, T₂, …, Tₙ) -> Out>'
+#[doc(fake_variadic)]
+impl<T, Out> Qux for NewType<fn(T) -> Out> {}
