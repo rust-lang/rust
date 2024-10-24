@@ -31,7 +31,6 @@ LL |     s[1usize] = bot();
    |       ^^^^^^ string indices are ranges of `usize`
    |
    = help: the trait `SliceIndex<str>` is not implemented for `usize`
-   = help: the trait `SliceIndex<str>` is not implemented for `usize`
            but trait `SliceIndex<[_]>` is implemented for it
    = help: for that trait implementation, expected `[_]`, found `str`
    = note: required for `str` to implement `Index<usize>`
@@ -44,7 +43,6 @@ LL |     s.get_mut(1);
    |       |
    |       required by a bound introduced by this call
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
@@ -61,7 +59,6 @@ LL |     s.get_unchecked_mut(1);
    |       |
    |       required by a bound introduced by this call
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`

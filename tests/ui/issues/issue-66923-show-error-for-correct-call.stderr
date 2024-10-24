@@ -4,7 +4,6 @@ error[E0277]: a value of type `Vec<f64>` cannot be built from an iterator over e
 LL |     let x2: Vec<f64> = x1.into_iter().collect();
    |                                       ^^^^^^^ value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
    |
-   = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
    = help: the trait `FromIterator<&_>` is not implemented for `Vec<f64>`
            but trait `FromIterator<_>` is implemented for it
    = help: for that trait implementation, expected `f64`, found `&f64`
@@ -26,7 +25,6 @@ LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
    |                             |
    |                             required by a bound introduced by this call
    |
-   = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
    = help: the trait `FromIterator<&_>` is not implemented for `Vec<f64>`
            but trait `FromIterator<_>` is implemented for it
    = help: for that trait implementation, expected `f64`, found `&f64`
