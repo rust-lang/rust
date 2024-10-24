@@ -619,11 +619,11 @@ pub fn eval_condition(
                 // we can't use `try_gate_cfg` as symbols don't differentiate between `r#true`
                 // and `true`, and we want to keep the former working without feature gate
                 gate_cfg(
-                    &((
+                    &(
                         if *b { kw::True } else { kw::False },
                         sym::cfg_boolean_literals,
                         |features: &Features| features.cfg_boolean_literals(),
-                    )),
+                    ),
                     cfg.span(),
                     sess,
                     features,
