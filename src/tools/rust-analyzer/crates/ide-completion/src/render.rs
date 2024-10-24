@@ -294,7 +294,7 @@ pub(crate) fn render_resolution_with_import_pat(
     import_edit: LocatedImport,
 ) -> Option<Builder> {
     let resolution = ScopeDef::from(import_edit.original_item);
-    let local_name = scope_def_to_name(resolution, &ctx, &import_edit)?;
+    let local_name = get_import_name(resolution, &ctx, &import_edit)?;
     Some(render_resolution_pat(ctx, pattern_ctx, local_name, Some(import_edit), resolution))
 }
 
