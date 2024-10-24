@@ -281,13 +281,7 @@ pub(crate) fn render_resolution_with_import(
     import_edit: LocatedImport,
 ) -> Option<Builder> {
     let resolution = ScopeDef::from(import_edit.original_item);
-    // Use the last segment when `item_to_import` matches `original_item`,
-    // as it will take the aliased name into account.
-    let local_name = if import_edit.item_to_import == import_edit.original_item {
-        import_edit.import_path.segments().last()?.clone()
-    } else {
-        scope_def_to_name(resolution, &ctx, &import_edit)?
-    };
+    let local_name = get_import_name(resolution, &ctx, &import_edit)?;
     // This now just renders the alias text, but we need to find the aliases earlier and call this with the alias instead.
     let doc_aliases = ctx.completion.doc_aliases_in_scope(resolution);
     let ctx = ctx.doc_aliases(doc_aliases);
@@ -361,6 +355,24 @@ pub(crate) fn render_expr(
     }
 
     Some(item)
+}
+
+fn get_import_name(
+    resolution: ScopeDef,
+    ctx: &RenderContext<'_>,
+    import_edit: &LocatedImport,
+) -> Option<hir::Name> {
+    // FIXME: Temporary workaround for handling aliased import.
+    // This should be removed after we have proper support for importing alias.
+    // <https://github.com/rust-lang/rust-analyzer/issues/14079>
+
+    // If `item_to_import` matches `original_item`, we are importing the item itself (not its parent module).
+    // In this case, we can use the last segment of `import_path`, as it accounts for the aliased name.
+    if import_edit.item_to_import == import_edit.original_item {
+        import_edit.import_path.segments().last().cloned()
+    } else {
+        scope_def_to_name(resolution, ctx, import_edit)
+    }
 }
 
 fn scope_def_to_name(
