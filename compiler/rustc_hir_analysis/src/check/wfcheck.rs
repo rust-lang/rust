@@ -1801,7 +1801,7 @@ fn receiver_is_valid<'tcx>(
         autoderef = autoderef.include_raw_pointers();
     }
 
-    let receiver_trait_def_id = tcx.require_lang_item(LangItem::Receiver, Some(span));
+    let receiver_trait_def_id = tcx.require_lang_item(LangItem::LegacyReceiver, Some(span));
 
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     while let Some((potential_self_ty, _)) = autoderef.next() {

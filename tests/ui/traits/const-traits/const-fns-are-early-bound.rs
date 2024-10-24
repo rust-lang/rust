@@ -82,12 +82,12 @@ trait Copy {}
 #[lang = "tuple_trait"]
 trait Tuple {}
 
-#[lang = "receiver"]
-trait Receiver {}
+#[lang = "legacy_receiver"]
+trait LegacyReceiver {}
 
-impl<T: ?Sized> Receiver for &T {}
+impl<T: ?Sized> LegacyReceiver for &T {}
 
-impl<T: ?Sized> Receiver for &mut T {}
+impl<T: ?Sized> LegacyReceiver for &mut T {}
 
 #[stable(feature = "minicore", since = "1.0.0")]
 pub mod effects {

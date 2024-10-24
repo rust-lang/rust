@@ -241,7 +241,7 @@ language_item_table! {
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
     DerefPure,               sym::deref_pure,          deref_pure_trait,           Target::Trait,          GenericRequirement::Exact(0);
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
-    Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
+    LegacyReceiver,          sym::legacy_receiver,     legacy_receiver_trait,      Target::Trait,          GenericRequirement::None;
 
     Fn,                      kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
