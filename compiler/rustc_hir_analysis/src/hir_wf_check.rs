@@ -5,7 +5,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::debug;
@@ -68,7 +68,7 @@ fn diagnostic_hir_wf_check<'tcx>(
 
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-            let infcx = self.tcx.infer_ctxt().build();
+            let infcx = self.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
             let tcx_ty = self.icx.lower_ty(ty);

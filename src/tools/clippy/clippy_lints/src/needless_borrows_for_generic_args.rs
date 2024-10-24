@@ -14,7 +14,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty, TypingMode,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
@@ -278,7 +278,7 @@ fn needless_borrow_count<'tcx>(
 
             let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, &args_with_referent_ty[..]);
             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
-            let infcx = cx.tcx.infer_ctxt().build();
+            let infcx = cx.tcx.infer_ctxt().build(TypingMode::from_param_env(cx.param_env));
             infcx.predicate_must_hold_modulo_regions(&obligation)
         })
     };

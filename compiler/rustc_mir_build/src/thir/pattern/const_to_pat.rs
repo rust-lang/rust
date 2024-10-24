@@ -7,7 +7,7 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, ValTree};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::ObligationCause;
@@ -36,7 +36,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> Box<Pat<'tcx>> {
-        let infcx = self.tcx.infer_ctxt().build();
+        // FIXME(@lcnr): This is broken in case the constant refers to opaque types.
+        let infcx = self.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let mut convert = ConstToPat::new(self, id, span, infcx);
         convert.to_pat(c, ty)
     }

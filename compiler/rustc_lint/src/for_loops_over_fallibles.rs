@@ -2,7 +2,7 @@ use hir::{Expr, Pat};
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TypingMode};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -166,7 +166,7 @@ fn suggest_question_mark<'tcx>(
     }
 
     let ty = args.type_at(0);
-    let infcx = cx.tcx.infer_ctxt().build();
+    let infcx = cx.tcx.infer_ctxt().build(TypingMode::from_param_env(cx.param_env));
     let ocx = ObligationCtxt::new(&infcx);
 
     let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);

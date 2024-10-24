@@ -114,11 +114,10 @@ impl Qualif for HasMutInterior {
             ty::TraitRef::new(cx.tcx, freeze_def_id, [ty::GenericArg::from(ty)]),
         );
 
-        let infcx = cx
-            .tcx
-            .infer_ctxt()
-            .with_opaque_type_inference(cx.body.source.def_id().expect_local())
-            .build();
+        let infcx = cx.tcx.infer_ctxt().build(ty::TypingMode::analysis_in_body(
+            cx.tcx,
+            cx.body.source.def_id().expect_local(),
+        ));
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(obligation);
         let errors = ocx.select_all_or_error();

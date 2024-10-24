@@ -10,7 +10,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt, TypingMode
+};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -114,7 +116,7 @@ fn into_iter_bound<'tcx>(
                     if !cx
                         .tcx
                         .infer_ctxt()
-                        .build()
+                        .build(TypingMode::from_param_env(cx.param_env))
                         .predicate_must_hold_modulo_regions(&obligation)
                     {
                         return None;

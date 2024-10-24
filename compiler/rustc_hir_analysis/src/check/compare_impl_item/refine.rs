@@ -8,7 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_span::Span;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -132,7 +132,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds), Reveal::UserFacing);
     let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
 
-    let ref infcx = tcx.infer_ctxt().build();
+    let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new(infcx);
 
     // Normalize the bounds. This has two purposes:

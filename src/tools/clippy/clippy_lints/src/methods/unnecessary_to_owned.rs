@@ -18,6 +18,7 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
     self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,
+    TypingMode,
 };
 use rustc_span::{Symbol, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -568,7 +569,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx
                                 .infer_ctxt()
-                                .build()
+                                .build(TypingMode::from_param_env(cx.param_env))
                                 .predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;

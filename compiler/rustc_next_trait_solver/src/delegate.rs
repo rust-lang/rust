@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use rustc_type_ir::fold::TypeFoldable;
-use rustc_type_ir::solve::{Certainty, Goal, NoSolution, SolverMode};
+use rustc_type_ir::solve::{Certainty, Goal, NoSolution};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 
 pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Sized {
@@ -15,7 +15,6 @@ pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Size
 
     fn build_with_canonical<V>(
         cx: Self::Interner,
-        solver_mode: SolverMode,
         canonical: &ty::CanonicalQueryInput<Self::Interner, V>,
     ) -> (Self, V, ty::CanonicalVarValues<Self::Interner>)
     where
@@ -93,7 +92,6 @@ pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Size
 
     fn fetch_eligible_assoc_item(
         &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
         goal_trait_ref: ty::TraitRef<Self::Interner>,
         trait_assoc_def_id: <Self::Interner as Interner>::DefId,
         impl_def_id: <Self::Interner as Interner>::DefId,

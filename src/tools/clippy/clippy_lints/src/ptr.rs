@@ -14,7 +14,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
+use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty, TypingMode};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
@@ -695,7 +695,7 @@ fn matches_preds<'tcx>(
     ty: Ty<'tcx>,
     preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
 ) -> bool {
-    let infcx = cx.tcx.infer_ctxt().build();
+    let infcx = cx.tcx.infer_ctxt().build(TypingMode::from_param_env(cx.param_env));
     preds
         .iter()
         .all(|&p| match cx.tcx.instantiate_bound_regions_with_erased(p) {
