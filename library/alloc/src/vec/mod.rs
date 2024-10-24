@@ -506,8 +506,9 @@ impl<T> Vec<T> {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * `ptr` must have been allocated using the global allocator, such as via
+    /// * unless `capacity` is 0 or `T` has size 0, `ptr` must have been allocated using the global allocator, such as via
     ///   the [`alloc::alloc`] function.
+    /// * `ptr` must not be null.
     /// * `T` needs to have the same alignment as what `ptr` was allocated with.
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
@@ -517,12 +518,12 @@ impl<T> Vec<T> {
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
     /// * The first `length` values must be properly initialized values of type `T`.
-    /// * `capacity` needs to be the capacity that the pointer was allocated with.
+    /// * `capacity` needs to be the capacity that the pointer was allocated with, or 0 in the case of a dangling pointer.
     /// * The allocated size in bytes must be no larger than `isize::MAX`.
     ///   See the safety documentation of [`pointer::offset`].
     ///
     /// These requirements are always upheld by any `ptr` that has been allocated
-    /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
+    /// via `Vec<T>`.  Note that a `Vec` of capacity 0 does not allocate.  Other allocation sources are allowed if the invariants are
     /// upheld.
     ///
     /// Violating these may cause problems like corrupting the allocator's
@@ -829,7 +830,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * `ptr` must be [*currently allocated*] via the given allocator `alloc`.
+    /// * unless `capacity` is 0, `ptr` must be [*currently allocated*] via the given allocator `alloc`.
     /// * `T` needs to have the same alignment as what `ptr` was allocated with.
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
@@ -844,7 +845,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///   See the safety documentation of [`pointer::offset`].
     ///
     /// These requirements are always upheld by any `ptr` that has been allocated
-    /// via `Vec<T, A>`. Other allocation sources are allowed if the invariants are
+    /// via `Vec<T, A>`. Note that a `Vec` of capacity 0 does not allocate. Other allocation sources are allowed if the invariants are
     /// upheld.
     ///
     /// Violating these may cause problems like corrupting the allocator's
