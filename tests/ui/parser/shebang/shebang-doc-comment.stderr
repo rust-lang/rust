@@ -2,8 +2,11 @@ error: expected item, found `[`
   --> $DIR/shebang-doc-comment.rs:2:1
    |
 LL | [allow(unused_variables)]
-   | ^ expected item
+   | ^------------------------
+   | |
+   | unexpected expression
    |
+   = help: consider putting it inside a function: fn foo() { [allow(unused_variables)] }
    = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
 
 error: aborting due to 1 previous error
