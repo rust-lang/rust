@@ -6,6 +6,7 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -43,6 +44,7 @@ use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
 
+pub mod apple;
 pub mod assert_module_sources;
 pub mod back;
 pub mod base;
