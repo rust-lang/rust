@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/tail-expr-in-nested-expr.rs:7:15
+  --> $DIR/tail-expr-in-nested-expr.rs:5:15
    |
 LL |     let _ = { String::new().as_str() }.len();
    |               ^^^^^^^^^^^^^---------

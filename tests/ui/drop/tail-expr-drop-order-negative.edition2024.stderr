@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/tail-expr-drop-order-negative.rs:11:15
+  --> $DIR/tail-expr-drop-order-negative.rs:9:15
    |
 LL |     x.replace(std::cell::RefCell::new(123).borrow()).is_some()
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^                   - temporary value is freed at the end of this statement
