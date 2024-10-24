@@ -38,12 +38,12 @@ LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
              Char
              Ipv4Addr
              Ipv6Addr
-             char
-             i128
-             i16
-             i32
-             i64
-           and 8 others
+             NonZero<u128>
+             NonZero<u16>
+             NonZero<u32>
+             NonZero<u64>
+             NonZero<u8>
+           and 14 others
    = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
 
 error[E0277]: the trait bound `impl Debug: Step` is not satisfied
@@ -59,12 +59,12 @@ LL | | }
              Char
              Ipv4Addr
              Ipv6Addr
-             char
-             i128
-             i16
-             i32
-             i64
-           and 8 others
+             NonZero<u128>
+             NonZero<u16>
+             NonZero<u32>
+             NonZero<u64>
+             NonZero<u8>
+           and 14 others
    = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
 
 error: aborting due to 7 previous errors
