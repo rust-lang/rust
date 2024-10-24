@@ -31,6 +31,7 @@ declare_clippy_lint! {
     pub COGNITIVE_COMPLEXITY,
     nursery,
     "functions that should be split up into multiple functions"
+    @eval_always = true
 }
 
 pub struct CognitiveComplexity {

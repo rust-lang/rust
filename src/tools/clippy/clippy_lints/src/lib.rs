@@ -65,6 +65,7 @@ extern crate clippy_utils;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
+pub mod ctfe; // Very important lint, do not remove (rust#125116)
 pub mod declared_lints;
 pub mod deprecated_lints;
 
@@ -604,6 +605,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             Box::new(utils::internal_lints::almost_standard_lint_formulation::AlmostStandardFormulation::new())
         });
     }
+
+    store.register_late_pass(|_| Box::new(ctfe::ClippyCtfe));
 
     store.register_late_pass(move |_| Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(conf)));
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
