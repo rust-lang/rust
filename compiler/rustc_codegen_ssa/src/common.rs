@@ -1,6 +1,8 @@
 #![allow(non_camel_case_types)]
 
+use rustc_abi::Size;
 use rustc_hir::LangItem;
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
@@ -155,27 +157,56 @@ pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub fn asm_const_to_str<'tcx>(
+pub enum AsmConstOperandRef {
+    Const { string: String },
+    Static { def_id: DefId, offset: Size, ptr_size: u8 },
+}
+
+pub fn asm_const_to_opr_ref<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     const_value: mir::ConstValue<'tcx>,
     ty_and_layout: TyAndLayout<'tcx>,
-) -> String {
+) -> AsmConstOperandRef {
     let mir::ConstValue::Scalar(scalar) = const_value else {
         span_bug!(sp, "expected Scalar for promoted asm const, but got {:#?}", const_value)
     };
-    let value = scalar.assert_scalar_int().to_bits(ty_and_layout.size);
-    match ty_and_layout.ty.kind() {
-        ty::Uint(_) => value.to_string(),
-        ty::Int(int_ty) => match int_ty.normalize(tcx.sess.target.pointer_width) {
-            ty::IntTy::I8 => (value as i8).to_string(),
-            ty::IntTy::I16 => (value as i16).to_string(),
-            ty::IntTy::I32 => (value as i32).to_string(),
-            ty::IntTy::I64 => (value as i64).to_string(),
-            ty::IntTy::I128 => (value as i128).to_string(),
-            ty::IntTy::Isize => unreachable!(),
-        },
-        _ => span_bug!(sp, "asm const has bad type {}", ty_and_layout.ty),
+    match scalar.try_to_scalar_int() {
+        Ok(value) => {
+            let value = value.to_bits(ty_and_layout.size);
+            AsmConstOperandRef::Const {
+                string: match ty_and_layout.ty.kind() {
+                    ty::Uint(_) => value.to_string(),
+                    ty::Int(int_ty) => match int_ty.normalize(tcx.sess.target.pointer_width) {
+                        ty::IntTy::I8 => (value as i8).to_string(),
+                        ty::IntTy::I16 => (value as i16).to_string(),
+                        ty::IntTy::I32 => (value as i32).to_string(),
+                        ty::IntTy::I64 => (value as i64).to_string(),
+                        ty::IntTy::I128 => (value as i128).to_string(),
+                        ty::IntTy::Isize => unreachable!(),
+                    },
+                    _ => span_bug!(sp, "asm const has bad type {}", ty_and_layout.ty),
+                },
+            }
+        }
+        Err(mir::interpret::Scalar::Ptr(ptr, sz)) => {
+            let (alloc, offset) = ptr.into_parts();
+            match tcx.global_alloc(alloc) {
+                mir::interpret::GlobalAlloc::Memory(alloc) => {
+                    span_bug!(sp, "unexpected memory for `{alloc:?}` for a const operand")
+                }
+                mir::interpret::GlobalAlloc::Function { instance } => {
+                    span_bug!(sp, "unexpected function for `{instance}` for a const operand")
+                }
+                mir::interpret::GlobalAlloc::VTable(ty, _) => {
+                    span_bug!(sp, "unexpected vtable for `{ty}` for a const operand")
+                }
+                mir::interpret::GlobalAlloc::Static(def_id) => {
+                    AsmConstOperandRef::Static { def_id, offset, ptr_size: sz }
+                }
+            }
+        }
+        Err(scalar) => span_bug!(sp, "unexpected `{:#?}` for a const operand", scalar),
     }
 }
 

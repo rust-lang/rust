@@ -1,5 +1,6 @@
 use std::cmp;
 
+use rustc_abi::Size;
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
@@ -1167,31 +1168,36 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
                     let const_value = self.eval_mir_constant(value);
-                    let string = common::asm_const_to_str(
+                    match common::asm_const_to_opr_ref(
                         bx.tcx(),
                         span,
                         const_value,
                         bx.layout_of(value.ty()),
-                    );
-                    InlineAsmOperandRef::Const { string }
+                    ) {
+                        common::AsmConstOperandRef::Const { string } => {
+                            InlineAsmOperandRef::Const { string }
+                        }
+                        common::AsmConstOperandRef::Static { def_id, offset, ptr_size: _ } => {
+                            InlineAsmOperandRef::SymStatic { def_id, offset }
+                        }
+                    }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);
-                    if let ty::FnDef(def_id, args) = *const_.ty().kind() {
-                        let instance = ty::Instance::resolve_for_fn_ptr(
-                            bx.tcx(),
-                            ty::ParamEnv::reveal_all(),
-                            def_id,
-                            args,
-                        )
-                        .unwrap();
-                        InlineAsmOperandRef::SymFn { instance }
-                    } else {
+                    let ty::FnDef(def_id, args) = *const_.ty().kind() else {
                         span_bug!(span, "invalid type for asm sym (fn)");
-                    }
+                    };
+                    let instance = ty::Instance::resolve_for_fn_ptr(
+                        bx.tcx(),
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        args,
+                    )
+                    .unwrap();
+                    InlineAsmOperandRef::SymFn { instance }
                 }
                 mir::InlineAsmOperand::SymStatic { def_id } => {
-                    InlineAsmOperandRef::SymStatic { def_id }
+                    InlineAsmOperandRef::SymStatic { def_id, offset: Size::ZERO }
                 }
                 mir::InlineAsmOperand::Label { target_index } => {
                     InlineAsmOperandRef::Label { label: self.llbb(targets[target_index]) }

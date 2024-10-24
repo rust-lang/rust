@@ -459,7 +459,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 hir::InlineAsmOperand::Const { anon_const } => {
                     debug_assert_matches!(
                         self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
-                        ty::Error(_) | ty::Int(_) | ty::Uint(_)
+                        ty::Error(_) | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..)
                     );
                 }
                 // Typeck has checked that SymFn refers to a function.

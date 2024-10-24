@@ -91,6 +91,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             match ty.kind() {
                 ty::Error(_) => ty,
                 ty::Int(_) | ty::Uint(_) => ty,
+                ty::RawPtr(..) => ty,
                 _ => {
                     let guar = tcx
                         .dcx()

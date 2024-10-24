@@ -5,8 +5,7 @@ use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
-    AsmBuilderMethods, AsmCodegenMethods, BaseTypeCodegenMethods, BuilderMethods,
-    GlobalAsmOperandRef, InlineAsmOperandRef,
+    AsmBuilderMethods, AsmCodegenMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, GlobalAsmOperandRef, InlineAsmOperandRef
 };
 use rustc_middle::bug;
 use rustc_middle::ty::Instance;
@@ -282,7 +281,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     // or byte count suffixes (x86 Windows).
                     constants_len += self.tcx.symbol_name(instance).name.len();
                 }
-                InlineAsmOperandRef::SymStatic { def_id } => {
+                InlineAsmOperandRef::SymStatic { def_id, offset } => {
                     // TODO(@Amanieu): Additional mangling is needed on
                     // some targets to add a leading underscore (Mach-O).
                     constants_len +=
@@ -379,11 +378,18 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     });
                 }
 
-                InlineAsmOperandRef::SymStatic { def_id } => {
+                InlineAsmOperandRef::SymStatic { def_id, offset } => {
+                    let val = self.cx.get_static(def_id).get_address(None);
+                    let val = if offset.bytes() > 0 {
+                        let offset = self.cx.const_int(self.int_type, offset.bytes().try_into().expect("offset is out of range"));
+                        val + offset
+                    } else {
+                        val
+                    };
                     inputs.push(AsmInOperand {
                         constraint: "X".into(),
                         rust_idx,
-                        val: self.cx.get_static(def_id).get_address(None),
+                        val,
                     });
                 }
 
@@ -472,7 +478,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             template_str.push_str(name);
                         }
 
-                        InlineAsmOperandRef::SymStatic { def_id } => {
+                        InlineAsmOperandRef::SymStatic { def_id, offset } => {
                             // TODO(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O).
                             let instance = Instance::mono(self.tcx, def_id);
@@ -833,10 +839,13 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                             template_str.push_str(name);
                         }
 
-                        GlobalAsmOperandRef::SymStatic { def_id } => {
+                        GlobalAsmOperandRef::SymStatic { def_id, offset } => {
                             // TODO(antoyo): set the global variable as used.
                             // TODO(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O).
+                            if offset.bytes() > 0 {
+                                bug!("We don't know how to handle statics with non-zero offset")
+                            }
                             let instance = Instance::mono(self.tcx, def_id);
                             let name = self.tcx.symbol_name(instance).name;
                             template_str.push_str(name);

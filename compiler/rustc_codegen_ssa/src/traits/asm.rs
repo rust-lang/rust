@@ -1,3 +1,4 @@
+use rustc_abi::Size;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::Instance;
@@ -33,6 +34,7 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
     },
     SymStatic {
         def_id: DefId,
+        offset: Size,
     },
     Label {
         label: B::BasicBlock,
@@ -43,7 +45,7 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
 pub enum GlobalAsmOperandRef<'tcx> {
     Const { string: String },
     SymFn { instance: Instance<'tcx> },
-    SymStatic { def_id: DefId },
+    SymStatic { def_id: DefId, offset: Size },
 }
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {
