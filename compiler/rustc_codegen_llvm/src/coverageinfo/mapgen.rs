@@ -1,7 +1,10 @@
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 
 use itertools::Itertools as _;
-use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
+use rustc_abi::Align;
+use rustc_codegen_ssa::traits::{
+    BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
@@ -10,6 +13,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;
 use rustc_span::def_id::DefIdSet;
+use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
@@ -78,8 +82,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Generate the coverage map header, which contains the filenames used by
     // this CGU's coverage mappings, and store it in a well-known global.
-    let cov_data_val = generate_coverage_map(cx, covmap_version, filenames_size, filenames_val);
-    coverageinfo::save_cov_data_to_mod(cx, cov_data_val);
+    generate_covmap_record(cx, covmap_version, filenames_size, filenames_val);
 
     let mut unused_function_names = Vec::new();
     let covfun_section_name = coverageinfo::covfun_section_name(cx);
@@ -111,7 +114,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
             unused_function_names.push(mangled_function_name);
         }
 
-        save_function_record(
+        generate_covfun_record(
             cx,
             &covfun_section_name,
             mangled_function_name,
@@ -308,15 +311,15 @@ fn encode_mappings_for_function(
     })
 }
 
-/// Construct coverage map header and the array of function records, and combine them into the
-/// coverage map. Save the coverage map data into the LLVM IR as a static global using a
-/// specific, well-known section and name.
-fn generate_coverage_map<'ll>(
+/// Generates the contents of the covmap record for this CGU, which mostly
+/// consists of a header and a list of filenames. The record is then stored
+/// as a global variable in the `__llvm_covmap` section.
+fn generate_covmap_record<'ll>(
     cx: &CodegenCx<'ll, '_>,
     version: u32,
     filenames_size: usize,
     filenames_val: &'ll llvm::Value,
-) -> &'ll llvm::Value {
+) {
     debug!("cov map: filenames_size = {}, 0-based version = {}", filenames_size, version);
 
     // Create the coverage data header (Note, fields 0 and 2 are now always zero,
@@ -331,13 +334,35 @@ fn generate_coverage_map<'ll>(
     );
 
     // Create the complete LLVM coverage data value to add to the LLVM IR
-    cx.const_struct(&[cov_data_header_val, filenames_val], /*packed=*/ false)
+    let covmap_data =
+        cx.const_struct(&[cov_data_header_val, filenames_val], /*packed=*/ false);
+
+    let covmap_var_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
+        llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
+    }))
+    .unwrap();
+    debug!("covmap var name: {:?}", covmap_var_name);
+
+    let covmap_section_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
+        llvm::LLVMRustCoverageWriteMapSectionNameToString(cx.llmod, s);
+    }))
+    .expect("covmap section name should not contain NUL");
+    debug!("covmap section name: {:?}", covmap_section_name);
+
+    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(covmap_data), &covmap_var_name);
+    llvm::set_initializer(llglobal, covmap_data);
+    llvm::set_global_constant(llglobal, true);
+    llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
+    llvm::set_section(llglobal, &covmap_section_name);
+    // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
+    llvm::set_alignment(llglobal, Align::EIGHT);
+    cx.add_used_global(llglobal);
 }
 
-/// Construct a function record and combine it with the function's coverage mapping data.
-/// Save the function record into the LLVM IR as a static global using a
-/// specific, well-known section and name.
-fn save_function_record(
+/// Generates the contents of the covfun record for this function, which
+/// contains the function's coverage mapping data. The record is then stored
+/// as a global variable in the `__llvm_covfun` section.
+fn generate_covfun_record(
     cx: &CodegenCx<'_, '_>,
     covfun_section_name: &CStr,
     mangled_function_name: &str,
@@ -366,13 +391,27 @@ fn save_function_record(
         /*packed=*/ true,
     );
 
-    coverageinfo::save_func_record_to_mod(
-        cx,
-        covfun_section_name,
-        func_name_hash,
-        func_record_val,
-        is_used,
-    );
+    // Choose a variable name to hold this function's covfun data.
+    // Functions that are used have a suffix ("u") to distinguish them from
+    // unused copies of the same function (from different CGUs), so that if a
+    // linker sees both it won't discard the used copy's data.
+    let func_record_var_name =
+        CString::new(format!("__covrec_{:X}{}", func_name_hash, if is_used { "u" } else { "" }))
+            .unwrap();
+    debug!("function record var name: {:?}", func_record_var_name);
+
+    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(func_record_val), &func_record_var_name);
+    llvm::set_initializer(llglobal, func_record_val);
+    llvm::set_global_constant(llglobal, true);
+    llvm::set_linkage(llglobal, llvm::Linkage::LinkOnceODRLinkage);
+    llvm::set_visibility(llglobal, llvm::Visibility::Hidden);
+    llvm::set_section(llglobal, covfun_section_name);
+    // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
+    llvm::set_alignment(llglobal, Align::EIGHT);
+    if cx.target_spec().supports_comdat() {
+        llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
+    }
+    cx.add_used_global(llglobal);
 }
 
 /// Each CGU will normally only emit coverage metadata for the functions that it actually generates.

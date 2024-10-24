@@ -1,10 +1,9 @@
 use std::cell::RefCell;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
-    BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods,
-    MiscCodegenMethods, StaticCodegenMethods,
+    BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods, MiscCodegenMethods,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;
@@ -12,8 +11,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_target::abi::{Align, Size};
-use rustc_target::spec::HasTargetSpec;
+use rustc_target::abi::Size;
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
@@ -288,67 +286,6 @@ pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
 
 pub(crate) fn mapping_version() -> u32 {
     unsafe { llvm::LLVMRustCoverageMappingVersion() }
-}
-
-pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    cov_data_val: &'ll llvm::Value,
-) {
-    let covmap_var_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
-    }))
-    .unwrap();
-    debug!("covmap var name: {:?}", covmap_var_name);
-
-    let covmap_section_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMapSectionNameToString(cx.llmod, s);
-    }))
-    .expect("covmap section name should not contain NUL");
-    debug!("covmap section name: {:?}", covmap_section_name);
-
-    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(cov_data_val), &covmap_var_name);
-    llvm::set_initializer(llglobal, cov_data_val);
-    llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
-    llvm::set_section(llglobal, &covmap_section_name);
-    // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
-    llvm::set_alignment(llglobal, Align::EIGHT);
-    cx.add_used_global(llglobal);
-}
-
-pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    covfun_section_name: &CStr,
-    func_name_hash: u64,
-    func_record_val: &'ll llvm::Value,
-    is_used: bool,
-) {
-    // Assign a name to the function record. This is used to merge duplicates.
-    //
-    // In LLVM, a "translation unit" (effectively, a `Crate` in Rust) can describe functions that
-    // are included-but-not-used. If (or when) Rust generates functions that are
-    // included-but-not-used, note that a dummy description for a function included-but-not-used
-    // in a Crate can be replaced by full description provided by a different Crate. The two kinds
-    // of descriptions play distinct roles in LLVM IR; therefore, assign them different names (by
-    // appending "u" to the end of the function record var name, to prevent `linkonce_odr` merging.
-    let func_record_var_name =
-        CString::new(format!("__covrec_{:X}{}", func_name_hash, if is_used { "u" } else { "" }))
-            .unwrap();
-    debug!("function record var name: {:?}", func_record_var_name);
-    debug!("function record section name: {:?}", covfun_section_name);
-
-    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(func_record_val), &func_record_var_name);
-    llvm::set_initializer(llglobal, func_record_val);
-    llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, llvm::Linkage::LinkOnceODRLinkage);
-    llvm::set_visibility(llglobal, llvm::Visibility::Hidden);
-    llvm::set_section(llglobal, covfun_section_name);
-    // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
-    llvm::set_alignment(llglobal, Align::EIGHT);
-    if cx.target_spec().supports_comdat() {
-        llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
-    }
-    cx.add_used_global(llglobal);
 }
 
 /// Returns the section name string to pass through to the linker when embedding
