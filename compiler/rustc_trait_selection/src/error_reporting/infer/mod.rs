@@ -864,6 +864,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let path1 = self.tcx.def_path_str(did1);
                 let path2 = self.tcx.def_path_str(did2);
                 if did1 == did2 {
+                    let path1 = self.tcx.item_name(did1).to_string();
+                    let path2 = self.tcx.item_name(did2).to_string();
                     // Easy case. Replace same types with `_` to shorten the output and highlight
                     // the differing ones.
                     //     let x: Foo<Bar, Qux> = y::<Foo<Quz, Qux>>();

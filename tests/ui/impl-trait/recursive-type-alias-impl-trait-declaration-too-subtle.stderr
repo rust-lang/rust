@@ -7,8 +7,8 @@ LL |     type Foo = impl PartialEq<(Foo, i32)>;
 LL |         fn eq(&self, _other: &(Foo, i32)) -> bool {
    |                              ^^^^^^^^^^^ expected `a::Bar`, found opaque type
    |
-   = note: expected signature `fn(&a::Bar, &(a::Bar, _)) -> _`
-              found signature `fn(&a::Bar, &(a::Foo, _)) -> _`
+   = note: expected signature `fn(&Bar, &(a::Bar, _)) -> _`
+              found signature `fn(&Bar, &(a::Foo, _)) -> _`
 help: change the parameter type to match the trait
    |
 LL |         fn eq(&self, _other: &(a::Bar, i32)) -> bool {
@@ -44,8 +44,8 @@ LL |     type Foo = impl PartialEq<(Foo, i32)>;
 LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
    |                              ^^^^^^^^^^^ expected opaque type, found `b::Bar`
    |
-   = note: expected signature `fn(&b::Bar, &(b::Foo, _)) -> _`
-              found signature `fn(&b::Bar, &(b::Bar, _)) -> _`
+   = note: expected signature `fn(&Bar, &(b::Foo, _)) -> _`
+              found signature `fn(&Bar, &(b::Bar, _)) -> _`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
   --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:25:12
    |
