@@ -1832,21 +1832,63 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if impl_trait_ref.references_error() {
                         return false;
                     }
-                    let self_ty = impl_trait_ref.self_ty().to_string();
-                    err.highlighted_help(vec![
-                        StringPart::normal(format!(
-                            "the trait `{}` ",
-                            impl_trait_ref.print_trait_sugared()
-                        )),
-                        StringPart::highlighted("is"),
+
+                    let traits = self.cmp_traits(
+                        obligation_trait_ref.def_id,
+                        &obligation_trait_ref.args[1..],
+                        impl_trait_ref.def_id,
+                        &impl_trait_ref.args[1..],
+                    );
+                    let traits_content = (traits.0.content(), traits.1.content());
+                    let types = self.cmp(obligation_trait_ref.self_ty(), impl_trait_ref.self_ty());
+                    let types_content = (types.0.content(), types.1.content());
+                    let mut msg = vec![StringPart::normal("the trait `")];
+                    if traits_content.0 == traits_content.1 {
+                        msg.push(StringPart::normal(
+                            impl_trait_ref.print_trait_sugared().to_string(),
+                        ));
+                    } else {
+                        msg.extend(traits.0.0);
+                    }
+                    msg.extend([
+                        StringPart::normal("` "),
+                        StringPart::highlighted("is not"),
                         StringPart::normal(" implemented for `"),
-                        if let [TypeError::Sorts(_)] = &terrs[..] {
-                            StringPart::normal(self_ty)
-                        } else {
-                            StringPart::highlighted(self_ty)
-                        },
-                        StringPart::normal("`"),
                     ]);
+                    if types_content.0 == types_content.1 {
+                        msg.push(StringPart::normal(obligation_trait_ref.self_ty().to_string()));
+                    } else {
+                        msg.extend(types.0.0);
+                    }
+                    msg.push(StringPart::normal("`"));
+                    if types_content.0 == types_content.1 {
+                        msg.push(StringPart::normal("\nbut trait `"));
+                        msg.extend(traits.1.0);
+                        msg.extend([
+                            StringPart::normal("` "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for it"),
+                        ]);
+                    } else if traits_content.0 == traits_content.1 {
+                        msg.extend([
+                            StringPart::normal("\nbut it "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for `"),
+                        ]);
+                        msg.extend(types.1.0);
+                        msg.push(StringPart::normal("`"));
+                    } else {
+                        msg.push(StringPart::normal("\nbut trait `"));
+                        msg.extend(traits.1.0);
+                        msg.extend([
+                            StringPart::normal("` "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for `"),
+                        ]);
+                        msg.extend(types.1.0);
+                        msg.push(StringPart::normal("`"));
+                    }
+                    err.highlighted_help(msg);
 
                     if let [TypeError::Sorts(exp_found)] = &terrs[..] {
                         let exp_found = self.resolve_vars_if_possible(*exp_found);
