@@ -111,13 +111,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         // Unfortunately we cannot exhaustively list fields here, since the
-        // struct is macro generated.
+        // struct has private fields (to ensure its invariant is maintained)
         self.enabled_lang_features().hash_stable(hcx, hasher);
         self.enabled_lib_features().hash_stable(hcx, hasher);
-
-        // FIXME: why do we hash something that is a compile-time constant?
-        for feature in rustc_feature::UNSTABLE_LANG_FEATURES.iter() {
-            feature.name.hash_stable(hcx, hasher);
-        }
     }
 }
