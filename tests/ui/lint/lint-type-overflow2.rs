@@ -4,6 +4,7 @@
 
 fn main() {
     let x2: i8 = --128; //~ ERROR literal out of range for `i8`
+    //~| WARN use of a double negation
 
     let x = -3.40282357e+38_f32; //~ ERROR literal out of range for `f32`
     let x =  3.40282357e+38_f32; //~ ERROR literal out of range for `f32`
