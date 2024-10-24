@@ -1062,7 +1062,7 @@ fn cargo_to_crate_graph(
                 proc_macros,
                 cargo,
                 pkg_data,
-                build_data,
+                build_data.zip(Some(build_scripts.error().is_some())),
                 cfg_options.clone(),
                 file_id,
                 name,
@@ -1285,7 +1285,7 @@ fn handle_rustc_crates(
                         proc_macros,
                         rustc_workspace,
                         &rustc_workspace[pkg],
-                        build_scripts.get_output(pkg),
+                        build_scripts.get_output(pkg).zip(Some(build_scripts.error().is_some())),
                         cfg_options.clone(),
                         file_id,
                         &rustc_workspace[tgt].name,
@@ -1345,7 +1345,7 @@ fn add_target_crate_root(
     proc_macros: &mut ProcMacroPaths,
     cargo: &CargoWorkspace,
     pkg: &PackageData,
-    build_data: Option<&BuildScriptOutput>,
+    build_data: Option<(&BuildScriptOutput, bool)>,
     cfg_options: CfgOptions,
     file_id: FileId,
     cargo_name: &str,
@@ -1368,7 +1368,7 @@ fn add_target_crate_root(
         for feature in pkg.active_features.iter() {
             opts.insert_key_value(sym::feature.clone(), Symbol::intern(feature));
         }
-        if let Some(cfgs) = build_data.as_ref().map(|it| &it.cfgs) {
+        if let Some(cfgs) = build_data.map(|(it, _)| &it.cfgs) {
             opts.extend(cfgs.iter().cloned());
         }
         opts
@@ -1379,7 +1379,7 @@ fn add_target_crate_root(
     inject_cargo_env(&mut env);
     inject_rustc_tool_env(&mut env, cargo, cargo_name, kind);
 
-    if let Some(envs) = build_data.map(|it| &it.envs) {
+    if let Some(envs) = build_data.map(|(it, _)| &it.envs) {
         for (k, v) in envs {
             env.set(k, v.clone());
         }
@@ -1396,11 +1396,14 @@ fn add_target_crate_root(
         origin,
     );
     if let TargetKind::Lib { is_proc_macro: true } = kind {
-        let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
-            Some(it) => match it {
-                Some(path) => Ok((cargo_name.to_owned(), path.clone())),
-                None => Err("proc-macro crate build data is missing dylib path".to_owned()),
-            },
+        let proc_macro = match build_data {
+            Some((BuildScriptOutput { proc_macro_dylib_path, .. }, has_errors)) => {
+                match proc_macro_dylib_path {
+                    Some(path) => Ok((cargo_name.to_owned(), path.clone())),
+                    None if has_errors => Err("failed to build proc-macro".to_owned()),
+                    None => Err("proc-macro crate build data is missing dylib path".to_owned()),
+                }
+            }
             None => Err("proc-macro crate is missing its build data".to_owned()),
         };
         proc_macros.insert(crate_id, proc_macro);
