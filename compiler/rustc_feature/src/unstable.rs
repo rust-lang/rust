@@ -44,6 +44,8 @@ pub struct Features {
 }
 
 impl Features {
+    /// `since` should be set for stable features that are nevertheless enabled with a `#[feature]`
+    /// attribute, indicating since when they are stable.
     pub fn set_enabled_lang_feature(&mut self, name: Symbol, span: Span, since: Option<Symbol>) {
         self.enabled_lang_features.push((name, span, since));
         self.enabled_features.insert(name);
@@ -54,6 +56,10 @@ impl Features {
         self.enabled_features.insert(name);
     }
 
+    /// Returns a list of triples with:
+    /// - feature gate name
+    /// - the span of the `#[feature]` attribute
+    /// - (for already stable features) the version since which it is stable
     pub fn enabled_lang_features(&self) -> &Vec<(Symbol, Span, Option<Symbol>)> {
         &self.enabled_lang_features
     }
