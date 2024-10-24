@@ -183,7 +183,7 @@ impl<'a> Location<'a> {
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
-    pub const fn file(&self) -> &str {
+    pub const fn file(&self) -> &'a str {
         // SAFETY: The filename is valid.
         unsafe { self.filename.as_ref() }
     }
