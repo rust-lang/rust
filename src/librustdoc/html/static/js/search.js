@@ -47,11 +47,14 @@ const itemTypes = [
     "derive",
     "traitalias", // 25
     "generic",
+    "crate",
 ];
 
 // used for special search precedence
 const TY_GENERIC = itemTypes.indexOf("generic");
 const TY_IMPORT = itemTypes.indexOf("import");
+// minor hack to implement the `crate:` syntax
+const TY_CRATE = itemTypes.indexOf("crate");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -280,6 +283,20 @@ function getFilteredNextElem(query, parserState, elems, isInGenerics) {
         parserState.pos += 1;
         parserState.totalElems -= 1;
         query.literalSearch = false;
+        if (parserState.typeFilter === "crate") {
+            while (parserState.userQuery[parserState.pos] === " ") {
+                parserState.pos += 1;
+            }
+            const start = parserState.pos;
+            const foundCrate = consumeIdent(parserState);
+            if (!foundCrate) {
+                throw ["Expected ident after ", "crate:", ", found ", parserState.userQuery[start]];
+            }
+            const name = parserState.userQuery.substring(start, parserState.pos);
+            elems.push(makePrimitiveElement(name, { typeFilter: "crate" }));
+            parserState.typeFilter = null;
+            return getFilteredNextElem(query, parserState, elems, isInGenerics);
+        }
         getNextElem(query, parserState, elems, isInGenerics);
     }
 }
@@ -1800,6 +1817,7 @@ class DocSearch {
                 correction: null,
                 proposeCorrectionFrom: null,
                 proposeCorrectionTo: null,
+                filterCrates: null,
                 // bloom filter build from type ids
                 typeFingerprint: new Uint32Array(4),
             };
@@ -1926,6 +1944,20 @@ class DocSearch {
             query.error = err;
             return query;
         }
+
+        function handleCrateFilters(elem) {
+            if (elem.typeFilter === TY_CRATE) {
+                query.filterCrates = elem.name;
+                return false;
+            }
+            return true;
+
+        }
+        const nonCrateElems = query.elems.filter(handleCrateFilters);
+        if (nonCrateElems.length !== query.elems.length) {
+            query.elems = nonCrateElems;
+        }
+
         if (!query.literalSearch) {
             // If there is more than one element in the query, we switch to literalSearch in any
             // case.
@@ -3571,7 +3603,7 @@ async function showResults(results, go_to_first, filterCrates) {
         results.query = DocSearch.parseQuery(searchState.input.value);
     }
 
-    currentResults = results.query.userQuery;
+    currentResults = results.query.original;
 
     const [ret_others, ret_in_args, ret_returned] = await Promise.all([
         addTab(results.others, results.query, true),
@@ -3706,7 +3738,7 @@ async function search(forced) {
     const query = DocSearch.parseQuery(searchState.input.value.trim());
     let filterCrates = getFilterCrates();
 
-    if (!forced && query.userQuery === currentResults) {
+    if (!forced && query.original === currentResults) {
         if (query.userQuery.length > 0) {
             putBackSearch();
         }
@@ -3717,6 +3749,9 @@ async function search(forced) {
 
     const params = searchState.getQueryStringParams();
 
+    if (query.filterCrates !== null) {
+        filterCrates = query.filterCrates;
+    }
     // In case we have no information about the saved crate and there is a URL query parameter,
     // we override it with the URL query parameter.
     if (filterCrates === null && params["filter-crate"] !== undefined) {
