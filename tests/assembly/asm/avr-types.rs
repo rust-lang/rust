@@ -1,5 +1,5 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: --target avr-unknown-gnu-atmega328
+//@ compile-flags: --target avr-unknown-unknown -C target-cpu=atmega328p
 //@ needs-llvm-components: avr
 
 #![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]

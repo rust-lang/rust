@@ -63,7 +63,7 @@ pub use base::apple::{
     deployment_target_for_target as current_apple_deployment_target,
     platform as current_apple_platform,
 };
-pub use base::avr_gnu::ef_avr_arch;
+pub use base::avr::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -1734,7 +1734,7 @@ supported_targets! {
     ("riscv64gc-unknown-fuchsia", riscv64gc_unknown_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
 
-    ("avr-unknown-gnu-atmega328", avr_unknown_gnu_atmega328),
+    ("avr-unknown-unknown", avr_unknown_unknown),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 

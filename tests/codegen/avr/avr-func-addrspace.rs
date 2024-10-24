@@ -1,4 +1,4 @@
-//@ compile-flags: -O --target=avr-unknown-gnu-atmega328 --crate-type=rlib -C panic=abort
+//@ compile-flags: -O --target=avr-unknown-unknown -C target-cpu=atmega328p --crate-type=rlib -C panic=abort
 //@ needs-llvm-components: avr
 
 // This test validates that function pointers can be stored in global variables
