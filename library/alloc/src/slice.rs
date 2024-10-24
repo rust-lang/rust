@@ -156,6 +156,12 @@ pub(crate) mod hack {
     impl<T: Copy> ConvertVec for T {
         #[inline]
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+            if s.is_empty() {
+                // The early return is not necessary for correctness, but it helps
+                // LLVM by avoiding phi nodes flowing into memcpy.
+                // See codegen/lib-optimizations/append-elements.rs
+                return Vec::new_in(alloc);
+            }
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
             // allocated above with the capacity of `s`, and initialize to `s.len()` in
