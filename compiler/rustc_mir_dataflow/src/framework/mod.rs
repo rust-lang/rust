@@ -242,7 +242,7 @@ pub trait Analysis<'tcx> {
     /// Without a `pass_name` to differentiates them, only the results for the latest run will be
     /// saved.
     fn iterate_to_fixpoint<'mir>(
-        mut self,
+        self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
         pass_name: Option<&'static str>,
@@ -286,10 +286,10 @@ pub trait Analysis<'tcx> {
             state.clone_from(&entry_sets[bb]);
 
             // Apply the block transfer function, using the cached one if it exists.
-            let edges = Self::Direction::apply_effects_in_block(&mut self, &mut state, bb, bb_data);
+            let edges = Self::Direction::apply_effects_in_block(&self, &mut state, bb, bb_data);
 
             Self::Direction::join_state_into_successors_of(
-                &mut self,
+                &self,
                 body,
                 &mut state,
                 bb,
