@@ -335,7 +335,7 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
         WriteZero,
         StorageFull,
         NotSeekable,
-        FilesystemQuotaExceeded,
+        QuotaExceeded,
         FileTooLarge,
         ResourceBusy,
         ExecutableFileBusy,
