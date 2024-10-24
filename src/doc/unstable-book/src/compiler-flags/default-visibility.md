@@ -10,11 +10,14 @@ setting.
 
 This option only affects building of shared objects and should have no effect on executables.
 
-Visibility an be set to one of three options:
+Visibility can be set to one of three options:
 
 * protected
 * hidden
 * interposable
+
+The default value for this flag is `interposable` unless `-Zlinker-features=+lld` is specified, in
+which case the default is `protected`.
 
 ## Hidden visibility
 

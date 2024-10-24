@@ -455,7 +455,7 @@ pub fn linker_flags(
 ) -> Vec<String> {
     let mut args = vec![];
     if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
-        args.push(String::from("-Clink-arg=-fuse-ld=lld"));
+        args.push(String::from("-Zlinker-features=+lld"));
 
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
