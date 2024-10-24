@@ -2071,6 +2071,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 s = pluralize!(len),
                 them = if len == 1 { "it" } else { "them" },
             ),
+            format!(
+                "{}{}{}{}",
+                prefix,
+                unmentioned_fields
+                    .iter()
+                    .map(|(_, name)| {
+                        let field_name = name.to_string();
+                        format!("{field_name}: _")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                if have_inaccessible_fields { ", .." } else { "" },
+                postfix,
+            ),
+            Applicability::MachineApplicable,
+        );
+        err.span_suggestion(
+            sp,
+            "or always ignore missing fields here",
             format!("{prefix}..{postfix}"),
             Applicability::MachineApplicable,
         );

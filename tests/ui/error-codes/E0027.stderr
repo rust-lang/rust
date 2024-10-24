@@ -10,6 +10,10 @@ LL |         Dog { age: x, name } => {}
    |                     ~~~~~~~~
 help: if you don't care about this missing field, you can explicitly ignore it
    |
+LL |         Dog { age: x, name: _ } => {}
+   |                     ~~~~~~~~~~~
+help: or always ignore missing fields here
+   |
 LL |         Dog { age: x, .. } => {}
    |                     ~~~~~~
 
@@ -24,6 +28,10 @@ help: include the missing field in the pattern
 LL |         Dog { name: x, age } => {}
    |                      ~~~~~~~
 help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |         Dog { name: x, age: _ } => {}
+   |                      ~~~~~~~~~~
+help: or always ignore missing fields here
    |
 LL |         Dog { name: x, .. } => {}
    |                      ~~~~~~
@@ -40,6 +48,10 @@ LL |         Dog { name: x, age } => {}
    |                      ~~~~~~~
 help: if you don't care about this missing field, you can explicitly ignore it
    |
+LL |         Dog { name: x, age: _ } => {}
+   |                      ~~~~~~~~~~
+help: or always ignore missing fields here
+   |
 LL |         Dog { name: x, .. } => {}
    |                      ~~~~~~
 
@@ -54,6 +66,10 @@ help: include the missing fields in the pattern
 LL |         Dog { name, age } => {}
    |             ~~~~~~~~~~~~~
 help: if you don't care about these missing fields, you can explicitly ignore them
+   |
+LL |         Dog { name: _, age: _ } => {}
+   |             ~~~~~~~~~~~~~~~~~~~
+help: or always ignore missing fields here
    |
 LL |         Dog { .. } => {}
    |             ~~~~~~
