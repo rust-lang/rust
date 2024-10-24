@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match method.kind {
             ty::AssocKind::Fn => {
                 method.fn_has_self_parameter
-                    && self.tcx.fn_sig(method.def_id).skip_binder().inputs().skip_binder().len()
+                    && self.tcx.fn_sig(method.def_id).skip_binder().inputs().extract(<[_]>::len)
                         == 1
             }
             _ => false,

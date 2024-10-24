@@ -81,7 +81,7 @@ pub(super) fn infer_predicates(
             // items.
             let item_predicates_len: usize = global_inferred_outlives
                 .get(&item_did.to_def_id())
-                .map_or(0, |p| p.as_ref().skip_binder().len());
+                .map_or(0, |p| p.extract_ref(|p| p.len()));
             if item_required_predicates.len() > item_predicates_len {
                 predicates_added = true;
                 global_inferred_outlives
@@ -181,7 +181,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                     let args = ex_trait_ref.with_self_ty(tcx, tcx.types.usize).skip_binder().args;
                     check_explicit_predicates(
                         tcx,
-                        ex_trait_ref.skip_binder().def_id,
+                        ex_trait_ref.extract(|tr| tr.def_id),
                         args,
                         required_predicates,
                         explicit_map,

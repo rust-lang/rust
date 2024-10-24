@@ -80,7 +80,7 @@ fn equate_intrinsic_type<'tcx>(
 /// Returns the unsafety of the given intrinsic.
 pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
     let has_safe_attr = if tcx.has_attr(intrinsic_id, sym::rustc_intrinsic) {
-        tcx.fn_sig(intrinsic_id).skip_binder().safety()
+        tcx.fn_sig(intrinsic_id).extract(ty::Binder::safety)
     } else {
         match tcx.has_attr(intrinsic_id, sym::rustc_safe_intrinsic) {
             true => hir::Safety::Safe,

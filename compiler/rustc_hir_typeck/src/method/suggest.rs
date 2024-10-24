@@ -1987,7 +1987,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // the impl, if local to crate (item may be defaulted), else nothing.
                     let Some(item) = self.associated_value(impl_did, item_name).or_else(|| {
                         let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
-                        self.associated_value(impl_trait_ref.skip_binder().def_id, item_name)
+                        self.associated_value(impl_trait_ref.extract(|tr| tr.def_id), item_name)
                     }) else {
                         continue;
                     };

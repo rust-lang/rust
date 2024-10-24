@@ -149,7 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
             .map(|pick| {
                 let sig = self.tcx.fn_sig(pick.item.def_id);
-                sig.skip_binder().inputs().skip_binder().len().saturating_sub(1)
+                sig.skip_binder().inputs().extract(<[_]>::len).saturating_sub(1)
             })
             .unwrap_or(0);
 

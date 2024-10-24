@@ -433,7 +433,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         None
     };
 
-    let extra_args = &args[fn_sig.inputs().skip_binder().len()..];
+    let extra_args = &args[fn_sig.inputs().extract(|inputs| inputs.len())..];
     let extra_args = fx.tcx.mk_type_list_from_iter(
         extra_args.iter().map(|op_arg| fx.monomorphize(op_arg.node.ty(fx.mir, fx.tcx))),
     );

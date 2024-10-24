@@ -296,7 +296,7 @@ fn orphan_check<'tcx>(
     debug!(trait_ref = ?trait_ref.skip_binder());
 
     // If the *trait* is local to the crate, ok.
-    if let Some(def_id) = trait_ref.skip_binder().def_id.as_local() {
+    if let Some(def_id) = trait_ref.extract(|tr| tr.def_id).as_local() {
         debug!("trait {def_id:?} is local to current crate");
         return Ok(());
     }

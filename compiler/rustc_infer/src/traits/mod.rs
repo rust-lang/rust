@@ -171,7 +171,7 @@ impl<'tcx, O> Obligation<'tcx, O> {
 
 impl<'tcx> PolyTraitObligation<'tcx> {
     pub fn polarity(&self) -> ty::PredicatePolarity {
-        self.predicate.skip_binder().polarity
+        self.predicate.extract(|p| p.polarity)
     }
 
     pub fn self_ty(&self) -> ty::Binder<'tcx, Ty<'tcx>> {

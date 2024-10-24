@@ -387,10 +387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let num_args = args
                 .as_coroutine_closure()
                 .coroutine_closure_sig()
-                .skip_binder()
-                .tupled_inputs_ty
-                .tuple_fields()
-                .len();
+                .extract(|sig| sig.tupled_inputs_ty.tuple_fields().len());
             let typeck_results = self.typeck_results.borrow();
 
             let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(

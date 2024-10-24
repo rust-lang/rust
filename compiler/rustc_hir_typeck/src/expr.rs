@@ -745,7 +745,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ```
                 //
                 // to work in stable even if the Sized bound on `drop` is relaxed.
-                for i in 0..fn_sig.inputs().skip_binder().len() {
+                for i in 0..fn_sig.inputs().extract(<[_]>::len) {
                     // We just want to check sizedness, so instead of introducing
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
@@ -2330,7 +2330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if !self.can_eq(self.param_env, ret_ty, adt_ty) {
                         return None;
                     }
-                    let input_len = fn_sig.inputs().skip_binder().len();
+                    let input_len = fn_sig.inputs().extract(<[_]>::len);
                     let order = !item.name.as_str().starts_with("new");
                     Some((order, item.name, input_len))
                 })

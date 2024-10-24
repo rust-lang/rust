@@ -688,7 +688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // expect.
         if expected_sig.sig.c_variadic() != decl.c_variadic {
             return self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind);
-        } else if expected_sig.sig.skip_binder().inputs_and_output.len() != decl.inputs.len() + 1 {
+        } else if expected_sig.sig.inputs().extract(<[_]>::len) != decl.inputs.len() {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
                 expr_def_id,
                 decl,

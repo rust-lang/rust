@@ -492,7 +492,7 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let sig_id = tcx.hir().opt_delegation_sig_id(def_id).unwrap();
     let caller_sig = tcx.fn_sig(sig_id);
     if let Err(err) = check_constraints(tcx, def_id, sig_id) {
-        let sig_len = caller_sig.instantiate_identity().skip_binder().inputs().len() + 1;
+        let sig_len = caller_sig.instantiate_identity().extract(|sig| sig.inputs().len()) + 1;
         let err_type = Ty::new_error(tcx, err);
         return tcx.arena.alloc_from_iter((0..sig_len).map(|_| err_type));
     }

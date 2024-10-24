@@ -14,7 +14,7 @@ use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
 use crate::lift::Lift;
-use crate::traverse::{ImportantTypeTraversal, OptVisitWith, TypeTraversable};
+use crate::traverse::{ImportantTypeTraversal, NoopTypeTraversal, OptVisitWith, TypeTraversable};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{self as ty, Interner};
 
@@ -186,14 +186,32 @@ impl<I: Interner, T> Binder<I, T> {
         Binder { value: &self.value, bound_vars: self.bound_vars }
     }
 
-    pub fn map_bound_ref<F, U: OptVisitWith<I>>(&self, f: F) -> Binder<I, U>
+    pub fn extract_ref<F, U>(&self, f: F) -> U
+    where
+        F: FnOnce(&T) -> U,
+        U: TypeTraversable<I, Kind = NoopTypeTraversal>,
+    {
+        let Binder { value, bound_vars: _ } = self;
+        f(value)
+    }
+
+    pub fn extract<F, U>(self, f: F) -> U
+    where
+        F: FnOnce(T) -> U,
+        U: TypeTraversable<I, Kind = NoopTypeTraversal>,
+    {
+        let Binder { value, bound_vars: _ } = self;
+        f(value)
+    }
+
+    pub fn map_bound_ref<F, U: TypeVisitable<I>>(&self, f: F) -> Binder<I, U>
     where
         F: FnOnce(&T) -> U,
     {
         self.as_ref().map_bound(f)
     }
 
-    pub fn map_bound<F, U: OptVisitWith<I>>(self, f: F) -> Binder<I, U>
+    pub fn map_bound<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,
     {
@@ -369,6 +387,24 @@ impl<I: Interner, T> EarlyBinder<I, T> {
 
     pub fn as_ref(&self) -> EarlyBinder<I, &T> {
         EarlyBinder { value: &self.value, _tcx: PhantomData }
+    }
+
+    pub fn extract_ref<F, U>(&self, f: F) -> U
+    where
+        F: FnOnce(&T) -> U,
+        U: TypeTraversable<I, Kind = NoopTypeTraversal>,
+    {
+        let EarlyBinder { value, _tcx } = self;
+        f(value)
+    }
+
+    pub fn extract<F, U>(self, f: F) -> U
+    where
+        F: FnOnce(T) -> U,
+        U: TypeTraversable<I, Kind = NoopTypeTraversal>,
+    {
+        let EarlyBinder { value, _tcx } = self;
+        f(value)
     }
 
     pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<I, U>

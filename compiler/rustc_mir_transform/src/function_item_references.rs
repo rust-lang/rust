@@ -173,7 +173,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let ty_params = fn_args.types().map(|ty| format!("{ty}"));
         let const_params = fn_args.consts().map(|c| format!("{c}"));
         let params = ty_params.chain(const_params).join(", ");
-        let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
+        let num_args = fn_sig.inputs().extract(<[_]>::len);
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
         let sugg = format!(

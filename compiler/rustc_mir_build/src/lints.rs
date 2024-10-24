@@ -73,7 +73,7 @@ pub fn check_drop_recursion<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         && drop_trait == trait_ref.instantiate_identity().def_id
         // avoid erroneous `Drop` impls from causing ICEs below
         && let sig = tcx.fn_sig(def_id).instantiate_identity()
-        && sig.inputs().skip_binder().len() == 1
+        && sig.inputs().extract(<[_]>::len) == 1
     {
         // It was. Now figure out for what type `Drop` is implemented and then
         // check for recursion.

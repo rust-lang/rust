@@ -650,7 +650,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
                     ty::AssocKind::Fn => {
-                        let abi = tcx.fn_sig(assoc_item.def_id).skip_binder().abi();
+                        let abi = tcx.fn_sig(assoc_item.def_id).extract(ty::Binder::abi);
                         forbid_intrinsic_abi(tcx, assoc_item.ident(tcx).span, abi);
                     }
                     ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {

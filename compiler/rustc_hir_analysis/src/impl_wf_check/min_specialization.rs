@@ -94,7 +94,7 @@ pub(super) fn check_min_specialization(
 
 fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId) -> Option<Node> {
     let trait_ref = tcx.impl_trait_ref(impl1_def_id)?;
-    let trait_def = tcx.trait_def(trait_ref.skip_binder().def_id);
+    let trait_def = tcx.trait_def(trait_ref.extract(|tr| tr.def_id));
 
     let impl2_node = trait_def.ancestors(tcx, impl1_def_id.to_def_id()).ok()?.nth(1)?;
 

@@ -1377,8 +1377,8 @@ fn compare_number_of_method_arguments<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_m_fty = tcx.fn_sig(impl_m.def_id);
     let trait_m_fty = tcx.fn_sig(trait_m.def_id);
-    let trait_number_args = trait_m_fty.skip_binder().inputs().skip_binder().len();
-    let impl_number_args = impl_m_fty.skip_binder().inputs().skip_binder().len();
+    let trait_number_args = trait_m_fty.skip_binder().inputs().extract(<[_]>::len);
+    let impl_number_args = impl_m_fty.skip_binder().inputs().extract(<[_]>::len);
 
     if trait_number_args != impl_number_args {
         let trait_span = trait_m

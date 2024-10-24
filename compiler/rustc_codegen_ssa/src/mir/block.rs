@@ -869,7 +869,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let sig = callee.layout.ty.fn_sig(bx.tcx());
         let abi = sig.abi();
 
-        let extra_args = &args[sig.inputs().skip_binder().len()..];
+        let extra_args = &args[sig.inputs().extract(<[_]>::len)..];
         let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
             let op_ty = op_arg.node.ty(self.mir, bx.tcx());
             self.monomorphize(op_ty)

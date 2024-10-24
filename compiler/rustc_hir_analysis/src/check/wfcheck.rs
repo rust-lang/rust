@@ -250,7 +250,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Impl(impl_) => {
             let header = tcx.impl_trait_header(def_id);
             let is_auto = header
-                .is_some_and(|header| tcx.trait_is_auto(header.trait_ref.skip_binder().def_id));
+                .is_some_and(|header| tcx.trait_is_auto(header.trait_ref.extract(|tr| tr.def_id)));
 
             crate::impl_wf_check::check_impl_wf(tcx, def_id)?;
             let mut res = Ok(());

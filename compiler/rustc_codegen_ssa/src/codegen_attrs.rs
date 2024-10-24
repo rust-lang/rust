@@ -202,7 +202,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
                 if !is_closure
                     && let Some(fn_sig) = fn_sig()
-                    && fn_sig.skip_binder().abi() != abi::Abi::Rust
+                    && fn_sig.extract(ty::Binder::abi) != abi::Abi::Rust
                 {
                     struct_span_code_err!(
                         tcx.dcx(),
@@ -245,7 +245,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::target_feature => {
                 if !tcx.is_closure_like(did.to_def_id())
                     && let Some(fn_sig) = fn_sig()
-                    && fn_sig.skip_binder().safety() == hir::Safety::Safe
+                    && fn_sig.extract(ty::Binder::safety) == hir::Safety::Safe
                 {
                     if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on
