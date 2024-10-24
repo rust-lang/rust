@@ -1529,6 +1529,7 @@ ui/issues/issue-12920.rs
 ui/issues/issue-13027.rs
 ui/issues/issue-13058.rs
 ui/issues/issue-13105.rs
+ui/issues/issue-131342-2.rs
 ui/issues/issue-13167.rs
 ui/issues/issue-13202.rs
 ui/issues/issue-13204.rs

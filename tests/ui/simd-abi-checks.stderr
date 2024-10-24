@@ -1,0 +1,74 @@
+error: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+  --> $DIR/simd-abi-checks.rs:49:11
+   |
+LL |         f(g());
+   |           ^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+  --> $DIR/simd-abi-checks.rs:49:9
+   |
+LL |         f(g());
+   |         ^^^^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+  --> $DIR/simd-abi-checks.rs:55:14
+   |
+LL |         favx(gavx());
+   |              ^^^^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+  --> $DIR/simd-abi-checks.rs:55:9
+   |
+LL |         favx(gavx());
+   |         ^^^^^^^^^^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+  --> $DIR/simd-abi-checks.rs:65:19
+   |
+LL |         w(Wrapper(g()));
+   |                   ^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+  --> $DIR/simd-abi-checks.rs:65:9
+   |
+LL |         w(Wrapper(g()));
+   |         ^^^^^^^^^^^^^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: ABI error: this function definition uses a avx vector type, which is not enabled
+  --> $DIR/simd-abi-checks.rs:23:1
+   |
+LL | unsafe extern "C" fn g() -> __m256 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: ABI error: this function definition uses a avx vector type, which is not enabled
+  --> $DIR/simd-abi-checks.rs:18:1
+   |
+LL | unsafe extern "C" fn f(_: __m256) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: ABI error: this function definition uses a avx vector type, which is not enabled
+  --> $DIR/simd-abi-checks.rs:13:1
+   |
+LL | unsafe extern "C" fn w(_: Wrapper) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+
+error: aborting due to 9 previous errors
+
