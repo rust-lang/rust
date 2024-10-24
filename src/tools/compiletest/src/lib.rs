@@ -362,6 +362,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         force_rerun: matches.opt_present("force-rerun"),
 
         target_cfgs: OnceLock::new(),
+        builtin_cfg_names: OnceLock::new(),
 
         nocapture: matches.opt_present("nocapture"),
 
