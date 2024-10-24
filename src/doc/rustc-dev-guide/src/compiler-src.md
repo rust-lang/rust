@@ -154,14 +154,14 @@ itself is [`src/tools/rustdoc`], which does nothing except call [`rustdoc::main`
 There is also `JavaScript` and `CSS` for the docs in [`src/tools/rustdoc-js`]
 and [`src/tools/rustdoc-themes`].
 
-You can read more about [`rustdoc`] in [this chapter][`rustdoc`].
+You can read more about [`rustdoc`] in [this chapter][rustdoc-chapter].
 
 [`librustdoc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/index.html
 [`rustdoc::main`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/fn.main.html
 [`src/tools/rustdoc-js`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-js
 [`src/tools/rustdoc-themes`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-themes
 [`src/tools/rustdoc`]:  https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc
-[`rustdoc`]: ./rustdoc.md
+[rustdoc-chapter]: ./rustdoc.md
 
 ## Tests
 
