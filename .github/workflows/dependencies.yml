@@ -16,84 +16,66 @@ defaults:
 env:
   # So cargo doesn't complain about unstable features
   RUSTC_BOOTSTRAP: 1
-  PR_TITLE: Weekly `cargo update`
-  PR_MESSAGE: |
-    Automation to keep dependencies in `Cargo.lock` current.
-
-    The following is the output from `cargo update`:
-  COMMIT_MESSAGE: "cargo update \n\n"
 
 jobs:
-  not-waiting-on-bors:
-    if: github.repository_owner == 'rust-lang'
-    name: skip if S-waiting-on-bors
-    runs-on: ubuntu-latest
-    steps:
-      - env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Fetch state and labels of PR
-          # Or exit successfully if PR does not exist
-          JSON=$(gh pr view cargo_update --repo $GITHUB_REPOSITORY --json labels,state || exit 0)
-          STATE=$(echo "$JSON" | jq -r '.state')
-          WAITING_ON_BORS=$(echo "$JSON" | jq '.labels[] | any(.name == "S-waiting-on-bors"; .)')
-
-          # Exit with error if open and S-waiting-on-bors
-          if [[ "$STATE" == "OPEN" && "$WAITING_ON_BORS" == "true" ]]; then
-            exit 1
-          fi
-
   update:
     if: github.repository_owner == 'rust-lang'
     name: update dependencies
-    needs: not-waiting-on-bors
     runs-on: ubuntu-latest
+    outputs:
+      lockfile_names: ${{ steps.update_script.outputs.lockfile_names }}
+      skip_keys: ${{ steps.check_status.outputs.skip_keys }}
     steps:
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
       - name: install the bootstrap toolchain
         run: |
           # Extract the stage0 version
-          TOOLCHAIN=$(awk -F= '{a[$1]=$2} END {print(a["compiler_version"] "-" a["compiler_date"])}' src/stage0)
+          toolchain=$(awk -F= '{a[$1]=$2} END {print(a["compiler_version"] "-" a["compiler_date"])}' src/stage0)
           # Install and set as default
-          rustup toolchain install --no-self-update --profile minimal $TOOLCHAIN
-          rustup default $TOOLCHAIN
+          rustup toolchain install --no-self-update --profile minimal "$toolchain"
+          rustup default "$toolchain"
 
-      - name: cargo update compiler & tools
-        # Remove first line that always just says "Updating crates.io index"
+      - name: run update script
+        id: update_script
         run: |
-          echo -e "\ncompiler & tools dependencies:" >> cargo_update.log
-          cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
-      - name: cargo update library
-        run: |
-          echo -e "\nlibrary dependencies:" >> cargo_update.log
-          cargo update --manifest-path library/Cargo.toml 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
-      - name: cargo update rustbook
-        run: |
-          echo -e "\nrustbook dependencies:" >> cargo_update.log
-          cargo update --manifest-path src/tools/rustbook/Cargo.toml 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
-      - name: upload Cargo.lock artifact for use in PR
+          # Update all lockfiles
+          ./src/ci/scripts/update-all-lockfiles.py --run-update
+          # Make a list of which lockfiles were updated for future use
+          lockfile_names="$(./src/ci/scripts/update-all-lockfiles.py --print-names)"
+          echo "lockfile_names=$lockfile_names" >> "$GITHUB_OUTPUT"
+
+      - name: upload output file
         uses: actions/upload-artifact@v4
         with:
-          name: Cargo-lock
-          path: |
-            Cargo.lock
-            library/Cargo.lock
-            src/tools/rustbook/Cargo.lock
+          name: update-output
+          path: update_output.json
           retention-days: 1
-      - name: upload cargo-update log artifact for use in PR
-        uses: actions/upload-artifact@v4
-        with:
-          name: cargo-updates
-          path: cargo_update.log
-          retention-days: 1
+
+      - name: check for S-waiting-on-bors
+        id: check_status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Build a json array of items to skip
+          skip_keys="$(./src/ci/scripts/update-all-lockfiles.py --list-skip-branches)"
+          echo "skip_keys=$skip_keys" >> "$GITHUB_OUTPUT"
 
   pr:
-    if: github.repository_owner == 'rust-lang'
-    name: amend PR
-    needs: update
+    name: create or update PR
+    needs: [update]
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ${{ fromJson(needs.update.outputs.lockfile_names) }}
+    # Don't run the job for a branch if we don't need to make a PR (because there is
+    # already one in the queue).
+    if: >
+      github.repository_owner == 'rust-lang' && 
+      !contains(fromJSON(needs.update.outputs.skip_keys), matrix.name)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -102,35 +84,30 @@ jobs:
       - name: checkout the source code
         uses: actions/checkout@v4
 
-      - name: download Cargo.lock from update job
+      - name: download output file from update job
         uses: actions/download-artifact@v4
         with:
-          name: Cargo-lock
-      - name: download cargo-update log from update job
-        uses: actions/download-artifact@v4
-        with:
-          name: cargo-updates
+          name: update-output
 
       - name: craft PR body and commit message
         run: |
-          echo "${COMMIT_MESSAGE}" > commit.txt
-          cat cargo_update.log >> commit.txt
-
-          echo "${PR_MESSAGE}" > body.md
-          echo '```txt' >> body.md
-          cat cargo_update.log >> body.md
-          echo '```' >> body.md
+          ./src/ci/scripts/update-all-lockfiles.py --prepare-pr-files "${{ matrix.name }}"
+          # Set some environment variables for later use from the JSON file
+          echo "BRANCH=$(jq -r '.${{ matrix.name }}.branch' update_output.json)" >> "$GITHUB_OUTPUT"
+          echo "PR_TITLE=$(jq -r '.${{ matrix.name }}.pr_title' update_output.json)" >> "$GITHUB_OUTPUT"
 
       - name: commit
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git switch --force-create cargo_update
-          git add ./Cargo.lock ./library/Cargo.lock ./src/tools/rustbook/Cargo.lock
+          git switch --force-create "$BRANCH"
+          # Add only the relevant lockfile
+          ./src/ci/scripts/update-all-lockfiles.py --restore-lockfile "${{ matrix.name }}"
+          git add "$(jq -r '.${{ matrix.name }}.lockfile_path' update_output.json)"
           git commit --no-verify --file=commit.txt
 
       - name: push
-        run: git push --no-verify --force --set-upstream origin cargo_update
+        run: git push --no-verify --force --set-upstream origin "$BRANCH"
 
       - name: edit existing open pull request
         id: edit
@@ -140,16 +117,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Exit with error if PR is closed
-          STATE=$(gh pr view cargo_update --repo $GITHUB_REPOSITORY --json state --jq '.state')
-          if [[ "$STATE" != "OPEN" ]]; then
+          state=$(gh pr view "$BRANCH" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')
+          if [[ "$state" != "OPEN" ]]; then
             exit 1
           fi
 
-          gh pr edit cargo_update --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY
+          gh pr edit "$BRANCH" --title "$PR_TITLE" --body-file pr_body.md --repo "$GITHUB_REPOSITORY"
 
       - name: open new pull request
         # Only run if there wasn't an existing PR
         if: steps.edit.outcome != 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr create --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY
+        run: gh pr create --title "$PR_TITLE" --body-file pr_body.md --repo "$GITHUB_REPOSITORY"
