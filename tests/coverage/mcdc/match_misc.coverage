@@ -1,0 +1,554 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ min-llvm-version: 19
+   LL|       |//@ compile-flags: -Zcoverage-options=mcdc
+   LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
+   LL|       |
+   LL|       |// Loop over iterator contains pattern matching implicitly,
+   LL|       |// do not generate mappings for it.
+   LL|      1|fn loop_over_iterator() {
+   LL|      4|    for val in [1, 2, 3] {
+                      ^3
+   LL|      3|        say(&val.to_string());
+   LL|      3|    }
+   LL|      1|}
+   LL|       |
+   LL|       |// Macro makes all conditions share same span.
+   LL|       |// But now we don't generate mappings for it
+   LL|      3|fn match_with_macros(val: i32) {
+   LL|       |    macro_rules! variant_identifier {
+   LL|       |    (
+   LL|       |     $val:expr,  ($($index:expr),*)
+   LL|       |    )=> {
+   LL|       |        match $val {
+   LL|       |            $(
+   LL|       |                $index => say(&format!("{}",$index)),
+   LL|       |            )*
+   LL|       |            _ => say("not matched"),
+   LL|       |        }
+   LL|       |    }
+   LL|       |}
+   LL|      3|    variant_identifier!(val, (0, 1, 2));
+                  ^1
+   LL|      3|}
+   LL|       |
+   LL|       |// No match pairs when lowering matching tree.
+   LL|      2|fn empty_matching_decision(val: i32) {
+   LL|      2|    match val {
+   LL|      2|        x if x > 8 && x < 10 => say("in (8, 10)"),
+                      ^0            ^1        ^0
+  ------------------
+  |  Branch (LL:14): [True: 1, False: 1]
+  |  Branch (LL:23): [True: 0, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:29)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:14)
+  |     Condition C2 --> (LL:23)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  F  = F      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
+  ------------------
+   LL|      2|        x if x > 4 && x < 7 => say("in (4, 7)"),
+                      ^1                     ^1
+  ------------------
+  |  Branch (LL:14): [True: 2, False: 0]
+  |  Branch (LL:23): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:28)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:14)
+  |     Condition C2 --> (LL:23)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { T,  F  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        _ => say("other"),
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|       |// Matching decision skips the first candidate
+   LL|      2|fn skipped_matching_decision(val: i32) {
+   LL|      2|    match val {
+   LL|      2|        x if x >= 0 => say("non-negative"),
+                      ^0        ^0
+  ------------------
+  |  Branch (LL:14): [True: 0, False: 2]
+  ------------------
+   LL|      1|        -1 => say("-1"),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 1]
+  ------------------
+   LL|      1|        _ => say("other"),
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|       |// The first two candidates share same condition.
+   LL|      3|fn overlapping_decisions(val: (Option<i32>, Option<i32>)) {
+   LL|      1|    match val {
+   LL|      1|        (Some(_), Some(_)) => say("both some"),
+  ------------------
+  |  Branch (LL:10): [True: 2, False: 1]
+  |  Branch (LL:19): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:27)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:19)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  F  = F      }
+  |  3 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (2,3)
+  |  MC/DC Coverage for Decision: 100.00%
+  |
+  ------------------
+   LL|      1|        (Some(_), None) | (None, Some(_)) => say("one and only one some"),
+  ------------------
+  |  Branch (LL:10): [True: 2, False: 1]
+  |  Branch (LL:19): [True: 1, False: 1]
+  |  Branch (LL:28): [True: 1, False: 0]
+  |  Branch (LL:34): [True: 0, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:42)
+  |
+  |  Number of Conditions: 4
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:19)
+  |     Condition C3 --> (LL:28)
+  |     Condition C4 --> (LL:34)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4    Result
+  |  1 { F,  -,  T,  F  = F      }
+  |  2 { T,  T,  -,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  C3-Pair: not covered
+  |  C4-Pair: not covered
+  |  MC/DC Coverage for Decision: 25.00%
+  |
+  ------------------
+   LL|      1|        (None, None) => say("none"),
+   LL|       |    }
+   LL|      3|}
+   LL|       |
+   LL|      4|fn partial_matched_decision(val: u8) {
+   LL|      4|    // `b'-'` is the second test while `b'0'..=b'9'` is the last, though they
+   LL|      4|    // are in same candidate.
+   LL|      4|    match val {
+   LL|      2|        b'"' | b'r' => say("quote or r"),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 3]
+  |  Branch (LL:16): [True: 1, False: 2]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:20)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:16)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  F  = F      }
+  |  2 { F,  T  = T      }
+  |  3 { T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 100.00%
+  |
+  ------------------
+   LL|      2|        b'0'..=b'9' | b'-' => say("number or -"),
+                      ^1
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 0]
+  |  Branch (LL:23): [True: 1, False: 3]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:27)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:23)
+  |     Condition C2 --> (LL:9)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  T  = T      }
+  |  2 { T,  -  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
+  ------------------
+   LL|      0|        b't' | b'f' => say("t or f"),
+  ------------------
+  |  Branch (LL:9): [True: 0, False: 4]
+  |  Branch (LL:16): [True: 0, False: 4]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:20)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:16)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     None.
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
+  ------------------
+   LL|      0|        _ => {}
+   LL|       |    }
+   LL|      4|}
+   LL|       |
+   LL|       |// Patterns are tested with several basic blocks.
+   LL|      3|fn partial_matched_with_several_blocks(val: u8) {
+   LL|      3|    match val {
+   LL|      1|        b'a'..=b'f' => say("hex"),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 2]
+  ------------------
+   LL|      2|        b'A'..=b'F' => say("hex upper"),
+                                     ^1
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 1]
+  ------------------
+   LL|      1|        b'_' => say("underscore"),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 0]
+  ------------------
+   LL|      0|        _ => say("break"),
+   LL|       |    }
+   LL|      3|}
+   LL|       |
+   LL|      2|fn match_failure_test_kind(val: bool, opt: Option<i32>) {
+   LL|      2|    match (val, opt) {
+   LL|      1|        (false, None) => say("none"),
+  ------------------
+  |  Branch (LL:10): [True: 2, False: 0]
+  |  Branch (LL:17): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:22)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:17)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { T,  F  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        (false, Some(_)) => say("some"),
+  ------------------
+  |  Branch (LL:10): [True: 2, False: 0]
+  |  Branch (LL:17): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:25)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:17)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { T,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
+  ------------------
+   LL|      0|        _ => say("other"),
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|       |enum Pat {
+   LL|       |    A(i32),
+   LL|       |    B(i32),
+   LL|       |}
+   LL|       |
+   LL|       |// The last arm is shown like a condition but it never fails if tested.
+   LL|      2|fn uncoverable_condition(val: (Pat, Pat)) {
+   LL|      0|    match val {
+   LL|      1|        (Pat::A(a), Pat::A(b)) => say(&(a + b).to_string()),
+  ------------------
+  |  Branch (LL:10): [True: 1, False: 1]
+  |  Branch (LL:21): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:31)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:21)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        (Pat::B(a), _) | (_, Pat::B(a)) => say(&a.to_string()),
+                                                  ^0
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|      3|fn nested_matching(a: bool, val: Pat) {
+   LL|      3|    if a && match val {
+                                ^2
+  ------------------
+  |  Branch (LL:8): [True: 2, False: 1]
+  |  Branch (LL:13): [True: 1, False: 1]
+  ------------------
+   LL|      2|        Pat::A(x) => x == 2,
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 0]
+  ------------------
+   LL|      0|        _ => false,
+   LL|      1|    } {
+  ------------------
+  |---> MC/DC Decision Region (LL:8) to (LL:6)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:8)
+  |     Condition C2 --> (LL:13)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  F  = F      }
+  |  3 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (2,3)
+  |  MC/DC Coverage for Decision: 100.00%
+  |
+  ------------------
+   LL|      1|        say("yes");
+   LL|      2|    }
+   LL|      3|}
+   LL|       |
+   LL|       |// It's possible to match two arms once.
+   LL|      2|fn multi_matched_candidates(val: Pat, a: i32) {
+   LL|      1|    match val {
+   LL|      2|        Pat::A(f) if f == a => say("first"),
+                             ^1         ^1
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 0]
+  |  Branch (LL:22): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:28)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:22)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { T,  F  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        Pat::A(1) if a > 0 => say("second"),
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 0]
+  |  Branch (LL:16): [True: 1, False: 0]
+  |  Branch (LL:22): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:27)
+  |
+  |  Number of Conditions: 3
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:16)
+  |     Condition C3 --> (LL:22)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3    Result
+  |  1 { T,  T,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  C3-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
+  ------------------
+   LL|      0|        _ => say("other"),
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|      2|fn empty_subcandidate(val: Pat) {
+   LL|      2|    match val {
+   LL|      1|        Pat::A(1) | Pat::A(2) => say("first"),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 1]
+  |  Branch (LL:16): [True: 1, False: 0]
+  |  Branch (LL:28): [True: 0, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:30)
+  |
+  |  Number of Conditions: 3
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:16)
+  |     Condition C3 --> (LL:28)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3    Result
+  |  1 { F,  -,  -  = F      }
+  |  2 { T,  T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  C3-Pair: not covered
+  |  MC/DC Coverage for Decision: 33.33%
+  |
+  ------------------
+   LL|       |        // The first two condition in this pattern is redundant indeed.
+   LL|       |        // But this piece of code is legitimate and it could cause a subcandidate
+   LL|       |        // with no match pair.
+   LL|      1|        Pat::A(_) | Pat::B(_) | _ => say("other"),
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|      4|fn implicit_folded_condition(val: (bool, bool)) {
+   LL|      4|    match val {
+   LL|       |        // The first `true` is always matched if tested.
+   LL|      2|        (false, false) | (true, true) => say("same"),
+  ------------------
+  |  Branch (LL:10): [True: 2, False: 2]
+  |  Branch (LL:17): [True: 1, False: 1]
+  |  Branch (LL:27): [True: 2, False: 0]
+  |  Branch (LL:33): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:38)
+  |
+  |  Number of Conditions: 4
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:17)
+  |     Condition C3 --> (LL:27)
+  |     Condition C4 --> (LL:33)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4    Result
+  |  1 { F,  -,  T,  F  = F      }
+  |  2 { T,  F,  -,  -  = F      }
+  |  3 { F,  -,  T,  T  = T      }
+  |  4 { T,  T,  -,  -  = T      }
+  |
+  |  C1-Pair: covered: (2,3)
+  |  C2-Pair: covered: (2,4)
+  |  C3-Pair: not covered
+  |  C4-Pair: covered: (1,3)
+  |  MC/DC Coverage for Decision: 75.00%
+  |
+  ------------------
+   LL|      2|        _ => say("not same"),
+   LL|       |    }
+   LL|      4|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    loop_over_iterator();
+   LL|       |
+   LL|       |    match_with_macros(0);
+   LL|       |    match_with_macros(2);
+   LL|       |    match_with_macros(5);
+   LL|       |
+   LL|       |    empty_matching_decision(12);
+   LL|       |    empty_matching_decision(5);
+   LL|       |
+   LL|       |    skipped_matching_decision(-1);
+   LL|       |    skipped_matching_decision(-5);
+   LL|       |
+   LL|       |    overlapping_decisions((Some(1), Some(2)));
+   LL|       |    overlapping_decisions((Some(1), None));
+   LL|       |    overlapping_decisions((None, None));
+   LL|       |
+   LL|       |    partial_matched_decision(b'"');
+   LL|       |    partial_matched_decision(b'r');
+   LL|       |    partial_matched_decision(b'7');
+   LL|       |    partial_matched_decision(b'-');
+   LL|       |
+   LL|       |    partial_matched_with_several_blocks(b'd');
+   LL|       |    partial_matched_with_several_blocks(b'D');
+   LL|       |    partial_matched_with_several_blocks(b'_');
+   LL|       |
+   LL|       |    match_failure_test_kind(false, None);
+   LL|       |    match_failure_test_kind(false, Some(1));
+   LL|       |
+   LL|       |    uncoverable_condition((Pat::A(1), Pat::A(2)));
+   LL|       |    uncoverable_condition((Pat::B(1), Pat::B(2)));
+   LL|       |
+   LL|       |    nested_matching(true, Pat::A(1));
+   LL|       |    nested_matching(true, Pat::A(2));
+   LL|       |    nested_matching(false, Pat::A(2));
+   LL|       |
+   LL|       |    multi_matched_candidates(Pat::A(1), 1);
+   LL|       |    multi_matched_candidates(Pat::A(1), 8);
+   LL|       |
+   LL|       |    empty_subcandidate(Pat::A(1));
+   LL|       |    empty_subcandidate(Pat::B(1));
+   LL|       |
+   LL|       |    implicit_folded_condition((false, false));
+   LL|       |    implicit_folded_condition((false, true));
+   LL|       |    implicit_folded_condition((true, false));
+   LL|       |    implicit_folded_condition((true, true));
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(message: &str) {
+   LL|       |    core::hint::black_box(message);
+   LL|       |}
+
