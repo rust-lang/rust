@@ -312,7 +312,9 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
         EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
         VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), renderer)),
+        FunctionItem(f) | TestItem(f) => {
+            ItemEnum::Function(from_function(f, true, header.unwrap(), renderer))
+        }
         ForeignFunctionItem(f, _) => {
             ItemEnum::Function(from_function(f, false, header.unwrap(), renderer))
         }
@@ -864,7 +866,7 @@ impl FromClean<ItemType> for ItemKind {
             Struct => ItemKind::Struct,
             Union => ItemKind::Union,
             Enum => ItemKind::Enum,
-            Function | TyMethod | Method => ItemKind::Function,
+            Function | Test | TyMethod | Method => ItemKind::Function,
             TypeAlias => ItemKind::TypeAlias,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,

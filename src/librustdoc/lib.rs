@@ -596,6 +596,9 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("scrape-tests", |o| {
             o.optflag("", "scrape-tests", "Include test code when scraping examples")
         }),
+        unstable("document-tests", |o| {
+            o.optflagmulti("", "document-tests", "Generate documentation for tests")
+        }),
         unstable("with-examples", |o| {
             o.optmulti(
                 "",
