@@ -190,7 +190,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_ty(self, t);
     }
 
-    fn visit_ident(&mut self, ident: Ident) {
+    fn visit_ident(&mut self, ident: &Ident) {
         lint_callback!(self, check_ident, ident);
     }
 
