@@ -203,10 +203,12 @@ pub(crate) fn fetch_native_diagnostics(
                 NativeDiagnosticsFetchKind::Syntax => {
                     snapshot.analysis.syntax_diagnostics(config, file_id).ok()?
                 }
-                NativeDiagnosticsFetchKind::Semantic => snapshot
+
+                NativeDiagnosticsFetchKind::Semantic if config.enabled => snapshot
                     .analysis
                     .semantic_diagnostics(config, ide::AssistResolveStrategy::None, file_id)
                     .ok()?,
+                NativeDiagnosticsFetchKind::Semantic => return None,
             };
             let diagnostics = diagnostics
                 .into_iter()
