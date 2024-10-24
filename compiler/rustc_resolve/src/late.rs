@@ -475,7 +475,8 @@ impl<'a> PathSource<'a> {
                 },
                 _ => "value",
             },
-            PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
+            PathSource::Delegation => "function",
+            PathSource::ReturnTypeNotation => "associated function",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
         }
     }
@@ -573,10 +574,12 @@ impl<'a> PathSource<'a> {
             (PathSource::Expr(..), false) | (PathSource::Delegation, false) => E0425,
             (PathSource::Pat | PathSource::TupleStruct(..), true) => E0532,
             (PathSource::Pat | PathSource::TupleStruct(..), false) => E0531,
-            (PathSource::TraitItem(..), true) | (PathSource::ReturnTypeNotation, true) => E0575,
-            (PathSource::TraitItem(..), false) | (PathSource::ReturnTypeNotation, false) => E0576,
+            (PathSource::TraitItem(..), true) => E0575,
+            (PathSource::TraitItem(..), false) => E0576,
             (PathSource::PreciseCapturingArg(..), true) => E0799,
             (PathSource::PreciseCapturingArg(..), false) => E0800,
+            (PathSource::ReturnTypeNotation, true) => E0801,
+            (PathSource::ReturnTypeNotation, false) => E0802,
         }
     }
 }
