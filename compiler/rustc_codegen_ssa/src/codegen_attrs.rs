@@ -529,6 +529,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     InlineAttr::Always
                 } else if list_contains_name(items, sym::never) {
                     InlineAttr::Never
+                } else if list_contains_name(items, sym::usually) {
+                    InlineAttr::Usually
                 } else {
                     struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
                         .with_help("valid inline arguments are `always` and `never`")

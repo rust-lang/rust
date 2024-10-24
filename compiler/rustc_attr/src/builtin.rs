@@ -47,6 +47,7 @@ pub enum InlineAttr {
     Hint,
     Always,
     Never,
+    Usually,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]

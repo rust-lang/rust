@@ -106,7 +106,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         changed: false,
         caller_is_inline_forwarder: matches!(
             codegen_fn_attrs.inline,
-            InlineAttr::Hint | InlineAttr::Always
+            InlineAttr::Hint | InlineAttr::Always | InlineAttr::Usually
         ) && body_is_forwarder(body),
     };
     let blocks = START_BLOCK..body.basic_blocks.next_index();
