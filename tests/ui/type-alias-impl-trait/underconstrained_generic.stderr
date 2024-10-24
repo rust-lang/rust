@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: Trait` is not satisfied
   --> $DIR/underconstrained_generic.rs:22:5
    |
 LL |     ()
-   |     ^^ the trait `Trait` is not implemented for `T`, which is required by `(): ProofForConversion<T>`
+   |     ^^ the trait `Trait` is not implemented for `T`
    |
 note: required for `()` to implement `ProofForConversion<T>`
   --> $DIR/underconstrained_generic.rs:13:16

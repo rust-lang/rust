@@ -8,7 +8,7 @@ error[E0277]: the trait bound `bool: Step` is not satisfied
   --> $DIR/range-1.rs:9:14
    |
 LL |     for i in false..true {}
-   |              ^^^^^^^^^^^ the trait `Step` is not implemented for `bool`, which is required by `std::ops::Range<bool>: IntoIterator`
+   |              ^^^^^^^^^^^ the trait `Step` is not implemented for `bool`
    |
    = help: the following other types implement trait `Step`:
              Char

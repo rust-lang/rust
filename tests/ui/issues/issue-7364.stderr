@@ -4,7 +4,7 @@ error[E0277]: `RefCell<isize>` cannot be shared between threads safely
 LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
    |               ^^^^^^^^^^^^^^^^^^^ `RefCell<isize>` cannot be shared between threads safely
    |
-   = help: the trait `Sync` is not implemented for `RefCell<isize>`, which is required by `Box<RefCell<isize>>: Sync`
+   = help: the trait `Sync` is not implemented for `RefCell<isize>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
    = note: required for `Unique<RefCell<isize>>` to implement `Sync`
 note: required because it appears within the type `Box<RefCell<isize>>`

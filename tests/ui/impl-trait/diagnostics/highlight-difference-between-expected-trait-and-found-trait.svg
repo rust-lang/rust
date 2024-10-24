@@ -29,7 +29,7 @@
 </tspan>
     <tspan x="10px" y="82px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> fn foo() -&gt; impl Foo&lt;i32&gt; {</tspan>
 </tspan>
-    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>             </tspan><tspan class="fg-ansi256-009 bold">^^^^^^^^^^^^^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">the trait `Bar&lt;i32&gt;` is not implemented for `Struct`, which is required by `Struct: Foo&lt;i32&gt;`</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>             </tspan><tspan class="fg-ansi256-009 bold">^^^^^^^^^^^^^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">the trait `Bar&lt;i32&gt;` is not implemented for `Struct`</tspan>
 </tspan>
     <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>

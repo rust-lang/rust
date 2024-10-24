@@ -4,7 +4,7 @@ error[E0277]: `String` is not an iterator
 LL |     for _ in "".to_owned() {}
    |              ^^^^^^^^^^^^^ `String` is not an iterator; try calling `.chars()` or `.bytes()`
    |
-   = help: the trait `Iterator` is not implemented for `String`, which is required by `String: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `String`
    = note: required for `String` to implement `IntoIterator`
 
 error[E0277]: `&str` is not an iterator
@@ -13,7 +13,7 @@ error[E0277]: `&str` is not an iterator
 LL |     for _ in "" {}
    |              ^^ `&str` is not an iterator; try calling `.chars()` or `.bytes()`
    |
-   = help: the trait `Iterator` is not implemented for `&str`, which is required by `&str: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `&str`
    = note: required for `&str` to implement `IntoIterator`
 
 error: aborting due to 2 previous errors

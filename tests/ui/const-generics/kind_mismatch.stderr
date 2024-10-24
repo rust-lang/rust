@@ -18,7 +18,7 @@ error[E0277]: the trait bound `KeyHolder<0>: SubsetExcept<_>` is not satisfied
   --> $DIR/kind_mismatch.rs:22:45
    |
 LL |     let map: KeyHolder<0> = remove_key::<_, _>();
-   |                                             ^ the trait `ContainsKey<0>` is not implemented for `KeyHolder<0>`, which is required by `KeyHolder<0>: SubsetExcept<_>`
+   |                                             ^ the trait `ContainsKey<0>` is not implemented for `KeyHolder<0>`
    |
 note: required for `KeyHolder<0>` to implement `SubsetExcept<_>`
   --> $DIR/kind_mismatch.rs:15:28

@@ -30,7 +30,7 @@ error[E0277]: the type `str` cannot be indexed by `usize`
 LL |     s[1usize] = bot();
    |       ^^^^^^ string indices are ranges of `usize`
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `usize`, which is required by `str: Index<_>`
+   = help: the trait `SliceIndex<str>` is not implemented for `usize`
    = help: the trait `SliceIndex<[_]>` is implemented for `usize`
    = help: for that trait implementation, expected `[_]`, found `str`
    = note: required for `str` to implement `Index<usize>`
@@ -73,7 +73,7 @@ error[E0277]: the type `str` cannot be indexed by `char`
 LL |     s['c'];
    |       ^^^ string indices are ranges of `usize`
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `char`, which is required by `str: Index<_>`
+   = help: the trait `SliceIndex<str>` is not implemented for `char`
    = note: required for `str` to implement `Index<char>`
 
 error: aborting due to 6 previous errors
