@@ -568,7 +568,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx
                                 .infer_ctxt()
-                                .build()
+                                .build(cx.typing_mode())
                                 .predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;
