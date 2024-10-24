@@ -33,9 +33,9 @@
 </tspan>
     <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Bar&lt;()&gt;` </tspan><tspan class="fg-magenta bold">is</tspan><tspan> implemented for `</tspan><tspan class="fg-magenta bold">Struct</tspan><tspan>`</tspan>
+    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Bar&lt;()&gt;` </tspan><tspan class="fg-magenta bold">is</tspan><tspan> implemented for `Struct`</tspan>
 </tspan>
-    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">= </tspan><tspan class="bold">help</tspan><tspan>: for that trait implementation, expected `()`, found `i32`</tspan>
+    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">= </tspan><tspan class="bold">help</tspan><tspan>: for that trait implementation, expected `</tspan><tspan class="fg-magenta bold">()</tspan><tspan>`, found `</tspan><tspan class="fg-magenta bold">i32</tspan><tspan>`</tspan>
 </tspan>
     <tspan x="10px" y="172px"><tspan class="fg-ansi256-010 bold">note</tspan><tspan>: required for `Struct` to implement `Foo&lt;i32&gt;`</tspan>
 </tspan>

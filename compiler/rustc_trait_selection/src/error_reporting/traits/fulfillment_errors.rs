@@ -1835,6 +1835,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if impl_trait_ref.references_error() {
                         return false;
                     }
+                    let self_ty = impl_trait_ref.self_ty().to_string();
                     err.highlighted_help(vec![
                         StringPart::normal(format!(
                             "the trait `{}` ",
@@ -1842,16 +1843,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         )),
                         StringPart::highlighted("is"),
                         StringPart::normal(" implemented for `"),
-                        StringPart::highlighted(impl_trait_ref.self_ty().to_string()),
+                        if let [TypeError::Sorts(_)] = &terrs[..] {
+                            StringPart::normal(self_ty)
+                        } else {
+                            StringPart::highlighted(self_ty)
+                        },
                         StringPart::normal("`"),
                     ]);
 
                     if let [TypeError::Sorts(exp_found)] = &terrs[..] {
                         let exp_found = self.resolve_vars_if_possible(*exp_found);
-                        err.help(format!(
-                            "for that trait implementation, expected `{}`, found `{}`",
-                            exp_found.expected, exp_found.found
-                        ));
+                        err.highlighted_help(vec![
+                            StringPart::normal("for that trait implementation, "),
+                            StringPart::normal("expected `"),
+                            StringPart::highlighted(exp_found.expected.to_string()),
+                            StringPart::normal("`, found `"),
+                            StringPart::highlighted(exp_found.found.to_string()),
+                            StringPart::normal("`"),
+                        ]);
                     }
 
                     true
