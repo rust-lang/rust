@@ -31,10 +31,7 @@ use core::any::Any;
 use core::panic::PanicPayload;
 
 cfg_if::cfg_if! {
-    if #[cfg(target_os = "emscripten")] {
-        #[path = "emcc.rs"]
-        mod imp;
-    } else if #[cfg(target_os = "hermit")] {
+    if #[cfg(target_os = "hermit")] {
         #[path = "hermit.rs"]
         mod imp;
     } else if #[cfg(target_os = "l4re")] {
