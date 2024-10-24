@@ -1683,6 +1683,13 @@ pub(crate) struct RegisterTypeUnstable<'a> {
     pub ty: Ty<'a>,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_asm_const_ptr_unstable)]
+pub(crate) struct AsmConstPtrUnstable {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(hir_analysis_supertrait_item_shadowing)]
 pub(crate) struct SupertraitItemShadowing {
