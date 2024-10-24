@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -277,7 +277,7 @@ pub fn suggest_constraining_type_params<'a>(
     param_names_and_constraints: impl Iterator<Item = (&'a str, &'a str, Option<DefId>)>,
     span_to_replace: Option<Span>,
 ) -> bool {
-    let mut grouped = FxHashMap::default();
+    let mut grouped = FxIndexMap::default();
     param_names_and_constraints.for_each(|(param_name, constraint, def_id)| {
         grouped.entry(param_name).or_insert(Vec::new()).push((constraint, def_id))
     });

@@ -1,12 +1,13 @@
 use std::borrow::Borrow;
-use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
 use std::{iter, mem};
 
 #[cfg(parallel_compiler)]
 use either::Either;
+use indexmap::map::RawEntryApiV1;
+use indexmap::map::raw_entry_v1::RawEntryMut;
 
-use crate::fx::{FxHashMap, FxHasher};
+use crate::fx::{FxHasher, FxIndexMap};
 #[cfg(parallel_compiler)]
 use crate::sync::{CacheAligned, is_dyn_thread_safe};
 use crate::sync::{Lock, LockGuard, Mode};
@@ -159,15 +160,15 @@ pub fn shards() -> usize {
     1
 }
 
-pub type ShardedHashMap<K, V> = Sharded<FxHashMap<K, V>>;
+pub type ShardedIndexMap<K, V> = Sharded<FxIndexMap<K, V>>;
 
-impl<K: Eq, V> ShardedHashMap<K, V> {
+impl<K: Eq, V> ShardedIndexMap<K, V> {
     pub fn len(&self) -> usize {
         self.lock_shards().map(|shard| shard.len()).sum()
     }
 }
 
-impl<K: Eq + Hash + Copy> ShardedHashMap<K, ()> {
+impl<K: Eq + Hash + Copy> ShardedIndexMap<K, ()> {
     #[inline]
     pub fn intern_ref<Q: ?Sized>(&self, value: &Q, make: impl FnOnce() -> K) -> K
     where
@@ -176,7 +177,7 @@ impl<K: Eq + Hash + Copy> ShardedHashMap<K, ()> {
     {
         let hash = make_hash(value);
         let mut shard = self.lock_shard_by_hash(hash);
-        let entry = shard.raw_entry_mut().from_key_hashed_nocheck(hash, value);
+        let entry = shard.raw_entry_mut_v1().from_key_hashed_nocheck(hash, value);
 
         match entry {
             RawEntryMut::Occupied(e) => *e.key(),
@@ -196,7 +197,7 @@ impl<K: Eq + Hash + Copy> ShardedHashMap<K, ()> {
     {
         let hash = make_hash(&value);
         let mut shard = self.lock_shard_by_hash(hash);
-        let entry = shard.raw_entry_mut().from_key_hashed_nocheck(hash, &value);
+        let entry = shard.raw_entry_mut_v1().from_key_hashed_nocheck(hash, &value);
 
         match entry {
             RawEntryMut::Occupied(e) => *e.key(),
@@ -214,12 +215,12 @@ pub trait IntoPointer {
     fn into_pointer(&self) -> *const ();
 }
 
-impl<K: Eq + Hash + Copy + IntoPointer> ShardedHashMap<K, ()> {
+impl<K: Eq + Hash + Copy + IntoPointer> ShardedIndexMap<K, ()> {
     pub fn contains_pointer_to<T: Hash + IntoPointer>(&self, value: &T) -> bool {
         let hash = make_hash(&value);
         let shard = self.lock_shard_by_hash(hash);
         let value = value.into_pointer();
-        shard.raw_entry().from_hash(hash, |entry| entry.into_pointer() == value).is_some()
+        shard.raw_entry_v1().from_hash(hash, |entry| entry.into_pointer() == value).is_some()
     }
 }
 

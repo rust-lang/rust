@@ -5,7 +5,7 @@ use std::ops::{Deref, DerefMut};
 
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -3352,8 +3352,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
 
     // Once constructed, unique namespace+symbol pairs will have a `Some(_)` entry, while
     // non-unique pairs will have a `None` entry.
-    let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
-        &mut FxHashMap::default();
+    let unique_symbols_rev: &mut FxIndexMap<(Namespace, Symbol), Option<DefId>> =
+        &mut FxIndexMap::default();
 
     for symbol_set in tcx.resolutions(()).glob_map.values() {
         for symbol in symbol_set {
@@ -3363,27 +3363,23 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
         }
     }
 
-    for_each_def(tcx, |ident, ns, def_id| {
-        use std::collections::hash_map::Entry::{Occupied, Vacant};
-
-        match unique_symbols_rev.entry((ns, ident.name)) {
-            Occupied(mut v) => match v.get() {
-                None => {}
-                Some(existing) => {
-                    if *existing != def_id {
-                        v.insert(None);
-                    }
+    for_each_def(tcx, |ident, ns, def_id| match unique_symbols_rev.entry((ns, ident.name)) {
+        IndexEntry::Occupied(mut v) => match v.get() {
+            None => {}
+            Some(existing) => {
+                if *existing != def_id {
+                    v.insert(None);
                 }
-            },
-            Vacant(v) => {
-                v.insert(Some(def_id));
             }
+        },
+        IndexEntry::Vacant(v) => {
+            v.insert(Some(def_id));
         }
     });
 
     // Put the symbol from all the unique namespace+symbol pairs into `map`.
     let mut map: DefIdMap<Symbol> = Default::default();
-    for ((_, symbol), opt_def_id) in unique_symbols_rev.drain() {
+    for ((_, symbol), opt_def_id) in unique_symbols_rev.drain(..) {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
 
         if let Some(def_id) = opt_def_id {

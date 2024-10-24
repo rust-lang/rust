@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::mem;
 
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
@@ -54,7 +54,7 @@ pub struct OnDiskCache<'sess> {
 
     // Collects all `QuerySideEffects` created during the current compilation
     // session.
-    current_side_effects: Lock<FxHashMap<DepNodeIndex, QuerySideEffects>>,
+    current_side_effects: Lock<FxIndexMap<DepNodeIndex, QuerySideEffects>>,
 
     source_map: &'sess SourceMap,
     file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
