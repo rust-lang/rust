@@ -2300,10 +2300,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &mut diag,
                 &cause,
                 None,
-                Some(ValuePairs::PolySigs(ExpectedFound {
+                Some(param_env.and(ValuePairs::PolySigs(ExpectedFound {
                     expected: ty::Binder::dummy(expected_sig),
                     found: ty::Binder::dummy(sig),
-                })),
+                }))),
                 terr,
                 false,
             );

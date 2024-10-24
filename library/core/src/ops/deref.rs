@@ -297,15 +297,21 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.
-#[lang = "receiver"]
-#[unstable(feature = "receiver_trait", issue = "none")]
+///
+/// This trait will shortly be removed and replaced with a more generic
+/// facility based around the current "arbitrary self types" unstable feature.
+/// That new facility will use a replacement trait called `Receiver` which is
+/// why this is now named `LegacyReceiver`.
+#[cfg_attr(bootstrap, lang = "receiver")]
+#[cfg_attr(not(bootstrap), lang = "legacy_receiver")]
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
 #[doc(hidden)]
-pub trait Receiver {
+pub trait LegacyReceiver {
     // Empty.
 }
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized> Receiver for &T {}
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<T: ?Sized> LegacyReceiver for &T {}
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized> Receiver for &mut T {}
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<T: ?Sized> LegacyReceiver for &mut T {}

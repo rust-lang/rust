@@ -282,6 +282,7 @@ fn compare_method_predicate_entailment<'tcx>(
         let emitted = report_trait_method_mismatch(
             infcx,
             cause,
+            param_env,
             terr,
             (trait_m, trait_sig),
             (impl_m, impl_sig),
@@ -575,10 +576,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 hir.get_if_local(impl_m.def_id)
                     .and_then(|node| node.fn_decl())
                     .map(|decl| (decl.output.span(), Cow::from("return type in trait"), false)),
-                Some(infer::ValuePairs::Terms(ExpectedFound {
+                Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
                     expected: trait_return_ty.into(),
                     found: impl_return_ty.into(),
-                })),
+                }))),
                 terr,
                 false,
             );
@@ -602,6 +603,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
             let emitted = report_trait_method_mismatch(
                 infcx,
                 cause,
+                param_env,
                 terr,
                 (trait_m, trait_sig),
                 (impl_m, impl_sig),
@@ -915,6 +917,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
 fn report_trait_method_mismatch<'tcx>(
     infcx: &InferCtxt<'tcx>,
     mut cause: ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     terr: TypeError<'tcx>,
     (trait_m, trait_sig): (ty::AssocItem, ty::FnSig<'tcx>),
     (impl_m, impl_sig): (ty::AssocItem, ty::FnSig<'tcx>),
@@ -1000,10 +1003,10 @@ fn report_trait_method_mismatch<'tcx>(
         &mut diag,
         &cause,
         trait_err_span.map(|sp| (sp, Cow::from("type in trait"), false)),
-        Some(infer::ValuePairs::PolySigs(ExpectedFound {
+        Some(param_env.and(infer::ValuePairs::PolySigs(ExpectedFound {
             expected: ty::Binder::dummy(trait_sig),
             found: ty::Binder::dummy(impl_sig),
-        })),
+        }))),
         terr,
         false,
     );
@@ -1797,10 +1800,10 @@ fn compare_const_predicate_entailment<'tcx>(
             &mut diag,
             &cause,
             trait_c_span.map(|span| (span, Cow::from("type in trait"), false)),
-            Some(infer::ValuePairs::Terms(ExpectedFound {
+            Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
                 expected: trait_ty.into(),
                 found: impl_ty.into(),
-            })),
+            }))),
             terr,
             false,
         );

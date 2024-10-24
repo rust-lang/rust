@@ -376,6 +376,7 @@ pub struct Config {
     pub only_modified: bool,
 
     pub target_cfgs: OnceLock<TargetCfgs>,
+    pub builtin_cfg_names: OnceLock<HashSet<String>>,
 
     pub nocapture: bool,
 
@@ -441,6 +442,11 @@ impl Config {
 
     pub fn can_unwind(&self) -> bool {
         self.target_cfg().panic == PanicStrategy::Unwind
+    }
+
+    /// Get the list of builtin, 'well known' cfg names
+    pub fn builtin_cfg_names(&self) -> &HashSet<String> {
+        self.builtin_cfg_names.get_or_init(|| builtin_cfg_names(self))
     }
 
     pub fn has_threads(&self) -> bool {
@@ -652,6 +658,18 @@ pub enum Endian {
     #[default]
     Little,
     Big,
+}
+
+fn builtin_cfg_names(config: &Config) -> HashSet<String> {
+    rustc_output(
+        config,
+        &["--print=check-cfg", "-Zunstable-options", "--check-cfg=cfg()"],
+        Default::default(),
+    )
+    .lines()
+    .map(|l| if let Some((name, _)) = l.split_once('=') { name.to_string() } else { l.to_string() })
+    .chain(std::iter::once(String::from("test")))
+    .collect()
 }
 
 fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {

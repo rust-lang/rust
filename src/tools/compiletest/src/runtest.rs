@@ -478,6 +478,9 @@ impl<'test> TestCx<'test> {
                     "error: redundant cfg argument `{normalized_revision}` is already created by the revision"
                 );
             }
+            if self.config.builtin_cfg_names().contains(&normalized_revision) {
+                panic!("error: revision `{normalized_revision}` collides with a builtin cfg");
+            }
             cmd.args(cfg_arg);
         }
 

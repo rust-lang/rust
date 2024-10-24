@@ -862,7 +862,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(e) => {
                 // FIXME(effects): better diagnostic
-                self.err_ctxt().report_mismatched_consts(&cause, effect, param, e).emit();
+                self.err_ctxt()
+                    .report_mismatched_consts(&cause, self.param_env, effect, param, e)
+                    .emit();
             }
         }
     }
