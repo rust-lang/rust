@@ -59,7 +59,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
 
     use windows::Win32::System::Diagnostics::Debug::{
-        SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
+        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
     };
 
     static LOCK: Mutex<()> = Mutex::new(());
@@ -67,13 +67,21 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     // Error mode is a global variable, so lock it so only one thread will change it
     let _lock = LOCK.lock().unwrap();
 
-    // Tell Windows to not show any UI on errors (such as terminating abnormally).
-    // This is important for running tests, since some of them use abnormal
-    // termination by design. This mode is inherited by all child processes.
+    // Tell Windows to not show any UI on errors (such as terminating abnormally). This is important
+    // for running tests, since some of them use abnormal termination by design. This mode is
+    // inherited by all child processes.
+    //
+    // Note that `run-make` tests require `SEM_FAILCRITICALERRORS` in addition to suppress Windows
+    // Error Reporting (WER) error dialogues that come from "critical failures" such as missing
+    // DLLs.
+    //
+    // See <https://github.com/rust-lang/rust/issues/132092> and
+    // <https://learn.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-seterrormode?redirectedfrom=MSDN>.
     unsafe {
-        let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
+        // read inherited flags
+        let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
         let old_mode = THREAD_ERROR_MODE(old_mode);
-        SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX);
+        SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
         let r = f();
         SetErrorMode(old_mode);
         r
