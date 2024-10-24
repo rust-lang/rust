@@ -167,9 +167,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
             }
         }
         if let Some(tail_expr) = blk.expr {
-            if visitor.tcx.features().shorter_tail_lifetimes()
-                && blk.span.edition().at_least_rust_2024()
-            {
+            if blk.span.edition().at_least_rust_2024() {
                 visitor.terminating_scopes.insert(tail_expr.hir_id.local_id);
             }
             visitor.visit_expr(tail_expr);
