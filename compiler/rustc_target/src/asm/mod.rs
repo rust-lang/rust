@@ -893,6 +893,7 @@ pub enum InlineAsmClobberAbi {
     Arm64EC,
     RiscV,
     LoongArch,
+    PowerPC,
     S390x,
     Msp430,
 }
@@ -942,6 +943,10 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::LoongArch64 => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::LoongArch),
+                _ => Err(&["C", "system"]),
+            },
+            InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::PowerPC),
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::S390x => match name {
@@ -1119,6 +1124,31 @@ impl InlineAsmClobberAbi {
                     // ft0-ft15
                     f8, f9, f10, f11, f12, f13, f14, f15,
                     f16, f17, f18, f19, f20, f21, f22, f23,
+                }
+            },
+            InlineAsmClobberAbi::PowerPC => clobbered_regs! {
+                PowerPC PowerPCInlineAsmReg {
+                    // r0, r3-r12
+                    r0,
+                    r3, r4, r5, r6, r7,
+                    r8, r9, r10, r11, r12,
+
+                    // f0-f13
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    f8, f9, f10, f11, f12, f13,
+
+                    // v0-v19
+                    // FIXME: PPC32 SysV ABI does not mention vector registers processing.
+                    // https://refspecs.linuxfoundation.org/elf/elfspec_ppc.pdf
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+                    v8, v9, v10, v11, v12, v13, v14,
+                    v15, v16, v17, v18, v19,
+
+                    // cr0-cr1, cr5-cr7, xer
+                    cr0, cr1,
+                    cr5, cr6, cr7,
+                    xer,
+                    // lr and ctr are reserved
                 }
             },
             InlineAsmClobberAbi::S390x => clobbered_regs! {

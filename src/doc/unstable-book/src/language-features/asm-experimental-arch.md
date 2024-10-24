@@ -31,9 +31,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | NVPTX        | `reg32`        | None\*                             | `r`                  |
 | NVPTX        | `reg64`        | None\*                             | `l`                  |
 | Hexagon      | `reg`          | `r[0-28]`                          | `r`                  |
-| PowerPC      | `reg`          | `r[0-31]`                          | `r`                  |
-| PowerPC      | `reg_nonzero`  | `r[1-31]`                          | `b`                  |
+| PowerPC      | `reg`          | `r0`, `r[3-12]`, `r[14-28]`        | `r`                  |
+| PowerPC      | `reg_nonzero`  | `r[3-12]`, `r[14-28]`              | `b`                  |
 | PowerPC      | `freg`         | `f[0-31]`                          | `f`                  |
+| PowerPC      | `vreg`         | `v[0-31]`                          | `v`                  |
 | PowerPC      | `cr`           | `cr[0-7]`, `cr`                    | Only clobbers        |
 | PowerPC      | `xer`          | `xer`                              | Only clobbers        |
 | wasm32       | `local`        | None\*                             | `r`                  |
@@ -76,9 +77,11 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | NVPTX        | `reg32`                         | None           | `i8`, `i16`, `i32`, `f32`               |
 | NVPTX        | `reg64`                         | None           | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
 | Hexagon      | `reg`                           | None           | `i8`, `i16`, `i32`, `f32`               |
-| PowerPC      | `reg`                           | None           | `i8`, `i16`, `i32`                      |
-| PowerPC      | `reg_nonzero`                   | None           | `i8`, `i16`, `i32`                      |
+| PowerPC      | `reg`                           | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
+| PowerPC      | `reg_nonzero`                   | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
 | PowerPC      | `freg`                          | None           | `f32`, `f64`                            |
+| PowerPC      | `vreg`                          | `altivec`      | `vector_bool_char`, `vector_bool_short`, `vector_bool_int`, `vector_signed_char`, `vector_signed_short`, `vector_signed_int`, `vector_unsigned_char`, `vector_unsigned_short`, `vector_unsigned_int`, `vector_float` |
+| PowerPC      | `vreg`                          | `vsx`      | `vector_bool_long`, `vector_signed_long`, `vector_unsigned_long`, `vector_double` |
 | PowerPC      | `cr`                            | N/A            | Only clobbers                           |
 | PowerPC      | `xer`                           | N/A            | Only clobbers                           |
 | wasm32       | `local`                         | None           | `i8` `i16` `i32` `i64` `f32` `f64`      |
@@ -105,6 +108,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | Hexagon      | `r29`         | `sp`      |
 | Hexagon      | `r30`         | `fr`      |
 | Hexagon      | `r31`         | `lr`      |
+| PowerPC      | `r1`          | `sp`      |
+| PowerPC      | `r31`         | `fp`      |
+| PowerPC      | `r[0-31]`     | `[0-31]`  |
+| PowerPC      | `f[0-31]`     | `fr[0-31]`|
 | BPF          | `r[0-10]`     | `w[0-10]` |
 | AVR          | `XH`          | `r27`     |
 | AVR          | `XL`          | `r26`     |
@@ -145,14 +152,18 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | Architecture | Unsupported register                    | Reason                                                                                                                                                                              |
 | ------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | All          | `sp`, `r15` (s390x)                     | The stack pointer must be restored to its original value at the end of an asm code block.                                                                                           |
-| All          | `fr` (Hexagon), `$fp` (MIPS), `Y` (AVR), `r4` (MSP430), `a6` (M68k), `r11` (s390x), `x29` (Arm64EC) | The frame pointer cannot be used as an input or output.                                                                                                                             |
-| All          | `r19` (Hexagon), `x19` (Arm64EC)        | This is used internally by LLVM as a "base pointer" for functions with complex stack frames.                                                                                        |
+| All          | `fr` (Hexagon), `fp` (PowerPC), `$fp` (MIPS), `Y` (AVR), `r4` (MSP430), `a6` (M68k), `r11` (s390x), `x29` (Arm64EC) | The frame pointer cannot be used as an input or output.                                                 |
+| All          | `r19` (Hexagon), `r29` (PowerPC), `r30` (PowerPC), `x19` (Arm64EC) | These are used internally by LLVM as "base pointer" for functions with complex stack frames.                                                             |
 | MIPS         | `$0` or `$zero`                         | This is a constant zero register which can't be modified.                                                                                                                           |
 | MIPS         | `$1` or `$at`                           | Reserved for assembler.                                                                                                                                                             |
 | MIPS         | `$26`/`$k0`, `$27`/`$k1`                | OS-reserved registers.                                                                                                                                                              |
 | MIPS         | `$28`/`$gp`                             | Global pointer cannot be used as inputs or outputs.                                                                                                                                 |
 | MIPS         | `$ra`                                   | Return address cannot be used as inputs or outputs.                                                                                                                                 |
 | Hexagon      | `lr`                                    | This is the link register which cannot be used as an input or output.                                                                                                               |
+| PowerPC      | `r2`, `r13`                             | These are system reserved registers.                                                                                                                                                |
+| PowerPC      | `lr`                                    | The link register cannot be used as an input or output.                                                                                                                             |
+| PowerPC      | `ctr`                                   | The counter register cannot be used as an input or output.                                                                                                                          |
+| PowerPC      | `vrsave`                                | The vrsave register cannot be used as an input or output.                                                                                                                           |
 | AVR          | `r0`, `r1`, `r1r0`                      | Due to an issue in LLVM, the `r0` and `r1` registers cannot be used as inputs or outputs.  If modified, they must be restored to their original values before the end of the block. |
 |MSP430        | `r0`, `r2`, `r3`                        | These are the program counter, status register, and constant generator respectively. Neither the status register nor constant generator can be written to.                          |
 | M68k         | `a4`, `a5`                              | Used internally by LLVM for the base pointer and global base pointer. |
@@ -182,6 +193,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg`          | None     | `0`            | None          |
 | PowerPC      | `reg_nonzero`  | None     | `3`            | None          |
 | PowerPC      | `freg`         | None     | `0`            | None          |
+| PowerPC      | `vreg`         | None     | `0`            | None          |
 | s390x        | `reg`          | None     | `%r0`          | None          |
 | s390x        | `reg_addr`     | None     | `%r1`          | None          |
 | s390x        | `freg`         | None     | `%f0`          | None          |
