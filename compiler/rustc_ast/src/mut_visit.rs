@@ -136,7 +136,7 @@ pub trait MutVisitor: Sized {
         walk_closure_binder(self, b);
     }
 
-    fn visit_block(&mut self, b: &mut P<Block>) {
+    fn visit_block(&mut self, b: &mut Block) {
         walk_block(self, b);
     }
 
@@ -1071,8 +1071,8 @@ fn walk_mt<T: MutVisitor>(vis: &mut T, MutTy { ty, mutbl: _ }: &mut MutTy) {
     vis.visit_ty(ty);
 }
 
-pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
-    let Block { id, stmts, rules: _, span, tokens, could_be_bare_literal: _ } = block.deref_mut();
+pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut Block) {
+    let Block { id, stmts, rules: _, span, tokens, could_be_bare_literal: _ } = block;
     vis.visit_id(id);
     stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
     visit_lazy_tts(vis, tokens);
