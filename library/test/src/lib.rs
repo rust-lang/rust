@@ -141,9 +141,9 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
                 let output_capture = io::set_output_capture(None);
                 io::set_output_capture(output_capture.clone());
                 // Set the output capture of the new thread.
-                Ok(|| {
+                || {
                     io::set_output_capture(output_capture);
-                })
+                }
             });
         }
         let res = console::run_tests_console(&opts, tests);
