@@ -1291,3 +1291,29 @@ pub fn parse_confusables(attr: &Attribute) -> Option<Vec<Symbol>> {
 
     Some(candidates)
 }
+
+pub fn collect_doc_alias_symbol_from_attrs<'tcx>(
+    attrs: impl Iterator<Item = &'tcx ast::Attribute>,
+) -> Vec<Symbol> {
+    let doc_attrs = attrs.filter(|attr| attr.name_or_empty() == sym::doc);
+    let mut symbols = vec![];
+    for attr in doc_attrs {
+        let Some(values) = attr.meta_item_list() else {
+            continue;
+        };
+        let alias_values = values.iter().filter(|v| v.name_or_empty() == sym::alias);
+        for v in alias_values {
+            if let Some(nested) = v.meta_item_list() {
+                // #[doc(alias("foo", "bar"))]
+                let iter = nested.iter().filter_map(|item| item.lit()).map(|item| item.symbol);
+                symbols.extend(iter);
+            } else if let Some(meta) = v.meta_item()
+                && let Some(lit) = meta.name_value_literal()
+            {
+                // #[doc(alias = "foo")]
+                symbols.push(lit.symbol);
+            }
+        }
+    }
+    symbols
+}

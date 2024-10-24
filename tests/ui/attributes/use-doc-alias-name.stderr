@@ -1,0 +1,86 @@
+error[E0425]: cannot find value `LocalDocAliasS` in this scope
+  --> $DIR/use-doc-alias-name.rs:20:5
+   |
+LL |     LocalDocAliasS;
+   |     ^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `DocAliasS1` in this scope
+  --> $DIR/use-doc-alias-name.rs:22:5
+   |
+LL |     DocAliasS1;
+   |     ^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/use-doc-alias-name-extern.rs:2:1
+   |
+LL | pub struct S1;
+   | ------------- `S1` has a name defined in the doc alias attribute as `DocAliasS1`
+
+error[E0425]: cannot find value `DocAliasS2` in this scope
+  --> $DIR/use-doc-alias-name.rs:24:5
+   |
+LL |     DocAliasS2;
+   |     ^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/use-doc-alias-name-extern.rs:6:1
+   |
+LL | pub struct S2;
+   | ------------- `S2` has a name defined in the doc alias attribute as `DocAliasS2`
+
+error[E0425]: cannot find value `DocAliasS3` in this scope
+  --> $DIR/use-doc-alias-name.rs:26:5
+   |
+LL |     DocAliasS3;
+   |     ^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/use-doc-alias-name-extern.rs:6:1
+   |
+LL | pub struct S2;
+   | ------------- `S2` has a name defined in the doc alias attribute as `DocAliasS3`
+
+error[E0425]: cannot find value `DocAliasS4` in this scope
+  --> $DIR/use-doc-alias-name.rs:28:5
+   |
+LL |     DocAliasS4;
+   |     ^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/use-doc-alias-name-extern.rs:6:1
+   |
+LL | pub struct S2;
+   | ------------- `S2` has a name defined in the doc alias attribute as `DocAliasS4`
+
+error[E0425]: cannot find value `DocAliasS5` in module `m`
+  --> $DIR/use-doc-alias-name.rs:34:8
+   |
+LL |     m::DocAliasS5;
+   |        ^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/use-doc-alias-name-extern.rs:13:5
+   |
+LL |     pub struct S5;
+   |     ------------- `S5` has a name defined in the doc alias attribute as `DocAliasS5`
+
+error[E0425]: cannot find function `doc_alias_f1` in this scope
+  --> $DIR/use-doc-alias-name.rs:30:5
+   |
+LL |     doc_alias_f1();
+   |     ^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/use-doc-alias-name-extern.rs:9:1
+   |
+LL | pub fn f() {}
+   | ---------- `f` has a name defined in the doc alias attribute as `doc_alias_f1`
+
+error[E0425]: cannot find function `doc_alias_f2` in this scope
+  --> $DIR/use-doc-alias-name.rs:32:5
+   |
+LL |     doc_alias_f2();
+   |     ^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/use-doc-alias-name-extern.rs:9:1
+   |
+LL | pub fn f() {}
+   | ---------- `f` has a name defined in the doc alias attribute as `doc_alias_f2`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
