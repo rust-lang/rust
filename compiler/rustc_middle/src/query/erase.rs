@@ -253,6 +253,7 @@ trivial! {
     Option<rustc_span::def_id::DefId>,
     Option<rustc_span::def_id::LocalDefId>,
     Option<rustc_span::Span>,
+    Option<rustc_span::Symbol>,
     Option<rustc_target::abi::FieldIdx>,
     Option<rustc_target::spec::PanicStrategy>,
     Option<usize>,

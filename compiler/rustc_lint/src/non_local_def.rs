@@ -6,7 +6,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::kw;
-use rustc_span::{ExpnKind, MacroKind, Span, sym};
+use rustc_span::{ExpnKind, MacroKind, Span, Symbol, sym};
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
@@ -105,8 +105,10 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
         // determining if we are in a doctest context can't currently be determined
         // by the code itself (there are no specific attributes), but fortunately rustdoc
         // sets a perma-unstable env var for libtest so we just reuse that for now
-        let is_at_toplevel_doctest =
-            || self.body_depth == 2 && std::env::var("UNSTABLE_RUSTDOC_TEST_PATH").is_ok();
+        let is_at_toplevel_doctest = || {
+            self.body_depth == 2
+                && cx.tcx.env_var(Symbol::intern("UNSTABLE_RUSTDOC_TEST_PATH")).is_some()
+        };
 
         match item.kind {
             ItemKind::Impl(impl_) => {
