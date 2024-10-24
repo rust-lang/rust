@@ -1725,6 +1725,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
+        // Minicore auxiliary lib for `no_core` tests that need `core` stubs in cross-compilation
+        // scenarios.
+        cmd.arg("--minicore-path")
+            .arg(builder.src.join("tests").join("auxiliary").join("minicore.rs"));
+
         let is_rustdoc = suite.ends_with("rustdoc-ui") || suite.ends_with("rustdoc-js");
 
         if mode == "run-make" {
