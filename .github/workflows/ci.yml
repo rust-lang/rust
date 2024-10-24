@@ -60,7 +60,7 @@ jobs:
         id: jobs
   job:
     name: ${{ matrix.name }}
-    needs: [ calculate_matrix ]
+    needs: [calculate_matrix]
     runs-on: "${{ matrix.os }}"
     defaults:
       run:
@@ -116,6 +116,25 @@ jobs:
           # minutes (and potentially removes important packages).
           large-packages: false
 
+      - if: contains(matrix.os, 'windows')
+        uses: samypr100/setup-dev-drive@1d65529cfd809844a9e91e400a560294b6820a68
+        with:
+          # use as much space as is sensible, upper github limits are 14gb and 300gb
+          drive-size: ${{ matrix.os == 'windows-2022' && '12gb' || '100gb' }}
+          # pre-allocate the space to avoid out of disk errors and improve long-running performance
+          drive-type: Fixed
+          # copy the git clone into the dev drive
+          workspace-copy: true
+          drive-format: ReFS
+
+      - if: contains(matrix.os, 'windows')
+        name: Delete non-dev drive checkout, to make sure we aren't using it still
+        run: rm -rf ${{ github.workspace }}
+
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Make sure DEV_DRIVE_WORKSPACE is populated with the workspace
+        run: echo "DEV_DRIVE_WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
+
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
       # point it in the right direction.
@@ -127,6 +146,7 @@ jobs:
 
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
         env:
           # Since it's not possible to merge `${{ matrix.env }}` with the other
           # variables in `job.<name>.env`, the variables defined in the matrix
@@ -136,48 +156,63 @@ jobs:
 
       - name: setup upstream remote
         run: src/ci/scripts/setup-upstream-remote.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: ensure the channel matches the target branch
         run: src/ci/scripts/verify-channel.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: select Xcode
         run: src/ci/scripts/select-xcode.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: install clang
         run: src/ci/scripts/install-clang.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: install tidy
         run: src/ci/scripts/install-tidy.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: enable ipv6 on Docker
         run: src/ci/scripts/enable-docker-ipv6.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       # Disable automatic line ending conversion (again). On Windows, when we're
       # installing dependencies, something switches the git configuration directory or
@@ -186,25 +221,31 @@ jobs:
       # appropriate line endings.
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: ensure backported commits are in upstream branches
         run: src/ci/scripts/verify-backported-commits.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
         run: src/ci/scripts/run-build-from-ci.sh 2>&1
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
 
       - name: print disk usage
         run: |
@@ -216,12 +257,13 @@ jobs:
         with:
           # name is set in previous step
           name: ${{ env.DOC_ARTIFACT_NAME }}
-          path: obj/artifacts/doc
+          path: ${{ env.DEV_DRIVE_WORKSPACE }}obj/artifacts/doc
           if-no-files-found: ignore
           retention-days: 5
 
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
@@ -234,6 +276,7 @@ jobs:
 
       - name: upload job metrics to DataDog
         if: needs.calculate_matrix.outputs.run_type != 'pr'
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
         env:
           DATADOG_SITE: datadoghq.com
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
@@ -247,7 +290,7 @@ jobs:
   outcome:
     name: bors build finished
     runs-on: ubuntu-latest
-    needs: [ calculate_matrix, job ]
+    needs: [calculate_matrix, job]
     # !cancelled() executes the job regardless of whether the previous jobs passed or failed
     if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
     steps:
