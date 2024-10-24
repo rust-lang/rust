@@ -185,7 +185,7 @@ h1, h2, h3, h4 {
 	grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
 	grid-template-rows: minmax(25px, min-content) min-content min-content;
 	padding-bottom: 6px;
-	margin-bottom: 11px;
+	margin-bottom: 15px;
 }
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
@@ -1004,6 +1004,7 @@ nav.sub {
 	display: flex;
 	height: 34px;
 	flex-grow: 1;
+	margin-bottom: 4px;
 }
 .src nav.sub {
 	margin: 0 0 -10px 0;
@@ -2253,7 +2254,12 @@ in src-script.js and main.js
 
 	/* We don't display this button on mobile devices. */
 	#copy-path {
-		display: none;
+		/* display: none; avoided as a layout hack.
+			When there's one line, we get an effective line-height of 34px,
+			because that's how big the image is, but if the header wraps,
+			they're packed more tightly than that. */
+		width: 0;
+		visibility: hidden;
 	}
 
 	/* Text label takes up too much space at this size. */

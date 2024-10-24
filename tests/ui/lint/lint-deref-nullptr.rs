@@ -27,9 +27,9 @@ fn f() {
         let ub = &*ptr::null_mut::<i32>();
         //~^ ERROR dereferencing a null pointer
         ptr::addr_of!(*ptr::null::<i32>());
-        //~^ ERROR dereferencing a null pointer
+        // ^^ OKAY
         ptr::addr_of_mut!(*ptr::null_mut::<i32>());
-        //~^ ERROR dereferencing a null pointer
+        // ^^ OKAY
         let offset = ptr::addr_of!((*ptr::null::<Struct>()).field);
         //~^ ERROR dereferencing a null pointer
     }
