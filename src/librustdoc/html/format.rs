@@ -1368,6 +1368,24 @@ impl clean::Impl {
                 write!(f, " -> ")?;
                 fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
             }
+        } else if let clean::Type::Path { path } = type_
+            && let Some(generics) = path.generics()
+            && generics.len() == 1
+            && self.kind.is_fake_variadic()
+        {
+            let ty = generics[0];
+            let wrapper = anchor(path.def_id(), path.last(), cx);
+            if f.alternate() {
+                write!(f, "{wrapper:#}&lt;")?;
+            } else {
+                write!(f, "{wrapper}<")?;
+            }
+            self.print_type(ty, f, use_absolute, cx)?;
+            if f.alternate() {
+                write!(f, "&gt;")?;
+            } else {
+                write!(f, ">")?;
+            }
         } else {
             fmt_type(&type_, f, use_absolute, cx)?;
         }
