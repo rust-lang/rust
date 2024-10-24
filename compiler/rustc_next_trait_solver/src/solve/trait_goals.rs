@@ -190,9 +190,6 @@ where
             }
         }
 
-        // We want to make sure
-        debug_assert!(!matches!(ecx.typing_mode(), TypingMode::Coherence));
-
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
