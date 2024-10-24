@@ -31,7 +31,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if expr_ty == expected {
             return;
         }
-
         self.annotate_alternative_method_deref(err, expr, error);
         self.explain_self_literal(err, expr, expected, expr_ty);
 
@@ -40,6 +39,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_missing_unwrap_expect(err, expr, expected, expr_ty)
             || self.suggest_remove_last_method_call(err, expr, expected)
             || self.suggest_associated_const(err, expr, expected)
+            || self.suggest_semicolon_in_repeat_expr(err, expr, expr_ty)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
             || self.suggest_option_to_bool(err, expr, expr_ty, expected)
             || self.suggest_compatible_variants(err, expr, expected, expr_ty)
