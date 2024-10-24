@@ -61,7 +61,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal
-            | ConstraintCategory::IllegalUniverse => "",
+            | ConstraintCategory::IllegalPlaceholder(..) => "",
         }
     }
 }
@@ -206,52 +206,35 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         diag: &mut Diag<'_>,
         lower_bound: RegionVid,
-    ) {
+    ) -> Option<()> {
         let mut suggestions = vec![];
         let hir = self.infcx.tcx.hir();
 
-        // find generic associated types in the given region 'lower_bound'
-        let gat_id_and_generics = self
-            .regioncx
-            .placeholders_contained_in(lower_bound)
-            .map(|placeholder| {
-                if let Some(id) = placeholder.bound.kind.get_id()
-                    && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id)
-                    && let Some(generics_impl) = self
-                        .infcx
-                        .tcx
-                        .parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id))
-                        .generics()
-                {
-                    Some((gat_hir_id, generics_impl))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        debug!(?gat_id_and_generics);
-
         // find higher-ranked trait bounds bounded to the generic associated types
+        let scc = self.regioncx.constraint_sccs().scc(lower_bound);
+        let placeholder: ty::PlaceholderRegion = self.regioncx.placeholder_representative(scc)?;
+        let placeholder_id = placeholder.bound.kind.get_id()?.as_local()?;
+        let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id);
+        let generics_impl =
+            self.infcx.tcx.parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id)).generics()?;
+
         let mut hrtb_bounds = vec![];
-        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
-            for pred in generics.predicates {
-                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
-                else {
-                    continue;
-                };
-                if bound_generic_params
-                    .iter()
-                    .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
-                    .is_some()
-                {
-                    for bound in *bounds {
-                        hrtb_bounds.push(bound);
-                    }
+
+        for pred in generics_impl.predicates {
+            let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
+            else {
+                continue;
+            };
+            if bound_generic_params
+                .iter()
+                .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                .is_some()
+            {
+                for bound in *bounds {
+                    hrtb_bounds.push(bound);
                 }
             }
-        });
-        debug!(?hrtb_bounds);
+        }
 
         hrtb_bounds.iter().for_each(|bound| {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }) = bound else {
@@ -300,6 +283,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+        Some(())
     }
 
     /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.
@@ -446,9 +430,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
         let (blame_constraint, extra_info) =
-            self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
-                self.regioncx.provides_universal_region(r, fr, outlived_fr)
-            });
+            self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
         let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
