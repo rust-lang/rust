@@ -5,8 +5,8 @@ Until then, users will use this as any other rustc crate, via extern crate.
 
 ## Stable MIR Design
 
-The stable-mir will follow a similar approach to proc-macro2. It’s
-implementation is done using two main crates:
+The stable-mir will follow a similar approach to proc-macro2. Its
+implementation is split between two main crates:
 
 - `stable_mir`: Public crate, to be published on crates.io, which will contain
 the stable data structure as well as calls to `rustc_smir` APIs and
