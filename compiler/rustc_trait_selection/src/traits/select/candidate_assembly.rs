@@ -244,7 +244,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter(|p| !p.references_error())
             .filter_map(|p| p.as_trait_clause())
             // Micro-optimization: filter out predicates relating to different traits.
             .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
