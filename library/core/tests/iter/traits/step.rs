@@ -2,26 +2,37 @@ use core::iter::*;
 
 #[test]
 fn test_steps_between() {
-    assert_eq!(Step::steps_between(&20_u8, &200_u8), Some(180_usize));
-    assert_eq!(Step::steps_between(&-20_i8, &80_i8), Some(100_usize));
-    assert_eq!(Step::steps_between(&-120_i8, &80_i8), Some(200_usize));
-    assert_eq!(Step::steps_between(&20_u32, &4_000_100_u32), Some(4_000_080_usize));
-    assert_eq!(Step::steps_between(&-20_i32, &80_i32), Some(100_usize));
-    assert_eq!(Step::steps_between(&-2_000_030_i32, &2_000_050_i32), Some(4_000_080_usize));
+    assert_eq!(Step::steps_between(&20_u8, &200_u8), (180_usize, Some(180_usize)));
+    assert_eq!(Step::steps_between(&-20_i8, &80_i8), (100_usize, Some(100_usize)));
+    assert_eq!(Step::steps_between(&-120_i8, &80_i8), (200_usize, Some(200_usize)));
+    assert_eq!(
+        Step::steps_between(&20_u32, &4_000_100_u32),
+        (4_000_080_usize, Some(4_000_080_usize))
+    );
+    assert_eq!(Step::steps_between(&-20_i32, &80_i32), (100_usize, Some(100_usize)));
+    assert_eq!(
+        Step::steps_between(&-2_000_030_i32, &2_000_050_i32),
+        (4_000_080_usize, Some(4_000_080_usize))
+    );
 
     // Skip u64/i64 to avoid differences with 32-bit vs 64-bit platforms
 
-    assert_eq!(Step::steps_between(&20_u128, &200_u128), Some(180_usize));
-    assert_eq!(Step::steps_between(&-20_i128, &80_i128), Some(100_usize));
+    assert_eq!(Step::steps_between(&20_u128, &200_u128), (180_usize, Some(180_usize)));
+    assert_eq!(Step::steps_between(&-20_i128, &80_i128), (100_usize, Some(100_usize)));
     if cfg!(target_pointer_width = "64") {
-        assert_eq!(Step::steps_between(&10_u128, &0x1_0000_0000_0000_0009_u128), Some(usize::MAX));
+        assert_eq!(
+            Step::steps_between(&10_u128, &0x1_0000_0000_0000_0009_u128),
+            (usize::MAX, Some(usize::MAX))
+        );
     }
-    assert_eq!(Step::steps_between(&10_u128, &0x1_0000_0000_0000_000a_u128), None);
-    assert_eq!(Step::steps_between(&10_i128, &0x1_0000_0000_0000_000a_i128), None);
+    assert_eq!(Step::steps_between(&10_u128, &0x1_0000_0000_0000_000a_u128), (usize::MAX, None));
+    assert_eq!(Step::steps_between(&10_i128, &0x1_0000_0000_0000_000a_i128), (usize::MAX, None));
     assert_eq!(
         Step::steps_between(&-0x1_0000_0000_0000_0000_i128, &0x1_0000_0000_0000_0000_i128,),
-        None,
+        (usize::MAX, None),
     );
+
+    assert_eq!(Step::steps_between(&100_u32, &10_u32), (0, None));
 }
 
 #[test]
