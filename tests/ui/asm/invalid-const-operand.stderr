@@ -35,55 +35,35 @@ LL +         const x: /* Type */ = 0;
    |
 
 error: invalid type for `const` operand
-  --> $DIR/invalid-const-operand.rs:12:19
+  --> $DIR/invalid-const-operand.rs:14:19
    |
 LL | global_asm!("{}", const 0f32);
    |                   ^^^^^^----
    |                         |
    |                         is an `f32`
    |
-   = help: `const` operands must be of an integer type
+   = help: `const` operands must be of an integer or thin pointer type
 
 error: invalid type for `const` operand
-  --> $DIR/invalid-const-operand.rs:14:19
-   |
-LL | global_asm!("{}", const 0 as *mut u8);
-   |                   ^^^^^^------------
-   |                         |
-   |                         is a `*mut u8`
-   |
-   = help: `const` operands must be of an integer type
-
-error: invalid type for `const` operand
-  --> $DIR/invalid-const-operand.rs:24:20
+  --> $DIR/invalid-const-operand.rs:25:20
    |
 LL |         asm!("{}", const 0f32);
    |                    ^^^^^^----
    |                          |
    |                          is an `f32`
    |
-   = help: `const` operands must be of an integer type
-
-error: invalid type for `const` operand
-  --> $DIR/invalid-const-operand.rs:26:20
-   |
-LL |         asm!("{}", const 0 as *mut u8);
-   |                    ^^^^^^------------
-   |                          |
-   |                          is a `*mut u8`
-   |
-   = help: `const` operands must be of an integer type
+   = help: `const` operands must be of an integer or thin pointer type
 
 error: invalid type for `const` operand
   --> $DIR/invalid-const-operand.rs:28:20
    |
-LL |         asm!("{}", const &0);
-   |                    ^^^^^^--
+LL |         asm!("{}", const b"Foo".as_slice());
+   |                    ^^^^^^-----------------
    |                          |
-   |                          is a `&i32`
+   |                          is a `&[u8]`
    |
-   = help: `const` operands must be of an integer type
+   = help: `const` operands must be of an integer or thin pointer type
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0435`.

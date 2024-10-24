@@ -1186,14 +1186,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
-                    let const_value = self.eval_mir_constant(value);
-                    let string = common::asm_const_to_str(
-                        bx.tcx(),
-                        span,
-                        const_value,
-                        bx.layout_of(value.ty()),
-                    );
-                    InlineAsmOperandRef::Interpolate { string }
+                    if value.ty().is_any_ptr() {
+                        let value = self.eval_mir_constant_to_operand(bx, value);
+                        InlineAsmOperandRef::Const { value }
+                    } else {
+                        let const_value = self.eval_mir_constant(value);
+                        let string = common::asm_const_to_str(
+                            bx.tcx(),
+                            span,
+                            const_value,
+                            bx.layout_of(value.ty()),
+                        );
+                        InlineAsmOperandRef::Interpolate { string }
+                    }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);
