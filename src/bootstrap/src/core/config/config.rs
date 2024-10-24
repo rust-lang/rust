@@ -2862,16 +2862,9 @@ impl Config {
             crate::exit!(1);
         }
 
-        // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let mut git = helpers::git(Some(&self.src));
         git.args(["diff-index", "--quiet", &commit, "--"]);
-
-        // Handle running from a directory other than the top level
-        let top_level = &self.src;
-
-        for path in modified_paths {
-            git.arg(top_level.join(path));
-        }
+        git.args(modified_paths);
 
         let has_changes = !t!(git.as_command_mut().status()).success();
         if has_changes {
