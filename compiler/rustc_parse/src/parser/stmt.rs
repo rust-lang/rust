@@ -495,15 +495,21 @@ impl<'a> Parser<'a> {
             //
             // the place-inside-a-block suggestion would be more likely wrong than right.
             //
+            // But we don't want to trigger this if we just parsed a pattern,
+            // so this only triggers if the current token is neither `=>` nor `=`.
+            //
             // FIXME(compiler-errors): this should probably parse an arbitrary expr and not
             // just lookahead one token, so we can see if there's a brace after _that_,
             // since we want to protect against:
             //     `if 1 1 + 1 {` being suggested as  `if { 1 } 1 + 1 {`
             //                                            +   +
             Ok(Some(_))
-                if (!self.token.is_keyword(kw::Else)
-                    && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace)))
-                    || do_not_suggest_help => {}
+                if do_not_suggest_help
+                    || (self.token != token::FatArrow
+                        && self.token != token::Eq
+                        && self.look_ahead(1, |t| {
+                            t == &token::OpenDelim(token::Delimiter::Brace)
+                        })) => {}
             // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
             Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
             Ok(Some(stmt)) => {
@@ -520,7 +526,7 @@ impl<'a> Parser<'a> {
                         (stmt_span.shrink_to_lo(), "{ ".to_string()),
                         (stmt_span.shrink_to_hi(), " }".to_string()),
                     ],
-                    // Speculative; has been misleading in the past (#46836).
+                    // Speculative; has been misleading in the past (see #46836).
                     Applicability::MaybeIncorrect,
                 );
             }

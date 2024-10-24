@@ -731,8 +731,8 @@ impl<'a> Parser<'a> {
             self.parse_pat_ident(BindingMode(ByRef::Yes(mutbl), Mutability::Not), syntax_loc)?
         } else if self.eat_keyword(kw::Box) {
             self.parse_pat_box()?
-        } else if self.check_inline_const(0) {
-            // Parse `const pat`
+        } else if self.check_keyword(kw::Const) {
+            // Parse `const { pat }`
             let const_expr = self.parse_const_block(lo.to(self.token.span), true)?;
 
             if let Some(re) = self.parse_range_end() {
