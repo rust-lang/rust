@@ -77,6 +77,8 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 #[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
+    // #[cfg(bootstrap)] to be removed when Cargo is updated
+    (None, "test", None),
     (Some(Mode::Rustc), "llvm_enzyme", None),
     (Some(Mode::Codegen), "llvm_enzyme", None),
     (Some(Mode::ToolRustc), "llvm_enzyme", None),

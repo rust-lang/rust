@@ -624,6 +624,8 @@ impl Builder<'_> {
         // get warnings about it being unexpected.
         hostflags.arg("-Zunstable-options");
         hostflags.arg("--check-cfg=cfg(bootstrap)");
+        // #[cfg(bootstrap)] as we are transition `test` to userspace cfg
+        hostflags.arg("--check-cfg=cfg(test)");
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
