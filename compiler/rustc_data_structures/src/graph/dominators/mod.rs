@@ -2,7 +2,7 @@
 //!
 //! Algorithm based on Loukas Georgiadis,
 //! "Linear-Time Algorithms for Dominators and Related Problems",
-//! <ftp://ftp.cs.princeton.edu/techreports/2005/737.pdf>
+//! <https://www.cs.princeton.edu/techreports/2005/737.pdf>
 //!
 //! Additionally useful is the original Lengauer-Tarjan paper on this subject,
 //! "A Fast Algorithm for Finding Dominators in a Flowgraph"
