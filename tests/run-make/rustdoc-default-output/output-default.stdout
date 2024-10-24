@@ -211,6 +211,8 @@ Options:
                         more information
         --html-no-source 
                         Disable HTML source code pages generation
+        --doctest-compilation-args add arguments to be used when compiling doctests
+                        
 
     @path               Read newline separated options from `path`
 

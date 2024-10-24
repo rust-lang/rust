@@ -680,6 +680,14 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("html-no-source", |o| {
             o.optflag("", "html-no-source", "Disable HTML source code pages generation")
         }),
+        unstable("doctest-compilation-args", |o| {
+            o.optmulti(
+                "",
+                "doctest-compilation-args",
+                "",
+                "add arguments to be used when compiling doctests",
+            )
+        }),
     ]
 }
 
