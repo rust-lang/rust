@@ -1,7 +1,6 @@
 // Tests that `~const` trait bounds can be used to specialize const trait impls.
 
-//@ known-bug: #110395
-// FIXME check-pass
+//@ check-pass
 
 #![feature(const_trait_impl)]
 #![feature(rustc_attrs)]

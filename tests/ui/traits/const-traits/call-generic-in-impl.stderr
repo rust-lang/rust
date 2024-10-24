@@ -4,14 +4,13 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | impl<T: ~const PartialEq> const MyPartialEq for T {
    |                ^^^^^^^^^
 
-error[E0049]: method `eq` has 1 const parameter but its trait declaration has 0 const parameters
-  --> $DIR/call-generic-in-impl.rs:5:1
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/call-generic-in-impl.rs:10:16
    |
-LL | #[const_trait]
-   | ^^^^^^^^^^^^^^ found 1 const parameter
-LL | trait MyPartialEq {
-LL |     fn eq(&self, other: &Self) -> bool;
-   |          - expected 0 const parameters
+LL | impl<T: ~const PartialEq> const MyPartialEq for T {
+   |                ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const fn `<T as PartialEq>::eq` in constant functions
   --> $DIR/call-generic-in-impl.rs:12:9
@@ -27,5 +26,4 @@ LL + #![feature(effects)]
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0015, E0049.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.

@@ -154,17 +154,10 @@ struct LoweringContext<'a, 'hir> {
     /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping in this
     /// field from the original parameter 'a to the new parameter 'a1.
     generics_def_id_map: Vec<LocalDefIdMap<LocalDefId>>,
-
-    host_param_id: Option<LocalDefId>,
-    ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn new(
-        tcx: TyCtxt<'hir>,
-        resolver: &'a mut ResolverAstLowering,
-        ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
-    ) -> Self {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut ResolverAstLowering) -> Self {
         Self {
             // Pseudo-globals.
             tcx,
@@ -204,8 +197,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
             generics_def_id_map: Default::default(),
-            host_param_id: None,
-            ast_index,
         }
     }
 
@@ -2054,11 +2045,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param: &GenericParam,
         source: hir::GenericParamSource,
     ) -> hir::GenericParam<'hir> {
-        let (name, kind) = self.lower_generic_param_kind(
-            param,
-            source,
-            attr::contains_name(&param.attrs, sym::rustc_runtime),
-        );
+        let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs);
@@ -2078,7 +2065,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         param: &GenericParam,
         source: hir::GenericParamSource,
-        is_host_effect: bool,
     ) -> (hir::ParamName, hir::GenericParamKind<'hir>) {
         match &param.kind {
             GenericParamKind::Lifetime => {
@@ -2144,7 +2130,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default, is_host_effect, synthetic: false },
+                    hir::GenericParamKind::Const { ty, default, synthetic: false },
                 )
             }
         }

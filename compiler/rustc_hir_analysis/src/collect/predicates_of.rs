@@ -12,6 +12,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
+use super::item_bounds::explicit_item_bounds_with_filter;
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
@@ -78,7 +79,6 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
-    use rustc_middle::ty::Ty;
 
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) => {
@@ -343,26 +343,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
         compute_bidirectional_outlives_predicates(tcx, &generics.own_params, &mut predicates);
         debug!(?predicates);
-    }
-
-    // add `Self::Effects: Compat<HOST>` to ensure non-const impls don't get called
-    // in const contexts.
-    if let Node::TraitItem(&TraitItem { kind: TraitItemKind::Fn(..), .. }) = node
-        && let Some(host_effect_index) = generics.host_effect_index
-    {
-        let parent = generics.parent.unwrap();
-        let Some(assoc_def_id) = tcx.associated_type_for_effects(parent) else {
-            bug!("associated_type_for_effects returned None when there is host effect in generics");
-        };
-        let effects =
-            Ty::new_projection(tcx, assoc_def_id, ty::GenericArgs::identity_for_item(tcx, parent));
-        let param = generics.param_at(host_effect_index, tcx);
-        let span = tcx.def_span(param.def_id);
-        let host = ty::Const::new_param(tcx, ty::ParamConst::for_def(param));
-        let compat = tcx.require_lang_item(LangItem::EffectsCompat, Some(span));
-        let trait_ref =
-            ty::TraitRef::new(tcx, compat, [ty::GenericArg::from(effects), host.into()]);
-        predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
     }
 
     ty::GenericPredicates {
@@ -706,29 +686,76 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                         assert_eq!(
                             trait_predicate.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
                     ty::ClauseKind::Projection(projection_predicate) => {
                         assert_eq!(
                             projection_predicate.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
                     ty::ClauseKind::TypeOutlives(outlives_predicate) => {
                         assert_eq!(
                             outlives_predicate.0, ty,
-                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
 
                     ty::ClauseKind::RegionOutlives(_)
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
-                    | ty::ClauseKind::ConstEvaluatable(_) => {
+                    | ty::ClauseKind::ConstEvaluatable(_)
+                    | ty::ClauseKind::HostEffect(..) => {
                         bug!(
-                            "unexpected non-`Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                            "unexpected non-`Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                }
+            }
+        }
+        PredicateFilter::ConstIfConst => {
+            for (clause, _) in bounds {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                        trait_ref: _,
+                        host: ty::HostPolarity::Maybe,
+                    }) => {}
+                    _ => {
+                        bug!(
+                            "unexpected non-`HostEffect` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                }
+            }
+        }
+        PredicateFilter::SelfConstIfConst => {
+            for (clause, _) in bounds {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::HostEffect(pred) => {
+                        assert_eq!(
+                            pred.host,
+                            ty::HostPolarity::Maybe,
+                            "expected `~const` predicate when computing `{filter:?}` \
+                            implied bounds: {clause:?}",
+                        );
+                        assert_eq!(
+                            pred.trait_ref.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing `{filter:?}` \
+                            implied bounds: {clause:?}"
+                        );
+                    }
+                    _ => {
+                        bug!(
+                            "unexpected non-`HostEffect` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
                 }
@@ -849,4 +876,145 @@ impl<'tcx> ItemCtxt<'tcx> {
 
         bounds.clauses(self.tcx).collect()
     }
+}
+
+/// Compute the conditions that need to hold for a conditionally-const item to be const.
+/// That is, compute the set of `~const` where clauses for a given item.
+///
+/// This query also computes the `~const` where clauses for associated types, which are
+/// not "const", but which have item bounds which may be `~const`. These must hold for
+/// the `~const` item bound to hold.
+pub(super) fn const_conditions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::ConstConditions<'tcx> {
+    if !tcx.is_conditionally_const(def_id) {
+        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+    }
+
+    let (generics, trait_def_id_and_supertraits, has_parent) = match tcx.hir_node_by_def_id(def_id)
+    {
+        Node::Item(item) => match item.kind {
+            hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
+            hir::ItemKind::Fn(_, generics, _) => (generics, None, false),
+            hir::ItemKind::Trait(_, _, generics, supertraits, _) => {
+                (generics, Some((item.owner_id.def_id, supertraits)), false)
+            }
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        // While associated types are not really const, we do allow them to have `~const`
+        // bounds and where clauses. `const_conditions` is responsible for gathering
+        // these up so we can check them in `compare_type_predicate_entailment`, and
+        // in `HostEffect` goal computation.
+        Node::TraitItem(item) => match item.kind {
+            hir::TraitItemKind::Fn(_, _) | hir::TraitItemKind::Type(_, _) => {
+                (item.generics, None, true)
+            }
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        Node::ImplItem(item) => match item.kind {
+            hir::ImplItemKind::Fn(_, _) | hir::ImplItemKind::Type(_) => {
+                (item.generics, None, tcx.is_conditionally_const(tcx.local_parent(def_id)))
+            }
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        Node::ForeignItem(item) => match item.kind {
+            hir::ForeignItemKind::Fn(_, _, generics) => (generics, None, false),
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        // N.B. Tuple ctors are unconditionally constant.
+        Node::Ctor(hir::VariantData::Tuple { .. }) => return Default::default(),
+        _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+    };
+
+    let icx = ItemCtxt::new(tcx, def_id);
+    let mut bounds = Bounds::default();
+
+    for pred in generics.predicates {
+        match pred {
+            hir::WherePredicate::BoundPredicate(bound_pred) => {
+                let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
+                let bound_vars = tcx.late_bound_vars(bound_pred.hir_id);
+                icx.lowerer().lower_bounds(
+                    ty,
+                    bound_pred.bounds.iter(),
+                    &mut bounds,
+                    bound_vars,
+                    PredicateFilter::ConstIfConst,
+                );
+            }
+            _ => {}
+        }
+    }
+
+    if let Some((def_id, supertraits)) = trait_def_id_and_supertraits {
+        bounds.push_const_bound(
+            tcx,
+            ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id())),
+            ty::HostPolarity::Maybe,
+            DUMMY_SP,
+        );
+
+        icx.lowerer().lower_bounds(
+            tcx.types.self_param,
+            supertraits.into_iter(),
+            &mut bounds,
+            ty::List::empty(),
+            PredicateFilter::ConstIfConst,
+        );
+    }
+
+    ty::ConstConditions {
+        parent: has_parent.then(|| tcx.local_parent(def_id).to_def_id()),
+        predicates: tcx.arena.alloc_from_iter(bounds.clauses(tcx).map(|(clause, span)| {
+            (
+                clause.kind().map_bound(|clause| match clause {
+                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                        trait_ref,
+                        host: ty::HostPolarity::Maybe,
+                    }) => trait_ref,
+                    _ => bug!("converted {clause:?}"),
+                }),
+                span,
+            )
+        })),
+    }
+}
+
+pub(super) fn implied_const_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
+    if !tcx.is_conditionally_const(def_id) {
+        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+    }
+
+    let bounds = match tcx.hir_node_by_def_id(def_id) {
+        Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
+            implied_predicates_with_filter(
+                tcx,
+                def_id.to_def_id(),
+                PredicateFilter::SelfConstIfConst,
+            )
+        }
+        Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. }) => {
+            explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
+        }
+        _ => bug!("implied_const_bounds called on wrong item: {def_id:?}"),
+    };
+
+    bounds.map_bound(|bounds| {
+        &*tcx.arena.alloc_from_iter(bounds.iter().copied().map(|(clause, span)| {
+            (
+                clause.kind().map_bound(|clause| match clause {
+                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                        trait_ref,
+                        host: ty::HostPolarity::Maybe,
+                    }) => trait_ref,
+                    _ => bug!("converted {clause:?}"),
+                }),
+                span,
+            )
+        }))
+    })
 }

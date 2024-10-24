@@ -3075,6 +3075,15 @@ define_print! {
         p!(print(self.trait_ref.print_trait_sugared()))
     }
 
+    ty::HostEffectPredicate<'tcx> {
+        let constness = match self.host {
+            ty::HostPolarity::Const => { "const" }
+            ty::HostPolarity::Maybe => { "~const" }
+        };
+        p!(print(self.trait_ref.self_ty()), ": {constness} ");
+        p!(print(self.trait_ref.print_trait_sugared()))
+    }
+
     ty::TypeAndMut<'tcx> {
         p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
@@ -3087,6 +3096,7 @@ define_print! {
             ty::ClauseKind::RegionOutlives(predicate) => p!(print(predicate)),
             ty::ClauseKind::TypeOutlives(predicate) => p!(print(predicate)),
             ty::ClauseKind::Projection(predicate) => p!(print(predicate)),
+            ty::ClauseKind::HostEffect(predicate) => p!(print(predicate)),
             ty::ClauseKind::ConstArgHasType(ct, ty) => {
                 p!("the constant `", print(ct), "` has type `", print(ty), "`")
             },

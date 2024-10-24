@@ -78,10 +78,10 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst,
-    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
-    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    Visibility,
+    GenericArgsRef, GenericParamDefKind, HostPolarity, ImplPolarity, List, ListWithCachedTypeInfo,
+    ParamConst, ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
+    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
+    TyKind, TyVid, Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -383,6 +383,28 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
+    fn is_const_impl(self, def_id: DefId) -> bool {
+        self.is_conditionally_const(def_id)
+    }
+
+    fn const_conditions(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
+        ty::EarlyBinder::bind(
+            self.const_conditions(def_id).instantiate_identity(self).into_iter().map(|(c, _)| c),
+        )
+    }
+
+    fn implied_const_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
+        ty::EarlyBinder::bind(
+            self.implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
+        )
+    }
+
     fn has_target_features(self, def_id: DefId) -> bool {
         !self.codegen_fn_attrs(def_id).target_features.is_empty()
     }
@@ -646,13 +668,6 @@ bidirectional_lang_item_map! {
     Destruct,
     DiscriminantKind,
     DynMetadata,
-    EffectsCompat,
-    EffectsIntersection,
-    EffectsIntersectionOutput,
-    EffectsMaybe,
-    EffectsNoRuntime,
-    EffectsRuntime,
-    EffectsTyCompat,
     Fn,
     FnMut,
     FnOnce,
@@ -2196,7 +2211,7 @@ macro_rules! nop_slice_lift {
 nop_slice_lift! {ty::ValTree<'a> => ty::ValTree<'tcx>}
 
 TrivialLiftImpls! {
-    ImplPolarity, PredicatePolarity, Promoted
+    ImplPolarity, PredicatePolarity, Promoted, HostPolarity,
 }
 
 macro_rules! sty_debug_print {
@@ -3125,6 +3140,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    // FIXME(effects): Please remove this. It's a footgun.
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl_raw(self, def_id: DefId) -> bool {
         let Some(local_def_id) = def_id.as_local() else { return false };

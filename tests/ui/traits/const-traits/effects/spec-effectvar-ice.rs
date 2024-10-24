@@ -1,4 +1,3 @@
-//@ check-fail
 // Fixes #119830
 
 #![feature(effects)] //~ WARN the feature `effects` is incomplete

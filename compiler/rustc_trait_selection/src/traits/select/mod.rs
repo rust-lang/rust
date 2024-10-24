@@ -645,6 +645,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.evaluate_trait_predicate_recursively(previous_stack, obligation)
                 }
 
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
+                    // FIXME(effects): It should be relatively straightforward to implement
+                    // old trait solver support for `HostEffect` bounds; or at least basic
+                    // support for them.
+                    todo!()
+                }
+
                 ty::PredicateKind::Subtype(p) => {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
@@ -1821,8 +1828,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             |cand: ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, `ConstDestructCandidate`
-        // to anything else.
+        // or `DiscriminantKindCandidate` to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.

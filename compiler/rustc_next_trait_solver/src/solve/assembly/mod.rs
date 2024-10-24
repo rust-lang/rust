@@ -270,11 +270,6 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Vec<Candidate<I>>;
-
-    fn consider_builtin_effects_intersection_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
 }
 
 impl<D, I> EvalCtxt<'_, D>
@@ -480,9 +475,6 @@ where
                 }
                 Some(TraitSolverLangItem::TransmuteTrait) => {
                     G::consider_builtin_transmute_candidate(self, goal)
-                }
-                Some(TraitSolverLangItem::EffectsIntersection) => {
-                    G::consider_builtin_effects_intersection_candidate(self, goal)
                 }
                 _ => Err(NoSolution),
             }

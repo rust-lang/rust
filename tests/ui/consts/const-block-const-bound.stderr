@@ -4,6 +4,14 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | const fn f<T: ~const Destruct>(x: T) {}
    |                      ^^^^^^^^
 
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-block-const-bound.rs:8:22
+   |
+LL | const fn f<T: ~const Destruct>(x: T) {}
+   |                      ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/const-block-const-bound.rs:8:32
    |
@@ -12,6 +20,6 @@ LL | const fn f<T: ~const Destruct>(x: T) {}
    |                                |
    |                                the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0493`.

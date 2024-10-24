@@ -1433,6 +1433,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
+            if tcx.is_conditionally_const(def_id) {
+                record!(self.tables.const_conditions[def_id] <- self.tcx.const_conditions(def_id));
+            }
             if should_encode_type(tcx, local_id, def_kind) {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
             }
@@ -1456,10 +1459,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder());
                 record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
-
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
+                if self.tcx.is_const_trait(def_id) {
+                    record_defaulted_array!(self.tables.implied_const_bounds[def_id]
+                        <- self.tcx.implied_const_bounds(def_id).skip_binder());
+                }
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
@@ -1478,9 +1484,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 );
                 for &def_id in associated_item_def_ids {
                     self.encode_info_for_assoc_item(def_id);
-                }
-                if let Some(assoc_def_id) = self.tcx.associated_type_for_effects(def_id) {
-                    record!(self.tables.associated_type_for_effects[def_id] <- assoc_def_id);
                 }
             }
             if let DefKind::Closure | DefKind::SyntheticCoroutineBody = def_kind
@@ -1652,6 +1655,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if let ty::AssocKind::Type = item.kind {
                     self.encode_explicit_item_bounds(def_id);
                     self.encode_explicit_item_super_predicates(def_id);
+                    if tcx.is_conditionally_const(def_id) {
+                        record_defaulted_array!(self.tables.implied_const_bounds[def_id]
+                            <- self.tcx.implied_const_bounds(def_id).skip_binder());
+                    }
                 }
             }
             AssocItemContainer::ImplContainer => {

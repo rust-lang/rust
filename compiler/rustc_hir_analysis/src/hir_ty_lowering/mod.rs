@@ -81,6 +81,12 @@ pub enum PredicateFilter {
     /// For example, given `Self: Tr<A: B>`, this would expand to `Self: Tr`
     /// and `<Self as Tr>::A: B`.
     SelfAndAssociatedTypeBounds,
+
+    /// Filter only the `~const` bounds, which are lowered into `HostEffect` clauses.
+    ConstIfConst,
+
+    /// Filter only the `~const` bounds which are *also* in the supertrait position.
+    SelfConstIfConst,
 }
 
 #[derive(Debug)]
@@ -693,16 +699,49 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             bound_vars,
         );
 
-        debug!(?poly_trait_ref);
-        bounds.push_trait_bound(
-            tcx,
-            self.item_def_id().to_def_id(),
-            poly_trait_ref,
-            span,
-            polarity,
-            constness,
-            predicate_filter,
-        );
+        match predicate_filter {
+            PredicateFilter::All
+            | PredicateFilter::SelfOnly
+            | PredicateFilter::SelfThatDefines(..)
+            | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                debug!(?poly_trait_ref);
+                bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
+
+                match constness {
+                    Some(ty::BoundConstness::Const) => {
+                        if polarity == ty::PredicatePolarity::Positive {
+                            bounds.push_const_bound(
+                                tcx,
+                                poly_trait_ref,
+                                ty::HostPolarity::Const,
+                                span,
+                            );
+                        }
+                    }
+                    Some(ty::BoundConstness::ConstIfConst) => {
+                        // We don't emit a const bound here, since that would mean that we
+                        // unconditionally need to prove a `HostEffect` predicate, even when
+                        // the predicates are being instantiated in a non-const context. This
+                        // is instead handled in the `const_conditions` query.
+                    }
+                    None => {}
+                }
+            }
+            // On the flip side, when filtering `ConstIfConst` bounds, we only need to convert
+            // `~const` bounds. All other predicates are handled in their respective queries.
+            //
+            // Note that like `PredicateFilter::SelfOnly`, we don't need to do any filtering
+            // here because we only call this on self bounds, and deal with the recursive case
+            // in `lower_assoc_item_constraint`.
+            PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => match constness {
+                Some(ty::BoundConstness::ConstIfConst) => {
+                    if polarity == ty::PredicatePolarity::Positive {
+                        bounds.push_const_bound(tcx, poly_trait_ref, ty::HostPolarity::Maybe, span);
+                    }
+                }
+                None | Some(ty::BoundConstness::Const) => {}
+            },
+        }
 
         let mut dup_constraints = FxIndexMap::default();
         for constraint in trait_segment.args().constraints {

@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 //@ known-bug: unknown
 
 #![allow(incomplete_features)]

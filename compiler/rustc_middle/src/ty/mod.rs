@@ -84,12 +84,13 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
-    ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef, NormalizesTo,
-    OutlivesPredicate, PolyCoercePredicate, PolyExistentialPredicate, PolyExistentialProjection,
-    PolyExistentialTraitRef, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
-    PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef, PolyTypeOutlivesPredicate, Predicate,
-    PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
-    TraitPredicate, TraitRef, TypeOutlivesPredicate,
+    ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef,
+    HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
+    PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
+    PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
+    PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
+    RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef, TraitPredicate, TraitRef,
+    TypeOutlivesPredicate,
 };
 pub use self::region::BoundRegionKind::*;
 pub use self::region::{
@@ -1998,8 +1999,73 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_fn_raw(self, def_id: DefId) -> bool {
         matches!(
             self.def_kind(def_id),
-            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) | DefKind::Closure
+            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure
         ) && self.constness(def_id) == hir::Constness::Const
+    }
+
+    /// Whether this item is conditionally constant for the purposes of the
+    /// effects implementation.
+    ///
+    /// This roughly corresponds to all const functions and other callable
+    /// items, along with const impls and traits, and associated types within
+    /// those impls and traits.
+    pub fn is_conditionally_const(self, def_id: impl Into<DefId>) -> bool {
+        let def_id: DefId = def_id.into();
+        match self.def_kind(def_id) {
+            DefKind::Impl { of_trait: true } => {
+                self.constness(def_id) == hir::Constness::Const
+                    && self.is_const_trait(
+                        self.trait_id_of_impl(def_id)
+                            .expect("expected trait for trait implementation"),
+                    )
+            }
+            DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
+                self.constness(def_id) == hir::Constness::Const
+            }
+            DefKind::Trait => self.is_const_trait(def_id),
+            DefKind::AssocTy | DefKind::AssocFn => {
+                let parent_def_id = self.parent(def_id);
+                match self.def_kind(parent_def_id) {
+                    DefKind::Impl { of_trait: false } => {
+                        self.constness(def_id) == hir::Constness::Const
+                    }
+                    DefKind::Impl { of_trait: true } | DefKind::Trait => {
+                        self.is_conditionally_const(parent_def_id)
+                    }
+                    _ => bug!("unexpected parent item of associated item: {parent_def_id:?}"),
+                }
+            }
+            DefKind::Closure | DefKind::OpaqueTy => {
+                // Closures and RPITs will eventually have const conditions
+                // for `~const` bounds.
+                false
+            }
+            DefKind::Ctor(_, CtorKind::Const)
+            | DefKind::Impl { of_trait: false }
+            | DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::TyParam
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static { .. }
+            | DefKind::AssocConst
+            | DefKind::Macro(_)
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::AnonConst
+            | DefKind::InlineConst
+            | DefKind::Field
+            | DefKind::LifetimeParam
+            | DefKind::GlobalAsm
+            | DefKind::SyntheticCoroutineBody => false,
+        }
     }
 
     #[inline]

@@ -1,4 +1,3 @@
-//~ ERROR the trait bound
 //@ compile-flags: -Znext-solver
 
 #![allow(incomplete_features)]

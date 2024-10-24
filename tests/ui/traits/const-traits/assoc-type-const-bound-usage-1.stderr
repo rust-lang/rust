@@ -1,46 +1,23 @@
-error: using `#![feature(effects)]` without enabling next trait solver globally
+error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
+  --> $DIR/assoc-type-const-bound-usage-1.rs:4:39
    |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
+LL | #![feature(const_trait_impl, effects, generic_const_exprs)]
+   |                                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove one of these features
 
-error[E0277]: the trait bound `<T as Trait>::Assoc: Trait` is not satisfied
+error[E0271]: type mismatch resolving `<T as Trait>::Assoc == T`
   --> $DIR/assoc-type-const-bound-usage-1.rs:15:44
    |
 LL | fn unqualified<T: const Trait>() -> Type<{ T::Assoc::func() }> {
-   |                                            ^^^^^^^^ the trait `Trait` is not implemented for `<T as Trait>::Assoc`
-   |
-note: required by a bound in `Trait::func`
-  --> $DIR/assoc-type-const-bound-usage-1.rs:7:1
-   |
-LL | #[const_trait]
-   | ^^^^^^^^^^^^^^ required by this bound in `Trait::func`
-...
-LL |     fn func() -> i32;
-   |        ---- required by a bound in this associated function
-help: consider further restricting the associated type
-   |
-LL | fn unqualified<T: const Trait>() -> Type<{ T::Assoc::func() }> where <T as Trait>::Assoc: Trait {
-   |                                                                ++++++++++++++++++++++++++++++++
+   |                                            ^^^^^^^^^^^^^^^^ types differ
 
-error[E0277]: the trait bound `<T as Trait>::Assoc: Trait` is not satisfied
+error[E0271]: type mismatch resolving `<T as Trait>::Assoc == T`
   --> $DIR/assoc-type-const-bound-usage-1.rs:19:42
    |
 LL | fn qualified<T: const Trait>() -> Type<{ <T as Trait>::Assoc::func() }> {
-   |                                          ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `<T as Trait>::Assoc`
-   |
-note: required by a bound in `Trait::func`
-  --> $DIR/assoc-type-const-bound-usage-1.rs:7:1
-   |
-LL | #[const_trait]
-   | ^^^^^^^^^^^^^^ required by this bound in `Trait::func`
-...
-LL |     fn func() -> i32;
-   |        ---- required by a bound in this associated function
-help: consider further restricting the associated type
-   |
-LL | fn qualified<T: const Trait>() -> Type<{ <T as Trait>::Assoc::func() }> where <T as Trait>::Assoc: Trait {
-   |                                                                         ++++++++++++++++++++++++++++++++
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0271`.

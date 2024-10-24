@@ -468,6 +468,14 @@ pub trait Clause<I: Interner<Clause = Self>>:
             .transpose()
     }
 
+    fn as_host_effect_clause(self) -> Option<ty::Binder<I, ty::HostEffectPredicate<I>>> {
+        self.kind()
+            .map_bound(
+                |clause| if let ty::ClauseKind::HostEffect(t) = clause { Some(t) } else { None },
+            )
+            .transpose()
+    }
+
     fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionPredicate<I>>> {
         self.kind()
             .map_bound(

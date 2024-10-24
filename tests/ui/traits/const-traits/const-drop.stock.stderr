@@ -40,23 +40,11 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | const fn a<T: ~const Destruct>(_: T) {}
    |                      ^^^^^^^^
 
-error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
-  --> $DIR/const-drop.rs:53:5
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-drop.rs:18:22
    |
-LL |     #[const_trait]
-   |     ^^^^^^^^^^^^^^ found 1 const parameter
-LL |     pub trait SomeTrait {
-LL |         fn foo();
-   |               - expected 0 const parameters
-
-error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
-  --> $DIR/const-drop.rs:53:5
-   |
-LL |     #[const_trait]
-   |     ^^^^^^^^^^^^^^ found 1 const parameter
-LL |     pub trait SomeTrait {
-LL |         fn foo();
-   |               - expected 0 const parameters
+LL | const fn a<T: ~const Destruct>(_: T) {}
+   |                      ^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -80,7 +68,7 @@ help: add `#![feature(effects)]` to the crate attributes to enable
 LL + #![feature(effects)]
    |
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0015, E0049, E0493.
+Some errors have detailed explanations: E0015, E0493.
 For more information about an error, try `rustc --explain E0015`.

@@ -838,10 +838,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_const_panic_str, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
-    rustc_attr!(
-        rustc_runtime, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, INTERNAL_UNSTABLE
-    ),
 
     // ==========================================================================
     // Internal attributes, Layout related:
