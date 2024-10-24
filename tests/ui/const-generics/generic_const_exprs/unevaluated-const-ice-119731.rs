@@ -9,6 +9,8 @@ mod v20 {
     pub type v11 = [[usize; v4]; v4];
     //~^ WARN type `v11` should have an upper camel case name
     const v2: v11 = [[256; v4]; v4];
+    //~^ ERROR maximum number of nodes exceeded in constant v20::v2
+    //~| ERROR maximum number of nodes exceeded in constant v20::v2
 
     const v0: [[usize; v4]; v4] = v6(v8);
     //~^ ERROR cannot find value `v8` in this scope
@@ -26,8 +28,6 @@ mod v20 {
     }
 
     impl<const v10: usize> v17<v10, v2> {
-        //~^ ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
-        //~| ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
         pub const fn v21() -> v18 {
             //~^ ERROR cannot find type `v18` in this scope
             v18 { _p: () }

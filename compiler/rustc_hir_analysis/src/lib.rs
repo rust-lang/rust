@@ -96,12 +96,14 @@ use rustc_hir::def::DefKind;
 use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_span::Span;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
+
+use self::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -226,4 +228,14 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     // scope. This is derived from the enclosing item-like thing.
     let env_def_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     collect::ItemCtxt::new(tcx, env_def_id.def_id).lower_ty(hir_ty)
+}
+
+/// This is for rustdoc and clippy.
+pub fn lower_const_arg<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hir_ct: &hir::ConstArg<'tcx>,
+    feed: FeedConstTy,
+) -> Const<'tcx> {
+    let env_def_id = tcx.hir().get_parent_item(hir_ct.hir_id);
+    collect::ItemCtxt::new(tcx, env_def_id.def_id).lowerer().lower_const_arg(hir_ct, feed)
 }

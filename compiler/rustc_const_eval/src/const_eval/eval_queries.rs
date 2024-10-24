@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
@@ -43,6 +43,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
                     | DefKind::AnonConst
                     | DefKind::InlineConst
                     | DefKind::AssocConst
+                    | DefKind::Ctor(_, CtorKind::Const)
             ),
         "Unexpected DefKind: {:?}",
         ecx.tcx.def_kind(cid.instance.def_id())
