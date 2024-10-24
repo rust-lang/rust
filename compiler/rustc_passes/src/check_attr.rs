@@ -262,7 +262,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | sym::cfg_attr
                     // need to be fixed
                     | sym::cfi_encoding // FIXME(cfi_encoding)
-                    | sym::pointee // FIXME(derive_smart_pointer)
+                    | sym::pointee // FIXME(derive_coerce_pointee)
                     | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                     | sym::used // handled elsewhere to restrict to static items
                     | sym::repr // handled elsewhere to restrict to type decls items

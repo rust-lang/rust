@@ -19,7 +19,7 @@ macro_rules! path {
     ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }
 }
 
-pub(crate) fn expand_deriving_smart_ptr(
+pub(crate) fn expand_deriving_coerce_pointee(
     cx: &ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
@@ -41,7 +41,7 @@ pub(crate) fn expand_deriving_smart_ptr(
             cx.dcx()
                 .struct_span_err(
                     span,
-                    "`SmartPointer` can only be derived on `struct`s with `#[repr(transparent)]`",
+                    "`CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`",
                 )
                 .emit();
             return;
@@ -54,7 +54,7 @@ pub(crate) fn expand_deriving_smart_ptr(
             cx.dcx()
                 .struct_span_err(
                     span,
-                    "`SmartPointer` can only be derived on `struct`s with at least one field",
+                    "`CoercePointee` can only be derived on `struct`s with at least one field",
                 )
                 .emit();
             return;
@@ -64,7 +64,7 @@ pub(crate) fn expand_deriving_smart_ptr(
         cx.dcx()
             .struct_span_err(
                 span,
-                "`SmartPointer` can only be derived on `struct`s with `#[repr(transparent)]`",
+                "`CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`",
             )
             .emit();
         return;
@@ -94,10 +94,10 @@ pub(crate) fn expand_deriving_smart_ptr(
         .collect();
 
     let pointee_param_idx = if type_params.is_empty() {
-        // `#[derive(SmartPointer)]` requires at least one generic type on the target `struct`
+        // `#[derive(CoercePointee)]` requires at least one generic type on the target `struct`
         cx.dcx().struct_span_err(
             span,
-            "`SmartPointer` can only be derived on `struct`s that are generic over at least one type",
+            "`CoercePointee` can only be derived on `struct`s that are generic over at least one type",
         ).emit();
         return;
     } else if type_params.len() == 1 {
@@ -113,7 +113,7 @@ pub(crate) fn expand_deriving_smart_ptr(
             (None, _) => {
                 cx.dcx().struct_span_err(
                     span,
-                    "exactly one generic type parameter must be marked as #[pointee] to derive SmartPointer traits",
+                    "exactly one generic type parameter must be marked as #[pointee] to derive CoercePointee traits",
                 ).emit();
                 return;
             }
@@ -121,7 +121,7 @@ pub(crate) fn expand_deriving_smart_ptr(
                 cx.dcx()
                     .struct_span_err(
                         vec![one, another],
-                        "only one type parameter can be marked as `#[pointee]` when deriving SmartPointer traits",
+                        "only one type parameter can be marked as `#[pointee]` when deriving CoercePointee traits",
                     )
                     .emit();
                 return;
@@ -185,7 +185,7 @@ pub(crate) fn expand_deriving_smart_ptr(
                 .struct_span_err(
                     pointee_ty_ident.span,
                     format!(
-                        "`derive(SmartPointer)` requires {} to be marked `?Sized`",
+                        "`derive(CoercePointee)` requires {} to be marked `?Sized`",
                         pointee_ty_ident.name
                     ),
                 )
@@ -195,7 +195,7 @@ pub(crate) fn expand_deriving_smart_ptr(
         let arg = GenericArg::Type(s_ty.clone());
         let unsize = cx.path_all(span, true, path!(span, core::marker::Unsize), vec![arg]);
         pointee.bounds.push(cx.trait_bound(unsize, false));
-        // Drop `#[pointee]` attribute since it should not be recognized outside `derive(SmartPointer)`
+        // Drop `#[pointee]` attribute since it should not be recognized outside `derive(CoercePointee)`
         pointee.attrs.retain(|attr| !attr.has_name(sym::pointee));
     }
 
