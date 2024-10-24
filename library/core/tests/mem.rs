@@ -111,6 +111,17 @@ fn test_replace() {
 }
 
 #[test]
+fn test_reshape() {
+    let mut x = Some("test".to_string());
+    reshape(&mut x, |_| None);
+    assert!(x.is_none());
+
+    let mut y = "test".to_string();
+    reshape(&mut y, |y| y + "test");
+    assert_eq!(y, "testtest");
+}
+
+#[test]
 fn test_transmute_copy() {
     assert_eq!(1, unsafe { transmute_copy(&1) });
 }
