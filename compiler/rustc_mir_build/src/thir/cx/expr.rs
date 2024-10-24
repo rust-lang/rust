@@ -784,7 +784,7 @@ impl<'tcx> Cx<'tcx> {
                 if_then_scope: region::Scope {
                     id: then.hir_id.local_id,
                     data: {
-                        if expr.span.at_least_rust_2024() && tcx.features().if_let_rescope() {
+                        if expr.span.at_least_rust_2024() {
                             region::ScopeData::IfThenRescope
                         } else {
                             region::ScopeData::IfThen

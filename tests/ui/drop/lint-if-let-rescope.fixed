@@ -1,7 +1,7 @@
 //@ run-rustfix
 
 #![deny(if_let_rescope)]
-#![feature(if_let_rescope, stmt_expr_attributes)]
+#![feature(stmt_expr_attributes)]
 #![allow(irrefutable_let_patterns, unused_parens)]
 
 fn droppy() -> Droppy {
