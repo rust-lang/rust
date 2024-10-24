@@ -228,7 +228,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     pub fn layout_of_struct_or_enum<
         'a,
         FieldIdx: Idx,
-        VariantIdx: Idx,
+        VariantIdx: Idx + PartialOrd,
         F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
@@ -500,7 +500,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     fn layout_of_enum<
         'a,
         FieldIdx: Idx,
-        VariantIdx: Idx,
+        VariantIdx: Idx + PartialOrd,
         F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
@@ -564,8 +564,16 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
                 ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
 
-            let count =
-                (niche_variants.end().index() as u128 - niche_variants.start().index() as u128) + 1;
+            let count = {
+                let niche_variants_len = (niche_variants.end().index() as u128
+                    - niche_variants.start().index() as u128)
+                    + 1;
+                if niche_variants.contains(&largest_variant_index) {
+                    niche_variants_len - 1
+                } else {
+                    niche_variants_len
+                }
+            };
 
             // Use the largest niche in the largest variant.
             let niche = variant_layouts[largest_variant_index].largest_niche?;

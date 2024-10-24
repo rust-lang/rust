@@ -34,7 +34,7 @@ pub use self::{
 mod adt;
 mod target;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
 pub struct RustcEnumVariantIdx(pub usize);
 
 impl rustc_index::Idx for RustcEnumVariantIdx {
