@@ -100,6 +100,7 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        SUPERTRAIT_ITEM_SHADOWING,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         TRIVIAL_CASTS,
@@ -4953,6 +4954,43 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124535 <https://github.com/rust-lang/rust/issues/124535>",
     };
+}
+
+declare_lint! {
+    /// The `supertrait_item_shadowing` lint detects when.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(supertrait_item_shadowing)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    ///
+    /// struct MyType;
+    /// MyType.hello();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait method would be
+    /// shadowed by a subtrait method when ambiguity occurs during method
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, it was also decided that this would, since the code should
+    /// eventually be fixed to no longer trigger this ambiguity.
+    pub SUPERTRAIT_ITEM_SHADOWING,
+    Warn,
+    "detects when a supertrait method is shadowed by a subtrait method",
+    @feature_gate = supertrait_item_shadowing;
 }
 
 declare_lint! {
