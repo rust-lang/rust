@@ -104,7 +104,7 @@ where
 /// Called on the parent thread.
 ///
 /// Returns the functions to be called on the newly spawned thread.
-pub(super) fn run_spawn_hooks(thread: &Thread) -> SpawnHookResults {
+pub(super) fn run_spawn_hooks(thread: &Thread) -> ChildSpawnHooks {
     // Get a snapshot of the spawn hooks.
     // (Increments the refcount to the first node.)
     let hooks = SPAWN_HOOKS.with(|hooks| {
@@ -121,19 +121,20 @@ pub(super) fn run_spawn_hooks(thread: &Thread) -> SpawnHookResults {
     }
     // Pass on the snapshot of the hooks and the results to the new thread,
     // which will then run SpawnHookResults::run().
-    SpawnHookResults { hooks, to_run }
+    ChildSpawnHooks { hooks, to_run }
 }
 
 /// The results of running the spawn hooks.
 ///
 /// This struct is sent to the new thread.
 /// It contains the inherited hooks and the closures to be run.
-pub(super) struct SpawnHookResults {
+#[derive(Default)]
+pub(super) struct ChildSpawnHooks {
     hooks: SpawnHooks,
     to_run: Vec<Box<dyn FnOnce() + Send>>,
 }
 
-impl SpawnHookResults {
+impl ChildSpawnHooks {
     // This is run on the newly spawned thread, directly at the start.
     pub(super) fn run(self) {
         SPAWN_HOOKS.set(self.hooks);

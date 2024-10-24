@@ -264,6 +264,8 @@ pub struct Builder {
     name: Option<String>,
     // The size of the stack for the spawned thread in bytes
     stack_size: Option<usize>,
+    // Skip running and inheriting the thread spawn hooks
+    no_hooks: bool,
 }
 
 impl Builder {
@@ -287,7 +289,7 @@ impl Builder {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
-        Builder { name: None, stack_size: None }
+        Builder { name: None, stack_size: None, no_hooks: false }
     }
 
     /// Names the thread-to-be. Currently the name is used for identification
@@ -340,6 +342,16 @@ impl Builder {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
+        self
+    }
+
+    /// Disables running and inheriting [spawn hooks](add_spawn_hook).
+    ///
+    /// Use this if the parent thread is in no way relevant for the child thread.
+    /// For example, when lazily spawning threads for a thread pool.
+    #[unstable(feature = "thread_spawn_hook", issue = "none")]
+    pub fn no_hooks(mut self) -> Builder {
+        self.no_hooks = true;
         self
     }
 
@@ -465,7 +477,7 @@ impl Builder {
         F: Send,
         T: Send,
     {
-        let Builder { name, stack_size } = self;
+        let Builder { name, stack_size, no_hooks } = self;
 
         let stack_size = stack_size.unwrap_or_else(|| {
             static MIN: AtomicUsize = AtomicUsize::new(0);
@@ -491,7 +503,11 @@ impl Builder {
             None => Thread::new_unnamed(id),
         };
 
-        let hooks = spawnhook::run_spawn_hooks(&my_thread);
+        let hooks = if no_hooks {
+            spawnhook::ChildSpawnHooks::default()
+        } else {
+            spawnhook::run_spawn_hooks(&my_thread)
+        };
 
         let their_thread = my_thread.clone();
 
