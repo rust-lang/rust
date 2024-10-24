@@ -119,7 +119,7 @@ pub trait MutVisitor: Sized {
         walk_flat_map_item(self, i)
     }
 
-    fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
+    fn visit_fn_decl(&mut self, d: &mut FnDecl) {
         walk_fn_decl(self, d);
     }
 
@@ -898,8 +898,8 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
     }
 }
 
-fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
-    let FnDecl { inputs, output } = decl.deref_mut();
+fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut FnDecl) {
+    let FnDecl { inputs, output } = decl;
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
     walk_fn_ret_ty(vis, output);
 }
