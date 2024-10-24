@@ -8,7 +8,7 @@ const SECS_IN_DAY: u64 = SECS_IN_HOUR * 24;
 pub struct Instant(Duration);
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct SystemTime(Duration);
+pub struct SystemTime(pub(crate) Duration);
 
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
@@ -40,6 +40,12 @@ impl Instant {
 }
 
 impl SystemTime {
+    pub(crate) const ZERO: SystemTime = SystemTime(Duration::ZERO);
+
+    pub(crate) const fn new(t: r_efi::efi::Time) -> Self {
+        Self(system_time_internal::uefi_time_to_duration(t))
+    }
+
     pub fn now() -> SystemTime {
         system_time_internal::now()
             .unwrap_or_else(|| panic!("time not implemented on this platform"))
@@ -79,7 +85,7 @@ pub(crate) mod system_time_internal {
 
         let t = unsafe { t.assume_init() };
 
-        Some(SystemTime(uefi_time_to_duration(t)))
+        Some(SystemTime::new(t))
     }
 
     // This algorithm is based on the one described in the post
