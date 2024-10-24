@@ -11,6 +11,7 @@ use rustc_abi::{
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
+use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::mir::{CoroutineLayout, CoroutineSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
@@ -572,6 +573,13 @@ fn layout_of_uncached<'tcx>(
                         .layout_of_union(&def.repr(), &variants)
                         .map_err(|err| map_error(cx, ty, err))?,
                 ));
+            }
+
+            // we're on a 16-bit target and this alignment is too big
+            if let Some(align) = def.repr().align {
+                if align.bytes() > (cx.target_isize_max() as u64) {
+                    return Err(error(cx, LayoutError::SizeOverflow(ty)));
+                }
             }
 
             let get_discriminant_type =
