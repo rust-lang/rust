@@ -24,7 +24,7 @@ impl Drop for SpawnHooks {
 }
 
 struct SpawnHook {
-    hook: Box<dyn Sync + Fn(&Thread) -> Box<dyn Send + FnOnce()>>,
+    hook: Box<dyn Send + Sync + Fn(&Thread) -> Box<dyn Send + FnOnce()>>,
     next: Option<Arc<SpawnHook>>,
 }
 
@@ -86,7 +86,7 @@ struct SpawnHook {
 #[unstable(feature = "thread_spawn_hook", issue = "none")]
 pub fn add_spawn_hook<F, G>(hook: F)
 where
-    F: 'static + Sync + Fn(&Thread) -> G,
+    F: 'static + Send + Sync + Fn(&Thread) -> G,
     G: 'static + Send + FnOnce(),
 {
     SPAWN_HOOKS.with(|h| {
