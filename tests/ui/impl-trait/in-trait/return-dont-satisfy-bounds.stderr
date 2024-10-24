@@ -32,7 +32,8 @@ LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
 LL |         self
    |         ---- return type was inferred to be `Bar` here
    |
-   = help: the trait `Foo<char>` is implemented for `Bar`
+   = help: the trait `Foo<u8>` is not implemented for `Bar`
+           but trait `Foo<char>` is implemented for it
    = help: for that trait implementation, expected `char`, found `u8`
 
 error: aborting due to 3 previous errors
