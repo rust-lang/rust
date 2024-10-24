@@ -341,7 +341,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     fn record_macro_rule_usage(&mut self, id: NodeId, rule_i: usize) {
         let did = self.local_def_id(id);
         if let Some(rules) = self.unused_macro_rules.get_mut(&did) {
-            rules.remove(&rule_i);
+            rules.shift_remove(&rule_i);
         }
     }
 
@@ -602,7 +602,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match res {
             Res::Def(DefKind::Macro(_), def_id) => {
                 if let Some(def_id) = def_id.as_local() {
-                    self.unused_macros.remove(&def_id);
+                    self.unused_macros.shift_remove(&def_id);
                     if self.proc_macro_stubs.contains(&def_id) {
                         self.dcx().emit_err(errors::ProcMacroSameCrate {
                             span: path.span,

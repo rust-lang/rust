@@ -15,7 +15,7 @@ use std::mem::{replace, swap, take};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, visit_opt, walk_list};
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey, Suggestions};
 use rustc_hir::def::Namespace::{self, *};
@@ -44,7 +44,7 @@ mod diagnostics;
 
 type Res = def::Res<NodeId>;
 
-type IdentMap<T> = FxHashMap<Ident, T>;
+type IdentMap<T> = FxIndexMap<Ident, T>;
 
 use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 
@@ -640,7 +640,7 @@ struct DiagMetadata<'ast> {
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
-    unused_labels: FxHashMap<NodeId, Span>,
+    unused_labels: FxIndexMap<NodeId, Span>,
 
     /// Only used for better errors on `let x = { foo: bar };`.
     /// In the case of a parse error with `let x = { foo: bar, };`, this isn't needed, it's only
@@ -1550,7 +1550,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         // Allow all following defaults to refer to this type parameter.
                         forward_ty_ban_rib
                             .bindings
-                            .remove(&Ident::with_dummy_span(param.ident.name));
+                            .shift_remove(&Ident::with_dummy_span(param.ident.name));
                     }
                     GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
                         // Const parameters can't have param bounds.
@@ -1578,7 +1578,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         // Allow all following defaults to refer to this const parameter.
                         forward_const_ban_rib
                             .bindings
-                            .remove(&Ident::with_dummy_span(param.ident.name));
+                            .shift_remove(&Ident::with_dummy_span(param.ident.name));
                     }
                 }
             }
@@ -2236,7 +2236,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let local_candidates = self.lifetime_elision_candidates.take();
 
             if let Some(candidates) = local_candidates {
-                let distinct: FxHashSet<_> = candidates.iter().map(|(res, _)| *res).collect();
+                let distinct: FxIndexSet<_> = candidates.iter().map(|(res, _)| *res).collect();
                 let lifetime_count = distinct.len();
                 if lifetime_count != 0 {
                     parameter_info.push(ElisionFnParameter {
@@ -4621,7 +4621,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     Ok((node_id, _)) => {
                         // Since this res is a label, it is never read.
                         self.r.label_res_map.insert(expr.id, node_id);
-                        self.diag_metadata.unused_labels.remove(&node_id);
+                        self.diag_metadata.unused_labels.shift_remove(&node_id);
                     }
                     Err(error) => {
                         self.report_error(label.ident.span, error);
