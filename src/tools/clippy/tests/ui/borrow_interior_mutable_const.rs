@@ -7,7 +7,7 @@
     const_item_mutation,
     unconditional_panic
 )]
-
+#![allow(interior_mutable_consts)]
 use core::cell::{Cell, UnsafeCell};
 use core::ops::{Deref, Index};
 

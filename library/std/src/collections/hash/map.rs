@@ -230,6 +230,7 @@ use crate::ops::Index;
 ///     Mutex::new(HashMap::with_hasher(BuildHasherDefault::new()));
 ///
 /// // HashMaps using LazyLock to retain random seeding
+/// # #[cfg_attr(not(bootstrap), allow(interior_mutable_consts))]
 /// const RANDOM_EMPTY_MAP: LazyLock<HashMap<String, Vec<i32>>> =
 ///     LazyLock::new(HashMap::new);
 /// static RANDOM_MAP: LazyLock<Mutex<HashMap<String, Vec<i32>>>> =
