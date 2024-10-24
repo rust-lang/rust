@@ -1,4 +1,5 @@
 use std::assert_matches::assert_matches;
+use std::ops::ControlFlow;
 
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
@@ -12,6 +13,7 @@ use rustc_span::source_map::{Spanned, respan};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
 use thin_vec::{ThinVec, thin_vec};
+use visit::{Visitor, walk_expr};
 
 use super::errors::{
     AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
@@ -22,8 +24,31 @@ use super::errors::{
 use super::{
     GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
-use crate::errors::YieldInClosure;
+use crate::errors::{InvalidLegacyConstGenericArg, YieldInClosure};
 use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, fluent_generated};
+
+struct WillCreateDefIdsVisitor {}
+
+impl<'v> rustc_ast::visit::Visitor<'v> for WillCreateDefIdsVisitor {
+    type Result = ControlFlow<Span>;
+
+    fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
+        ControlFlow::Break(c.value.span)
+    }
+
+    fn visit_item(&mut self, item: &'v Item) -> Self::Result {
+        ControlFlow::Break(item.span)
+    }
+
+    fn visit_expr(&mut self, ex: &'v Expr) -> Self::Result {
+        match ex.kind {
+            ExprKind::Gen(..) | ExprKind::ConstBlock(..) | ExprKind::Closure(..) => {
+                ControlFlow::Break(ex.span)
+            }
+            _ => walk_expr(self, ex),
+        }
+    }
+}
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -394,7 +419,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
                 }
 
-                let anon_const = AnonConst { id: node_id, value: arg };
+                let mut visitor = WillCreateDefIdsVisitor {};
+                let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
+                    AstP(Expr {
+                        id: self.next_node_id(),
+                        kind: ExprKind::Err(
+                            self.tcx.dcx().emit_err(InvalidLegacyConstGenericArg { span }),
+                        ),
+                        span: f.span,
+                        attrs: [].into(),
+                        tokens: None,
+                    })
+                } else {
+                    arg
+                };
+
+                let anon_const = AnonConst { id: node_id, value: const_value };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
             } else {
                 real_args.push(arg);
