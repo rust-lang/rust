@@ -1911,12 +1911,17 @@ impl Expr<'_> {
     /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.kind {
-            ExprKind::Array(_)
-            | ExprKind::Call(..)
-            | ExprKind::Tup(_)
-            | ExprKind::Lit(_)
-            | ExprKind::Path(_)
-            | ExprKind::Struct(..) => true,
+            ExprKind::Array(exprs) | ExprKind::Tup(exprs) => {
+                exprs.iter().all(|expr| expr.is_approximately_pattern())
+            }
+            ExprKind::Struct(_, fields, None) => {
+                fields.iter().all(|field| field.expr.is_approximately_pattern())
+            }
+            ExprKind::Call(callee, exprs) => {
+                callee.is_approximately_pattern()
+                    && exprs.iter().all(|expr| expr.is_approximately_pattern())
+            }
+            ExprKind::Lit(_) | ExprKind::Path(_) => true,
             _ => false,
         }
     }
