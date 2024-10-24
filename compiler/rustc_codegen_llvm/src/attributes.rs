@@ -232,11 +232,6 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
         return None;
     }
 
-    // probestack doesn't play nice either with gcov profiling.
-    if cx.sess().opts.unstable_opts.profile {
-        return None;
-    }
-
     let attr_value = match cx.sess().target.stack_probes {
         StackProbeType::None => return None,
         // Request LLVM to generate the probes inline. If the given LLVM version does not support
