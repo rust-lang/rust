@@ -28,6 +28,53 @@ use crate::utils::cache::{INTERNER, Interned};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
 
+/// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
+/// This means they can be modified and changes to these paths should never trigger a compiler build
+/// when "if-unchanged" is set.
+///
+/// NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
+/// the diff check.
+///
+/// WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
+/// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
+pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    ":!.clang-format",
+    ":!.editorconfig",
+    ":!.git-blame-ignore-revs",
+    ":!.gitattributes",
+    ":!.gitignore",
+    ":!.gitmodules",
+    ":!.ignore",
+    ":!.mailmap",
+    ":!CODE_OF_CONDUCT.md",
+    ":!CONTRIBUTING.md",
+    ":!COPYRIGHT",
+    ":!INSTALL.md",
+    ":!LICENSE-APACHE",
+    ":!LICENSE-MIT",
+    ":!LICENSES",
+    ":!README.md",
+    ":!RELEASES.md",
+    ":!REUSE.toml",
+    ":!config.example.toml",
+    ":!configure",
+    ":!rust-bors.toml",
+    ":!rustfmt.toml",
+    ":!tests",
+    ":!triagebot.toml",
+    ":!x",
+    ":!x.ps1",
+    ":!x.py",
+    ":!src/ci/cpu-usage-over-time.py",
+    ":!src/ci/publish_toolstate.sh",
+    ":!src/doc",
+    ":!src/etc",
+    ":!src/librustdoc",
+    ":!src/rustdoc-json-types",
+    ":!src/tools",
+    ":!src/README.md",
+];
+
 macro_rules! check_ci_llvm {
     ($name:expr) => {
         assert!(
@@ -2760,13 +2807,13 @@ impl Config {
             }
         };
 
-        let files_to_track =
-            &["compiler", "library", "src/version", "src/stage0", "src/ci/channel"];
-
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit = match self.last_modified_commit(files_to_track, "download-rustc", if_unchanged)
-        {
+        let commit = match self.last_modified_commit(
+            RUSTC_IF_UNCHANGED_ALLOWED_PATHS,
+            "download-rustc",
+            if_unchanged,
+        ) {
             Some(commit) => commit,
             None => {
                 if if_unchanged {
@@ -2862,16 +2909,9 @@ impl Config {
             crate::exit!(1);
         }
 
-        // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let mut git = helpers::git(Some(&self.src));
         git.args(["diff-index", "--quiet", &commit, "--"]);
-
-        // Handle running from a directory other than the top level
-        let top_level = &self.src;
-
-        for path in modified_paths {
-            git.arg(top_level.join(path));
-        }
+        git.args(modified_paths);
 
         let has_changes = !t!(git.as_command_mut().status()).success();
         if has_changes {
