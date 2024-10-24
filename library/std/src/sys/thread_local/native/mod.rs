@@ -55,6 +55,7 @@ pub macro thread_local_inner {
 
     // Used to generate the `LocalKey` value for const-initialized thread locals.
     (@key $t:ty, const $init:expr) => {{
+        #[allow(unknown_lints, interior_mutable_consts)] // cfg(bootstrap) for unknown_lints
         const __INIT: $t = $init;
 
         unsafe {
