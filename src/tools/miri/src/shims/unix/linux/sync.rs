@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use crate::helpers::check_min_arg_count;
+use crate::shims::unix::env::EvalContextExt;
 use crate::*;
 
 /// Implementation of the SYS_futex syscall.
@@ -16,14 +19,13 @@ pub fn futex<'tcx>(
     // may or may not be left out from the `syscall()` call.
     // Therefore we don't use `check_arg_count` here, but only check for the
     // number of arguments to fall within a range.
-    let [_, addr, op, val] = check_min_arg_count("`syscall(SYS_futex, ...)`", args)?;
+    let [_, addr, op] = check_min_arg_count("`syscall(SYS_futex, ...)`", args)?;
 
-    // The first three arguments (after the syscall number itself) are the same to all futex operations:
-    //     (int *addr, int op, int val).
+    // The first two arguments (after the syscall number itself) are the same to all futex operations:
+    //     (int *addr, int op).
     // We checked above that these definitely exist.
     let addr = this.read_pointer(addr)?;
     let op = this.read_scalar(op)?.to_i32()?;
-    let val = this.read_scalar(val)?.to_i32()?;
 
     // This is a vararg function so we have to bring our own type for this pointer.
     let addr = this.ptr_to_mplace(addr, this.machine.layouts.i32);
@@ -35,6 +37,50 @@ pub fn futex<'tcx>(
     let futex_wake = this.eval_libc_i32("FUTEX_WAKE");
     let futex_wake_bitset = this.eval_libc_i32("FUTEX_WAKE_BITSET");
     let futex_realtime = this.eval_libc_i32("FUTEX_CLOCK_REALTIME");
+    let futex_lock_pi = this.eval_libc_i32("FUTEX_LOCK_PI");
+    let futex_unlock_pi = this.eval_libc_i32("FUTEX_UNLOCK_PI");
+    let futex_waiters = this.eval_libc_u32("FUTEX_WAITERS");
+    let futex_tid_mask = this.eval_libc_u32("FUTEX_TID_MASK");
+
+    // Ok(None) for EINVAL set, Ok(Some(None)) for no timeout (infinity), Ok(Some(Some(...))) for a timeout.
+    // Forgive me, I don't want to create an enum for this return value.
+    fn read_timeout<'tcx>(
+        this: &mut MiriInterpCx<'tcx>,
+        timeout: &OpTy<'tcx>,
+        use_realtime_clock: bool,
+        use_absolute_time: bool,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx, Option<Option<(TimeoutClock, TimeoutAnchor, Duration)>>> {
+        let timeout = this.deref_pointer_as(timeout, this.libc_ty_layout("timespec"))?;
+        interp_ok(Some(if this.ptr_is_null(timeout.ptr())? {
+            None
+        } else {
+            let duration = match this.read_timespec(&timeout)? {
+                Some(duration) => duration,
+                None => {
+                    this.set_last_error(LibcError("EINVAL"))?;
+                    this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                    return interp_ok(None);
+                }
+            };
+            let timeout_clock = if use_realtime_clock {
+                this.check_no_isolation(
+                    "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout with `FUTEX_CLOCK_REALTIME`",
+                )?;
+                TimeoutClock::RealTime
+            } else {
+                TimeoutClock::Monotonic
+            };
+            let timeout_anchor = if use_absolute_time {
+                // FUTEX_WAIT_BITSET uses an absolute timestamp.
+                TimeoutAnchor::Absolute
+            } else {
+                // FUTEX_WAIT uses a relative timestamp.
+                TimeoutAnchor::Relative
+            };
+            Some((timeout_clock, timeout_anchor, duration))
+        }))
+    }
 
     // FUTEX_PRIVATE enables an optimization that stops it from working across processes.
     // Miri doesn't support that anyway, so we ignore that flag.
@@ -50,16 +96,29 @@ pub fn futex<'tcx>(
         op if op & !futex_realtime == futex_wait || op & !futex_realtime == futex_wait_bitset => {
             let wait_bitset = op & !futex_realtime == futex_wait_bitset;
 
-            let (timeout, bitset) = if wait_bitset {
-                let [_, _, _, _, timeout, uaddr2, bitset] =
+            let (val, timeout, bitset) = if wait_bitset {
+                let [_, _, _, val, timeout, uaddr2, bitset] =
                     check_min_arg_count("`syscall(SYS_futex, FUTEX_WAIT_BITSET, ...)`", args)?;
+                let val = this.read_scalar(val)?.to_i32()?;
                 let _timeout = this.read_pointer(timeout)?;
                 let _uaddr2 = this.read_pointer(uaddr2)?;
-                (timeout, this.read_scalar(bitset)?.to_u32()?)
+                (val, timeout, this.read_scalar(bitset)?.to_u32()?)
             } else {
-                let [_, _, _, _, timeout] =
+                let [_, _, _, val, timeout] =
                     check_min_arg_count("`syscall(SYS_futex, FUTEX_WAIT, ...)`", args)?;
-                (timeout, u32::MAX)
+                let val = this.read_scalar(val)?.to_i32()?;
+                (val, timeout, u32::MAX)
+            };
+
+            let Some(timeout) = read_timeout(
+                this,
+                timeout,
+                op & futex_realtime == futex_realtime,
+                wait_bitset,
+                dest,
+            )?
+            else {
+                return interp_ok(());
             };
 
             if bitset == 0 {
@@ -68,35 +127,6 @@ pub fn futex<'tcx>(
                 return interp_ok(());
             }
 
-            let timeout = this.deref_pointer_as(timeout, this.libc_ty_layout("timespec"))?;
-            let timeout = if this.ptr_is_null(timeout.ptr())? {
-                None
-            } else {
-                let duration = match this.read_timespec(&timeout)? {
-                    Some(duration) => duration,
-                    None => {
-                        this.set_last_error(LibcError("EINVAL"))?;
-                        this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
-                        return interp_ok(());
-                    }
-                };
-                let timeout_clock = if op & futex_realtime == futex_realtime {
-                    this.check_no_isolation(
-                        "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout with `FUTEX_CLOCK_REALTIME`",
-                    )?;
-                    TimeoutClock::RealTime
-                } else {
-                    TimeoutClock::Monotonic
-                };
-                let timeout_anchor = if wait_bitset {
-                    // FUTEX_WAIT_BITSET uses an absolute timestamp.
-                    TimeoutAnchor::Absolute
-                } else {
-                    // FUTEX_WAIT uses a relative timestamp.
-                    TimeoutAnchor::Relative
-                };
-                Some((timeout_clock, timeout_anchor, duration))
-            };
             // There may be a concurrent thread changing the value of addr
             // and then invoking the FUTEX_WAKE syscall. It is critical that the
             // effects of this and the other thread are correctly observed,
@@ -145,6 +175,13 @@ pub fn futex<'tcx>(
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
             let futex_val = this.read_scalar_atomic(&addr, AtomicReadOrd::Relaxed)?.to_i32()?;
             if val == futex_val {
+                // Check that the top waiter (if exists) is waiting using FUTEX_WAIT_*.
+                if this.futex_waiter_count(addr_usize) != 0 && this.futex_top_waiter_extra(addr_usize).is_some() {
+                    this.set_last_error(LibcError("EINVAL"))?;
+                    this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                    return interp_ok(());
+                }
+
                 // The value still matches, so we block the thread and make it wait for FUTEX_WAKE.
                 this.futex_wait(
                     addr_usize,
@@ -152,6 +189,7 @@ pub fn futex<'tcx>(
                     timeout,
                     Scalar::from_target_isize(0, this), // retval_succ
                     Scalar::from_target_isize(-1, this), // retval_timeout
+                    None,
                     dest.clone(),
                     this.eval_libc("ETIMEDOUT"),
                 );
@@ -170,14 +208,18 @@ pub fn futex<'tcx>(
         // FUTEX_WAKE_BITSET: (int *addr, int op = FUTEX_WAKE, int val, const timespect *_unused, int *_unused, unsigned int bitset)
         // Same as FUTEX_WAKE, but allows you to specify a bitset to select which threads to wake up.
         op if op == futex_wake || op == futex_wake_bitset => {
-            let bitset = if op == futex_wake_bitset {
-                let [_, _, _, _, timeout, uaddr2, bitset] =
+            let (val, bitset) = if op == futex_wake_bitset {
+                let [_, _, _, val, timeout, uaddr2, bitset] =
                     check_min_arg_count("`syscall(SYS_futex, FUTEX_WAKE_BITSET, ...)`", args)?;
+                let val = this.read_scalar(val)?.to_u32()?;
                 let _timeout = this.read_pointer(timeout)?;
                 let _uaddr2 = this.read_pointer(uaddr2)?;
-                this.read_scalar(bitset)?.to_u32()?
+                (val, this.read_scalar(bitset)?.to_u32()?)
             } else {
-                u32::MAX
+                let [_, _, _, val] =
+                    check_min_arg_count("`syscall(SYS_futex, FUTEX_WAKE, ...)`", args)?;
+                let val = this.read_scalar(val)?.to_u32()?;
+                (val, u32::MAX)
             };
             if bitset == 0 {
                 this.set_last_error(LibcError("EINVAL"))?;
@@ -189,6 +231,16 @@ pub fn futex<'tcx>(
             // before doing the syscall.
             this.atomic_fence(AtomicFenceOrd::SeqCst)?;
             let mut n = 0;
+
+            // Check that the waiter is waiting using FUTEX_WAIT_*.
+            if this.futex_waiter_count(addr_usize) != 0 {
+                if this.futex_top_waiter_extra(addr_usize).is_some() {
+                    this.set_last_error(LibcError("EINVAL"))?;
+                    this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                    return interp_ok(());
+                }
+            }
+
             #[allow(clippy::arithmetic_side_effects)]
             for _ in 0..val {
                 if this.futex_wake(addr_usize, bitset)? {
@@ -198,6 +250,134 @@ pub fn futex<'tcx>(
                 }
             }
             this.write_scalar(Scalar::from_target_isize(n, this), dest)?;
+        }
+        op if op == futex_lock_pi => {
+            let [_, _, _, _, timeout] =
+                check_min_arg_count("`syscall(SYS_futex, FUTEX_LOCK_PI, ...)`", args)?;
+
+            // FUTEX_LOCK_PI uses absolute CLOCK_REALTIME timestamp.
+            let Some(timeout) = read_timeout(this, timeout, true, true, dest)? else {
+                return interp_ok(());
+            };
+
+            // The tid of the owner is store to *addr.
+            // N.B. it is not the same as posix thread id.
+            let tid = this.linux_gettid()?.to_u32()?;
+
+            // The same as above. This makes modifications visible to us.
+            this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+            // For bitand working properly, we read it as a u32.
+            let futex_val = this.read_scalar_atomic(&addr, AtomicReadOrd::Relaxed)?.to_u32()?;
+
+            if futex_val == 0 {
+                // 0 means unlocked - then lock it.
+
+                // Check that there is no waiters.
+                if this.futex_waiter_count(addr_usize) != 0 {
+                    this.set_last_error(LibcError("EINVAL"))?;
+                    this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                    return interp_ok(());
+                }
+
+                // Declare ownership.
+                this.write_scalar_atomic(Scalar::from_u32(tid), &addr, AtomicWriteOrd::Relaxed)?;
+
+                // This ensures all loads afterwards get updated value of *addr.
+                this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+                // FUTEX_LOCK_PI returns 0 on success.
+                this.write_scalar(Scalar::from_target_isize(0, this), dest)?;
+            } else if (futex_val & futex_tid_mask) == tid {
+                // Locked by self.
+                this.set_last_error(LibcError("EDEADLK"))?;
+                this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+            } else {
+                // Other values mean locked.
+
+                if this.futex_waiter_count(addr_usize) == 0 {
+                    // Mark the futex as contended.
+                    this.write_scalar_atomic(
+                        Scalar::from_u32(futex_val | futex_waiters),
+                        &addr,
+                        AtomicWriteOrd::Relaxed,
+                    )?;
+
+                    // This ensures all loads afterwards get updated value of *addr.
+                    this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+                } else {
+                    // Check that the futex has been marked as contended.
+                    // Check that the top waiter is waiting using FUTEX_LOCK_PI.
+                    if (futex_val & futex_waiters) == 0 || this.futex_top_waiter_extra(addr_usize).is_none() {
+                        this.set_last_error(LibcError("EINVAL"))?;
+                        this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                        return interp_ok(());
+                    }
+                }
+
+                // Put ourselves into the wait queue.
+                this.futex_wait(
+                    addr_usize,
+                    u32::MAX,
+                    timeout,
+                    Scalar::from_target_isize(0, this), // retval_succ
+                    Scalar::from_target_isize(-1, this), // retval_timeout
+                    Some(tid),
+                    dest.clone(),
+                    this.eval_libc("ETIMEDOUT"),
+                );
+            }
+        }
+        op if op == futex_unlock_pi => {
+            let tid = this.linux_gettid()?.to_u32()?;
+
+            // This ensures all modifications happen before.
+            this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+            // Check we owns lock.
+            let futex_val = this.read_scalar_atomic(&addr, AtomicReadOrd::Relaxed)?.to_u32()?;
+            if (futex_val & futex_tid_mask) != tid {
+                this.set_last_error(LibcError("EINVAL"))?;
+                this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                return interp_ok(());
+            }
+
+            let waiter_count = this.futex_waiter_count(addr_usize);
+            let new_futex_val = if waiter_count == 0 {
+                0
+            } else {
+                let Some(new_tid) = this.futex_top_waiter_extra(addr_usize) else {
+                    // The waiter is not waiting using FUTEX_LOCK_PI.
+                    this.set_last_error(LibcError("EINVAL"))?;
+                    this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                    return interp_ok(());
+                };
+
+                if waiter_count > 1 {
+                    // Still contended after we unlocks.
+                    new_tid | futex_waiters
+                } else {
+                    new_tid
+                }
+            };
+
+            // Update locked state.
+            this.write_scalar_atomic(
+                Scalar::from_u32(new_futex_val),
+                &addr,
+                AtomicWriteOrd::Relaxed,
+            )?;
+
+            // This ensures all loads afterwards get updated value of *addr.
+            // There are no preemptions so no one can wake after we set the futex to unlocked
+            // and before we use futex_wake to wake one waiter.
+            this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+            // Unlocking wakes zero or one waiters.
+            let _ = this.futex_wake(addr_usize, u32::MAX)?;
+
+            // FUTEX_UNLOCK_PI returns 0 on success.
+            this.write_scalar(Scalar::from_target_isize(0, this), dest)?;
         }
         op => throw_unsup_format!("Miri does not support `futex` syscall with op={}", op),
     }

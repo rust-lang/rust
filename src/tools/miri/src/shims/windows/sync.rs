@@ -201,6 +201,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 timeout,
                 Scalar::from_i32(1), // retval_succ
                 Scalar::from_i32(0), // retval_timeout
+                None,
                 dest.clone(),
                 this.eval_windows("c", "ERROR_TIMEOUT"),
             );

@@ -128,6 +128,8 @@ struct FutexWaiter {
     thread: ThreadId,
     /// The bitset used by FUTEX_*_BITSET, or u32::MAX for other operations.
     bitset: u32,
+    /// Extra info stored for this waiter.
+    extra: Option<u32>,
 }
 
 /// The state of all synchronization objects.
@@ -695,6 +697,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
         retval_succ: Scalar,
         retval_timeout: Scalar,
+        waiter_extra: Option<u32>,
         dest: MPlaceTy<'tcx>,
         errno_timeout: Scalar,
     ) {
@@ -703,7 +706,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let futex = &mut this.machine.sync.futexes.entry(addr).or_default();
         let waiters = &mut futex.waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
-        waiters.push_back(FutexWaiter { thread, bitset });
+        waiters.push_back(FutexWaiter { thread, bitset, extra: waiter_extra });
         this.block_thread(
             BlockReason::Futex { addr },
             timeout,
@@ -759,5 +762,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let waiter = futex.waiters.remove(i).unwrap();
         this.unblock_thread(waiter.thread, BlockReason::Futex { addr })?;
         interp_ok(true)
+    }
+
+    /// Returns the extra info of the top waiter.
+    /// The caller must ensure there are waiters.
+    fn futex_top_waiter_extra(&mut self, addr: u64) -> Option<u32> {
+        let this = self.eval_context_mut();
+        let futex = &mut this.machine.sync.futexes.get(&addr)?;
+        futex.waiters.front().unwrap().extra
+    }
+
+    /// Returns the number of waiters
+    fn futex_waiter_count(&mut self, addr: u64) -> usize {
+        let this = self.eval_context_mut();
+        if let Some(futex) = &mut this.machine.sync.futexes.get(&addr) {
+            futex.waiters.len()
+        } else {
+            0
+        }
     }
 }

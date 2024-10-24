@@ -6,7 +6,7 @@
 
 use std::mem::MaybeUninit;
 use std::ptr::{self, addr_of};
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -284,6 +284,79 @@ fn concurrent_wait_wake() {
     assert!(woken > 0 && woken < rounds);
 }
 
+// Crucial test which relies on the SeqCst fences in futex lock/unlock.
+fn concurrent_lock_unlock() {
+    const fn unlocked() -> u32 {
+        0
+    }
+
+    fn locked() -> u32 {
+        unsafe { libc::gettid() }.try_into().unwrap()
+    }
+
+    static FUTEX: AtomicU32 = AtomicU32::new(0);
+    static mut DATA: u32 = 0;
+    static WOKEN: AtomicU32 = AtomicU32::new(0);
+
+    let rounds = 50;
+    for _ in 0..rounds {
+        unsafe { DATA = 0 }; // Reset
+        // Suppose the main thread is holding a lock implemented using futex...
+        FUTEX.store(locked(), Ordering::Relaxed);
+
+        let t = thread::spawn(move || {
+            unsafe {
+                if FUTEX.compare_exchange(unlocked(), locked(), Ordering::Relaxed, Ordering::Relaxed).is_ok() {
+                    // We locked the futex from userspace so make a manual fence.
+                    std::sync::atomic::fence(Ordering::Acquire);
+                } else {
+                    // Contended.
+                    let ret = libc::syscall(
+                        libc::SYS_futex,
+                        addr_of!(FUTEX),
+                        libc::FUTEX_LOCK_PI,
+                        0, // unused
+                        ptr::null::<libc::timespec>(),
+                    );
+                    // `ret` is always 0 on success.
+                    assert_eq!(ret, 0);
+                    // We are woken from futex.
+                    WOKEN.fetch_add(1, Ordering::Relaxed);
+                    // We actually slept. And then woke up again. So we should be ordered-after
+                    // what happened-before the FUTEX_LOCK_PI. So this is not a race.
+                    assert_eq!(DATA, 1);
+                }
+                // Check that we own the lock.
+                assert_eq!(FUTEX.load(Ordering::Relaxed), locked());
+                // Unlocks the lock.
+                let ret = libc::syscall(libc::SYS_futex, addr_of!(FUTEX), libc::FUTEX_UNLOCK_PI);
+                // `ret` is always 0 on success.
+                assert_eq!(ret, 0);
+                // The main thread is waiting on us, so the lock must be unlocked now.
+                assert_eq!(FUTEX.load(Ordering::Relaxed), unlocked());
+            }
+        });
+        // Increase the chance that the other thread actually goes to sleep.
+        // (5 yields in a loop seem to make that happen around 40% of the time.)
+        for _ in 0..5 {
+            thread::yield_now();
+        }
+
+        unsafe {
+            DATA = 1;
+            // Unlocks the lock.
+            let ret = libc::syscall(libc::SYS_futex, addr_of!(FUTEX), libc::FUTEX_UNLOCK_PI);
+            assert_eq!(ret, 0);
+        }
+
+        t.join().unwrap();
+    }
+
+    // Make sure we got the interesting case (of having woken a thread) at least once, but not *each* time.
+    let woken = WOKEN.load(Ordering::Relaxed);
+    assert!(woken > 0 && woken < rounds);
+}
+
 fn main() {
     wake_nobody();
     wake_dangling();
@@ -293,4 +366,5 @@ fn main() {
     wait_wake();
     wait_wake_bitset();
     concurrent_wait_wake();
+    concurrent_lock_unlock();
 }
