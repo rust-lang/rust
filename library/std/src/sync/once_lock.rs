@@ -2,6 +2,7 @@ use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::marker::PhantomData;
 use crate::mem::MaybeUninit;
+use crate::ops::{ControlFlow, FromResidual, Residual, Try};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 
@@ -375,24 +376,23 @@ impl<T> OnceLock<T> {
     /// ```
     #[inline]
     #[unstable(feature = "once_cell_try", issue = "109737")]
-    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
+    pub fn get_or_try_init<'a, F, R>(&'a self, f: F) -> <R::Residual as Residual<&'a T>>::TryType
     where
-        F: FnOnce() -> Result<T, E>,
+        F: FnOnce() -> R,
+        R: Try<Output = T, Residual: Residual<&'a T>>,
     {
         // Fast path check
         // NOTE: We need to perform an acquire on the state in this method
         // in order to correctly synchronize `LazyLock::force`. This is
-        // currently done by calling `self.get()`, which in turn calls
-        // `self.is_initialized()`, which in turn performs the acquire.
-        if let Some(value) = self.get() {
-            return Ok(value);
+        // currently done by calling `self.is_initialized()`.
+        if !self.is_initialized() {
+            if let ControlFlow::Break(residual) = self.initialize(f) {
+                return FromResidual::from_residual(residual);
+            }
         }
-        self.initialize(f)?;
-
-        debug_assert!(self.is_initialized());
 
         // SAFETY: The inner value has been initialized
-        Ok(unsafe { self.get_unchecked() })
+        try { unsafe { self.get_unchecked() } }
     }
 
     /// Gets the mutable reference of the contents of the cell, initializing
@@ -426,16 +426,22 @@ impl<T> OnceLock<T> {
     /// ```
     #[inline]
     #[unstable(feature = "once_cell_get_mut", issue = "121641")]
-    pub fn get_mut_or_try_init<F, E>(&mut self, f: F) -> Result<&mut T, E>
+    pub fn get_mut_or_try_init<'a, F, R>(
+        &'a mut self,
+        f: F,
+    ) -> <R::Residual as Residual<&'a mut T>>::TryType
     where
-        F: FnOnce() -> Result<T, E>,
+        F: FnOnce() -> R,
+        R: Try<Output = T, Residual: Residual<&'a mut T>>,
     {
-        if self.get().is_none() {
-            self.initialize(f)?;
+        if !self.is_initialized() {
+            if let ControlFlow::Break(residual) = self.initialize(f) {
+                return FromResidual::from_residual(residual);
+            }
         }
-        debug_assert!(self.is_initialized());
+
         // SAFETY: The inner value has been initialized
-        Ok(unsafe { self.get_unchecked_mut() })
+        try { unsafe { self.get_unchecked_mut() } }
     }
 
     /// Consumes the `OnceLock`, returning the wrapped value. Returns
@@ -499,22 +505,22 @@ impl<T> OnceLock<T> {
 
     #[cold]
     #[optimize(size)]
-    fn initialize<F, E>(&self, f: F) -> Result<(), E>
+    fn initialize<F, R>(&self, f: F) -> ControlFlow<R::Residual, ()>
     where
-        F: FnOnce() -> Result<T, E>,
+        F: FnOnce() -> R,
+        R: Try<Output = T>,
     {
-        let mut res: Result<(), E> = Ok(());
-        let slot = &self.value;
+        let mut res = ControlFlow::Continue(());
 
         // Ignore poisoning from other threads
         // If another thread panics, then we'll be able to run our closure
         self.once.call_once_force(|p| {
-            match f() {
-                Ok(value) => {
-                    unsafe { (&mut *slot.get()).write(value) };
+            match f().branch() {
+                ControlFlow::Continue(value) => {
+                    unsafe { (&mut *self.value.get()).write(value) };
                 }
-                Err(e) => {
-                    res = Err(e);
+                ControlFlow::Break(residual) => {
+                    res = ControlFlow::Break(residual);
 
                     // Treat the underlying `Once` as poisoned since we
                     // failed to initialize our value.

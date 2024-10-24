@@ -83,7 +83,7 @@ fn clone() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn get_or_try_init() {
-    let cell: OnceLock<String> = OnceLock::new();
+    let mut cell: OnceLock<String> = OnceLock::new();
     assert!(cell.get().is_none());
 
     let res = panic::catch_unwind(|| cell.get_or_try_init(|| -> Result<_, ()> { panic!() }));
@@ -91,10 +91,14 @@ fn get_or_try_init() {
     assert!(!cell.is_initialized());
     assert!(cell.get().is_none());
 
+    assert_eq!(cell.get_or_try_init(|| None), None);
     assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
 
     assert_eq!(cell.get_or_try_init(|| Ok::<_, ()>("hello".to_string())), Ok(&"hello".to_string()));
-    assert_eq!(cell.get(), Some(&"hello".to_string()));
+    assert_eq!(cell.take(), Some("hello".to_string()));
+
+    assert_eq!(cell.get_or_try_init(|| Some("42".to_string())), Some(&"42".to_string()));
+    assert_eq!(cell.get(), Some(&"42".to_string()));
 }
 
 #[test]
