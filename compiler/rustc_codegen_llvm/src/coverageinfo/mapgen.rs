@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 
 use itertools::Itertools as _;
 use rustc_abi::Align;
@@ -81,7 +81,6 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     generate_covmap_record(cx, covmap_version, filenames_size, filenames_val);
 
     let mut unused_function_names = Vec::new();
-    let covfun_section_name = coverageinfo::covfun_section_name(cx);
 
     // Encode coverage mappings and generate function records
     for (instance, function_coverage) in function_coverage_entries {
@@ -112,7 +111,6 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
 
         generate_covfun_record(
             cx,
-            &covfun_section_name,
             mangled_function_name,
             source_hash,
             filenames_ref,
@@ -360,7 +358,6 @@ fn generate_covmap_record<'ll>(
 /// as a global variable in the `__llvm_covfun` section.
 fn generate_covfun_record(
     cx: &CodegenCx<'_, '_>,
-    covfun_section_name: &CStr,
     mangled_function_name: &str,
     source_hash: u64,
     filenames_ref: u64,
@@ -401,7 +398,7 @@ fn generate_covfun_record(
     llvm::set_global_constant(llglobal, true);
     llvm::set_linkage(llglobal, llvm::Linkage::LinkOnceODRLinkage);
     llvm::set_visibility(llglobal, llvm::Visibility::Hidden);
-    llvm::set_section(llglobal, covfun_section_name);
+    llvm::set_section(llglobal, cx.covfun_section_name());
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
     llvm::set_alignment(llglobal, Align::EIGHT);
     if cx.target_spec().supports_comdat() {

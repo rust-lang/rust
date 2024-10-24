@@ -1,5 +1,5 @@
-use std::cell::RefCell;
-use std::ffi::CString;
+use std::cell::{OnceCell, RefCell};
+use std::ffi::{CStr, CString};
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
@@ -29,6 +29,8 @@ pub(crate) struct CrateCoverageContext<'ll, 'tcx> {
         RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
     pub(crate) mcdc_condition_bitmap_map: RefCell<FxHashMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
+
+    covfun_section_name: OnceCell<CString>,
 }
 
 impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
@@ -37,6 +39,7 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
             function_coverage_map: Default::default(),
             pgo_func_name_var_map: Default::default(),
             mcdc_condition_bitmap_map: Default::default(),
+            covfun_section_name: Default::default(),
         }
     }
 
@@ -63,11 +66,26 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
     }
 }
 
-// These methods used to be part of trait `CoverageInfoMethods`, which no longer
-// exists after most coverage code was moved out of SSA.
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn coverageinfo_finalize(&self) {
         mapgen::finalize(self)
+    }
+
+    /// Returns the section name to use when embedding per-function coverage information
+    /// in the object file, according to the target's object file format. LLVM's coverage
+    /// tools use information from this section when producing coverage reports.
+    ///
+    /// Typical values are:
+    /// - `__llvm_covfun` on Linux
+    /// - `__LLVM_COV,__llvm_covfun` on macOS (includes `__LLVM_COV,` segment prefix)
+    /// - `.lcovfun$M` on Windows (includes `$M` sorting suffix)
+    fn covfun_section_name(&self) -> &CStr {
+        self.coverage_cx().covfun_section_name.get_or_init(|| {
+            CString::new(llvm::build_byte_buffer(|s| unsafe {
+                llvm::LLVMRustCoverageWriteFuncSectionNameToString(self.llmod, s);
+            }))
+            .expect("covfun section name should not contain NUL")
+        })
     }
 
     /// For LLVM codegen, returns a function-specific `Value` for a global
@@ -277,22 +295,4 @@ pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
 
 pub(crate) fn mapping_version() -> u32 {
     unsafe { llvm::LLVMRustCoverageMappingVersion() }
-}
-
-/// Returns the section name string to pass through to the linker when embedding
-/// per-function coverage information in the object file, according to the target
-/// platform's object file format.
-///
-/// LLVM's coverage tools read coverage mapping details from this section when
-/// producing coverage reports.
-///
-/// Typical values are:
-/// - `__llvm_covfun` on Linux
-/// - `__LLVM_COV,__llvm_covfun` on macOS (includes `__LLVM_COV,` segment prefix)
-/// - `.lcovfun$M` on Windows (includes `$M` sorting suffix)
-pub(crate) fn covfun_section_name(cx: &CodegenCx<'_, '_>) -> CString {
-    CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteFuncSectionNameToString(cx.llmod, s);
-    }))
-    .expect("covfun section name should not contain NUL")
 }
