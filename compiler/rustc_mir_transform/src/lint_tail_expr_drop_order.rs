@@ -28,13 +28,20 @@ fn place_has_common_prefix<'tcx>(left: &Place<'tcx>, right: &Place<'tcx>) -> boo
         && left.projection.iter().zip(right.projection).all(|(left, right)| left == right)
 }
 
+#[derive(Debug, Clone, Copy)]
+enum MovePathIndexAtBlock {
+    Unknown,
+    None,
+    Some(MovePathIndex),
+}
+
 struct DropsReachable<'a, 'mir, 'tcx> {
     body: &'a Body<'tcx>,
     place: &'a Place<'tcx>,
     drop_span: &'a mut Option<Span>,
     move_data: &'a MoveData<'tcx>,
     maybe_init: &'a mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
-    block_drop_value_info: &'a mut IndexSlice<BasicBlock, Option<MovePathIndex>>,
+    block_drop_value_info: &'a mut IndexSlice<BasicBlock, MovePathIndexAtBlock>,
     collected_drops: &'a mut ChunkedBitSet<MovePathIndex>,
     visited: FxHashMap<BasicBlock, Rc<RefCell<ChunkedBitSet<MovePathIndex>>>>,
 }
@@ -53,27 +60,35 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
             self.visited.entry(block).or_insert_with(make_new_path_set).clone();
         // We could have invoked reverse lookup for a `MovePathIndex` every time, but unfortunately it is expensive.
         // Let's cache them in `self.block_drop_value_info`.
-        if let Some(dropped) = self.block_drop_value_info[block] {
-            dropped_local_here.borrow_mut().insert(dropped);
-        } else if let TerminatorKind::Drop { place, .. } = &terminator.kind
-            && let LookupResult::Exact(idx) | LookupResult::Parent(Some(idx)) =
-                self.move_data.rev_lookup.find(place.as_ref())
-        {
-            // Since we are working with MIRs at a very early stage,
-            // observing a `drop` terminator is not indicative enough that
-            // the drop will definitely happen.
-            // That is decided in the drop elaboration pass instead.
-            // Therefore, we need to consult with the maybe-initialization information.
-            self.maybe_init.seek_before_primary_effect(Location {
-                block,
-                statement_index: data.statements.len(),
-            });
-            if let MaybeReachable::Reachable(maybe_init) = self.maybe_init.get()
-                && maybe_init.contains(idx)
-            {
-                self.block_drop_value_info[block] = Some(idx);
-                dropped_local_here.borrow_mut().insert(idx);
+        match self.block_drop_value_info[block] {
+            MovePathIndexAtBlock::Some(dropped) => {
+                dropped_local_here.borrow_mut().insert(dropped);
             }
+            MovePathIndexAtBlock::Unknown => {
+                if let TerminatorKind::Drop { place, .. } = &terminator.kind
+                    && let LookupResult::Exact(idx) | LookupResult::Parent(Some(idx)) =
+                        self.move_data.rev_lookup.find(place.as_ref())
+                {
+                    // Since we are working with MIRs at a very early stage,
+                    // observing a `drop` terminator is not indicative enough that
+                    // the drop will definitely happen.
+                    // That is decided in the drop elaboration pass instead.
+                    // Therefore, we need to consult with the maybe-initialization information.
+                    self.maybe_init.seek_before_primary_effect(Location {
+                        block,
+                        statement_index: data.statements.len(),
+                    });
+                    if let MaybeReachable::Reachable(maybe_init) = self.maybe_init.get()
+                        && maybe_init.contains(idx)
+                    {
+                        self.block_drop_value_info[block] = MovePathIndexAtBlock::Some(idx);
+                        dropped_local_here.borrow_mut().insert(idx);
+                    } else {
+                        self.block_drop_value_info[block] = MovePathIndexAtBlock::None;
+                    }
+                }
+            }
+            MovePathIndexAtBlock::None => {}
         }
 
         for succ in terminator.successors() {
@@ -284,7 +299,8 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     let maybe_init = MaybeInitializedPlaces::new(tcx, body, &move_data);
     let mut maybe_init =
         maybe_init.into_engine(tcx, body).iterate_to_fixpoint().into_results_cursor(body);
-    let mut block_drop_value_info = IndexVec::from_elem_n(None, body.basic_blocks.len());
+    let mut block_drop_value_info =
+        IndexVec::from_elem_n(MovePathIndexAtBlock::Unknown, body.basic_blocks.len());
     for (&block, candidates) in &bid_per_block {
         let mut all_locals_dropped = ChunkedBitSet::new_empty(move_data.move_paths.len());
         let mut drop_span = None;
