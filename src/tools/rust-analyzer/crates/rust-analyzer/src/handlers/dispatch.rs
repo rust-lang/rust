@@ -121,6 +121,30 @@ impl RequestDispatcher<'_> {
     }
 
     /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
+    /// ready this will return a default constructed [`R::Result`].
+    pub(crate) fn on_or<const ALLOW_RETRYING: bool, R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
+        default: impl FnOnce() -> R::Result,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request<
+                Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+                Result: Serialize,
+            > + 'static,
+    {
+        if !self.global_state.vfs_done {
+            if let Some(lsp_server::Request { id, .. }) =
+                self.req.take_if(|it| it.method == R::METHOD)
+            {
+                self.global_state.respond(lsp_server::Response::new_ok(id, default()));
+            }
+            return self;
+        }
+        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::Worker, f)
+    }
+
+    /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
     /// ready this will return the parameter as is.
     pub(crate) fn on_identity<const ALLOW_RETRYING: bool, R, Params>(
         &mut self,
