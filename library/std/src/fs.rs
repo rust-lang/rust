@@ -1652,8 +1652,8 @@ impl Permissions {
     ///
     /// # Note
     ///
-    /// This function does not take Access Control Lists (ACLs) or Unix group
-    /// membership into account.
+    /// This function does not take Access Control Lists (ACLs), Unix group
+    /// membership or Unix root user special permissions into account.
     ///
     /// # Windows
     ///
