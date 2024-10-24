@@ -158,6 +158,23 @@ pub(crate) fn base(
     (opts, llvm_target(os, arch, abi), arch.target_arch())
 }
 
+pub fn sdk_name(target: &Target) -> &'static str {
+    match (&*target.os, &*target.abi) {
+        ("ios", "") => "iPhoneOS",
+        ("ios", "sim") => "iPhoneSimulator",
+        // Mac Catalyst uses the macOS SDK
+        ("ios", "macabi") => "MacOSX",
+        ("macos", "") => "MacOSX",
+        ("tvos", "") => "AppleTVOS",
+        ("tvos", "sim") => "AppleTVSimulator",
+        ("visionos", "") => "XROS",
+        ("visionos", "sim") => "XRSimulator",
+        ("watchos", "") => "WatchOS",
+        ("watchos", "sim") => "WatchSimulator",
+        (os, abi) => unreachable!("invalid os '{os}' / abi '{abi}' combination for Apple target"),
+    }
+}
+
 pub fn platform(target: &Target) -> Option<u32> {
     Some(match (&*target.os, &*target.abi) {
         ("macos", _) => object::macho::PLATFORM_MACOS,
@@ -292,29 +309,10 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
     // that's only applicable to cross-OS compilation. Always leave anything for the
     // host OS alone though.
     if os == "macos" {
-        let mut env_remove = Vec::with_capacity(2);
-        // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
-        // may occur when we're linking a custom build script while targeting iOS for example.
-        if let Ok(sdkroot) = env::var("SDKROOT") {
-            if sdkroot.contains("iPhoneOS.platform")
-                || sdkroot.contains("iPhoneSimulator.platform")
-                || sdkroot.contains("AppleTVOS.platform")
-                || sdkroot.contains("AppleTVSimulator.platform")
-                || sdkroot.contains("WatchOS.platform")
-                || sdkroot.contains("WatchSimulator.platform")
-                || sdkroot.contains("XROS.platform")
-                || sdkroot.contains("XRSimulator.platform")
-            {
-                env_remove.push("SDKROOT".into())
-            }
-        }
-        // Additionally, `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
+        // `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
         // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
-        env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
-        env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
-        env_remove.push("XROS_DEPLOYMENT_TARGET".into());
-        env_remove.into()
+        cvs!["IPHONEOS_DEPLOYMENT_TARGET", "TVOS_DEPLOYMENT_TARGET", "XROS_DEPLOYMENT_TARGET"]
     } else {
         // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
         // of the linking environment that's wrong and reversed.
