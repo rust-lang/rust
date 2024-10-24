@@ -437,6 +437,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty.into(),
                             TypeAnnotationNeeded::E0282,
                             !raw_ptr_call,
+                            self.param_env,
+                            None,
                         );
                         if raw_ptr_call {
                             err.span_label(span, "cannot call a method on a raw pointer with an unknown pointee type");

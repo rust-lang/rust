@@ -1,25 +1,24 @@
 error[E0283]: type annotations needed
-  --> $DIR/multiple-impl-apply.rs:34:9
+  --> $DIR/multiple-impl-apply-2.rs:34:9
    |
 LL |     let y = x.into();
    |         ^     ---- type must be known at this point
    |
-note: multiple `impl`s satisfying `_: From<Baz>` found
-  --> $DIR/multiple-impl-apply.rs:14:1
+note: multiple `impl`s satisfying `Baz: Into<_>` found
+  --> $DIR/multiple-impl-apply-2.rs:14:1
    |
-LL | impl From<Baz> for Bar {
+LL | impl Into<Bar> for Baz {
    | ^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | impl From<Baz> for Foo {
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   = note: required for `Baz` to implement `Into<_>`
-help: consider giving `y` an explicit type
-   |
-LL |     let y: Bar = x.into();
-   |          +++++
+   = note: and another `impl` found in the `core` crate:
+           - impl<T, U> Into<U> for T
+             where U: From<T>;
 help: consider giving `y` an explicit type
    |
 LL |     let y: Foo = x.into();
+   |          +++++
+help: consider giving `y` an explicit type
+   |
+LL |     let y: Bar = x.into();
    |          +++++
 
 error: aborting due to 1 previous error
