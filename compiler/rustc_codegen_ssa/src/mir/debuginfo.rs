@@ -479,7 +479,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let mut per_local = IndexVec::from_elem(vec![], &self.mir.local_decls);
         let mut constants = vec![];
-        let mut params_seen: FxHashMap<_, Bx::DIVariable> = Default::default();
+        let mut params_seen: FxHashMap<_, (Bx::DIVariable, Span, mir::SourceScope)> =
+            Default::default();
         for var in &self.mir.var_debug_info {
             let dbg_scope_and_span = if full_debug_info {
                 self.adjusted_span_and_dbg_scope(var.source_info)
@@ -498,7 +499,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             };
 
-            let dbg_var = dbg_scope_and_span.map(|(dbg_scope, _, span)| {
+            let dbg_var = dbg_scope_and_span.and_then(|(dbg_scope, _, span)| {
                 let var_kind = if let Some(arg_index) = var.argument_index
                     && var.composite.is_none()
                     && let mir::VarDebugInfoContents::Place(place) = var.value
@@ -524,18 +525,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     VariableKind::LocalVariable
                 };
 
-                if let VariableKind::ArgumentVariable(arg_index) = var_kind {
+                Some(if let VariableKind::ArgumentVariable(arg_index) = var_kind {
                     match params_seen.entry((dbg_scope, arg_index)) {
-                        Entry::Occupied(o) => o.get().clone(),
+                        Entry::Occupied(o) => {
+                            let (seen_var, seen_span, seen_source_scope) = o.get();
+                            if *seen_span == span && *seen_source_scope != var.source_info.scope {
+                                return None;
+                            } else {
+                                seen_var.clone()
+                            }
+                        }
                         Entry::Vacant(v) => v
-                            .insert(
+                            .insert((
                                 self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span),
-                            )
+                                span,
+                                var.source_info.scope,
+                            ))
+                            .0
                             .clone(),
                     }
                 } else {
                     self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
-                }
+                })
             });
 
             let fragment = if let Some(ref fragment) = var.composite {
