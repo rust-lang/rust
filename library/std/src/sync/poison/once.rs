@@ -74,6 +74,7 @@ pub(crate) enum ExclusiveState {
     note = "the `Once::new()` function is now preferred",
     suggestion = "Once::new()"
 )]
+#[cfg_attr(not(bootstrap), expect(interior_mutable_consts))]
 pub const ONCE_INIT: Once = Once::new();
 
 impl Once {
