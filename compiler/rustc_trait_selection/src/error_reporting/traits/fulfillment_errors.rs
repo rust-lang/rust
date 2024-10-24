@@ -1290,7 +1290,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         (
                             Some((
                                 data.projection_term,
-                                false,
                                 self.resolve_vars_if_possible(normalized_term),
                                 data.term,
                             )),
@@ -1335,7 +1334,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             derive_better_type_error(lhs, rhs)
                     {
                         (
-                            Some((lhs, true, self.resolve_vars_if_possible(expected_term), rhs)),
+                            Some((lhs, self.resolve_vars_if_possible(expected_term), rhs)),
                             better_type_err,
                         )
                     } else if let Some(rhs) = rhs.to_alias_term()
@@ -1343,7 +1342,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             derive_better_type_error(rhs, lhs)
                     {
                         (
-                            Some((rhs, true, self.resolve_vars_if_possible(expected_term), lhs)),
+                            Some((rhs, self.resolve_vars_if_possible(expected_term), lhs)),
                             better_type_err,
                         )
                     } else {
@@ -1354,7 +1353,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             let msg = values
-                .and_then(|(predicate, _, normalized_term, expected_term)| {
+                .and_then(|(predicate, normalized_term, expected_term)| {
                     self.maybe_detailed_projection_msg(predicate, normalized_term, expected_term)
                 })
                 .unwrap_or_else(|| {
@@ -1431,8 +1430,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 &mut diag,
                 &obligation.cause,
                 secondary_span,
-                values.map(|(_, _, normalized_ty, expected_ty)| {
-                    infer::ValuePairs::Terms(ExpectedFound::new(true, expected_ty, normalized_ty))
+                values.map(|(_, normalized_ty, expected_ty)| {
+                    obligation.param_env.and(infer::ValuePairs::Terms(ExpectedFound::new(
+                        true,
+                        expected_ty,
+                        normalized_ty,
+                    )))
                 }),
                 err,
                 false,
@@ -2654,6 +2657,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
         self.report_and_explain_type_error(
             TypeTrace::trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
+            obligation.param_env,
             terr,
         )
     }
@@ -2744,6 +2748,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             return Ok(self.report_and_explain_type_error(
                 TypeTrace::trait_refs(&obligation.cause, true, expected_trait_ref, found_trait_ref),
+                obligation.param_env,
                 ty::error::TypeError::Mismatch,
             ));
         }
