@@ -173,9 +173,6 @@ pub trait Visitor<'ast>: Sized {
     fn visit_method_receiver_expr(&mut self, ex: &'ast Expr) -> Self::Result {
         self.visit_expr(ex)
     }
-    fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
-        Self::Result::output()
-    }
     fn visit_ty(&mut self, t: &'ast Ty) -> Self::Result {
         walk_ty(self, t)
     }
@@ -1185,7 +1182,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         ExprKind::Dummy => {}
     }
 
-    visitor.visit_expr_post(expression)
+    V::Result::output()
 }
 
 pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) -> V::Result {
