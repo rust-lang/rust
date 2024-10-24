@@ -216,6 +216,9 @@ auto:
   - image: mingw-check
     <<: *job-linux-4c
 
+  - image: riscv64gc-gnu
+    <<: *job-linux-4c
+
   - image: test-various
     <<: *job-linux-4c
 
