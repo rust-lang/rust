@@ -11,8 +11,8 @@ use rustc_ast::{
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
-    ACCEPTED_LANG_FEATURES, AttributeSafety, Features, REMOVED_LANG_FEATURES,
-    UNSTABLE_LANG_FEATURES,
+    ACCEPTED_LANG_FEATURES, AttributeSafety, EnabledLangFeature, EnabledLibFeature, Features,
+    REMOVED_LANG_FEATURES, UNSTABLE_LANG_FEATURES,
 };
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
@@ -88,8 +88,11 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // If the enabled feature is stable, record it.
             if let Some(f) = ACCEPTED_LANG_FEATURES.iter().find(|f| name == f.name) {
-                let since = Some(Symbol::intern(f.since));
-                features.set_enabled_lang_feature(name, mi.span(), since);
+                features.set_enabled_lang_feature(EnabledLangFeature {
+                    gate_name: name,
+                    attr_sp: mi.span(),
+                    stable_since: Some(Symbol::intern(f.since)),
+                });
                 continue;
             }
 
@@ -115,13 +118,19 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 {
                     sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
-                features.set_enabled_lang_feature(name, mi.span(), None);
+
+                features.set_enabled_lang_feature(EnabledLangFeature {
+                    gate_name: name,
+                    attr_sp: mi.span(),
+                    stable_since: None,
+                });
                 continue;
             }
 
             // Otherwise, the feature is unknown. Enable it as a lib feature.
             // It will be checked later whether the feature really exists.
-            features.set_enabled_lib_feature(name, mi.span());
+            features
+                .set_enabled_lib_feature(EnabledLibFeature { gate_name: name, attr_sp: mi.span() });
 
             // Similar to above, detect internal lib features to suppress
             // the ICE message that asks for a report.

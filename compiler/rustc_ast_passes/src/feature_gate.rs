@@ -623,8 +623,9 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
             let stable_since = features
                 .enabled_lang_features()
                 .iter()
-                .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
-                .next();
+                .find(|feat| feat.gate_name == name)
+                .map(|feat| feat.stable_since)
+                .flatten();
             if let Some(since) = stable_since {
                 err.stable_features.push(errors::StableFeature { name, since });
             } else {
@@ -642,16 +643,15 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
 }
 
 fn check_incompatible_features(sess: &Session, features: &Features) {
-    let enabled_features = features
-        .enabled_lang_features()
-        .iter()
-        .copied()
-        .map(|(name, span, _)| (name, span))
-        .chain(features.enabled_lib_features().iter().copied());
+    let enabled_lang_features =
+        features.enabled_lang_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
+    let enabled_lib_features =
+        features.enabled_lib_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
+    let enabled_features = enabled_lang_features.chain(enabled_lib_features);
 
     for (f1, f2) in rustc_feature::INCOMPATIBLE_FEATURES
         .iter()
-        .filter(|&&(f1, f2)| features.enabled(f1) && features.enabled(f2))
+        .filter(|(f1, f2)| features.enabled(*f1) && features.enabled(*f2))
     {
         if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1) {
             if let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
@@ -673,10 +673,11 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
     }
 
     // Ban GCE with the new solver, because it does not implement GCE correctly.
-    if let Some(&(_, gce_span, _)) = features
+    if let Some(gce_span) = features
         .enabled_lang_features()
         .iter()
-        .find(|&&(feat, _, _)| feat == sym::generic_const_exprs)
+        .find(|feat| feat.gate_name == sym::generic_const_exprs)
+        .map(|feat| feat.attr_sp)
     {
         sess.dcx().emit_err(errors::IncompatibleFeatures {
             spans: vec![gce_span],
