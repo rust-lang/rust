@@ -195,7 +195,7 @@ impl<'a> Location<'a> {
     #[must_use]
     #[unstable(feature = "file_with_nul", issue = "141727")]
     #[inline]
-    pub const fn file_with_nul(&self) -> &CStr {
+    pub const fn file_with_nul(&self) -> &'a CStr {
         let filename = self.filename.as_ptr();
 
         // SAFETY: The filename is valid for `filename_len+1` bytes, so this addition can't
