@@ -433,9 +433,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout = this.read_scalar(timeout)?.to_i32()?;
 
         if epfd_value <= 0 || maxevents <= 0 {
-            this.set_last_error(LibcError("EINVAL"))?;
-            this.write_int(-1, dest)?;
-            return interp_ok(());
+            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
         }
 
         // This needs to come after the maxevents value check, or else maxevents.try_into().unwrap()
