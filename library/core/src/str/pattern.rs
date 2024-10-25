@@ -57,9 +57,9 @@ use crate::{cmp, fmt};
 /// [`Searcher`] type, which does the actual work of finding
 /// occurrences of the pattern in a string.
 ///
-/// Depending on the type of the pattern, the behaviour of methods like
+/// Depending on the type of the pattern, the behavior of methods like
 /// [`str::find`] and [`str::contains`] can change. The table below describes
-/// some of those behaviours.
+/// some of those behaviors.
 ///
 /// | Pattern type             | Match condition                           |
 /// |--------------------------|-------------------------------------------|

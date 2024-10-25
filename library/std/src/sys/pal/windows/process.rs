@@ -47,7 +47,7 @@ impl EnvKey {
     }
 }
 
-// Comparing Windows environment variable keys[1] are behaviourally the
+// Comparing Windows environment variable keys[1] are behaviorally the
 // composition of two operations[2]:
 //
 // 1. Case-fold both strings. This is done using a language-independent
@@ -338,8 +338,8 @@ impl Command {
 
         // If at least one of stdin, stdout or stderr are set (i.e. are non null)
         // then set the `hStd` fields in `STARTUPINFO`.
-        // Otherwise skip this and allow the OS to apply its default behaviour.
-        // This provides more consistent behaviour between Win7 and Win8+.
+        // Otherwise skip this and allow the OS to apply its default behavior.
+        // This provides more consistent behavior between Win7 and Win8+.
         let is_set = |stdio: &Handle| !stdio.as_raw_handle().is_null();
         if is_set(&stderr) || is_set(&stdout) || is_set(&stdin) {
             si.dwFlags |= c::STARTF_USESTDHANDLES;
@@ -507,7 +507,7 @@ where
     Exists: FnMut(PathBuf) -> Option<Vec<u16>>,
 {
     // 1. Child paths
-    // This is for consistency with Rust's historic behaviour.
+    // This is for consistency with Rust's historic behavior.
     if let Some(paths) = child_paths {
         for path in env::split_paths(paths).filter(|p| !p.as_os_str().is_empty()) {
             if let Some(path) = exists(path) {

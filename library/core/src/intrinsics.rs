@@ -930,7 +930,7 @@ extern "rust-intrinsic" {
     /// on most platforms.
     /// On Unix, the
     /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
-    /// `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
+    /// `SIGBUS`.  The precise behavior is not guaranteed and not stable.
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn abort() -> !;
@@ -1384,7 +1384,7 @@ extern "rust-intrinsic" {
 
     /// Like [`transmute`], but even less checked at compile-time: rather than
     /// giving an error for `size_of::<Src>() != size_of::<Dst>()`, it's
-    /// **Undefined Behaviour** at runtime.
+    /// **Undefined Behavior** at runtime.
     ///
     /// Prefer normal `transmute` where possible, for the extra checking, since
     /// both do exactly the same thing at runtime, if they both compile.

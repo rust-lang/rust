@@ -79,7 +79,7 @@ macro_rules! uint_module {
                 // Rotating these should make no difference
                 //
                 // We test using 124 bits because to ensure that overlong bit shifts do
-                // not cause undefined behaviour. See #10183.
+                // not cause undefined behavior. See #10183.
                 assert_eq_const_safe!(_0.rotate_left(124), _0);
                 assert_eq_const_safe!(_1.rotate_left(124), _1);
                 assert_eq_const_safe!(_0.rotate_right(124), _0);

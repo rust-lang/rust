@@ -191,7 +191,7 @@ fn windows_exe_resolver() {
 
     /*
     Some of the following tests may need to be changed if you are deliberately
-    changing the behaviour of `resolve_exe`.
+    changing the behavior of `resolve_exe`.
     */
 
     let empty_paths = || None;
