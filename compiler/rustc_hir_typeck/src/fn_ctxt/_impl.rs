@@ -1140,22 +1140,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span: path_span,
                     name: self.tcx.item_name(def.did()).to_ident_string(),
                 });
+                let diag =
+                    errors::SelfCtorFromOuterItem { impl_span: tcx.def_span(impl_def_id), sugg };
                 if ty.raw.has_param() {
-                    let guar = self.dcx().emit_err(errors::SelfCtorFromOuterItem {
-                        span: path_span,
-                        impl_span: tcx.def_span(impl_def_id),
-                        sugg,
-                    });
+                    let guar = self.dcx().create_err(diag).with_span(path_span).emit();
                     return (Ty::new_error(self.tcx, guar), res);
                 } else {
                     self.tcx.emit_node_span_lint(
                         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
                         hir_id,
                         path_span,
-                        errors::SelfCtorFromOuterItemLint {
-                            impl_span: tcx.def_span(impl_def_id),
-                            sugg,
-                        },
+                        diag,
                     );
                 }
             }

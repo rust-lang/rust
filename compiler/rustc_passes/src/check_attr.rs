@@ -1860,19 +1860,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         // Just point at all repr hints if there are any incompatibilities.
         // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
-        let hint_spans = hints.iter().map(|hint| hint.span());
+        let hint_spans: Vec<_> = hints.iter().map(|hint| hint.span()).collect();
 
         // Error on repr(transparent, <anything else>).
         if is_transparent && hints.len() > 1 {
-            let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(errors::TransparentIncompatible {
-                hint_spans,
+                hint_spans: hint_spans.clone(),
                 target: target.to_string(),
             });
         }
         if is_explicit_rust && (int_reprs > 0 || is_c || is_simd) {
-            let hint_spans = hint_spans.clone().collect();
-            self.dcx().emit_err(errors::ReprConflicting { hint_spans });
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            self.dcx().create_err(errors::ReprConflicting).with_span(hint_spans.clone()).emit();
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
@@ -1886,8 +1885,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.tcx.emit_node_span_lint(
                 CONFLICTING_REPR_HINTS,
                 hir_id,
-                hint_spans.collect::<Vec<Span>>(),
-                errors::ReprConflictingLint,
+                hint_spans,
+                errors::ReprConflicting,
             );
         }
     }

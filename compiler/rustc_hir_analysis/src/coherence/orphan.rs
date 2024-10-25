@@ -468,13 +468,21 @@ fn emit_orphan_check_error<'tcx>(
                 let name = tcx.item_name(param_def_id);
 
                 reported.get_or_insert(match local_ty {
-                    Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
-                        span,
-                        note: (),
-                        param: name,
-                        local_type,
-                    }),
-                    None => tcx.dcx().emit_err(errors::TyParamSome { span, note: (), param: name }),
+                    Some(local_type) => tcx
+                        .dcx()
+                        .create_err(errors::TyParamFirstLocal {
+                            label: span,
+                            note: (),
+                            param: name,
+                            local_type,
+                        })
+                        .with_span(span)
+                        .emit(),
+                    None => tcx
+                        .dcx()
+                        .create_err(errors::TyParamSome { label: span, note: (), param: name })
+                        .with_span(span)
+                        .emit(),
                 });
             }
             reported.unwrap() // FIXME(fmease): This is very likely reachable.
@@ -498,13 +506,13 @@ fn lint_uncovered_ty_params<'tcx>(
                 UNCOVERED_PARAM_IN_PROJECTION,
                 hir_id,
                 span,
-                errors::TyParamFirstLocalLint { span, note: (), param: name, local_type },
+                errors::TyParamFirstLocal { label: span, note: (), param: name, local_type },
             ),
             None => tcx.emit_node_span_lint(
                 UNCOVERED_PARAM_IN_PROJECTION,
                 hir_id,
                 span,
-                errors::TyParamSomeLint { span, note: (), param: name },
+                errors::TyParamSome { label: span, note: (), param: name },
             ),
         };
     }

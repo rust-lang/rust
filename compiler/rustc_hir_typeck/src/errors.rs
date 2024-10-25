@@ -670,20 +670,9 @@ pub(crate) enum SuggestBoxingForReturnImplTrait {
     },
 }
 
-#[derive(Diagnostic)]
+#[derive(Diagnostic, LintDiagnostic)]
 #[diag(hir_typeck_self_ctor_from_outer_item, code = E0401)]
 pub(crate) struct SelfCtorFromOuterItem {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub impl_span: Span,
-    #[subdiagnostic]
-    pub sugg: Option<ReplaceWithName>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(hir_typeck_self_ctor_from_outer_item)]
-pub(crate) struct SelfCtorFromOuterItemLint {
     #[label]
     pub impl_span: Span,
     #[subdiagnostic]
