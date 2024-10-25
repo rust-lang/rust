@@ -1165,17 +1165,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
-    #[instrument(level = "debug", skip(self))]
-    fn instrprof_increment(
-        &mut self,
-        fn_name: &'ll Value,
-        hash: &'ll Value,
-        num_counters: &'ll Value,
-        index: &'ll Value,
-    ) {
-        self.call_intrinsic("llvm.instrprof.increment", &[fn_name, hash, num_counters, index]);
-    }
-
     fn call(
         &mut self,
         llty: &'ll Type,
@@ -1643,6 +1632,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             None
         };
         kcfi_bundle
+    }
+
+    /// Emits a call to `llvm.instrprof.increment`. Used by coverage instrumentation.
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn instrprof_increment(
+        &mut self,
+        fn_name: &'ll Value,
+        hash: &'ll Value,
+        num_counters: &'ll Value,
+        index: &'ll Value,
+    ) {
+        self.call_intrinsic("llvm.instrprof.increment", &[fn_name, hash, num_counters, index]);
     }
 
     /// Emits a call to `llvm.instrprof.mcdc.parameters`.
