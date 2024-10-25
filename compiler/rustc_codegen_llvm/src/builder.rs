@@ -1165,6 +1165,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn instrprof_increment(
         &mut self,
         fn_name: &'ll Value,
@@ -1172,30 +1173,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         num_counters: &'ll Value,
         index: &'ll Value,
     ) {
-        debug!(
-            "instrprof_increment() with args ({:?}, {:?}, {:?}, {:?})",
-            fn_name, hash, num_counters, index
-        );
-
-        let llfn = unsafe { llvm::LLVMRustGetInstrProfIncrementIntrinsic(self.cx().llmod) };
-        let llty = self.cx.type_func(
-            &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32(), self.cx.type_i32()],
-            self.cx.type_void(),
-        );
-        let args = &[fn_name, hash, num_counters, index];
-        let args = self.check_call("call", llty, llfn, args);
-
-        unsafe {
-            let _ = llvm::LLVMRustBuildCall(
-                self.llbuilder,
-                llty,
-                llfn,
-                args.as_ptr() as *const &llvm::Value,
-                args.len() as c_uint,
-                [].as_ptr(),
-                0 as c_uint,
-            );
-        }
+        self.call_intrinsic("llvm.instrprof.increment", &[fn_name, hash, num_counters, index]);
     }
 
     fn call(
