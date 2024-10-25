@@ -7,7 +7,6 @@ where
     F::Int: CastInto<u32>,
     u64: CastInto<F::Int>,
     u32: CastInto<F::Int>,
-
     R::Int: CastInto<u32>,
     u32: CastInto<R::Int>,
     F::Int: CastInto<R::Int>,
@@ -43,8 +42,8 @@ where
 
     let sign_bits_delta = F::SIGNIFICAND_BITS - R::SIGNIFICAND_BITS;
     // Break a into a sign and representation of the absolute value.
-    let a_abs = a.repr() & src_abs_mask;
-    let sign = a.repr() & src_sign_mask;
+    let a_abs = a.to_bits() & src_abs_mask;
+    let sign = a.to_bits() & src_sign_mask;
     let mut abs_result: R::Int;
 
     if a_abs.wrapping_sub(underflow) < a_abs.wrapping_sub(overflow) {
@@ -87,7 +86,7 @@ where
         let a_exp: u32 = (a_abs >> F::SIGNIFICAND_BITS).cast();
         let shift = src_exp_bias - dst_exp_bias - a_exp + 1;
 
-        let significand = (a.repr() & src_significand_mask) | src_min_normal;
+        let significand = (a.to_bits() & src_significand_mask) | src_min_normal;
 
         // Right shift by the denormalization amount with sticky.
         if shift > F::SIGNIFICAND_BITS {
@@ -114,7 +113,7 @@ where
     }
 
     // Apply the signbit to the absolute value.
-    R::from_repr(abs_result | sign.wrapping_shr(src_bits - dst_bits).cast())
+    R::from_bits(abs_result | sign.wrapping_shr(src_bits - dst_bits).cast())
 }
 
 intrinsics! {

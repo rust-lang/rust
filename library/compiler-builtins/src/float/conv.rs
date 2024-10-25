@@ -158,7 +158,7 @@ where
     F::Int: CastInto<U::UnsignedInt>,
     u32: CastFrom<F::Int>,
 {
-    float_to_int_inner::<F, U, _, _>(f.repr(), |i: U| i, || U::MAX)
+    float_to_int_inner::<F, U, _, _>(f.to_bits(), |i: U| i, || U::MAX)
 }
 
 /// Generic float to signed int conversions.
@@ -172,7 +172,7 @@ where
     u32: CastFrom<F::Int>,
 {
     float_to_int_inner::<F, I, _, _>(
-        f.repr() & !F::SIGN_MASK,
+        f.to_bits() & !F::SIGN_MASK,
         |i: I| if f.is_sign_negative() { -i } else { i },
         || if f.is_sign_negative() { I::MIN } else { I::MAX },
     )
@@ -203,7 +203,7 @@ where
     let int_max_exp = F::EXPONENT_BIAS + I::MAX.ilog2() + 1;
     let foobar = F::EXPONENT_BIAS + I::UnsignedInt::BITS - 1;
 
-    if fbits < F::ONE.repr() {
+    if fbits < F::ONE.to_bits() {
         // < 0 gets rounded to 0
         I::ZERO
     } else if fbits < F::Int::cast_from(int_max_exp) << F::SIGNIFICAND_BITS {

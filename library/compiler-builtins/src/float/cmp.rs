@@ -41,8 +41,8 @@ fn cmp<F: Float>(a: F, b: F) -> Result {
     let exponent_mask = F::EXPONENT_MASK;
     let inf_rep = exponent_mask;
 
-    let a_rep = a.repr();
-    let b_rep = b.repr();
+    let a_rep = a.to_bits();
+    let b_rep = b.to_bits();
     let a_abs = a_rep & abs_mask;
     let b_abs = b_rep & abs_mask;
 
@@ -56,8 +56,8 @@ fn cmp<F: Float>(a: F, b: F) -> Result {
         return Result::Equal;
     }
 
-    let a_srep = a.signed_repr();
-    let b_srep = b.signed_repr();
+    let a_srep = a.to_bits_signed();
+    let b_srep = b.to_bits_signed();
 
     // If at least one of a and b is positive, we get the same result comparing
     // a and b as signed integers as we would with a fp_ting-point compare.
@@ -90,8 +90,8 @@ fn unord<F: Float>(a: F, b: F) -> bool {
     let exponent_mask = F::EXPONENT_MASK;
     let inf_rep = exponent_mask;
 
-    let a_rep = a.repr();
-    let b_rep = b.repr();
+    let a_rep = a.to_bits();
+    let b_rep = b.to_bits();
     let a_abs = a_rep & abs_mask;
     let b_abs = b_rep & abs_mask;
 
