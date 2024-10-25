@@ -119,6 +119,7 @@ lint_builtin_missing_doc = missing documentation for {$article} {$desc}
 
 lint_builtin_mutable_transmutes =
     transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+    .note = transmute from `{$from}` to `{$to}`
 
 lint_builtin_no_mangle_fn = declaration of a `no_mangle` function
 lint_builtin_no_mangle_generic = functions generic over types or consts must be mangled
@@ -888,6 +889,11 @@ lint_unqualified_local_imports = `use` of a local item without leading `self::`,
 lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
     .label = usage of unsafe attribute
 lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
+lint_unsafe_cell_transmutes =
+    transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+    .label = transmuting happend here
+    .note = transmute from `{$from}` to `{$to}`
 
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
 
