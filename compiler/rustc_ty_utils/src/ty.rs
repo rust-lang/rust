@@ -6,8 +6,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, Upcast,
+    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
@@ -95,9 +94,6 @@ fn adt_sized_constraint<'tcx>(
     let tail_ty = tcx.type_of(tail_def.did).instantiate_identity();
 
     let constraint_ty = sized_constraint_for_ty(tcx, tail_ty)?;
-    if let Err(guar) = constraint_ty.error_reported() {
-        return Some(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
-    }
 
     // perf hack: if there is a `constraint_ty: Sized` bound, then we know
     // that the type is sized and do not need to check it on the impl.

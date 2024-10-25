@@ -10,5 +10,4 @@ trait X<T> {
 }
 trait Marker {}
 impl Marker for dyn Foo {}
-//~^ ERROR cannot be made into an object
 fn main() {}

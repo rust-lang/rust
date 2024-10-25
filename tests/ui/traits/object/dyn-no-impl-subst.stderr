@@ -1,0 +1,36 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/dyn-no-impl-subst.rs:6:19
+   |
+LL | struct Vtable(dyn Cap);
+   |                   ^^^ expected named lifetime parameter
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'a` lifetime
+   |
+LL | struct Vtable(dyn for<'a> Cap<'a>);
+   |                   +++++++    ++++
+help: consider introducing a named lifetime parameter
+   |
+LL | struct Vtable<'a>(dyn Cap<'a>);
+   |              ++++        ++++
+
+error[E0038]: the trait `Copy` cannot be made into an object
+  --> $DIR/dyn-no-impl-subst.rs:14:31
+   |
+LL | const G: &dyn Copy = unsafe { Transmute { t: 1 }.u };
+   |                               ^^^^^^^^^^^^^^^^^^^^ `Copy` cannot be made into an object
+   |
+   = note: the trait cannot be made into an object because it requires `Self: Sized`
+   = note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+   = note: required for the cast from `&'static Vtable` to `&'static (dyn Copy + 'static)`
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/dyn-no-impl-subst.rs:14:31
+   |
+LL | const G: &dyn Copy = unsafe { Transmute { t: 1 }.u };
+   |                               ^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0080, E0106.
+For more information about an error, try `rustc --explain E0038`.
