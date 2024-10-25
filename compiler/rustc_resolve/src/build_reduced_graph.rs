@@ -1321,7 +1321,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         // Visit attributes after items for backward compatibility.
                         // This way they can use `macro_rules` defined later.
                         self.visit_vis(&item.vis);
-                        self.visit_ident(item.ident);
+                        self.visit_ident(&item.ident);
                         item.kind.walk(item, AssocCtxt::Trait, self);
                         visit::walk_list!(self, visit_attribute, &item.attrs);
                     }
