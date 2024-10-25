@@ -936,16 +936,7 @@ impl<'db> SemanticsImpl<'db> {
             }
         }
 
-        let (file_id, tokens) = stack.first()?;
-        // make sure we pick the token in the expanded include if we encountered an include,
-        // otherwise we'll get the wrong semantics
-        let sa =
-            tokens.first()?.0.parent().and_then(|parent| {
-                self.analyze_impl(InFile::new(*file_id, &parent), None, false)
-            })?;
-
         let mut m_cache = self.macro_call_cache.borrow_mut();
-        let def_map = sa.resolver.def_map();
 
         // Filters out all tokens that contain the given range (usually the macro call), any such
         // token is redundant as the corresponding macro call has already been processed
@@ -1024,8 +1015,16 @@ impl<'db> SemanticsImpl<'db> {
                                         ) {
                                         call.as_macro_file()
                                     } else {
-                                        // FIXME: This is wrong, the SourceAnalyzer might be invalid here
-                                        sa.expand(self.db, mcall.as_ref())?
+                                        token
+                                            .parent()
+                                            .and_then(|parent| {
+                                                self.analyze_impl(
+                                                    InFile::new(expansion, &parent),
+                                                    None,
+                                                    false,
+                                                )
+                                            })?
+                                            .expand(self.db, mcall.as_ref())?
                                     };
                                     m_cache.insert(mcall, it);
                                     it
@@ -1095,9 +1094,16 @@ impl<'db> SemanticsImpl<'db> {
                                 attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
                             // Not an attribute, nor a derive, so it's either an intert attribute or a derive helper
                             // Try to resolve to a derive helper and downmap
+                            let resolver = &token
+                                .parent()
+                                .and_then(|parent| {
+                                    self.analyze_impl(InFile::new(expansion, &parent), None, false)
+                                })?
+                                .resolver;
                             let id = self.db.ast_id_map(expansion).ast_id(&adt);
-                            let helpers =
-                                def_map.derive_helpers_in_scope(InFile::new(expansion, id))?;
+                            let helpers = resolver
+                                .def_map()
+                                .derive_helpers_in_scope(InFile::new(expansion, id))?;
 
                             if !helpers.is_empty() {
                                 let text_range = attr.syntax().text_range();

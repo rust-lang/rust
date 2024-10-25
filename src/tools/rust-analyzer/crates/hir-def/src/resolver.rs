@@ -1043,12 +1043,12 @@ impl HasResolver for ModuleId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         let mut def_map = self.def_map(db);
         let mut module_id = self.local_id;
-        let mut modules: SmallVec<[_; 1]> = smallvec![];
 
         if !self.is_block_module() {
             return Resolver { scopes: vec![], module_scope: ModuleItemMap { def_map, module_id } };
         }
 
+        let mut modules: SmallVec<[_; 1]> = smallvec![];
         while let Some(parent) = def_map.parent() {
             let block_def_map = mem::replace(&mut def_map, parent.def_map(db));
             modules.push(block_def_map);
