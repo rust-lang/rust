@@ -48,5 +48,11 @@ warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implement
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: 8 warnings emitted
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:38:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 9 warnings emitted
 
