@@ -1,0 +1,67 @@
+error: ambiguous `+` in a type
+   |
+LL | fn elided(_: &impl Copy + 'a) -> _ { x }
+   |               ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn elided(_: &(impl Copy + 'a)) -> _ { x }
+   |               +              +
+
+error: ambiguous `+` in a type
+   |
+LL | fn foo<'a>(_: &impl Copy + 'a) -> impl 'b + 'a { x }
+   |                ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn foo<'a>(_: &(impl Copy + 'a)) -> impl 'b + 'a { x }
+   |                +              +
+
+error: ambiguous `+` in a type
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |                 ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn x<'b>(_: &'a (impl Copy + 'a)) -> Box<dyn 'b> { Box::u32(x) }
+   |                 +              +
+
+error: at least one trait must be specified
+   |
+LL | fn foo<'a>(_: &impl Copy + 'a) -> impl 'b + 'a { x }
+   |                                   ^^^^^^^^^^^^
+
+error[E0261]: use of undeclared lifetime name `'a`
+   |
+LL | fn elided(_: &impl Copy + 'a) -> _ { x }
+   |          -                ^^ undeclared lifetime
+   |          |
+   |          help: consider introducing lifetime `'a` here: `<'a>`
+
+error[E0261]: use of undeclared lifetime name `'b`
+   |
+LL | fn foo<'a>(_: &impl Copy + 'a) -> impl 'b + 'a { x }
+   |        -                               ^^ undeclared lifetime
+   |        |
+   |        help: consider introducing lifetime `'b` here: `'b,`
+
+error[E0261]: use of undeclared lifetime name `'a`
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |      -       ^^ undeclared lifetime
+   |      |
+   |      help: consider introducing lifetime `'a` here: `'a,`
+
+error[E0261]: use of undeclared lifetime name `'a`
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |      -                      ^^ undeclared lifetime
+   |      |
+   |      help: consider introducing lifetime `'a` here: `'a,`
+
+error[E0224]: at least one trait is required for an object type
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |                                        ^^^^^^

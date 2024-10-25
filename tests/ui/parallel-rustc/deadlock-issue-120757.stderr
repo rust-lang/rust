@@ -1,0 +1,64 @@
+error[E0425]: cannot find value `ns_window` in this scope
+   |
+LL |         self.reference.bget(index).map(ns_window)
+   |                                        ^^^^^^^^^ not found in this scope
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: method not compatible with trait
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error[E0308]: method not compatible with trait
+   |
+LL |     fn size(&self) -> [usize; DIM] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`
+   |
+LL |     const DIM: usize;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>`...
+   |
+LL | trait TensorDimension {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`, completing the cycle
+note: cycle used when computing candidate for `<LazyUpdim<'_, T, { T::DIM }, DIM> as TensorDimension>`
+   |
+LL | trait TensorDimension {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`
+   |
+LL |     const DIM: usize;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>`...
+   |
+LL | trait TensorDimension {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`, completing the cycle
+   |
+LL | impl<'a, T: Broadcastable, const DIM: usize> Broadcastable for LazyUpdim<'a, T, { T::DIM }, DIM> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 5 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0308, E0391, E0425.
+For more information about an error, try `rustc --explain E0308`.
