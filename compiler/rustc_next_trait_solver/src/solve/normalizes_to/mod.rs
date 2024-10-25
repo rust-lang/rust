@@ -193,6 +193,14 @@ where
         }
     }
 
+    fn consider_additional_alias_assumptions(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+        _alias_ty: ty::AliasTy<I>,
+    ) -> Vec<Candidate<I>> {
+        vec![]
+    }
+
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, NormalizesTo<I>>,

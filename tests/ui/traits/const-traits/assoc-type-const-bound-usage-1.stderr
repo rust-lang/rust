@@ -6,18 +6,30 @@ LL | #![feature(const_trait_impl, effects, generic_const_exprs)]
    |
    = help: remove one of these features
 
-error[E0271]: type mismatch resolving `<T as Trait>::Assoc == T`
-  --> $DIR/assoc-type-const-bound-usage-1.rs:15:44
+error[E0284]: type annotations needed: cannot normalize `unqualified<T>::{constant#0}`
+  --> $DIR/assoc-type-const-bound-usage-1.rs:15:37
    |
 LL | fn unqualified<T: const Trait>() -> Type<{ T::Assoc::func() }> {
-   |                                            ^^^^^^^^^^^^^^^^ types differ
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `unqualified<T>::{constant#0}`
 
-error[E0271]: type mismatch resolving `<T as Trait>::Assoc == T`
-  --> $DIR/assoc-type-const-bound-usage-1.rs:19:42
+error[E0284]: type annotations needed: cannot normalize `qualified<T>::{constant#0}`
+  --> $DIR/assoc-type-const-bound-usage-1.rs:19:35
    |
 LL | fn qualified<T: const Trait>() -> Type<{ <T as Trait>::Assoc::func() }> {
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `qualified<T>::{constant#0}`
 
-error: aborting due to 3 previous errors
+error[E0284]: type annotations needed: cannot normalize `unqualified<T>::{constant#0}`
+  --> $DIR/assoc-type-const-bound-usage-1.rs:16:5
+   |
+LL |     Type
+   |     ^^^^ cannot normalize `unqualified<T>::{constant#0}`
 
-For more information about this error, try `rustc --explain E0271`.
+error[E0284]: type annotations needed: cannot normalize `qualified<T>::{constant#0}`
+  --> $DIR/assoc-type-const-bound-usage-1.rs:20:5
+   |
+LL |     Type
+   |     ^^^^ cannot normalize `qualified<T>::{constant#0}`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0284`.
