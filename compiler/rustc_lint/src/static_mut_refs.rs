@@ -3,8 +3,8 @@ use rustc_hir::{Expr, Stmt};
 use rustc_middle::ty::{Mutability, TyKind};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::Span;
 use rustc_span::edition::Edition;
+use rustc_span::{BytePos, Span};
 
 use crate::lints::{MutRefSugg, RefOfMutStatic};
 use crate::{LateContext, LateLintPass, LintContext};
@@ -71,13 +71,24 @@ impl<'tcx> LateLintPass<'tcx> for StaticMutRefs {
                 if matches!(borrow_kind, hir::BorrowKind::Ref)
                     && let Some(err_span) = path_is_static_mut(ex, err_span) =>
             {
-                emit_static_mut_refs(
-                    cx,
-                    err_span,
-                    err_span.with_hi(ex.span.lo()),
-                    m,
-                    !expr.span.from_expansion(),
-                );
+                let source_map = cx.sess().source_map();
+                let snippet = source_map.span_to_snippet(err_span);
+
+                let sugg_span = if let Ok(snippet) = snippet {
+                    // ( ( &IDENT ) )
+                    // ~~~~ exclude these from the suggestion span to avoid unmatching parens
+                    let exclude_n_bytes: u32 = snippet
+                        .chars()
+                        .take_while(|ch| ch.is_whitespace() || *ch == '(')
+                        .map(|ch| ch.len_utf8() as u32)
+                        .sum();
+
+                    err_span.with_lo(err_span.lo() + BytePos(exclude_n_bytes)).with_hi(ex.span.lo())
+                } else {
+                    err_span.with_hi(ex.span.lo())
+                };
+
+                emit_static_mut_refs(cx, err_span, sugg_span, m, !expr.span.from_expansion());
             }
             hir::ExprKind::MethodCall(_, e, _, _)
                 if let Some(err_span) = path_is_static_mut(e, expr.span)
