@@ -72,6 +72,12 @@ enum ArgumentType<'a> {
         // was derived from a `&'a T`.
         value: NonNull<()>,
         formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
+        #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
+        cast_stub: unsafe fn(
+            unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
+            NonNull<()>,
+            f: &mut Formatter<'_>,
+        ) -> Result,
         _lifetime: PhantomData<&'a ()>,
     },
     Count(usize),
@@ -93,6 +99,21 @@ pub struct Argument<'a> {
     ty: ArgumentType<'a>,
 }
 
+/// This function acts as a witness to an earlier type erasure when constructing an
+/// `ArgumentType`. The type parameter `T` should be instantiated to the erased type.
+/// SAFETY: This function should be called on a value and formatter which underwent a
+/// T->Opaque cast at their definition site.
+#[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
+unsafe fn cast_stub<T>(
+    formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
+    value: NonNull<()>,
+    f: &mut Formatter<'_>,
+) -> Result {
+    let value: &T = mem::transmute(value);
+    let formatter: fn(&T, &mut Formatter<'_>) -> Result = mem::transmute(formatter);
+    formatter(value, f)
+}
+
 #[rustc_diagnostic_item = "ArgumentMethods"]
 impl Argument<'_> {
     #[inline(always)]
@@ -104,6 +125,8 @@ impl Argument<'_> {
                 value: NonNull::from(x).cast(),
                 // SAFETY: function pointers always have the same layout.
                 formatter: unsafe { mem::transmute(f) },
+                #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
+                cast_stub: cast_stub::<T>,
                 _lifetime: PhantomData,
             },
         }
@@ -167,6 +190,15 @@ impl Argument<'_> {
     #[inline(always)]
     pub(super) unsafe fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self.ty {
+            #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
+            // SAFETY:
+            // This is the `cast_stub` that was prepared alongside the
+            // formatter and value, so it should have the `T` instantiated to
+            // the erased type that `value` points at.
+            ArgumentType::Placeholder { formatter, value, cast_stub, .. } => unsafe {
+                cast_stub(formatter, value, f)
+            },
+            #[cfg(not(any(sanitize = "cfi", sanitize = "kcfi")))]
             // SAFETY:
             // Because of the invariant that if `formatter` had the type
             // `fn(&T, _) -> _` then `value` has type `&'b T` where `'b` is
