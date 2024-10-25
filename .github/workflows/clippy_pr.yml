@@ -1,17 +1,6 @@
 name: Clippy Test
 
 on:
-  push:
-    # Ignore bors branches, since they are covered by `clippy_bors.yml`
-    branches-ignore:
-      - auto
-      - try
-    # Don't run Clippy tests, when only text files were modified
-    paths-ignore:
-    - 'COPYRIGHT'
-    - 'LICENSE-*'
-    - '**.md'
-    - '**.txt'
   pull_request:
     # Don't run Clippy tests, when only text files were modified
     paths-ignore:
@@ -35,7 +24,7 @@ concurrency:
 
 jobs:
   base:
-    # NOTE: If you modify this job, make sure you copy the changes to clippy_bors.yml
+    # NOTE: If you modify this job, make sure you copy the changes to clippy_mq.yml
     runs-on: ubuntu-latest
 
     steps:
