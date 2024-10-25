@@ -19,14 +19,9 @@ fn alloc_caller_location<'tcx>(
     let loc_details = ecx.tcx.sess.opts.unstable_opts.location_detail;
     // This can fail if rustc runs out of memory right here. Trying to emit an error would be
     // pointless, since that would require allocating more memory than these short strings.
-    let file = if loc_details.file {
-        ecx.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not).unwrap()
-    } else {
-        // FIXME: This creates a new allocation each time. It might be preferable to
-        // perform this allocation only once, and re-use the `MPlaceTy`.
-        // See https://github.com/rust-lang/rust/pull/89920#discussion_r730012398
-        ecx.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not).unwrap()
-    };
+    let filename = if loc_details.file { filename.as_str() } else { "<redacted>" };
+    let file =
+        ecx.allocate_str_with_null(filename, MemoryKind::CallerLocation, Mutability::Not).unwrap();
     let file = file.map_provenance(CtfeProvenance::as_immutable);
     let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
     let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
