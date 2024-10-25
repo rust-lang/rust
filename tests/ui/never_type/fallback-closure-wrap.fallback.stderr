@@ -1,16 +1,15 @@
 error[E0271]: expected `{closure@fallback-closure-wrap.rs:18:40}` to be a closure that returns `()`, but it returns `!`
-  --> $DIR/fallback-closure-wrap.rs:18:31
+  --> $DIR/fallback-closure-wrap.rs:19:9
    |
-LL |       let error = Closure::wrap(Box::new(move || {
-   |  _______________________________^
-LL | |
-LL | |         panic!("Can't connect to server.");
-LL | |     }) as Box<dyn FnMut()>);
-   | |______^ expected `()`, found `!`
+LL |     let error = Closure::wrap(Box::new(move || {
+   |                                        -------
+LL |         panic!("Can't connect to server.");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `!`
    |
    = note: expected unit type `()`
                    found type `!`
    = note: required for the cast from `Box<{closure@$DIR/fallback-closure-wrap.rs:18:40: 18:47}>` to `Box<dyn FnMut()>`
+   = note: this error originates in the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

@@ -1386,6 +1386,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, diag, secondary_span, prefer_label))]
     pub fn note_type_err(
         &self,
+        span: Span,
         diag: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
         secondary_span: Option<(Span, Cow<'static, str>, bool)>,
@@ -1393,8 +1394,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
         prefer_label: bool,
     ) {
-        let span = cause.span;
-
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
         if let TypeError::CyclicTy(_) = terr {
@@ -2053,6 +2052,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let mut diag = self.dcx().create_err(failure_code);
         self.note_type_err(
+            span,
             &mut diag,
             &trace.cause,
             None,

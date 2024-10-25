@@ -640,6 +640,7 @@ pub fn check_function_signature<'tcx>(
             let failure_code = cause.as_failure_code_diag(err, cause.span, vec![]);
             let mut diag = tcx.dcx().create_err(failure_code);
             err_ctxt.note_type_err(
+                cause.span,
                 &mut diag,
                 &cause,
                 None,
