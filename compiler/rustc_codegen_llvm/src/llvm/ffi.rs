@@ -161,9 +161,9 @@ pub enum Linkage {
     LinkerPrivateWeakLinkage = 16,
 }
 
-// LLVMRustVisibility
+/// Must match the layout of `LLVMVisibility`.
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, TryFromU32)]
 pub enum Visibility {
     Default = 0,
     Hidden = 1,
@@ -984,6 +984,8 @@ unsafe extern "C" {
     pub fn LLVMGetLinkage(Global: &Value) -> RawEnum<Linkage>;
     pub fn LLVMSetLinkage(Global: &Value, RustLinkage: Linkage);
     pub fn LLVMSetSection(Global: &Value, Section: *const c_char);
+    pub fn LLVMGetVisibility(Global: &Value) -> RawEnum<Visibility>;
+    pub fn LLVMSetVisibility(Global: &Value, Viz: Visibility);
     pub fn LLVMGetAlignment(Global: &Value) -> c_uint;
     pub fn LLVMSetAlignment(Global: &Value, Bytes: c_uint);
     pub fn LLVMSetDLLStorageClass(V: &Value, C: DLLStorageClass);
@@ -1559,8 +1561,6 @@ unsafe extern "C" {
     ) -> bool;
 
     // Operations on global variables, functions, and aliases (globals)
-    pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
-    pub fn LLVMRustSetVisibility(Global: &Value, Viz: Visibility);
     pub fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);
 
     // Operations on global variables

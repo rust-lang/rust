@@ -34,6 +34,8 @@ pub(crate) fn try_from_u32(s: Structure<'_>) -> TokenStream {
         .iter()
         .map(|v| v.construct(|_, _| -> TokenStream { unreachable!() }))
         .collect::<Vec<_>>();
+    // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
+    #[allow(keyword_idents_2024)]
     s.gen_impl(quote! {
         // The surrounding code might have shadowed these identifiers.
         use ::core::convert::TryFrom;

@@ -1646,45 +1646,6 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext,
   return true;
 }
 
-enum class LLVMRustVisibility {
-  Default = 0,
-  Hidden = 1,
-  Protected = 2,
-};
-
-static LLVMRustVisibility toRust(LLVMVisibility Vis) {
-  switch (Vis) {
-  case LLVMDefaultVisibility:
-    return LLVMRustVisibility::Default;
-  case LLVMHiddenVisibility:
-    return LLVMRustVisibility::Hidden;
-  case LLVMProtectedVisibility:
-    return LLVMRustVisibility::Protected;
-  }
-  report_fatal_error("Invalid LLVMRustVisibility value!");
-}
-
-static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
-  switch (Vis) {
-  case LLVMRustVisibility::Default:
-    return LLVMDefaultVisibility;
-  case LLVMRustVisibility::Hidden:
-    return LLVMHiddenVisibility;
-  case LLVMRustVisibility::Protected:
-    return LLVMProtectedVisibility;
-  }
-  report_fatal_error("Invalid LLVMRustVisibility value!");
-}
-
-extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
-  return toRust(LLVMGetVisibility(V));
-}
-
-extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
-                                      LLVMRustVisibility RustVisibility) {
-  LLVMSetVisibility(V, fromRust(RustVisibility));
-}
-
 extern "C" void LLVMRustSetDSOLocal(LLVMValueRef Global, bool is_dso_local) {
   unwrap<GlobalValue>(Global)->setDSOLocal(is_dso_local);
 }
