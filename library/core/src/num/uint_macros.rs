@@ -3086,7 +3086,7 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
-                   reason = "needs decision on wrapping behaviour")]
+                   reason = "needs decision on wrapping behavior")]
         #[rustc_const_unstable(feature = "wrapping_next_power_of_two", issue = "32463")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]

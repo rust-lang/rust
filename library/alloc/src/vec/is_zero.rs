@@ -172,7 +172,7 @@ macro_rules! impl_is_zero_option_of_bool {
             fn is_zero(&self) -> bool {
                 // SAFETY: This is *not* a stable layout guarantee, but
                 // inside `core` we're allowed to rely on the current rustc
-                // behaviour that options of bools will be one byte with
+                // behavior that options of bools will be one byte with
                 // no padding, so long as they're nested less than 254 deep.
                 let raw: u8 = unsafe { core::mem::transmute(*self) };
                 raw == 0

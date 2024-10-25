@@ -153,7 +153,7 @@ pub trait FileExt {
     ///
     /// It is possible to inadvertently set this flag, like in the example below.
     /// Therefore, it is important to be vigilant while changing options to mitigate
-    /// unexpected behaviour.
+    /// unexpected behavior.
     ///
     /// ```no_run
     /// use std::fs::File;

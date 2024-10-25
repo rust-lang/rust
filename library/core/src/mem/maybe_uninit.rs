@@ -723,7 +723,7 @@ impl<T> MaybeUninit<T> {
     /// this does not constitute a stable guarantee), because the only
     /// requirement the compiler knows about it is that the data pointer must be
     /// non-null. Dropping such a `Vec<T>` however will cause undefined
-    /// behaviour.
+    /// behavior.
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     /// [`Vec<T>`]: ../../std/vec/struct.Vec.html

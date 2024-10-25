@@ -36,7 +36,7 @@ impl<T> OnceBox<T> {
     /// ```
     ///
     /// # Safety
-    /// This causes undefined behaviour if the assumption above is violated.
+    /// This causes undefined behavior if the assumption above is violated.
     #[inline]
     pub unsafe fn get_unchecked(&self) -> &T {
         unsafe { &*self.ptr.load(Relaxed) }

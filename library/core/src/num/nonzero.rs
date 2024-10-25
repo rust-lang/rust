@@ -355,7 +355,7 @@ where
     }
 
     /// Creates a non-zero without checking whether the value is non-zero.
-    /// This results in undefined behaviour if the value is zero.
+    /// This results in undefined behavior if the value is zero.
     ///
     /// # Safety
     ///
@@ -952,9 +952,9 @@ macro_rules! nonzero_integer {
 
             /// Multiplies two non-zero integers together,
             /// assuming overflow cannot occur.
-            /// Overflow is unchecked, and it is undefined behaviour to overflow
+            /// Overflow is unchecked, and it is undefined behavior to overflow
             /// *even if the result would wrap to a non-zero value*.
-            /// The behaviour is undefined as soon as
+            /// The behavior is undefined as soon as
             #[doc = sign_dependent_expr!{
                 $signedness ?
                 if signed {
@@ -1323,9 +1323,9 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
 
         /// Adds an unsigned integer to a non-zero value,
         /// assuming overflow cannot occur.
-        /// Overflow is unchecked, and it is undefined behaviour to overflow
+        /// Overflow is unchecked, and it is undefined behavior to overflow
         /// *even if the result would wrap to a non-zero value*.
-        /// The behaviour is undefined as soon as
+        /// The behavior is undefined as soon as
         #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`.")]
         ///
         /// # Examples
@@ -1599,7 +1599,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
 
         /// Computes the absolute value of self.
         #[doc = concat!("See [`", stringify!($Int), "::abs`]")]
-        /// for documentation on overflow behaviour.
+        /// for documentation on overflow behavior.
         ///
         /// # Example
         ///
@@ -1878,7 +1878,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// Negates self, overflowing if this is equal to the minimum value.
         ///
         #[doc = concat!("See [`", stringify!($Int), "::overflowing_neg`]")]
-        /// for documentation on overflow behaviour.
+        /// for documentation on overflow behavior.
         ///
         /// # Example
         ///
@@ -1943,7 +1943,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// of the type.
         ///
         #[doc = concat!("See [`", stringify!($Int), "::wrapping_neg`]")]
-        /// for documentation on overflow behaviour.
+        /// for documentation on overflow behavior.
         ///
         /// # Example
         ///

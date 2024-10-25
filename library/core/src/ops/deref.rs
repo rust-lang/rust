@@ -15,7 +15,7 @@
 ///
 /// Types that implement `Deref` or `DerefMut` are often called "smart
 /// pointers" and the mechanism of deref coercion has been specifically designed
-/// to facilitate the pointer-like behaviour that name suggests. Often, the
+/// to facilitate the pointer-like behavior that name suggests. Often, the
 /// purpose of a "smart pointer" type is to change the ownership semantics
 /// of a contained value (for example, [`Rc`][rc] or [`Cow`][cow]) or the
 /// storage semantics of a contained value (for example, [`Box`][box]).
@@ -42,7 +42,7 @@
 /// 1. a value of the type transparently behaves like a value of the target
 ///    type;
 /// 1. the implementation of the deref function is cheap; and
-/// 1. users of the type will not be surprised by any deref coercion behaviour.
+/// 1. users of the type will not be surprised by any deref coercion behavior.
 ///
 /// In general, deref traits **should not** be implemented if:
 ///
@@ -185,7 +185,7 @@ impl<T: ?Sized> Deref for &mut T {
 ///
 /// Types that implement `DerefMut` or `Deref` are often called "smart
 /// pointers" and the mechanism of deref coercion has been specifically designed
-/// to facilitate the pointer-like behaviour that name suggests. Often, the
+/// to facilitate the pointer-like behavior that name suggests. Often, the
 /// purpose of a "smart pointer" type is to change the ownership semantics
 /// of a contained value (for example, [`Rc`][rc] or [`Cow`][cow]) or the
 /// storage semantics of a contained value (for example, [`Box`][box]).

@@ -65,7 +65,7 @@ impl Drop for AllocatedMutex {
             // On DragonFly pthread_mutex_destroy() returns EINVAL if called on a
             // mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
             // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
-            // this behaviour no longer occurs.
+            // this behavior no longer occurs.
             debug_assert!(r == 0 || r == libc::EINVAL);
         } else {
             debug_assert_eq!(r, 0);
@@ -88,7 +88,7 @@ impl Mutex {
     /// since the `lock` and the lock must have occurred on the current thread.
     ///
     /// # Safety
-    /// Causes undefined behaviour if the mutex is not locked.
+    /// Causes undefined behavior if the mutex is not locked.
     #[inline]
     pub(crate) unsafe fn get_assert_locked(&self) -> *mut libc::pthread_mutex_t {
         unsafe { self.inner.get_unchecked().0.get() }
