@@ -29,3 +29,11 @@ fn location_const_column() {
     const COLUMN: u32 = CALLER.column();
     assert_eq!(COLUMN, 40);
 }
+
+#[test]
+fn location_file_lifetime<'x>() {
+    // Verify that the returned `&str`s lifetime is derived from the generic
+    // lifetime 'a, not the lifetime of `&self`, when calling `Location::file`.
+    // Test failure is indicated by a compile failure, not a runtime panic.
+    let _: for<'a> fn(&'a Location<'x>) -> &'x str = Location::file;
+}
