@@ -27,11 +27,24 @@ pass the <!-- date-check: nov 2022 --> `--edition=2021` argument yourself when c
 [fmt]: https://github.com/rust-dev-tools/fmt-rfcs
 [`rustfmt`]:https://github.com/rust-lang/rustfmt
 
+## Formatting C++ code
+
+The compiler contains some C++ code for interfacing with parts of LLVM that
+don't have a stable C API.
+When modifying that code, use this command to format it:
+
+```sh
+./x test tidy --extra-checks=cpp:fmt --bless
+```
+
+This uses a pinned version of `clang-format`, to avoid relying on the local
+environment.
+
 <a name="copyright"></a>
 
 <!-- REUSE-IgnoreStart -->
 <!-- Prevent REUSE from interpreting the heading as a copyright notice -->
-### Copyright notice
+## Copyright notice
 <!-- REUSE-IgnoreEnd -->
 
 In the past, files began with a copyright and license notice. Please **omit**
