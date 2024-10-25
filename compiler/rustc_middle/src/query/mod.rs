@@ -35,7 +35,7 @@ use rustc_query_system::query::{QueryCache, QueryMode, QueryState, try_get_cache
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{
-    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
+    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib, NativeLibs,
 };
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -406,7 +406,7 @@ rustc_queries! {
     /// These are assembled from the following places:
     /// - `extern` blocks (depending on their `link` attributes)
     /// - the `libs` (`-l`) option
-    query native_libraries(_: CrateNum) -> &'tcx Vec<NativeLib> {
+    query native_libraries(_: CrateNum) -> &'tcx NativeLibs {
         arena_cache
         desc { "looking up the native libraries of a linked crate" }
         separate_provide_extern
@@ -1744,6 +1744,10 @@ rustc_queries! {
     /// Get the corresponding native library from the `native_libraries` query
     query native_library(def_id: DefId) -> Option<&'tcx NativeLib> {
         desc { |tcx| "getting the native library for `{}`", tcx.def_path_str(def_id) }
+    }
+
+    query is_dllimport(def_id: DefId) -> bool {
+        desc { |tcx| "determining dllimport status of `{}`", tcx.def_path_str(def_id) }
     }
 
     query inherit_sig_for_delegation_item(def_id: LocalDefId) -> &'tcx [Ty<'tcx>] {
