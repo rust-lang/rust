@@ -118,7 +118,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             match attr.path().as_slice() {
                 [sym::diagnostic, sym::do_not_recommend, ..] => {
-                    self.check_do_not_recommend(attr.span, hir_id, target, attr)
+                    self.check_do_not_recommend(attr.span, hir_id, target, attr, item)
                 }
                 [sym::diagnostic, sym::on_unimplemented, ..] => {
                     self.check_diagnostic_on_unimplemented(attr.span, hir_id, target)
@@ -357,8 +357,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         hir_id: HirId,
         target: Target,
         attr: &Attribute,
+        item: Option<ItemLike<'_>>,
     ) {
-        if !matches!(target, Target::Impl) {
+        if !matches!(target, Target::Impl)
+            || matches!(
+                item,
+                Some(ItemLike::Item(hir::Item {  kind: hir::ItemKind::Impl(_impl),.. }))
+                    if _impl.of_trait.is_none()
+            )
+        {
             self.tcx.emit_node_span_lint(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 hir_id,

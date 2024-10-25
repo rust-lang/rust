@@ -21,6 +21,10 @@ enum Enum {}
 
 #[diagnostic::do_not_recommend]
 //~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+impl Enum {}
+
+#[diagnostic::do_not_recommend]
+//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
 extern "C" {}
 
 #[diagnostic::do_not_recommend]
