@@ -95,9 +95,9 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         // whether we are sharing generics or not. The important thing here is
         // that the visibility we apply to the declaration is the same one that
         // has been applied to the definition (wherever that definition may be).
-        unsafe {
-            llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
+        llvm::set_linkage(llfn, llvm::Linkage::ExternalLinkage);
+        unsafe {
             let is_generic = instance.args.non_erasable_generics().next().is_some();
 
             let is_hidden = if is_generic {

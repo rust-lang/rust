@@ -232,6 +232,10 @@ pub fn set_global_constant(llglobal: &Value, is_constant: bool) {
     }
 }
 
+pub fn get_linkage(llglobal: &Value) -> Linkage {
+    unsafe { LLVMRustGetLinkage(llglobal) }
+}
+
 pub fn set_linkage(llglobal: &Value, linkage: Linkage) {
     unsafe {
         LLVMRustSetLinkage(llglobal, linkage);

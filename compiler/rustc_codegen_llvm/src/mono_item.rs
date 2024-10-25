@@ -39,8 +39,8 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                 .emit_fatal(SymbolAlreadyDefined { span: self.tcx.def_span(def_id), symbol_name })
         });
 
+        llvm::set_linkage(g, base::linkage_to_llvm(linkage));
         unsafe {
-            llvm::LLVMRustSetLinkage(g, base::linkage_to_llvm(linkage));
             llvm::LLVMRustSetVisibility(g, base::visibility_to_llvm(visibility));
             if self.should_assume_dso_local(g, false) {
                 llvm::LLVMRustSetDSOLocal(g, true);
@@ -61,7 +61,7 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
-        unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
+        llvm::set_linkage(lldecl, base::linkage_to_llvm(linkage));
         let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
         base::set_link_section(lldecl, attrs);
         if (linkage == Linkage::LinkOnceODR || linkage == Linkage::WeakODR)
@@ -107,7 +107,7 @@ impl CodegenCx<'_, '_> {
         llval: &llvm::Value,
         is_declaration: bool,
     ) -> bool {
-        let linkage = unsafe { llvm::LLVMRustGetLinkage(llval) };
+        let linkage = llvm::get_linkage(llval);
         let visibility = unsafe { llvm::LLVMRustGetVisibility(llval) };
 
         if matches!(linkage, llvm::Linkage::InternalLinkage | llvm::Linkage::PrivateLinkage) {
