@@ -918,12 +918,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         };
         match item_kind {
             Some(ItemKind::Impl(i)) => {
-                let is_valid = matches!(&i.self_ty.kind, hir::TyKind::Tup([_]))
-                    || if let hir::TyKind::BareFn(bare_fn_ty) = &i.self_ty.kind {
-                        bare_fn_ty.decl.inputs.len() == 1
-                    } else {
-                        false
-                    }
+                let is_valid = doc_fake_variadic_is_allowed_self_ty(i.self_ty)
                     || if let Some(&[hir::GenericArg::Type(ty)]) = i
                         .of_trait
                         .as_ref()
@@ -2629,4 +2624,21 @@ fn check_duplicates(
             }
         },
     }
+}
+
+fn doc_fake_variadic_is_allowed_self_ty(self_ty: &hir::Ty<'_>) -> bool {
+    matches!(&self_ty.kind, hir::TyKind::Tup([_]))
+        || if let hir::TyKind::BareFn(bare_fn_ty) = &self_ty.kind {
+            bare_fn_ty.decl.inputs.len() == 1
+        } else {
+            false
+        }
+        || (if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &self_ty.kind
+            && let Some(&[hir::GenericArg::Type(ty)]) =
+                path.segments.last().map(|last| last.args().args)
+        {
+            doc_fake_variadic_is_allowed_self_ty(ty)
+        } else {
+            false
+        })
 }

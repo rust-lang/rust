@@ -162,7 +162,9 @@ pub trait Pattern: Sized {
     }
 
     /// Returns the pattern as utf-8 bytes if possible.
-    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>>;
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        None
+    }
 }
 /// Result of calling [`Pattern::as_utf8_pattern()`].
 /// Can be used for inspecting the contents of a [`Pattern`] in cases
@@ -675,11 +677,6 @@ impl<C: MultiCharEq> Pattern for MultiCharEqPattern<C> {
     fn into_searcher(self, haystack: &str) -> MultiCharEqSearcher<'_, C> {
         MultiCharEqSearcher { haystack, char_eq: self.0, char_indices: haystack.char_indices() }
     }
-
-    #[inline]
-    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-        None
-    }
 }
 
 unsafe impl<'a, C: MultiCharEq> Searcher<'a> for MultiCharEqSearcher<'a, C> {
@@ -769,11 +766,6 @@ macro_rules! pattern_methods {
             $t: ReverseSearcher<$a>,
         {
             ($pmap)(self).strip_suffix_of(haystack)
-        }
-
-        #[inline]
-        fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-            None
         }
     };
 }
