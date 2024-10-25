@@ -1092,7 +1092,7 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
-            .on_with::<NO_RETRY, lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
+            .on_with::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
                 lsp_types::DocumentDiagnosticReport::Full(
                     lsp_types::RelatedFullDocumentDiagnosticReport {
                         related_documents: None,
@@ -1102,7 +1102,13 @@ impl GlobalState {
                         },
                     },
                 ),
-            ))
+            ), || lsp_server::ResponseError {
+                code: lsp_server::ErrorCode::ServerCancelled as i32,
+                message: "server cancelled the request".to_owned(),
+                data: serde_json::to_value(lsp_types::DiagnosticServerCancellationData {
+                    retrigger_request: true
+                }).ok(),
+            })
             .on::<RETRY, lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
             .on::<RETRY, lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
             .on::<NO_RETRY, lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)
