@@ -98,6 +98,11 @@ pub(crate) trait Float:
     /// Constructs a `Self` from its parts. Inputs are treated as bits and shifted into position.
     fn from_parts(negative: bool, exponent: Self::Int, significand: Self::Int) -> Self;
 
+    fn abs(self) -> Self {
+        let abs_mask = !Self::SIGN_MASK ;
+        Self::from_bits(self.to_bits() & abs_mask)
+    }
+
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 
