@@ -1872,7 +1872,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         StringPart::normal(" implemented for `"),
                     ]);
                     if types_content.0 == types_content.1 {
-                        msg.push(StringPart::normal(obligation_trait_ref.self_ty().to_string()));
+                        let ty =
+                            self.tcx.short_ty_string(obligation_trait_ref.self_ty(), &mut None);
+                        msg.push(StringPart::normal(ty));
                     } else {
                         msg.extend(types.0.0);
                     }
