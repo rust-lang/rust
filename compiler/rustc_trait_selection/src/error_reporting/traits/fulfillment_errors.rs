@@ -328,6 +328,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         } else if let Some(custom_explanation) = safe_transmute_explanation {
                             err.span_label(span, custom_explanation);
+                        } else if explanation.len() > self.tcx.sess.diagnostic_width() {
+                            // Really long types don't look good as span labels, instead move it
+                            // to a `help`.
+                            err.span_label(span, "unsatisfied trait bound");
+                            err.help(explanation);
                         } else {
                             err.span_label(span, explanation);
                         }
