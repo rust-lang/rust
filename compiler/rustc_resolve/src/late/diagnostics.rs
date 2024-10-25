@@ -1040,7 +1040,11 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         .inputs
                         .get(0)
                         .map(|p| {
-                            let suggestion = if p.ty.is_reference() { "&self, " } else { "self" };
+                            let suggestion = if let rustc_ast::TyKind::Ref(..) = p.ty.kind {
+                                "&self, "
+                            } else {
+                                "self"
+                            };
                             (p.span.shrink_to_lo(), suggestion)
                         })
                         .unwrap_or_else(|| {
