@@ -1092,7 +1092,7 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
-            .on_or::<NO_RETRY, lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
+            .on_with::<NO_RETRY, lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
                 lsp_types::DocumentDiagnosticReport::Full(
                     lsp_types::RelatedFullDocumentDiagnosticReport {
                         related_documents: None,
