@@ -303,6 +303,93 @@ impl Thread {
         }
     }
 
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_os = "vxworks",
+        target_vendor = "apple"
+    )))]
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            sleep(delay);
+        }
+    }
+
+    // Note depends on clock_nanosleep (not supported on os's by apple)
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_os = "vxworks",
+    ))]
+    pub fn sleep_until(deadline: crate::time::Instant) {
+        let mut ts = deadline
+            .into_inner()
+            .into_timespec()
+            .to_timespec()
+            .expect("Timespec is narrower then libc::timespec thus conversion can't fail");
+        let ts_ptr = &mut ts as *mut _;
+
+        // If we're awoken with a signal and the return value is -1
+        // clock_nanosleep needs to be called again.
+        unsafe {
+            while libc::clock_nanosleep(libc::CLOCK_MONOTONIC, libc::TIMER_ABSTIME, ts_ptr, ts_ptr)
+                == -1
+            {
+                assert_eq!(
+                    os::errno(),
+                    libc::EINTR,
+                    "clock nanosleep should only return an error if interrupted"
+                );
+            }
+        }
+    }
+
+    #[cfg(target_vendor = "apple")]
+    pub fn sleep_until(deadline: crate::time::Instant) {
+        use core::mem::MaybeUninit;
+
+        use super::time::Timespec;
+
+        let Timespec { tv_sec, tv_nsec } = deadline.into_inner().into_timespec();
+        let nanos = (tv_sec as u64).saturating_mul(1_000_000_000).saturating_add(tv_nsec.0 as u64);
+
+        let mut info = MaybeUninit::uninit();
+        unsafe {
+            let ret = mach_timebase_info(info.as_mut_ptr());
+            assert_eq!(ret, KERN_SUCCESS);
+
+            let info = info.assume_init();
+            let ticks = nanos * (info.denom as u64) / (info.numer as u64);
+
+            loop {
+                // There are no docs on the mach_wait_until some details can be
+                // learned from the XNU source code:
+                // https://github.com/apple-oss-distributions/xnu/blob/94d3b452840153a99b38a3a9659680b2a006908e/osfmk/kern/clock.c#L1507-L1543
+                let ret = mach_wait_until(ticks);
+                if ret == KERN_SUCCESS {
+                    break;
+                }
+                assert_eq!(ret, KERN_ABORTED);
+            }
+        }
+    }
+
     pub fn join(self) {
         let id = self.into_id();
         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
@@ -316,6 +403,27 @@ impl Thread {
     pub fn into_id(self) -> libc::pthread_t {
         ManuallyDrop::new(self).id
     }
+}
+
+// See https://github.com/apple-oss-distributions/xnu/blob/94d3b452840153a99b38a3a9659680b2a006908e/osfmk/mach/kern_return.h
+#[cfg(target_vendor = "apple")]
+const KERN_SUCCESS: libc::c_int = 0;
+#[cfg(target_vendor = "apple")]
+const KERN_ABORTED: libc::c_int = 14;
+
+// See https://github.com/apple-oss-distributions/xnu/blob/94d3b452840153a99b38a3a9659680b2a006908e/osfmk/mach/mach_time.h
+#[cfg(target_vendor = "apple")]
+#[repr(C)]
+struct mach_timebase_info_type {
+    numer: u32,
+    denom: u32,
+}
+
+#[cfg(target_vendor = "apple")]
+extern "C" {
+    fn mach_wait_until(deadline: u64) -> libc::c_int;
+    fn mach_timebase_info(info: *mut mach_timebase_info_type) -> libc::c_int;
+
 }
 
 impl Drop for Thread {
