@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
 #![allow(incomplete_features)]
-#![feature(const_fmt_arguments_new)]
 #![feature(const_trait_impl, effects)]
 
 #[const_trait]

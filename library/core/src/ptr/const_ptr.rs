@@ -39,6 +39,7 @@ impl<T: ?Sized> *const T {
         }
 
         #[inline]
+        #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
         const fn const_impl(ptr: *const u8) -> bool {
             match (ptr).guaranteed_eq(null_mut()) {
                 Some(res) => res,
@@ -113,7 +114,7 @@ impl<T: ?Sized> *const T {
     /// println!("{:?}", unsafe { &*bad });
     /// ```
     #[unstable(feature = "set_ptr_value", issue = "75091")]
-    #[rustc_const_stable(feature = "ptr_metadata_const", since = "1.83.0")]
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "ptr_metadata_const", since = "1.83.0"))]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *const U
@@ -409,6 +410,7 @@ impl<T: ?Sized> *const T {
         T: Sized,
     {
         #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_offset_nowrap(this: *const (), count: isize, size: usize) -> bool {
             #[inline]
             fn runtime(this: *const (), count: isize, size: usize) -> bool {
@@ -761,6 +763,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_ptr_ge(this: *const (), origin: *const ()) -> bool {
             fn runtime(this: *const (), origin: *const ()) -> bool {
                 this >= origin
@@ -902,6 +905,7 @@ impl<T: ?Sized> *const T {
     {
         #[cfg(debug_assertions)]
         #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_add_nowrap(this: *const (), count: usize, size: usize) -> bool {
             #[inline]
             fn runtime(this: *const (), count: usize, size: usize) -> bool {
@@ -1010,6 +1014,7 @@ impl<T: ?Sized> *const T {
     {
         #[cfg(debug_assertions)]
         #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_sub_nowrap(this: *const (), count: usize, size: usize) -> bool {
             #[inline]
             fn runtime(this: *const (), count: usize, size: usize) -> bool {
@@ -1622,6 +1627,7 @@ impl<T: ?Sized> *const T {
         }
 
         #[inline]
+        #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
         const fn const_impl(ptr: *const (), align: usize) -> bool {
             // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
             ptr.align_offset(align) == 0

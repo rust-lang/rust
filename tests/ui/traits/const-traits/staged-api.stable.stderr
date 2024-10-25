@@ -1,5 +1,5 @@
 error: trait implementations cannot be const stable yet
-  --> $DIR/staged-api.rs:21:1
+  --> $DIR/staged-api.rs:22:1
    |
 LL | / impl const MyTrait for Foo {
 LL | |
@@ -10,40 +10,80 @@ LL | | }
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
 
 error: function has missing const stability attribute
-  --> $DIR/staged-api.rs:43:1
+  --> $DIR/staged-api.rs:49:1
    |
 LL | / pub const fn const_context_not_const_stable() {
 LL | |
 LL | |     Unstable::func();
 LL | |
 ...  |
-LL | |     // ^ fails, because the `foo` feature is not active
+LL | |     // ^ fails, because the `unstable2` feature is not active
 LL | | }
    | |_^
 
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:34:5
+  --> $DIR/staged-api.rs:35:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable
 
+error: `<Foo as staged_api::MyTrait>::func` cannot be (indirectly) exposed to stable
+  --> $DIR/staged-api.rs:38:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+   = help: either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
+
+error: `<staged_api::Unstable2 as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:42:5
+   |
+LL |     Unstable2::func();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable2)]` to the crate attributes to enable
+
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:45:5
+  --> $DIR/staged-api.rs:51:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable
 
+error: `<Foo as staged_api::MyTrait>::func` cannot be (indirectly) exposed to stable
+  --> $DIR/staged-api.rs:53:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+   = help: either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
+
+error: `<staged_api::Unstable2 as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:56:5
+   |
+LL |     Unstable2::func();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable2)]` to the crate attributes to enable
+
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:55:5
+  --> $DIR/staged-api.rs:64:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: const-stable functions can only call other const-stable functions
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
 
-error: aborting due to 5 previous errors
+error: `<Foo as staged_api::MyTrait>::func` cannot be (indirectly) exposed to stable
+  --> $DIR/staged-api.rs:67:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+   = help: either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
+
+error: aborting due to 10 previous errors
 

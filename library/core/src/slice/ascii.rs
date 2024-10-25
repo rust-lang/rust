@@ -346,6 +346,8 @@ pub const fn is_ascii_simple(mut bytes: &[u8]) -> bool {
 /// If any of these loads produces something for which `contains_nonascii`
 /// (above) returns true, then we know the answer is false.
 #[inline]
+#[rustc_allow_const_fn_unstable(const_raw_ptr_comparison, const_pointer_is_aligned)] // only in a debug assertion
+#[rustc_allow_const_fn_unstable(const_align_offset)] // behavior does not change when `align_offset` fails
 const fn is_ascii(s: &[u8]) -> bool {
     const USIZE_SIZE: usize = mem::size_of::<usize>();
 

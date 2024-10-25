@@ -22,7 +22,6 @@
 #![feature(const_eval_select)]
 #![feature(const_hash)]
 #![feature(const_heap)]
-#![feature(const_likely)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
 #![feature(const_option_ext)]

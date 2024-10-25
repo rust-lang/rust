@@ -1997,7 +1997,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     ) {
         match target {
             Target::Fn | Target::Method(_)
-                if self.tcx.is_const_fn_raw(hir_id.expect_owner().to_def_id()) => {}
+                if self.tcx.is_const_fn(hir_id.expect_owner().to_def_id()) => {}
             // FIXME(#80564): We permit struct fields and match arms to have an
             // `#[allow_internal_unstable]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible

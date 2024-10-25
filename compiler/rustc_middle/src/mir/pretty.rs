@@ -317,7 +317,7 @@ pub fn write_mir_pretty<'tcx>(
         };
 
         // For `const fn` we want to render both the optimized MIR and the MIR for ctfe.
-        if tcx.is_const_fn_raw(def_id) {
+        if tcx.is_const_fn(def_id) {
             render_body(w, tcx.optimized_mir(def_id))?;
             writeln!(w)?;
             writeln!(w, "// MIR FOR CTFE")?;

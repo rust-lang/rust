@@ -99,6 +99,10 @@ passes_collapse_debuginfo =
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
 
+passes_const_stable_not_stable =
+    attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
+    .label = attribute specified here
+
 passes_continue_labeled_block =
     `continue` pointing to a labeled block
     .label = labeled blocks cannot be `continue`'d
@@ -465,10 +469,10 @@ passes_may_dangle =
     `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
 
 passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
+
 passes_missing_const_err =
-    attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+    attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
     .help = make the function or method const
-    .label = attribute specified here
 
 passes_missing_const_stab_attr =
     {$descr} has missing const stability attribute

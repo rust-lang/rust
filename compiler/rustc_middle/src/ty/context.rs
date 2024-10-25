@@ -3120,39 +3120,24 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Whether the `def_id` counts as const fn in the current crate, considering all active
-    /// feature gates
-    pub fn is_const_fn(self, def_id: DefId) -> bool {
-        if self.is_const_fn_raw(def_id) {
-            match self.lookup_const_stability(def_id) {
-                Some(stability) if stability.is_const_unstable() => {
-                    // has a `rustc_const_unstable` attribute, check whether the user enabled the
-                    // corresponding feature gate.
-                    self.features().enabled(stability.feature)
-                }
-                // functions without const stability are either stable user written
-                // const fn or the user is using feature gates and we thus don't
-                // care what they do
-                _ => true,
+    /// Whether `def_id` is a stable const fn (i.e., doesn't need any feature gates to be called).
+    ///
+    /// When this is `false`, the function may still be callable as a `const fn` due to features
+    /// being enabled!
+    pub fn is_stable_const_fn(self, def_id: DefId) -> bool {
+        self.is_const_fn(def_id)
+            && match self.lookup_const_stability(def_id) {
+                None => true, // a fn in a non-staged_api crate
+                Some(stability) if stability.is_const_stable() => true,
+                _ => false,
             }
-        } else {
-            false
-        }
     }
 
     // FIXME(effects): Please remove this. It's a footgun.
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
-    pub fn is_const_trait_impl_raw(self, def_id: DefId) -> bool {
-        let Some(local_def_id) = def_id.as_local() else { return false };
-        let node = self.hir_node_by_def_id(local_def_id);
-
-        matches!(
-            node,
-            hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
-                ..
-            }) if matches!(constness, hir::Constness::Const)
-        )
+    pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
+        self.def_kind(def_id) == DefKind::Impl { of_trait: true }
+            && self.constness(def_id) == hir::Constness::Const
     }
 
     pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {

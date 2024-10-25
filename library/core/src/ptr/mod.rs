@@ -591,8 +591,8 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -613,8 +613,8 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn dangling<T>() -> *const T {
     without_provenance(mem::align_of::<T>())
 }
@@ -634,8 +634,8 @@ pub const fn dangling<T>() -> *const T {
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -656,8 +656,8 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())
 }
@@ -1854,6 +1854,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// Any questions go to @nagisa.
 #[allow(ptr_to_integer_transmute_in_consts)]
 #[lang = "align_offset"]
+#[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
 pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.

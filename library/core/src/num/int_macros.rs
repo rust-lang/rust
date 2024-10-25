@@ -449,7 +449,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_add(self, rhs: Self) -> Option<Self> {
             let (a, b) = self.overflowing_add(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            if intrinsics::unlikely(b) { None } else { Some(a) }
         }
 
         /// Strict integer addition. Computes `self + rhs`, panicking
@@ -545,7 +545,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_add_unsigned(self, rhs: $UnsignedT) -> Option<Self> {
             let (a, b) = self.overflowing_add_unsigned(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            if intrinsics::unlikely(b) { None } else { Some(a) }
         }
 
         /// Strict addition with an unsigned integer. Computes `self + rhs`,
@@ -601,7 +601,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
             let (a, b) = self.overflowing_sub(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            if intrinsics::unlikely(b) { None } else { Some(a) }
         }
 
         /// Strict integer subtraction. Computes `self - rhs`, panicking if
@@ -697,7 +697,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_sub_unsigned(self, rhs: $UnsignedT) -> Option<Self> {
             let (a, b) = self.overflowing_sub_unsigned(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            if intrinsics::unlikely(b) { None } else { Some(a) }
         }
 
         /// Strict subtraction with an unsigned integer. Computes `self - rhs`,
@@ -753,7 +753,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
             let (a, b) = self.overflowing_mul(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            if intrinsics::unlikely(b) { None } else { Some(a) }
         }
 
         /// Strict integer multiplication. Computes `self * rhs`, panicking if
@@ -849,7 +849,7 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-            if unlikely!(rhs == 0 || ((self == Self::MIN) && (rhs == -1))) {
+            if intrinsics::unlikely(rhs == 0 || ((self == Self::MIN) && (rhs == -1))) {
                 None
             } else {
                 // SAFETY: div by zero and by INT_MIN have been checked above
@@ -924,7 +924,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
             // Using `&` helps LLVM see that it is the same check made in division.
-            if unlikely!(rhs == 0 || ((self == Self::MIN) & (rhs == -1))) {
+            if intrinsics::unlikely(rhs == 0 || ((self == Self::MIN) & (rhs == -1))) {
                 None
             } else {
                 Some(self.div_euclid(rhs))
@@ -997,7 +997,7 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-            if unlikely!(rhs == 0 || ((self == Self::MIN) && (rhs == -1))) {
+            if intrinsics::unlikely(rhs == 0 || ((self == Self::MIN) && (rhs == -1))) {
                 None
             } else {
                 // SAFETY: div by zero and by INT_MIN have been checked above
@@ -1071,7 +1071,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
             // Using `&` helps LLVM see that it is the same check made in division.
-            if unlikely!(rhs == 0 || ((self == Self::MIN) & (rhs == -1))) {
+            if intrinsics::unlikely(rhs == 0 || ((self == Self::MIN) & (rhs == -1))) {
                 None
             } else {
                 Some(self.rem_euclid(rhs))
@@ -1142,7 +1142,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_neg(self) -> Option<Self> {
             let (a, b) = self.overflowing_neg();
-            if unlikely!(b) { None } else { Some(a) }
+            if intrinsics::unlikely(b) { None } else { Some(a) }
         }
 
         /// Unchecked negation. Computes `-self`, assuming overflow cannot occur.
@@ -2564,7 +2564,7 @@ macro_rules! int_impl {
                       without modifying the original"]
         pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
             // Using `&` helps LLVM see that it is the same check made in division.
-            if unlikely!((self == Self::MIN) & (rhs == -1)) {
+            if intrinsics::unlikely((self == Self::MIN) & (rhs == -1)) {
                 (self, true)
             } else {
                 (self / rhs, false)
@@ -2595,7 +2595,7 @@ macro_rules! int_impl {
                       without modifying the original"]
         pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
             // Using `&` helps LLVM see that it is the same check made in division.
-            if unlikely!((self == Self::MIN) & (rhs == -1)) {
+            if intrinsics::unlikely((self == Self::MIN) & (rhs == -1)) {
                 (self, true)
             } else {
                 (self.div_euclid(rhs), false)
@@ -2625,7 +2625,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-            if unlikely!(rhs == -1) {
+            if intrinsics::unlikely(rhs == -1) {
                 (0, self == Self::MIN)
             } else {
                 (self % rhs, false)
@@ -2657,7 +2657,7 @@ macro_rules! int_impl {
         #[inline]
         #[track_caller]
         pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-            if unlikely!(rhs == -1) {
+            if intrinsics::unlikely(rhs == -1) {
                 (0, self == Self::MIN)
             } else {
                 (self.rem_euclid(rhs), false)
@@ -2686,7 +2686,7 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[allow(unused_attributes)]
         pub const fn overflowing_neg(self) -> (Self, bool) {
-            if unlikely!(self == Self::MIN) {
+            if intrinsics::unlikely(self == Self::MIN) {
                 (Self::MIN, true)
             } else {
                 (-self, false)

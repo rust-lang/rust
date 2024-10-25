@@ -1751,7 +1751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // to tell them that in the diagnostic. Does not affect typeck.
         let is_constable = match element.kind {
             hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                ty::FnDef(def_id, _) if tcx.is_const_fn(def_id) => traits::IsConstable::Fn,
+                ty::FnDef(def_id, _) if tcx.is_stable_const_fn(def_id) => traits::IsConstable::Fn,
                 _ => traits::IsConstable::No,
             },
             hir::ExprKind::Path(qpath) => {

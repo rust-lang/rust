@@ -393,7 +393,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = obligation.self_ty().skip_binder();
         match *self_ty.kind() {
             ty::Closure(def_id, _) => {
-                let is_const = self.tcx().is_const_fn_raw(def_id);
+                let is_const = self.tcx().is_const_fn(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
                 match self.infcx.closure_kind(self_ty) {
                     Some(closure_kind) => {
@@ -413,7 +413,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             ty::CoroutineClosure(def_id, args) => {
                 let args = args.as_coroutine_closure();
-                let is_const = self.tcx().is_const_fn_raw(def_id);
+                let is_const = self.tcx().is_const_fn(def_id);
                 if let Some(closure_kind) = self.infcx.closure_kind(self_ty)
                     // Ambiguity if upvars haven't been constrained yet
                     && !args.tupled_upvars_ty().is_ty_var()

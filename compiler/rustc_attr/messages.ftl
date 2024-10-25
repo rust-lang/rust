@@ -91,6 +91,9 @@ attr_non_ident_feature =
 attr_rustc_allowed_unstable_pairing =
     `rustc_allowed_through_unstable_modules` attribute must be paired with a `stable` attribute
 
+attr_rustc_const_stable_indirect_pairing =
+    `const_stable_indirect` attribute does not make sense on `rustc_const_stable` function, its behavior is already implied
+
 attr_rustc_promotable_pairing =
     `rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute
 
