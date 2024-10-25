@@ -16,7 +16,7 @@ mod tests;
 use std::ops::ControlFlow;
 
 use hir::{InRealFile, Name, Semantics};
-use ide_db::{FxHashMap, RootDatabase, SymbolKind};
+use ide_db::{FxHashMap, Ranker, RootDatabase, SymbolKind};
 use span::EditionedFileId;
 use syntax::{
     ast::{self, IsString},
@@ -401,9 +401,7 @@ fn traverse(
             // Attempt to descend tokens into macro-calls.
             let res = match element {
                 NodeOrToken::Token(token) if token.kind() != COMMENT => {
-                    let kind = token.kind();
-                    let text = token.text();
-                    let ident_kind = kind.is_any_identifier();
+                    let ranker = Ranker::from_token(&token);
 
                     let mut t = None;
                     let mut r = 0;
@@ -412,19 +410,7 @@ fn traverse(
                         |tok, _ctx| {
                             // FIXME: Consider checking ctx transparency for being opaque?
                             let tok = tok.value;
-                            let tok_kind = tok.kind();
-
-                            let exact_same_kind = tok_kind == kind;
-                            let both_idents =
-                                exact_same_kind || (tok_kind.is_any_identifier() && ident_kind);
-                            let same_text = tok.text() == text;
-                            // anything that mapped into a token tree has likely no semantic information
-                            let no_tt_parent =
-                                tok.parent().map_or(false, |it| it.kind() != TOKEN_TREE);
-                            let my_rank = (both_idents as usize)
-                                | ((exact_same_kind as usize) << 1)
-                                | ((same_text as usize) << 2)
-                                | ((no_tt_parent as usize) << 3);
+                            let my_rank = ranker.rank_token(&tok);
 
                             if my_rank > 0b1110 {
                                 // a rank of 0b1110 means that we have found a maximally interesting
