@@ -1,4 +1,5 @@
 //@ known-bug: #131342
+// see also: 131342-2.rs
 
 fn main() {
   let mut items = vec![1, 2, 3, 4, 5].into_iter();
