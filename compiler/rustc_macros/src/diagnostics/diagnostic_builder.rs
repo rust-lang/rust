@@ -253,7 +253,10 @@ impl DiagnosticDeriveVariantBuilder {
         let mut field_binding = binding_info.binding.clone();
         field_binding.set_span(field.ty.span());
 
-        let ident = field.ident.as_ref().unwrap();
+        let Some(ident) = field.ident.as_ref() else {
+            span_err(field.span().unwrap(), "tuple structs are not supported").emit();
+            return TokenStream::new();
+        };
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {

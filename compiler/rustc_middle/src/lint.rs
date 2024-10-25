@@ -3,8 +3,8 @@ use std::cmp;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, MultiSpan};
-use rustc_hir::{HirId, ItemLocalId};
-use rustc_macros::HashStable;
+use rustc_hir::{CRATE_HIR_ID, HirId, ItemLocalId};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
 use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId};
@@ -15,7 +15,7 @@ use tracing::instrument;
 use crate::ty::TyCtxt;
 
 /// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq, HashStable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, HashStable, Debug)]
 pub enum LintLevelSource {
     /// Lint is at the default level as declared in rustc.
     Default,
@@ -119,7 +119,7 @@ impl ShallowLintLevelMap {
     #[instrument(level = "trace", skip(self, tcx), ret)]
     fn probe_for_lint_level(
         &self,
-        tcx: TyCtxt<'_>,
+        tcx: Option<TyCtxt<'_>>,
         id: LintId,
         start: HirId,
     ) -> (Option<Level>, LintLevelSource) {
@@ -132,15 +132,17 @@ impl ShallowLintLevelMap {
         let mut owner = start.owner;
         let mut specs = &self.specs;
 
-        for parent in tcx.hir().parent_id_iter(start) {
-            if parent.owner != owner {
-                owner = parent.owner;
-                specs = &tcx.shallow_lint_levels_on(owner).specs;
-            }
-            if let Some(map) = specs.get(&parent.local_id)
-                && let Some(&(level, src)) = map.get(&id)
-            {
-                return (Some(level), src);
+        if let Some(tcx) = tcx {
+            for parent in tcx.hir().parent_id_iter(start) {
+                if parent.owner != owner {
+                    owner = parent.owner;
+                    specs = &tcx.shallow_lint_levels_on(owner).specs;
+                }
+                if let Some(map) = specs.get(&parent.local_id)
+                    && let Some(&(level, src)) = map.get(&id)
+                {
+                    return (Some(level), src);
+                }
             }
         }
 
@@ -148,15 +150,20 @@ impl ShallowLintLevelMap {
     }
 
     /// Fetch and return the user-visible lint level for the given lint at the given HirId.
-    #[instrument(level = "trace", skip(self, tcx), ret)]
+    #[instrument(level = "trace", skip(self, tcx, sess), ret)]
     pub fn lint_level_id_at_node(
         &self,
-        tcx: TyCtxt<'_>,
+        tcx: Option<TyCtxt<'_>>,
+        sess: &Session,
         lint: LintId,
         cur: HirId,
     ) -> (Level, LintLevelSource) {
+        assert!(
+            tcx.is_some() || cur == CRATE_HIR_ID,
+            "must pass in a tcx to access any level other than the root"
+        );
         let (level, mut src) = self.probe_for_lint_level(tcx, lint, cur);
-        let level = reveal_actual_level(level, &mut src, tcx.sess, lint, |lint| {
+        let level = reveal_actual_level(level, &mut src, sess, lint, |lint| {
             self.probe_for_lint_level(tcx, lint, cur)
         });
         (level, src)
@@ -166,14 +173,19 @@ impl ShallowLintLevelMap {
 impl TyCtxt<'_> {
     /// Fetch and return the user-visible lint level for the given lint at the given HirId.
     pub fn lint_level_at_node(self, lint: &'static Lint, id: HirId) -> (Level, LintLevelSource) {
-        self.shallow_lint_levels_on(id.owner).lint_level_id_at_node(self, LintId::of(lint), id)
+        self.shallow_lint_levels_on(id.owner).lint_level_id_at_node(
+            Some(self),
+            self.sess,
+            LintId::of(lint),
+            id,
+        )
     }
 }
 
 /// This struct represents a lint expectation and holds all required information
 /// to emit the `unfulfilled_lint_expectations` lint if it is unfulfilled after
 /// the `LateLintPass` has completed.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
 pub struct LintExpectation {
     /// The reason for this expectation that can optionally be added as part of
     /// the attribute. It will be displayed as part of the lint message.

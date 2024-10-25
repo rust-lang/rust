@@ -17,7 +17,7 @@ use rustc_span::symbol::Symbol;
 use super::CodegenObject;
 use super::write::WriteBackendMethods;
 use crate::back::write::TargetMachineFactoryFn;
-use crate::{CodegenResults, ModuleCodegen};
+use crate::{CodegenLintLevels, CodegenResults, ModuleCodegen};
 
 pub trait BackendTypes {
     type Value: CodegenObject;
@@ -86,6 +86,7 @@ pub trait CodegenBackend {
         &self,
         sess: &Session,
         codegen_results: CodegenResults,
+        lint_levels: CodegenLintLevels,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed>;
 

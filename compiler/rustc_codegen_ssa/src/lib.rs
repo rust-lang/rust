@@ -28,18 +28,23 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::CrateNum;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::lint::LintLevelSource;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
+use rustc_session::lint::Level;
+use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
 
@@ -250,6 +255,7 @@ impl CodegenResults {
         sess: &Session,
         rlink_file: &Path,
         codegen_results: &CodegenResults,
+        lint_levels: CodegenLintLevels,
         outputs: &OutputFilenames,
     ) -> Result<usize, io::Error> {
         let mut encoder = FileEncoder::new(rlink_file)?;
@@ -259,6 +265,7 @@ impl CodegenResults {
         encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes());
         encoder.emit_str(sess.cfg_version);
         Encodable::encode(codegen_results, &mut encoder);
+        Encodable::encode(&lint_levels, &mut encoder);
         Encodable::encode(outputs, &mut encoder);
         encoder.finish().map_err(|(_path, err)| err)
     }
@@ -266,7 +273,7 @@ impl CodegenResults {
     pub fn deserialize_rlink(
         sess: &Session,
         data: Vec<u8>,
-    ) -> Result<(Self, OutputFilenames), CodegenErrors> {
+    ) -> Result<(Self, CodegenLintLevels, OutputFilenames), CodegenErrors> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
@@ -297,7 +304,24 @@ impl CodegenResults {
         }
 
         let codegen_results = CodegenResults::decode(&mut decoder);
+        let lint_levels = CodegenLintLevels::decode(&mut decoder);
         let outputs = OutputFilenames::decode(&mut decoder);
-        Ok((codegen_results, outputs))
+        Ok((codegen_results, lint_levels, outputs))
+    }
+}
+
+/// A list of lint levels used in codegen.
+///
+/// When using `-Z link-only`, we don't have access to the tcx and must work
+/// solely from the `.rlink` file. `Lint`s are defined too early to be encodeable.
+/// Instead, encode exactly the information we need.
+#[derive(Copy, Clone, Encodable, Decodable)]
+pub struct CodegenLintLevels {
+    linker_messages: (Level, LintLevelSource),
+}
+
+impl CodegenLintLevels {
+    pub fn from_tcx(tcx: TyCtxt<'_>) -> Self {
+        Self { linker_messages: tcx.lint_level_at_node(LINKER_MESSAGES, CRATE_HIR_ID) }
     }
 }
