@@ -34,7 +34,7 @@ use stable_mir::{Crate, CrateDef, CrateItem, CrateNum, DefId, Error, Filename, I
 
 use crate::rustc_internal::RustcInternal;
 use crate::rustc_smir::builder::BodyBuilder;
-use crate::rustc_smir::{Stable, Tables, alloc, new_item_kind, smir_crate};
+use crate::rustc_smir::{Stable, Tables, alloc, filter_def_ids, new_item_kind, smir_crate};
 
 impl<'tcx> Context for TablesWrapper<'tcx> {
     fn target_info(&self) -> MachineInfo {
@@ -78,6 +78,20 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             .keys()
             .map(|mod_def_id| tables.foreign_module_def(*mod_def_id))
             .collect()
+    }
+
+    fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let krate = crate_num.internal(&mut *tables, tcx);
+        filter_def_ids(tcx, krate, |def_id| tables.to_fn_def(def_id))
+    }
+
+    fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let krate = crate_num.internal(&mut *tables, tcx);
+        filter_def_ids(tcx, krate, |def_id| tables.to_static(def_id))
     }
 
     fn foreign_module(
