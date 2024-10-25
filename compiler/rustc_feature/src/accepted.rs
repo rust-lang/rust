@@ -173,6 +173,8 @@ declare_features! (
     (accepted, destructuring_assignment, "1.59.0", Some(71126)),
     /// Allows using the `#[diagnostic]` attribute tool namespace
     (accepted, diagnostic_namespace, "1.78.0", Some(111996)),
+    /// Controls errors in trait implementations.
+    (accepted, do_not_recommend, "CURRENT_RUSTC_VERSION", Some(51992)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
     /// Allows `..` in tuple (struct) patterns.

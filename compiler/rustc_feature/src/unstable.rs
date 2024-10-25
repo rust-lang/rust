@@ -433,8 +433,6 @@ declare_features! (
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
     /// Allows deriving `SmartPointer` traits
     (unstable, derive_smart_pointer, "1.79.0", Some(123430)),
-    /// Controls errors in trait implementations.
-    (unstable, do_not_recommend, "1.67.0", Some(51992)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (unstable, doc_auto_cfg, "1.58.0", Some(43781)),
     /// Allows `#[doc(cfg(...))]`.

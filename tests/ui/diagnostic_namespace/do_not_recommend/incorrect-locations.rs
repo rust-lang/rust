@@ -1,5 +1,7 @@
 //@ check-pass
-#![feature(do_not_recommend)]
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 #[diagnostic::do_not_recommend]
 //~^WARN `#[diagnostic::do_not_recommend]` can only be placed

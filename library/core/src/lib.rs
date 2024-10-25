@@ -107,6 +107,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(do_not_recommend))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(const_align_of_val)]
@@ -145,7 +146,6 @@
 #![feature(const_ub_checks)]
 #![feature(const_unicode_case_lookup)]
 #![feature(coverage_attribute)]
-#![feature(do_not_recommend)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
