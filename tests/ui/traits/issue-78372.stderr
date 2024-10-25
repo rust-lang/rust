@@ -61,8 +61,8 @@ error[E0307]: invalid `self` parameter type: `Smaht<Self, T>`
 LL |     fn foo(self: Smaht<Self, T>);
    |                  ^^^^^^^^^^^^^^
    |
-   = note: type of `self` must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = note: type of `self` must be `Self` or some type implementing Receiver
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
 
 error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures
   --> $DIR/issue-78372.rs:3:1

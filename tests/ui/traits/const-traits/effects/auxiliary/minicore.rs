@@ -110,6 +110,16 @@ impl<T: ?Sized> LegacyReceiver for &T {}
 
 impl<T: ?Sized> LegacyReceiver for &mut T {}
 
+#[lang = "receiver"]
+pub trait Receiver {
+    #[lang = "receiver_target"]
+    type Target: ?Sized;
+}
+
+impl<T: Deref + ?Sized> Receiver for T {
+    type Target = <T as Deref>::Target;
+}
+
 #[lang = "destruct"]
 #[const_trait]
 pub trait Destruct {}

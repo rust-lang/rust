@@ -1808,12 +1808,17 @@ fn receiver_is_valid<'tcx>(
 
     let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
 
+    // The `arbitrary_self_types` feature allows custom smart pointer
+    // types to be method receivers, as identified by following the Receiver<Target=T>
+    // chain.
+    if arbitrary_self_types_enabled.is_some() {
+        autoderef = autoderef.use_receiver_trait();
+    }
+
     // The `arbitrary_self_types_pointers` feature allows raw pointer receivers like `self: *const Self`.
     if arbitrary_self_types_enabled == Some(ArbitrarySelfTypesLevel::WithPointers) {
         autoderef = autoderef.include_raw_pointers();
     }
-
-    let receiver_trait_def_id = tcx.require_lang_item(LangItem::LegacyReceiver, Some(span));
 
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     while let Some((potential_self_ty, _)) = autoderef.next() {
@@ -1836,11 +1841,13 @@ fn receiver_is_valid<'tcx>(
         }
 
         // Without `feature(arbitrary_self_types)`, we require that each step in the
-        // deref chain implement `receiver`.
+        // deref chain implement `LegacyReceiver`.
         if arbitrary_self_types_enabled.is_none() {
-            if !receiver_is_implemented(
+            let legacy_receiver_trait_def_id =
+                tcx.require_lang_item(LangItem::LegacyReceiver, Some(span));
+            if !legacy_receiver_is_implemented(
                 wfcx,
-                receiver_trait_def_id,
+                legacy_receiver_trait_def_id,
                 cause.clone(),
                 potential_self_ty,
             ) {
@@ -1853,7 +1860,7 @@ fn receiver_is_valid<'tcx>(
                 cause.clone(),
                 wfcx.param_env,
                 potential_self_ty,
-                receiver_trait_def_id,
+                legacy_receiver_trait_def_id,
             );
         }
     }
@@ -1862,14 +1869,14 @@ fn receiver_is_valid<'tcx>(
     Err(ReceiverValidityError::DoesNotDeref)
 }
 
-fn receiver_is_implemented<'tcx>(
+fn legacy_receiver_is_implemented<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
-    receiver_trait_def_id: DefId,
+    legacy_receiver_trait_def_id: DefId,
     cause: ObligationCause<'tcx>,
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     let tcx = wfcx.tcx();
-    let trait_ref = ty::TraitRef::new(tcx, receiver_trait_def_id, [receiver_ty]);
+    let trait_ref = ty::TraitRef::new(tcx, legacy_receiver_trait_def_id, [receiver_ty]);
 
     let obligation = Obligation::new(tcx, cause, wfcx.param_env, trait_ref);
 
@@ -1877,7 +1884,7 @@ fn receiver_is_implemented<'tcx>(
         true
     } else {
         debug!(
-            "receiver_is_implemented: type `{:?}` does not implement `Receiver` trait",
+            "receiver_is_implemented: type `{:?}` does not implement `LegacyReceiver` trait",
             receiver_ty
         );
         false
