@@ -804,7 +804,7 @@ impl<T, A: Allocator> Arc<T, A> {
             // observe a non-zero strong count. Therefore we need at least "Release" ordering
             // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
             //
-            // "Acquire" ordering is not required. When considering the possible behaviours
+            // "Acquire" ordering is not required. When considering the possible behaviors
             // of `data_fn` we only need to look at what it could do with a reference to a
             // non-upgradeable `Weak`:
             // - It can *clone* the `Weak`, increasing the weak reference count.
@@ -2788,7 +2788,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// drop(strong);
     /// // But not any more. We can do weak.as_ptr(), but accessing the pointer would lead to
-    /// // undefined behaviour.
+    /// // undefined behavior.
     /// // assert_eq!("hello", unsafe { &*weak.as_ptr() });
     /// ```
     ///

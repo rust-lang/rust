@@ -97,7 +97,7 @@ impl Parker {
     /// The constructed parker must never be moved.
     pub unsafe fn new_in_place(parker: *mut Parker) {
         // Use the default mutex implementation to allow for simpler initialization.
-        // This could lead to undefined behaviour when deadlocking. This is avoided
+        // This could lead to undefined behavior when deadlocking. This is avoided
         // by not deadlocking. Note in particular the unlocking operation before any
         // panic, as code after the panic could try to park again.
         (&raw mut (*parker).state).write(AtomicUsize::new(EMPTY));

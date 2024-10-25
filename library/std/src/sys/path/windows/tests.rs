@@ -119,7 +119,7 @@ fn test_windows_prefix_components() {
 
 /// See #101358.
 ///
-/// Note that the exact behaviour here may change in the future.
+/// Note that the exact behavior here may change in the future.
 /// In which case this test will need to adjusted.
 #[test]
 fn broken_unc_path() {

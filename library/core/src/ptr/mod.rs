@@ -134,7 +134,7 @@
 //! # Provenance
 //!
 //! Pointers are not *simply* an "integer" or "address". For instance, it's uncontroversial
-//! to say that a Use After Free is clearly Undefined Behaviour, even if you "get lucky"
+//! to say that a Use After Free is clearly Undefined Behavior, even if you "get lucky"
 //! and the freed memory gets reallocated before your read/write (in fact this is the
 //! worst-case scenario, UAFs would be much less concerning if this didn't happen!).
 //! As another example, consider that [`wrapping_offset`] is documented to "remember"
@@ -1125,7 +1125,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     unsafe { swap_nonoverlapping_simple_untyped(x, y, count) }
 }
 
-/// Same behaviour and safety conditions as [`swap_nonoverlapping`]
+/// Same behavior and safety conditions as [`swap_nonoverlapping`]
 ///
 /// LLVM can vectorize this (at least it can for the power-of-two-sized types
 /// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.

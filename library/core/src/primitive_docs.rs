@@ -100,7 +100,7 @@ mod prim_bool {}
 ///
 /// Both match arms must produce values of type [`u32`], but since `break` never produces a value
 /// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
-/// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
+/// behavior of the `!` type - expressions with type `!` will coerce into any other type.
 ///
 /// [`u32`]: prim@u32
 /// [`exit`]: ../std/process/fn.exit.html
@@ -134,7 +134,7 @@ mod prim_bool {}
 ///
 /// Since the [`Err`] variant contains a `!`, it can never occur. If the `exhaustive_patterns`
 /// feature is present this means we can exhaustively match on [`Result<T, !>`] by just taking the
-/// [`Ok`] variant. This illustrates another behaviour of `!` - it can be used to "delete" certain
+/// [`Ok`] variant. This illustrates another behavior of `!` - it can be used to "delete" certain
 /// enum variants from generic types like `Result`.
 ///
 /// ## Infinite loops
@@ -351,7 +351,7 @@ mod prim_never {}
 /// ```
 ///
 /// ```no_run
-/// // Undefined behaviour
+/// // Undefined behavior
 /// let _ = unsafe { char::from_u32_unchecked(0x110000) };
 /// ```
 ///
@@ -568,7 +568,7 @@ impl () {}
 /// Instead of coercing a reference to a raw pointer, you can use the macros
 /// [`ptr::addr_of!`] (for `*const T`) and [`ptr::addr_of_mut!`] (for `*mut T`).
 /// These macros allow you to create raw pointers to fields to which you cannot
-/// create a reference (without causing undefined behaviour), such as an
+/// create a reference (without causing undefined behavior), such as an
 /// unaligned field. This might be necessary if packed structs or uninitialized
 /// memory is involved.
 ///
@@ -1453,7 +1453,7 @@ mod prim_usize {}
 /// <code>&[bool]</code> can only point to an allocation containing the integer values `1`
 /// ([`true`](../std/keyword.true.html)) or `0` ([`false`](../std/keyword.false.html)), but
 /// creating a <code>&[bool]</code> that points to an allocation containing
-/// the value `3` causes undefined behaviour.
+/// the value `3` causes undefined behavior.
 /// In fact, <code>[Option]\<&T></code> has the same memory representation as a
 /// nullable but aligned pointer, and can be passed across FFI boundaries as such.
 ///

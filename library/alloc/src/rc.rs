@@ -3075,7 +3075,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// drop(strong);
     /// // But not any more. We can do weak.as_ptr(), but accessing the pointer would lead to
-    /// // undefined behaviour.
+    /// // undefined behavior.
     /// // assert_eq!("hello", unsafe { &*weak.as_ptr() });
     /// ```
     ///

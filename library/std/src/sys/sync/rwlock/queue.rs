@@ -8,7 +8,7 @@
 //! * `pthread` is an external library, meaning the fast path of acquiring an
 //! uncontended lock cannot be inlined.
 //! * Some platforms (at least glibc before version 2.25) have buggy implementations
-//! that can easily lead to undefined behaviour in safe Rust code when not properly
+//! that can easily lead to undefined behavior in safe Rust code when not properly
 //! guarded against.
 //! * On some platforms (e.g. macOS), the lock is very slow.
 //!

@@ -1205,7 +1205,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
     }
 
     fn visit_assoc_item_constraint(&mut self, constraint: &'ast AssocItemConstraint) {
-        self.visit_ident(constraint.ident);
+        self.visit_ident(&constraint.ident);
         if let Some(ref gen_args) = constraint.gen_args {
             // Forbid anonymous lifetimes in GAT parameters until proper semantics are decided.
             self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
@@ -4582,7 +4582,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn resolve_expr_field(&mut self, f: &'ast ExprField, e: &'ast Expr) {
         self.resolve_expr(&f.expr, Some(e));
-        self.visit_ident(f.ident);
+        self.visit_ident(&f.ident);
         walk_list!(self, visit_attribute, f.attrs.iter());
     }
 

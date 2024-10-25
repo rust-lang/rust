@@ -1894,11 +1894,11 @@ impl EarlyLintPass for KeywordIdents {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
         self.check_tokens(cx, &mac.args.tokens);
     }
-    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
+    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: &Ident) {
         if ident.name.as_str().starts_with('\'') {
             self.check_ident_token(cx, UnderMacro(false), ident.without_first_quote(), "'");
         } else {
-            self.check_ident_token(cx, UnderMacro(false), ident, "");
+            self.check_ident_token(cx, UnderMacro(false), *ident, "");
         }
     }
 }

@@ -380,7 +380,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 // This is a lang item only so that `BinOp::Cmp` in MIR can return it.
-// It has no special behaviour, but does require that the three variants
+// It has no special behavior, but does require that the three variants
 // `Less`/`Equal`/`Greater` remain `-1_i8`/`0_i8`/`+1_i8` respectively.
 #[lang = "Ordering"]
 #[repr(i8)]
