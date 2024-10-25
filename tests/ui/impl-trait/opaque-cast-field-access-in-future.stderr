@@ -3,6 +3,9 @@ error[E0283]: type annotations needed
    |
 LL | fn run() -> Foo<impl Future<Output = ()>> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+LL |
+LL |     loop {}
+   |     ------- return type was inferred to be `!` here
    |
    = note: cannot satisfy `_: Future`
 
