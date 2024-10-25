@@ -4102,7 +4102,6 @@ ui/type-alias-impl-trait/issue-53678-coroutine-and-const-fn.rs
 ui/type-alias-impl-trait/issue-55099-lifetime-inference.rs
 ui/type-alias-impl-trait/issue-57188-associate-impl-capture.rs
 ui/type-alias-impl-trait/issue-57611-trait-alias.rs
-ui/type-alias-impl-trait/issue-57700.rs
 ui/type-alias-impl-trait/issue-57807-associated-type.rs
 ui/type-alias-impl-trait/issue-57961.rs
 ui/type-alias-impl-trait/issue-58662-coroutine-with-lifetime.rs

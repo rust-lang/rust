@@ -238,6 +238,12 @@ hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a 
     .help = consider moving this inherent impl into the crate defining the type if possible
     .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
+hir_analysis_invalid_generic_receiver_ty = invalid generic `self` parameter type: `{$receiver_ty}`
+    .note = type of `self` must not be a method generic parameter type
+
+hir_analysis_invalid_generic_receiver_ty_help =
+    use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
 hir_analysis_invalid_receiver_ty = invalid `self` parameter type: `{$receiver_ty}`
     .note = type of `self` must be `Self` or a type that dereferences to it
 

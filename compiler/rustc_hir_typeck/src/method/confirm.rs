@@ -533,9 +533,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.register_predicates(obligations);
             }
             Err(terr) => {
-                // FIXME(arbitrary_self_types): We probably should limit the
-                // situations where this can occur by adding additional restrictions
-                // to the feature, like the self type can't reference method args.
                 if self.tcx.features().arbitrary_self_types() {
                     self.err_ctxt()
                         .report_mismatched_types(

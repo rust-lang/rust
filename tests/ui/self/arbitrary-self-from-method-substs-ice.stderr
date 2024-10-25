@@ -19,18 +19,16 @@ LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
 LL |     }
    |     - value is dropped here
 
-error[E0658]: `R` cannot be used as the type of `self` without the `arbitrary_self_types` feature
+error[E0801]: invalid generic `self` parameter type: `R`
   --> $DIR/arbitrary-self-from-method-substs-ice.rs:10:49
    |
 LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
    |                                                 ^
    |
-   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
-   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0015, E0493, E0658.
+Some errors have detailed explanations: E0015, E0493, E0801.
 For more information about an error, try `rustc --explain E0015`.
