@@ -32,7 +32,7 @@ where
 
     let sign_bits_delta = dst_sign_bits - src_sign_bits;
     let exp_bias_delta = dst_exp_bias - src_exp_bias;
-    let a_abs = a.repr() & src_abs_mask;
+    let a_abs = a.to_bits() & src_abs_mask;
     let mut abs_result = R::Int::ZERO;
 
     if a_abs.wrapping_sub(src_min_normal) < src_infinity.wrapping_sub(src_min_normal) {
@@ -65,8 +65,8 @@ where
         abs_result = (abs_result ^ dst_min_normal) | (bias_dst.wrapping_shl(dst_sign_bits));
     }
 
-    let sign_result: R::Int = (a.repr() & src_sign_mask).cast();
-    R::from_repr(abs_result | (sign_result.wrapping_shl(dst_bits - src_bits)))
+    let sign_result: R::Int = (a.to_bits() & src_sign_mask).cast();
+    R::from_bits(abs_result | (sign_result.wrapping_shl(dst_bits - src_bits)))
 }
 
 intrinsics! {

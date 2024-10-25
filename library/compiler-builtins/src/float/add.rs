@@ -25,8 +25,8 @@ where
     let quiet_bit = implicit_bit >> 1;
     let qnan_rep = exponent_mask | quiet_bit;
 
-    let mut a_rep = a.repr();
-    let mut b_rep = b.repr();
+    let mut a_rep = a.to_bits();
+    let mut b_rep = b.to_bits();
     let a_abs = a_rep & abs_mask;
     let b_abs = b_rep & abs_mask;
 
@@ -34,17 +34,17 @@ where
     if a_abs.wrapping_sub(one) >= inf_rep - one || b_abs.wrapping_sub(one) >= inf_rep - one {
         // NaN + anything = qNaN
         if a_abs > inf_rep {
-            return F::from_repr(a_abs | quiet_bit);
+            return F::from_bits(a_abs | quiet_bit);
         }
         // anything + NaN = qNaN
         if b_abs > inf_rep {
-            return F::from_repr(b_abs | quiet_bit);
+            return F::from_bits(b_abs | quiet_bit);
         }
 
         if a_abs == inf_rep {
             // +/-infinity + -/+infinity = qNaN
-            if (a.repr() ^ b.repr()) == sign_bit {
-                return F::from_repr(qnan_rep);
+            if (a.to_bits() ^ b.to_bits()) == sign_bit {
+                return F::from_bits(qnan_rep);
             } else {
                 // +/-infinity + anything remaining = +/- infinity
                 return a;
@@ -60,7 +60,7 @@ where
         if a_abs == MinInt::ZERO {
             // but we need to get the sign right for zero + zero
             if b_abs == MinInt::ZERO {
-                return F::from_repr(a.repr() & b.repr());
+                return F::from_bits(a.to_bits() & b.to_bits());
             } else {
                 return b;
             }
@@ -126,7 +126,7 @@ where
         a_significand = a_significand.wrapping_sub(b_significand);
         // If a == -b, return +zero.
         if a_significand == MinInt::ZERO {
-            return F::from_repr(MinInt::ZERO);
+            return F::from_bits(MinInt::ZERO);
         }
 
         // If partial cancellation occured, we need to left-shift the result
@@ -152,7 +152,7 @@ where
 
     // If we have overflowed the type, return +/- infinity:
     if a_exponent >= max_exponent as i32 {
-        return F::from_repr(inf_rep | result_sign);
+        return F::from_bits(inf_rep | result_sign);
     }
 
     if a_exponent <= 0 {
@@ -185,7 +185,7 @@ where
         result += result & one;
     }
 
-    F::from_repr(result)
+    F::from_bits(result)
 }
 
 intrinsics! {

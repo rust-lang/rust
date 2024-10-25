@@ -190,7 +190,7 @@ fn fuzz_float_step<F: Float>(rng: &mut Xoshiro128StarStar, f: &mut F) {
         let tmp = ones.wrapping_shr(r0);
         (tmp.wrapping_shl(r1) | tmp.wrapping_shr(F::EXPONENT_BITS - r1)) & ones
     };
-    let mut exp = (f.repr() & F::EXPONENT_MASK) >> F::SIGNIFICAND_BITS;
+    let mut exp = (f.to_bits() & F::EXPONENT_MASK) >> F::SIGNIFICAND_BITS;
     match (rng32 >> 9) % 4 {
         0 => exp |= mask,
         1 => exp &= mask,
@@ -198,7 +198,7 @@ fn fuzz_float_step<F: Float>(rng: &mut Xoshiro128StarStar, f: &mut F) {
     }
 
     // significand fuzzing
-    let mut sig = f.repr() & F::SIGNIFICAND_MASK;
+    let mut sig = f.to_bits() & F::SIGNIFICAND_MASK;
     fuzz_step(rng, &mut sig);
     sig &= F::SIGNIFICAND_MASK;
 

@@ -126,8 +126,8 @@ where
         half_iterations += 1;
     }
 
-    let a_rep = a.repr();
-    let b_rep = b.repr();
+    let a_rep = a.to_bits();
+    let b_rep = b.to_bits();
 
     // Exponent numeric representationm not accounting for bias
     let a_exponent = (a_rep >> significand_bits) & exponent_sat;
@@ -150,42 +150,42 @@ where
 
         // NaN / anything = qNaN
         if a_abs > inf_rep {
-            return F::from_repr(a_rep | quiet_bit);
+            return F::from_bits(a_rep | quiet_bit);
         }
 
         // anything / NaN = qNaN
         if b_abs > inf_rep {
-            return F::from_repr(b_rep | quiet_bit);
+            return F::from_bits(b_rep | quiet_bit);
         }
 
         if a_abs == inf_rep {
             if b_abs == inf_rep {
                 // infinity / infinity = NaN
-                return F::from_repr(qnan_rep);
+                return F::from_bits(qnan_rep);
             } else {
                 // infinity / anything else = +/- infinity
-                return F::from_repr(a_abs | quotient_sign);
+                return F::from_bits(a_abs | quotient_sign);
             }
         }
 
         // anything else / infinity = +/- 0
         if b_abs == inf_rep {
-            return F::from_repr(quotient_sign);
+            return F::from_bits(quotient_sign);
         }
 
         if a_abs == zero {
             if b_abs == zero {
                 // zero / zero = NaN
-                return F::from_repr(qnan_rep);
+                return F::from_bits(qnan_rep);
             } else {
                 // zero / anything else = +/- zero
-                return F::from_repr(quotient_sign);
+                return F::from_bits(quotient_sign);
             }
         }
 
         // anything else / zero = +/- infinity
         if b_abs == zero {
-            return F::from_repr(inf_rep | quotient_sign);
+            return F::from_bits(inf_rep | quotient_sign);
         }
 
         // a is denormal. Renormalize it and set the scale to include the necessary exponent
@@ -463,7 +463,7 @@ where
     //
     // If we have overflowed the exponent, return infinity
     if res_exponent >= i32::cast_from(exponent_sat) {
-        return F::from_repr(inf_rep | quotient_sign);
+        return F::from_bits(inf_rep | quotient_sign);
     }
 
     // Now, quotient <= the correctly-rounded result
@@ -476,7 +476,7 @@ where
         ret
     } else {
         if ((significand_bits as i32) + res_exponent) < 0 {
-            return F::from_repr(quotient_sign);
+            return F::from_bits(quotient_sign);
         }
 
         let ret = quotient.wrapping_shr(u32::cast_from(res_exponent.wrapping_neg()) + 1);
@@ -501,7 +501,7 @@ where
             u8::from(abs_result < inf_rep && residual_lo > (4 + 1).cast() * b_significand).into();
     }
 
-    F::from_repr(abs_result | quotient_sign)
+    F::from_bits(abs_result | quotient_sign)
 }
 
 /// Calculate the number of iterations required for a float type's precision.
