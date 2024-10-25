@@ -17,6 +17,9 @@ error[E0277]: the trait bound `{integer}: Trait<()>` is not satisfied
    |
 LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<()>` is not implemented for `{integer}`
+...
+LL |     16
+   |     -- return type was inferred to be `{integer}` here
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/non-lifetime-binder-in-constraint.rs:4:1
