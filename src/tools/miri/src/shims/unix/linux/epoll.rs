@@ -263,7 +263,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Check if epfd is a valid epoll file descriptor.
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         let epoll_file_description = epfd
             .downcast::<Epoll>()
@@ -273,7 +273,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ready_list = &epoll_file_description.ready_list;
 
         let Some(fd_ref) = this.machine.fds.get(fd) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         let id = fd_ref.get_id();
 
@@ -446,9 +446,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
 
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            let result_value: i32 = this.fd_not_found()?;
-            this.write_int(result_value, dest)?;
-            return interp_ok(());
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
         // Create a weak ref of epfd and pass it to callback so we will make sure that epfd
         // is not close after the thread unblocks.
