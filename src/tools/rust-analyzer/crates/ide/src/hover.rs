@@ -184,7 +184,7 @@ fn hover_offset(
 
     let ranker = Ranker::from_token(&original_token);
 
-    descended.sort_by_cached_key(|tok| ranker.rank_token(tok));
+    descended.sort_by_cached_key(|tok| !ranker.rank_token(tok));
 
     let mut res = vec![];
     for token in descended {

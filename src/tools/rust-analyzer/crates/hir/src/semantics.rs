@@ -954,6 +954,10 @@ impl<'db> SemanticsImpl<'db> {
         };
 
         while let Some((expansion, ref mut tokens)) = stack.pop() {
+            // Reverse the tokens so we prefer first tokens (to accommodate for popping from the
+            // back)
+            // alternatively we could pop from the front but that would shift the content on every pop
+            tokens.reverse();
             while let Some((token, ctx)) = tokens.pop() {
                 let was_not_remapped = (|| {
                     // First expand into attribute invocations

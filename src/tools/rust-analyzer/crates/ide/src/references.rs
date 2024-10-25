@@ -1701,14 +1701,14 @@ fn f() {
 }
             "#,
             expect![[r#"
-                func Function FileId(0) 137..146 140..144
-
-                FileId(0) 161..165
-
-
                 func Function FileId(0) 137..146 140..144 module
 
                 FileId(0) 181..185
+
+
+                func Function FileId(0) 137..146 140..144
+
+                FileId(0) 161..165
             "#]],
         )
     }

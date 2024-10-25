@@ -301,6 +301,8 @@ pub struct Ranker<'a> {
 }
 
 impl<'a> Ranker<'a> {
+    pub const MAX_RANK: usize = 0b1110;
+
     pub fn from_token(token: &'a syntax::SyntaxToken) -> Self {
         let kind = token.kind();
         Ranker { kind, text: token.text(), ident_kind: kind.is_any_identifier() }
@@ -317,9 +319,9 @@ impl<'a> Ranker<'a> {
         // anything that mapped into a token tree has likely no semantic information
         let no_tt_parent =
             tok.parent().map_or(false, |it| it.kind() != parser::SyntaxKind::TOKEN_TREE);
-        !((both_idents as usize)
+        (both_idents as usize)
             | ((exact_same_kind as usize) << 1)
             | ((same_text as usize) << 2)
-            | ((no_tt_parent as usize) << 3))
+            | ((no_tt_parent as usize) << 3)
     }
 }

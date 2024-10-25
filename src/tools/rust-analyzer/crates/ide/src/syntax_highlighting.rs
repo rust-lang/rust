@@ -397,6 +397,7 @@ fn traverse(
                 Some(AttrOrDerive::Derive(_)) => inside_attribute,
                 None => false,
             };
+
         let descended_element = if in_macro {
             // Attempt to descend tokens into macro-calls.
             let res = match element {
@@ -412,7 +413,7 @@ fn traverse(
                             let tok = tok.value;
                             let my_rank = ranker.rank_token(&tok);
 
-                            if my_rank > 0b1110 {
+                            if my_rank >= Ranker::MAX_RANK {
                                 // a rank of 0b1110 means that we have found a maximally interesting
                                 // token so stop early.
                                 t = Some(tok);
