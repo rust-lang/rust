@@ -1725,16 +1725,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn fptosi_sat(&mut self, val: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         self.fptoint_sat(true, val, dest_ty)
     }
-
-    fn instrprof_increment(
-        &mut self,
-        _fn_name: RValue<'gcc>,
-        _hash: RValue<'gcc>,
-        _num_counters: RValue<'gcc>,
-        _index: RValue<'gcc>,
-    ) {
-        unimplemented!();
-    }
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
