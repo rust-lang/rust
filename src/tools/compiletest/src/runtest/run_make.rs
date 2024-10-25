@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::{env, fs};
 
-use super::{ProcRes, TestCx};
+use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::util::{copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
@@ -514,8 +514,8 @@ impl TestCx<'_> {
             }
         }
 
-        let (Output { stdout, stderr, status }, truncated) =
-            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `rmake`"));
+        let proc = disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
+        let (Output { stdout, stderr, status }, truncated) = self.read2_abbreviated(proc);
         if !status.success() {
             let res = ProcRes {
                 status,

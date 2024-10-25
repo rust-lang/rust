@@ -14,12 +14,11 @@ pub macro thread_local_inner {
     (@key $t:ty, const $init:expr) => {{
         const __INIT: $t = $init;
 
+        // NOTE: Please update the shadowing test in `tests/thread.rs` if these types are renamed.
         unsafe {
-            use $crate::thread::LocalKey;
-            use $crate::thread::local_impl::EagerStorage;
-
-            LocalKey::new(|_| {
-                static VAL: EagerStorage<$t> = EagerStorage { value: __INIT };
+            $crate::thread::LocalKey::new(|_| {
+                static VAL: $crate::thread::local_impl::EagerStorage<$t> =
+                    $crate::thread::local_impl::EagerStorage { value: __INIT };
                 &VAL.value
             })
         }
