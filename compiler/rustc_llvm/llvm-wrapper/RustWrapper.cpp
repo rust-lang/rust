@@ -1531,34 +1531,6 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty,
                                     ArrayRef<OperandBundleDef>(OpBundles)));
 }
 
-extern "C" LLVMValueRef
-LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_LT(19, 0)
-  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
-#endif
-#if LLVM_VERSION_GE(20, 0)
-  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
-#else
-  return wrap(llvm::Intrinsic::getDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
-#endif
-}
-
-extern "C" LLVMValueRef
-LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_LT(19, 0)
-  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
-#endif
-#if LLVM_VERSION_GE(20, 0)
-  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
-#else
-  return wrap(llvm::Intrinsic::getDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
-#endif
-}
-
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B, LLVMValueRef Dst,
                                             unsigned DstAlign, LLVMValueRef Src,
                                             unsigned SrcAlign,

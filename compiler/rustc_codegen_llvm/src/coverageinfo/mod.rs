@@ -208,6 +208,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
                 let bitmap_index = bx.const_u32(bitmap_idx);
                 bx.mcdc_tvbitmap_update(fn_name, hash, bitmap_index, cond_bitmap);
+                bx.mcdc_condbitmap_reset(cond_bitmap);
             }
         }
     }
