@@ -38,7 +38,7 @@ diff --git a/library/core/src/sync/atomic.rs b/library/core/src/sync/atomic.rs
 index d9de37e..8293fce 100644
 --- a/library/core/src/sync/atomic.rs
 +++ b/library/core/src/sync/atomic.rs
-@@ -2996,44 +2996,6 @@ atomic_int! {
+@@ -2996,46 +2996,6 @@ atomic_int! {
      8,
      u64 AtomicU64
  }
@@ -55,6 +55,7 @@ index d9de37e..8293fce 100644
 -    rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
 -    rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
 -    cfg_attr(not(test), rustc_diagnostic_item = "AtomicI128"),
+-    cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type),
 -    "i128",
 -    "#![feature(integer_atomics)]\n\n",
 -    atomic_min, atomic_max,
@@ -74,6 +75,7 @@ index d9de37e..8293fce 100644
 -    rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
 -    rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
 -    cfg_attr(not(test), rustc_diagnostic_item = "AtomicU128"),
+-    cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type),
 -    "u128",
 -    "#![feature(integer_atomics)]\n\n",
 -    atomic_umin, atomic_umax,
