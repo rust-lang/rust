@@ -652,3 +652,20 @@ pub mod long_list {
     //! * [`FromBytes`](#a) indicates that a type may safely be converted from an arbitrary byte
     //!   sequence
 }
+
+pub struct ImplDoc;
+
+/// bla sondfosdnf sdfasd fadsd fdsa f ads fad sf sad f sad fasdfsafsa df dsafasdasd fsa dfadsfasd
+/// fads fadfadd
+///
+/// bla
+impl ImplDoc {
+    pub fn bar() {}
+}
+
+/// bla
+///
+/// bla
+impl ImplDoc {
+    pub fn bar2() {}
+}
