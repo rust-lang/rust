@@ -17,13 +17,11 @@ pub(super) fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String
     let always_live_locals = &always_storage_live_locals(body);
 
     let maybe_storage_live = MaybeStorageLive::new(Cow::Borrowed(always_live_locals))
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     let maybe_storage_dead = MaybeStorageDead::new(Cow::Borrowed(always_live_locals))
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     let mut lint = Lint {

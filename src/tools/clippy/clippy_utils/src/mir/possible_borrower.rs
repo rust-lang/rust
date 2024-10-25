@@ -185,9 +185,7 @@ impl<'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
             vis.into_map(cx)
         };
         let maybe_storage_live_result = MaybeStorageLive::new(Cow::Owned(BitSet::new_empty(mir.local_decls.len())))
-            .into_engine(cx.tcx, mir)
-            .pass_name("redundant_clone")
-            .iterate_to_fixpoint()
+            .iterate_to_fixpoint(cx.tcx, mir, Some("redundant_clone"))
             .into_results_cursor(mir);
         let mut vis = PossibleBorrowerVisitor::new(cx, mir, possible_origin);
         vis.visit_body(mir);

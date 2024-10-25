@@ -1,12 +1,38 @@
 //! Random access inspection of the results of a dataflow analysis.
 
 use std::cmp::Ordering;
+use std::ops::Deref;
 
 #[cfg(debug_assertions)]
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
+
+/// Some `ResultsCursor`s want to own a `Results`, and some want to borrow a `Results`. This type
+/// allows either. We could use `Cow` but that would require `Results` and `A` to impl `Clone`. So
+/// this is a greatly cut-down alternative to `Cow`.
+pub enum ResultsHandle<'a, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    Borrowed(&'a Results<'tcx, A>),
+    Owned(Results<'tcx, A>),
+}
+
+impl<'tcx, A> Deref for ResultsHandle<'_, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    type Target = Results<'tcx, A>;
+
+    fn deref(&self) -> &Results<'tcx, A> {
+        match self {
+            ResultsHandle::Borrowed(borrowed) => borrowed,
+            ResultsHandle::Owned(owned) => owned,
+        }
+    }
+}
 
 /// Allows random access inspection of the results of a dataflow analysis.
 ///
@@ -19,7 +45,7 @@ where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    results: Results<'tcx, A>,
+    results: ResultsHandle<'mir, 'tcx, A>,
     state: A::Domain,
 
     pos: CursorPosition,
@@ -47,13 +73,8 @@ where
         self.body
     }
 
-    /// Unwraps this cursor, returning the underlying `Results`.
-    pub fn into_results(self) -> Results<'tcx, A> {
-        self.results
-    }
-
     /// Returns a new cursor that can inspect `results`.
-    pub fn new(body: &'mir mir::Body<'tcx>, results: Results<'tcx, A>) -> Self {
+    pub fn new(body: &'mir mir::Body<'tcx>, results: ResultsHandle<'mir, 'tcx, A>) -> Self {
         let bottom_value = results.analysis.bottom_value(body);
         ResultsCursor {
             body,
@@ -83,19 +104,9 @@ where
         &self.results
     }
 
-    /// Returns the underlying `Results`.
-    pub fn mut_results(&mut self) -> &mut Results<'tcx, A> {
-        &mut self.results
-    }
-
     /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn analysis(&self) -> &A {
         &self.results.analysis
-    }
-
-    /// Returns the `Analysis` used to generate the underlying `Results`.
-    pub fn mut_analysis(&mut self) -> &mut A {
-        &mut self.results.analysis
     }
 
     /// Resets the cursor to hold the entry set for the given basic block.
@@ -199,7 +210,7 @@ where
         let target_effect_index = effect.at_index(target.statement_index);
 
         A::Direction::apply_effects_in_range(
-            &mut self.results.analysis,
+            &self.results.analysis,
             &mut self.state,
             target.block,
             block_data,
@@ -214,8 +225,8 @@ where
     ///
     /// This can be used, e.g., to apply the call return effect directly to the cursor without
     /// creating an extra copy of the dataflow state.
-    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&mut A, &mut A::Domain)) {
-        f(&mut self.results.analysis, &mut self.state);
+    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&A, &mut A::Domain)) {
+        f(&self.results.analysis, &mut self.state);
         self.state_needs_reset = true;
     }
 }

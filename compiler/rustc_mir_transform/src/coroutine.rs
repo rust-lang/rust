@@ -666,31 +666,23 @@ fn locals_live_across_suspend_points<'tcx>(
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(always_live_locals))
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
     let borrowed_locals_results =
-        MaybeBorrowedLocals.into_engine(tcx, body).pass_name("coroutine").iterate_to_fixpoint();
+        MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, Some("coroutine"));
+    let mut borrowed_locals_cursor = borrowed_locals_results.as_results_cursor(body);
 
-    let mut borrowed_locals_cursor = borrowed_locals_results.clone().into_results_cursor(body);
-
-    // Calculate the MIR locals that we actually need to keep storage around
-    // for.
-    let mut requires_storage_cursor =
-        MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
+    // Calculate the MIR locals for which we need to keep storage around.
+    let requires_storage_results = MaybeRequiresStorage::new(body, &borrowed_locals_results)
+        .iterate_to_fixpoint(tcx, body, None);
+    let mut requires_storage_cursor = requires_storage_results.as_results_cursor(body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
-    let mut liveness = MaybeLiveLocals
-        .into_engine(tcx, body)
-        .pass_name("coroutine")
-        .iterate_to_fixpoint()
-        .into_results_cursor(body);
+    let mut liveness =
+        MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("coroutine")).into_results_cursor(body);
 
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
@@ -759,7 +751,7 @@ fn locals_live_across_suspend_points<'tcx>(
         body,
         &saved_locals,
         always_live_locals.clone(),
-        requires_storage_cursor.into_results(),
+        requires_storage_results,
     );
 
     LivenessInfo {
@@ -889,7 +881,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &Self::Domain,
         _statement: &'a Statement<'tcx>,
         loc: Location,
@@ -899,7 +891,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &Self::Domain,
         _terminator: &'a Terminator<'tcx>,
         loc: Location,

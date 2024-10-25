@@ -51,7 +51,7 @@ use tracing::debug;
 
 use crate::fmt::DebugWithContext;
 use crate::lattice::{HasBottom, HasTop};
-use crate::{Analysis, JoinSemiLattice, SwitchIntEdgeEffects};
+use crate::{Analysis, JoinSemiLattice};
 
 pub trait ValueAnalysis<'tcx> {
     /// For each place of interest, the analysis tracks a value of the given type.
@@ -353,7 +353,7 @@ impl<'tcx, T: ValueAnalysis<'tcx>> Analysis<'tcx> for ValueAnalysisWrapper<T> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &Statement<'tcx>,
         _location: Location,
@@ -364,7 +364,7 @@ impl<'tcx, T: ValueAnalysis<'tcx>> Analysis<'tcx> for ValueAnalysisWrapper<T> {
     }
 
     fn apply_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         _location: Location,
@@ -377,7 +377,7 @@ impl<'tcx, T: ValueAnalysis<'tcx>> Analysis<'tcx> for ValueAnalysisWrapper<T> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -385,14 +385,6 @@ impl<'tcx, T: ValueAnalysis<'tcx>> Analysis<'tcx> for ValueAnalysisWrapper<T> {
         if state.is_reachable() {
             self.0.handle_call_return(return_places, state)
         }
-    }
-
-    fn apply_switch_int_edge_effects(
-        &mut self,
-        _block: BasicBlock,
-        _discr: &Operand<'tcx>,
-        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
-    ) {
     }
 }
 

@@ -16,7 +16,7 @@ pub trait Direction {
     ///
     /// `effects.start()` must precede or equal `effects.end()` in this direction.
     fn apply_effects_in_range<'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -25,7 +25,7 @@ pub trait Direction {
         A: Analysis<'tcx>;
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -37,13 +37,13 @@ pub trait Direction {
         state: &mut D,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut R,
+        results: &R,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = D>,
     ) where
         R: ResultsVisitable<'tcx, Domain = D>;
 
     fn join_state_into_successors_of<'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,
         block: BasicBlock,
@@ -60,7 +60,7 @@ impl Direction for Backward {
     const IS_FORWARD: bool = false;
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -81,7 +81,7 @@ impl Direction for Backward {
     }
 
     fn apply_effects_in_range<'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -161,7 +161,7 @@ impl Direction for Backward {
         state: &mut D,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut R,
+        results: &R,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = D>,
     ) where
         R: ResultsVisitable<'tcx, Domain = D>,
@@ -190,7 +190,7 @@ impl Direction for Backward {
     }
 
     fn join_state_into_successors_of<'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,
         bb: BasicBlock,
@@ -297,7 +297,7 @@ impl Direction for Forward {
     const IS_FORWARD: bool = true;
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -317,7 +317,7 @@ impl Direction for Forward {
     }
 
     fn apply_effects_in_range<'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -393,7 +393,7 @@ impl Direction for Forward {
         state: &mut F,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut R,
+        results: &R,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = F>,
     ) where
         R: ResultsVisitable<'tcx, Domain = F>,
@@ -421,7 +421,7 @@ impl Direction for Forward {
     }
 
     fn join_state_into_successors_of<'tcx, A>(
-        analysis: &mut A,
+        analysis: &A,
         _body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,
         bb: BasicBlock,

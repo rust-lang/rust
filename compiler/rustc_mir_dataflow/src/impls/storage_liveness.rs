@@ -5,7 +5,7 @@ use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 
 use super::MaybeBorrowedLocals;
-use crate::{Analysis, GenKill, ResultsCursor};
+use crate::{Analysis, GenKill, Results, ResultsCursor};
 
 pub struct MaybeStorageLive<'a> {
     always_live_locals: Cow<'a, BitSet<Local>>,
@@ -39,7 +39,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         stmt: &Statement<'tcx>,
         _: Location,
@@ -83,7 +83,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
     }
 
     fn apply_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         stmt: &Statement<'tcx>,
         _: Location,
@@ -96,17 +96,19 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
     }
 }
 
-type BorrowedLocalsResults<'mir, 'tcx> = ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals>;
-
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct MaybeRequiresStorage<'mir, 'tcx> {
-    borrowed_locals: BorrowedLocalsResults<'mir, 'tcx>,
+    body: &'mir Body<'tcx>,
+    borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
 }
 
 impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
-    pub fn new(borrowed_locals: BorrowedLocalsResults<'mir, 'tcx>) -> Self {
-        MaybeRequiresStorage { borrowed_locals }
+    pub fn new(
+        body: &'mir Body<'tcx>,
+        borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
+    ) -> Self {
+        MaybeRequiresStorage { body, borrowed_locals }
     }
 }
 
@@ -129,13 +131,13 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     }
 
     fn apply_before_statement_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         stmt: &Statement<'tcx>,
         loc: Location,
     ) {
         // If a place is borrowed in a statement, it needs storage for that statement.
-        self.borrowed_locals.mut_analysis().apply_statement_effect(trans, stmt, loc);
+        self.borrowed_locals.analysis.apply_statement_effect(trans, stmt, loc);
 
         match &stmt.kind {
             StatementKind::StorageDead(l) => trans.kill(*l),
@@ -161,28 +163,20 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         }
     }
 
-    fn apply_statement_effect(
-        &mut self,
-        trans: &mut Self::Domain,
-        _: &Statement<'tcx>,
-        loc: Location,
-    ) {
+    fn apply_statement_effect(&self, trans: &mut Self::Domain, _: &Statement<'tcx>, loc: Location) {
         // If we move from a place then it only stops needing storage *after*
         // that statement.
         self.check_for_move(trans, loc);
     }
 
     fn apply_before_terminator_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &Terminator<'tcx>,
         loc: Location,
     ) {
         // If a place is borrowed in a terminator, it needs storage for that terminator.
-        self.borrowed_locals
-            .mut_analysis()
-            .transfer_function(trans)
-            .visit_terminator(terminator, loc);
+        self.borrowed_locals.analysis.transfer_function(trans).visit_terminator(terminator, loc);
 
         match &terminator.kind {
             TerminatorKind::Call { destination, .. } => {
@@ -231,7 +225,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     }
 
     fn apply_terminator_effect<'t>(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         terminator: &'t Terminator<'tcx>,
         loc: Location,
@@ -272,7 +266,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         trans: &mut Self::Domain,
         _block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -283,15 +277,15 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
 
 impl<'tcx> MaybeRequiresStorage<'_, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
-    fn check_for_move(&mut self, trans: &mut <Self as Analysis<'tcx>>::Domain, loc: Location) {
-        let body = self.borrowed_locals.body();
-        let mut visitor = MoveVisitor { trans, borrowed_locals: &mut self.borrowed_locals };
-        visitor.visit_location(body, loc);
+    fn check_for_move(&self, trans: &mut <Self as Analysis<'tcx>>::Domain, loc: Location) {
+        let borrowed_locals = self.borrowed_locals.as_results_cursor(self.body);
+        let mut visitor = MoveVisitor { trans, borrowed_locals };
+        visitor.visit_location(self.body, loc);
     }
 }
 
 struct MoveVisitor<'a, 'mir, 'tcx> {
-    borrowed_locals: &'a mut BorrowedLocalsResults<'mir, 'tcx>,
+    borrowed_locals: ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals>,
     trans: &'a mut BitSet<Local>,
 }
 

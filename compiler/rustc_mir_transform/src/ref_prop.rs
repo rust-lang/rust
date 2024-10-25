@@ -126,8 +126,7 @@ fn compute_replacement<'tcx>(
     // Compute `MaybeStorageDead` dataflow to check that we only replace when the pointee is
     // definitely live.
     let mut maybe_dead = MaybeStorageDead::new(Cow::Owned(always_live_locals))
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     // Map for each local to the pointee.

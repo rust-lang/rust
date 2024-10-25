@@ -193,9 +193,7 @@ fn do_mir_borrowck<'tcx>(
         .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, Some("borrowck"))
         .into_results_cursor(body);
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def).is_fn_or_closure();
@@ -243,18 +241,21 @@ fn do_mir_borrowck<'tcx>(
     // usage significantly on some benchmarks.
     drop(flow_inits);
 
-    let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
-    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
-    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
+    let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
 
     let movable_coroutine =
         // The first argument is the coroutine type passed by value
@@ -341,7 +342,7 @@ fn do_mir_borrowck<'tcx>(
     // Compute and report region errors, if any.
     mbcx.report_region_errors(nll_errors);
 
-    let mut results = BorrowckResults {
+    let results = BorrowckResults {
         ever_inits: flow_ever_inits,
         uninits: flow_uninits,
         borrows: flow_borrows,
@@ -350,7 +351,7 @@ fn do_mir_borrowck<'tcx>(
     rustc_mir_dataflow::visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        &mut results,
+        &results,
         &mut mbcx,
     );
 
@@ -602,7 +603,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &BorrowckDomain<'a, 'tcx>,
         stmt: &'a Statement<'tcx>,
         location: Location,
@@ -672,7 +673,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &BorrowckDomain<'a, 'tcx>,
         term: &'a Terminator<'tcx>,
         loc: Location,
@@ -785,7 +786,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &R,
         state: &BorrowckDomain<'a, 'tcx>,
         term: &'a Terminator<'tcx>,
         loc: Location,
