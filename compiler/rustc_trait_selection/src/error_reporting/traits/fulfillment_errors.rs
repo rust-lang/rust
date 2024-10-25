@@ -2540,12 +2540,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && self.tcx.trait_impls_of(trait_def_id).is_empty()
             && !self.tcx.trait_is_auto(trait_def_id)
             && !self.tcx.trait_is_alias(trait_def_id)
+            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
         {
             err.span_help(
                 self.tcx.def_span(trait_def_id),
                 crate::fluent_generated::trait_selection_trait_has_no_impls,
             );
-        } else if !suggested && !unsatisfied_const {
+        } else if !suggested
+            && !unsatisfied_const
+            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
+        {
             // Can't show anything else useful, try to find similar impls.
             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(
