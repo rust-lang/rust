@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
@@ -18,6 +19,30 @@ pub type Bool = c_uint;
 
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
+
+/// Wrapper for a raw enum value returned from LLVM's C APIs.
+///
+/// For C enums returned by LLVM, it's risky to use a Rust enum as the return
+/// type, because it would be UB if a later version of LLVM adds a new enum
+/// value and returns it. Instead, return this raw wrapper, then convert to the
+/// Rust-side enum explicitly.
+#[repr(transparent)]
+pub struct RawEnum<T> {
+    value: u32,
+    /// We don't own or consume a `T`, but we can produce one.
+    _rust_side_type: PhantomData<fn() -> T>,
+}
+
+impl<T: TryFrom<u32>> RawEnum<T> {
+    #[track_caller]
+    pub(crate) fn to_rust(self) -> T
+    where
+        T::Error: Debug,
+    {
+        // If this fails, the Rust-side enum is out of sync with LLVM's enum.
+        T::try_from(self.value).expect("enum value returned by LLVM should be known")
+    }
+}
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
