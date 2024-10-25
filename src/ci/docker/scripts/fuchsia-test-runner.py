@@ -287,7 +287,7 @@ class TestEnvironment:
 
     @property
     def package_server_log_path(self) -> Path:
-      return self.tmp_dir().joinpath(f"repo_{self.TEST_REPO_NAME}.log")
+        return self.tmp_dir().joinpath(f"repo_{self.TEST_REPO_NAME}.log")
 
     @property
     def emulator_log_path(self) -> Path:
@@ -401,7 +401,7 @@ class TestEnvironment:
         # Set configs
         configs = {
             "log.enabled": "true",
-            "log.dir":  self.tmp_dir(),
+            "log.dir": self.tmp_dir(),
             "test.is_isolated": "true",
             "test.experimental_structured_output": "true",
         }
