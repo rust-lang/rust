@@ -24,6 +24,8 @@ codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$e
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
+codegen_ssa_dangerous_stack_allocation = dangerous stack allocation of size: {$output} exceeds most system architecture limits
+
 codegen_ssa_dlltool_fail_import_library =
     Dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
     {$stdout}
