@@ -163,28 +163,32 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             };
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
-                    cx.emit_span_lint(DROPPING_REFERENCES, expr.span, DropRefDiag {
+                    cx.emit_lint(DROPPING_REFERENCES, DropRefDiag {
+                        span: expr.span,
                         arg_ty,
                         label: arg.span,
                         sugg: let_underscore_ignore_sugg(),
                     });
                 }
                 sym::mem_forget if arg_ty.is_ref() => {
-                    cx.emit_span_lint(FORGETTING_REFERENCES, expr.span, ForgetRefDiag {
+                    cx.emit_lint(FORGETTING_REFERENCES, ForgetRefDiag {
+                        span: expr.span,
                         arg_ty,
                         label: arg.span,
                         sugg: let_underscore_ignore_sugg(),
                     });
                 }
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
-                    cx.emit_span_lint(DROPPING_COPY_TYPES, expr.span, DropCopyDiag {
+                    cx.emit_lint(DROPPING_COPY_TYPES, DropCopyDiag {
+                        span: expr.span,
                         arg_ty,
                         label: arg.span,
                         sugg: let_underscore_ignore_sugg(),
                     });
                 }
                 sym::mem_forget if is_copy => {
-                    cx.emit_span_lint(FORGETTING_COPY_TYPES, expr.span, ForgetCopyDiag {
+                    cx.emit_lint(FORGETTING_COPY_TYPES, ForgetCopyDiag {
+                        span: expr.span,
                         arg_ty,
                         label: arg.span,
                         sugg: let_underscore_ignore_sugg(),
@@ -194,18 +198,15 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     if let ty::Adt(adt, _) = arg_ty.kind()
                         && adt.is_manually_drop() =>
                 {
-                    cx.emit_span_lint(
-                        UNDROPPED_MANUALLY_DROPS,
-                        expr.span,
-                        UndroppedManuallyDropsDiag {
-                            arg_ty,
-                            label: arg.span,
-                            suggestion: UndroppedManuallyDropsSuggestion {
-                                start_span: arg.span.shrink_to_lo(),
-                                end_span: arg.span.shrink_to_hi(),
-                            },
+                    cx.emit_lint(UNDROPPED_MANUALLY_DROPS, UndroppedManuallyDropsDiag {
+                        span: expr.span,
+                        arg_ty,
+                        label: arg.span,
+                        suggestion: UndroppedManuallyDropsSuggestion {
+                            start_span: arg.span.shrink_to_lo(),
+                            end_span: arg.span.shrink_to_hi(),
                         },
-                    );
+                    });
                 }
                 _ => return,
             };

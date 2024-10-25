@@ -96,7 +96,8 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             end_span: pat.span.between(arg.span),
         };
 
-        cx.emit_span_lint(FOR_LOOPS_OVER_FALLIBLES, arg.span, ForLoopsOverFalliblesDiag {
+        cx.emit_lint(FOR_LOOPS_OVER_FALLIBLES, ForLoopsOverFalliblesDiag {
+            span: arg.span,
             article,
             ref_prefix,
             ty,

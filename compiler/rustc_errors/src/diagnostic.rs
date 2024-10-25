@@ -195,8 +195,10 @@ pub trait SubdiagMessageOp<G: EmissionGuarantee> =
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
 #[rustc_diagnostic_item = "LintDiagnostic"]
 pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
-    /// Decorate and emit a lint.
+    /// Decorate a lint.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
+
+    fn span(&self) -> Option<MultiSpan>;
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]

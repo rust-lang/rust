@@ -72,6 +72,8 @@ pub(crate) struct ReportEffectiveVisibility {
 #[derive(LintDiagnostic)]
 #[diag(privacy_from_private_dep_in_public_interface)]
 pub(crate) struct FromPrivateDependencyInPublicInterface<'a> {
+    #[primary_span]
+    pub span: Span,
     pub kind: &'a str,
     pub descr: DiagArgFromDisplay<'a>,
     pub krate: Symbol,
@@ -80,6 +82,7 @@ pub(crate) struct FromPrivateDependencyInPublicInterface<'a> {
 #[derive(LintDiagnostic)]
 #[diag(privacy_unnameable_types_lint)]
 pub(crate) struct UnnameableTypesLint<'a> {
+    #[primary_span]
     #[label]
     pub span: Span,
     pub kind: &'a str,
@@ -94,8 +97,9 @@ pub(crate) struct UnnameableTypesLint<'a> {
 #[derive(LintDiagnostic)]
 #[diag(privacy_private_interface_or_bounds_lint)]
 pub(crate) struct PrivateInterfacesOrBoundsLint<'a> {
+    #[primary_span]
     #[label(privacy_item_label)]
-    pub item_span: Span,
+    pub span: Span,
     pub item_kind: &'a str,
     pub item_descr: DiagArgFromDisplay<'a>,
     pub item_vis_descr: &'a str,

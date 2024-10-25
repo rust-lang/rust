@@ -55,7 +55,8 @@ fn enforce_mem_discriminant(
 ) {
     let ty_param = cx.typeck_results().node_args(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
-        cx.emit_span_lint(ENUM_INTRINSICS_NON_ENUMS, expr_span, EnumIntrinsicsMemDiscriminate {
+        cx.emit_lint(ENUM_INTRINSICS_NON_ENUMS, EnumIntrinsicsMemDiscriminate {
+            span: expr_span,
             ty_param,
             note: args_span,
         });
@@ -65,7 +66,7 @@ fn enforce_mem_discriminant(
 fn enforce_mem_variant_count(cx: &LateContext<'_>, func_expr: &hir::Expr<'_>, span: Span) {
     let ty_param = cx.typeck_results().node_args(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
-        cx.emit_span_lint(ENUM_INTRINSICS_NON_ENUMS, span, EnumIntrinsicsMemVariant { ty_param });
+        cx.emit_lint(ENUM_INTRINSICS_NON_ENUMS, EnumIntrinsicsMemVariant { span, ty_param });
     }
 }
 

@@ -96,11 +96,11 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
 
         let deletion_span = cx.tcx.sess.source_map().span_extend_while_whitespace(async_decl_span);
 
-        cx.tcx.emit_node_span_lint(
+        cx.tcx.emit_node_lint(
             CLOSURE_RETURNING_ASYNC_BLOCK,
             expr.hir_id,
-            fn_decl_span,
             ClosureReturningAsyncBlock {
+                span: fn_decl_span,
                 async_decl_span,
                 sugg: AsyncClosureSugg {
                     deletion_span,
@@ -114,6 +114,8 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
 #[derive(LintDiagnostic)]
 #[diag(lint_closure_returning_async_block)]
 struct ClosureReturningAsyncBlock {
+    #[primary_span]
+    span: Span,
     #[label]
     async_decl_span: Span,
     #[subdiagnostic]

@@ -54,6 +54,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for UnusedGenericParamsHint {
 #[diag(monomorphize_large_assignments)]
 #[note]
 pub(crate) struct LargeAssignmentsLint {
+    #[primary_span]
     #[label]
     pub span: Span,
     pub size: u64,

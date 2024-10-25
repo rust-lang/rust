@@ -224,7 +224,7 @@ fn lint_nan<'tcx>(
             InvalidNanComparisonsSuggestion::Spanless
         };
 
-        InvalidNanComparisons::EqNe { suggestion }
+        InvalidNanComparisons::EqNe { span: e.span, suggestion }
     }
 
     let lint = match binop.node {
@@ -245,12 +245,12 @@ fn lint_nan<'tcx>(
         hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge
             if is_nan(cx, l) || is_nan(cx, r) =>
         {
-            InvalidNanComparisons::LtLeGtGe
+            InvalidNanComparisons::LtLeGtGe { span: e.span }
         }
         _ => return,
     };
 
-    cx.emit_span_lint(INVALID_NAN_COMPARISONS, e.span, lint);
+    cx.emit_lint(INVALID_NAN_COMPARISONS, lint);
 }
 
 #[derive(Debug, PartialEq)]
@@ -315,10 +315,9 @@ fn lint_wide_pointer<'tcx>(
     let (Some(l_span), Some(r_span)) =
         (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
     else {
-        return cx.emit_span_lint(
+        return cx.emit_lint(
             AMBIGUOUS_WIDE_POINTER_COMPARISONS,
-            e.span,
-            AmbiguousWidePointerComparisons::Spanless,
+            AmbiguousWidePointerComparisons::Spanless { span: e.span },
         );
     };
 
@@ -336,49 +335,46 @@ fn lint_wide_pointer<'tcx>(
     let l_modifiers = &*l_modifiers;
     let r_modifiers = &*r_modifiers;
 
-    cx.emit_span_lint(
-        AMBIGUOUS_WIDE_POINTER_COMPARISONS,
-        e.span,
-        AmbiguousWidePointerComparisons::Spanful {
-            addr_metadata_suggestion: (is_eq_ne && !is_dyn_comparison).then(|| {
-                AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
-                    ne,
-                    deref_left,
-                    deref_right,
-                    l_modifiers,
-                    r_modifiers,
-                    left,
-                    middle,
-                    right,
-                }
-            }),
-            addr_suggestion: if is_eq_ne {
-                AmbiguousWidePointerComparisonsAddrSuggestion::AddrEq {
-                    ne,
-                    deref_left,
-                    deref_right,
-                    l_modifiers,
-                    r_modifiers,
-                    left,
-                    middle,
-                    right,
-                }
-            } else {
-                AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
-                    deref_left,
-                    deref_right,
-                    l_modifiers,
-                    r_modifiers,
-                    paren_left: if l_ty_refs != 0 { ")" } else { "" },
-                    paren_right: if r_ty_refs != 0 { ")" } else { "" },
-                    left_before: (l_ty_refs != 0).then_some(l_span.shrink_to_lo()),
-                    left_after: l_span.shrink_to_hi(),
-                    right_before: (r_ty_refs != 0).then_some(r_span.shrink_to_lo()),
-                    right_after: r_span.shrink_to_hi(),
-                }
-            },
+    cx.emit_lint(AMBIGUOUS_WIDE_POINTER_COMPARISONS, AmbiguousWidePointerComparisons::Spanful {
+        span: e.span,
+        addr_metadata_suggestion: (is_eq_ne && !is_dyn_comparison).then(|| {
+            AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+                ne,
+                deref_left,
+                deref_right,
+                l_modifiers,
+                r_modifiers,
+                left,
+                middle,
+                right,
+            }
+        }),
+        addr_suggestion: if is_eq_ne {
+            AmbiguousWidePointerComparisonsAddrSuggestion::AddrEq {
+                ne,
+                deref_left,
+                deref_right,
+                l_modifiers,
+                r_modifiers,
+                left,
+                middle,
+                right,
+            }
+        } else {
+            AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
+                deref_left,
+                deref_right,
+                l_modifiers,
+                r_modifiers,
+                paren_left: if l_ty_refs != 0 { ")" } else { "" },
+                paren_right: if r_ty_refs != 0 { ")" } else { "" },
+                left_before: (l_ty_refs != 0).then_some(l_span.shrink_to_lo()),
+                left_after: l_span.shrink_to_hi(),
+                right_before: (r_ty_refs != 0).then_some(r_span.shrink_to_lo()),
+                right_after: r_span.shrink_to_hi(),
+            }
         },
-    );
+    });
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
@@ -394,7 +390,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) {
                     if !check_limits(cx, binop, l, r) {
-                        cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
+                        cx.emit_lint(UNUSED_COMPARISONS, UnusedComparisons { span: e.span });
                     } else {
                         lint_nan(cx, e, binop, l, r);
                         lint_wide_pointer(cx, e, ComparisonOp::BinOp(binop.node), l, r);
@@ -1163,14 +1159,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else {
             None
         };
-        self.cx.emit_span_lint(lint, sp, ImproperCTypes {
-            ty,
-            desc,
-            label: sp,
-            help,
-            note,
-            span_note,
-        });
+        self.cx.emit_lint(lint, ImproperCTypes { span: sp, ty, desc, help, note, span_note });
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
@@ -1497,11 +1486,10 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             // We only warn if the largest variant is at least thrice as large as
             // the second-largest.
             if largest > slargest * 3 && slargest > 0 {
-                cx.emit_span_lint(
-                    VARIANT_SIZE_DIFFERENCES,
-                    enum_definition.variants[largest_index].span,
-                    VariantSizeDifferencesDiag { largest },
-                );
+                cx.emit_lint(VARIANT_SIZE_DIFFERENCES, VariantSizeDifferencesDiag {
+                    span: enum_definition.variants[largest_index].span,
+                    largest,
+                });
             }
         }
     }
@@ -1618,9 +1606,13 @@ impl InvalidAtomicOrdering {
             && (ordering == invalid_ordering || ordering == sym::AcqRel)
         {
             if method == sym::load {
-                cx.emit_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, AtomicOrderingLoad);
+                cx.emit_lint(INVALID_ATOMIC_ORDERING, AtomicOrderingLoad {
+                    span: ordering_arg.span,
+                });
             } else {
-                cx.emit_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, AtomicOrderingStore);
+                cx.emit_lint(INVALID_ATOMIC_ORDERING, AtomicOrderingStore {
+                    span: ordering_arg.span,
+                });
             };
         }
     }
@@ -1632,7 +1624,7 @@ impl InvalidAtomicOrdering {
             && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::fence | sym::compiler_fence))
             && Self::match_ordering(cx, &args[0]) == Some(sym::Relaxed)
         {
-            cx.emit_span_lint(INVALID_ATOMIC_ORDERING, args[0].span, AtomicOrderingFence);
+            cx.emit_lint(INVALID_ATOMIC_ORDERING, AtomicOrderingFence { span: args[0].span });
         }
     }
 
@@ -1654,11 +1646,10 @@ impl InvalidAtomicOrdering {
         let Some(fail_ordering) = Self::match_ordering(cx, fail_order_arg) else { return };
 
         if matches!(fail_ordering, sym::Release | sym::AcqRel) {
-            cx.emit_span_lint(
-                INVALID_ATOMIC_ORDERING,
-                fail_order_arg.span,
-                InvalidAtomicOrderingDiag { method, fail_order_arg_span: fail_order_arg.span },
-            );
+            cx.emit_lint(INVALID_ATOMIC_ORDERING, InvalidAtomicOrderingDiag {
+                span: fail_order_arg.span,
+                method,
+            });
         }
     }
 }

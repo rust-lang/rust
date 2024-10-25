@@ -50,8 +50,10 @@ pub(crate) struct GenericDoesNotLiveLongEnough {
 #[derive(LintDiagnostic)]
 #[diag(borrowck_var_does_not_need_mut)]
 pub(crate) struct VarNeedNotMut {
-    #[suggestion(style = "short", applicability = "machine-applicable", code = "")]
+    #[primary_span]
     pub span: Span,
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "")]
+    pub mut_span: Span,
 }
 #[derive(Diagnostic)]
 #[diag(borrowck_var_cannot_escape_closure)]

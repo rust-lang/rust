@@ -318,29 +318,28 @@ pub enum AppendConstMessage {
 #[diag(trait_selection_malformed_on_unimplemented_attr)]
 #[help]
 pub struct MalformedOnUnimplementedAttrLint {
+    #[primary_span]
     #[label]
     pub span: Span,
-}
-
-impl MalformedOnUnimplementedAttrLint {
-    fn new(span: Span) -> Self {
-        Self { span }
-    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
 #[help]
-pub struct MissingOptionsForOnUnimplementedAttr;
+pub struct MissingOptionsForOnUnimplementedAttr {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(trait_selection_ignored_diagnostic_option)]
 pub struct IgnoredDiagnosticOption {
-    pub option_name: &'static str,
+    #[primary_span]
     #[label]
     pub span: Span,
     #[label(trait_selection_other_label)]
     pub prev_span: Span,
+    pub option_name: &'static str,
 }
 
 impl IgnoredDiagnosticOption {
@@ -353,10 +352,9 @@ impl IgnoredDiagnosticOption {
     ) {
         if let (Some(new_item), Some(old_item)) = (new, old) {
             if let Some(item_def_id) = item_def_id.as_local() {
-                tcx.emit_node_span_lint(
+                tcx.emit_node_lint(
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                     tcx.local_def_id_to_hir_id(item_def_id),
-                    new_item,
                     IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
                 );
             }
@@ -368,6 +366,8 @@ impl IgnoredDiagnosticOption {
 #[diag(trait_selection_unknown_format_parameter_for_on_unimplemented_attr)]
 #[help]
 pub struct UnknownFormatParameterForOnUnimplementedAttr {
+    #[primary_span]
+    span: Span,
     argument_name: Symbol,
     trait_name: Symbol,
 }
@@ -375,16 +375,24 @@ pub struct UnknownFormatParameterForOnUnimplementedAttr {
 #[derive(LintDiagnostic)]
 #[diag(trait_selection_disallowed_positional_argument)]
 #[help]
-pub struct DisallowedPositionalArgument;
+pub struct DisallowedPositionalArgument {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(trait_selection_invalid_format_specifier)]
 #[help]
-pub struct InvalidFormatSpecifier;
+pub struct InvalidFormatSpecifier {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(trait_selection_wrapped_parser_error)]
 pub struct WrappedParserError {
+    #[primary_span]
+    span: Span,
     description: String,
     label: String,
 }
@@ -504,11 +512,10 @@ impl<'tcx> OnUnimplementedDirective {
 
             if is_diagnostic_namespace_variant {
                 if let Some(def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
+                    tcx.emit_node_lint(
                         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         tcx.local_def_id_to_hir_id(def_id),
-                        vec![item.span()],
-                        MalformedOnUnimplementedAttrLint::new(item.span()),
+                        MalformedOnUnimplementedAttrLint { span: item.span() },
                     );
                 }
             } else {
@@ -644,11 +651,10 @@ impl<'tcx> OnUnimplementedDirective {
                 };
 
                 if let Some(item_def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
+                    tcx.emit_node_lint(
                         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         tcx.local_def_id_to_hir_id(item_def_id),
-                        report_span,
-                        MalformedOnUnimplementedAttrLint::new(report_span),
+                        MalformedOnUnimplementedAttrLint { span: report_span },
                     );
                 }
                 Ok(None)
@@ -657,21 +663,19 @@ impl<'tcx> OnUnimplementedDirective {
             match &attr.kind {
                 AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
                     if let Some(item_def_id) = item_def_id.as_local() {
-                        tcx.emit_node_span_lint(
+                        tcx.emit_node_lint(
                             UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                             tcx.local_def_id_to_hir_id(item_def_id),
-                            attr.span,
-                            MalformedOnUnimplementedAttrLint::new(attr.span),
+                            MalformedOnUnimplementedAttrLint { span: attr.span },
                         );
                     }
                 }
                 _ => {
                     if let Some(item_def_id) = item_def_id.as_local() {
-                        tcx.emit_node_span_lint(
+                        tcx.emit_node_lint(
                             UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                             tcx.local_def_id_to_hir_id(item_def_id),
-                            attr.span,
-                            MissingOptionsForOnUnimplementedAttr,
+                            MissingOptionsForOnUnimplementedAttr { span: attr.span },
                         )
                     }
                 }
@@ -804,11 +808,10 @@ impl<'tcx> OnUnimplementedFormatString {
                             || format_spec.fill_span.is_some())
                     {
                         if let Some(item_def_id) = item_def_id.as_local() {
-                            tcx.emit_node_span_lint(
+                            tcx.emit_node_lint(
                                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                                 tcx.local_def_id_to_hir_id(item_def_id),
-                                self.span,
-                                InvalidFormatSpecifier,
+                                InvalidFormatSpecifier { span: self.span },
                             );
                         }
                     }
@@ -827,11 +830,11 @@ impl<'tcx> OnUnimplementedFormatString {
                                 s => {
                                     if self.is_diagnostic_namespace_variant {
                                         if let Some(item_def_id) = item_def_id.as_local() {
-                                            tcx.emit_node_span_lint(
+                                            tcx.emit_node_lint(
                                                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                                                 tcx.local_def_id_to_hir_id(item_def_id),
-                                                self.span,
                                                 UnknownFormatParameterForOnUnimplementedAttr {
+                                                    span: self.span,
                                                     argument_name: s,
                                                     trait_name,
                                                 },
@@ -859,11 +862,10 @@ impl<'tcx> OnUnimplementedFormatString {
                         Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
                             if self.is_diagnostic_namespace_variant {
                                 if let Some(item_def_id) = item_def_id.as_local() {
-                                    tcx.emit_node_span_lint(
+                                    tcx.emit_node_lint(
                                         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                                         tcx.local_def_id_to_hir_id(item_def_id),
-                                        self.span,
-                                        DisallowedPositionalArgument,
+                                        DisallowedPositionalArgument { span: self.span },
                                     );
                                 }
                             } else {
@@ -889,11 +891,14 @@ impl<'tcx> OnUnimplementedFormatString {
         for e in parser.errors {
             if self.is_diagnostic_namespace_variant {
                 if let Some(item_def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
+                    tcx.emit_node_lint(
                         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         tcx.local_def_id_to_hir_id(item_def_id),
-                        self.span,
-                        WrappedParserError { description: e.description, label: e.label },
+                        WrappedParserError {
+                            span: self.span,
+                            description: e.description,
+                            label: e.label,
+                        },
                     );
                 }
             } else {

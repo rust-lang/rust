@@ -118,12 +118,10 @@ impl<'tcx> LateLintPass<'tcx> for AsyncFnInTrait {
                 opaq_def.def_id,
                 " + Send",
             );
-            cx.tcx.emit_node_span_lint(
-                ASYNC_FN_IN_TRAIT,
-                item.hir_id(),
-                async_span,
-                AsyncFnInTraitDiag { sugg },
-            );
+            cx.tcx.emit_node_lint(ASYNC_FN_IN_TRAIT, item.hir_id(), AsyncFnInTraitDiag {
+                span: async_span,
+                sugg,
+            });
         }
     }
 }

@@ -146,7 +146,7 @@ fn emit_static_mut_refs(
         }
     };
 
-    cx.emit_span_lint(STATIC_MUT_REFS, span, RefOfMutStatic {
+    cx.emit_lint(STATIC_MUT_REFS, RefOfMutStatic {
         span,
         sugg,
         shared_label,

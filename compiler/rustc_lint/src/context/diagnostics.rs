@@ -139,8 +139,15 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
                 suggestion,
             });
 
-            stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
-                .decorate_lint(diag);
+            stability::Deprecated {
+                span: None,
+                sub,
+                kind: "macro".to_owned(),
+                path,
+                note,
+                since_kind,
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedDocComment(attr_span) => {
             lints::UnusedDocComment { span: attr_span }.decorate_lint(diag);

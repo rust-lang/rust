@@ -120,21 +120,20 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
         let depr = attr::find_deprecation(self.tcx.sess, self.tcx.features(), attrs);
         let mut is_deprecated = false;
-        if let Some((depr, span)) = &depr {
+        if let Some((depr, span)) = depr {
             is_deprecated = true;
 
             if matches!(kind, AnnotationKind::Prohibited | AnnotationKind::DeprecationProhibited) {
                 let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-                self.tcx.emit_node_span_lint(
+                self.tcx.emit_node_lint(
                     USELESS_DEPRECATED,
                     hir_id,
-                    *span,
-                    errors::DeprecatedAnnotationHasNoEffect { span: *span },
+                    errors::DeprecatedAnnotationHasNoEffect { span },
                 );
             }
 
             // `Deprecation` is just two pointers, no need to intern it
-            let depr_entry = DeprecationEntry::local(*depr, def_id);
+            let depr_entry = DeprecationEntry::local(depr, def_id);
             self.index.depr_map.insert(def_id, depr_entry);
         } else if let Some(parent_depr) = self.parent_depr {
             if inherit_deprecation.yes() {
@@ -751,11 +750,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         // do not lint when the trait isn't resolved, since resolution error should
                         // be fixed first
                         if t.path.res != Res::Err && c.fully_stable {
-                            self.tcx.emit_node_span_lint(
+                            self.tcx.emit_node_lint(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
-                                span,
-                                errors::IneffectiveUnstableImpl,
+                                errors::IneffectiveUnstableImpl { span },
                             );
                         }
                     }
@@ -1081,10 +1079,9 @@ fn unnecessary_partially_stable_feature_lint(
     implies: Symbol,
     since: Symbol,
 ) {
-    tcx.emit_node_span_lint(
+    tcx.emit_node_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
-        span,
         errors::UnnecessaryPartialStableFeature {
             span,
             line: tcx.sess.source_map().span_extend_to_line(span),
@@ -1104,10 +1101,9 @@ fn unnecessary_stable_feature_lint(
     if since.as_str() == VERSION_PLACEHOLDER {
         since = sym::env_CFG_RELEASE;
     }
-    tcx.emit_node_span_lint(
+    tcx.emit_node_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
-        span,
-        errors::UnnecessaryStableFeature { feature, since },
+        errors::UnnecessaryStableFeature { span, feature, since },
     );
 }

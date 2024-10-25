@@ -16,6 +16,7 @@ use crate::fluent_generated as fluent;
 #[diag(mir_build_unconditional_recursion)]
 #[help]
 pub(crate) struct UnconditionalRecursion {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[label(mir_build_unconditional_recursion_call_site_label)]
@@ -25,6 +26,7 @@ pub(crate) struct UnconditionalRecursion {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_call_to_deprecated_safe_fn_requires_unsafe)]
 pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     pub(crate) function: String,
@@ -49,6 +51,7 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafeSub {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     pub(crate) function: String,
@@ -60,6 +63,7 @@ pub(crate) struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe_nameless, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -70,6 +74,7 @@ pub(crate) struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -80,6 +85,7 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -90,6 +96,7 @@ pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_mutable_static_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -100,6 +107,7 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_extern_static_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -110,6 +118,7 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_deref_raw_pointer_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -120,6 +129,7 @@ pub(crate) struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_union_field_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -133,6 +143,7 @@ pub(crate) struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
 )]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -145,6 +156,7 @@ pub(crate) struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsa
     code = E0133,
 )]
 pub(crate) struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -155,6 +167,7 @@ pub(crate) struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe, code = E0133)]
 #[help]
 pub(crate) struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     pub(crate) function: String,
@@ -470,6 +483,7 @@ impl Subdiagnostic for UnsafeNotInheritedLintNote {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unused_unsafe)]
 pub(crate) struct UnusedUnsafe {
+    #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -584,8 +598,10 @@ pub(crate) struct NonConstPath {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unreachable_pattern)]
 pub(crate) struct UnreachablePattern<'tcx> {
+    #[primary_span]
+    pub(crate) span: Span,
     #[label]
-    pub(crate) span: Option<Span>,
+    pub(crate) label: Option<Span>,
     #[label(mir_build_unreachable_matches_no_values)]
     pub(crate) matches_no_values: Option<Span>,
     pub(crate) matches_no_values_ty: Ty<'tcx>,
@@ -649,6 +665,8 @@ pub(crate) struct LowerRangeBoundMustBeLessThanUpper {
 #[note]
 #[help]
 pub(crate) struct LeadingIrrefutableLetPatterns {
+    #[primary_span]
+    pub(crate) span: Span,
     pub(crate) count: usize,
 }
 
@@ -657,12 +675,16 @@ pub(crate) struct LeadingIrrefutableLetPatterns {
 #[note]
 #[help]
 pub(crate) struct TrailingIrrefutableLetPatterns {
+    #[primary_span]
+    pub(crate) span: Span,
     pub(crate) count: usize,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_bindings_with_variant_name, code = E0170)]
 pub(crate) struct BindingsWithVariantName {
+    #[primary_span]
+    pub(crate) span: Span,
     #[suggestion(code = "{ty_path}::{name}", applicability = "machine-applicable")]
     pub(crate) suggestion: Option<Span>,
     pub(crate) ty_path: String,
@@ -674,6 +696,8 @@ pub(crate) struct BindingsWithVariantName {
 #[note]
 #[help]
 pub(crate) struct IrrefutableLetPatternsIfLet {
+    #[primary_span]
+    pub(crate) span: Span,
     pub(crate) count: usize,
 }
 
@@ -682,6 +706,8 @@ pub(crate) struct IrrefutableLetPatternsIfLet {
 #[note]
 #[help]
 pub(crate) struct IrrefutableLetPatternsIfLetGuard {
+    #[primary_span]
+    pub(crate) span: Span,
     pub(crate) count: usize,
 }
 
@@ -690,6 +716,8 @@ pub(crate) struct IrrefutableLetPatternsIfLetGuard {
 #[note]
 #[help]
 pub(crate) struct IrrefutableLetPatternsLetElse {
+    #[primary_span]
+    pub(crate) span: Span,
     pub(crate) count: usize,
 }
 
@@ -698,6 +726,8 @@ pub(crate) struct IrrefutableLetPatternsLetElse {
 #[note]
 #[help]
 pub(crate) struct IrrefutableLetPatternsWhileLet {
+    #[primary_span]
+    pub(crate) span: Span,
     pub(crate) count: usize,
 }
 
@@ -977,6 +1007,8 @@ pub(crate) enum RustcBoxAttrReason {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_rust_2024_incompatible_pat)]
 pub(crate) struct Rust2024IncompatiblePat {
+    #[primary_span]
+    pub(crate) span: Span,
     #[subdiagnostic]
     pub(crate) sugg: Rust2024IncompatiblePatSugg,
 }

@@ -100,11 +100,10 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
                 && let Some((lint_root, span, item)) =
                     self.should_lint_const_item_usage(lhs, def_id, loc)
             {
-                self.tcx.emit_node_span_lint(
+                self.tcx.emit_node_lint(
                     CONST_ITEM_MUTATION,
                     lint_root,
-                    span,
-                    errors::ConstMutate::Modify { konst: item },
+                    errors::ConstMutate::Modify { span, konst: item },
                 );
             }
 
@@ -146,11 +145,10 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
                 if let Some((lint_root, span, item)) =
                     self.should_lint_const_item_usage(place, def_id, lint_loc)
                 {
-                    self.tcx.emit_node_span_lint(
+                    self.tcx.emit_node_lint(
                         CONST_ITEM_MUTATION,
                         lint_root,
-                        span,
-                        errors::ConstMutate::MutBorrow { method_call, konst: item },
+                        errors::ConstMutate::MutBorrow { span, method_call, konst: item },
                     );
                 }
             }

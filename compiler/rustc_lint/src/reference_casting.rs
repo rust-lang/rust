@@ -54,16 +54,17 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
                 && let Some(ty_has_interior_mutability) =
                     is_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
             {
-                cx.emit_span_lint(
+                cx.emit_lint(
                     INVALID_REFERENCE_CASTING,
-                    expr.span,
                     if pat == PatternKind::Assign {
                         InvalidReferenceCastingDiag::AssignToRef {
+                            span: expr.span,
                             orig_cast,
                             ty_has_interior_mutability,
                         }
                     } else {
                         InvalidReferenceCastingDiag::BorrowAsMut {
+                            span: expr.span,
                             orig_cast,
                             ty_has_interior_mutability,
                         }
@@ -74,10 +75,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
             if let Some((from_ty_layout, to_ty_layout, e_alloc)) =
                 is_cast_to_bigger_memory_layout(cx, init, &mut peel_casts)
             {
-                cx.emit_span_lint(
+                cx.emit_lint(
                     INVALID_REFERENCE_CASTING,
-                    expr.span,
                     InvalidReferenceCastingDiag::BiggerLayout {
+                        span: expr.span,
                         orig_cast,
                         alloc: e_alloc.span,
                         from_ty: from_ty_layout.ty,

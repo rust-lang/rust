@@ -79,17 +79,21 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
                 let valid_up_to = utf8_error.valid_up_to();
                 let is_unchecked_variant = diag_item.as_str().contains("unchecked");
 
-                cx.emit_span_lint(
+                cx.emit_lint(
                     if is_unchecked_variant {
                         INVALID_FROM_UTF8_UNCHECKED
                     } else {
                         INVALID_FROM_UTF8
                     },
-                    expr.span,
                     if is_unchecked_variant {
-                        InvalidFromUtf8Diag::Unchecked { method, valid_up_to, label }
+                        InvalidFromUtf8Diag::Unchecked {
+                            span: expr.span,
+                            method,
+                            valid_up_to,
+                            label,
+                        }
                     } else {
-                        InvalidFromUtf8Diag::Checked { method, valid_up_to, label }
+                        InvalidFromUtf8Diag::Checked { span: expr.span, method, valid_up_to, label }
                     },
                 )
             };

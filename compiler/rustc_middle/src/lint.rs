@@ -253,13 +253,11 @@ pub fn explain_lint_level_source(
 
 /// The innermost function for emitting lints.
 ///
-/// If you are looking to implement a lint, look for higher level functions,
-/// for example:
-/// - [`TyCtxt::emit_node_span_lint`]
-/// - [`TyCtxt::node_span_lint`]
+/// If you are looking to implement a lint, look for higher level functions, for example:
+///
 /// - [`TyCtxt::emit_node_lint`]
 /// - [`TyCtxt::node_lint`]
-/// - `LintContext::opt_span_lint`
+/// - `rustc_lint::LintContext::opt_span_lint`
 ///
 /// ## `decorate`
 ///

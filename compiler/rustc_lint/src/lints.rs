@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
@@ -27,10 +28,11 @@ use crate::{LateContext, fluent_generated as fluent};
 #[derive(LintDiagnostic)]
 #[diag(lint_shadowed_into_iter)]
 pub(crate) struct ShadowedIntoIterDiag {
+    #[primary_span]
+    #[suggestion(lint_use_iter_suggestion, code = "iter", applicability = "machine-applicable")]
+    pub span: Span,
     pub target: &'static str,
     pub edition: &'static str,
-    #[suggestion(lint_use_iter_suggestion, code = "iter", applicability = "machine-applicable")]
-    pub suggestion: Span,
     #[subdiagnostic]
     pub sub: Option<ShadowedIntoIterDiagSub>,
 }
@@ -58,79 +60,138 @@ pub(crate) enum ShadowedIntoIterDiagSub {
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_while_true)]
 pub(crate) struct BuiltinWhileTrue {
+    #[primary_span]
     #[suggestion(style = "short", code = "{replace}", applicability = "machine-applicable")]
-    pub suggestion: Span,
+    pub span: Span,
     pub replace: String,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_non_shorthand_field_patterns)]
 pub(crate) struct BuiltinNonShorthandFieldPatterns {
-    pub ident: Ident,
+    #[primary_span]
     #[suggestion(code = "{prefix}{ident}", applicability = "machine-applicable")]
-    pub suggestion: Span,
+    pub span: Span,
+    pub ident: Ident,
     pub prefix: &'static str,
 }
 
 #[derive(LintDiagnostic)]
 pub(crate) enum BuiltinUnsafe {
     #[diag(lint_builtin_allow_internal_unsafe)]
-    AllowInternalUnsafe,
+    AllowInternalUnsafe {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_unsafe_block)]
-    UnsafeBlock,
+    UnsafeBlock {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_unsafe_extern_block)]
-    UnsafeExternBlock,
+    UnsafeExternBlock {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_unsafe_trait)]
-    UnsafeTrait,
+    UnsafeTrait {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_unsafe_impl)]
-    UnsafeImpl,
+    UnsafeImpl {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_no_mangle_fn)]
     #[note(lint_builtin_overridden_symbol_name)]
-    NoMangleFn,
+    NoMangleFn {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_export_name_fn)]
     #[note(lint_builtin_overridden_symbol_name)]
-    ExportNameFn,
+    ExportNameFn {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_link_section_fn)]
     #[note(lint_builtin_overridden_symbol_section)]
-    LinkSectionFn,
+    LinkSectionFn {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_no_mangle_static)]
     #[note(lint_builtin_overridden_symbol_name)]
-    NoMangleStatic,
+    NoMangleStatic {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_export_name_static)]
     #[note(lint_builtin_overridden_symbol_name)]
-    ExportNameStatic,
+    ExportNameStatic {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_link_section_static)]
     #[note(lint_builtin_overridden_symbol_section)]
-    LinkSectionStatic,
+    LinkSectionStatic {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_no_mangle_method)]
     #[note(lint_builtin_overridden_symbol_name)]
-    NoMangleMethod,
+    NoMangleMethod {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_export_name_method)]
     #[note(lint_builtin_overridden_symbol_name)]
-    ExportNameMethod,
+    ExportNameMethod {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_decl_unsafe_fn)]
-    DeclUnsafeFn,
+    DeclUnsafeFn {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_decl_unsafe_method)]
-    DeclUnsafeMethod,
+    DeclUnsafeMethod {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_impl_unsafe_method)]
-    ImplUnsafeMethod,
+    ImplUnsafeMethod {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_global_asm)]
     #[note(lint_builtin_global_macro_unsafety)]
-    GlobalAsm,
+    GlobalAsm {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_missing_doc)]
 pub(crate) struct BuiltinMissingDoc<'a> {
+    #[primary_span]
+    pub span: Span,
     pub article: &'a str,
     pub desc: &'a str,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_missing_copy_impl)]
-pub(crate) struct BuiltinMissingCopyImpl;
+pub(crate) struct BuiltinMissingCopyImpl {
+    #[primary_span]
+    pub span: Span,
+}
 
 pub(crate) struct BuiltinMissingDebugImpl<'a> {
+    pub span: Span,
     pub tcx: TyCtxt<'a>,
     pub def_id: DefId,
 }
@@ -141,11 +202,17 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinMissingDebugImpl<'_> {
         diag.primary_message(fluent::lint_builtin_missing_debug_impl);
         diag.arg("debug", self.tcx.def_path_str(self.def_id));
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_anonymous_params)]
 pub(crate) struct BuiltinAnonymousParams<'a> {
+    #[primary_span]
+    pub span: Span,
     #[suggestion(code = "_: {ty_snip}")]
     pub suggestion: (Span, Applicability),
     pub ty_snip: &'a str,
@@ -155,6 +222,8 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_deprecated_attr_link)]
 pub(crate) struct BuiltinDeprecatedAttrLink<'a> {
+    #[primary_span]
+    pub span: Span,
     pub name: Symbol,
     pub reason: &'a str,
     pub link: &'a str,
@@ -180,19 +249,22 @@ pub(crate) enum BuiltinDeprecatedAttrLinkSuggestion<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_deprecated_attr_used)]
 pub(crate) struct BuiltinDeprecatedAttrUsed {
-    pub name: String,
+    #[primary_span]
     #[suggestion(
         lint_builtin_deprecated_attr_default_suggestion,
         style = "short",
         code = "",
         applicability = "machine-applicable"
     )]
-    pub suggestion: Span,
+    pub span: Span,
+    pub name: String,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unused_doc_comment)]
 pub(crate) struct BuiltinUnusedDocComment<'a> {
+    #[primary_span]
+    pub span: Span,
     pub kind: &'a str,
     #[label]
     pub label: Span,
@@ -211,6 +283,8 @@ pub(crate) enum BuiltinUnusedDocCommentSub {
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_no_mangle_generic)]
 pub(crate) struct BuiltinNoMangleGeneric {
+    #[primary_span]
+    pub span: Span,
     // Use of `#[no_mangle]` suggests FFI intent; correct
     // fix may be to monomorphize source by hand
     #[suggestion(style = "short", code = "", applicability = "maybe-incorrect")]
@@ -220,20 +294,29 @@ pub(crate) struct BuiltinNoMangleGeneric {
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_const_no_mangle)]
 pub(crate) struct BuiltinConstNoMangle {
+    #[primary_span]
+    pub span: Span,
     #[suggestion(code = "pub static", applicability = "machine-applicable")]
     pub suggestion: Span,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_mutable_transmutes)]
-pub(crate) struct BuiltinMutablesTransmutes;
+pub(crate) struct BuiltinMutablesTransmutes {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unstable_features)]
-pub(crate) struct BuiltinUnstableFeatures;
+pub(crate) struct BuiltinUnstableFeatures {
+    #[primary_span]
+    pub span: Span,
+}
 
 // lint_ungated_async_fn_track_caller
 pub(crate) struct BuiltinUngatedAsyncFnTrackCaller<'a> {
+    pub span: Span,
     pub label: Span,
     pub session: &'a Session,
 }
@@ -248,11 +331,17 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
             sym::async_fn_track_caller,
         );
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unreachable_pub)]
 pub(crate) struct BuiltinUnreachablePub<'a> {
+    #[primary_span]
+    pub span: Span,
     pub what: &'a str,
     #[suggestion(code = "pub(crate)")]
     pub suggestion: (Span, Applicability),
@@ -263,13 +352,14 @@ pub(crate) struct BuiltinUnreachablePub<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_macro_expr_fragment_specifier_2024_migration)]
 pub(crate) struct MacroExprFragment2024 {
+    #[primary_span]
     #[suggestion(code = "expr_2021", applicability = "machine-applicable")]
-    pub suggestion: Span,
+    pub span: Span,
 }
 
 pub(crate) struct BuiltinTypeAliasBounds<'hir> {
+    pub spans: Vec<Span>,
     pub in_where_clause: bool,
-    pub label: Span,
     pub enable_feat_help: bool,
     pub suggestions: Vec<(Span, String)>,
     pub preds: &'hir [hir::WherePredicate<'hir>],
@@ -283,7 +373,9 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
         } else {
             fluent::lint_builtin_type_alias_bounds_param_bounds
         });
-        diag.span_label(self.label, fluent::lint_builtin_type_alias_bounds_label);
+        if let Some(&span) = self.spans.last() {
+            diag.span_label(span, fluent::lint_builtin_type_alias_bounds_label);
+        }
         diag.note(fluent::lint_builtin_type_alias_bounds_limitation_note);
         if self.enable_feat_help {
             diag.help(fluent::lint_builtin_type_alias_bounds_enable_feat_help);
@@ -334,11 +426,17 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
             );
         }
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.spans.clone().into())
+    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_trivial_bounds)]
 pub(crate) struct BuiltinTrivialBounds<'a> {
+    #[primary_span]
+    pub span: Span,
     pub predicate_kind_name: &'a str,
     pub predicate: Clause<'a>,
 }
@@ -347,30 +445,35 @@ pub(crate) struct BuiltinTrivialBounds<'a> {
 pub(crate) enum BuiltinEllipsisInclusiveRangePatternsLint {
     #[diag(lint_builtin_ellipsis_inclusive_range_patterns)]
     Parenthesise {
+        #[primary_span]
         #[suggestion(code = "{replace}", applicability = "machine-applicable")]
-        suggestion: Span,
+        span: Span,
         replace: String,
     },
     #[diag(lint_builtin_ellipsis_inclusive_range_patterns)]
     NonParenthesise {
+        #[primary_span]
         #[suggestion(style = "short", code = "..=", applicability = "machine-applicable")]
-        suggestion: Span,
+        span: Span,
     },
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_keyword_idents)]
 pub(crate) struct BuiltinKeywordIdents {
+    #[primary_span]
+    #[suggestion(code = "{prefix}r#{kw}", applicability = "machine-applicable")]
+    pub span: Span,
     pub kw: Ident,
     pub next: Edition,
-    #[suggestion(code = "{prefix}r#{kw}", applicability = "machine-applicable")]
-    pub suggestion: Span,
     pub prefix: &'static str,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_explicit_outlives)]
 pub(crate) struct BuiltinExplicitOutlives {
+    #[primary_span]
+    pub spans: Vec<Span>,
     pub count: usize,
     #[subdiagnostic]
     pub suggestion: BuiltinExplicitOutlivesSuggestion,
@@ -388,6 +491,8 @@ pub(crate) struct BuiltinExplicitOutlivesSuggestion {
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_incomplete_features)]
 pub(crate) struct BuiltinIncompleteFeatures {
+    #[primary_span]
+    pub span: Span,
     pub name: Symbol,
     #[subdiagnostic]
     pub note: Option<BuiltinFeatureIssueNote>,
@@ -399,6 +504,8 @@ pub(crate) struct BuiltinIncompleteFeatures {
 #[diag(lint_builtin_internal_features)]
 #[note]
 pub(crate) struct BuiltinInternalFeatures {
+    #[primary_span]
+    pub span: Span,
     pub name: Symbol,
 }
 
@@ -413,9 +520,9 @@ pub(crate) struct BuiltinFeatureIssueNote {
 }
 
 pub(crate) struct BuiltinUnpermittedTypeInit<'a> {
+    pub span: Span,
     pub msg: DiagMessage,
     pub ty: Ty<'a>,
-    pub label: Span,
     pub sub: BuiltinUnpermittedTypeInitSub,
     pub tcx: TyCtxt<'a>,
 }
@@ -424,15 +531,16 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.primary_message(self.msg);
         diag.arg("ty", self.ty);
-        diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
+        diag.span_label(self.span, fluent::lint_builtin_unpermitted_type_init_label);
         if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
             // Only suggest late `MaybeUninit::assume_init` initialization if the type is inhabited.
-            diag.span_label(
-                self.label,
-                fluent::lint_builtin_unpermitted_type_init_label_suggestion,
-            );
+            diag.span_label(self.span, fluent::lint_builtin_unpermitted_type_init_label_suggestion);
         }
         self.sub.add_to_diag(diag);
+    }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
     }
 }
 
@@ -467,23 +575,25 @@ impl Subdiagnostic for BuiltinUnpermittedTypeInitSub {
 pub(crate) enum BuiltinClashingExtern<'a> {
     #[diag(lint_builtin_clashing_extern_same_name)]
     SameName {
+        #[primary_span]
+        #[label(lint_mismatch_label)]
+        span: Span,
         this: Symbol,
         orig: Symbol,
         #[label(lint_previous_decl_label)]
         previous_decl_label: Span,
-        #[label(lint_mismatch_label)]
-        mismatch_label: Span,
         #[subdiagnostic]
         sub: BuiltinClashingExternSub<'a>,
     },
     #[diag(lint_builtin_clashing_extern_diff_name)]
     DiffName {
+        #[primary_span]
+        #[label(lint_mismatch_label)]
+        span: Span,
         this: Symbol,
         orig: Symbol,
         #[label(lint_previous_decl_label)]
         previous_decl_label: Span,
-        #[label(lint_mismatch_label)]
-        mismatch_label: Span,
         #[subdiagnostic]
         sub: BuiltinClashingExternSub<'a>,
     },
@@ -513,8 +623,9 @@ impl Subdiagnostic for BuiltinClashingExternSub<'_> {
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_deref_nullptr)]
 pub(crate) struct BuiltinDerefNullptr {
+    #[primary_span]
     #[label]
-    pub label: Span,
+    pub span: Span,
 }
 
 // FIXME: migrate fluent::lint::builtin_asm_labels
@@ -524,21 +635,28 @@ pub(crate) enum BuiltinSpecialModuleNameUsed {
     #[diag(lint_builtin_special_module_name_used_lib)]
     #[note]
     #[help]
-    Lib,
+    Lib {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(lint_builtin_special_module_name_used_main)]
     #[note]
-    Main,
+    Main {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 // deref_into_dyn_supertrait.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_supertrait_as_deref_target)]
 pub(crate) struct SupertraitAsDerefTarget<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
     pub self_ty: Ty<'a>,
     pub supertrait_principal: PolyExistentialTraitRef<'a>,
     pub target_principal: PolyExistentialTraitRef<'a>,
-    #[label]
-    pub label: Span,
     #[subdiagnostic]
     pub label2: Option<SupertraitAsDerefTargetLabel>,
 }
@@ -554,6 +672,8 @@ pub(crate) struct SupertraitAsDerefTargetLabel {
 #[derive(LintDiagnostic)]
 #[diag(lint_enum_intrinsics_mem_discriminant)]
 pub(crate) struct EnumIntrinsicsMemDiscriminate<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty_param: Ty<'a>,
     #[note]
     pub note: Span,
@@ -563,6 +683,8 @@ pub(crate) struct EnumIntrinsicsMemDiscriminate<'a> {
 #[diag(lint_enum_intrinsics_mem_variant)]
 #[note]
 pub(crate) struct EnumIntrinsicsMemVariant<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty_param: Ty<'a>,
 }
 
@@ -570,6 +692,8 @@ pub(crate) struct EnumIntrinsicsMemVariant<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_expectation)]
 pub(crate) struct Expectation {
+    #[primary_span]
+    pub span: Span,
     #[subdiagnostic]
     pub rationale: Option<ExpectationNote>,
     #[note]
@@ -588,24 +712,34 @@ pub(crate) enum PtrNullChecksDiag<'a> {
     #[diag(lint_ptr_null_checks_fn_ptr)]
     #[help(lint_help)]
     FnPtr {
+        #[primary_span]
+        span: Span,
         orig_ty: Ty<'a>,
         #[label]
         label: Span,
     },
     #[diag(lint_ptr_null_checks_ref)]
     Ref {
+        #[primary_span]
+        span: Span,
         orig_ty: Ty<'a>,
         #[label]
         label: Span,
     },
     #[diag(lint_ptr_null_checks_fn_ret)]
-    FnRet { fn_name: Ident },
+    FnRet {
+        #[primary_span]
+        span: Span,
+        fn_name: Ident,
+    },
 }
 
 // for_loops_over_fallibles.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_for_loops_over_fallibles)]
 pub(crate) struct ForLoopsOverFalliblesDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub article: &'static str,
     pub ref_prefix: &'static str,
     pub ty: &'static str,
@@ -673,6 +807,8 @@ pub(crate) enum UseLetUnderscoreIgnoreSuggestion {
 #[derive(LintDiagnostic)]
 #[diag(lint_dropping_references)]
 pub(crate) struct DropRefDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,
@@ -683,6 +819,8 @@ pub(crate) struct DropRefDiag<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_dropping_copy_types)]
 pub(crate) struct DropCopyDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,
@@ -693,6 +831,8 @@ pub(crate) struct DropCopyDiag<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_forgetting_references)]
 pub(crate) struct ForgetRefDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,
@@ -703,6 +843,8 @@ pub(crate) struct ForgetRefDiag<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_forgetting_copy_types)]
 pub(crate) struct ForgetCopyDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,
@@ -713,6 +855,8 @@ pub(crate) struct ForgetCopyDiag<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_undropped_manually_drops)]
 pub(crate) struct UndroppedManuallyDropsDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,
@@ -734,6 +878,8 @@ pub(crate) struct UndroppedManuallyDropsSuggestion {
 pub(crate) enum InvalidFromUtf8Diag {
     #[diag(lint_invalid_from_utf8_unchecked)]
     Unchecked {
+        #[primary_span]
+        span: Span,
         method: String,
         valid_up_to: usize,
         #[label]
@@ -741,6 +887,8 @@ pub(crate) enum InvalidFromUtf8Diag {
     },
     #[diag(lint_invalid_from_utf8_checked)]
     Checked {
+        #[primary_span]
+        span: Span,
         method: String,
         valid_up_to: usize,
         #[label]
@@ -754,6 +902,8 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     #[diag(lint_invalid_reference_casting_borrow_as_mut)]
     #[note(lint_invalid_reference_casting_note_book)]
     BorrowAsMut {
+        #[primary_span]
+        span: Span,
         #[label]
         orig_cast: Option<Span>,
         #[note(lint_invalid_reference_casting_note_ty_has_interior_mutability)]
@@ -762,6 +912,8 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     #[diag(lint_invalid_reference_casting_assign_to_ref)]
     #[note(lint_invalid_reference_casting_note_book)]
     AssignToRef {
+        #[primary_span]
+        span: Span,
         #[label]
         orig_cast: Option<Span>,
         #[note(lint_invalid_reference_casting_note_ty_has_interior_mutability)]
@@ -770,6 +922,8 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     #[diag(lint_invalid_reference_casting_bigger_layout)]
     #[note(lint_layout)]
     BiggerLayout {
+        #[primary_span]
+        span: Span,
         #[label]
         orig_cast: Option<Span>,
         #[label(lint_alloc)]
@@ -786,10 +940,11 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
 #[diag(lint_hidden_unicode_codepoints)]
 #[note]
 pub(crate) struct HiddenUnicodeCodepointsDiag<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
     pub label: &'a str,
     pub count: usize,
-    #[label]
-    pub span_label: Span,
     #[subdiagnostic]
     pub labels: Option<HiddenUnicodeCodepointsDiagLabels>,
     #[subdiagnostic]
@@ -868,6 +1023,8 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
 #[diag(lint_map_unit_fn)]
 #[note]
 pub(crate) struct MappingToUnit {
+    #[primary_span]
+    pub span: Span,
     #[label(lint_function_label)]
     pub function_label: Span,
     #[label(lint_argument_label)]
@@ -884,6 +1041,8 @@ pub(crate) struct MappingToUnit {
 #[diag(lint_default_hash_types)]
 #[note]
 pub(crate) struct DefaultHashTypesDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub preferred: &'a str,
     pub used: Symbol,
 }
@@ -892,6 +1051,8 @@ pub(crate) struct DefaultHashTypesDiag<'a> {
 #[diag(lint_query_instability)]
 #[note]
 pub(crate) struct QueryInstability {
+    #[primary_span]
+    pub span: Span,
     pub query: Symbol,
 }
 
@@ -899,16 +1060,23 @@ pub(crate) struct QueryInstability {
 #[diag(lint_query_untracked)]
 #[note]
 pub(crate) struct QueryUntracked {
+    #[primary_span]
+    pub span: Span,
     pub method: Symbol,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_span_use_eq_ctxt)]
-pub(crate) struct SpanUseEqCtxtDiag;
+pub(crate) struct SpanUseEqCtxtDiag {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_tykind_kind)]
 pub(crate) struct TykindKind {
+    #[primary_span]
+    pub span: Span,
     #[suggestion(code = "ty", applicability = "maybe-incorrect")]
     pub suggestion: Span,
 }
@@ -916,24 +1084,33 @@ pub(crate) struct TykindKind {
 #[derive(LintDiagnostic)]
 #[diag(lint_tykind)]
 #[help]
-pub(crate) struct TykindDiag;
+pub(crate) struct TykindDiag {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_ty_qualified)]
 pub(crate) struct TyQualified {
-    pub ty: String,
+    #[primary_span]
     #[suggestion(code = "{ty}", applicability = "maybe-incorrect")]
-    pub suggestion: Span,
+    pub span: Span,
+    pub ty: String,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_type_ir_inherent_usage)]
 #[note]
-pub(crate) struct TypeIrInherentUsage;
+pub(crate) struct TypeIrInherentUsage {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_non_glob_import_type_ir_inherent)]
 pub(crate) struct NonGlobImportTypeIrInherent {
+    #[primary_span]
+    pub span: Span,
     #[suggestion(code = "{snippet}", applicability = "maybe-incorrect")]
     pub suggestion: Option<Span>,
     pub snippet: &'static str,
@@ -942,26 +1119,39 @@ pub(crate) struct NonGlobImportTypeIrInherent {
 #[derive(LintDiagnostic)]
 #[diag(lint_lintpass_by_hand)]
 #[help]
-pub(crate) struct LintPassByHand;
+pub(crate) struct LintPassByHand {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_non_existent_doc_keyword)]
 #[help]
 pub(crate) struct NonExistentDocKeyword {
+    #[primary_span]
+    pub span: Span,
     pub keyword: Symbol,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_diag_out_of_impl)]
-pub(crate) struct DiagOutOfImpl;
+pub(crate) struct DiagOutOfImpl {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_untranslatable_diag)]
-pub(crate) struct UntranslatableDiag;
+pub(crate) struct UntranslatableDiag {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_bad_opt_access)]
 pub(crate) struct BadOptAccessDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub msg: &'a str,
 }
 
@@ -970,13 +1160,16 @@ pub(crate) struct BadOptAccessDiag<'a> {
 pub(crate) enum NonBindingLet {
     #[diag(lint_non_binding_let_on_sync_lock)]
     SyncLock {
+        #[primary_span]
         #[label]
-        pat: Span,
+        span: Span,
         #[subdiagnostic]
         sub: NonBindingLetSub,
     },
     #[diag(lint_non_binding_let_on_drop_type)]
     DropType {
+        #[primary_span]
+        span: Span,
         #[subdiagnostic]
         sub: NonBindingLetSub,
     },
@@ -1026,8 +1219,9 @@ impl Subdiagnostic for NonBindingLetSub {
 #[derive(LintDiagnostic)]
 #[diag(lint_overruled_attribute)]
 pub(crate) struct OverruledAttributeLint<'a> {
+    #[primary_span]
     #[label]
-    pub overruled: Span,
+    pub span: Span,
     pub lint_level: &'a str,
     pub lint_source: Symbol,
     #[subdiagnostic]
@@ -1037,9 +1231,10 @@ pub(crate) struct OverruledAttributeLint<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_deprecated_lint_name)]
 pub(crate) struct DeprecatedLintName<'a> {
-    pub name: String,
+    #[primary_span]
     #[suggestion(code = "{replace}", applicability = "machine-applicable")]
-    pub suggestion: Span,
+    pub span: Span,
+    pub name: String,
     pub replace: &'a str,
 }
 
@@ -1056,6 +1251,8 @@ pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_renamed_lint)]
 pub(crate) struct RenamedLint<'a> {
+    #[primary_span]
+    pub span: Span,
     pub name: &'a str,
     #[subdiagnostic]
     pub suggestion: RenamedLintSuggestion<'a>,
@@ -1086,6 +1283,8 @@ pub(crate) struct RenamedLintFromCommandLine<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_removed_lint)]
 pub(crate) struct RemovedLint<'a> {
+    #[primary_span]
+    pub span: Span,
     pub name: &'a str,
     pub reason: &'a str,
 }
@@ -1102,6 +1301,8 @@ pub(crate) struct RemovedLintFromCommandLine<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_unknown_lint)]
 pub(crate) struct UnknownLint {
+    #[primary_span]
+    pub span: Span,
     pub name: String,
     #[subdiagnostic]
     pub suggestion: Option<UnknownLintSuggestion>,
@@ -1133,6 +1334,8 @@ pub(crate) struct UnknownLintFromCommandLine<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_ignored_unless_crate_specified)]
 pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
+    #[primary_span]
+    pub span: Span,
     pub level: &'a str,
     pub name: Symbol,
 }
@@ -1143,8 +1346,9 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 #[note]
 #[help]
 pub(crate) struct CStringPtr {
+    #[primary_span]
     #[label(lint_as_ptr_label)]
-    pub as_ptr: Span,
+    pub span: Span,
     #[label(lint_unwrap_label)]
     pub unwrap: Span,
 }
@@ -1153,18 +1357,25 @@ pub(crate) struct CStringPtr {
 #[derive(LintDiagnostic)]
 #[diag(lint_multiple_supertrait_upcastable)]
 pub(crate) struct MultipleSupertraitUpcastable {
+    #[primary_span]
+    pub span: Span,
     pub ident: Ident,
 }
 
 // non_ascii_idents.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_identifier_non_ascii_char)]
-pub(crate) struct IdentifierNonAsciiChar;
+pub(crate) struct IdentifierNonAsciiChar {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_identifier_uncommon_codepoints)]
 #[note]
 pub(crate) struct IdentifierUncommonCodepoints {
+    #[primary_span]
+    pub span: Span,
     pub codepoints: Vec<char>,
     pub codepoints_len: usize,
     pub identifier_type: &'static str,
@@ -1173,12 +1384,13 @@ pub(crate) struct IdentifierUncommonCodepoints {
 #[derive(LintDiagnostic)]
 #[diag(lint_confusable_identifier_pair)]
 pub(crate) struct ConfusableIdentifierPair {
+    #[primary_span]
+    #[label(lint_current_use)]
+    pub span: Span,
     pub existing_sym: Symbol,
     pub sym: Symbol,
     #[label(lint_other_use)]
     pub label: Span,
-    #[label(lint_current_use)]
-    pub main_label: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -1186,12 +1398,15 @@ pub(crate) struct ConfusableIdentifierPair {
 #[note(lint_includes_note)]
 #[note]
 pub(crate) struct MixedScriptConfusables {
+    #[primary_span]
+    pub span: Span,
     pub set: String,
     pub includes: String,
 }
 
 // non_fmt_panic.rs
 pub(crate) struct NonFmtPanicUnused {
+    pub spans: Vec<Span>,
     pub count: usize,
     pub suggestion: Option<Span>,
 }
@@ -1217,12 +1432,18 @@ impl<'a> LintDiagnostic<'a, ()> for NonFmtPanicUnused {
             );
         }
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.spans.clone().into())
+    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_non_fmt_panic_braces)]
 #[note]
 pub(crate) struct NonFmtPanicBraces {
+    #[primary_span]
+    pub spans: Vec<Span>,
     pub count: usize,
     #[suggestion(code = "\"{{}}\", ", applicability = "machine-applicable")]
     pub suggestion: Option<Span>,
@@ -1232,6 +1453,8 @@ pub(crate) struct NonFmtPanicBraces {
 #[derive(LintDiagnostic)]
 #[diag(lint_non_camel_case_type)]
 pub(crate) struct NonCamelCaseType<'a> {
+    #[primary_span]
+    pub span: Span,
     pub sort: &'a str,
     pub name: &'a str,
     #[subdiagnostic]
@@ -1256,6 +1479,8 @@ pub(crate) enum NonCamelCaseTypeSub {
 #[derive(LintDiagnostic)]
 #[diag(lint_non_snake_case)]
 pub(crate) struct NonSnakeCaseDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub sort: &'a str,
     pub name: &'a str,
     pub sc: String,
@@ -1316,6 +1541,8 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
 #[derive(LintDiagnostic)]
 #[diag(lint_non_upper_case_global)]
 pub(crate) struct NonUpperCaseGlobal<'a> {
+    #[primary_span]
+    pub span: Span,
     pub sort: &'a str,
     pub name: &'a str,
     #[subdiagnostic]
@@ -1342,11 +1569,12 @@ pub(crate) enum NonUpperCaseGlobalSub {
 #[diag(lint_noop_method_call)]
 #[note]
 pub(crate) struct NoopMethodCallDiag<'a> {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
     pub method: Symbol,
     pub orig_ty: Ty<'a>,
     pub trait_: Symbol,
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    pub label: Span,
     #[suggestion(
         lint_derive_suggestion,
         code = "#[derive(Clone)]\n",
@@ -1358,18 +1586,23 @@ pub(crate) struct NoopMethodCallDiag<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_suspicious_double_ref_deref)]
 pub(crate) struct SuspiciousDoubleRefDerefDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: Ty<'a>,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_suspicious_double_ref_clone)]
 pub(crate) struct SuspiciousDoubleRefCloneDiag<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: Ty<'a>,
 }
 
 // non_local_defs.rs
 pub(crate) enum NonLocalDefinitionsDiag {
     Impl {
+        span: MultiSpan,
         depth: u32,
         body_kind_descr: &'static str,
         body_name: String,
@@ -1379,6 +1612,7 @@ pub(crate) enum NonLocalDefinitionsDiag {
         macro_to_change: Option<(String, &'static str)>,
     },
     MacroRules {
+        span: Span,
         depth: u32,
         body_kind_descr: &'static str,
         body_name: String,
@@ -1391,6 +1625,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         match self {
             NonLocalDefinitionsDiag::Impl {
+                span: _,
                 depth,
                 body_kind_descr,
                 body_name,
@@ -1432,6 +1667,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 }
             }
             NonLocalDefinitionsDiag::MacroRules {
+                span: _,
                 depth,
                 body_kind_descr,
                 body_name,
@@ -1457,6 +1693,13 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
             }
         }
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        match self {
+            Self::Impl { span, .. } => Some(span.clone().into()),
+            &Self::MacroRules { span, .. } => Some(span.into()),
+        }
+    }
 }
 
 #[derive(Subdiagnostic)]
@@ -1472,6 +1715,8 @@ pub(crate) struct NonLocalDefinitionsCargoUpdateNote {
 #[diag(lint_ambiguous_negative_literals)]
 #[note(lint_example)]
 pub(crate) struct AmbiguousNegativeLiteralsDiag {
+    #[primary_span]
+    pub span: Span,
     #[subdiagnostic]
     pub negative_literal: AmbiguousNegativeLiteralsNegativeLiteralSuggestion,
     #[subdiagnostic]
@@ -1500,22 +1745,25 @@ pub(crate) struct AmbiguousNegativeLiteralsCurrentBehaviorSuggestion {
 #[derive(LintDiagnostic)]
 #[diag(lint_pass_by_value)]
 pub(crate) struct PassByValueDiag {
-    pub ty: String,
+    #[primary_span]
     #[suggestion(code = "{ty}", applicability = "maybe-incorrect")]
-    pub suggestion: Span,
+    pub span: Span,
+    pub ty: String,
 }
 
 // redundant_semicolon.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_redundant_semicolons)]
 pub(crate) struct RedundantSemicolonsDiag {
-    pub multiple: bool,
+    #[primary_span]
     #[suggestion(code = "", applicability = "maybe-incorrect")]
-    pub suggestion: Span,
+    pub span: Span,
+    pub multiple: bool,
 }
 
 // traits.rs
 pub(crate) struct DropTraitConstraintsDiag<'a> {
+    pub span: Span,
     pub predicate: Clause<'a>,
     pub tcx: TyCtxt<'a>,
     pub def_id: DefId,
@@ -1528,9 +1776,14 @@ impl<'a> LintDiagnostic<'a, ()> for DropTraitConstraintsDiag<'_> {
         diag.arg("predicate", self.predicate);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 pub(crate) struct DropGlue<'a> {
+    pub span: Span,
     pub tcx: TyCtxt<'a>,
     pub def_id: DefId,
 }
@@ -1541,12 +1794,18 @@ impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
         diag.primary_message(fluent::lint_drop_glue);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 // types.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_range_endpoint_out_of_range)]
 pub(crate) struct RangeEndpointOutOfRange<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: &'a str,
     #[subdiagnostic]
     pub sub: UseInclusiveRange<'a>,
@@ -1580,6 +1839,8 @@ pub(crate) enum UseInclusiveRange<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_overflowing_bin_hex)]
 pub(crate) struct OverflowingBinHex<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: &'a str,
     pub lit: String,
     pub dec: u128,
@@ -1651,6 +1912,8 @@ pub(crate) struct OverflowingBinHexSignBitSub<'a> {
 #[diag(lint_overflowing_int)]
 #[note]
 pub(crate) struct OverflowingInt<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: &'a str,
     pub lit: String,
     pub min: i128,
@@ -1668,6 +1931,7 @@ pub(crate) struct OverflowingIntHelp<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_only_cast_u8_to_char)]
 pub(crate) struct OnlyCastu8ToChar {
+    #[primary_span]
     #[suggestion(code = "'\\u{{{literal:X}}}'", applicability = "machine-applicable")]
     pub span: Span,
     pub literal: u128,
@@ -1677,6 +1941,8 @@ pub(crate) struct OnlyCastu8ToChar {
 #[diag(lint_overflowing_uint)]
 #[note]
 pub(crate) struct OverflowingUInt<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: &'a str,
     pub lit: String,
     pub min: u128,
@@ -1687,23 +1953,33 @@ pub(crate) struct OverflowingUInt<'a> {
 #[diag(lint_overflowing_literal)]
 #[note]
 pub(crate) struct OverflowingLiteral<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: &'a str,
     pub lit: String,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_comparisons)]
-pub(crate) struct UnusedComparisons;
+pub(crate) struct UnusedComparisons {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 pub(crate) enum InvalidNanComparisons {
     #[diag(lint_invalid_nan_comparisons_eq_ne)]
     EqNe {
+        #[primary_span]
+        span: Span,
         #[subdiagnostic]
         suggestion: InvalidNanComparisonsSuggestion,
     },
     #[diag(lint_invalid_nan_comparisons_lt_le_gt_ge)]
-    LtLeGtGe,
+    LtLeGtGe {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Subdiagnostic)]
@@ -1729,6 +2005,8 @@ pub(crate) enum InvalidNanComparisonsSuggestion {
 pub(crate) enum AmbiguousWidePointerComparisons<'a> {
     #[diag(lint_ambiguous_wide_pointer_comparisons)]
     Spanful {
+        #[primary_span]
+        span: Span,
         #[subdiagnostic]
         addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion<'a>,
         #[subdiagnostic]
@@ -1737,7 +2015,10 @@ pub(crate) enum AmbiguousWidePointerComparisons<'a> {
     #[diag(lint_ambiguous_wide_pointer_comparisons)]
     #[help(lint_addr_metadata_suggestion)]
     #[help(lint_addr_suggestion)]
-    Spanless,
+    Spanless {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Subdiagnostic)]
@@ -1807,9 +2088,9 @@ pub(crate) enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
 }
 
 pub(crate) struct ImproperCTypes<'a> {
+    pub span: Span,
     pub ty: Ty<'a>,
     pub desc: &'a str,
-    pub label: Span,
     pub help: Option<DiagMessage>,
     pub note: DiagMessage,
     pub span_note: Option<Span>,
@@ -1821,7 +2102,7 @@ impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
         diag.primary_message(fluent::lint_improper_ctypes);
         diag.arg("ty", self.ty);
         diag.arg("desc", self.desc);
-        diag.span_label(self.label, fluent::lint_label);
+        diag.span_label(self.span, fluent::lint_label);
         if let Some(help) = self.help {
             diag.help(help);
         }
@@ -1830,45 +2111,62 @@ impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
             diag.span_note(note, fluent::lint_note);
         }
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_variant_size_differences)]
 pub(crate) struct VariantSizeDifferencesDiag {
+    #[primary_span]
+    pub span: Span,
     pub largest: u64,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_atomic_ordering_load)]
 #[help]
-pub(crate) struct AtomicOrderingLoad;
+pub(crate) struct AtomicOrderingLoad {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_atomic_ordering_store)]
 #[help]
-pub(crate) struct AtomicOrderingStore;
+pub(crate) struct AtomicOrderingStore {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_atomic_ordering_fence)]
 #[help]
-pub(crate) struct AtomicOrderingFence;
+pub(crate) struct AtomicOrderingFence {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_atomic_ordering_invalid)]
 #[help]
 pub(crate) struct InvalidAtomicOrderingDiag {
-    pub method: Symbol,
+    #[primary_span]
     #[label]
-    pub fail_order_arg_span: Span,
+    pub span: Span,
+    pub method: Symbol,
 }
 
 // unused.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_op)]
 pub(crate) struct UnusedOp<'a> {
-    pub op: &'a str,
+    #[primary_span]
     #[label]
-    pub label: Span,
+    pub span: Span,
+    pub op: &'a str,
     #[subdiagnostic]
     pub suggestion: UnusedOpSuggestion,
 }
@@ -1897,6 +2195,8 @@ pub(crate) enum UnusedOpSuggestion {
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_result)]
 pub(crate) struct UnusedResult<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: Ty<'a>,
 }
 
@@ -1906,6 +2206,8 @@ pub(crate) struct UnusedResult<'a> {
 #[diag(lint_unused_closure)]
 #[note]
 pub(crate) struct UnusedClosure<'a> {
+    #[primary_span]
+    pub span: Span,
     pub count: usize,
     pub pre: &'a str,
     pub post: &'a str,
@@ -1917,6 +2219,8 @@ pub(crate) struct UnusedClosure<'a> {
 #[diag(lint_unused_coroutine)]
 #[note]
 pub(crate) struct UnusedCoroutine<'a> {
+    #[primary_span]
+    pub span: Span,
     pub count: usize,
     pub pre: &'a str,
     pub post: &'a str,
@@ -1925,6 +2229,7 @@ pub(crate) struct UnusedCoroutine<'a> {
 // FIXME(davidtwco): this isn't properly translatable because of the pre/post
 // strings
 pub(crate) struct UnusedDef<'a, 'b> {
+    pub span: Span,
     pub pre: &'a str,
     pub post: &'a str,
     pub cx: &'a LateContext<'b>,
@@ -1934,7 +2239,6 @@ pub(crate) struct UnusedDef<'a, 'b> {
 }
 
 #[derive(Subdiagnostic)]
-
 pub(crate) enum UnusedDefSuggestion {
     #[suggestion(
         lint_suggestion,
@@ -1970,11 +2274,17 @@ impl<'a> LintDiagnostic<'a, ()> for UnusedDef<'_, '_> {
             diag.subdiagnostic(sugg);
         }
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_path_statement_drop)]
 pub(crate) struct PathStatementDrop {
+    #[primary_span]
+    pub span: Span,
     #[subdiagnostic]
     pub sub: PathStatementDropSub,
 }
@@ -1996,11 +2306,16 @@ pub(crate) enum PathStatementDropSub {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_path_statement_no_effect)]
-pub(crate) struct PathStatementNoEffect;
+pub(crate) struct PathStatementNoEffect {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_delim)]
 pub(crate) struct UnusedDelim<'a> {
+    #[primary_span]
+    pub span: MultiSpan,
     pub delim: &'static str,
     pub item: &'a str,
     #[subdiagnostic]
@@ -2021,18 +2336,27 @@ pub(crate) struct UnusedDelimSuggestion {
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_import_braces)]
 pub(crate) struct UnusedImportBracesDiag {
+    #[primary_span]
+    pub span: Span,
     pub node: Symbol,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_allocation)]
-pub(crate) struct UnusedAllocationDiag;
+pub(crate) struct UnusedAllocationDiag {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_allocation_mut)]
-pub(crate) struct UnusedAllocationMutDiag;
+pub(crate) struct UnusedAllocationMutDiag {
+    #[primary_span]
+    pub span: Span,
+}
 
 pub(crate) struct AsyncFnInTraitDiag {
+    pub span: Span,
     pub sugg: Option<Vec<(Span, String)>>,
 }
 
@@ -2044,11 +2368,17 @@ impl<'a> LintDiagnostic<'a, ()> for AsyncFnInTraitDiag {
             diag.multipart_suggestion(fluent::lint_suggestion, sugg, Applicability::MaybeIncorrect);
         }
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unit_bindings)]
 pub(crate) struct UnitBindingsDiag {
+    #[primary_span]
+    pub span: Span,
     #[label]
     pub label: Span,
 }
@@ -2059,6 +2389,8 @@ pub(crate) enum InvalidAsmLabel {
     #[help]
     #[note]
     Named {
+        #[primary_span]
+        span: Span,
         #[note(lint_invalid_asm_label_no_span)]
         missing_precise_span: bool,
     },
@@ -2067,6 +2399,8 @@ pub(crate) enum InvalidAsmLabel {
     #[note(lint_note1)]
     #[note(lint_note2)]
     FormatArg {
+        #[primary_span]
+        span: Span,
         #[note(lint_invalid_asm_label_no_span)]
         missing_precise_span: bool,
     },
@@ -2075,11 +2409,11 @@ pub(crate) enum InvalidAsmLabel {
     #[note(lint_note1)]
     #[note(lint_note2)]
     Binary {
-        #[note(lint_invalid_asm_label_no_span)]
-        missing_precise_span: bool,
-        // hack to get a label on the whole span, must match the emitted span
+        #[primary_span]
         #[label]
         span: Span,
+        #[note(lint_invalid_asm_label_no_span)]
+        missing_precise_span: bool,
     },
 }
 
@@ -2412,6 +2746,11 @@ impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.primary_message(self.msg);
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        // The primary span is to be provided by `BufferedEarlyLint`.
+        None
+    }
 }
 
 #[derive(LintDiagnostic)]
@@ -2627,6 +2966,11 @@ impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
                 Applicability::MachineApplicable,
             ),
         };
+    }
+
+    fn span(&self) -> Option<MultiSpan> {
+        // The primary span is to be provided by `BufferedEarlyLint`.
+        None
     }
 }
 
@@ -2914,7 +3258,6 @@ pub(crate) struct UnusedExternCrate {
 pub(crate) struct ExternCrateNotIdiomatic {
     #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
     pub span: Span,
-
     pub code: &'static str,
 }
 
@@ -2927,6 +3270,11 @@ impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for AmbiguousGlobImports {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
         diag.primary_message(self.ambiguity.msg.clone());
         rustc_errors::report_ambiguity_error(diag, self.ambiguity);
+    }
+
+    fn span(&self) -> Option<MultiSpan> {
+        // The primary span is to be provided by `BufferedEarlyLint`.
+        None
     }
 }
 
@@ -3018,6 +3366,7 @@ pub(crate) struct OutOfScopeMacroCalls {
 #[derive(LintDiagnostic)]
 #[diag(lint_static_mut_refs_lint)]
 pub(crate) struct RefOfMutStatic<'a> {
+    #[primary_span]
     #[label]
     pub span: Span,
     #[subdiagnostic]
@@ -3049,7 +3398,10 @@ pub(crate) enum MutRefSugg {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unqualified_local_imports)]
-pub(crate) struct UnqualifiedLocalImportsDiag {}
+pub(crate) struct UnqualifiedLocalImportsDiag {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_reserved_string)]

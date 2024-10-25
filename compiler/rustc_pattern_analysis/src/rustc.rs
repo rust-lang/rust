@@ -977,17 +977,15 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         overlaps_with: &[&crate::pat::DeconstructedPat<Self>],
     ) {
         let overlap_as_pat = self.print_pat_range(&overlaps_on, *pat.ty());
-        let overlaps: Vec<_> = overlaps_with
+        let overlaps = overlaps_with
             .iter()
             .map(|pat| pat.data().span)
             .map(|span| errors::Overlap { range: overlap_as_pat.to_string(), span })
             .collect();
-        let pat_span = pat.data().span;
-        self.tcx.emit_node_span_lint(
+        self.tcx.emit_node_lint(
             lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
             self.match_lint_level,
-            pat_span,
-            errors::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
+            errors::OverlappingRangeEndpoints { span: pat.data().span, overlaps },
         );
     }
 
@@ -1019,13 +1017,12 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         let gap_as_pat = self.print_pat_range(&gap, *pat.ty());
         if gapped_with.is_empty() {
             // If `gapped_with` is empty, `gap == T::MAX`.
-            self.tcx.emit_node_span_lint(
+            self.tcx.emit_node_lint(
                 lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
                 self.match_lint_level,
-                thir_pat.span,
                 errors::ExclusiveRangeMissingMax {
                     // Point at this range.
-                    first_range: thir_pat.span,
+                    span: thir_pat.span,
                     // That's the gap that isn't covered.
                     max: gap_as_pat,
                     // Suggest `lo..=max` instead.
@@ -1033,13 +1030,12 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                 },
             );
         } else {
-            self.tcx.emit_node_span_lint(
+            self.tcx.emit_node_lint(
                 lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
                 self.match_lint_level,
-                thir_pat.span,
                 errors::ExclusiveRangeMissingGap {
                     // Point at this range.
-                    first_range: thir_pat.span,
+                    span: thir_pat.span,
                     // That's the gap that isn't covered.
                     gap: gap_as_pat.to_string(),
                     // Suggest `lo..=gap` instead.

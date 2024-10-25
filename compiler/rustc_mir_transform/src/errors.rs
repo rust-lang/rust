@@ -1,5 +1,5 @@
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, LintDiagnostic};
+use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
@@ -14,6 +14,8 @@ pub(crate) enum ConstMutate {
     #[diag(mir_transform_const_modify)]
     #[note]
     Modify {
+        #[primary_span]
+        span: Span,
         #[note(mir_transform_const_defined_here)]
         konst: Span,
     },
@@ -21,6 +23,8 @@ pub(crate) enum ConstMutate {
     #[note]
     #[note(mir_transform_note2)]
     MutBorrow {
+        #[primary_span]
+        span: Span,
         #[note(mir_transform_note3)]
         method_call: Option<Span>,
         #[note(mir_transform_const_defined_here)]
@@ -61,6 +65,10 @@ impl<'a, P: std::fmt::Debug> LintDiagnostic<'a, ()> for AssertLint<P> {
         });
         diag.span_label(self.span, label);
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 impl AssertLintKind {
@@ -75,6 +83,7 @@ impl AssertLintKind {
 #[derive(LintDiagnostic)]
 #[diag(mir_transform_ffi_unwind_call)]
 pub(crate) struct FfiUnwindCall {
+    #[primary_span]
     #[label(mir_transform_ffi_unwind_call)]
     pub span: Span,
     pub foreign: bool,
@@ -83,6 +92,7 @@ pub(crate) struct FfiUnwindCall {
 #[derive(LintDiagnostic)]
 #[diag(mir_transform_fn_item_ref)]
 pub(crate) struct FnItemRef {
+    #[primary_span]
     #[suggestion(code = "{sugg}", applicability = "unspecified")]
     pub span: Span,
     pub sugg: String,
@@ -99,9 +109,9 @@ pub(crate) struct MCDCExceedsTestVectorLimit {
 
 pub(crate) struct MustNotSupend<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    pub span: Span,
     pub yield_sp: Span,
     pub reason: Option<MustNotSuspendReason>,
-    pub src_sp: Span,
     pub pre: &'a str,
     pub def_id: DefId,
     pub post: &'a str,
@@ -115,10 +125,14 @@ impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
         if let Some(reason) = self.reason {
             diag.subdiagnostic(reason);
         }
-        diag.span_help(self.src_sp, fluent::_subdiag::help);
+        diag.span_help(self.span, fluent::_subdiag::help);
         diag.arg("pre", self.pre);
         diag.arg("def_path", self.tcx.def_path_str(self.def_id));
         diag.arg("post", self.post);
+    }
+
+    fn span(&self) -> Option<MultiSpan> {
+        Some(self.span.into())
     }
 }
 
@@ -135,4 +149,7 @@ pub(crate) struct MustNotSuspendReason {
 #[note]
 #[note(mir_transform_note2)]
 #[help]
-pub(crate) struct UndefinedTransmute;
+pub(crate) struct UndefinedTransmute {
+    #[primary_span]
+    pub span: Span,
+}

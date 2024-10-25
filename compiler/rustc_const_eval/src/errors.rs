@@ -197,6 +197,8 @@ pub(crate) struct InteriorMutableRefEscaping {
 #[diag(const_eval_long_running)]
 #[note]
 pub struct LongRunning {
+    #[primary_span]
+    pub span: Span,
     #[help]
     pub item_span: Span,
 }

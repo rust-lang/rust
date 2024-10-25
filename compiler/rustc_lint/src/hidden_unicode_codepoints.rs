@@ -73,10 +73,10 @@ impl HiddenUnicodeCodepoints {
             HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
         };
 
-        cx.emit_span_lint(TEXT_DIRECTION_CODEPOINT_IN_LITERAL, span, HiddenUnicodeCodepointsDiag {
+        cx.emit_lint(TEXT_DIRECTION_CODEPOINT_IN_LITERAL, HiddenUnicodeCodepointsDiag {
+            span,
             label,
             count,
-            span_label: span,
             labels,
             sub,
         });

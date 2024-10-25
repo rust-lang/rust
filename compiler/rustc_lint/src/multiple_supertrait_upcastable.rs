@@ -48,10 +48,12 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
                 .iter_identity_copied()
                 .filter_map(|(pred, _)| pred.as_trait_clause());
             if direct_super_traits_iter.count() > 1 {
-                cx.emit_span_lint(
+                cx.emit_lint(
                     MULTIPLE_SUPERTRAIT_UPCASTABLE,
-                    cx.tcx.def_span(def_id),
-                    crate::lints::MultipleSupertraitUpcastable { ident: item.ident },
+                    crate::lints::MultipleSupertraitUpcastable {
+                        span: cx.tcx.def_span(def_id),
+                        ident: item.ident,
+                    },
                 );
             }
         }

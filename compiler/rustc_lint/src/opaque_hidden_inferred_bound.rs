@@ -178,20 +178,17 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                             _ => None,
                         };
 
-                        cx.emit_span_lint(
-                            OPAQUE_HIDDEN_INFERRED_BOUND,
-                            pred_span,
-                            OpaqueHiddenInferredBoundLint {
-                                ty: Ty::new_opaque(
-                                    cx.tcx,
-                                    def_id,
-                                    ty::GenericArgs::identity_for_item(cx.tcx, def_id),
-                                ),
-                                proj_ty: proj_term,
-                                assoc_pred_span,
-                                add_bound,
-                            },
-                        );
+                        cx.emit_lint(OPAQUE_HIDDEN_INFERRED_BOUND, OpaqueHiddenInferredBoundLint {
+                            span: pred_span,
+                            ty: Ty::new_opaque(
+                                cx.tcx,
+                                def_id,
+                                ty::GenericArgs::identity_for_item(cx.tcx, def_id),
+                            ),
+                            proj_ty: proj_term,
+                            assoc_pred_span,
+                            add_bound,
+                        });
                     }
                 }
             });
@@ -202,6 +199,8 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
 #[derive(LintDiagnostic)]
 #[diag(lint_opaque_hidden_inferred_bound)]
 struct OpaqueHiddenInferredBoundLint<'tcx> {
+    #[primary_span]
+    span: Span,
     ty: Ty<'tcx>,
     proj_ty: Ty<'tcx>,
     #[label(lint_specifically)]

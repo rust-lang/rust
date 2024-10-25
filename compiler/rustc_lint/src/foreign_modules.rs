@@ -142,31 +142,17 @@ impl ClashingExternDeclarations {
             let this = tcx.item_name(this_fi.owner_id.to_def_id());
             let orig = orig.get_name();
             let previous_decl_label = get_relevant_span(tcx, existing_did);
-            let mismatch_label = get_relevant_span(tcx, this_fi.owner_id);
+            let span = get_relevant_span(tcx, this_fi.owner_id);
             let sub =
                 BuiltinClashingExternSub { tcx, expected: existing_decl_ty, found: this_decl_ty };
-            let decorator = if orig == this {
-                BuiltinClashingExtern::SameName {
-                    this,
-                    orig,
-                    previous_decl_label,
-                    mismatch_label,
-                    sub,
-                }
-            } else {
-                BuiltinClashingExtern::DiffName {
-                    this,
-                    orig,
-                    previous_decl_label,
-                    mismatch_label,
-                    sub,
-                }
-            };
-            tcx.emit_node_span_lint(
+            tcx.emit_node_lint(
                 CLASHING_EXTERN_DECLARATIONS,
                 this_fi.hir_id(),
-                mismatch_label,
-                decorator,
+                if orig == this {
+                    BuiltinClashingExtern::SameName { span, this, orig, previous_decl_label, sub }
+                } else {
+                    BuiltinClashingExtern::DiffName { span, this, orig, previous_decl_label, sub }
+                },
             );
         }
     }

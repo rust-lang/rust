@@ -1986,15 +1986,14 @@ fn check_must_not_suspend_def(
             span: data.source_span,
             reason: s.as_str().to_string(),
         });
-        tcx.emit_node_span_lint(
+        tcx.emit_node_lint(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,
-            data.source_span,
             errors::MustNotSupend {
                 tcx,
+                span: data.source_span,
                 yield_sp: data.yield_span,
                 reason,
-                src_sp: data.source_span,
                 pre: data.descr_pre,
                 def_id,
                 post: data.descr_post,

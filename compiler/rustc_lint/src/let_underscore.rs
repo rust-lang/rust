@@ -1,4 +1,3 @@
-use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
@@ -155,14 +154,13 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 is_assign_desugar: matches!(local.source, rustc_hir::LocalSource::AssignDesugar(_)),
             };
             if is_sync_lock {
-                let span = MultiSpan::from_span(pat.span);
-                cx.emit_span_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock {
-                    sub,
-                    pat: pat.span,
-                });
-            // Only emit let_underscore_drop for top-level `_` patterns.
+                cx.emit_lint(LET_UNDERSCORE_LOCK, NonBindingLet::SyncLock { span: pat.span, sub });
             } else if can_use_init.is_some() {
-                cx.emit_span_lint(LET_UNDERSCORE_DROP, local.span, NonBindingLet::DropType { sub });
+                // Only emit let_underscore_drop for top-level `_` patterns.
+                cx.emit_lint(LET_UNDERSCORE_DROP, NonBindingLet::DropType {
+                    span: local.span,
+                    sub,
+                });
             }
         });
     }

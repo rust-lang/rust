@@ -147,6 +147,7 @@ pub struct DeprecationSuggestion {
 }
 
 pub struct Deprecated {
+    pub span: Option<Span>,
     pub sub: Option<DeprecationSuggestion>,
 
     // FIXME: make this translatable
@@ -179,6 +180,12 @@ impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecate
         if let Some(sub) = self.sub {
             diag.subdiagnostic(sub);
         }
+    }
+
+    fn span(&self) -> Option<rustc_errors::MultiSpan> {
+        // If this lint diagnostic comes from an early (buffered) lint, `self.span` is `None`
+        // since in that case the primary span is to be provided by `BufferedEarlyLint`.
+        self.span.map(Into::into)
     }
 }
 
@@ -242,6 +249,7 @@ fn late_report_deprecation(
     let suggestion =
         if let hir::Node::Expr(_) = tcx.hir_node(hir_id) { depr.suggestion } else { None };
     let diag = Deprecated {
+        span: Some(method_span),
         sub: suggestion.map(|suggestion| DeprecationSuggestion {
             span: method_span,
             kind: def_kind.to_owned(),
@@ -252,7 +260,7 @@ fn late_report_deprecation(
         note: depr.note,
         since_kind: deprecated_since_kind(is_in_effect, depr.since),
     };
-    tcx.emit_node_span_lint(deprecation_lint(is_in_effect), hir_id, method_span, diag);
+    tcx.emit_node_lint(deprecation_lint(is_in_effect), hir_id, diag);
 }
 
 /// Result of `TyCtxt::eval_stability`.
