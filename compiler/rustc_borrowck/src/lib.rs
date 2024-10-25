@@ -162,7 +162,7 @@ fn do_mir_borrowck<'tcx>(
         }
     }
 
-    let mut diags = diags::BorrowckDiags::new();
+    let diags = &mut diags::BorrowckDiags::new();
 
     // Gather the upvars of a closure, if any.
     if let Some(e) = input_body.tainted_by_errors {
@@ -227,14 +227,7 @@ fn do_mir_borrowck<'tcx>(
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    nll::dump_annotation(
-        &infcx,
-        body,
-        &regioncx,
-        &opt_closure_req,
-        &opaque_type_values,
-        &mut diags,
-    );
+    nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, &opaque_type_values, diags);
 
     // The various `flow_*` structures can be large. We drop `flow_inits` here
     // so it doesn't overlap with the others below. This reduces peak memory
@@ -299,7 +292,6 @@ fn do_mir_borrowck<'tcx>(
         };
         MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
         promoted_mbcx.report_move_errors();
-        diags = promoted_mbcx.diags;
 
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -587,7 +579,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Box<PoloniusOutput>>,
 
-    diags: diags::BorrowckDiags<'infcx, 'tcx>,
+    diags: &'a mut diags::BorrowckDiags<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
@@ -2506,7 +2498,7 @@ mod diags {
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
-                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
+                self.diags.buffer_error(diag);
             }
             for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
                 if count > 10 {
@@ -2514,7 +2506,7 @@ mod diags {
                     #[allow(rustc::untranslatable_diagnostic)]
                     diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
-                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
+                self.diags.buffer_error(diag);
             }
 
             if !self.diags.buffered_diags.is_empty() {
