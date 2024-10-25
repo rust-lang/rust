@@ -125,7 +125,7 @@ session_target_requires_unwind_tables = target requires unwind tables, they cann
 
 session_target_small_data_threshold_not_supported = `-Z small-data-threshold` is not supported for target {$target_triple} and will be ignored
 
-session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
+session_target_stack_protector_not_supported = `-C stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
 
 session_unleashed_feature_help_named = skipping check for `{$gate}` feature
 session_unleashed_feature_help_unnamed = skipping check that does not even have a feature gate
