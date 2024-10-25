@@ -102,6 +102,32 @@ impl<'a> Parser<'a> {
                     self.bump();
                     Ok(self.mk_expr(self.prev_token.span, ExprKind::Err(guar)))
                 }
+                None if self.may_recover()
+                    && self.prev_token.is_ident()
+                    && self.token.kind == token::Colon =>
+                {
+                    err.span_suggestion_verbose(
+                        self.prev_token.span.until(self.look_ahead(1, |t| t.span)),
+                        "if this is a parameter, remove the name for the parameter",
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+
+                    let snapshot = self.create_snapshot_for_diagnostic();
+                    self.bump();
+                    match self.parse_expr() {
+                        Ok(expr) => {
+                            err.emit();
+                            Ok(expr)
+                        }
+
+                        Err(expr_err) => {
+                            expr_err.cancel();
+                            self.restore_snapshot(snapshot);
+                            Err(err)
+                        }
+                    }
+                }
                 _ => Err(err),
             },
         }
