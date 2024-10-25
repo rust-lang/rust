@@ -117,7 +117,6 @@
 #![feature(const_array_into_iter_constructors)]
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
-#![feature(const_char_encode_utf16)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
 #![feature(const_float_methods)]
