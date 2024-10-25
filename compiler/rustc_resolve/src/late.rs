@@ -15,7 +15,7 @@ use std::mem::{replace, swap, take};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, visit_opt, walk_list};
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey, Suggestions};
 use rustc_hir::def::Namespace::{self, *};
@@ -43,8 +43,6 @@ use crate::{
 mod diagnostics;
 
 type Res = def::Res<NodeId>;
-
-type IdentMap<T> = FxIndexMap<Ident, T>;
 
 use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 
@@ -261,7 +259,7 @@ impl RibKind<'_> {
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
 pub(crate) struct Rib<'ra, R = Res> {
-    pub bindings: IdentMap<R>,
+    pub bindings: FxIndexMap<Ident, R>,
     pub kind: RibKind<'ra>,
 }
 
@@ -640,7 +638,7 @@ struct DiagMetadata<'ast> {
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
-    unused_labels: FxIndexMap<NodeId, Span>,
+    unused_labels: FxHashMap<NodeId, Span>,
 
     /// Only used for better errors on `let x = { foo: bar };`.
     /// In the case of a parse error with `let x = { foo: bar, };`, this isn't needed, it's only
@@ -2236,7 +2234,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let local_candidates = self.lifetime_elision_candidates.take();
 
             if let Some(candidates) = local_candidates {
-                let distinct: FxIndexSet<_> = candidates.iter().map(|(res, _)| *res).collect();
+                let distinct: FxHashSet<_> = candidates.iter().map(|(res, _)| *res).collect();
                 let lifetime_count = distinct.len();
                 if lifetime_count != 0 {
                     parameter_info.push(ElisionFnParameter {
@@ -2260,6 +2258,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                     }));
                 }
+                // Ordering is not important here.
+                #[allow(rustc::potential_query_instability)]
                 let mut distinct_iter = distinct.into_iter();
                 if let Some(res) = distinct_iter.next() {
                     match elision_lifetime {
@@ -3868,7 +3868,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut IdentMap<Res> {
+    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut FxIndexMap<Ident, Res> {
         &mut self.ribs[ns].last_mut().unwrap().bindings
     }
 
@@ -4621,7 +4621,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     Ok((node_id, _)) => {
                         // Since this res is a label, it is never read.
                         self.r.label_res_map.insert(expr.id, node_id);
-                        self.diag_metadata.unused_labels.shift_remove(&node_id);
+                        self.diag_metadata.unused_labels.remove(&node_id);
                     }
                     Err(error) => {
                         self.report_error(label.ident.span, error);
@@ -5046,7 +5046,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
-        for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
+        // Make ordering consistent before iteration
+        #[allow(rustc::potential_query_instability)]
+        let mut unused_labels: Vec<_> =
+            late_resolution_visitor.diag_metadata.unused_labels.iter().collect();
+        unused_labels.sort_by_key(|&(key, _)| key);
+        for (id, span) in unused_labels {
             self.lint_buffer.buffer_lint(
                 lint::builtin::UNUSED_LABELS,
                 *id,

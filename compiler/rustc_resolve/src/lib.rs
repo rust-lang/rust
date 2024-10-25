@@ -1021,7 +1021,7 @@ pub struct Resolver<'ra, 'tcx> {
     graph_root: Module<'ra>,
 
     prelude: Option<Module<'ra>>,
-    extern_prelude: FxIndexMap<Ident, ExternPreludeEntry<'ra>>,
+    extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'ra>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     field_names: LocalDefIdMap<Vec<Ident>>,
@@ -1054,7 +1054,7 @@ pub struct Resolver<'ra, 'tcx> {
     extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    extern_crate_map: FxIndexMap<LocalDefId, CrateNum>,
+    extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
@@ -1077,7 +1077,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
     empty_module: Module<'ra>,
-    module_map: FxIndexMap<DefId, Module<'ra>>,
+    module_map: FxHashMap<DefId, Module<'ra>>,
     binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
 
     underscore_disambiguator: u32,
@@ -1113,14 +1113,14 @@ pub struct Resolver<'ra, 'tcx> {
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
     registered_tools: &'tcx RegisteredTools,
-    macro_use_prelude: FxIndexMap<Symbol, NameBinding<'ra>>,
+    macro_use_prelude: FxHashMap<Symbol, NameBinding<'ra>>,
     macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attr: MacroData,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
-    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
+    unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
     unused_macro_rules: FxIndexMap<LocalDefId, FxIndexMap<usize, (Ident, Span)>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
@@ -1234,7 +1234,7 @@ impl<'ra> ResolverArenas<'ra> {
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        module_map: &mut FxIndexMap<DefId, Module<'ra>>,
+        module_map: &mut FxHashMap<DefId, Module<'ra>>,
         module_self_bindings: &mut FxHashMap<Module<'ra>, NameBinding<'ra>>,
     ) -> Module<'ra> {
         let module = Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
@@ -1379,7 +1379,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Resolver<'ra, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
-        let mut module_map = FxIndexMap::default();
+        let mut module_map = FxHashMap::default();
         let mut module_self_bindings = FxHashMap::default();
         let graph_root = arenas.new_module(
             None,
@@ -1396,7 +1396,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ExpnId::root(),
             DUMMY_SP,
             true,
-            &mut FxIndexMap::default(),
+            &mut FxHashMap::default(),
             &mut FxHashMap::default(),
         );
 
@@ -1412,7 +1412,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
-        let mut extern_prelude: FxIndexMap<Ident, ExternPreludeEntry<'_>> = tcx
+        let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = tcx
             .sess
             .opts
             .externs
@@ -1512,7 +1512,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             registered_tools,
-            macro_use_prelude: FxIndexMap::default(),
+            macro_use_prelude: FxHashMap::default(),
             macro_map: FxHashMap::default(),
             dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(edition)),
             dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(edition)),

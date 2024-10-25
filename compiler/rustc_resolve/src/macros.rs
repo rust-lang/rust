@@ -346,7 +346,11 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn check_unused_macros(&mut self) {
-        for (_, &(node_id, ident)) in self.unused_macros.iter() {
+        // Make ordering consistent before iteration
+        #[allow(rustc::potential_query_instability)]
+        let mut unused_macros: Vec<_> = self.unused_macros.iter().collect();
+        unused_macros.sort_by_key(|&(_, (key, _))| key);
+        for (_, &(node_id, ident)) in unused_macros {
             self.lint_buffer.buffer_lint(
                 UNUSED_MACROS,
                 node_id,
@@ -602,7 +606,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match res {
             Res::Def(DefKind::Macro(_), def_id) => {
                 if let Some(def_id) = def_id.as_local() {
-                    self.unused_macros.shift_remove(&def_id);
+                    self.unused_macros.remove(&def_id);
                     if self.proc_macro_stubs.contains(&def_id) {
                         self.dcx().emit_err(errors::ProcMacroSameCrate {
                             span: path.span,

@@ -960,7 +960,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                                 // Do not lint against unused label when we suggest them.
-                                self.diag_metadata.unused_labels.shift_remove(node_id);
+                                self.diag_metadata.unused_labels.remove(node_id);
                             }
                         }
                     }
@@ -1928,6 +1928,8 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let Some(default_trait) = default_trait else {
             return;
         };
+        // The ordering is not important here.
+        #[allow(rustc::potential_query_instability)]
         if self
             .r
             .extern_crate_map
@@ -2166,6 +2168,8 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         // Items from the prelude
                         if !module.no_implicit_prelude {
                             let extern_prelude = self.r.extern_prelude.clone();
+                            // It is sorted later so ordering is not important.
+                            #[allow(rustc::potential_query_instability)]
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
                                 self.r
                                     .crate_loader(|c| c.maybe_process_path_extern(ident.name))
