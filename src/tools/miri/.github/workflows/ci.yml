@@ -34,7 +34,7 @@ jobs:
       # The `style` job only runs on Linux; this makes sure the Windows-host-specific
       # code is also covered by clippy.
       - name: Check clippy
-        if: matrix.os == 'windows-latest'
+        if: ${{ matrix.os == 'windows-latest' }}
         run: ./miri clippy -- -D warnings
 
       - name: Test Miri
@@ -58,14 +58,15 @@ jobs:
       - name: rustdoc
         run: RUSTDOCFLAGS="-Dwarnings" ./miri doc --document-private-items
 
+  # Summary job for the merge queue.
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+  # And they should be added below in `cron-fail-notify` as well.
   conclusion:
     needs: [build, style]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
     # when the workflow is canceled manually.
-    #
-    # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -86,7 +87,7 @@ jobs:
         # ... and create a PR.
         pull-requests: write
     needs: [build, style]
-    if: github.event_name == 'schedule' && failure()
+    if: ${{ github.event_name == 'schedule' && failure() }}
     steps:
       # Send a Zulip notification
       - name: Install zulip-send
