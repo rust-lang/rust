@@ -149,6 +149,7 @@ impl FileDescription for FileHandle {
             // to handle possible errors correctly.
             let result = self.file.sync_all();
             // Now we actually close the file and return the result.
+            drop(*self);
             interp_ok(result)
         } else {
             // We drop the file, this closes it but ignores any errors
@@ -157,6 +158,7 @@ impl FileDescription for FileHandle {
             // `/dev/urandom` which are read-only. Check
             // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
             // for a deeper discussion.
+            drop(*self);
             interp_ok(Ok(()))
         }
     }
@@ -1247,12 +1249,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         }
 
-        let Some(open_dir) = this.machine.dirs.streams.remove(&dirp) else {
+        let Some(mut open_dir) = this.machine.dirs.streams.remove(&dirp) else {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
-        if let Some(entry) = open_dir.entry {
+        if let Some(entry) = open_dir.entry.take() {
             this.deallocate_ptr(entry, None, MiriMemoryKind::Runtime.into())?;
         }
+        // We drop the `open_dir`, which will close the host dir handle.
         drop(open_dir);
 
         interp_ok(Scalar::from_i32(0))
