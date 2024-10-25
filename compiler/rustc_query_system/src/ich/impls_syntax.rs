@@ -116,3 +116,32 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
         self.enabled_lib_features().hash_stable(hcx, hasher);
     }
 }
+
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::EnabledLangFeature {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
+        let rustc_feature::EnabledLangFeature { gate_name, attr_sp, stability } = self;
+        gate_name.hash_stable(hcx, hasher);
+        attr_sp.hash_stable(hcx, hasher);
+        stability.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::LangFeatureStability {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            rustc_feature::LangFeatureStability::Unstable => {}
+            rustc_feature::LangFeatureStability::StableSince { version } => {
+                version.hash_stable(hcx, hasher)
+            }
+        }
+    }
+}
+
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::EnabledLibFeature {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
+        let rustc_feature::EnabledLibFeature { gate_name, attr_sp } = self;
+        gate_name.hash_stable(hcx, hasher);
+        attr_sp.hash_stable(hcx, hasher);
+    }
+}
