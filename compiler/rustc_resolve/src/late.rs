@@ -1473,13 +1473,16 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn with_scope<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        if let Some(module) = self.r.get_module(self.r.local_def_id(id).to_def_id()) {
+        let def_id = self.r.local_def_id(id);
+        if let Some(module) = self.r.get_module(def_id.to_def_id()) {
             // Move down in the graph.
             let orig_module = replace(&mut self.parent_scope.module, module);
             self.with_rib(ValueNS, RibKind::Module(module), |this| {
                 this.with_rib(TypeNS, RibKind::Module(module), |this| {
                     let ret = f(this);
                     this.parent_scope.module = orig_module;
+                    this.r.doc_link_resolutions.entry(def_id).or_default();
+                    this.r.doc_link_traits_in_scope.entry(def_id).or_default();
                     ret
                 })
             })
@@ -5054,6 +5057,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 BuiltinLintDiag::UnusedLabel,
             );
         }
+        self.doc_link_resolutions.entry(CRATE_DEF_ID).or_default();
+        self.doc_link_traits_in_scope.entry(CRATE_DEF_ID).or_default();
     }
 }
 
