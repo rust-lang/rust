@@ -479,12 +479,8 @@ pub(crate) fn handle_document_diagnostics(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentDiagnosticParams,
 ) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
-    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let source_root = snap.analysis.source_root_id(file_id)?;
-    let line_index = snap.file_line_index(file_id)?;
-    let config = snap.config.diagnostics(Some(source_root));
-    if !config.enabled {
-        return Ok(lsp_types::DocumentDiagnosticReportResult::Report(
+    const EMPTY: lsp_types::DocumentDiagnosticReportResult =
+        lsp_types::DocumentDiagnosticReportResult::Report(
             lsp_types::DocumentDiagnosticReport::Full(
                 lsp_types::RelatedFullDocumentDiagnosticReport {
                     related_documents: None,
@@ -494,8 +490,18 @@ pub(crate) fn handle_document_diagnostics(
                     },
                 },
             ),
-        ));
+        );
+
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
+    if !snap.analysis.is_local_source_root(source_root)? {
+        return Ok(EMPTY);
     }
+    let config = snap.config.diagnostics(Some(source_root));
+    if !config.enabled {
+        return Ok(EMPTY);
+    }
+    let line_index = snap.file_line_index(file_id)?;
     let supports_related = snap.config.text_document_diagnostic_related_document_support();
 
     let mut related_documents = FxHashMap::default();

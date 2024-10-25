@@ -5,7 +5,7 @@ use std::{
 };
 
 use ide::Cancelled;
-use lsp_server::ExtractError;
+use lsp_server::{ExtractError, Response, ResponseError};
 use serde::{de::DeserializeOwned, Serialize};
 use stdx::thread::ThreadIntent;
 
@@ -117,15 +117,20 @@ impl RequestDispatcher<'_> {
             }
             return self;
         }
-        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::Worker, f)
+        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(
+            ThreadIntent::Worker,
+            f,
+            Self::content_modified_error,
+        )
     }
 
     /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
-    /// ready this will return a default constructed [`R::Result`].
-    pub(crate) fn on_or<const ALLOW_RETRYING: bool, R>(
+    /// ready this will return a `default` constructed [`R::Result`].
+    pub(crate) fn on_with<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
         default: impl FnOnce() -> R::Result,
+        on_cancelled: fn() -> ResponseError,
     ) -> &mut Self
     where
         R: lsp_types::request::Request<
@@ -141,7 +146,7 @@ impl RequestDispatcher<'_> {
             }
             return self;
         }
-        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::Worker, f)
+        self.on_with_thread_intent::<true, false, R>(ThreadIntent::Worker, f, on_cancelled)
     }
 
     /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
@@ -160,7 +165,11 @@ impl RequestDispatcher<'_> {
             }
             return self;
         }
-        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::Worker, f)
+        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(
+            ThreadIntent::Worker,
+            f,
+            Self::content_modified_error,
+        )
     }
 
     /// Dispatches a latency-sensitive request onto the thread pool. When the VFS is marked not
@@ -183,7 +192,11 @@ impl RequestDispatcher<'_> {
             }
             return self;
         }
-        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::LatencySensitive, f)
+        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(
+            ThreadIntent::LatencySensitive,
+            f,
+            Self::content_modified_error,
+        )
     }
 
     /// Formatting requests should never block on waiting a for task thread to open up, editors will wait
@@ -198,7 +211,11 @@ impl RequestDispatcher<'_> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_thread_intent::<false, false, R>(ThreadIntent::LatencySensitive, f)
+        self.on_with_thread_intent::<false, false, R>(
+            ThreadIntent::LatencySensitive,
+            f,
+            Self::content_modified_error,
+        )
     }
 
     pub(crate) fn finish(&mut self) {
@@ -217,6 +234,7 @@ impl RequestDispatcher<'_> {
         &mut self,
         intent: ThreadIntent,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
+        on_cancelled: fn() -> ResponseError,
     ) -> &mut Self
     where
         R: lsp_types::request::Request + 'static,
@@ -245,11 +263,10 @@ impl RequestDispatcher<'_> {
             match thread_result_to_response::<R>(req.id.clone(), result) {
                 Ok(response) => Task::Response(response),
                 Err(_cancelled) if ALLOW_RETRYING => Task::Retry(req),
-                Err(_cancelled) => Task::Response(lsp_server::Response::new_err(
-                    req.id,
-                    lsp_server::ErrorCode::ContentModified as i32,
-                    "content modified".to_owned(),
-                )),
+                Err(_cancelled) => {
+                    let error = on_cancelled();
+                    Task::Response(Response { id: req.id, result: None, error: Some(error) })
+                }
             }
         });
 
@@ -278,6 +295,14 @@ impl RequestDispatcher<'_> {
                 self.global_state.respond(response);
                 None
             }
+        }
+    }
+
+    fn content_modified_error() -> ResponseError {
+        ResponseError {
+            code: lsp_server::ErrorCode::ContentModified as i32,
+            message: "content modified".to_owned(),
+            data: None,
         }
     }
 }
