@@ -80,6 +80,20 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
+      - name: cwd
+        if: contains(matrix.os, 'windows')
+        shell: pwsh
+        run: echo "CURRENT_WORKING_DIRECTORY=$PWD" >> $env:GITHUB_ENV
+
+      - name: Setup ReFS
+        if: contains(matrix.os, 'windows')
+        shell: pwsh
+        env:
+          working-directory: C:\
+        run: |
+          Move-Item -Path $env:CURRENT_WORKING_DIRECTORY -Destination old-cwd
+          New-Item -ItemType Directory -Path $env:CURRENT_WORKING_DIRECTORY
+
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@v2.22.0
         with:
