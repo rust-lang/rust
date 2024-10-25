@@ -1099,6 +1099,10 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         if self.sess().instrument_coverage() {
             ifn!("llvm.instrprof.increment", fn(ptr, t_i64, t_i32, t_i32) -> void);
+            if crate::llvm_util::get_version() >= (19, 0, 0) {
+                ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
+                ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
+            }
         }
 
         ifn!("llvm.type.test", fn(ptr, t_metadata) -> i1);

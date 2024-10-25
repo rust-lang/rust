@@ -3,7 +3,7 @@
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
 
 use super::assembly::Candidate;
@@ -68,6 +68,55 @@ where
         } else {
             Err(NoSolution)
         }
+    }
+
+    /// Register additional assumptions for aliases corresponding to `~const` item bounds.
+    ///
+    /// Unlike item bounds, they are not simply implied by the well-formedness of the alias.
+    /// Instead, they only hold if the const conditons on the alias also hold. This is why
+    /// we also register the const conditions of the alias after matching the goal against
+    /// the assumption.
+    fn consider_additional_alias_assumptions(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        alias_ty: ty::AliasTy<I>,
+    ) -> Vec<Candidate<I>> {
+        let cx = ecx.cx();
+        let mut candidates = vec![];
+
+        // FIXME(effects): We elaborate here because the implied const bounds
+        // aren't necessarily elaborated. We probably should prefix this query
+        // with `explicit_`...
+        for clause in elaborate::elaborate(
+            cx,
+            cx.implied_const_bounds(alias_ty.def_id)
+                .iter_instantiated(cx, alias_ty.args)
+                .map(|trait_ref| trait_ref.to_host_effect_clause(cx, goal.predicate.host)),
+        ) {
+            candidates.extend(Self::probe_and_match_goal_against_assumption(
+                ecx,
+                CandidateSource::AliasBound,
+                goal,
+                clause,
+                |ecx| {
+                    // Const conditions must hold for the implied const bound to hold.
+                    ecx.add_goals(
+                        GoalSource::Misc,
+                        cx.const_conditions(alias_ty.def_id)
+                            .iter_instantiated(cx, alias_ty.args)
+                            .map(|trait_ref| {
+                                goal.with(
+                                    cx,
+                                    trait_ref.to_host_effect_clause(cx, goal.predicate.host),
+                                )
+                            }),
+                    );
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                },
+            ));
+        }
+
+        candidates
     }
 
     fn consider_impl_candidate(

@@ -1,5 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ known-bug: unknown
+//@ check-pass
 
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, effects)]
